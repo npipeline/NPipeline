@@ -1,0 +1,212 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+      - 'v*.*.*-*'  # Support pre-release tags like v1.0.0-preview.1
+
+env:
+  DOTNET_VERSION: '10.0.x'
+
+jobs:
+  build-and-pack:
+    name: Build and Pack
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Needed for source link
+        
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+          
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build solution
+      run: dotnet build --no-restore --configuration Release
+      
+    - name: Run tests
+      run: dotnet test --no-build --configuration Release --verbosity normal
+      
+    - name: Pack NuGet packages
+      run: dotnet pack --no-build --configuration Release --output ./artifacts/packages
+      
+    - name: Upload packages as artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-packages
+        path: ./artifacts/packages/*.nupkg
+        retention-days: 30
+        
+    - name: Upload symbols as artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-symbols
+        path: ./artifacts/packages/*.snupkg
+        retention-days: 30
+
+  build-docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+          
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build solution
+      run: dotnet build --no-restore --configuration Release
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: docs/package-lock.json
+        
+    - name: Install Docusaurus dependencies
+      run: |
+        if [ -f "docs/package.json" ]; then
+          cd docs
+          npm ci
+        else
+          echo "No package.json found in docs directory, skipping Docusaurus build"
+          exit 0
+        fi
+        
+    - name: Build Documentation
+      run: |
+        if [ -f "docs/package.json" ]; then
+          cd docs
+          npm run build
+        else
+          echo "No package.json found in docs directory, creating simple documentation site"
+          mkdir -p _site
+          cp -r * _site/ 2>/dev/null || true
+        fi
+        
+    - name: Upload documentation artifacts
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: docs/_site
+
+  publish-nuget:
+    name: Publish to NuGet
+    needs: build-and-pack
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Required for OIDC token generation (trusted publishing)
+    
+    environment:
+      name: nuget-release
+    
+    steps:
+    - name: Download packages
+      uses: actions/download-artifact@v4
+      with:
+        name: nuget-packages
+        path: ./artifacts/packages
+        
+    - name: Download symbols
+      uses: actions/download-artifact@v4
+      with:
+        name: nuget-symbols
+        path: ./artifacts/packages
+        
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: Get NuGet API key via trusted publishing (OIDC)
+      uses: NuGet/login@v1
+      id: nuget_login
+      with:
+        user: npipeline  # Replace with your NuGet.org username or organization name
+        
+    - name: Publish packages to NuGet
+      run: |
+        find ./artifacts/packages -name "*.nupkg" -not -name "*.symbols.nupkg" | while read pkg; do
+          echo "Publishing: $pkg"
+          dotnet nuget push "$pkg" \
+            --api-key ${{ steps.nuget_login.outputs.token }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate \
+            --no-symbols
+        done
+        
+    - name: Publish symbols to NuGet
+      run: |
+        find ./artifacts/packages -name "*.snupkg" | while read pkg; do
+          echo "Publishing symbols: $pkg"
+          dotnet nuget push "$pkg" \
+            --api-key ${{ steps.nuget_login.outputs.token }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+        done
+
+  deploy-docs:
+    name: Deploy Documentation to GitHub Pages
+    needs: build-docs
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+      
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+      
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+
+  create-release:
+    name: Create GitHub Release
+    needs: [ publish-nuget, deploy-docs ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: ${{ contains(github.ref, '-') }}

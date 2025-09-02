@@ -1,0 +1,11 @@
+{
+  "label": "Resilience",
+  "position": 4,
+  "link": {
+    "type": "doc",
+    "id": "core-concepts/resilience/index"
+  },
+  "customProps": {
+    "sidebar_position": 4
+  }
+}

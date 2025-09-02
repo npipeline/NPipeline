@@ -1,0 +1,43 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.cs]
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = true:suggestion
+
+# Analyzer infrastructure enabled with reasonable default severity
+dotnet_analyzer_diagnostic.severity = warning
+
+# Enforceable rules - keep as warnings or errors
+dotnet_diagnostic.CA1725.severity = warning # Parameter name mismatch
+dotnet_diagnostic.CA2201.severity = warning # Do not raise reserved exception types
+dotnet_diagnostic.CA1310.severity = warning # Specify StringComparison
+
+# Optional improvements - keep as suggestions
+dotnet_diagnostic.CA1822.severity = suggestion # Mark members static
+dotnet_diagnostic.CA1861.severity = suggestion # Avoid constant arrays as arguments
+dotnet_diagnostic.CA1305.severity = suggestion # Specify IFormatProvider
+dotnet_diagnostic.CA1032.severity = suggestion # Standard exception constructors
+dotnet_diagnostic.CA1304.severity = suggestion # Culture-specific string operations
+dotnet_diagnostic.CA1819.severity = suggestion # Properties should not return arrays
+dotnet_diagnostic.CA1865.severity = suggestion # Use char overload
+dotnet_diagnostic.CA1859.severity = suggestion # Return concrete types when possible
+dotnet_diagnostic.CA1840.severity = suggestion # Use Environment.CurrentManagedThreadId
+dotnet_diagnostic.CA1508.severity = suggestion # Avoid dead conditional code
+dotnet_diagnostic.CA2201.severity = suggestion # Do not raise reserved exception types
+
+# Truly noisy/low-value rules - silence in editorconfig
+dotnet_diagnostic.CA1707.severity = silent # Underscores in identifiers  
+dotnet_diagnostic.CA1716.severity = silent # Reserved keyword names
+dotnet_diagnostic.CA1303.severity = silent # Literal strings and localization
+dotnet_diagnostic.CA2225.severity = silent # Provide alternate for implicit operators
+dotnet_diagnostic.CA1515.severity = silent # Internal types in applications (not relevant for libraries)

@@ -1,0 +1,8 @@
+{
+  "label": "Advanced Nodes",
+  "position": 5,
+  "link": {
+    "type": "doc",
+    "id": "core-concepts/advanced-nodes/index"
+  }
+}

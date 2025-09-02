@@ -1,0 +1,11 @@
+{
+  "label": "Pipeline Execution",
+  "position": 6,
+  "link": {
+    "type": "doc",
+    "id": "core-concepts/pipeline-execution/index"
+  },
+  "customProps": {
+    "sidebar_position": 6
+  }
+}
