@@ -1,10 +1,15 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+        <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\NPipeline\NPipeline.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.Extensions.Testing\NPipeline.Extensions.Testing.csproj"/>
+    </ItemGroup>
 
 </Project>
