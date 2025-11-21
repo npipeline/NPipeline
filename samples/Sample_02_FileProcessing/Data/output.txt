@@ -1,0 +1,65 @@
+﻿PROCESSED: [Line 0001] Welcome to the NPipeline File Processing Sample
+PROCESSED: [Line 0002] This file contains various types of content for processing
+PROCESSED: [Line 0003] 123456789
+PROCESSED: [Line 0004] Mixed content with numbers 42 and text
+PROCESSED: [Line 0005] UPPERCASE LINE
+PROCESSED: [Line 0006] lowercase line
+PROCESSED: [Line 0007] MiXeD CaSe LiNe
+PROCESSED: [Line 0008] Line with special characters: !@#$%^&*()
+PROCESSED: [Line 0009] Line with punctuation: Hello, world! How are you today?
+PROCESSED: [Line 0010] Line with quotes: "This is a quoted string" and 'single quotes'
+PROCESSED: [Line 0011] Line with tabs	and	multiple	tab	characters
+PROCESSED: [Line 0012] Line with   multiple   spaces
+PROCESSED: [Line 0013] Line with trailing spaces   
+PROCESSED: [Line 0014]    Line with leading spaces
+PROCESSED: [Line 0015] Line with both leading and trailing spaces   
+PROCESSED: [Line 0016] Empty line above this one
+PROCESSED: [Line 0017] 
+PROCESSED: [Line 0018] Line with URL: https://github.com/NPipeline/NPipeline
+PROCESSED: [Line 0019] Line with email: user@example.com
+PROCESSED: [Line 0020] Line with JSON: {"key": "value", "number": 123}
+PROCESSED: [Line 0021] Line with XML: <element attribute="value">Content</element>
+PROCESSED: [Line 0022] Line with CSV: Name,Age,City - John,30,New York
+PROCESSED: [Line 0023] Line with date: 2023-12-25
+PROCESSED: [Line 0024] Line with time: 14:30:45
+PROCESSED: [Line 0025] Line with datetime: 2023-12-25T14:30:45Z
+PROCESSED: [Line 0026] Line with UUID: 550e8400-e29b-41d4-a716-446655440000
+PROCESSED: [Line 0027] Line with hexadecimal: 0xDEADBEEF
+PROCESSED: [Line 0028] Line with binary: 0b10101010
+PROCESSED: [Line 0029] Line with scientific notation: 1.23e-4
+PROCESSED: [Line 0030] Line with currency: $1,234.56
+PROCESSED: [Line 0031] Line with percentage: 75.5%
+PROCESSED: [Line 0032] Line with phone number: +1 (555) 123-4567
+PROCESSED: [Line 0033] Line with IP address: 192.168.1.1
+PROCESSED: [Line 0034] Line with file path: /usr/local/bin/application.exe
+PROCESSED: [Line 0035] Line with Windows path: C:\Program Files\Application\app.exe
+PROCESSED: [Line 0036] Line with regex pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+PROCESSED: [Line 0037] Line with SQL: SELECT * FROM users WHERE active = 1;
+PROCESSED: [Line 0038] Line with HTML: <p>This is a <strong>paragraph</strong> with <em>formatting</em>.</p>
+PROCESSED: [Line 0039] Line with CSS: .class-name { color: #ff0000; font-size: 14px; }
+PROCESSED: [Line 0040] Line with JavaScript: function greet(name) { return `Hello, ${name}!`; }
+PROCESSED: [Line 0041] Line with C# code: public string GetName() => "NPipeline";
+PROCESSED: [Line 0042] Line with Python: def calculate_sum(a, b): return a + b
+PROCESSED: [Line 0043] Line with mathematical expression: (a + b) * (c - d) / 2.0
+PROCESSED: [Line 0044] Line with Greek letters: α β γ δ ε ζ η θ ι κ λ μ ν ξ ο π ρ σ τ υ φ χ ψ ω
+PROCESSED: [Line 0045] Line with emojis: 🚀 📊 💻 🔄 📁 📝 ✅
+PROCESSED: [Line 0046] Line with accented characters: café, naïve, résumé, piñata, jalapeño
+PROCESSED: [Line 0047] Line with Unicode symbols: ★ ☆ ♠ ♣ ♥ ♦ © ® ™
+PROCESSED: [Line 0048] Very long line that demonstrates how the pipeline handles lines with substantial content that might wrap in the console but should be processed as a single line unit without any splitting or truncation during the transformation process
+PROCESSED: [Line 0049] Line with tab-separated values: ID	Name	Age	Department
+PROCESSED: [Line 0050] 1	John Doe	35	Engineering
+PROCESSED: [Line 0051] 2	Jane Smith	28	Marketing
+PROCESSED: [Line 0052] 3	Bob Johnson	42	Sales
+PROCESSED: [Line 0053] Line with JSON array: [1, 2, 3, {"name": "item", "value": 42}]
+PROCESSED: [Line 0054] Line with YAML: key: value\n  nested:\n    subkey: subvalue
+PROCESSED: [Line 0055] Line with environment variable: PATH=/usr/local/bin:/usr/bin:/bin
+PROCESSED: [Line 0056] Line with command line: npm install --save-dev @types/node
+PROCESSED: [Line 0057] Line with Docker command: docker run -it --rm ubuntu:latest bash
+PROCESSED: [Line 0058] Line with Git command: git commit -m "Initial commit"
+PROCESSED: [Line 0059] Line with database connection: Server=localhost;Database=NPipeline;Trusted_Connection=true;
+PROCESSED: [Line 0060] Line with API endpoint: GET /api/v1/pipelines/{id}/status
+PROCESSED: [Line 0061] Line with log entry: [2023-12-25 14:30:45] INFO: Pipeline started successfully
+PROCESSED: [Line 0062] Line with error message: ERROR: Failed to connect to database after 3 attempts
+PROCESSED: [Line 0063] Line with warning: WARN: Configuration file not found, using defaults
+PROCESSED: [Line 0064] Line with debug info: DEBUG: Processing batch of 1000 records
+PROCESSED: [Line 0065] Final line of the sample file for demonstrating file processing capabilities
