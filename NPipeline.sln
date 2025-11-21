@@ -55,6 +55,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample_03_BasicErrorHandlin
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample_04_SimpleDataTransformation", "samples\Sample_04_SimpleDataTransformation\Sample_04_SimpleDataTransformation.csproj", "{66EC6D71-4BAE-4FC1-BBE4-DC65A1254A11}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample_05_ParallelProcessing", "samples\Sample_05_ParallelProcessing\Sample_05_ParallelProcessing.csproj", "{AB507002-3328-4E30-ABD4-F46AD48726AC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -149,6 +151,10 @@ Global
 		{66EC6D71-4BAE-4FC1-BBE4-DC65A1254A11}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{66EC6D71-4BAE-4FC1-BBE4-DC65A1254A11}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{66EC6D71-4BAE-4FC1-BBE4-DC65A1254A11}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AB507002-3328-4E30-ABD4-F46AD48726AC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB507002-3328-4E30-ABD4-F46AD48726AC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB507002-3328-4E30-ABD4-F46AD48726AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB507002-3328-4E30-ABD4-F46AD48726AC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{C539C2BB-5FF5-45B1-9D16-C8E0F2FBDD41} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
@@ -171,5 +177,6 @@ Global
 		{5D113E34-0153-4064-8B4D-04F344337182} = {2117093A-CC66-4607-8DBC-F692E0642ADD}
 		{955EF134-EA4C-472A-B972-43C0160C8271} = {2117093A-CC66-4607-8DBC-F692E0642ADD}
 		{66EC6D71-4BAE-4FC1-BBE4-DC65A1254A11} = {2117093A-CC66-4607-8DBC-F692E0642ADD}
+		{AB507002-3328-4E30-ABD4-F46AD48726AC} = {2117093A-CC66-4607-8DBC-F692E0642ADD}
 	EndGlobalSection
 EndGlobal
