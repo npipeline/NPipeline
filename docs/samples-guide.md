@@ -13,7 +13,9 @@ This guide provides practical examples of NPipeline implementations, organized b
 ## Basic Samples
 
 ### Sample 01: Basic Pipeline
+
 **Concepts demonstrated:**
+
 - Basic source, transform, and sink nodes
 - Simple data flow between nodes
 - Pipeline definition and execution
@@ -21,12 +23,14 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 **What it does:** A "Hello World" pipeline that demonstrates the fundamental NPipeline concepts with a source that generates data, a transform that processes it, and a sink that outputs the results.
 
-**Key takeaways:** How to structure a basic pipeline and connect nodes together.
+**Key takeaways:** How to structure a basic pipeline and connect nodes together. Start here if you're new to NPipeline.
 
 ---
 
 ### Sample 02: File Processing Pipeline
+
 **Concepts demonstrated:**
+
 - File-based source and sink nodes
 - Stream processing for memory efficiency
 - Line-by-line text transformation
@@ -39,7 +43,9 @@ This guide provides practical examples of NPipeline implementations, organized b
 ---
 
 ### Sample 03: Basic Error Handling
+
 **Concepts demonstrated:**
+
 - Try-catch patterns in pipeline nodes
 - Basic retry logic with exponential backoff
 - Error logging and collection
@@ -48,12 +54,14 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 **What it does:** Implements a pipeline with comprehensive error handling, including retries with exponential backoff, fallback mechanisms, and error tracking. Shows how to build resilient pipelines that maintain service availability during failures.
 
-**Key takeaways:** Designing pipelines that gracefully handle failures and maintain data integrity.
+**Key takeaways:** Designing pipelines that gracefully handle failures and maintain data integrity. Builds on Sample 01 concepts and is essential for production systems.
 
 ## Intermediate Samples
 
 ### Sample 04: Simple Data Transformation
+
 **Concepts demonstrated:**
+
 - CSV to object transformation
 - Data validation patterns
 - Filtering mechanisms
@@ -61,12 +69,14 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 **What it does:** Reads CSV data, validates it according to business rules, filters based on age and location, and enriches it with additional information like country and age categories.
 
-**Key takeaways:** Implementing data validation, filtering, and enrichment patterns.
+**Key takeaways:** Implementing data validation, filtering, and enrichment patterns in data processing pipelines.
 
 ---
 
 ### Sample 05: Parallel Processing
+
 **Concepts demonstrated:**
+
 - Parallel execution strategies
 - Resource management
 - Thread safety
@@ -74,12 +84,14 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 **What it does:** Demonstrates parallel processing capabilities for CPU-intensive workloads, showing how to configure and use parallel execution strategies for optimal resource utilization.
 
-**Key takeaways:** How to leverage parallelism while avoiding common pitfalls.
+**Key takeaways:** How to leverage parallelism while avoiding common pitfalls and managing resources effectively.
 
 ---
 
 ### Sample 06: Advanced Error Handling
+
 **Concepts demonstrated:**
+
 - Circuit breaker patterns
 - Dead letter queues
 - Advanced retry strategies
@@ -88,25 +100,16 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 **What it does:** Implements production-grade resilience patterns including circuit breakers to prevent cascading failures, dead letter queues for failed items, and comprehensive error recovery mechanisms using Polly.
 
-**Key takeaways:** Building production-ready pipelines with comprehensive error handling.
+**Key takeaways:** Building production-ready pipelines with comprehensive error handling. Extends Sample 03 with advanced patterns for mission-critical systems.
 
 ## Advanced Samples
 
-### Sample 07: Streaming Analytics
+### Foundational Advanced Concepts
+
+#### Sample 07: Custom Node Implementation
+
 **Concepts demonstrated:**
-- Time-based windowing (tumbling and sliding windows)
-- Watermarks and late data handling
-- Real-time aggregations
-- Branching pipelines
 
-**What it does:** Implements a time-windowed aggregation pipeline that processes sensor data in real-time, handles late-arriving data, and performs statistical analysis with trend and anomaly detection.
-
-**Key takeaways:** Building stream processing applications with correct temporal semantics.
-
----
-
-### Sample 08: Custom Node Implementation
-**Concepts demonstrated:**
 - Creating custom node implementations
 - Lifecycle management
 - Performance optimization through caching and batching
@@ -114,12 +117,14 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 **What it does:** Shows how to implement custom node types including a sensor data source, a cached transform for performance optimization, and a batching sink for improved throughput.
 
-**Key takeaways:** Extending NPipeline to meet specific application requirements.
+**Key takeaways:** Extending NPipeline to meet specific application requirements. Essential foundation for advanced pipeline development.
 
 ---
 
-### Sample 09: Performance Optimization
+#### Sample 08: Performance Optimization
+
 **Concepts demonstrated:**
+
 - ValueTask optimization
 - Synchronous fast paths
 - Memory allocation reduction
@@ -127,25 +132,34 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 **What it does:** Demonstrates advanced performance optimization techniques including ValueTask usage, synchronous fast paths for simple operations, memory allocation reduction with ArrayPool, and comprehensive performance measurement.
 
-**Key takeaways:** Advanced techniques for optimizing pipeline performance.
+**Key takeaways:** Advanced techniques for optimizing pipeline performance. Best practices for high-throughput systems.
 
 ---
 
-### Sample 10: Complex Data Transformations
+### Data Transformation and Type Conversion
+
+#### Sample 09: Type Conversion Node
+
 **Concepts demonstrated:**
-- Multi-stream joins
-- External data lookups
-- Complex aggregations
-- Data lineage tracking
 
-**What it does:** Implements sophisticated data processing scenarios including joining orders with customer data, product enrichment, complex aggregations, and complete data lineage tracking for auditability.
+- `TypeConversionNode<TIn, TOut>` for seamless data type transformations
+- `AutoMap()` for automatic property mapping by name (case-insensitive)
+- `Custom Map()` for explicit property-to-property mapping with converters
+- Factory functions for complex object initialization
+- Error handling with graceful fallbacks for conversion failures
+- Performance optimization through compiled expressions
+- String parsing, JSON deserialization, and legacy system modernization patterns
 
-**Key takeaways:** Building complex data pipelines with joins, lookups, and lineage tracking.
+**What it does:** Demonstrates comprehensive TypeConversionNode functionality for transforming data between different types in real-world scenarios. Shows three parallel data processing paths: string data parsing (simulating CSV/log ingestion), JSON data processing (simulating API integration), and legacy data modernization.
+
+**Key takeaways:** Building robust data integration pipelines that can seamlessly transform between different data formats while maintaining high performance and comprehensive error handling.
 
 ---
 
-### Sample 11: CSV Connector
+#### Sample 10: CSV Connector
+
 **Concepts demonstrated:**
+
 - CSV source and sink nodes with `CsvSourceNode<T>` and `CsvSinkNode<T>`
 - StorageUri abstraction for file system access
 - Custom validation transform with business rule enforcement
@@ -161,24 +175,65 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ---
 
-### Sample 12: TapNode
+### Stream Processing and Windowing
+
+#### Sample 11: Streaming Analytics
+
 **Concepts demonstrated:**
-- TapNode<T> for non-intrusive monitoring of data streams
-- Multiple tap points for comprehensive pipeline observability
-- Audit logging for compliance and regulatory requirements
-- Real-time metrics collection and performance monitoring
-- Alert generation for suspicious activities and operational issues
-- Error isolation between monitoring and main processing flows
-- Side-effect processing without modifying core business logic
 
-**What it does:** Demonstrates how to use TapNode to add comprehensive monitoring capabilities to a financial transaction processing pipeline without affecting the main data flow. The sample shows multiple tap points at different pipeline stages (source, validation, processing) that generate audit trails, collect performance metrics, and create alerts for suspicious activities. It showcases how TapNode enables observability, compliance, and operational intelligence while maintaining separation between monitoring concerns and core business logic.
+- Time-based windowing (tumbling and sliding windows)
+- Watermarks and late data handling
+- Real-time aggregations
+- Branching pipelines
 
-**Key takeaways:** Implementing non-intrusive monitoring patterns that provide comprehensive observability without modifying core pipeline logic or impacting performance.
+**What it does:** Implements a time-windowed aggregation pipeline that processes sensor data in real-time, handles late-arriving data, and performs statistical analysis with trend and anomaly detection.
+
+**Key takeaways:** Building stream processing applications with correct temporal semantics and handling real-world challenges like out-of-order and late-arriving data.
 
 ---
 
-### Sample 12: Batching Node
+### Advanced Join Operations
+
+#### Sample 12: Keyed Join Node
+
 **Concepts demonstrated:**
+
+- KeyedJoinNode for joining data streams based on common keys
+- Inner, Left Outer, Right Outer, and Full Outer join strategies
+- Multi-stream correlation and data enrichment patterns
+- Real-time aggregation on joined data
+- Memory management for unmatched items
+- Performance considerations for key distribution
+
+**What it does:** Demonstrates how to use NPipeline's KeyedJoinNode to join data streams based on common keys in an e-commerce scenario. It shows how to join orders with customer data using different join strategies, enrich the results with product information, and generate business intelligence through real-time aggregations by customer tier and product category.
+
+**Key takeaways:** Building sophisticated data pipelines that can correlate and enrich data from multiple streams using various join strategies while managing performance and memory efficiently.
+
+---
+
+#### Sample 13: Time Windowed Join Node
+
+**Concepts demonstrated:**
+
+- TimeWindowedJoinNode for temporal correlation of events
+- Tumbling and sliding window strategies with configurable sizes
+- Timestamp extraction and watermark management for event-time processing
+- Out-of-order data handling with configurable tolerance
+- Memory-efficient state management with automatic cleanup
+- Performance optimization for time-based joins
+
+**What it does:** Demonstrates time-windowed joins for correlating IoT sensor readings with maintenance events that occur within specific time windows. The sample shows how to use tumbling and sliding windows to analyze maintenance effectiveness, handle out-of-order events, and perform temporal analysis on streaming data with proper watermark management.
+
+**Key takeaways:** Implementing sophisticated temporal data processing patterns that can correlate events based on both keys and time proximity while handling real-world challenges like out-of-order data and managing memory efficiently.
+
+---
+
+### Batch Processing
+
+#### Sample 14: Batching Node
+
+**Concepts demonstrated:**
+
 - `BatchingNode<T>` for collecting individual items into batches
 - Size-based, time-based, and hybrid batching strategies
 - BatchProcessingTransform for efficient batch operations
@@ -193,51 +248,40 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ---
 
-### Sample 13: Keyed Join Node
+### Observability and Monitoring
+
+#### Sample 15: TapNode
+
 **Concepts demonstrated:**
-- KeyedJoinNode for joining data streams based on common keys
-- Inner, Left Outer, Right Outer, and Full Outer join strategies
-- Multi-stream correlation and data enrichment patterns
-- Real-time aggregation on joined data
-- Memory management for unmatched items
-- Performance considerations for key distribution
 
-**What it does:** Demonstrates how to use NPipeline's KeyedJoinNode to join data streams based on common keys in an e-commerce scenario. It shows how to join orders with customer data using different join strategies, enrich the results with product information, and generate business intelligence through real-time aggregations by customer tier and product category.
+- `TapNode<T>` for non-intrusive monitoring of data streams
+- Multiple tap points for comprehensive pipeline observability
+- Audit logging for compliance and regulatory requirements
+- Real-time metrics collection and performance monitoring
+- Alert generation for suspicious activities and operational issues
+- Error isolation between monitoring and main processing flows
+- Side-effect processing without modifying core business logic
 
-**Key takeaways:** Building sophisticated data pipelines that can correlate and enrich data from multiple streams using various join strategies while managing performance and memory efficiently.
+**What it does:** Demonstrates how to use TapNode to add comprehensive monitoring capabilities to a financial transaction processing pipeline without affecting the main data flow. The sample shows multiple tap points at different pipeline stages (source, validation, processing) that generate audit trails, collect performance metrics, and create alerts for suspicious activities. It showcases how TapNode enables observability, compliance, and operational intelligence while maintaining separation between monitoring concerns and core business logic.
+
+**Key takeaways:** Implementing non-intrusive monitoring patterns that provide comprehensive observability without modifying core pipeline logic or impacting performance.
 
 ---
 
-### Sample 14: Time Windowed Join Node
+### Complex End-to-End Scenarios
+
+#### Sample 16: Complex Data Transformations
+
 **Concepts demonstrated:**
-- TimeWindowedJoinNode for temporal correlation of events
-- Tumbling and sliding window strategies with configurable sizes
-- Timestamp extraction and watermark management for event-time processing
-- Out-of-order data handling with configurable tolerance
-- Memory-efficient state management with automatic cleanup
-- Performance optimization for time-based joins
 
-**What it does:** Demonstrates time-windowed joins for correlating IoT sensor readings with maintenance events that occur within specific time windows. The sample shows how to use tumbling and sliding windows to analyze maintenance effectiveness, handle out-of-order events, and perform temporal analysis on streaming data with proper watermark management.
+- Multi-stream joins
+- External data lookups
+- Complex aggregations
+- Data lineage tracking
 
-**Key takeaways:** Implementing sophisticated temporal data processing patterns that can correlate events based on both keys and time proximity while handling real-world challenges like out-of-order data and managing memory efficiently.
+**What it does:** Implements sophisticated data processing scenarios including joining orders with customer data, product enrichment, complex aggregations, and complete data lineage tracking for auditability.
 
----
-
-### Sample 16: Type Conversion Node
-**Concepts demonstrated:**
-- TypeConversionNode<TIn, TOut> for seamless data type transformations
-- AutoMap() for automatic property mapping by name (case-insensitive)
-- Custom Map() for explicit property-to-property mapping with converters
-- Factory functions for complex object initialization
-- Error handling with graceful fallbacks for conversion failures
-- Performance optimization through compiled expressions
-- String parsing, JSON deserialization, and legacy system modernization patterns
-
-**What it does:** Demonstrates comprehensive TypeConversionNode functionality for transforming data between different types in real-world scenarios. The sample shows three parallel data processing paths: string data parsing (simulating CSV/log ingestion), JSON data processing (simulating API integration), and legacy data modernization. It showcases how to use AutoMap for simple cases, custom mapping with business logic, error handling patterns, and performance optimization techniques.
-
-**Key takeaways:** Building robust data integration pipelines that can seamlessly transform between different data formats while maintaining high performance and comprehensive error handling.
-
----
+**Key takeaways:** Building complex data pipelines with joins, lookups, and lineage tracking for production systems. Integrates many concepts from earlier samples.
 
 ## Getting Started with Samples
 
@@ -251,18 +295,19 @@ This guide provides practical examples of NPipeline implementations, organized b
    - Sample 05: Parallel processing techniques
    - Sample 06: Advanced error handling and resilience
 4. **Explore Advanced Samples** for production scenarios and optimization techniques
-   - Sample 07: Streaming analytics and windowing
-   - Sample 08: Custom node development
-   - Sample 09: Performance optimization
-   - Sample 10: Complex data transformations and joins
-   - Sample 11: CSV connector and data processing
-   - Sample 12: TapNode for non-intrusive monitoring and observability
-   - Sample 13: Batching node for efficient batch processing
-   - Sample 14: Keyed join node for stream correlation
-   - Sample 15: Time windowed join node for temporal analysis
-   - Sample 16: Type conversion node for data transformation
+   - Sample 07: Custom node development
+   - Sample 08: Performance optimization
+   - Sample 09: Type conversion node for data transformation
+   - Sample 10: CSV connector and data processing
+   - Sample 11: Streaming analytics and windowing
+   - Sample 12: Keyed join node for stream correlation
+   - Sample 13: Time windowed join node for temporal analysis
+   - Sample 14: Batching node for efficient batch processing
+   - Sample 15: TapNode for non-intrusive monitoring and observability
+   - Sample 16: Complex data transformations and joins
 
 Each sample includes:
+
 - Complete source code with comments explaining key concepts
 - Configuration files showing best practices
 - README with detailed explanations and setup instructions
