@@ -5,7 +5,6 @@ using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using Sample_04_SimpleDataTransformation;
 using StringReader = System.IO.StringReader;
 
 namespace Sample_04_SimpleDataTransformation.Nodes;
@@ -45,11 +44,12 @@ public class CsvSource : SourceNode<Person>
         try
         {
             using var reader = new StringReader(csvData);
+
             using var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
             {
                 HasHeaderRecord = true,
                 HeaderValidated = null,
-                MissingFieldFound = null
+                MissingFieldFound = null,
             });
 
             var records = csv.GetRecords<Person>();

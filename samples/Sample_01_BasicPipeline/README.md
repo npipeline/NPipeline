@@ -11,13 +11,13 @@ This sample demonstrates the fundamental concepts of NPipeline through a simple 
 ## Core Concepts
 
 1. **Source, Transform, and Sink Nodes**
-   - Data flows from source through transforms to sinks
-   - Type-safe connections between nodes
+    - Data flows from source through transforms to sinks
+    - Type-safe connections between nodes
 
 2. **Pipeline Definition and Execution**
-   - IPipelineDefinition implementation pattern
-   - PipelineBuilder for constructing pipelines
-   - Dependency injection integration
+    - IPipelineDefinition implementation pattern
+    - PipelineBuilder for constructing pipelines
+    - Dependency injection integration
 
 ## Quick Setup and Run
 

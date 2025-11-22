@@ -10,8 +10,8 @@ namespace Sample_07_StreamingAnalytics.Nodes;
 /// </summary>
 public class ConsoleSink : SinkNode<WindowedResult>
 {
-    private int _slidingWindowCount;
     private readonly DateTime _startTime;
+    private int _slidingWindowCount;
     private int _totalResultsProcessed;
     private int _tumblingWindowCount;
 

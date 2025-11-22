@@ -1,7 +1,6 @@
 using NPipeline.DataFlow;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using Sample_04_SimpleDataTransformation;
 
 namespace Sample_04_SimpleDataTransformation.Nodes;
 
@@ -41,23 +40,19 @@ public class ConsoleSink : SinkNode<EnrichedPerson>
 
             // Skip placeholder items (those with ID 0)
             if (person.Id == 0)
-            {
                 continue;
-            }
 
             recordCount++;
-            
+
             if (person.IsValidEmail)
-            {
                 validEmailCount++;
-            }
 
             // Format and display the enriched person data
             var name = $"{person.FirstName} {person.LastName}".PadRight(17);
             var city = person.City.PadRight(15);
             var country = person.Country.PadRight(7);
             var ageCategory = person.AgeCategory.PadRight(16);
-            
+
             Console.WriteLine($"{person.Id:D2} | {name} | {person.Age:D3} | {city} | {country} | {ageCategory} | {person.IsValidEmail}");
         }
 
@@ -66,8 +61,8 @@ public class ConsoleSink : SinkNode<EnrichedPerson>
         Console.WriteLine($"Total records processed: {recordCount}");
         Console.WriteLine($"Records with valid emails: {validEmailCount}");
         Console.WriteLine($"Records with invalid emails: {recordCount - validEmailCount}");
-        Console.WriteLine($"Success rate: {(recordCount > 0 ? (validEmailCount * 100.0 / recordCount):0):F1}%");
-        
+        Console.WriteLine($"Success rate: {(recordCount > 0 ? validEmailCount * 100.0 / recordCount : 0):F1}%");
+
         Console.WriteLine();
         Console.WriteLine("ConsoleSink completed processing all enriched person records.");
     }

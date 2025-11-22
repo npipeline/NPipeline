@@ -19,9 +19,9 @@ namespace Sample_08_CustomNodeImplementation.Nodes;
 public class LifecycleMonitorNode : TransformNode<SensorData, SensorData>
 {
     private readonly List<LifecycleEvent> _lifecycleEvents = new();
+    private readonly DateTime _startTime;
     private bool _disposed;
     private int _processedCount;
-    private readonly DateTime _startTime;
 
     /// <summary>
     ///     Initializes a new instance of the LifecycleMonitorNode class.

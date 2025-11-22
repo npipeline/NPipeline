@@ -1,5 +1,3 @@
-using System;
-
 namespace Sample_04_SimpleDataTransformation;
 
 /// <summary>
@@ -26,12 +24,12 @@ public record Person(int Id, string FirstName, string LastName, int Age, string 
 /// <param name="AgeCategory">The age category of the person.</param>
 /// <param name="IsValidEmail">Whether the email is valid.</param>
 public record EnrichedPerson(
-    int Id, 
-    string FirstName, 
-    string LastName, 
-    int Age, 
-    string Email, 
-    string City, 
-    string Country, 
-    string AgeCategory, 
+    int Id,
+    string FirstName,
+    string LastName,
+    int Age,
+    string Email,
+    string City,
+    string Country,
+    string AgeCategory,
     bool IsValidEmail);

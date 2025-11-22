@@ -128,8 +128,10 @@ public class ErrorHandlingPipeline : IPipelineDefinition
         if (graph.ErrorHandling.RetryOptions == null)
             Console.WriteLine("DIAGNOSTIC: *** ISSUE DETECTED: No retry options configured! This is likely the root cause. ***");
         else
+        {
             Console.WriteLine(
                 $"DIAGNOSTIC: Retry options configured: MaxItemRetries={graph.ErrorHandling.RetryOptions.MaxItemRetries}, MaxNodeRestartAttempts={graph.ErrorHandling.RetryOptions.MaxNodeRestartAttempts}");
+        }
 
         Console.WriteLine("=== DIAGNOSTIC: ErrorHandlingPipeline.Define() completed ===");
     }

@@ -161,6 +161,22 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ---
 
+### Sample 12: TapNode
+**Concepts demonstrated:**
+- TapNode<T> for non-intrusive monitoring of data streams
+- Multiple tap points for comprehensive pipeline observability
+- Audit logging for compliance and regulatory requirements
+- Real-time metrics collection and performance monitoring
+- Alert generation for suspicious activities and operational issues
+- Error isolation between monitoring and main processing flows
+- Side-effect processing without modifying core business logic
+
+**What it does:** Demonstrates how to use TapNode to add comprehensive monitoring capabilities to a financial transaction processing pipeline without affecting the main data flow. The sample shows multiple tap points at different pipeline stages (source, validation, processing) that generate audit trails, collect performance metrics, and create alerts for suspicious activities. It showcases how TapNode enables observability, compliance, and operational intelligence while maintaining separation between monitoring concerns and core business logic.
+
+**Key takeaways:** Implementing non-intrusive monitoring patterns that provide comprehensive observability without modifying core pipeline logic or impacting performance.
+
+---
+
 ### Sample 12: Batching Node
 **Concepts demonstrated:**
 - `BatchingNode<T>` for collecting individual items into batches
@@ -205,6 +221,24 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 **Key takeaways:** Implementing sophisticated temporal data processing patterns that can correlate events based on both keys and time proximity while handling real-world challenges like out-of-order data and managing memory efficiently.
 
+---
+
+### Sample 16: Type Conversion Node
+**Concepts demonstrated:**
+- TypeConversionNode<TIn, TOut> for seamless data type transformations
+- AutoMap() for automatic property mapping by name (case-insensitive)
+- Custom Map() for explicit property-to-property mapping with converters
+- Factory functions for complex object initialization
+- Error handling with graceful fallbacks for conversion failures
+- Performance optimization through compiled expressions
+- String parsing, JSON deserialization, and legacy system modernization patterns
+
+**What it does:** Demonstrates comprehensive TypeConversionNode functionality for transforming data between different types in real-world scenarios. The sample shows three parallel data processing paths: string data parsing (simulating CSV/log ingestion), JSON data processing (simulating API integration), and legacy data modernization. It showcases how to use AutoMap for simple cases, custom mapping with business logic, error handling patterns, and performance optimization techniques.
+
+**Key takeaways:** Building robust data integration pipelines that can seamlessly transform between different data formats while maintaining high performance and comprehensive error handling.
+
+---
+
 ## Getting Started with Samples
 
 1. **Clone the repository** to access all sample code
@@ -222,9 +256,11 @@ This guide provides practical examples of NPipeline implementations, organized b
    - Sample 09: Performance optimization
    - Sample 10: Complex data transformations and joins
    - Sample 11: CSV connector and data processing
-   - Sample 12: Batching node for efficient batch processing
-   - Sample 13: Keyed join node for stream correlation
-   - Sample 14: Time windowed join node for temporal analysis
+   - Sample 12: TapNode for non-intrusive monitoring and observability
+   - Sample 13: Batching node for efficient batch processing
+   - Sample 14: Keyed join node for stream correlation
+   - Sample 15: Time windowed join node for temporal analysis
+   - Sample 16: Type conversion node for data transformation
 
 Each sample includes:
 - Complete source code with comments explaining key concepts

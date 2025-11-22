@@ -1,6 +1,5 @@
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using Sample_04_SimpleDataTransformation;
 
 namespace Sample_04_SimpleDataTransformation.Nodes;
 
@@ -24,16 +23,14 @@ public class EnrichmentTransform : TransformNode<Person, EnrichedPerson>
 
         // Skip placeholder items (those with ID 0) by returning an empty EnrichedPerson
         if (item.Id == 0)
-        {
             return Task.FromResult(new EnrichedPerson(0, string.Empty, string.Empty, 0, string.Empty, string.Empty, string.Empty, string.Empty, false));
-        }
 
         // Simulate external data source for country lookup
         var country = GetCountryFromCity(item.City);
-        
+
         // Determine age category
         var ageCategory = GetAgeCategory(item.Age);
-        
+
         // Create enriched person
         var enrichedPerson = new EnrichedPerson(
             item.Id,
@@ -46,10 +43,10 @@ public class EnrichmentTransform : TransformNode<Person, EnrichedPerson>
             ageCategory,
             IsValidEmail(item.Email)
         );
-        
+
         return Task.FromResult(enrichedPerson);
     }
-    
+
     /// <summary>
     ///     Determines the country based on the city.
     ///     In a real application, this might call an external API or database.
@@ -81,10 +78,10 @@ public class EnrichmentTransform : TransformNode<Person, EnrichedPerson>
             "dubai" => "UAE",
             "hong kong" => "China",
             "seoul" => "South Korea",
-            _ => "Unknown"
+            _ => "Unknown",
         };
     }
-    
+
     /// <summary>
     ///     Determines the age category based on the age.
     /// </summary>
@@ -98,10 +95,10 @@ public class EnrichmentTransform : TransformNode<Person, EnrichedPerson>
             < 30 => "Young Adult",
             < 50 => "Adult",
             < 65 => "Middle Aged",
-            _ => "Senior"
+            _ => "Senior",
         };
     }
-    
+
     /// <summary>
     ///     Validates if an email address is in a valid format.
     /// </summary>
@@ -111,12 +108,13 @@ public class EnrichmentTransform : TransformNode<Person, EnrichedPerson>
     {
         if (string.IsNullOrWhiteSpace(email))
             return false;
-            
+
         // Simple email validation - in a real app, use a more sophisticated validation
         var parts = email.Split('@');
+
         if (parts.Length != 2)
             return false;
-            
+
         return parts[0].Length > 0 && parts[1].Contains('.');
     }
 }

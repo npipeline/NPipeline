@@ -1,6 +1,5 @@
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using Sample_04_SimpleDataTransformation;
 
 namespace Sample_04_SimpleDataTransformation.Nodes;
 
@@ -27,6 +26,7 @@ public class FilteringTransform : TransformNode<Person, Person>
         {
             var message = $"Filtered out {item.FirstName} {item.LastName}: Under 18 years old (Age: {item.Age})";
             Console.WriteLine($"FILTER: {message}");
+
             // Return a placeholder Person with ID 0 to indicate filtered out
             var filteredPerson = new Person(0, "Filtered", "Out", 0, "filtered@none.com", "Filtered");
             return await Task.FromResult(filteredPerson);
@@ -34,10 +34,12 @@ public class FilteringTransform : TransformNode<Person, Person>
 
         // Filter condition 2: Exclude certain cities (demonstrating geographic filtering)
         var excludedCities = new[] { "Chicago", "Philadelphia" };
+
         if (excludedCities.Contains(item.City, StringComparer.OrdinalIgnoreCase))
         {
             var message = $"Filtered out {item.FirstName} {item.LastName}: City excluded ({item.City})";
             Console.WriteLine($"FILTER: {message}");
+
             // Return a placeholder Person with ID 0 to indicate filtered out
             var filteredPerson = new Person(0, "Filtered", "Out", 0, "filtered@none.com", "Filtered");
             return await Task.FromResult(filteredPerson);
@@ -48,6 +50,7 @@ public class FilteringTransform : TransformNode<Person, Person>
         {
             var message = $"Filtered out {item.FirstName} {item.LastName}: Age exceeds limit (Age: {item.Age})";
             Console.WriteLine($"FILTER: {message}");
+
             // Return a placeholder Person with ID 0 to indicate filtered out
             var filteredPerson = new Person(0, "Filtered", "Out", 0, "filtered@none.com", "Filtered");
             return await Task.FromResult(filteredPerson);

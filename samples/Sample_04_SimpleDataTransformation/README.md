@@ -7,23 +7,23 @@ This sample demonstrates data manipulation and type transformation patterns thro
 ## Core Concepts
 
 1. **CSV to Object Transformation**
-   - Reading CSV data and converting to strongly-typed objects
-   - Using CsvHelper for robust CSV parsing
+    - Reading CSV data and converting to strongly-typed objects
+    - Using CsvHelper for robust CSV parsing
 
 2. **Data Validation Patterns**
-   - Business rule validation
-   - Email format validation
-   - Data quality checks
+    - Business rule validation
+    - Email format validation
+    - Data quality checks
 
 3. **Filtering Mechanisms**
-   - Age-based filtering
-   - Geographic filtering
-   - Conditional data exclusion
+    - Age-based filtering
+    - Geographic filtering
+    - Conditional data exclusion
 
 4. **Data Enrichment**
-   - Adding country information based on city
-   - Age categorization
-   - Email validation status
+    - Adding country information based on city
+    - Age categorization
+    - Email validation status
 
 ## Quick Setup and Run
 
@@ -50,4 +50,5 @@ dotnet run
 
 ## Expected Output
 
-The pipeline will process 10 sample records, filter out invalid ones, and display the final enriched data with a summary showing validation and filtering results.
+The pipeline will process 10 sample records, filter out invalid ones, and display the final enriched data with a summary showing validation and filtering
+results.

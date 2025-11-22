@@ -20,10 +20,10 @@ namespace Sample_08_CustomNodeImplementation.Nodes;
 public class BatchingSink : SinkNode<ProcessedSensorData>
 {
     private readonly TimeSpan _batchTimeout = TimeSpan.FromSeconds(2);
+    private readonly Timer? _batchTimer;
     private readonly List<ProcessedSensorData> _currentBatch;
     private readonly int _maxBatchSize = 10;
     private int _batchCount;
-    private readonly Timer? _batchTimer;
     private bool _disposed;
     private DateTime _lastBatchFlush = DateTime.UtcNow;
     private int _totalItemsProcessed;

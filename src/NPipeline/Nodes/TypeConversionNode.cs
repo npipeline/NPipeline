@@ -39,14 +39,14 @@ namespace NPipeline.Nodes;
 ///         src => src.FirstName,
 ///         dst => dst.FullName,
 ///         firstName => $"Mr. {firstName}");
-/// 
+///
 /// // Custom factory with partial mapping
 /// var customNode = new TypeConversionNode&lt;SourceRecord, DestRecord&gt;(
 ///     factory: _ => new DestRecord { Status = "Active" }
 /// )
 ///     .Map(src => src.Id, dst => dst.Id, id => id)
 ///     .Map(src => src.Name, dst => dst.DisplayName, name => name.ToUpper());
-/// 
+///
 /// // Complex transformation
 /// var complexNode = new TypeConversionNode&lt;Input, Output&gt;()
 ///     .Map(
@@ -60,7 +60,7 @@ namespace NPipeline.Nodes;
 ///     );
 /// </code>
 /// </example>
-public sealed class TypeConversionNode<TIn, TOut>(Func<TIn, TOut>? factory = null, IExecutionStrategy? executionStrategy = null)
+public class TypeConversionNode<TIn, TOut>(Func<TIn, TOut>? factory = null, IExecutionStrategy? executionStrategy = null)
     : TransformNode<TIn, TOut>(executionStrategy)
 {
     // Cached type information for record detection (computed once, not on each AutoMap call)

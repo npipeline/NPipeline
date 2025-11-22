@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using Sample_04_SimpleDataTransformation;
 
 namespace Sample_04_SimpleDataTransformation.Nodes;
 
@@ -30,42 +29,28 @@ public class ValidationTransform : TransformNode<Person, Person>
 
         // Validate ID
         if (item.Id <= 0)
-        {
             validationErrors.Add("ID must be a positive number");
-        }
 
         // Validate names
         if (string.IsNullOrWhiteSpace(item.FirstName))
-        {
             validationErrors.Add("First name is required");
-        }
 
         if (string.IsNullOrWhiteSpace(item.LastName))
-        {
             validationErrors.Add("Last name is required");
-        }
 
         // Validate age
         if (item.Age < 0 || item.Age > 150)
-        {
             validationErrors.Add("Age must be between 0 and 150");
-        }
 
         // Validate email
         if (string.IsNullOrWhiteSpace(item.Email))
-        {
             validationErrors.Add("Email is required");
-        }
         else if (!EmailRegex.IsMatch(item.Email))
-        {
             validationErrors.Add("Email format is invalid");
-        }
 
         // Validate city
         if (string.IsNullOrWhiteSpace(item.City))
-        {
             validationErrors.Add("City is required");
-        }
 
         if (validationErrors.Count > 0)
         {

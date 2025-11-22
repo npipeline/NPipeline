@@ -1,6 +1,5 @@
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using Sample_04_SimpleDataTransformation;
 
 namespace Sample_04_SimpleDataTransformation.Nodes;
 
