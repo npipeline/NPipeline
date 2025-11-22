@@ -159,6 +159,22 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 **Key takeaways:** Building robust CSV processing pipelines with validation, transformation, and error handling patterns using NPipeline's CSV connector components and the IPipelineDefinition pattern for creating reusable pipeline structures.
 
+---
+
+### Sample 12: Batching Node
+**Concepts demonstrated:**
+- BatchingNode<T> for collecting individual items into batches
+- Size-based, time-based, and hybrid batching strategies
+- BatchProcessingTransform for efficient batch operations
+- Performance optimization through batch processing
+- Bulk database operations with batched results
+- BatchingExecutionStrategy for optimal performance
+- Comprehensive testing patterns for batched pipelines
+
+**What it does:** Demonstrates the BatchingNode<T> functionality for efficient batch processing of individual items. The sample simulates an IoT sensor data processing pipeline that collects individual sensor readings into batches, processes them with aggregations and calculations, and performs bulk database operations. It shows different batching strategies (size-based, time-based, and hybrid) and provides detailed performance analysis comparing batch processing to individual item processing.
+
+**Key takeaways:** Using batching to significantly improve performance for computational operations, database operations, and network operations while maintaining flexibility and reliability in data processing pipelines.
+
 ## Getting Started with Samples
 
 1. **Clone the repository** to access all sample code
@@ -176,6 +192,7 @@ This guide provides practical examples of NPipeline implementations, organized b
    - Sample 09: Performance optimization
    - Sample 10: Complex data transformations and joins
    - Sample 11: CSV connector and data processing
+   - Sample 12: Batching node for efficient batch processing
 
 Each sample includes:
 - Complete source code with comments explaining key concepts
