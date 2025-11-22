@@ -192,6 +192,42 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ---
 
+### Aggregation and Windowing
+
+#### Sample 17: AggregateNode
+
+**Concepts demonstrated:**
+
+- `AggregateNode<TIn, TKey, TResult>` for time-based aggregations
+- Tumbling and sliding window strategies
+- Key-based aggregation by different dimensions
+- Event-time processing with watermarks
+- Real-time analytics dashboard patterns
+- Multi-dimensional aggregations with identical accumulator and result types
+
+**What it does:** Implements a real-time analytics dashboard that processes user interaction events (page views, clicks, purchases) and generates aggregated metrics using tumbling windows for event counting and sliding windows for value summation. The sample demonstrates filtering irrelevant events and displaying formatted metrics in a console dashboard.
+
+**Key takeaways:** Building real-time analytics systems with simple aggregations where accumulator and result types are identical. Understanding windowing patterns and key-based grouping for streaming analytics scenarios.
+
+---
+
+#### Sample 18: AdvancedAggregateNode
+
+**Concepts demonstrated:**
+
+- `AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult>` for complex aggregations
+- Separate accumulator and result types for sophisticated state management
+- Financial risk calculations (volatility, Value at Risk, portfolio analytics)
+- Statistical calculations using complex accumulator patterns
+- Weighted metrics and risk-adjusted performance calculations
+- Real-time risk monitoring with alerting
+
+**What it does:** Implements a comprehensive financial risk analysis pipeline that processes simulated trading data and calculates various risk metrics including volatility, Value at Risk (VaR), and portfolio analytics. Demonstrates sophisticated accumulator patterns using tuples, dictionaries, and collections for complex state management.
+
+**Key takeaways:** Building advanced analytics systems where accumulator and result types differ, enabling complex statistical calculations and sophisticated state management. Understanding when to use AdvancedAggregateNode over AggregateNode for complex scenarios.
+
+---
+
 ### Advanced Join Operations
 
 #### Sample 12: Keyed Join Node
@@ -305,6 +341,8 @@ This guide provides practical examples of NPipeline implementations, organized b
    - Sample 14: Batching node for efficient batch processing
    - Sample 15: TapNode for non-intrusive monitoring and observability
    - Sample 16: Complex data transformations and joins
+   - Sample 17: AggregateNode for real-time analytics and simple aggregations
+   - Sample 18: AdvancedAggregateNode for complex state management and financial analytics
 
 Each sample includes:
 
