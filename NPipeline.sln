@@ -65,6 +65,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample_09_PerformanceOptimi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample_10_ComplexDataTransformations", "samples\Sample_10_ComplexDataTransformations\Sample_10_ComplexDataTransformations.csproj", "{E784EFDA-287D-4F42-9304-A76BE16102A2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample_11_CsvConnector", "samples\Sample_11_CsvConnector\Sample_11_CsvConnector.csproj", "{575147B7-334D-4982-B505-671C658A5AF8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -179,6 +181,10 @@ Global
 		{E784EFDA-287D-4F42-9304-A76BE16102A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E784EFDA-287D-4F42-9304-A76BE16102A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E784EFDA-287D-4F42-9304-A76BE16102A2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{575147B7-334D-4982-B505-671C658A5AF8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{575147B7-334D-4982-B505-671C658A5AF8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{575147B7-334D-4982-B505-671C658A5AF8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{575147B7-334D-4982-B505-671C658A5AF8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{C539C2BB-5FF5-45B1-9D16-C8E0F2FBDD41} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
@@ -206,5 +212,6 @@ Global
 		{0BAE0500-D6B5-4AA7-9049-250E41134889} = {2117093A-CC66-4607-8DBC-F692E0642ADD}
 		{A96553FE-8EF2-46A7-80E6-54B29132F250} = {2117093A-CC66-4607-8DBC-F692E0642ADD}
 		{E784EFDA-287D-4F42-9304-A76BE16102A2} = {2117093A-CC66-4607-8DBC-F692E0642ADD}
+		{575147B7-334D-4982-B505-671C658A5AF8} = {2117093A-CC66-4607-8DBC-F692E0642ADD}
 	EndGlobalSection
 EndGlobal

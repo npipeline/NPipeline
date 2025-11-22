@@ -12,132 +12,170 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ## Basic Samples
 
-### Sample 01: Simple ETL Pipeline
+### Sample 01: Basic Pipeline
 **Concepts demonstrated:**
 - Basic source, transform, and sink nodes
 - Simple data flow between nodes
 - Pipeline definition and execution
+- Dependency injection integration
 
-**What it does:** Extracts data from a CSV file, transforms it by applying simple calculations, and loads the results into another CSV file. Perfect for understanding the fundamental ETL pattern in NPipeline.
+**What it does:** A "Hello World" pipeline that demonstrates the fundamental NPipeline concepts with a source that generates data, a transform that processes it, and a sink that outputs the results.
 
 **Key takeaways:** How to structure a basic pipeline and connect nodes together.
 
 ---
 
-### Sample 02: High-Performance Transform
+### Sample 02: File Processing Pipeline
 **Concepts demonstrated:**
-- ValueTask optimization for transforms
-- Synchronous fast paths vs. asynchronous paths
-- Performance optimization techniques
+- File-based source and sink nodes
+- Stream processing for memory efficiency
+- Line-by-line text transformation
+- Atomic file writing operations
 
-**What it does:** Implements a transform node that processes data with both fast synchronous paths (cache hits) and slower asynchronous paths (cache misses). Demonstrates how to minimize allocations in high-throughput scenarios.
+**What it does:** Reads text files line by line, processes each line with configurable transformations (prefixes, line numbers, case conversion), and writes the results to output files using atomic operations.
 
-**Key takeaways:** When and how to use ValueTask for performance-critical transforms.
+**Key takeaways:** Working with file-based data sources and sinks in NPipeline.
 
 ---
 
-### Sample 03: Fluent Configuration
+### Sample 03: Basic Error Handling
 **Concepts demonstrated:**
-- PipelineBuilder fluent API
-- Configuration options
-- Dependency injection setup
+- Try-catch patterns in pipeline nodes
+- Basic retry logic with exponential backoff
+- Error logging and collection
+- Graceful degradation with fallback mechanisms
+- Error isolation to prevent cascading failures
 
-**What it does:** Shows different ways to configure pipelines using the fluent API, including setting execution options, error handling policies, and observability features.
-
-**Key takeaways:** How to leverage the fluent API for clean, readable pipeline configuration.
-
-## Intermediate Samples
-
-### Sample 04: CSV to Database Pipeline
-**Concepts demonstrated:**
-- Real-world data connectors
-- Batch processing
-- Transaction handling
-
-**What it does:** Reads data from CSV files, transforms it, and writes to a SQL database with proper transaction handling and batch processing for performance.
-
-**Key takeaways:** Working with external systems and handling data at scale.
-
----
-
-### Sample 05: Error Handling & Resilience
-**Concepts demonstrated:**
-- Node-level error handling
-- Retry policies
-- Circuit breaker patterns
-- Dead letter queues
-
-**What it does:** Implements a pipeline with comprehensive error handling, including retries, circuit breakers, and dead letter queues for failed items. Shows how to build resilient production pipelines.
+**What it does:** Implements a pipeline with comprehensive error handling, including retries with exponential backoff, fallback mechanisms, and error tracking. Shows how to build resilient pipelines that maintain service availability during failures.
 
 **Key takeaways:** Designing pipelines that gracefully handle failures and maintain data integrity.
 
+## Intermediate Samples
+
+### Sample 04: Simple Data Transformation
+**Concepts demonstrated:**
+- CSV to object transformation
+- Data validation patterns
+- Filtering mechanisms
+- Data enrichment
+
+**What it does:** Reads CSV data, validates it according to business rules, filters based on age and location, and enriches it with additional information like country and age categories.
+
+**Key takeaways:** Implementing data validation, filtering, and enrichment patterns.
+
 ---
 
-### Sample 06: Parallel Processing
+### Sample 05: Parallel Processing
 **Concepts demonstrated:**
 - Parallel execution strategies
 - Resource management
-- Performance tuning
+- Thread safety
+- Performance monitoring
 
-**What it does:** Demonstrates different parallel processing approaches in NPipeline, showing when to use each strategy and how to configure them for optimal performance.
+**What it does:** Demonstrates parallel processing capabilities for CPU-intensive workloads, showing how to configure and use parallel execution strategies for optimal resource utilization.
 
 **Key takeaways:** How to leverage parallelism while avoiding common pitfalls.
 
+---
+
+### Sample 06: Advanced Error Handling
+**Concepts demonstrated:**
+- Circuit breaker patterns
+- Dead letter queues
+- Advanced retry strategies
+- Error recovery mechanisms
+- Monitoring and alerting
+
+**What it does:** Implements production-grade resilience patterns including circuit breakers to prevent cascading failures, dead letter queues for failed items, and comprehensive error recovery mechanisms using Polly.
+
+**Key takeaways:** Building production-ready pipelines with comprehensive error handling.
+
 ## Advanced Samples
 
-### Sample 07: Time-Windowed Aggregation
+### Sample 07: Streaming Analytics
 **Concepts demonstrated:**
-- Time-based windowing
+- Time-based windowing (tumbling and sliding windows)
 - Watermarks and late data handling
-- Aggregation patterns
+- Real-time aggregations
+- Branching pipelines
 
-**What it does:** Implements a time-windowed aggregation pipeline that processes events in time windows and handles late-arriving data correctly.
+**What it does:** Implements a time-windowed aggregation pipeline that processes sensor data in real-time, handles late-arriving data, and performs statistical analysis with trend and anomaly detection.
 
 **Key takeaways:** Building stream processing applications with correct temporal semantics.
 
 ---
 
-### Sample 08: ValueTask Optimization
-**Concepts demonstrated:**
-- Advanced ValueTask patterns
-- Memory allocation optimization
-- Performance measurement
-
-**What it does:** Deep dive into ValueTask optimization with benchmarks and performance measurements. Shows how to achieve maximum throughput in memory-constrained scenarios.
-
-**Key takeaways:** Advanced techniques for optimizing pipeline performance.
-
----
-
-### Sample 09: Custom Node Types
+### Sample 08: Custom Node Implementation
 **Concepts demonstrated:**
 - Creating custom node implementations
-- Extending NPipeline functionality
-- Best practices for node design
+- Lifecycle management
+- Performance optimization through caching and batching
+- Observability patterns
 
-**What it does:** Shows how to implement custom node types for specialized processing needs, including proper error handling, observability, and lifecycle management.
+**What it does:** Shows how to implement custom node types including a sensor data source, a cached transform for performance optimization, and a batching sink for improved throughput.
 
 **Key takeaways:** Extending NPipeline to meet specific application requirements.
 
 ---
 
-### Sample 10: Full Production Pipeline
+### Sample 09: Performance Optimization
 **Concepts demonstrated:**
-- Production-ready architecture
-- Comprehensive monitoring
-- Deployment considerations
-- Performance optimization
+- ValueTask optimization
+- Synchronous fast paths
+- Memory allocation reduction
+- Performance measurement
 
-**What it does:** A complete, production-ready pipeline that combines all advanced concepts: error handling, parallelism, custom nodes, monitoring, and performance optimization.
+**What it does:** Demonstrates advanced performance optimization techniques including ValueTask usage, synchronous fast paths for simple operations, memory allocation reduction with ArrayPool, and comprehensive performance measurement.
 
-**Key takeaways:** How to architect and implement robust, scalable production pipelines.
+**Key takeaways:** Advanced techniques for optimizing pipeline performance.
+
+---
+
+### Sample 10: Complex Data Transformations
+**Concepts demonstrated:**
+- Multi-stream joins
+- External data lookups
+- Complex aggregations
+- Data lineage tracking
+
+**What it does:** Implements sophisticated data processing scenarios including joining orders with customer data, product enrichment, complex aggregations, and complete data lineage tracking for auditability.
+
+**Key takeaways:** Building complex data pipelines with joins, lookups, and lineage tracking.
+
+---
+
+### Sample 11: CSV Connector
+**Concepts demonstrated:**
+- CSV source and sink nodes with CsvSourceNode<T> and CsvSinkNode<T>
+- StorageUri abstraction for file system access
+- Custom validation transform with business rule enforcement
+- Data transformation and enrichment patterns
+- Error handling for malformed data with configurable filtering
+- IPipelineDefinition pattern for reusable pipeline structures
+- Pipeline configuration through parameters
+- Node factory pattern for resolving constructor ambiguity
+
+**What it does:** Implements a comprehensive CSV data processing pipeline that reads customer data from CSV files, validates it against business rules (ID, email format, age range, etc.), transforms and enriches the data (name normalization, country expansion, email formatting), and writes the processed results to output CSV files. The sample demonstrates proper error handling with configurable filtering of invalid records.
+
+**Key takeaways:** Building robust CSV processing pipelines with validation, transformation, and error handling patterns using NPipeline's CSV connector components and the IPipelineDefinition pattern for creating reusable pipeline structures.
 
 ## Getting Started with Samples
 
 1. **Clone the repository** to access all sample code
 2. **Start with Basic Samples** if you're new to NPipeline
+   - Sample 01: Learn the fundamental pipeline concepts
+   - Sample 02: Understand file-based processing
+   - Sample 03: Master basic error handling patterns
 3. **Progress to Intermediate Samples** once you're comfortable with the basics
+   - Sample 04: Data transformation and validation
+   - Sample 05: Parallel processing techniques
+   - Sample 06: Advanced error handling and resilience
 4. **Explore Advanced Samples** for production scenarios and optimization techniques
+   - Sample 07: Streaming analytics and windowing
+   - Sample 08: Custom node development
+   - Sample 09: Performance optimization
+   - Sample 10: Complex data transformations and joins
+   - Sample 11: CSV connector and data processing
 
 Each sample includes:
 - Complete source code with comments explaining key concepts
