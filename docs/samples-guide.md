@@ -146,7 +146,7 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ### Sample 11: CSV Connector
 **Concepts demonstrated:**
-- CSV source and sink nodes with CsvSourceNode<T> and CsvSinkNode<T>
+- CSV source and sink nodes with `CsvSourceNode<T>` and `CsvSinkNode<T>`
 - StorageUri abstraction for file system access
 - Custom validation transform with business rule enforcement
 - Data transformation and enrichment patterns
@@ -163,7 +163,7 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ### Sample 12: Batching Node
 **Concepts demonstrated:**
-- BatchingNode<T> for collecting individual items into batches
+- `BatchingNode<T>` for collecting individual items into batches
 - Size-based, time-based, and hybrid batching strategies
 - BatchProcessingTransform for efficient batch operations
 - Performance optimization through batch processing
@@ -171,9 +171,39 @@ This guide provides practical examples of NPipeline implementations, organized b
 - BatchingExecutionStrategy for optimal performance
 - Comprehensive testing patterns for batched pipelines
 
-**What it does:** Demonstrates the BatchingNode<T> functionality for efficient batch processing of individual items. The sample simulates an IoT sensor data processing pipeline that collects individual sensor readings into batches, processes them with aggregations and calculations, and performs bulk database operations. It shows different batching strategies (size-based, time-based, and hybrid) and provides detailed performance analysis comparing batch processing to individual item processing.
+**What it does:** Demonstrates the `BatchingNode<T>` functionality for efficient batch processing of individual items. The sample simulates an IoT sensor data processing pipeline that collects individual sensor readings into batches, processes them with aggregations and calculations, and performs bulk database operations. It shows different batching strategies (size-based, time-based, and hybrid) and provides detailed performance analysis comparing batch processing to individual item processing.
 
 **Key takeaways:** Using batching to significantly improve performance for computational operations, database operations, and network operations while maintaining flexibility and reliability in data processing pipelines.
+
+---
+
+### Sample 13: Keyed Join Node
+**Concepts demonstrated:**
+- KeyedJoinNode for joining data streams based on common keys
+- Inner, Left Outer, Right Outer, and Full Outer join strategies
+- Multi-stream correlation and data enrichment patterns
+- Real-time aggregation on joined data
+- Memory management for unmatched items
+- Performance considerations for key distribution
+
+**What it does:** Demonstrates how to use NPipeline's KeyedJoinNode to join data streams based on common keys in an e-commerce scenario. It shows how to join orders with customer data using different join strategies, enrich the results with product information, and generate business intelligence through real-time aggregations by customer tier and product category.
+
+**Key takeaways:** Building sophisticated data pipelines that can correlate and enrich data from multiple streams using various join strategies while managing performance and memory efficiently.
+
+---
+
+### Sample 14: Time Windowed Join Node
+**Concepts demonstrated:**
+- TimeWindowedJoinNode for temporal correlation of events
+- Tumbling and sliding window strategies with configurable sizes
+- Timestamp extraction and watermark management for event-time processing
+- Out-of-order data handling with configurable tolerance
+- Memory-efficient state management with automatic cleanup
+- Performance optimization for time-based joins
+
+**What it does:** Demonstrates time-windowed joins for correlating IoT sensor readings with maintenance events that occur within specific time windows. The sample shows how to use tumbling and sliding windows to analyze maintenance effectiveness, handle out-of-order events, and perform temporal analysis on streaming data with proper watermark management.
+
+**Key takeaways:** Implementing sophisticated temporal data processing patterns that can correlate events based on both keys and time proximity while handling real-world challenges like out-of-order data and managing memory efficiently.
 
 ## Getting Started with Samples
 
@@ -193,6 +223,8 @@ This guide provides practical examples of NPipeline implementations, organized b
    - Sample 10: Complex data transformations and joins
    - Sample 11: CSV connector and data processing
    - Sample 12: Batching node for efficient batch processing
+   - Sample 13: Keyed join node for stream correlation
+   - Sample 14: Time windowed join node for temporal analysis
 
 Each sample includes:
 - Complete source code with comments explaining key concepts
