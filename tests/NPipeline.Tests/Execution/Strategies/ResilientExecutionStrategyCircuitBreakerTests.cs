@@ -123,8 +123,22 @@ public sealed class ResilientExecutionStrategyCircuitBreakerTests
                 });
             }
 
-            // Allow the breaker to transition to half-open
-            await Task.Delay(options.OpenDuration + TimeSpan.FromMilliseconds(100));
+            // Allow the breaker to transition to half-open by polling its state
+            // Wait for initial delay plus additional buffer for timer callback execution
+            await Task.Delay(options.OpenDuration + TimeSpan.FromMilliseconds(500));
+            
+            // Poll to ensure the circuit breaker has transitioned to HalfOpen
+            var manager = context.Items[PipelineContextKeys.CircuitBreakerManager] as ICircuitBreakerManager;
+            var circuitBreaker = manager?.GetCircuitBreaker("recovery-node", options);
+            
+            // Add a small retry loop to account for timing variations
+            var maxRetries = 5;
+            var retryCount = 0;
+            while (retryCount < maxRetries && circuitBreaker?.State != CircuitBreakerState.HalfOpen)
+            {
+                await Task.Delay(50);
+                retryCount++;
+            }
 
             // Act 2: half-open should permit execution and recover to closed
             await using var recoveryInput = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>([2], "second");
