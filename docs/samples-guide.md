@@ -136,6 +136,26 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ---
 
+### Branching and Distribution
+
+#### Sample 19: BranchNode
+
+**Concepts demonstrated:**
+
+- BranchNode for fanning out data to multiple downstream pathways
+- Parallel processing strategies with concurrent execution
+- Data duplication patterns where each item is sent to all connected nodes
+- Error isolation between branches to prevent cascading failures
+- Type preservation with different output types per branch
+- Real-world e-commerce scenario with inventory, analytics, and notifications
+- Multi-stream processing with independent business logic per branch
+
+**What it does:** Implements an e-commerce order processing pipeline that demonstrates how BranchNode can distribute order events to multiple parallel processing paths simultaneously. The pipeline processes orders through inventory management, business analytics, and customer notifications while maintaining the main order flow. Each branch operates independently with its own business logic, error handling, and output types.
+
+**Key takeaways:** Building complex data distribution patterns with BranchNode for parallel processing while maintaining error isolation and type safety. Understanding how to implement real-world scenarios requiring multiple concurrent processing paths for the same data.
+
+---
+
 ### Data Transformation and Type Conversion
 
 #### Sample 09: Type Conversion Node
@@ -343,6 +363,7 @@ This guide provides practical examples of NPipeline implementations, organized b
    - Sample 16: Complex data transformations and joins
    - Sample 17: AggregateNode for real-time analytics and simple aggregations
    - Sample 18: AdvancedAggregateNode for complex state management and financial analytics
+   - Sample 19: BranchNode for parallel data distribution and processing
 
 Each sample includes:
 
