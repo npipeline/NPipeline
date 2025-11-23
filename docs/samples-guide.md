@@ -176,6 +176,29 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ---
 
+### Advanced Stream Merging
+
+#### Sample 21: CustomMergeNode
+
+**Concepts demonstrated:**
+
+- CustomMergeNode for advanced stream merging strategies
+- Priority-based merging with conflict resolution (NYSE > NASDAQ > International)
+- Temporal alignment with configurable delay tolerance
+- Data quality scoring and assessment (Completeness, Timeliness, Accuracy, Consistency)
+- High-performance concurrent processing using Channel<T>
+- Backpressure handling with intelligent buffering and drop strategies
+- Real-world financial trading system scenario
+- Multi-exchange market data processing
+- Custom merge strategies extending IMergeStrategy<T>
+- Performance optimization for high-frequency trading scenarios
+
+**What it does:** Implements a sophisticated financial trading data processing pipeline that merges market data from multiple exchanges (NYSE, NASDAQ, International) using CustomMergeNode with priority-based conflict resolution and temporal alignment strategies. The pipeline demonstrates how to handle real-world challenges in financial data processing, including conflicting data from different exchanges, timing variations, and data quality assessment. It showcases advanced merging patterns where NYSE data takes precedence over NASDAQ and International exchanges, with temporal alignment to handle out-of-order data and configurable delay tolerance windows.
+
+**Key takeaways:** Building complex stream merging systems with custom conflict resolution logic and business rule integration. Understanding how to implement priority-based merging strategies, temporal alignment for handling timing discrepancies, and data quality assessment for financial data processing. Learning advanced performance optimization techniques using Channel<T> for high-throughput scenarios and backpressure handling for reliable processing in high-frequency trading environments.
+
+---
+
 ### Data Transformation and Type Conversion
 
 #### Sample 09: Type Conversion Node
@@ -385,6 +408,8 @@ This guide provides practical examples of NPipeline implementations, organized b
    - Sample 17: AggregateNode for real-time analytics and simple aggregations
    - Sample 18: AdvancedAggregateNode for complex state management and financial analytics
    - Sample 19: BranchNode for parallel data distribution and processing
+   - Sample 21: CustomMergeNode for advanced stream merging and conflict resolution
+   - Sample 22: Custom node development
 
 Each sample includes:
 

@@ -58,4 +58,8 @@ nunit-*.xml
 .idea/**
 *.DotSettings.user
 
+# BenchmarkDotNet
 **/BenchmarkDotNet.Artifacts
+
+# Mac OS generated files
+**/.DS_Store
