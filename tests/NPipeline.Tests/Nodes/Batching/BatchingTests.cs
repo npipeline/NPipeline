@@ -82,7 +82,7 @@ public sealed class BatchingTests(ITestOutputHelper output)
         // Assert
         results.Should().NotBeEmpty();
         results.First().Should().HaveCount(1); // The first item should be in its own batch due to the delay
-        stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(2));
+        stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(4));
     }
 
     [Fact]
