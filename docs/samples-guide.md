@@ -186,7 +186,7 @@ This guide provides practical examples of NPipeline implementations, organized b
 - Priority-based merging with conflict resolution (NYSE > NASDAQ > International)
 - Temporal alignment with configurable delay tolerance
 - Data quality scoring and assessment (Completeness, Timeliness, Accuracy, Consistency)
-- High-performance concurrent processing using Channel<T>
+- High-performance concurrent processing using `Channel<T>`
 - Backpressure handling with intelligent buffering and drop strategies
 - Real-world financial trading system scenario
 - Multi-exchange market data processing
@@ -195,7 +195,7 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 **What it does:** Implements a sophisticated financial trading data processing pipeline that merges market data from multiple exchanges (NYSE, NASDAQ, International) using CustomMergeNode with priority-based conflict resolution and temporal alignment strategies. The pipeline demonstrates how to handle real-world challenges in financial data processing, including conflicting data from different exchanges, timing variations, and data quality assessment. It showcases advanced merging patterns where NYSE data takes precedence over NASDAQ and International exchanges, with temporal alignment to handle out-of-order data and configurable delay tolerance windows.
 
-**Key takeaways:** Building complex stream merging systems with custom conflict resolution logic and business rule integration. Understanding how to implement priority-based merging strategies, temporal alignment for handling timing discrepancies, and data quality assessment for financial data processing. Learning advanced performance optimization techniques using Channel<T> for high-throughput scenarios and backpressure handling for reliable processing in high-frequency trading environments.
+**Key takeaways:** Building complex stream merging systems with custom conflict resolution logic and business rule integration. Understanding how to implement priority-based merging strategies, temporal alignment for handling timing discrepancies, and data quality assessment for financial data processing. Learning advanced performance optimization techniques using `Channel<T>` for high-throughput scenarios and backpressure handling for reliable processing in high-frequency trading environments.
 
 ---
 
