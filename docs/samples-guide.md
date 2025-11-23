@@ -102,6 +102,26 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 **Key takeaways:** Building production-ready pipelines with comprehensive error handling. Extends Sample 03 with advanced patterns for mission-critical systems.
 
+---
+
+### Sample 20: LookupNode
+
+**Concepts demonstrated:**
+
+- LookupNode for data enrichment patterns using external data sources
+- Key extraction and async lookup operations
+- Data combination patterns merging original data with lookup results
+- Error handling for missing or failed lookups
+- Real-world IoT sensor data enrichment scenario
+- Device metadata management and calibration validation
+- Risk assessment and alerting patterns
+
+**What it does:** Implements an IoT sensor data processing pipeline that demonstrates how to use LookupNode for enriching raw sensor readings with device metadata. The pipeline processes sensor data through multiple stages: metadata enrichment using LookupNode, calibration validation, risk assessment, and finally outputs to both regular and alerting sinks based on the calculated risk levels.
+
+**Key takeaways:** Building data enrichment pipelines that can efficiently combine streaming data with external reference data. Understanding how to implement async lookup patterns, handle missing data gracefully, and create branching pipelines for different output scenarios based on business rules.
+
+---
+
 ## Advanced Samples
 
 ### Foundational Advanced Concepts
@@ -350,6 +370,7 @@ This guide provides practical examples of NPipeline implementations, organized b
    - Sample 04: Data transformation and validation
    - Sample 05: Parallel processing techniques
    - Sample 06: Advanced error handling and resilience
+   - Sample 20: LookupNode for data enrichment and external lookups
 4. **Explore Advanced Samples** for production scenarios and optimization techniques
    - Sample 07: Custom node development
    - Sample 08: Performance optimization
