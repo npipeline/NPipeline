@@ -14,6 +14,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\NPipeline.Extensions.Testing\NPipeline.Extensions.Testing.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.Extensions.Parallelism\NPipeline.Extensions.Parallelism.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline\NPipeline.csproj"/>
     </ItemGroup>
 
