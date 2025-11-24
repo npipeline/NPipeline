@@ -306,6 +306,35 @@ The pipeline flow demonstrates the complete unbatching pattern:
 
 ---
 
+#### Sample 25: WindowingStrategies - Advanced Windowing Strategies
+
+**Concepts demonstrated:**
+
+- Session-based windowing with custom timeout management and session splitting
+- Dynamic windowing with adaptive sizing based on activity patterns and diversity metrics
+- Custom trigger windowing with multiple trigger conditions (conversion, high-value, time-based)
+- Multi-strategy parallel processing for comprehensive analytics comparison
+- Advanced pattern detection across different windowing approaches
+- User behavior analytics with engagement, retention, and churn metrics
+- Sophisticated temporal pattern analysis with confidence scoring
+- Performance optimization for complex windowing scenarios
+
+**What it does:** Implements a comprehensive user analytics platform that demonstrates three advanced windowing strategies working in parallel to provide deep insights into user behavior patterns. The pipeline processes individual user events through session-based windowing, then applies three different windowing strategies simultaneously: direct session analytics, dynamic windowing that adapts to data characteristics, and custom trigger windowing driven by business rules. Each strategy provides unique insights, and the results are combined with advanced pattern detection to identify behavioral, temporal, and navigation patterns.
+
+The pipeline architecture demonstrates sophisticated windowing techniques:
+1. **SessionWindowAssigner** groups events into sessions based on activity timeouts
+2. **Three parallel processing paths** apply different windowing strategies:
+   - Direct session analytics for traditional metrics
+   - **DynamicWindowAssigner** that adapts window size based on activity levels and device/geographic diversity
+   - **CustomTriggerWindowAssigner** that uses conversion thresholds, high-value events, and time intervals as triggers
+3. **SessionAnalyticsCalculator** processes each windowing strategy for comprehensive metrics
+4. **PatternDetectionCalculator** identifies sophisticated user behavior patterns across all strategies
+5. **UserBehaviorSink** provides formatted analytics results with executive summaries
+
+**Key takeaways:** Building sophisticated temporal analytics systems with adaptive windowing that goes beyond basic tumbling and sliding windows. Understanding how to implement session-based, dynamic, and custom trigger windowing strategies for different analytical needs. Learning how to process multiple windowing strategies in parallel to gain comprehensive insights from the same data. Mastering advanced pattern detection with confidence scoring and business impact assessment. This sample is essential when standard time-based windows are insufficient for capturing complex user behavior patterns or when business requirements demand sophisticated, adaptive windowing logic.
+
+---
+
 ### Aggregation and Windowing
 
 #### Sample 17: AggregateNode
@@ -463,6 +492,7 @@ The pipeline flow demonstrates the complete unbatching pattern:
    - Sample 21: CustomMergeNode for advanced stream merging and conflict resolution
    - Sample 22: WatermarkHandling for advanced event-time processing and IoT sensor networks
    - Sample 23: UnbatchingNode for stream conversion patterns and hybrid batch/stream processing
+   - Sample 25: WindowingStrategies for advanced windowing strategies and user behavior analytics
 
 Each sample includes:
 
