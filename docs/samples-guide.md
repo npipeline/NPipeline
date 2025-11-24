@@ -58,35 +58,6 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ---
 
-### Sample 23: UnbatchingNode - Stream Conversion Patterns
-
-**Concepts demonstrated:**
-
-- UnbatchingNode for converting batched data back to individual item streams
-- Batch-to-stream conversion patterns with ordering guarantee preservation
-- Backpressure handling mechanisms for downstream consumers
-- Performance optimization techniques for stream conversion
-- Integration with existing batching nodes
-- Hybrid batch/stream processing architecture
-- Real-world financial trading system scenario
-
-**What it does:** Implements a sophisticated financial trading system that demonstrates the unbatching pattern for converting batched analytics results back to individual item streams. The pipeline processes individual market data events, batches them for efficient analytics processing, then unbatches the results to generate individual alert events for real-time monitoring. This showcases how to combine the efficiency of batch processing with the responsiveness of individual event processing in a real-world trading scenario.
-
-The pipeline flow demonstrates the complete unbatching pattern:
-1. MarketDataSource generates individual market data events from multiple exchanges
-2. BatchingNode collects events into batches based on size and time thresholds
-3. BatchAnalyticsTransform processes batches efficiently with comprehensive analytics calculations
-4. BatchEventExtractor extracts original events from batch analytics results
-5. UnbatchingNode converts batched events back to individual market data events (UNBATCHING)
-6. AlertGeneratorTransform converts individual events to alerts based on batch analytics insights
-7. RealTimeAlertingSink processes individual alert events for real-time monitoring
-
-**Key takeaways:** Understanding how to implement stream conversion patterns that enable hybrid batch/stream processing architectures. Learning how to maintain ordering guarantees when converting between batched and individual data flows, implementing backpressure handling for downstream consumers, and optimizing performance for high-frequency trading scenarios. This pattern is essential when you need both efficient batch processing for analytics and individual event processing for real-time operations like alerting.
-
----
-
-## Intermediate Samples
-
 ### Sample 04: Simple Data Transformation
 
 **Concepts demonstrated:**
@@ -117,6 +88,8 @@ The pipeline flow demonstrates the complete unbatching pattern:
 
 ---
 
+## Intermediate Samples
+
 ### Sample 06: Advanced Error Handling
 
 **Concepts demonstrated:**
@@ -133,7 +106,7 @@ The pipeline flow demonstrates the complete unbatching pattern:
 
 ---
 
-### Sample 20: LookupNode
+### Sample 07: LookupNode
 
 **Concepts demonstrated:**
 
@@ -151,108 +124,7 @@ The pipeline flow demonstrates the complete unbatching pattern:
 
 ---
 
-## Advanced Samples
-
-### Foundational Advanced Concepts
-
-#### Sample 07: Custom Node Implementation
-
-**Concepts demonstrated:**
-
-- Creating custom node implementations
-- Lifecycle management
-- Performance optimization through caching and batching
-- Observability patterns
-
-**What it does:** Shows how to implement custom node types including a sensor data source, a cached transform for performance optimization, and a batching sink for improved throughput.
-
-**Key takeaways:** Extending NPipeline to meet specific application requirements. Essential foundation for advanced pipeline development.
-
----
-
-#### Sample 08: Performance Optimization
-
-**Concepts demonstrated:**
-
-- ValueTask optimization
-- Synchronous fast paths
-- Memory allocation reduction
-- Performance measurement
-
-**What it does:** Demonstrates advanced performance optimization techniques including ValueTask usage, synchronous fast paths for simple operations, memory allocation reduction with ArrayPool, and comprehensive performance measurement.
-
-**Key takeaways:** Advanced techniques for optimizing pipeline performance. Best practices for high-throughput systems.
-
----
-
-### Branching and Distribution
-
-#### Sample 19: BranchNode
-
-**Concepts demonstrated:**
-
-- BranchNode for fanning out data to multiple downstream pathways
-- Parallel processing strategies with concurrent execution
-- Data duplication patterns where each item is sent to all connected nodes
-- Error isolation between branches to prevent cascading failures
-- Type preservation with different output types per branch
-- Real-world e-commerce scenario with inventory, analytics, and notifications
-- Multi-stream processing with independent business logic per branch
-
-**What it does:** Implements an e-commerce order processing pipeline that demonstrates how BranchNode can distribute order events to multiple parallel processing paths simultaneously. The pipeline processes orders through inventory management, business analytics, and customer notifications while maintaining the main order flow. Each branch operates independently with its own business logic, error handling, and output types.
-
-**Key takeaways:** Building complex data distribution patterns with BranchNode for parallel processing while maintaining error isolation and type safety. Understanding how to implement real-world scenarios requiring multiple concurrent processing paths for the same data.
-
----
-
-### Advanced Stream Merging
-
-#### Sample 21: CustomMergeNode
-
-**Concepts demonstrated:**
-
-- CustomMergeNode for advanced stream merging strategies
-- Priority-based merging with conflict resolution (NYSE > NASDAQ > International)
-- Temporal alignment with configurable delay tolerance
-- Data quality scoring and assessment (Completeness, Timeliness, Accuracy, Consistency)
-- High-performance concurrent processing using `Channel<T>`
-- Backpressure handling with intelligent buffering and drop strategies
-- Real-world financial trading system scenario
-- Multi-exchange market data processing
-- Custom merge strategies extending `IMergeStrategy<T>`
-- Performance optimization for high-frequency trading scenarios
-
-**What it does:** Implements a sophisticated financial trading data processing pipeline that merges market data from multiple exchanges (NYSE, NASDAQ, International) using CustomMergeNode with priority-based conflict resolution and temporal alignment strategies. The pipeline demonstrates how to handle real-world challenges in financial data processing, including conflicting data from different exchanges, timing variations, and data quality assessment. It showcases advanced merging patterns where NYSE data takes precedence over NASDAQ and International exchanges, with temporal alignment to handle out-of-order data and configurable delay tolerance windows.
-
-**Key takeaways:** Building complex stream merging systems with custom conflict resolution logic and business rule integration. Understanding how to implement priority-based merging strategies, temporal alignment for handling timing discrepancies, and data quality assessment for financial data processing. Learning advanced performance optimization techniques using `Channel<T>` for high-throughput scenarios and backpressure handling for reliable processing in high-frequency trading environments.
-
----
-
-#### Sample 22: WatermarkHandling - Advanced Event-Time Processing
-
-**Concepts demonstrated:**
-
-- WatermarkHandling for advanced event-time processing
-- Custom watermark generators with adaptive strategies
-- Handling of late data with configurable lateness tolerance
-- Watermark alignment across multiple streams
-- Dynamic watermark adjustment based on system conditions
-- Comprehensive monitoring and alerting for watermark issues
-- Real-world IoT manufacturing platform scenario
-- Multi-network sensor processing (WiFi, LoRaWAN, Ethernet)
-- Clock synchronization handling (GPS, NTP, internal clocks)
-- Network-aware processing strategies
-- Time-windowed aggregation with watermark-based advancement
-
-**What it does:** Implements a sophisticated IoT manufacturing platform that processes sensor data from heterogeneous networks with different timing characteristics. The sample demonstrates advanced watermark handling capabilities for coordinating multiple sensor networks: Production Line A (WiFi sensors with GPS-disciplined clocks), Production Line B (LoRaWAN sensors with NTP synchronization), and Environmental sensors (Ethernet sensors with internal clocks). It showcases adaptive watermark generation that adjusts based on network conditions, configurable late data handling with tolerance policies, and comprehensive monitoring and alerting for watermark issues. The pipeline uses network-aware processing strategies to handle the unique challenges of each network type while maintaining accurate temporal semantics across the entire system.
-
-**Key takeaways:** Building complex event-time processing systems that can handle heterogeneous data sources with different timing characteristics. Understanding how to implement adaptive watermark strategies, manage late data effectively, and coordinate multiple streams with varying synchronization capabilities. Learning how to design resilient IoT data processing pipelines that can maintain accurate temporal semantics despite network variations, clock drift, and system load changes.
-
----
-
-### Data Transformation and Type Conversion
-
-#### Sample 09: Type Conversion Node
+### Sample 08: Type Conversion Node
 
 **Concepts demonstrated:**
 
@@ -270,7 +142,7 @@ The pipeline flow demonstrates the complete unbatching pattern:
 
 ---
 
-#### Sample 10: CSV Connector
+### Sample 09: CSV Connector
 
 **Concepts demonstrated:**
 
@@ -289,9 +161,125 @@ The pipeline flow demonstrates the complete unbatching pattern:
 
 ---
 
+### Sample 10: AggregateNode
+
+**Concepts demonstrated:**
+
+- `AggregateNode<TIn, TKey, TResult>` for time-based aggregations
+- Tumbling and sliding window strategies
+- Key-based aggregation by different dimensions
+- Event-time processing with watermarks
+- Real-time analytics dashboard patterns
+- Multi-dimensional aggregations with identical accumulator and result types
+
+**What it does:** Implements a real-time analytics dashboard that processes user interaction events (page views, clicks, purchases) and generates aggregated metrics using tumbling windows for event counting and sliding windows for value summation. The sample demonstrates filtering irrelevant events and displaying formatted metrics in a console dashboard.
+
+**Key takeaways:** Building real-time analytics systems with simple aggregations where accumulator and result types are identical. Understanding windowing patterns and key-based grouping for streaming analytics scenarios.
+
+---
+
+### Sample 11: BranchNode
+
+**Concepts demonstrated:**
+
+- BranchNode for fanning out data to multiple downstream pathways
+- Parallel processing strategies with concurrent execution
+- Data duplication patterns where each item is sent to all connected nodes
+- Error isolation between branches to prevent cascading failures
+- Type preservation with different output types per branch
+- Real-world e-commerce scenario with inventory, analytics, and notifications
+- Multi-stream processing with independent business logic per branch
+
+**What it does:** Implements an e-commerce order processing pipeline that demonstrates how BranchNode can distribute order events to multiple parallel processing paths simultaneously. The pipeline processes orders through inventory management, business analytics, and customer notifications while maintaining the main order flow. Each branch operates independently with its own business logic, error handling, and output types.
+
+**Key takeaways:** Building complex data distribution patterns with BranchNode for parallel processing while maintaining error isolation and type safety. Understanding how to implement real-world scenarios requiring multiple concurrent processing paths for the same data.
+
+---
+
+## Advanced Samples
+
+### Foundational Advanced Concepts
+
+#### Sample 12: Custom Node Implementation
+
+**Concepts demonstrated:**
+
+- Creating custom node implementations
+- Lifecycle management
+- Performance optimization through caching and batching
+- Observability patterns
+
+**What it does:** Shows how to implement custom node types including a sensor data source, a cached transform for performance optimization, and a batching sink for improved throughput.
+
+**Key takeaways:** Extending NPipeline to meet specific application requirements. Essential foundation for advanced pipeline development.
+
+---
+
+#### Sample 13: Performance Optimization
+
+**Concepts demonstrated:**
+
+- ValueTask optimization
+- Synchronous fast paths
+- Memory allocation reduction
+- Performance measurement
+
+**What it does:** Demonstrates advanced performance optimization techniques including ValueTask usage, synchronous fast paths for simple operations, memory allocation reduction with ArrayPool, and comprehensive performance measurement.
+
+**Key takeaways:** Advanced techniques for optimizing pipeline performance. Best practices for high-throughput systems.
+
+---
+
+### Data Processing Patterns
+
+#### Sample 14: Batching Node
+
+**Concepts demonstrated:**
+
+- `BatchingNode<T>` for collecting individual items into batches
+- Size-based, time-based, and hybrid batching strategies
+- BatchProcessingTransform for efficient batch operations
+- Performance optimization through batch processing
+- Bulk database operations with batched results
+- BatchingExecutionStrategy for optimal performance
+- Comprehensive testing patterns for batched pipelines
+
+**What it does:** Demonstrates the `BatchingNode<T>` functionality for efficient batch processing of individual items. The sample simulates an IoT sensor data processing pipeline that collects individual sensor readings into batches, processes them with aggregations and calculations, and performs bulk database operations. It shows different batching strategies (size-based, time-based, and hybrid) and provides detailed performance analysis comparing batch processing to individual item processing.
+
+**Key takeaways:** Using batching to significantly improve performance for computational operations, database operations, and network operations while maintaining flexibility and reliability in data processing pipelines.
+
+---
+
+#### Sample 15: UnbatchingNode - Stream Conversion Patterns
+
+**Concepts demonstrated:**
+
+- UnbatchingNode for converting batched data back to individual item streams
+- Batch-to-stream conversion patterns with ordering guarantee preservation
+- Backpressure handling mechanisms for downstream consumers
+- Performance optimization techniques for stream conversion
+- Integration with existing batching nodes
+- Hybrid batch/stream processing architecture
+- Real-world financial trading system scenario
+
+**What it does:** Implements a sophisticated financial trading system that demonstrates the unbatching pattern for converting batched analytics results back to individual item streams. The pipeline processes individual market data events, batches them for efficient analytics processing, then unbatches the results to generate individual alert events for real-time monitoring. This showcases how to combine the efficiency of batch processing with the responsiveness of individual event processing in a real-world trading scenario.
+
+The pipeline flow demonstrates the complete unbatching pattern:
+1. MarketDataSource generates individual market data events from multiple exchanges
+2. BatchingNode collects events into batches based on size and time thresholds
+3. BatchAnalyticsTransform processes batches efficiently with comprehensive analytics calculations
+4. BatchEventExtractor extracts original events from batch analytics results
+5. UnbatchingNode converts batched events back to individual market data events (UNBATCHING)
+6. AlertGeneratorTransform converts individual events to alerts based on batch analytics insights
+7. RealTimeAlertingSink processes individual alert events for real-time monitoring
+
+**Key takeaways:** Understanding how to implement stream conversion patterns that enable hybrid batch/stream processing architectures. Learning how to maintain ordering guarantees when converting between batched and individual data flows, implementing backpressure handling for downstream consumers, and optimizing performance for high-frequency trading scenarios. This pattern is essential when you need both efficient batch processing for analytics and individual event processing for real-time operations like alerting.
+
+---
+
 ### Stream Processing and Windowing
 
-#### Sample 11: Streaming Analytics
+#### Sample 16: Streaming Analytics
 
 **Concepts demonstrated:**
 
@@ -306,7 +294,7 @@ The pipeline flow demonstrates the complete unbatching pattern:
 
 ---
 
-#### Sample 25: WindowingStrategies - Advanced Windowing Strategies
+#### Sample 17: WindowingStrategies - Advanced Windowing Strategies
 
 **Concepts demonstrated:**
 
@@ -335,25 +323,6 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 ---
 
-### Aggregation and Windowing
-
-#### Sample 17: AggregateNode
-
-**Concepts demonstrated:**
-
-- `AggregateNode<TIn, TKey, TResult>` for time-based aggregations
-- Tumbling and sliding window strategies
-- Key-based aggregation by different dimensions
-- Event-time processing with watermarks
-- Real-time analytics dashboard patterns
-- Multi-dimensional aggregations with identical accumulator and result types
-
-**What it does:** Implements a real-time analytics dashboard that processes user interaction events (page views, clicks, purchases) and generates aggregated metrics using tumbling windows for event counting and sliding windows for value summation. The sample demonstrates filtering irrelevant events and displaying formatted metrics in a console dashboard.
-
-**Key takeaways:** Building real-time analytics systems with simple aggregations where accumulator and result types are identical. Understanding windowing patterns and key-based grouping for streaming analytics scenarios.
-
----
-
 #### Sample 18: AdvancedAggregateNode
 
 **Concepts demonstrated:**
@@ -373,7 +342,7 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 ### Advanced Join Operations
 
-#### Sample 12: Keyed Join Node
+#### Sample 19: Keyed Join Node
 
 **Concepts demonstrated:**
 
@@ -390,7 +359,7 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 ---
 
-#### Sample 13: Time Windowed Join Node
+#### Sample 20: Time Windowed Join Node
 
 **Concepts demonstrated:**
 
@@ -407,29 +376,54 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 ---
 
-### Batch Processing
-
-#### Sample 14: Batching Node
+#### Sample 21: CustomMergeNode
 
 **Concepts demonstrated:**
 
-- `BatchingNode<T>` for collecting individual items into batches
-- Size-based, time-based, and hybrid batching strategies
-- BatchProcessingTransform for efficient batch operations
-- Performance optimization through batch processing
-- Bulk database operations with batched results
-- BatchingExecutionStrategy for optimal performance
-- Comprehensive testing patterns for batched pipelines
+- CustomMergeNode for advanced stream merging strategies
+- Priority-based merging with conflict resolution (NYSE > NASDAQ > International)
+- Temporal alignment with configurable delay tolerance
+- Data quality scoring and assessment (Completeness, Timeliness, Accuracy, Consistency)
+- High-performance concurrent processing using `Channel<T>`
+- Backpressure handling with intelligent buffering and drop strategies
+- Real-world financial trading system scenario
+- Multi-exchange market data processing
+- Custom merge strategies extending `IMergeStrategy<T>`
+- Performance optimization for high-frequency trading scenarios
 
-**What it does:** Demonstrates the `BatchingNode<T>` functionality for efficient batch processing of individual items. The sample simulates an IoT sensor data processing pipeline that collects individual sensor readings into batches, processes them with aggregations and calculations, and performs bulk database operations. It shows different batching strategies (size-based, time-based, and hybrid) and provides detailed performance analysis comparing batch processing to individual item processing.
+**What it does:** Implements a sophisticated financial trading data processing pipeline that merges market data from multiple exchanges (NYSE, NASDAQ, International) using CustomMergeNode with priority-based conflict resolution and temporal alignment strategies. The pipeline demonstrates how to handle real-world challenges in financial data processing, including conflicting data from different exchanges, timing variations, and data quality assessment. It showcases advanced merging patterns where NYSE data takes precedence over NASDAQ and International exchanges, with temporal alignment to handle out-of-order data and configurable delay tolerance windows.
 
-**Key takeaways:** Using batching to significantly improve performance for computational operations, database operations, and network operations while maintaining flexibility and reliability in data processing pipelines.
+**Key takeaways:** Building complex stream merging systems with custom conflict resolution logic and business rule integration. Understanding how to implement priority-based merging strategies, temporal alignment for handling timing discrepancies, and data quality assessment for financial data processing. Learning advanced performance optimization techniques using `Channel<T>` for high-throughput scenarios and backpressure handling for reliable processing in high-frequency trading environments.
+
+---
+
+### Event-Time Processing
+
+#### Sample 22: WatermarkHandling - Advanced Event-Time Processing
+
+**Concepts demonstrated:**
+
+- WatermarkHandling for advanced event-time processing
+- Custom watermark generators with adaptive strategies
+- Handling of late data with configurable lateness tolerance
+- Watermark alignment across multiple streams
+- Dynamic watermark adjustment based on system conditions
+- Comprehensive monitoring and alerting for watermark issues
+- Real-world IoT manufacturing platform scenario
+- Multi-network sensor processing (WiFi, LoRaWAN, Ethernet)
+- Clock synchronization handling (GPS, NTP, internal clocks)
+- Network-aware processing strategies
+- Time-windowed aggregation with watermark-based advancement
+
+**What it does:** Implements a sophisticated IoT manufacturing platform that processes sensor data from heterogeneous networks with different timing characteristics. The sample demonstrates advanced watermark handling capabilities for coordinating multiple sensor networks: Production Line A (WiFi sensors with GPS-disciplined clocks), Production Line B (LoRaWAN sensors with NTP synchronization), and Environmental sensors (Ethernet sensors with internal clocks). It showcases adaptive watermark generation that adjusts based on network conditions, configurable late data handling with tolerance policies, and comprehensive monitoring and alerting for watermark issues. The pipeline uses network-aware processing strategies to handle the unique challenges of each network type while maintaining accurate temporal semantics across the entire system.
+
+**Key takeaways:** Building complex event-time processing systems that can handle heterogeneous data sources with different timing characteristics. Understanding how to implement adaptive watermark strategies, manage late data effectively, and coordinate multiple streams with varying synchronization capabilities. Learning how to design resilient IoT data processing pipelines that can maintain accurate temporal semantics despite network variations, clock drift, and system load changes.
 
 ---
 
 ### Observability and Monitoring
 
-#### Sample 15: TapNode
+#### Sample 23: TapNode
 
 **Concepts demonstrated:**
 
@@ -449,7 +443,7 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 ### Complex End-to-End Scenarios
 
-#### Sample 16: Complex Data Transformations
+#### Sample 24: Complex Data Transformations
 
 **Concepts demonstrated:**
 
@@ -467,32 +461,31 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 1. **Clone the repository** to access all sample code
 2. **Start with Basic Samples** if you're new to NPipeline
    - Sample 01: Learn the fundamental pipeline concepts
-   - Sample 02: Understand file-based processing
+   - Sample 02: Understand file-based processing and streaming
    - Sample 03: Master basic error handling patterns
-   - Sample 23: Discover unbatching patterns for stream conversion
+   - Sample 04: Learn data transformation, validation, and filtering
+   - Sample 05: Discover parallel processing techniques
 3. **Progress to Intermediate Samples** once you're comfortable with the basics
-   - Sample 04: Data transformation and validation
-   - Sample 05: Parallel processing techniques
-   - Sample 06: Advanced error handling and resilience
-   - Sample 20: LookupNode for data enrichment and external lookups
+   - Sample 06: Advanced error handling and resilience patterns
+   - Sample 07: LookupNode for data enrichment and external lookups
+   - Sample 08: Type conversion node for data transformation
+   - Sample 09: CSV connector and data processing
+   - Sample 10: AggregateNode for real-time analytics and simple aggregations
+   - Sample 11: BranchNode for parallel data distribution and processing
 4. **Explore Advanced Samples** for production scenarios and optimization techniques
-   - Sample 07: Custom node development
-   - Sample 08: Performance optimization
-   - Sample 09: Type conversion node for data transformation
-   - Sample 10: CSV connector and data processing
-   - Sample 11: Streaming analytics and windowing
-   - Sample 12: Keyed join node for stream correlation
-   - Sample 13: Time windowed join node for temporal analysis
+   - Sample 12: Custom node development and implementation
+   - Sample 13: Performance optimization techniques
    - Sample 14: Batching node for efficient batch processing
-   - Sample 15: TapNode for non-intrusive monitoring and observability
-   - Sample 16: Complex data transformations and joins
-   - Sample 17: AggregateNode for real-time analytics and simple aggregations
+   - Sample 15: UnbatchingNode for stream conversion patterns and hybrid batch/stream processing
+   - Sample 16: Streaming analytics and basic windowing
+   - Sample 17: WindowingStrategies for advanced windowing strategies and user behavior analytics
    - Sample 18: AdvancedAggregateNode for complex state management and financial analytics
-   - Sample 19: BranchNode for parallel data distribution and processing
+   - Sample 19: Keyed join node for stream correlation
+   - Sample 20: Time windowed join node for temporal analysis
    - Sample 21: CustomMergeNode for advanced stream merging and conflict resolution
    - Sample 22: WatermarkHandling for advanced event-time processing and IoT sensor networks
-   - Sample 23: UnbatchingNode for stream conversion patterns and hybrid batch/stream processing
-   - Sample 25: WindowingStrategies for advanced windowing strategies and user behavior analytics
+   - Sample 23: TapNode for non-intrusive monitoring and observability
+   - Sample 24: Complex data transformations and end-to-end scenarios
 
 Each sample includes:
 
@@ -502,8 +495,3 @@ Each sample includes:
 - Performance characteristics and tuning guidance
 
 ## Related Documentation
-
-- [Quick Start](./getting-started/quick-start.md) - Get started with NPipeline
-- [Core Concepts](./core-concepts/index.md) - Understand the building blocks
-- [Learning Paths](./learning-paths.md) - Structured learning journey
-- [Performance Optimization](./advanced-topics/synchronous-fast-paths.md) - Advanced performance techniques
