@@ -56,6 +56,35 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 **Key takeaways:** Designing pipelines that gracefully handle failures and maintain data integrity. Builds on Sample 01 concepts and is essential for production systems.
 
+---
+
+### Sample 23: UnbatchingNode - Stream Conversion Patterns
+
+**Concepts demonstrated:**
+
+- UnbatchingNode for converting batched data back to individual item streams
+- Batch-to-stream conversion patterns with ordering guarantee preservation
+- Backpressure handling mechanisms for downstream consumers
+- Performance optimization techniques for stream conversion
+- Integration with existing batching nodes
+- Hybrid batch/stream processing architecture
+- Real-world financial trading system scenario
+
+**What it does:** Implements a sophisticated financial trading system that demonstrates the unbatching pattern for converting batched analytics results back to individual item streams. The pipeline processes individual market data events, batches them for efficient analytics processing, then unbatches the results to generate individual alert events for real-time monitoring. This showcases how to combine the efficiency of batch processing with the responsiveness of individual event processing in a real-world trading scenario.
+
+The pipeline flow demonstrates the complete unbatching pattern:
+1. MarketDataSource generates individual market data events from multiple exchanges
+2. BatchingNode collects events into batches based on size and time thresholds
+3. BatchAnalyticsTransform processes batches efficiently with comprehensive analytics calculations
+4. BatchEventExtractor extracts original events from batch analytics results
+5. UnbatchingNode converts batched events back to individual market data events (UNBATCHING)
+6. AlertGeneratorTransform converts individual events to alerts based on batch analytics insights
+7. RealTimeAlertingSink processes individual alert events for real-time monitoring
+
+**Key takeaways:** Understanding how to implement stream conversion patterns that enable hybrid batch/stream processing architectures. Learning how to maintain ordering guarantees when converting between batched and individual data flows, implementing backpressure handling for downstream consumers, and optimizing performance for high-frequency trading scenarios. This pattern is essential when you need both efficient batch processing for analytics and individual event processing for real-time operations like alerting.
+
+---
+
 ## Intermediate Samples
 
 ### Sample 04: Simple Data Transformation
@@ -411,6 +440,7 @@ This guide provides practical examples of NPipeline implementations, organized b
    - Sample 01: Learn the fundamental pipeline concepts
    - Sample 02: Understand file-based processing
    - Sample 03: Master basic error handling patterns
+   - Sample 23: Discover unbatching patterns for stream conversion
 3. **Progress to Intermediate Samples** once you're comfortable with the basics
    - Sample 04: Data transformation and validation
    - Sample 05: Parallel processing techniques
@@ -432,6 +462,7 @@ This guide provides practical examples of NPipeline implementations, organized b
    - Sample 19: BranchNode for parallel data distribution and processing
    - Sample 21: CustomMergeNode for advanced stream merging and conflict resolution
    - Sample 22: WatermarkHandling for advanced event-time processing and IoT sensor networks
+   - Sample 23: UnbatchingNode for stream conversion patterns and hybrid batch/stream processing
 
 Each sample includes:
 
