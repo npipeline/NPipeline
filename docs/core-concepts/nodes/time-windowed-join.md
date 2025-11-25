@@ -173,6 +173,6 @@ In this setup, the `AdCorrelationNode` will:
 
 ## Next Steps
 
-* **[Advanced Node Types Index](index.md)**: Return to the advanced nodes overview.
+* **[Node Types Index](index.md)**: Return to the node types overview.
 * **[Pipeline Execution](../pipeline-execution/index.md)**: Learn about how pipelines are executed and managed.
 

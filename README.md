@@ -166,7 +166,7 @@ await services.RunPipelineAsync<OrderPipeline>();
 NPipeline is modular - install only what you need.
 
 While the core NPipeline library provides a powerful foundation for streaming data pipelines, the available extensions and connectors provide enhanced opt-in
-functionality and features like advanced parallelism, simplifying testing workflows, and connecting to external systems with minimal friction.
+functionality and features like enhanced parallelism, simplifying testing workflows, and connecting to external systems with minimal friction.
 
 | Package                                      | Purpose                                                                                              |
 |----------------------------------------------|------------------------------------------------------------------------------------------------------|
@@ -219,16 +219,16 @@ functionality and features like advanced parallelism, simplifying testing workfl
     - **[IPipelineRunner](docs/core-concepts/pipeline-execution/ipipelinerunner.md)** - Running pipelines
 - **[Resilience](docs/core-concepts/resilience/index.md)** - Building fault-tolerant pipelines
     - **[Node Restart Quickstart](docs/core-concepts/resilience/node-restart-quickstart.md)** - Getting started with resilient execution
-    - **[Resilient Execution Strategy](docs/core-concepts/resilience/resilient-execution-strategy.md)** - Advanced resilience patterns
+    - **[Resilient Execution Strategy](docs/core-concepts/resilience/resilient-execution-strategy.md)** - Enhanced resilience patterns
     - **[Configuration Guide](docs/core-concepts/resilience/configuration-guide.md)** - Resilience configuration
     - **[Dependency Chains](docs/core-concepts/resilience/dependency-chains.md)** - Managing node dependencies
     - **[Materialization and Buffering](docs/core-concepts/resilience/materialization-and-buffering.md)** - Data persistence strategies
-    - **[Circuit Breaker Advanced Configuration](docs/core-concepts/resilience/circuit-breaker-advanced-configuration.md)** - Advanced breaker setup
+    - **[Circuit Breaker Enhanced Configuration](docs/core-concepts/resilience/circuit-breaker-advanced-configuration.md)** - Enhanced breaker setup
     - **[Troubleshooting](docs/core-concepts/resilience/troubleshooting.md)** - Common resilience issues
 
-### Advanced Nodes
+### Specialized Node Types
 
-- **[Advanced Nodes Overview](docs/core-concepts/nodes/index.md)** - Specialized node types
+- **[Specialized Node Types Overview](docs/core-concepts/nodes/index.md)** - Specialized node types for specific use cases
 - **[Aggregation](docs/core-concepts/nodes/aggregation.md)** - Combining multiple items
 - **[Batching](docs/core-concepts/nodes/batching.md)** - Processing data in batches
 - **[Branch](docs/core-concepts/nodes/branch.md)** - Splitting data flows
@@ -267,7 +267,7 @@ functionality and features like advanced parallelism, simplifying testing workfl
 - **[CSV Connector](docs/connectors/csv.md)** - Read from/write to CSV files
 - **[Storage Provider](docs/connectors/storage-provider.md)** - Building custom storage connectors
 
-### Advanced Topics
+### Additional Topics
 
 - **[Performance Hygiene](docs/advanced-topics/performance-hygiene.md)** - Optimization and benchmarking
 - **[Synchronous Fast Paths](docs/advanced-topics/synchronous-fast-paths.md)** - Zero-allocation patterns

@@ -41,9 +41,9 @@ Congratulations! You now have the fundamentals. Continue to the Intermediate Pat
 
 For developers comfortable with basics who want to build robust pipelines:
 
-### Module 1: Advanced Nodes (60 minutes)
+### Module 1: Node Types (60 minutes)
 
-- [Advanced Node Types](core-concepts/nodes/index.md) - Beyond basic transforms
+- [Node Types](core-concepts/nodes/index.md) - Beyond basic transforms
 - [Batching Nodes](core-concepts/nodes/batching.md) - Processing data in batches
 - [Aggregation Nodes](core-concepts/nodes/aggregation.md) - Data aggregation patterns
 - [Join Nodes](core-concepts/nodes/join.md) - Combining multiple data streams
