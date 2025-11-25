@@ -1,0 +1,376 @@
+using NPipeline.Configuration;
+using NPipeline.Configuration.RetryDelay;
+using NPipeline.Execution.RetryDelay;
+using NPipeline.Pipeline;
+
+namespace NPipeline.Tests.Pipeline
+{
+    public sealed class PipelineContextRetryDelayExtensionsTests
+    {
+        [Fact]
+        public void GetRetryDelayStrategy_WithNullContext_ShouldThrowArgumentNullException()
+        {
+            // Act & Assert
+            _ = Assert.Throws<ArgumentNullException>(() => PipelineContextRetryDelayExtensions.GetRetryDelayStrategy(null!));
+        }
+
+        [Fact]
+        public void GetRetryDelayStrategy_WithNoConfiguration_ShouldReturnNoOpStrategy()
+        {
+            // Arrange
+            var context = new PipelineContext();
+
+            // Act
+            var strategy = context.GetRetryDelayStrategy();
+
+            // Assert
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).NotBeNull();
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).BeOfType<NoOpRetryDelayStrategy>();
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).BeSameAs(NoOpRetryDelayStrategy.Instance);
+        }
+
+        [Fact]
+        public void GetRetryDelayStrategy_WithCachedStrategy_ShouldReturnCachedInstance()
+        {
+            // Arrange
+            var context = new PipelineContext();
+            var strategy1 = context.GetRetryDelayStrategy();
+
+            // Act
+            var strategy2 = context.GetRetryDelayStrategy();
+
+            // Assert
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy1).BeSameAs(strategy2);
+        }
+
+        [Fact]
+        public async Task GetRetryDelayStrategy_WithExponentialBackoffConfiguration_ShouldCreateCorrectStrategy()
+        {
+            // Arrange
+            var delayConfig = new RetryDelayStrategyConfiguration(
+                new ExponentialBackoffConfiguration(
+                    TimeSpan.FromMilliseconds(100),
+                    2.5,
+                    TimeSpan.FromSeconds(30)),
+                new FullJitterConfiguration());
+            var context = CreateContextWithDelayStrategy(delayConfig);
+
+            // Act
+            var strategy = context.GetRetryDelayStrategy();
+
+            // Assert
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).NotBeNull();
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).BeOfType<CompositeRetryDelayStrategy>();
+
+            // Test that the strategy produces reasonable delays
+            var delay = await strategy.GetDelayAsync(2, default);
+            _ = AwesomeAssertions.AssertionExtensions.Should(delay).BeGreaterThan(TimeSpan.Zero);
+            _ = AwesomeAssertions.AssertionExtensions.Should(delay).BeLessThanOrEqualTo(TimeSpan.FromSeconds(30));
+        }
+
+        [Fact]
+        public async Task GetRetryDelayStrategy_WithLinearBackoffConfiguration_ShouldCreateCorrectStrategy()
+        {
+            // Arrange
+            var delayConfig = new RetryDelayStrategyConfiguration(
+                new LinearBackoffConfiguration(
+                    TimeSpan.FromMilliseconds(50),
+                    TimeSpan.FromMilliseconds(25),
+                    TimeSpan.FromSeconds(10)),
+                new EqualJitterConfiguration());
+            var context = CreateContextWithDelayStrategy(delayConfig);
+
+            // Act
+            var strategy = context.GetRetryDelayStrategy();
+
+            // Assert
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).NotBeNull();
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).BeOfType<CompositeRetryDelayStrategy>();
+
+            // Test that the strategy produces reasonable delays
+            var delay = await strategy.GetDelayAsync(3, default);
+            _ = AwesomeAssertions.AssertionExtensions.Should(delay).BeGreaterThan(TimeSpan.Zero);
+            _ = AwesomeAssertions.AssertionExtensions.Should(delay).BeLessThanOrEqualTo(TimeSpan.FromSeconds(10));
+        }
+
+        [Fact]
+        public async Task GetRetryDelayStrategy_WithFixedDelayConfiguration_ShouldCreateCorrectStrategy()
+        {
+            // Arrange
+            var delayConfig = new RetryDelayStrategyConfiguration(
+                new FixedDelayConfiguration(TimeSpan.FromMilliseconds(200)),
+                new NoJitterConfiguration());
+            var context = CreateContextWithDelayStrategy(delayConfig);
+
+            // Act
+            var strategy = context.GetRetryDelayStrategy();
+
+            // Assert
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).NotBeNull();
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).BeOfType<CompositeRetryDelayStrategy>();
+
+            // Test that the strategy produces the expected delay
+            var delay = await strategy.GetDelayAsync(5, default);
+            _ = AwesomeAssertions.AssertionExtensions.Should(delay).Be(TimeSpan.FromMilliseconds(200));
+        }
+
+        [Fact]
+        public async Task GetRetryDelayStrategy_WithDecorrelatedJitterConfiguration_ShouldCreateCorrectStrategy()
+        {
+            // Arrange
+            var delayConfig = new RetryDelayStrategyConfiguration(
+                new ExponentialBackoffConfiguration(
+                    TimeSpan.FromMilliseconds(100),
+                    2.0,
+                    TimeSpan.FromSeconds(30)),
+                new DecorrelatedJitterConfiguration());
+            var context = CreateContextWithDelayStrategy(delayConfig);
+
+            // Act
+            var strategy = context.GetRetryDelayStrategy();
+
+            // Assert
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).NotBeNull();
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).BeOfType<CompositeRetryDelayStrategy>();
+
+            // Test that the strategy produces reasonable delays
+            var delay = await strategy.GetDelayAsync(2, default);
+            _ = AwesomeAssertions.AssertionExtensions.Should(delay).BeGreaterThan(TimeSpan.Zero);
+            _ = AwesomeAssertions.AssertionExtensions.Should(delay).BeLessThanOrEqualTo(TimeSpan.FromSeconds(30));
+        }
+
+        [Fact]
+        public async Task GetRetryDelayStrategy_WithEqualJitterConfiguration_ShouldCreateCorrectStrategy()
+        {
+            // Arrange
+            var delayConfig = new RetryDelayStrategyConfiguration(
+                new ExponentialBackoffConfiguration(),
+                new EqualJitterConfiguration());
+            var context = CreateContextWithDelayStrategy(delayConfig);
+
+            // Act
+            var strategy = context.GetRetryDelayStrategy();
+
+            // Assert
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).NotBeNull();
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).BeOfType<CompositeRetryDelayStrategy>();
+
+            // Test that the strategy produces reasonable delays
+            var delay = await strategy.GetDelayAsync(1, default);
+            _ = AwesomeAssertions.AssertionExtensions.Should(delay).BeGreaterThan(TimeSpan.Zero);
+        }
+
+        [Fact]
+        public async Task GetRetryDelayStrategy_WithNoJitterConfiguration_ShouldCreateCorrectStrategy()
+        {
+            // Arrange
+            var delayConfig = new RetryDelayStrategyConfiguration(
+                new ExponentialBackoffConfiguration(),
+                new NoJitterConfiguration());
+            var context = CreateContextWithDelayStrategy(delayConfig);
+
+            // Act
+            var strategy = context.GetRetryDelayStrategy();
+
+            // Assert
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).NotBeNull();
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).BeOfType<CompositeRetryDelayStrategy>();
+
+            // Test that the strategy produces deterministic delays (no jitter)
+            var delay1 = await strategy.GetDelayAsync(1, default);
+            var delay2 = await strategy.GetDelayAsync(1, default);
+            _ = AwesomeAssertions.AssertionExtensions.Should(delay1).Be(delay2); // Should be deterministic
+        }
+
+        [Fact]
+        public void GetRetryDelayStrategy_WithInvalidConfiguration_ShouldFallbackToNoOpStrategy()
+        {
+            // Arrange
+            var delayConfig = new RetryDelayStrategyConfiguration(
+                new ExponentialBackoffConfiguration(
+                    TimeSpan.Zero, // Invalid
+                    2.0,
+                    TimeSpan.FromSeconds(30)),
+                new FullJitterConfiguration());
+            var context = CreateContextWithDelayStrategy(delayConfig);
+
+            // Act
+            var strategy = context.GetRetryDelayStrategy();
+
+            // Assert
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).NotBeNull();
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).BeOfType<NoOpRetryDelayStrategy>();
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).BeSameAs(NoOpRetryDelayStrategy.Instance);
+        }
+
+        [Fact]
+        public void GetRetryDelayStrategy_WithUnknownBackoffStrategy_ShouldFallbackToNoOpStrategy()
+        {
+            // Arrange
+            var delayConfig = new RetryDelayStrategyConfiguration(
+                new TestBackoffConfiguration(),
+                new FullJitterConfiguration());
+            var context = CreateContextWithDelayStrategy(delayConfig);
+
+            // Act
+            var strategy = context.GetRetryDelayStrategy();
+
+            // Assert
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).NotBeNull();
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).BeOfType<NoOpRetryDelayStrategy>();
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).BeSameAs(NoOpRetryDelayStrategy.Instance);
+        }
+
+        [Fact]
+        public async Task GetRetryDelayStrategy_WithUnknownJitterStrategy_ShouldCreateStrategyWithoutJitter()
+        {
+            // Arrange
+            var delayConfig = new RetryDelayStrategyConfiguration(
+                new ExponentialBackoffConfiguration(),
+                new TestJitterConfiguration());
+            var context = CreateContextWithDelayStrategy(delayConfig);
+
+            // Act
+            var strategy = context.GetRetryDelayStrategy();
+
+            // Assert
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).NotBeNull();
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy).BeOfType<CompositeRetryDelayStrategy>();
+
+            // Should create backoff strategy without jitter (null jitter strategy)
+            var delay = await strategy.GetDelayAsync(1, default);
+            _ = AwesomeAssertions.AssertionExtensions.Should(delay).BeGreaterThan(TimeSpan.Zero);
+        }
+
+        [Fact]
+        public async Task GetRetryDelayStrategy_WithCancellation_ShouldRespectCancellationToken()
+        {
+            // Arrange
+            var delayConfig = new RetryDelayStrategyConfiguration(
+                new ExponentialBackoffConfiguration(
+                    TimeSpan.FromSeconds(1),
+                    2.0,
+                    TimeSpan.FromSeconds(10)),
+                new FullJitterConfiguration());
+            var context = CreateContextWithDelayStrategy(delayConfig);
+            var strategy = context.GetRetryDelayStrategy();
+            var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            // Act & Assert
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(
+                () => strategy.GetDelayAsync(1, cts.Token).AsTask());
+        }
+
+        [Fact]
+        public void GetRetryDelayStrategy_WithMultipleCalls_ShouldCacheCorrectly()
+        {
+            // Arrange
+            var delayConfig = new RetryDelayStrategyConfiguration(
+                new ExponentialBackoffConfiguration(),
+                new FullJitterConfiguration());
+            var context = CreateContextWithDelayStrategy(delayConfig);
+
+            // Act
+            var strategy1 = context.GetRetryDelayStrategy();
+            var strategy2 = context.GetRetryDelayStrategy();
+            var strategy3 = context.GetRetryDelayStrategy();
+
+            // Assert
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy1).BeSameAs(strategy2);
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy2).BeSameAs(strategy3);
+        }
+
+        [Fact]
+        public void GetRetryDelayStrategy_WithDifferentContexts_ShouldCreateSeparateStrategies()
+        {
+            // Arrange
+            var delayConfig = new RetryDelayStrategyConfiguration(
+                new ExponentialBackoffConfiguration(),
+                new FullJitterConfiguration());
+            var context1 = CreateContextWithDelayStrategy(delayConfig);
+            var context2 = CreateContextWithDelayStrategy(delayConfig);
+
+            // Act
+            var strategy1 = context1.GetRetryDelayStrategy();
+            var strategy2 = context2.GetRetryDelayStrategy();
+
+            // Assert
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy1).NotBeSameAs(strategy2); // Different contexts should have different instances
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy1).BeOfType<CompositeRetryDelayStrategy>();
+            _ = AwesomeAssertions.AssertionExtensions.Should(strategy2).BeOfType<CompositeRetryDelayStrategy>();
+        }
+
+        [Fact]
+        public async Task GetRetryDelayStrategy_WithAllStrategyCombinations_ShouldWorkCorrectly()
+        {
+            // Arrange
+            var combinations = new[]
+            {
+                new
+                {
+                    Backoff = (BackoffStrategyConfiguration)new ExponentialBackoffConfiguration(),
+                    Jitter = (JitterStrategyConfiguration)new FullJitterConfiguration(),
+                    ExpectedType = typeof(CompositeRetryDelayStrategy)
+                },
+                new
+                {
+                    Backoff = (BackoffStrategyConfiguration)new LinearBackoffConfiguration(),
+                    Jitter = (JitterStrategyConfiguration)new EqualJitterConfiguration(),
+                    ExpectedType = typeof(CompositeRetryDelayStrategy)
+                },
+                new
+                {
+                    Backoff = (BackoffStrategyConfiguration)new FixedDelayConfiguration(),
+                    Jitter = (JitterStrategyConfiguration)new NoJitterConfiguration(),
+                    ExpectedType = typeof(CompositeRetryDelayStrategy)
+                }
+            };
+
+            // Act & Assert
+            foreach (var combination in combinations)
+            {
+                var delayConfig = new RetryDelayStrategyConfiguration(
+                    combination.Backoff,
+                    combination.Jitter);
+                var context = CreateContextWithDelayStrategy(delayConfig);
+
+                var strategy = context.GetRetryDelayStrategy();
+
+                _ = AwesomeAssertions.AssertionExtensions.Should(strategy).BeOfType(combination.ExpectedType);
+
+                // Test that the strategy produces reasonable delays
+                var delay = await strategy.GetDelayAsync(1, default);
+                _ = AwesomeAssertions.AssertionExtensions.Should(delay).BeGreaterThanOrEqualTo(TimeSpan.Zero);
+            }
+        }
+
+        private static PipelineContext CreateContextWithDelayStrategy(RetryDelayStrategyConfiguration delayConfig)
+        {
+            var retryOptions = new PipelineRetryOptions(3, 5, 10, null, delayConfig);
+            var config = PipelineContextConfiguration.WithRetry(retryOptions);
+            return new PipelineContext(config);
+        }
+
+        // Test helper records for unknown strategy types
+        private sealed record TestBackoffConfiguration : BackoffStrategyConfiguration
+        {
+            public override string StrategyType => "Unknown";
+
+            public override void Validate()
+            {
+                // No validation for test
+            }
+        }
+
+        private sealed record TestJitterConfiguration : JitterStrategyConfiguration
+        {
+            public override string StrategyType => "Unknown";
+
+            public override void Validate()
+            {
+                // No validation for test
+            }
+        }
+    }
+}

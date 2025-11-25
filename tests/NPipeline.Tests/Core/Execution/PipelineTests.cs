@@ -22,7 +22,7 @@ public sealed class PipelineTests
         var graph = builder.Build().Graph;
 
         // Act
-        Pipeline.Pipeline pipeline = new(graph);
+        NPipeline.Pipeline.Pipeline pipeline = new(graph);
 
         // Assert
         _ = pipeline.Graph.Should().NotBeNull();
@@ -36,7 +36,7 @@ public sealed class PipelineTests
         PipelineBuilder builder = new();
         _ = builder.AddSource<DummySource, int>("source");
         var graph = builder.Build().Graph;
-        Pipeline.Pipeline pipeline = new(graph);
+        NPipeline.Pipeline.Pipeline pipeline = new(graph);
 
         // Act & Assert
         _ = pipeline.Graph.Should().Be(graph);
@@ -49,7 +49,7 @@ public sealed class PipelineTests
         PipelineBuilder builder = new();
         _ = builder.AddSource<DummySource, int>("source");
         var graph = builder.Build().Graph;
-        Pipeline.Pipeline pipeline = new(graph);
+        NPipeline.Pipeline.Pipeline pipeline = new(graph);
 
         // Act & Assert
         _ = pipeline.BuilderDisposables.Should().NotBeNull();
@@ -63,7 +63,7 @@ public sealed class PipelineTests
         PipelineBuilder builder = new();
         _ = builder.AddSource<DummySource, int>("source");
         var graph = builder.Build().Graph;
-        Pipeline.Pipeline pipeline = new(graph);
+        NPipeline.Pipeline.Pipeline pipeline = new(graph);
 
         DummyAsyncDisposable disposable1 = new();
         DummyAsyncDisposable disposable2 = new();
@@ -84,7 +84,7 @@ public sealed class PipelineTests
         PipelineBuilder builder = new();
         _ = builder.AddSource<DummySource, int>("source");
         var graph = builder.Build().Graph;
-        Pipeline.Pipeline pipeline = new(graph);
+        NPipeline.Pipeline.Pipeline pipeline = new(graph);
 
         // Act & Assert - should be empty by default
         _ = pipeline.BuilderDisposables.Should().BeEmpty();
@@ -97,7 +97,7 @@ public sealed class PipelineTests
         PipelineBuilder builder = new();
         _ = builder.AddSource<DummySource, int>("source");
         var graph = builder.Build().Graph;
-        Pipeline.Pipeline pipeline = new(graph) { BuilderDisposables = [] };
+        NPipeline.Pipeline.Pipeline pipeline = new(graph) { BuilderDisposables = [] };
         var context = PipelineContext.Default;
 
         // Act & Assert
@@ -112,7 +112,7 @@ public sealed class PipelineTests
         PipelineBuilder builder = new();
         _ = builder.AddSource<DummySource, int>("source");
         var graph = builder.Build().Graph;
-        Pipeline.Pipeline pipeline = new(graph);
+        NPipeline.Pipeline.Pipeline pipeline = new(graph);
 
         DummyAsyncDisposable disposable1 = new();
         DummyAsyncDisposable disposable2 = new();
@@ -134,7 +134,7 @@ public sealed class PipelineTests
         PipelineBuilder builder = new();
         _ = builder.AddSource<DummySource, int>("source");
         var graph = builder.Build().Graph;
-        Pipeline.Pipeline pipeline = new(graph);
+        NPipeline.Pipeline.Pipeline pipeline = new(graph);
 
         DummyAsyncDisposable disposable = new();
         pipeline.BuilderDisposables = [disposable];

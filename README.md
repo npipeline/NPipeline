@@ -42,7 +42,7 @@ Choose the right execution strategy for each node: sequential, parallel, or batc
 
 ### Production-Ready Resilience
 
-Built-in error handling with retries, circuit breakers, and dead letter queues. Create robust pipelines that handle failures gracefully.
+Built-in error handling with retry strategies, circuit breakers, and dead letter queues. Create robust pipelines that handle failures gracefully with intelligent backoff and jitter patterns to prevent thundering herd problems.
 
 ## Common Use Cases
 

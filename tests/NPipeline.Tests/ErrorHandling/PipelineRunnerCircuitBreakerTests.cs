@@ -34,7 +34,7 @@ public sealed class PipelineRunnerCircuitBreakerTests
             new PipelineCircuitBreakerOptions(2, TimeSpan.FromSeconds(10), TimeSpan.FromMinutes(1))); // Trips after 2 failures
 
         A.CallTo(() => _pipelineFactory.Create<PipelineRunnerTestHelpers.TestPipelineDefinition>(A<PipelineContext>._))
-            .Returns(new Pipeline.Pipeline(graph));
+            .Returns(new NPipeline.Pipeline.Pipeline(graph));
 
         A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
@@ -94,7 +94,7 @@ public sealed class PipelineRunnerCircuitBreakerTests
             .Build();
 
         A.CallTo(() => _pipelineFactory.Create<PipelineRunnerTestHelpers.TestPipelineDefinition>(A<PipelineContext>._))
-            .Returns(new Pipeline.Pipeline(graph));
+            .Returns(new NPipeline.Pipeline.Pipeline(graph));
 
         A.CallTo(() => _executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
             .Returns(new Dictionary<string, INode>());

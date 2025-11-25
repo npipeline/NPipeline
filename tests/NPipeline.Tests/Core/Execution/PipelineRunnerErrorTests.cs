@@ -28,7 +28,7 @@ public sealed class PipelineRunnerErrorTests
 
         var nodeDef = new NodeDefinition(
             nodeId, nodeId, typeof(FailingNode), NodeKind.Source,
-            null, null, null, typeof(object));
+            null, null, typeof(object));
 
         var graph = PipelineGraphBuilder.Create()
             .WithNodes(ImmutableList.Create(nodeDef))
@@ -36,7 +36,7 @@ public sealed class PipelineRunnerErrorTests
             .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
             .Build();
 
-        A.CallTo(() => _pipelineFactory.Create<TestPipelineDefinition>(A<PipelineContext>._)).Returns(new Pipeline.Pipeline(graph));
+        A.CallTo(() => _pipelineFactory.Create<TestPipelineDefinition>(A<PipelineContext>._)).Returns(new NPipeline.Pipeline.Pipeline(graph));
         A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
         A.CallTo(() => _executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
@@ -84,7 +84,7 @@ public sealed class PipelineRunnerErrorTests
 
         var nodeDef = new NodeDefinition(
             nodeId, nodeId, typeof(FailingNode), NodeKind.Source,
-            null, null, null, typeof(object));
+            null, null, typeof(object));
 
         var graph = PipelineGraphBuilder.Create()
             .WithNodes(ImmutableList.Create(nodeDef))
@@ -92,7 +92,7 @@ public sealed class PipelineRunnerErrorTests
             .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
             .Build();
 
-        A.CallTo(() => _pipelineFactory.Create<TestPipelineDefinition>(A<PipelineContext>._)).Returns(new Pipeline.Pipeline(graph));
+        A.CallTo(() => _pipelineFactory.Create<TestPipelineDefinition>(A<PipelineContext>._)).Returns(new NPipeline.Pipeline.Pipeline(graph));
         A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
         A.CallTo(() => _executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
@@ -150,7 +150,7 @@ public sealed class PipelineRunnerErrorTests
         var cts = new CancellationTokenSource();
         var failingNode = new FailingNode(0); // This node will not fail on its own
 
-        A.CallTo(() => _pipelineFactory.Create<TestPipelineDefinition>(A<PipelineContext>._)).Returns(new Pipeline.Pipeline(graph));
+        A.CallTo(() => _pipelineFactory.Create<TestPipelineDefinition>(A<PipelineContext>._)).Returns(new NPipeline.Pipeline.Pipeline(graph));
         A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
         A.CallTo(() => _executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
@@ -209,7 +209,7 @@ public sealed class PipelineRunnerErrorTests
             PreconfiguredNodeInstances = ImmutableDictionary<string, INode>.Empty,
         };
 
-        A.CallTo(() => _pipelineFactory.Create<TestPipelineDefinition>(A<PipelineContext>._)).Returns(new Pipeline.Pipeline(graph));
+        A.CallTo(() => _pipelineFactory.Create<TestPipelineDefinition>(A<PipelineContext>._)).Returns(new NPipeline.Pipeline.Pipeline(graph));
         A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
         A.CallTo(() => _executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
@@ -225,7 +225,7 @@ public sealed class PipelineRunnerErrorTests
                 A<PipelineContext>._,
                 A<Func<Task>>._,
                 A<CancellationToken>._))
-            .Throws(innerException); // Directly throw the NodeExecutionException
+            .Throws(innerException); // Directly throw NodeExecutionException
 
         var runner = new PipelineRunner(
             _pipelineFactory,
@@ -237,7 +237,7 @@ public sealed class PipelineRunnerErrorTests
         var context = PipelineContext.Default;
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<NodeExecutionException>(() =>
+        var exception = await Assert.ThrowsAsync<PipelineExecutionException>(() =>
             runner.RunAsync<TestPipelineDefinition>(context));
 
         exception.Should().BeSameAs(innerException); // Should not be re-wrapped
@@ -262,7 +262,7 @@ public sealed class PipelineRunnerErrorTests
             PreconfiguredNodeInstances = ImmutableDictionary<string, INode>.Empty,
         };
 
-        A.CallTo(() => _pipelineFactory.Create<TestPipelineDefinition>(A<PipelineContext>._)).Returns(new Pipeline.Pipeline(graph));
+        A.CallTo(() => _pipelineFactory.Create<TestPipelineDefinition>(A<PipelineContext>._)).Returns(new NPipeline.Pipeline.Pipeline(graph));
         A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
         A.CallTo(() => _executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))

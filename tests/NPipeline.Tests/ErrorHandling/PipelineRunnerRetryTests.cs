@@ -31,7 +31,7 @@ public sealed class PipelineRunnerRetryTests
             new PipelineRetryOptions(MaxNodeRestartAttempts: 3, MaxSequentialNodeAttempts: 3, MaxItemRetries: 0));
 
         A.CallTo(() => _pipelineFactory.Create<PipelineRunnerTestHelpers.TestPipelineDefinition>(A<PipelineContext>._))
-            .Returns(new Pipeline.Pipeline(graph));
+            .Returns(new NPipeline.Pipeline.Pipeline(graph));
 
         A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 

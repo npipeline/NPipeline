@@ -269,6 +269,443 @@ public class AdvancedRetryHandler : INodeErrorHandler<ITransformNode<string, str
 }
 ```
 
+## Built-in Retry Delay Strategies
+
+NPipeline provides built-in retry delay strategies that combine **backoff** (how delays increase over time) with **jitter** (randomness to prevent synchronized retries). These strategies are essential for distributed systems to prevent thundering herd problems.
+
+### Why Backoff and Jitter Matter
+
+**The Thundering Herd Problem:** When multiple pipeline instances encounter failures simultaneously and retry immediately, they can overwhelm a recovering service, causing cascading failures. Backoff strategies prevent this by increasing delays between retries, and jitter adds randomness to prevent synchronized retries.
+
+### Available Backoff Strategies
+
+#### Exponential Backoff
+
+Delays grow exponentially, ideal for distributed systems with transient failures:
+
+```csharp
+// Configuration approach
+var config = new ExponentialBackoffConfiguration(
+    baseDelay: TimeSpan.FromSeconds(1),
+    multiplier: 2.0,
+    maxDelay: TimeSpan.FromMinutes(1));
+
+// Runtime configuration via PipelineContext
+context.UseExponentialBackoffDelay(
+    baseDelay: TimeSpan.FromSeconds(1),
+    multiplier: 2.0,
+    maxDelay: TimeSpan.FromMinutes(1));
+```
+
+**Delay progression:** 1s → 2s → 4s → 8s → 16s → 32s → 60s (capped)
+
+**Use cases:**
+- Web API calls with transient network failures
+- Database connections during temporary overload
+- Microservice communication during partial outages
+
+#### Linear Backoff
+
+Delays grow linearly, providing predictable recovery:
+
+```csharp
+// Configuration approach
+var config = new LinearBackoffConfiguration(
+    baseDelay: TimeSpan.FromSeconds(1),
+    increment: TimeSpan.FromSeconds(2),
+    maxDelay: TimeSpan.FromSeconds(30));
+
+// Runtime configuration
+context.UseLinearBackoffDelay(
+    baseDelay: TimeSpan.FromSeconds(1),
+    increment: TimeSpan.FromSeconds(2),
+    maxDelay: TimeSpan.FromSeconds(30));
+```
+
+**Delay progression:** 1s → 3s → 5s → 7s → 9s → ... → 30s (capped)
+
+**Use cases:**
+- File processing with temporary resource contention
+- Batch operations with predictable recovery patterns
+
+#### Fixed Delay
+
+Constant delay between all retries:
+
+```csharp
+// Configuration approach
+var config = new FixedDelayConfiguration(
+    delay: TimeSpan.FromSeconds(5));
+
+// Runtime configuration
+context.UseFixedDelay(
+    delay: TimeSpan.FromSeconds(5));
+```
+
+**Delay progression:** 5s → 5s → 5s → 5s → ...
+
+**Use cases:**
+- Testing and debugging scenarios
+- Known recovery times
+
+### Available Jitter Strategies
+
+#### Full Jitter
+
+Provides best protection against thundering herd:
+
+```csharp
+var config = new FullJitterConfiguration();
+```
+
+**Formula:** `random(0, baseDelay)`
+
+#### Equal Jitter
+
+Balances predictability with randomness:
+
+```csharp
+var config = new EqualJitterConfiguration();
+```
+
+**Formula:** `baseDelay/2 + random(0, baseDelay/2)`
+
+#### Decorrelated Jitter
+
+Adapts based on previous delays:
+
+```csharp
+var config = new DecorrelatedJitterConfiguration(
+    maxDelay: TimeSpan.FromMinutes(1),
+    multiplier: 3.0);
+```
+
+#### No Jitter
+
+Deterministic timing (useful for testing):
+
+```csharp
+var config = new NoJitterConfiguration();
+```
+
+### Recommended Strategy Combinations
+
+**Web APIs (Recommended):**
+```csharp
+context.UseExponentialBackoffDelay(
+    baseDelay: TimeSpan.FromSeconds(1),
+    multiplier: 2.0,
+    maxDelay: TimeSpan.FromMinutes(1));
+```
+
+**Database Operations:**
+```csharp
+context.UseLinearBackoffDelay(
+    baseDelay: TimeSpan.FromMilliseconds(100),
+    increment: TimeSpan.FromMilliseconds(200),
+    maxDelay: TimeSpan.FromSeconds(5));
+```
+
+**File Processing:**
+```csharp
+context.UseFixedDelay(
+    delay: TimeSpan.FromSeconds(2));
+```
+
+### Configuration at Initialization
+
+You can configure delay strategies when building your pipeline:
+
+```csharp
+var retryOptions = new PipelineRetryOptions(
+    MaxItemRetries: 3,
+    MaxNodeRestartAttempts: 2,
+    MaxSequentialNodeAttempts: 5,
+    delayStrategyConfiguration: new RetryDelayStrategyConfiguration(
+        new ExponentialBackoffConfiguration(
+            TimeSpan.FromSeconds(1), 2.0, TimeSpan.FromMinutes(1)),
+        new FullJitterConfiguration()));
+
+builder.WithRetryOptions(retryOptions);
+```
+
+### Runtime Configuration
+
+Configure delay strategies at runtime within your pipeline definition:
+
+```csharp
+public void Define(PipelineBuilder builder, PipelineContext context)
+{
+    // Check system conditions and configure accordingly
+    if (IsHighLoad(context))
+    {
+        context.UseExponentialBackoffDelay(
+            baseDelay: TimeSpan.FromSeconds(2),
+            multiplier: 3.0,
+            maxDelay: TimeSpan.FromMinutes(5));
+    }
+    else
+    {
+        context.UseExponentialBackoffDelay(
+            baseDelay: TimeSpan.FromSeconds(1),
+            multiplier: 2.0,
+            maxDelay: TimeSpan.FromMinutes(1));
+    }
+
+    var source = builder.AddSource<MySource, MyData>("Source");
+    var transform = builder.AddTransform<MyTransform, MyData, ProcessedData>("Transform");
+    builder.Connect(source, transform);
+}
+```
+
+For more advanced retry delay patterns and scenarios, see the [Advanced Retry Delay Strategies](../../advanced-topics/retry-delay-advanced.md) guide.
+
+## Retry Delay API Reference
+
+### Core Interfaces
+
+#### IRetryDelayStrategy
+
+```csharp
+public interface IRetryDelayStrategy
+{
+    ValueTask<TimeSpan> GetDelayAsync(int attemptNumber, CancellationToken cancellationToken = default);
+}
+```
+
+Defines the contract for calculating retry delays. The `attemptNumber` is 0-based (0 = first retry).
+
+#### IBackoffStrategy
+
+```csharp
+public interface IBackoffStrategy
+{
+    TimeSpan CalculateDelay(int attemptNumber);
+}
+```
+
+Determines how delays increase over time based on attempt number.
+
+#### IJitterStrategy
+
+```csharp
+public interface IJitterStrategy
+{
+    TimeSpan ApplyJitter(TimeSpan baseDelay, Random random);
+}
+```
+
+Adds randomness to retry delays to prevent synchronized retries.
+
+### Strategy Classes
+
+#### ExponentialBackoffStrategy
+
+```csharp
+public sealed class ExponentialBackoffStrategy : IBackoffStrategy
+{
+    public ExponentialBackoffStrategy(ExponentialBackoffConfiguration configuration);
+    public TimeSpan CalculateDelay(int attemptNumber);
+}
+```
+
+Formula: `delay = baseDelay × multiplier^attemptNumber` (capped at maxDelay)
+
+#### LinearBackoffStrategy
+
+```csharp
+public sealed class LinearBackoffStrategy : IBackoffStrategy
+{
+    public LinearBackoffStrategy(LinearBackoffConfiguration configuration);
+    public TimeSpan CalculateDelay(int attemptNumber);
+}
+```
+
+Formula: `delay = baseDelay + (increment × attemptNumber)` (capped at maxDelay)
+
+#### FixedDelayStrategy
+
+```csharp
+public sealed class FixedDelayStrategy : IBackoffStrategy
+{
+    public FixedDelayStrategy(FixedDelayConfiguration configuration);
+    public TimeSpan CalculateDelay(int attemptNumber);
+}
+```
+
+Returns the same delay for all attempts.
+
+#### Jitter Strategies
+
+**FullJitterStrategy:** `random(0, baseDelay)`
+**EqualJitterStrategy:** `baseDelay/2 + random(0, baseDelay/2)`
+**DecorrelatedJitterStrategy:** `random(baseDelay, min(maxDelay, previousDelay × multiplier))`
+**NoJitterStrategy:** Returns baseDelay unchanged
+
+#### CompositeRetryDelayStrategy
+
+```csharp
+public sealed class CompositeRetryDelayStrategy : IRetryDelayStrategy
+{
+    public CompositeRetryDelayStrategy(
+        IBackoffStrategy backoffStrategy,
+        IJitterStrategy jitterStrategy);
+}
+```
+
+Combines backoff and jitter strategies.
+
+#### NoOpRetryDelayStrategy
+
+```csharp
+public sealed class NoOpRetryDelayStrategy : IRetryDelayStrategy
+{
+    public static NoOpRetryDelayStrategy Instance { get; }
+}
+```
+
+Singleton that always returns `TimeSpan.Zero` for immediate retries.
+
+### Configuration Classes
+
+#### ExponentialBackoffConfiguration
+
+```csharp
+public sealed class ExponentialBackoffConfiguration : BackoffStrategyConfiguration
+{
+    public ExponentialBackoffConfiguration(TimeSpan baseDelay, double multiplier, TimeSpan maxDelay);
+    public TimeSpan BaseDelay { get; }
+    public double Multiplier { get; }
+    public TimeSpan MaxDelay { get; }
+}
+```
+
+**Constraints:**
+
+* `baseDelay` > TimeSpan.Zero
+* `multiplier` ≥ 1.0
+* `maxDelay` ≥ baseDelay
+
+#### LinearBackoffConfiguration
+
+```csharp
+public sealed class LinearBackoffConfiguration : BackoffStrategyConfiguration
+{
+    public LinearBackoffConfiguration(TimeSpan baseDelay, TimeSpan increment, TimeSpan maxDelay);
+    public TimeSpan BaseDelay { get; }
+    public TimeSpan Increment { get; }
+    public TimeSpan MaxDelay { get; }
+}
+```
+
+**Constraints:**
+
+* `baseDelay` > TimeSpan.Zero
+* `increment` ≥ TimeSpan.Zero
+* `maxDelay` ≥ baseDelay
+
+#### FixedDelayConfiguration
+
+```csharp
+public sealed class FixedDelayConfiguration : BackoffStrategyConfiguration
+{
+    public FixedDelayConfiguration(TimeSpan delay);
+    public TimeSpan Delay { get; }
+}
+```
+
+**Constraints:**
+
+* `delay` > TimeSpan.Zero
+
+#### Jitter Configurations
+
+* `FullJitterConfiguration` - No parameters required
+* `EqualJitterConfiguration` - No parameters required
+* `DecorrelatedJitterConfiguration` - No parameters required
+* `NoJitterConfiguration` - No parameters required
+
+#### RetryDelayStrategyConfiguration
+
+```csharp
+public sealed class RetryDelayStrategyConfiguration
+{
+    public RetryDelayStrategyConfiguration(
+        BackoffStrategyConfiguration backoffConfiguration,
+        JitterStrategyConfiguration jitterConfiguration);
+}
+```
+
+Combines backoff and jitter configurations.
+
+### Extension Methods
+
+#### PipelineContextRetryDelayExtensions
+
+```csharp
+public static class PipelineContextRetryDelayExtensions
+{
+    public static IRetryDelayStrategy GetRetryDelayStrategy(this PipelineContext context);
+    public static Task<TimeSpan> GetRetryDelayAsync(this PipelineContext context, int attempt);
+    
+    public static PipelineContext UseExponentialBackoffDelay(
+        this PipelineContext context,
+        TimeSpan baseDelay,
+        double multiplier = 2.0,
+        TimeSpan? maxDelay = null);
+    
+    public static PipelineContext UseLinearBackoffDelay(
+        this PipelineContext context,
+        TimeSpan baseDelay,
+        TimeSpan increment,
+        TimeSpan? maxDelay = null);
+    
+    public static PipelineContext UseFixedDelay(
+        this PipelineContext context,
+        TimeSpan delay);
+    
+    public static PipelineContext UseExponentialBackoffWithJitter(
+        this PipelineContext context,
+        TimeSpan baseDelay,
+        double multiplier = 2.0,
+        TimeSpan? maxDelay = null,
+        TimeSpan? jitterMax = null);
+}
+```
+
+### Factory
+
+#### DefaultRetryDelayStrategyFactory
+
+```csharp
+public sealed class DefaultRetryDelayStrategyFactory
+{
+    public IRetryDelayStrategy CreateStrategy(RetryDelayStrategyConfiguration configuration);
+    public IRetryDelayStrategy CreateExponentialBackoff(ExponentialBackoffConfiguration config);
+    public IRetryDelayStrategy CreateLinearBackoff(LinearBackoffConfiguration config);
+    public IRetryDelayStrategy CreateFixedDelay(FixedDelayConfiguration config);
+}
+```
+
+Creates retry delay strategies from configurations.
+
+### Validation
+
+#### RetryDelayStrategyValidator
+
+```csharp
+public static class RetryDelayStrategyValidator
+{
+    public static void ValidateExponentialBackoffConfiguration(ExponentialBackoffConfiguration configuration);
+    public static void ValidateLinearBackoffConfiguration(LinearBackoffConfiguration configuration);
+    public static void ValidateFixedDelayConfiguration(FixedDelayConfiguration configuration);
+    public static bool IsValidAttemptNumber(int attemptNumber);
+    public static bool IsValidDelay(TimeSpan delay);
+}
+```
+
+Validates retry delay strategy configurations.
+
 ## Retry Strategies
 
 ### Fixed Delay Retry
@@ -568,6 +1005,158 @@ public class ProductionRetryHandler : INodeErrorHandler<ITransformNode<string, s
 
 > :warning: Materialization Requirements
 When configuring retries with `MaxMaterializedItems`, it's important to understand how buffering enables replay functionality. Materialization is critical because it creates a snapshot of input items that can be replayed if a node fails and needs to restart, preventing data loss and ensuring processing continuity. See [Materialization and Buffering](../resilience/materialization-and-buffering.md) in the resilience section for detailed guidance.
+
+## Troubleshooting Retry Strategies
+
+### Common Issues and Solutions
+
+#### Too Many Retries
+
+* **Symptoms:** High retry counts, long processing times
+* **Solutions:**
+  * Increase base delay or multiplier to back off more aggressively
+  * Lower maximum retry count
+  * Add circuit breaker to fail fast
+  * Check for systemic issues beyond transient failures
+
+#### Too Few Retries
+
+* **Symptoms:** Premature failures, low success rate
+* **Solutions:**
+  * Decrease base delay or multiplier for faster retry attempts
+  * Increase maximum retry count
+  * Verify error classification (distinguish transient vs permanent failures)
+  * Check timeout configurations
+
+#### Thundering Herd Problem
+
+* **Symptoms:** Synchronized retry spikes, sudden service overload
+* **Solutions:**
+  * Add or increase jitter (full jitter is most effective)
+  * Use decorrelated jitter for adaptive behavior
+  * Reduce concurrent retry attempts
+  * Implement rate limiting
+
+#### Long Recovery Times
+
+* **Symptoms:** Slow recovery after service restoration
+* **Solutions:**
+  * Decrease maximum delay cap
+  * Use linear backoff instead of exponential for more predictable delays
+  * Lower base delay for faster initial retries
+  * Implement circuit breaker reset mechanisms
+
+### Debugging Retry Patterns
+
+Monitor retry behavior using PipelineContext:
+
+```csharp
+public class RetryAnalyzer
+{
+    public async Task AnalyzeRetryPatternAsync(PipelineContext context)
+    {
+        var strategy = context.GetRetryDelayStrategy();
+        var delays = new List<TimeSpan>();
+        
+        // Simulate retry delays for analysis
+        for (int attempt = 0; attempt < 5; attempt++)
+        {
+            var delay = await strategy.GetDelayAsync(attempt);
+            delays.Add(delay);
+            Console.WriteLine($"Attempt {attempt}: {delay.TotalMilliseconds:F2}ms");
+        }
+        
+        Console.WriteLine($"Average delay: {delays.Average(d => d.TotalMilliseconds):F2}ms");
+        Console.WriteLine($"Max delay: {delays.Max(d => d.TotalMilliseconds):F2}ms");
+    }
+}
+```
+
+### Performance Profiling
+
+Profile strategy performance:
+
+```csharp
+public class RetryStrategyProfiler
+{
+    public async Task ProfileStrategyAsync(
+        IRetryDelayStrategy strategy, 
+        int attempts = 10)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var delays = new List<TimeSpan>();
+        
+        for (int i = 0; i < attempts; i++)
+        {
+            var delay = await strategy.GetDelayAsync(i);
+            delays.Add(delay);
+        }
+        
+        stopwatch.Stop();
+        
+        Console.WriteLine($"Strategy: {strategy.GetType().Name}");
+        Console.WriteLine($"Total time: {stopwatch.ElapsedMilliseconds}ms");
+        Console.WriteLine($"Average delay: {delays.Average(d => d.TotalMilliseconds):F2}ms");
+        Console.WriteLine($"Min delay: {delays.Min(d => d.TotalMilliseconds):F2}ms");
+        Console.WriteLine($"Max delay: {delays.Max(d => d.TotalMilliseconds):F2}ms");
+    }
+}
+```
+
+## Implementation Guidelines
+
+### Integration Checklist
+
+1. **Assess current retry behavior** - Understand existing patterns and limitations
+2. **Choose appropriate strategy** - Based on your service type and use case
+3. **Test with new configuration** - Validate retry behavior in test environments
+4. **Monitor in production** - Observe actual retry patterns and success rates
+5. **Fine-tune parameters** - Optimize base delay, multiplier/increment, and max delay based on metrics
+6. **Document decisions** - Record why specific strategies were chosen for future reference
+
+### Parameter Selection Guidelines
+
+#### Base Delay
+
+* **Too short:** Can overwhelm the failing service, defeating the purpose of backoff
+* **Too long:** Unnecessary delays during normal recovery
+* **Guidance:** Start with 10-50% of expected operation time, then adjust based on observation
+
+#### Backoff Multiplier/Increment
+
+* **Exponential multiplier:** 1.5-3.0 (2.0 is a common default)
+* **Linear increment:** 50-200% of base delay
+* **Consider:** Service recovery patterns and whether you want aggressive or conservative backoff
+
+#### Maximum Delay
+
+* **Web APIs:** 30 seconds to 5 minutes (services usually recover quickly)
+* **Databases:** 5-30 seconds (recovery time depends on lock contention and query queues)
+* **File operations:** 1-10 seconds (filesystem recovery is usually immediate)
+* **Message queues:** 10-60 seconds (depends on queue depth and processing rate)
+
+### Monitoring Key Metrics
+
+```csharp
+public class RetryMetricsCollector
+{
+    public void CollectMetrics(PipelineContext context)
+    {
+        var metrics = new
+        {
+            TotalAttempts = context.Metrics.GetCounter("total_attempts"),
+            SuccessfulRetries = context.Metrics.GetCounter("successful_retries"),
+            FailedRetries = context.Metrics.GetCounter("failed_retries"),
+            AverageRetryDelay = context.Metrics.GetGauge("average_retry_delay_ms"),
+            MaxRetryDelayReached = context.Metrics.GetCounter("max_retry_delay_reached")
+        };
+        
+        var successRate = (double)metrics.SuccessfulRetries / metrics.TotalAttempts;
+        Console.WriteLine($"Retry success rate: {successRate:P}");
+        Console.WriteLine($"Average retry delay: {metrics.AverageRetryDelay:F2}ms");
+    }
+}
+```
 
 ## See Also
 

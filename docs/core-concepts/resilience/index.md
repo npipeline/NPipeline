@@ -250,7 +250,8 @@ For systems with limited memory:
 
 ## Next Steps
 
-- **[Resilient Execution Strategy](execution-with-resilience.md)**: Learn about the core wrapper that enables resilience
+- **[Retry Delay Quickstart](retry-delay-quickstart.md)**: Get started quickly with common retry patterns and recommended configurations
+- **[Resilient Execution Strategy](execution-with-resilience.md)**: Learn how to wrap execution strategies with error handling
 - **[Materialization and Buffering](materialization-and-buffering.md)**: Understand how buffering enables replay functionality
 - **[Dependency Chains](dependency-chains.md)**: Explore the critical prerequisite relationships in detail
 - **[Configuration Guide](configuration-guide.md)**: Get practical implementation guidance with code examples

@@ -26,7 +26,7 @@ public sealed class PipelineRunnerCancellationTests
         var graph = PipelineRunnerTestHelpers.PipelineGraphFactory.CreateSimpleGraph(nodeDef);
 
         A.CallTo(() => _pipelineFactory.Create<PipelineRunnerTestHelpers.TestPipelineDefinition>(A<PipelineContext>._))
-            .Returns(new Pipeline.Pipeline(graph));
+            .Returns(new NPipeline.Pipeline.Pipeline(graph));
 
         A.CallTo(() => _executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
             .Returns(new Dictionary<string, INode> { { nodeId, A.Fake<INode>() } });
@@ -68,7 +68,7 @@ public sealed class PipelineRunnerCancellationTests
         var graph = PipelineRunnerTestHelpers.PipelineGraphFactory.CreateSimpleGraph(nodeDef);
 
         A.CallTo(() => _pipelineFactory.Create<PipelineRunnerTestHelpers.TestPipelineDefinition>(A<PipelineContext>._))
-            .Returns(new Pipeline.Pipeline(graph));
+            .Returns(new NPipeline.Pipeline.Pipeline(graph));
 
         A.CallTo(() => _executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
             .Returns(new Dictionary<string, INode> { { nodeId, A.Fake<INode>() } });

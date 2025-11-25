@@ -1,3 +1,5 @@
+using NPipeline.Configuration.RetryDelay;
+
 namespace NPipeline.Configuration;
 
 /// <summary>
@@ -7,7 +9,8 @@ public sealed record PipelineRetryOptions(
     int MaxItemRetries,
     int MaxNodeRestartAttempts,
     int MaxSequentialNodeAttempts,
-    int? MaxMaterializedItems = null) // Null => unbounded (no cap)
+    int? MaxMaterializedItems = null, // Null => unbounded (no cap)
+    RetryDelayStrategyConfiguration? DelayStrategyConfiguration = null)
 {
     /// <summary>
     ///     Default options: item retries = 0 (no retry), node restarts = 3, sequential node attempts = 5.
@@ -21,12 +24,14 @@ public sealed record PipelineRetryOptions(
         int? maxItemRetries = null,
         int? maxNodeRestartAttempts = null,
         int? maxSequentialNodeAttempts = null,
-        int? maxMaterializedItems = null)
+        int? maxMaterializedItems = null,
+        RetryDelayStrategyConfiguration? delayStrategyConfiguration = null)
     {
         return new PipelineRetryOptions(
             maxItemRetries ?? MaxItemRetries,
             maxNodeRestartAttempts ?? MaxNodeRestartAttempts,
             maxSequentialNodeAttempts ?? MaxSequentialNodeAttempts,
-            maxMaterializedItems ?? MaxMaterializedItems);
+            maxMaterializedItems ?? MaxMaterializedItems,
+            delayStrategyConfiguration ?? DelayStrategyConfiguration);
     }
 }

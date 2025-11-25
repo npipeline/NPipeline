@@ -1,0 +1,194 @@
+using NPipeline.Execution.RetryDelay.Backoff;
+using NPipeline.Execution.RetryDelay.Jitter;
+using NPipeline.Configuration.RetryDelay;
+
+namespace NPipeline.Execution.RetryDelay
+{
+    /// <summary>
+    ///     Default implementation of <see cref="IRetryDelayStrategyFactory"/>.
+    /// </summary>
+    /// <remarks>
+    ///     <para>
+    ///         This factory creates retry delay strategies with proper configuration validation
+    ///         and provides a shared Random instance for jitter calculations to ensure
+    ///         thread safety and performance.
+    ///     </para>
+    ///     <para>
+    ///         The factory is designed to be thread-safe and can be used as a singleton
+    ///         across the application for consistent retry behavior.
+    ///     </para>
+    /// </remarks>
+    public sealed class DefaultRetryDelayStrategyFactory(Random? random = null) : IRetryDelayStrategyFactory
+    {
+        private readonly Random _random = random ?? new Random();
+
+        /// <summary>
+        ///     Creates an exponential backoff strategy with the specified configuration.
+        /// </summary>
+        /// <param name="configuration">The configuration for exponential backoff.</param>
+        /// <param name="jitterStrategy">Optional jitter strategy to apply.</param>
+        /// <returns>A configured retry delay strategy.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
+        public IRetryDelayStrategy CreateExponentialBackoff(
+            Backoff.ExponentialBackoffConfiguration configuration,
+            IJitterStrategy? jitterStrategy = null)
+        {
+            ArgumentNullException.ThrowIfNull(configuration);
+
+            var backoffStrategy = new Backoff.ExponentialBackoffStrategy(configuration);
+            return new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, _random);
+        }
+
+        /// <summary>
+        ///     Creates a linear backoff strategy with the specified configuration.
+        /// </summary>
+        /// <param name="configuration">The configuration for linear backoff.</param>
+        /// <param name="jitterStrategy">Optional jitter strategy to apply.</param>
+        /// <returns>A configured retry delay strategy.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
+        public IRetryDelayStrategy CreateLinearBackoff(
+            Backoff.LinearBackoffConfiguration configuration,
+            IJitterStrategy? jitterStrategy = null)
+        {
+            ArgumentNullException.ThrowIfNull(configuration);
+
+            var backoffStrategy = new Backoff.LinearBackoffStrategy(configuration);
+            return new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, _random);
+        }
+
+        /// <summary>
+        ///     Creates a fixed delay strategy with the specified configuration.
+        /// </summary>
+        /// <param name="configuration">The configuration for fixed delay.</param>
+        /// <param name="jitterStrategy">Optional jitter strategy to apply.</param>
+        /// <returns>A configured retry delay strategy.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
+        public IRetryDelayStrategy CreateFixedDelay(
+            Backoff.FixedDelayConfiguration configuration,
+            IJitterStrategy? jitterStrategy = null)
+        {
+            ArgumentNullException.ThrowIfNull(configuration);
+
+            var backoffStrategy = new Backoff.FixedDelayStrategy(configuration);
+            return new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, _random);
+        }
+
+        /// <summary>
+        ///     Creates a no-operation retry delay strategy.
+        /// </summary>
+        /// <returns>A no-operation retry delay strategy.</returns>
+        /// <remarks>
+        ///     This strategy always returns TimeSpan.Zero and is useful for testing
+        ///     or when delays should be handled elsewhere.
+        /// </remarks>
+        public IRetryDelayStrategy CreateNoOp()
+        {
+            return NoOpRetryDelayStrategy.Instance;
+        }
+
+        /// <summary>
+        ///     Creates a full jitter strategy with the specified configuration.
+        /// </summary>
+        /// <param name="configuration">The configuration for full jitter.</param>
+        /// <returns>A configured full jitter strategy.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
+        public IJitterStrategy CreateFullJitter(Jitter.FullJitterConfiguration configuration)
+        {
+            ArgumentNullException.ThrowIfNull(configuration);
+            return new FullJitterStrategy(configuration);
+        }
+
+        /// <summary>
+        ///     Creates a decorrelated jitter strategy with the specified configuration.
+        /// </summary>
+        /// <param name="configuration">The configuration for decorrelated jitter.</param>
+        /// <returns>A configured decorrelated jitter strategy.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
+        public IJitterStrategy CreateDecorrelatedJitter(Jitter.DecorrelatedJitterConfiguration configuration)
+        {
+            ArgumentNullException.ThrowIfNull(configuration);
+            return new DecorrelatedJitterStrategy(configuration);
+        }
+
+        /// <summary>
+        ///     Creates an equal jitter strategy with the specified configuration.
+        /// </summary>
+        /// <param name="configuration">The configuration for equal jitter.</param>
+        /// <returns>A configured equal jitter strategy.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
+        public IJitterStrategy CreateEqualJitter(Jitter.EqualJitterConfiguration configuration)
+        {
+            ArgumentNullException.ThrowIfNull(configuration);
+            return new EqualJitterStrategy(configuration);
+        }
+
+        /// <summary>
+        ///     Creates a no jitter strategy with the specified configuration.
+        /// </summary>
+        /// <param name="configuration">The configuration for no jitter.</param>
+        /// <returns>A configured no jitter strategy.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
+        public IJitterStrategy CreateNoJitter(Jitter.NoJitterConfiguration configuration)
+        {
+            ArgumentNullException.ThrowIfNull(configuration);
+            return new NoJitterStrategy(configuration);
+        }
+
+        /// <summary>
+        ///     Creates a retry delay strategy from configuration.
+        /// </summary>
+        /// <param name="configuration">The retry delay strategy configuration.</param>
+        /// <returns>A configured retry delay strategy.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
+        public IRetryDelayStrategy CreateStrategy(RetryDelayStrategyConfiguration configuration)
+        {
+            ArgumentNullException.ThrowIfNull(configuration);
+
+            var backoffConfig = configuration.BackoffConfiguration;
+            var jitterConfig = configuration.JitterConfiguration;
+
+            // Create jitter strategy based on configuration
+            IJitterStrategy? jitterStrategy = jitterConfig.StrategyType switch
+            {
+                "Full" => CreateFullJitter(new Jitter.FullJitterConfiguration()),
+                "Decorrelated" => CreateDecorrelatedJitter(new Jitter.DecorrelatedJitterConfiguration()),
+                "Equal" => CreateEqualJitter(new Jitter.EqualJitterConfiguration()),
+                "No" => CreateNoJitter(new Jitter.NoJitterConfiguration()),
+                _ => null
+            };
+
+            // Create backoff strategy based on configuration
+            return backoffConfig.StrategyType switch
+            {
+                "Exponential" => CreateExponentialBackoff(
+                    new Backoff.ExponentialBackoffConfiguration 
+                    {
+                        BaseDelay = ((Configuration.RetryDelay.ExponentialBackoffConfiguration)backoffConfig).BaseDelay,
+                        Multiplier = ((Configuration.RetryDelay.ExponentialBackoffConfiguration)backoffConfig).Multiplier,
+                        MaxDelay = ((Configuration.RetryDelay.ExponentialBackoffConfiguration)backoffConfig).MaxDelay
+                    }, jitterStrategy),
+                "Linear" => CreateLinearBackoff(
+                    new Backoff.LinearBackoffConfiguration 
+                    {
+                        BaseDelay = ((Configuration.RetryDelay.LinearBackoffConfiguration)backoffConfig).BaseDelay,
+                        Increment = ((Configuration.RetryDelay.LinearBackoffConfiguration)backoffConfig).Increment,
+                        MaxDelay = ((Configuration.RetryDelay.LinearBackoffConfiguration)backoffConfig).MaxDelay
+                    }, jitterStrategy),
+                "Fixed" => CreateFixedDelay(
+                    new Backoff.FixedDelayConfiguration 
+                    {
+                        Delay = ((Configuration.RetryDelay.FixedDelayConfiguration)backoffConfig).Delay
+                    }, jitterStrategy),
+                _ => CreateNoOp()
+            };
+        }
+    }
+}

@@ -372,6 +372,24 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                     {
                         failures++;
 
+                        // Apply retry delay before restarting the node
+                        var delayStrategy = context.GetRetryDelayStrategy();
+                        try
+                        {
+                            var delay = await delayStrategy.GetDelayAsync(failures, cancellationToken).ConfigureAwait(false);
+                            if (delay > TimeSpan.Zero)
+                            {
+                                logger.Log(LogLevel.Debug, "Applying retry delay of {Delay}ms for node {NodeId} after {FailureCount} failures", 
+                                    delay.TotalMilliseconds, nodeId, failures);
+                                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                            }
+                        }
+                        catch (Exception delayEx)
+                        {
+                            // Log delay strategy failure but continue with retry
+                            logger.Log(LogLevel.Warning, delayEx, "Failed to apply retry delay for node {NodeId}. Continuing with retry without delay.", nodeId);
+                        }
+
                         context.ExecutionObserver.OnRetry(new NodeRetryEvent(nodeId, RetryKind.NodeRestart, failures, ex));
                         restartRequested = true;
                         break;

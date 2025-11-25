@@ -2,6 +2,7 @@ using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Graph;
 using NPipeline.Nodes;
+using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Execution.Services;
@@ -248,6 +249,24 @@ public sealed class ErrorHandlingService : IErrorHandlingService
             }
 
             retryCount++;
+
+            // Apply retry delay before retry attempt
+            var delayStrategy = context.GetRetryDelayStrategy();
+            try
+            {
+                var delay = await delayStrategy.GetDelayAsync(retryCount, cancellationToken).ConfigureAwait(false);
+                if (delay > TimeSpan.Zero)
+                {
+                    logger.Log(LogLevel.Debug, "Applying retry delay of {Delay}ms for node {NodeId} after {RetryCount} retries", 
+                        delay.TotalMilliseconds, nodeDefinition.Id, retryCount);
+                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                }
+            }
+            catch (Exception delayEx)
+            {
+                // Log delay strategy failure but continue with retry
+                logger.Log(LogLevel.Warning, delayEx, "Failed to apply retry delay for node {NodeId}. Continuing with retry without delay.", nodeDefinition.Id);
+            }
 
             try
             {

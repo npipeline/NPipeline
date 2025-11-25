@@ -8,7 +8,7 @@ namespace NPipeline.Tests.Validation.BuilderRules;
 
 public sealed class PipelineValidationTests
 {
-    private Pipeline.Pipeline Build<TDef>() where TDef : IPipelineDefinition, new()
+    private NPipeline.Pipeline.Pipeline Build<TDef>() where TDef : IPipelineDefinition, new()
     {
         var builder = new PipelineBuilder();
         var def = new TDef();
