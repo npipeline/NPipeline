@@ -8,6 +8,8 @@ sidebar_position: 5
 
 This guide provides a structured workflow for configuring resilience in NPipeline. For comprehensive code examples with real-world scenarios, see [Common Configuration Patterns](execution-with-resilience.md#common-configuration-patterns).
 
+**For detailed step-by-step instructions on configuring node restart functionality, see the [Node Restart Quick Start Checklist](./node-restart-quickstart.md).**
+
 ## Configuration Workflow
 
 To properly configure resilience for your pipeline, follow these steps:
@@ -35,7 +37,6 @@ var nodeHandle = builder
 var options = new PipelineRetryOptions(
     MaxItemRetries: 3,
     MaxNodeRestartAttempts: 2,
-    MaxSequentialNodeAttempts: 5,
     MaxMaterializedItems: 1000
 );
 
@@ -51,9 +52,11 @@ var context = PipelineContext.WithRetry(options);
 | High-volume streaming | 1 | 2 | 5000-10000 |
 | Critical business logic | 3-5 | 5 | 2000-5000 |
 
+**⚠️ Critical Warning**: Setting `MaxMaterializedItems` to `null` (unbounded) silently disables node restart functionality. For detailed explanation of why unbounded buffers break resilience guarantees, see the [Node Restart Quick Start Checklist](./node-restart-quickstart.md#why-unbounded-memory-buffers-break-resilience-guarantees).
+
 ### Step 3: Configure Circuit Breaker (Optional)
 
-Protect against cascading failures by tripping the circuit breaker when failures exceed a threshold:
+Protect against cascading failures by tripping circuit breaker when failures exceed a threshold:
 
 ```csharp
 // Basic configuration
@@ -128,7 +131,7 @@ For avoiding configuration errors, see [Common Configuration Mistakes to Avoid](
 
 ## Next Steps
 
+- **[Node Restart Quick Start Checklist](./node-restart-quickstart.md)**: Complete step-by-step configuration guide for node restart functionality
 - [Resilient Execution Strategy](execution-with-resilience.md) - Learn how ResilientExecutionStrategy works
 - [Materialization and Buffering](materialization-and-buffering.md) - Understand memory management
 - [Troubleshooting](troubleshooting.md) - Diagnose configuration issues
-

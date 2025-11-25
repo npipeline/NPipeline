@@ -172,7 +172,7 @@ scenarios where transforms often complete synchronously (cache hits, simple calc
 `ValueTask<T>` can eliminate up to 90% of garbage collection pressure.
 
 **See:** [Synchronous Fast Paths and ValueTask Optimization](../../advanced-topics/synchronous-fast-paths.md) 
-for complete implementation guide.
+for complete implementation guide, including critical constraints, real-world examples, and dangerous patterns you must understand.
 
 ## Common Transform Patterns
 
@@ -204,44 +204,11 @@ public sealed class EnrichmentTransform : ITransformNode<Order, EnrichedOrder>
 
 ### Validation and Filtering
 
-```csharp
-public sealed class ValidationTransform : ITransformNode<RawData, ValidatedData>
-{
-    public ValueTask<ValidatedData> ExecuteAsync(RawData item, PipelineContext context, CancellationToken cancellationToken)
-    {
-        // Synchronous validation - use ValueTask to avoid allocation
-        if (string.IsNullOrWhiteSpace(item.Value))
-        {
-            throw new InvalidOperationException("Value cannot be empty");
-        }
-
-        var validated = new ValidatedData
-        {
-            Id = item.Id,
-            Value = item.Value.Trim()
-        };
-
-        return new ValueTask<ValidatedData>(validated);
-    }
-}
-```
+For validation and filtering transforms that can complete synchronously, consider using `ValueTask<T>` for optimal performance. See the [Synchronous Fast Paths guide](../../advanced-topics/synchronous-fast-paths.md) for complete implementation details and critical constraints.
 
 ### Type Conversion
 
-```csharp
-public sealed class ConversionTransform : ITransformNode<string, int>
-{
-    public ValueTask<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
-    {
-        if (int.TryParse(item, out var result))
-        {
-            return new ValueTask<int>(result);
-        }
-
-        throw new FormatException($"Cannot convert '{item}' to int");
-    }
-}
-```
+For type conversion transforms that can complete synchronously, consider using `ValueTask<T>` for optimal performance. See the [Synchronous Fast Paths guide](../../advanced-topics/synchronous-fast-paths.md) for complete implementation details and critical constraints.
 
 ## Next Steps
 

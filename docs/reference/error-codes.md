@@ -475,7 +475,7 @@ public async Task ProcessContext(PipelineContext context)
 
 **Severity:** Warning
 
-**Cause:** Your error handler can return `PipelineErrorDecision.RestartNode`, but the configuration is incomplete. Restart functionality requires **all three** of the following:
+**Cause:** Your error handler can return `PipelineErrorDecision.RestartNode`, but the configuration is incomplete. Restart functionality requires **all three** of the following mandatory prerequisites:
 
 1. **ResilientExecutionStrategy** must wrap the node
 2. **MaxNodeRestartAttempts** must be > 0 in PipelineRetryOptions
@@ -500,6 +500,8 @@ var pipeline = builder
 ```
 
 **Solution - Complete Configuration Checklist:**
+
+**For detailed step-by-step configuration instructions, see the [Node Restart Quick Start Checklist](../core-concepts/resilience/node-restart-quickstart.md).**
 
 ```csharp
 // ✅ SOLUTION: All three prerequisites configured
@@ -527,10 +529,12 @@ var pipeline = builder.Build();
 await pipeline.ExecuteAsync(source, context);
 ```
 
+**Critical Warning:** Never set `MaxMaterializedItems` to `null` (unbounded). This silently disables restart functionality and can cause OutOfMemoryException. See the [Node Restart Quick Start Checklist](../core-concepts/resilience/node-restart-quickstart.md) for detailed explanation of why unbounded buffers break resilience guarantees.
+
 **Read More:**
 
+- **[Node Restart Quick Start Checklist](../core-concepts/resilience/node-restart-quickstart.md)** - Complete step-by-step configuration guide
 - [Build-Time Resilience Analyzer Guide](../analyzers/resilience.md)
-- [Node Restart Quick Start Guide](../core-concepts/resilience/node-restart-quickstart.md)
 - [Resilient Execution Strategy](../core-concepts/resilience/execution-with-resilience.md)
 - [Materialization and Buffering](../core-concepts/resilience/materialization-and-buffering.md)
 

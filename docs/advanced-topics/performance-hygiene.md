@@ -134,20 +134,7 @@ If your method is often able to return a result synchronously (e.g., from a cach
 
 **This is especially critical for transformer nodes in high-volume pipelines.** Many transforms are synchronous or have a high synchronous fast path (cache hits, simple mappings). Using `Task<T>` for these transforms creates millions of unnecessary heap allocations per second, causing constant GC pressure.
 
-The basic pattern is straightforward:
-
-```csharp
-// Synchronous fast path: Check cache first
-if (_cache.TryGetValue(key, out var value))
-{
-    return new ValueTask<string>(value); // No Task allocation
-}
-
-// Asynchronous slow path: Fall back to async work
-return new ValueTask<string>(FetchAndCacheValueAsync(key));
-```
-
-This pattern is commonly applied to **transformer nodes** where cache hits or simple synchronous operations dominate. For comprehensive examples and the full pattern applied to `ITransformNode<TIn, TOut>`, see [**Synchronous Fast Paths and ValueTask Optimization**](synchronous-fast-paths.md)—the dedicated deep-dive guide that covers real-world scenarios, performance impact quantification, and implementation guidelines.
+For comprehensive implementation guidance, including critical constraints and real-world examples, see [**Synchronous Fast Paths and ValueTask Optimization**](synchronous-fast-paths.md)—the dedicated deep-dive guide that covers the complete implementation pattern, performance impact quantification, and dangerous constraints you must understand.
 
 ## 3. Choose the Right Concurrency Strategy
 

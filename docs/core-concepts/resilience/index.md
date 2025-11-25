@@ -13,7 +13,7 @@ This section provides a comprehensive guide to building robust, fault-tolerant p
 
 **If you want to enable node restarts, [start here: Node Restart Quick Start Checklist](./node-restart-quickstart.md)**
 
-Node restart requires three mandatory configuration steps. Missing any one causes silent failures. The quickstart guide ensures you configure all three correctly.
+Node restart requires three mandatory configuration steps. Missing any one causes silent failures. The quickstart guide is the single canonical source of truth for configuring all three prerequisites correctly.
 
 ---
 
@@ -61,28 +61,27 @@ NPipeline's resilience framework is built around several interconnected componen
 
 If you intend to use `PipelineErrorDecision.RestartNode` to recover from failures, **[read the Node Restart Quick Start Checklist](./node-restart-quickstart.md)** first.
 
-You **must** configure all three of the following. Missing any one will cause silent failures:
+You **must** configure all three of the following mandatory prerequisites. The quickstart guide provides detailed step-by-step instructions for each requirement.
 
 > **💡 Pro Tip:** The NPipeline build-time analyzer (NP9002) detects incomplete resilience configurations at compile-time, preventing these silent failures. See [Build-Time Resilience Analyzer](../../analyzers/resilience.md) for details.
 
-### Mandatory Requirements Checklist
+### Mandatory Requirements Summary
 
-- [ ] **Requirement 1: ResilientExecutionStrategy**
+- **Requirement 1: ResilientExecutionStrategy**
   - The node must be wrapped with `ResilientExecutionStrategy`
   - Without this: Restart decisions are ignored; node cannot recover
-  - Reference: [Resilient Execution Strategy](execution-with-resilience.md)
+  - **See detailed instructions:** [Node Restart Quick Start Checklist](./node-restart-quickstart.md#step-1-apply-resilientexecutionstrategy)
 
-- [ ] **Requirement 2: MaxMaterializedItems Configuration**
+- **Requirement 2: MaxNodeRestartAttempts Configuration**
+  - Set `MaxNodeRestartAttempts > 0` in `PipelineRetryOptions`
+  - This enables the restart capability
+  - **See detailed instructions:** [Node Restart Quick Start Checklist](./node-restart-quickstart.md#step-2-configure-maximum-restart-attempts)
+
+- **Requirement 3: MaxMaterializedItems Configuration**
   - Set `MaxMaterializedItems > 0` in `PipelineRetryOptions` (for streaming inputs)
   - This enables the input stream to be buffered/materialized for replay
   - **Critical:** Without this, even if RestartNode is requested, the pipeline will fall back to `FailPipeline`
-  - Example: `MaxMaterializedItems: 1000` buffers up to 1000 items for potential replay
-  - Reference: [Materialization and Buffering](materialization-and-buffering.md)
-
-- [ ] **Requirement 3: Error Handler Decision**
-  - Your error handler must return `PipelineErrorDecision.RestartNode` (not `FailPipeline` or `ContinueWithoutNode`)
-  - Without this: Node restarts are never attempted
-  - Reference: [Error Handling](error-handling-guide.md)
+  - **See detailed instructions:** [Node Restart Quick Start Checklist](./node-restart-quickstart.md#step-3-enable-input-materialization--critical)
 
 ### What Happens If You Miss These
 
@@ -109,26 +108,7 @@ var options = new PipelineRetryOptions(
 // → Entire pipeline halts (unexpected failure!)
 ```
 
-**Example Correct Configuration:**
-
-```csharp
-// ✅ CORRECT: All three requirements met
-var nodeHandle = builder
-    .AddTransform<MyTransform, Input, Output>("myNode")
-    .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
-        new SequentialExecutionStrategy()
-    ));
-
-var options = new PipelineRetryOptions(
-    MaxItemRetries: 3,
-    MaxNodeRestartAttempts: 2,
-    MaxSequentialNodeAttempts: 5,
-    MaxMaterializedItems: 1000  // ← Materialization enabled
-);
-
-var context = PipelineContext.WithRetry(options);
-context.AddPipelineErrorHandler<MyErrorHandler>(); // Returns RestartNode for transient errors
-```
+**For complete configuration examples and detailed explanations, see the [Node Restart Quick Start Checklist](./node-restart-quickstart.md).**
 
 ## The Dependency Chain
 
@@ -238,6 +218,7 @@ For recovering from node-level failures:
 - Apply `ResilientExecutionStrategy`
 - Configure `PipelineErrorDecision.RestartNode`
 - Set `MaxMaterializedItems` to enable replay (for streaming inputs)
+- **See detailed configuration:** [Node Restart Quick Start Checklist](./node-restart-quickstart.md)
 
 ### Scenario 3: Memory-Constrained Environment
 
@@ -250,6 +231,7 @@ For systems with limited memory:
 
 ## Next Steps
 
+- **[Node Restart Quick Start Checklist](./node-restart-quickstart.md)**: Complete step-by-step guide for configuring node restarts
 - **[Retry Delay Quickstart](retry-delay-quickstart.md)**: Get started quickly with common retry patterns and recommended configurations
 - **[Resilient Execution Strategy](execution-with-resilience.md)**: Learn how to wrap execution strategies with error handling
 - **[Materialization and Buffering](materialization-and-buffering.md)**: Understand how buffering enables replay functionality

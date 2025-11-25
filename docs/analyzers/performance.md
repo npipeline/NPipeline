@@ -276,7 +276,7 @@ private async IAsyncEnumerable<Item> GetItemsAsync([EnumeratorCancellation] Canc
 **Severity:** Warning  
 **Category:** Performance  
 
-This analyzer detects cases where a method frequently completes synchronously but returns `Task` instead of `ValueTask`. Using `ValueTask` avoids heap allocations when the result is available synchronously.
+This analyzer detects cases where a method frequently completes synchronously but returns `Task` instead of `ValueTask`. Using `ValueTask` avoids heap allocations when the result is available synchronously, which is critical for high-throughput pipeline performance.
 
 #### Problem
 
@@ -309,6 +309,8 @@ public async ValueTask<string> GetDataAsync(string id)
     return await FetchFromDatabaseAsync(id);
 }
 ```
+
+**Important:** ValueTask comes with critical constraints that you must understand to avoid subtle bugs. For complete implementation guidance, including dangerous constraints and real-world examples, see [**Synchronous Fast Paths and ValueTask Optimization**](../advanced-topics/synchronous-fast-paths.md)—the dedicated deep-dive guide that covers the complete pattern and critical safety considerations.
 
 ### NP9211: Non-Streaming Patterns in SourceNode
 

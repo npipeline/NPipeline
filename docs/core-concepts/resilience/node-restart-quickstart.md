@@ -136,6 +136,30 @@ var options = new PipelineRetryOptions(
 
 **Symptom:** You've configured restart logic, but when an error occurs, the pipeline fails completely instead of restarting the node.
 
+### Why Unbounded Memory Buffers Break Resilience Guarantees
+
+Unbounded materialization (`MaxMaterializedItems: null`) creates a fundamental contradiction in the resilience model:
+
+1. **Memory Safety vs. Recovery Trade-off**: Unbounded buffers can consume all available memory, causing OutOfMemoryException that cannot be recovered from. This defeats the purpose of resilience.
+
+2. **Silent Failure Mode**: When the system detects unbounded materialization with a RestartNode decision, it cannot safely buffer items for replay. Instead of risking memory exhaustion, it silently falls back to `FailPipeline` to protect the system.
+
+3. **Unpredictable Behavior**: In production, unbounded buffers lead to unpredictable memory usage patterns that can cause cascading failures across the entire system.
+
+4. **Resource Contention**: Unbounded buffers compete with other processes for memory, potentially causing system-wide instability.
+
+**The Design Philosophy**: NPipeline prioritizes system stability over incomplete recovery. An unbounded buffer represents an undefined recovery boundary, making safe restart impossible. By requiring explicit buffer limits, NPipeline ensures that restart operations have predictable memory footprints and can be safely executed.
+
+**Choosing Not to Set a Memory Cap = Choosing Complete Pipeline Failure**
+
+When you set `MaxMaterializedItems: null`, you are making an explicit choice to sacrifice restart capability in favor of unlimited buffering. This means:
+
+- **You accept that RestartNode will not work**
+- **You accept that your pipeline will fail completely on node errors**
+- **You accept the risk of OutOfMemoryException**
+
+If you need node restart functionality, you **must** set a memory cap. The system cannot provide resilience guarantees without defined resource boundaries.
+
 ---
 
 ## Complete Configuration Example

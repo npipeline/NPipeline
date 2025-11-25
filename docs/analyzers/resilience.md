@@ -14,37 +14,11 @@ Resilience analyzers protect against incomplete error handling configuration tha
 **Severity:** Warning  
 **Category:** Resilience  
 
-This analyzer detects when an error handler can return `PipelineErrorDecision.RestartNode` but is missing one or more of the three mandatory prerequisites:
-
-1. **ResilientExecutionStrategy** wrapping the node
-2. **MaxNodeRestartAttempts > 0** in PipelineRetryOptions
-3. **MaxMaterializedItems != null** in PipelineRetryOptions
+This analyzer detects when an error handler can return `PipelineErrorDecision.RestartNode` but is missing one or more of the three mandatory prerequisites for node restart functionality.
 
 #### The Problem
 
-Before this analyzer existed, developers could easily miss one of the three mandatory prerequisites for node restart:
-
-```csharp
-// ❌ User's Code - Looks correct but is missing prerequisites
-public class MyErrorHandler : IPipelineErrorHandler
-{
-    public async Task<PipelineErrorDecision> HandleNodeFailureAsync(
-        string nodeId,
-        Exception error,
-        PipelineContext context,
-        CancellationToken cancellationToken)
-    {
-        return error switch
-        {
-            TimeoutException => PipelineErrorDecision.RestartNode,  // ← Intent is clear
-            _ => PipelineErrorDecision.FailPipeline
-        };
-    }
-}
-
-// But at runtime, restart silently fails because prerequisites are missing!
-// The entire pipeline crashes instead of just restarting the node.
-```
+Without using this analyzer, developers can easily miss one of the three mandatory prerequisites for node restart, leading to silent failures where the entire pipeline would crash instead of recovering the failed node.
 
 #### With the Analyzer
 
@@ -57,27 +31,15 @@ This gets flagged immediately at build time, before deployment.
 
 #### Solution: Complete Configuration
 
-```csharp
-// ✅ CORRECT: All three prerequisites configured
+**For detailed step-by-step configuration instructions, see the [Node Restart Quick Start Checklist](../core-concepts/resilience/node-restart-quickstart.md).**
 
-// 1. Wrap node with ResilientExecutionStrategy
-var node = new MyTransformNode();
-var resilientNode = new ResilientExecutionStrategy(node);
+The three mandatory prerequisites are:
 
-// 2. Configure retry options with MaxNodeRestartAttempts > 0
-var retryOptions = new PipelineRetryOptions
-{
-    MaxNodeRestartAttempts = 3,
-    MaxMaterializedItems = 10000
-};
+1. **ResilientExecutionStrategy** wrapping the node
+2. **MaxNodeRestartAttempts > 0** in PipelineRetryOptions  
+3. **MaxMaterializedItems != null** in PipelineRetryOptions (bounded materialization)
 
-// 3. Provide error handler that can return RestartNode
-var pipeline = new PipelineBuilder<string>()
-    .AddNode(resilientNode)
-    .WithErrorHandler(new MyErrorHandler())
-    .WithRetryOptions(retryOptions)
-    .Build();
-```
+Missing even one of these prerequisites will **silently disable restart**, causing the entire pipeline to fail instead of recovering gracefully.
 
 #### Best Practices
 
@@ -86,8 +48,11 @@ var pipeline = new PipelineBuilder<string>()
 3. **Set realistic MaxNodeRestartAttempts** - Usually 2-3 attempts is sufficient
 4. **Configure MaxMaterializedItems appropriately** - Balance memory usage with retry capability
 
+**Critical Warning:** Never set `MaxMaterializedItems` to `null` (unbounded). This silently disables restart functionality and can cause OutOfMemoryException. See the [Node Restart Quick Start Checklist](../core-concepts/resilience/node-restart-quickstart.md) for detailed explanation of why unbounded buffers break resilience guarantees.
+
 ## See Also
 
+- **[Node Restart Quick Start Checklist](../core-concepts/resilience/node-restart-quickstart.md)** - Complete step-by-step configuration guide
 - [Resilience Configuration Guide](../core-concepts/resilience/configuration-guide.md)
 - [Error Handling Architecture](../architecture/error-handling-architecture.md)
 - [Cancellation Model](../architecture/cancellation-model.md)

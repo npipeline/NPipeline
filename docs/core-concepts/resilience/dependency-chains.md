@@ -42,7 +42,7 @@ graph TD
     style L fill:#e8f5e9
 ```
 
-*Figure: The complete dependency chain showing how resilience components must be configured in the correct sequence.*
+*Figure: The complete dependency chain showing how resilience components must be configured in correct sequence.*
 
 ## Critical Dependency Rules
 
@@ -84,7 +84,7 @@ var nodeHandle = builder
 
 #### :warning: Critical Prerequisite
 
-`PipelineErrorDecision.RestartNode` only works if the input stream is materialized via `MaxMaterializedItems` (for streaming inputs).
+`PipelineErrorDecision.RestartNode` only works if input stream is materialized via `MaxMaterializedItems` (for streaming inputs).
 
 **What breaks without it:**
 
@@ -111,6 +111,8 @@ var options = new PipelineRetryOptions(
     MaxMaterializedItems: 1000 // Enable materialization
 );
 ```
+
+**⚠️ Critical Warning**: Setting `MaxMaterializedItems` to `null` (unbounded) silently disables node restart functionality. For detailed explanation of why unbounded buffers break resilience guarantees, see the [Node Restart Quick Start Checklist](./node-restart-quickstart.md#why-unbounded-memory-buffers-break-resilience-guarantees).
 
 ### 3. Error Handler Must Return Correct Decision
 
@@ -331,7 +333,7 @@ Use this checklist to validate your resilience configuration:
 
 - [ ] `IPipelineErrorHandler` is registered
 - [ ] Handler returns `RestartNode` for appropriate error types
-- [ ] Handler is configured with the pipeline
+- [ ] Handler is configured with pipeline
 
 ### ✅ Retry Options Configured
 
@@ -461,7 +463,6 @@ public class FullResiliencePipeline : IPipelineDefinition
         builder.Connect(transformHandle, sinkHandle);
     }
 }
-```
 
     // Assert
     Assert.IsTrue(result.IsSuccess);
@@ -471,6 +472,7 @@ public class FullResiliencePipeline : IPipelineDefinition
 
 ## Next Steps
 
+- **[Node Restart Quick Start Checklist](./node-restart-quickstart.md)**: Complete step-by-step configuration guide for node restart functionality
 - **[Configuration Guide](configuration-guide.md)**: Get practical implementation guidance with complete examples
 - **[Troubleshooting](troubleshooting.md)**: Learn to diagnose and resolve dependency issues
 

@@ -206,33 +206,14 @@ Tiny, predictable GC pauses
 
 **The Problem - Traditional Async Framework:**
 
-```csharp
-// Every transform returns Task<T>, even if work is synchronous
-public async Task<OutputType> Transform(InputType item)
-{
-    if (cache.TryGetValue(item.Id, out var cached))
-    {
-        return cached;  // ← Still allocates Task<T> on heap!
-    }
-    return await expensiveAsync();
-}
-```
-
 In a pipeline processing 1M items/sec with 90% cache hits: **900,000 Task allocations per second**
 
 **NPipeline Approach - ValueTask:**
 
-```csharp
-// Check synchronous fast path first
-public ValueTask<OutputType> Transform(InputType item)
-{
-    if (cache.TryGetValue(item.Id, out var cached))
-    {
-        return new ValueTask<OutputType>(cached);  // ← Stack allocation, no GC
-    }
-    return new ValueTask<OutputType>(ExpensiveAsync());
-}
-```
+`ValueTask<T>` is a struct-based alternative to `Task<T>` that:
+- **Allocates on stack** (not heap) when result is available synchronously
+- **Zero allocations** for common case in cache-hit or synchronous scenarios
+- **Seamlessly transitions** to true async work when needed
 
 **Why This Matters:**
 
@@ -253,6 +234,8 @@ public ValueTask<OutputType> Transform(InputType item)
 * Filtering (usually synchronous)
 * Cached enrichment (high synchronous fast path rate)
 * These represent everyday pipeline tasks, not edge cases
+
+For complete implementation guidance, including critical constraints and real-world examples, see [**Synchronous Fast Paths and ValueTask Optimization**](../advanced-topics/synchronous-fast-paths.md)—the dedicated deep-dive guide that covers the complete implementation pattern and dangerous constraints you must understand.
 
 ---
 
