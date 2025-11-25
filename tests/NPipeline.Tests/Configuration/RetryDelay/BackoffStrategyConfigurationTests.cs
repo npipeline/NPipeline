@@ -1,4 +1,3 @@
-using System;
 using AwesomeAssertions;
 using NPipeline.Execution.RetryDelay.Backoff;
 
@@ -25,19 +24,19 @@ public sealed class BackoffStrategyConfigurationTests
     }
 
     [Theory]
-    [InlineData(1)] // 1 tick
-    [InlineData(1000)] // 1 microsecond
-    [InlineData(1000000)] // 1 millisecond
-    [InlineData(1000000000)] // 100 milliseconds
-    [InlineData(10000000000)] // 1 second
-    public void ExponentialBackoffConfiguration_WithValidBaseDelay_ShouldValidate(long baseDelayTicks)
+    [InlineData(1, 60)] // 1 tick
+    [InlineData(1000, 60)] // 1 microsecond
+    [InlineData(1000000, 60)] // 1 millisecond
+    [InlineData(1000000000, 200)] // 100 seconds - need MaxDelay >= 100s
+    [InlineData(10000000000, 2000)] // 1000 seconds - need MaxDelay >= 1000s
+    public void ExponentialBackoffConfiguration_WithValidBaseDelay_ShouldValidate(long baseDelayTicks, long maxDelaySeconds)
     {
         // Arrange
         var configuration = new ExponentialBackoffConfiguration
         {
             BaseDelay = TimeSpan.FromTicks(baseDelayTicks),
             Multiplier = 2.0,
-            MaxDelay = TimeSpan.FromMinutes(1)
+            MaxDelay = TimeSpan.FromSeconds(maxDelaySeconds),
         };
 
         // Act & Assert
@@ -56,11 +55,12 @@ public sealed class BackoffStrategyConfigurationTests
         {
             BaseDelay = TimeSpan.FromTicks(baseDelayTicks),
             Multiplier = 2.0,
-            MaxDelay = TimeSpan.FromMinutes(1)
+            MaxDelay = TimeSpan.FromMinutes(1),
         };
 
         // Act & Assert
         var validateAction = () => configuration.Validate();
+
         _ = validateAction.Should().Throw<ArgumentException>()
             .WithMessage("*BaseDelay must be a positive TimeSpan*")
             .And.ParamName.Should().Be("BaseDelay");
@@ -80,7 +80,7 @@ public sealed class BackoffStrategyConfigurationTests
         {
             BaseDelay = TimeSpan.FromSeconds(1),
             Multiplier = multiplier,
-            MaxDelay = TimeSpan.FromMinutes(1)
+            MaxDelay = TimeSpan.FromMinutes(1),
         };
 
         // Act & Assert
@@ -101,11 +101,12 @@ public sealed class BackoffStrategyConfigurationTests
         {
             BaseDelay = TimeSpan.FromSeconds(1),
             Multiplier = multiplier,
-            MaxDelay = TimeSpan.FromMinutes(1)
+            MaxDelay = TimeSpan.FromMinutes(1),
         };
 
         // Act & Assert
         var validateAction = () => configuration.Validate();
+
         _ = validateAction.Should().Throw<ArgumentException>()
             .WithMessage("*Multiplier must be greater than or equal to 1.0*")
             .And.ParamName.Should().Be("Multiplier");
@@ -123,7 +124,7 @@ public sealed class BackoffStrategyConfigurationTests
         {
             BaseDelay = TimeSpan.FromSeconds(baseDelaySeconds),
             Multiplier = 2.0,
-            MaxDelay = TimeSpan.FromSeconds(maxDelaySeconds)
+            MaxDelay = TimeSpan.FromSeconds(maxDelaySeconds),
         };
 
         // Act & Assert
@@ -142,11 +143,12 @@ public sealed class BackoffStrategyConfigurationTests
         {
             BaseDelay = TimeSpan.FromSeconds(baseDelaySeconds),
             Multiplier = 2.0,
-            MaxDelay = TimeSpan.FromSeconds(maxDelaySeconds)
+            MaxDelay = TimeSpan.FromSeconds(maxDelaySeconds),
         };
 
         // Act & Assert
         var validateAction = () => configuration.Validate();
+
         _ = validateAction.Should().Throw<ArgumentException>()
             .WithMessage("*MaxDelay must be greater than or equal to BaseDelay*")
             .And.ParamName.Should().Be("MaxDelay");
@@ -160,11 +162,12 @@ public sealed class BackoffStrategyConfigurationTests
         {
             BaseDelay = TimeSpan.FromSeconds(1),
             Multiplier = 2.0,
-            MaxDelay = TimeSpan.Zero
+            MaxDelay = TimeSpan.Zero,
         };
 
         // Act & Assert
         var validateAction = () => configuration.Validate();
+
         _ = validateAction.Should().Throw<ArgumentException>()
             .WithMessage("*MaxDelay must be greater than or equal to BaseDelay*")
             .And.ParamName.Should().Be("MaxDelay");
@@ -191,19 +194,19 @@ public sealed class BackoffStrategyConfigurationTests
     }
 
     [Theory]
-    [InlineData(1)] // 1 tick
-    [InlineData(1000)] // 1 microsecond
-    [InlineData(1000000)] // 1 millisecond
-    [InlineData(1000000000)] // 100 milliseconds
-    [InlineData(10000000000)] // 1 second
-    public void LinearBackoffConfiguration_WithValidBaseDelay_ShouldValidate(long baseDelayTicks)
+    [InlineData(1, 60)] // 1 tick
+    [InlineData(1000, 60)] // 1 microsecond
+    [InlineData(1000000, 60)] // 1 millisecond
+    [InlineData(1000000000, 200)] // 100 seconds - need MaxDelay >= 100s
+    [InlineData(10000000000, 2000)] // 1000 seconds - need MaxDelay >= 1000s
+    public void LinearBackoffConfiguration_WithValidBaseDelay_ShouldValidate(long baseDelayTicks, long maxDelaySeconds)
     {
         // Arrange
         var configuration = new LinearBackoffConfiguration
         {
             BaseDelay = TimeSpan.FromTicks(baseDelayTicks),
             Increment = TimeSpan.FromSeconds(1),
-            MaxDelay = TimeSpan.FromMinutes(1)
+            MaxDelay = TimeSpan.FromSeconds(maxDelaySeconds),
         };
 
         // Act & Assert
@@ -222,11 +225,12 @@ public sealed class BackoffStrategyConfigurationTests
         {
             BaseDelay = TimeSpan.FromTicks(baseDelayTicks),
             Increment = TimeSpan.FromSeconds(1),
-            MaxDelay = TimeSpan.FromMinutes(1)
+            MaxDelay = TimeSpan.FromMinutes(1),
         };
 
         // Act & Assert
         var validateAction = () => configuration.Validate();
+
         _ = validateAction.Should().Throw<ArgumentException>()
             .WithMessage("*BaseDelay must be a positive TimeSpan*")
             .And.ParamName.Should().Be("BaseDelay");
@@ -245,7 +249,7 @@ public sealed class BackoffStrategyConfigurationTests
         {
             BaseDelay = TimeSpan.FromSeconds(1),
             Increment = TimeSpan.FromTicks(incrementTicks),
-            MaxDelay = TimeSpan.FromMinutes(1)
+            MaxDelay = TimeSpan.FromMinutes(1),
         };
 
         // Act & Assert
@@ -265,11 +269,12 @@ public sealed class BackoffStrategyConfigurationTests
         {
             BaseDelay = TimeSpan.FromSeconds(1),
             Increment = TimeSpan.FromTicks(incrementTicks),
-            MaxDelay = TimeSpan.FromMinutes(1)
+            MaxDelay = TimeSpan.FromMinutes(1),
         };
 
         // Act & Assert
         var validateAction = () => configuration.Validate();
+
         _ = validateAction.Should().Throw<ArgumentException>()
             .WithMessage("*Increment must be a non-negative TimeSpan*")
             .And.ParamName.Should().Be("Increment");
@@ -287,7 +292,7 @@ public sealed class BackoffStrategyConfigurationTests
         {
             BaseDelay = TimeSpan.FromSeconds(baseDelaySeconds),
             Increment = TimeSpan.FromSeconds(1),
-            MaxDelay = TimeSpan.FromSeconds(maxDelaySeconds)
+            MaxDelay = TimeSpan.FromSeconds(maxDelaySeconds),
         };
 
         // Act & Assert
@@ -306,11 +311,12 @@ public sealed class BackoffStrategyConfigurationTests
         {
             BaseDelay = TimeSpan.FromSeconds(baseDelaySeconds),
             Increment = TimeSpan.FromSeconds(1),
-            MaxDelay = TimeSpan.FromSeconds(maxDelaySeconds)
+            MaxDelay = TimeSpan.FromSeconds(maxDelaySeconds),
         };
 
         // Act & Assert
         var validateAction = () => configuration.Validate();
+
         _ = validateAction.Should().Throw<ArgumentException>()
             .WithMessage("*MaxDelay must be greater than or equal to BaseDelay*")
             .And.ParamName.Should().Be("MaxDelay");
@@ -324,11 +330,12 @@ public sealed class BackoffStrategyConfigurationTests
         {
             BaseDelay = TimeSpan.FromSeconds(1),
             Increment = TimeSpan.FromSeconds(1),
-            MaxDelay = TimeSpan.Zero
+            MaxDelay = TimeSpan.Zero,
         };
 
         // Act & Assert
         var validateAction = () => configuration.Validate();
+
         _ = validateAction.Should().Throw<ArgumentException>()
             .WithMessage("*MaxDelay must be greater than or equal to BaseDelay*")
             .And.ParamName.Should().Be("MaxDelay");
@@ -342,7 +349,7 @@ public sealed class BackoffStrategyConfigurationTests
         {
             BaseDelay = TimeSpan.FromSeconds(5),
             Increment = TimeSpan.Zero, // Fixed delay behavior
-            MaxDelay = TimeSpan.FromMinutes(1)
+            MaxDelay = TimeSpan.FromMinutes(1),
         };
 
         // Act & Assert
@@ -380,7 +387,7 @@ public sealed class BackoffStrategyConfigurationTests
         // Arrange
         var configuration = new FixedDelayConfiguration
         {
-            Delay = TimeSpan.FromTicks(delayTicks)
+            Delay = TimeSpan.FromTicks(delayTicks),
         };
 
         // Act & Assert
@@ -398,11 +405,12 @@ public sealed class BackoffStrategyConfigurationTests
         // Arrange
         var configuration = new FixedDelayConfiguration
         {
-            Delay = TimeSpan.FromTicks(delayTicks)
+            Delay = TimeSpan.FromTicks(delayTicks),
         };
 
         // Act & Assert
         var validateAction = () => configuration.Validate();
+
         _ = validateAction.Should().Throw<ArgumentException>()
             .WithMessage("*Delay must be a positive TimeSpan*")
             .And.ParamName.Should().Be("Delay");
@@ -420,19 +428,19 @@ public sealed class BackoffStrategyConfigurationTests
         {
             BaseDelay = TimeSpan.FromDays(1),
             Multiplier = 2.0,
-            MaxDelay = TimeSpan.FromDays(30) // 30 days
+            MaxDelay = TimeSpan.FromDays(30), // 30 days
         };
 
         var linearConfig = new LinearBackoffConfiguration
         {
             BaseDelay = TimeSpan.FromDays(1),
             Increment = TimeSpan.FromHours(1),
-            MaxDelay = TimeSpan.FromDays(30)
+            MaxDelay = TimeSpan.FromDays(30),
         };
 
         var fixedConfig = new FixedDelayConfiguration
         {
-            Delay = TimeSpan.FromHours(1)
+            Delay = TimeSpan.FromHours(1),
         };
 
         // Act & Assert
@@ -453,19 +461,19 @@ public sealed class BackoffStrategyConfigurationTests
         {
             BaseDelay = TimeSpan.FromTicks(1), // Smallest possible
             Multiplier = 1.0,
-            MaxDelay = TimeSpan.FromTicks(10)
+            MaxDelay = TimeSpan.FromTicks(10),
         };
 
         var linearConfig = new LinearBackoffConfiguration
         {
             BaseDelay = TimeSpan.FromTicks(1),
             Increment = TimeSpan.FromTicks(1),
-            MaxDelay = TimeSpan.FromTicks(10)
+            MaxDelay = TimeSpan.FromTicks(10),
         };
 
         var fixedConfig = new FixedDelayConfiguration
         {
-            Delay = TimeSpan.FromTicks(1)
+            Delay = TimeSpan.FromTicks(1),
         };
 
         // Act & Assert

@@ -1,6 +1,5 @@
-using System;
+using System.Diagnostics;
 using AwesomeAssertions;
-using NPipeline.Execution.RetryDelay;
 using NPipeline.Execution.RetryDelay.Backoff;
 using NPipeline.Execution.RetryDelay.Jitter;
 
@@ -8,6 +7,42 @@ namespace NPipeline.Tests.Configuration.RetryDelay;
 
 public sealed class RetryDelayStrategyConfigurationTests
 {
+    #region Configuration Performance Tests
+
+    [Fact]
+    public void ConfigurationValidation_ShouldBePerformant()
+    {
+        // Arrange
+        var configurations = new object[]
+        {
+            new ExponentialBackoffConfiguration(),
+            new LinearBackoffConfiguration(),
+            new FixedDelayConfiguration(),
+            new FullJitterConfiguration(),
+            new DecorrelatedJitterConfiguration(),
+            new EqualJitterConfiguration(),
+            new NoJitterConfiguration(),
+        };
+
+        // Act
+        var stopwatch = Stopwatch.StartNew();
+
+        for (var i = 0; i < 10000; i++)
+        {
+            foreach (var config in configurations)
+            {
+                ((dynamic)config).Validate();
+            }
+        }
+
+        stopwatch.Stop();
+
+        // Assert
+        _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(1000); // Should complete in less than 1 second
+    }
+
+    #endregion
+
     #region Configuration Validation Integration Tests
 
     [Fact]
@@ -46,36 +81,44 @@ public sealed class RetryDelayStrategyConfigurationTests
         // Arrange & Act & Assert
         var exponentialConfig = new ExponentialBackoffConfiguration
         {
-            BaseDelay = TimeSpan.Zero
+            BaseDelay = TimeSpan.Zero,
         };
+
         var validateExponential = () => exponentialConfig.Validate();
+
         _ = validateExponential.Should().Throw<ArgumentException>()
             .WithMessage("*BaseDelay must be a positive TimeSpan*")
             .And.ParamName.Should().Be("BaseDelay");
 
         var linearConfig = new LinearBackoffConfiguration
         {
-            Increment = TimeSpan.FromSeconds(-1)
+            Increment = TimeSpan.FromSeconds(-1),
         };
+
         var validateLinear = () => linearConfig.Validate();
+
         _ = validateLinear.Should().Throw<ArgumentException>()
             .WithMessage("*Increment must be a non-negative TimeSpan*")
             .And.ParamName.Should().Be("Increment");
 
         var fixedConfig = new FixedDelayConfiguration
         {
-            Delay = TimeSpan.Zero
+            Delay = TimeSpan.Zero,
         };
+
         var validateFixed = () => fixedConfig.Validate();
+
         _ = validateFixed.Should().Throw<ArgumentException>()
             .WithMessage("*Delay must be a positive TimeSpan*")
             .And.ParamName.Should().Be("Delay");
 
         var decorrelatedConfig = new DecorrelatedJitterConfiguration
         {
-            MaxDelay = TimeSpan.Zero
+            MaxDelay = TimeSpan.Zero,
         };
+
         var validateDecorrelated = () => decorrelatedConfig.Validate();
+
         _ = validateDecorrelated.Should().Throw<ArgumentException>()
             .WithMessage("*MaxDelay must be a positive TimeSpan*")
             .And.ParamName.Should().Be("MaxDelay");
@@ -93,7 +136,7 @@ public sealed class RetryDelayStrategyConfigurationTests
         {
             new ExponentialBackoffConfiguration(),
             new LinearBackoffConfiguration(),
-            new FixedDelayConfiguration()
+            new FixedDelayConfiguration(),
         };
 
         var jitterConfigs = new object[]
@@ -101,20 +144,53 @@ public sealed class RetryDelayStrategyConfigurationTests
             new FullJitterConfiguration(),
             new DecorrelatedJitterConfiguration(),
             new EqualJitterConfiguration(),
-            new NoJitterConfiguration()
+            new NoJitterConfiguration(),
         };
 
         // Act & Assert
         foreach (var backoffConfig in backoffConfigs)
         {
-            var validateBackoff = () => ((dynamic)backoffConfig).Validate();
-            _ = validateBackoff.Should().NotThrow();
+            // Use explicit type casting to avoid dynamic call issues
+            if (backoffConfig is ExponentialBackoffConfiguration expConfig)
+            {
+                var validateBackoff = () => expConfig.Validate();
+                _ = validateBackoff.Should().NotThrow();
+            }
+            else if (backoffConfig is LinearBackoffConfiguration linConfig)
+            {
+                var validateBackoff = () => linConfig.Validate();
+                _ = validateBackoff.Should().NotThrow();
+            }
+            else if (backoffConfig is FixedDelayConfiguration fixedConfig)
+            {
+                var validateBackoff = () => fixedConfig.Validate();
+                _ = validateBackoff.Should().NotThrow();
+            }
         }
 
         foreach (var jitterConfig in jitterConfigs)
         {
-            var validateJitter = () => ((dynamic)jitterConfig).Validate();
-            _ = validateJitter.Should().NotThrow();
+            // Use explicit type casting to avoid dynamic call issues
+            if (jitterConfig is FullJitterConfiguration fullConfig)
+            {
+                var validateJitter = () => fullConfig.Validate();
+                _ = validateJitter.Should().NotThrow();
+            }
+            else if (jitterConfig is DecorrelatedJitterConfiguration decorrConfig)
+            {
+                var validateJitter = () => decorrConfig.Validate();
+                _ = validateJitter.Should().NotThrow();
+            }
+            else if (jitterConfig is EqualJitterConfiguration equalConfig)
+            {
+                var validateJitter = () => equalConfig.Validate();
+                _ = validateJitter.Should().NotThrow();
+            }
+            else if (jitterConfig is NoJitterConfiguration noJitterConfig)
+            {
+                var validateJitter = () => noJitterConfig.Validate();
+                _ = validateJitter.Should().NotThrow();
+            }
         }
     }
 
@@ -126,25 +202,25 @@ public sealed class RetryDelayStrategyConfigurationTests
         {
             BaseDelay = TimeSpan.FromTicks(1), // Minimum
             Multiplier = double.MaxValue, // Maximum
-            MaxDelay = TimeSpan.MaxValue // Maximum
+            MaxDelay = TimeSpan.MaxValue, // Maximum
         };
 
         var extremeLinearConfig = new LinearBackoffConfiguration
         {
             BaseDelay = TimeSpan.FromTicks(1), // Minimum
             Increment = TimeSpan.MaxValue, // Maximum
-            MaxDelay = TimeSpan.MaxValue // Maximum
+            MaxDelay = TimeSpan.MaxValue, // Maximum
         };
 
         var extremeFixedConfig = new FixedDelayConfiguration
         {
-            Delay = TimeSpan.MaxValue // Maximum
+            Delay = TimeSpan.MaxValue, // Maximum
         };
 
         var extremeDecorrelatedConfig = new DecorrelatedJitterConfiguration
         {
             MaxDelay = TimeSpan.MaxValue, // Maximum
-            Multiplier = double.MaxValue // Maximum
+            Multiplier = double.MaxValue, // Maximum
         };
 
         // Act & Assert
@@ -173,7 +249,7 @@ public sealed class RetryDelayStrategyConfigurationTests
         {
             BaseDelay = TimeSpan.FromSeconds(baseDelaySeconds),
             Multiplier = multiplier,
-            MaxDelay = TimeSpan.FromSeconds(maxDelaySeconds)
+            MaxDelay = TimeSpan.FromSeconds(maxDelaySeconds),
         };
 
         // Act & Assert
@@ -194,7 +270,7 @@ public sealed class RetryDelayStrategyConfigurationTests
         {
             BaseDelay = TimeSpan.FromSeconds(baseDelaySeconds),
             Increment = TimeSpan.FromSeconds(incrementSeconds),
-            MaxDelay = TimeSpan.FromSeconds(maxDelaySeconds)
+            MaxDelay = TimeSpan.FromSeconds(maxDelaySeconds),
         };
 
         // Act & Assert
@@ -216,7 +292,7 @@ public sealed class RetryDelayStrategyConfigurationTests
         var configuration = new DecorrelatedJitterConfiguration
         {
             MaxDelay = TimeSpan.FromMinutes(5),
-            Multiplier = multiplier
+            Multiplier = multiplier,
         };
 
         // Act & Assert
@@ -237,24 +313,24 @@ public sealed class RetryDelayStrategyConfigurationTests
         var exponentialConfig = new ExponentialBackoffConfiguration
         {
             BaseDelay = minimumTimeSpan,
-            MaxDelay = minimumTimeSpan
+            MaxDelay = minimumTimeSpan,
         };
 
         var linearConfig = new LinearBackoffConfiguration
         {
             BaseDelay = minimumTimeSpan,
             Increment = minimumTimeSpan,
-            MaxDelay = minimumTimeSpan
+            MaxDelay = minimumTimeSpan,
         };
 
         var fixedConfig = new FixedDelayConfiguration
         {
-            Delay = minimumTimeSpan
+            Delay = minimumTimeSpan,
         };
 
         var decorrelatedConfig = new DecorrelatedJitterConfiguration
         {
-            MaxDelay = minimumTimeSpan
+            MaxDelay = minimumTimeSpan,
         };
 
         // Act & Assert
@@ -277,22 +353,22 @@ public sealed class RetryDelayStrategyConfigurationTests
 
         var exponentialConfig = new ExponentialBackoffConfiguration
         {
-            BaseDelay = zeroTimeSpan
+            BaseDelay = zeroTimeSpan,
         };
 
         var linearConfig = new LinearBackoffConfiguration
         {
-            BaseDelay = zeroTimeSpan
+            BaseDelay = zeroTimeSpan,
         };
 
         var fixedConfig = new FixedDelayConfiguration
         {
-            Delay = zeroTimeSpan
+            Delay = zeroTimeSpan,
         };
 
         var decorrelatedConfig = new DecorrelatedJitterConfiguration
         {
-            MaxDelay = zeroTimeSpan
+            MaxDelay = zeroTimeSpan,
         };
 
         // Act & Assert
@@ -315,22 +391,22 @@ public sealed class RetryDelayStrategyConfigurationTests
 
         var exponentialConfig = new ExponentialBackoffConfiguration
         {
-            BaseDelay = negativeTimeSpan
+            BaseDelay = negativeTimeSpan,
         };
 
         var linearConfig = new LinearBackoffConfiguration
         {
-            BaseDelay = negativeTimeSpan
+            BaseDelay = negativeTimeSpan,
         };
 
         var fixedConfig = new FixedDelayConfiguration
         {
-            Delay = negativeTimeSpan
+            Delay = negativeTimeSpan,
         };
 
         var decorrelatedConfig = new DecorrelatedJitterConfiguration
         {
-            MaxDelay = negativeTimeSpan
+            MaxDelay = negativeTimeSpan,
         };
 
         // Act & Assert
@@ -385,14 +461,14 @@ public sealed class RetryDelayStrategyConfigurationTests
         {
             BaseDelay = TimeSpan.FromSeconds(5),
             Multiplier = 3.0,
-            MaxDelay = TimeSpan.FromMinutes(2)
+            MaxDelay = TimeSpan.FromMinutes(2),
         };
 
         var linearConfig = new LinearBackoffConfiguration
         {
             BaseDelay = TimeSpan.FromSeconds(3),
             Increment = TimeSpan.FromSeconds(2),
-            MaxDelay = TimeSpan.FromMinutes(5)
+            MaxDelay = TimeSpan.FromMinutes(5),
         };
 
         // Act
@@ -407,42 +483,6 @@ public sealed class RetryDelayStrategyConfigurationTests
         _ = linearConfig.BaseDelay.Should().Be(TimeSpan.FromSeconds(3));
         _ = linearConfig.Increment.Should().Be(TimeSpan.FromSeconds(2));
         _ = linearConfig.MaxDelay.Should().Be(TimeSpan.FromMinutes(5));
-    }
-
-    #endregion
-
-    #region Configuration Performance Tests
-
-    [Fact]
-    public void ConfigurationValidation_ShouldBePerformant()
-    {
-        // Arrange
-        var configurations = new object[]
-        {
-            new ExponentialBackoffConfiguration(),
-            new LinearBackoffConfiguration(),
-            new FixedDelayConfiguration(),
-            new FullJitterConfiguration(),
-            new DecorrelatedJitterConfiguration(),
-            new EqualJitterConfiguration(),
-            new NoJitterConfiguration()
-        };
-
-        // Act
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-
-        for (var i = 0; i < 10000; i++)
-        {
-            foreach (var config in configurations)
-            {
-                ((dynamic)config).Validate();
-            }
-        }
-
-        stopwatch.Stop();
-
-        // Assert
-        _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(1000); // Should complete in less than 1 second
     }
 
     #endregion

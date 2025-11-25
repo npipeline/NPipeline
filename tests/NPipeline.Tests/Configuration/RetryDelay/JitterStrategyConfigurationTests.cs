@@ -1,4 +1,3 @@
-using System;
 using AwesomeAssertions;
 using NPipeline.Execution.RetryDelay.Jitter;
 
@@ -63,7 +62,7 @@ public sealed class JitterStrategyConfigurationTests
         var configuration = new DecorrelatedJitterConfiguration
         {
             MaxDelay = TimeSpan.FromTicks(maxDelayTicks),
-            Multiplier = 3.0
+            Multiplier = 3.0,
         };
 
         // Act & Assert
@@ -82,11 +81,12 @@ public sealed class JitterStrategyConfigurationTests
         var configuration = new DecorrelatedJitterConfiguration
         {
             MaxDelay = TimeSpan.FromTicks(maxDelayTicks),
-            Multiplier = 3.0
+            Multiplier = 3.0,
         };
 
         // Act & Assert
         var validateAction = () => configuration.Validate();
+
         _ = validateAction.Should().Throw<ArgumentException>()
             .WithMessage("*MaxDelay must be a positive TimeSpan*")
             .And.ParamName.Should().Be("MaxDelay");
@@ -106,7 +106,7 @@ public sealed class JitterStrategyConfigurationTests
         var configuration = new DecorrelatedJitterConfiguration
         {
             MaxDelay = TimeSpan.FromMinutes(1),
-            Multiplier = multiplier
+            Multiplier = multiplier,
         };
 
         // Act & Assert
@@ -127,11 +127,12 @@ public sealed class JitterStrategyConfigurationTests
         var configuration = new DecorrelatedJitterConfiguration
         {
             MaxDelay = TimeSpan.FromMinutes(1),
-            Multiplier = multiplier
+            Multiplier = multiplier,
         };
 
         // Act & Assert
         var validateAction = () => configuration.Validate();
+
         _ = validateAction.Should().Throw<ArgumentException>()
             .WithMessage("*Multiplier must be greater than or equal to 1.0*")
             .And.ParamName.Should().Be("Multiplier");
@@ -202,7 +203,7 @@ public sealed class JitterStrategyConfigurationTests
         var decorrelatedConfig = new DecorrelatedJitterConfiguration
         {
             MaxDelay = TimeSpan.FromDays(30), // 30 days
-            Multiplier = 100.0
+            Multiplier = 100.0,
         };
 
         var fullConfig = new FullJitterConfiguration();
@@ -228,7 +229,7 @@ public sealed class JitterStrategyConfigurationTests
         var decorrelatedConfig = new DecorrelatedJitterConfiguration
         {
             MaxDelay = TimeSpan.FromTicks(1), // Smallest possible
-            Multiplier = 1.0
+            Multiplier = 1.0,
         };
 
         var fullConfig = new FullJitterConfiguration();
@@ -254,13 +255,13 @@ public sealed class JitterStrategyConfigurationTests
         var decorrelatedConfig1 = new DecorrelatedJitterConfiguration
         {
             MaxDelay = TimeSpan.FromMinutes(1),
-            Multiplier = 1.0 // Minimum valid
+            Multiplier = 1.0, // Minimum valid
         };
 
         var decorrelatedConfig2 = new DecorrelatedJitterConfiguration
         {
             MaxDelay = TimeSpan.FromMinutes(1),
-            Multiplier = double.MaxValue // Maximum possible
+            Multiplier = double.MaxValue, // Maximum possible
         };
 
         // Act & Assert
@@ -285,7 +286,7 @@ public sealed class JitterStrategyConfigurationTests
         var configuration = new DecorrelatedJitterConfiguration
         {
             MaxDelay = TimeSpan.FromMinutes(1),
-            Multiplier = multiplier
+            Multiplier = multiplier,
         };
 
         // Act & Assert

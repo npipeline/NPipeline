@@ -208,7 +208,7 @@ public sealed class FullJitterStrategyTests
 
         // Assert
         _ = result.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
-        _ = result.Should().BeLessThan(TimeSpan.FromTicks(1));
+        _ = result.Should().BeLessThanOrEqualTo(TimeSpan.FromTicks(1));
     }
 
     [Fact]

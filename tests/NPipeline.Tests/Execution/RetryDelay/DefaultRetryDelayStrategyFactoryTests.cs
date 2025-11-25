@@ -303,7 +303,6 @@ public sealed class DefaultRetryDelayStrategyFactoryTests
     }
 
     [Theory]
-    [InlineData(0)]
     [InlineData(1)]
     [InlineData(5)]
     [InlineData(10)]

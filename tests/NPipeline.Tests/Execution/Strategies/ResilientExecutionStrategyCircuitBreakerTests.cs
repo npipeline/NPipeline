@@ -99,8 +99,7 @@ public sealed class ResilientExecutionStrategyCircuitBreakerTests
             CircuitBreakerThresholdType.ConsecutiveFailures,
             0.5,
             1,
-            2,
-            true);
+            2);
 
         var context = CreatePipelineContextWithCircuitBreaker(options);
         var innerStrategy = new SequentialExecutionStrategy();
@@ -126,14 +125,15 @@ public sealed class ResilientExecutionStrategyCircuitBreakerTests
             // Allow the breaker to transition to half-open by polling its state
             // Wait for initial delay plus additional buffer for timer callback execution
             await Task.Delay(options.OpenDuration + TimeSpan.FromMilliseconds(500));
-            
+
             // Poll to ensure the circuit breaker has transitioned to HalfOpen
             var manager = context.Items[PipelineContextKeys.CircuitBreakerManager] as ICircuitBreakerManager;
             var circuitBreaker = manager?.GetCircuitBreaker("recovery-node", options);
-            
+
             // Add a small retry loop to account for timing variations
             var maxRetries = 5;
             var retryCount = 0;
+
             while (retryCount < maxRetries && circuitBreaker?.State != CircuitBreakerState.HalfOpen)
             {
                 await Task.Delay(50);
@@ -168,8 +168,7 @@ public sealed class ResilientExecutionStrategyCircuitBreakerTests
         context.Items[PipelineContextKeys.CircuitBreakerOptions] = (options ?? new PipelineCircuitBreakerOptions(
             3,
             TimeSpan.FromMinutes(1),
-            TimeSpan.FromMinutes(5),
-            true)).Validate();
+            TimeSpan.FromMinutes(5))).Validate();
 
         if (memoryOptions is not null)
             context.Items[PipelineContextKeys.CircuitBreakerMemoryOptions] = memoryOptions.Validate();

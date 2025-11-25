@@ -189,8 +189,8 @@ public sealed class EqualJitterStrategyTests
         var result = strategy.ApplyJitter(baseDelay, random);
 
         // Assert
-        _ = result.Should().BeGreaterThanOrEqualTo(TimeSpan.FromTicks(0)); // baseDelay / 2 = 0.5 ticks, rounded down
-        _ = result.Should().BeLessThan(TimeSpan.FromTicks(1));
+        _ = result.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero); // baseDelay / 2 = 0.5 ticks, rounded down
+        _ = result.Should().BeLessThanOrEqualTo(TimeSpan.FromTicks(1));
     }
 
     [Fact]

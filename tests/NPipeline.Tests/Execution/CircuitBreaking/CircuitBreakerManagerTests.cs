@@ -53,8 +53,7 @@ public sealed class CircuitBreakerManagerTests : IDisposable
         var options = new PipelineCircuitBreakerOptions(
             3,
             TimeSpan.FromMinutes(1),
-            TimeSpan.FromMinutes(5),
-            true);
+            TimeSpan.FromMinutes(5));
 
         // Act
         var circuitBreaker = _manager.GetCircuitBreaker(nodeId, options);
@@ -72,8 +71,7 @@ public sealed class CircuitBreakerManagerTests : IDisposable
         var options = new PipelineCircuitBreakerOptions(
             3,
             TimeSpan.FromMinutes(1),
-            TimeSpan.FromMinutes(5),
-            true);
+            TimeSpan.FromMinutes(5));
 
         // Act & Assert
         _ = _manager.Invoking(m => m.GetCircuitBreaker(null!, options))
@@ -100,8 +98,7 @@ public sealed class CircuitBreakerManagerTests : IDisposable
         var options = new PipelineCircuitBreakerOptions(
             3,
             TimeSpan.FromMinutes(1),
-            TimeSpan.FromMinutes(5),
-            true);
+            TimeSpan.FromMinutes(5));
 
         // Act
         var circuitBreaker1 = _manager.GetCircuitBreaker(nodeId, options);
@@ -121,8 +118,7 @@ public sealed class CircuitBreakerManagerTests : IDisposable
         var options = new PipelineCircuitBreakerOptions(
             3,
             TimeSpan.FromMinutes(1),
-            TimeSpan.FromMinutes(5),
-            true);
+            TimeSpan.FromMinutes(5));
 
         // Act
         var circuitBreaker1 = _manager.GetCircuitBreaker(nodeId1, options);
@@ -141,14 +137,12 @@ public sealed class CircuitBreakerManagerTests : IDisposable
         var options1 = new PipelineCircuitBreakerOptions(
             3,
             TimeSpan.FromMinutes(1),
-            TimeSpan.FromMinutes(5),
-            true);
+            TimeSpan.FromMinutes(5));
 
         var options2 = new PipelineCircuitBreakerOptions(
             5,
             TimeSpan.FromMinutes(2),
-            TimeSpan.FromMinutes(10),
-            true);
+            TimeSpan.FromMinutes(10));
 
         // Act
         var circuitBreaker1 = _manager.GetCircuitBreaker(nodeId, options1);
@@ -167,8 +161,7 @@ public sealed class CircuitBreakerManagerTests : IDisposable
         var options = new PipelineCircuitBreakerOptions(
             3,
             TimeSpan.FromMinutes(1),
-            TimeSpan.FromMinutes(5),
-            true);
+            TimeSpan.FromMinutes(5));
 
         var tasks = new List<Task<ICircuitBreaker>>();
         const int taskCount = 10;
@@ -202,8 +195,7 @@ public sealed class CircuitBreakerManagerTests : IDisposable
         var options = new PipelineCircuitBreakerOptions(
             3,
             TimeSpan.FromMinutes(1),
-            TimeSpan.FromMinutes(5),
-            true);
+            TimeSpan.FromMinutes(5));
 
         var circuitBreaker = _manager.GetCircuitBreaker(nodeId, options);
         _ = circuitBreaker.Should().NotBeNull();
@@ -244,8 +236,7 @@ public sealed class CircuitBreakerManagerTests : IDisposable
         var options = new PipelineCircuitBreakerOptions(
             3,
             TimeSpan.FromMinutes(1),
-            TimeSpan.FromMinutes(5),
-            true);
+            TimeSpan.FromMinutes(5));
 
         // Create multiple circuit breakers
         var circuitBreakers = new List<ICircuitBreaker>();
@@ -281,8 +272,7 @@ public sealed class CircuitBreakerManagerTests : IDisposable
         var options = new PipelineCircuitBreakerOptions(
             3,
             TimeSpan.FromMinutes(1),
-            TimeSpan.FromMinutes(5),
-            true);
+            TimeSpan.FromMinutes(5));
 
         // Create multiple circuit breakers
         _ = _manager.GetCircuitBreaker("node1", options);
@@ -316,8 +306,7 @@ public sealed class CircuitBreakerManagerTests : IDisposable
         var options = new PipelineCircuitBreakerOptions(
             3,
             TimeSpan.FromMinutes(1),
-            TimeSpan.FromMinutes(5),
-            true);
+            TimeSpan.FromMinutes(5));
 
         // Act
         _manager.GetCircuitBreaker(nodeId, options);
@@ -339,8 +328,7 @@ public sealed class CircuitBreakerManagerTests : IDisposable
         var options = new PipelineCircuitBreakerOptions(
             3,
             TimeSpan.FromMinutes(1),
-            TimeSpan.FromMinutes(5),
-            true);
+            TimeSpan.FromMinutes(5));
 
         _manager.GetCircuitBreaker(nodeId, options);
 
@@ -420,14 +408,12 @@ public sealed class CircuitBreakerManagerTests : IDisposable
         var options1 = new PipelineCircuitBreakerOptions(
             3,
             TimeSpan.FromMinutes(1),
-            TimeSpan.FromMinutes(5),
-            true);
+            TimeSpan.FromMinutes(5));
 
         var options2 = new PipelineCircuitBreakerOptions(
             5,
             TimeSpan.FromMinutes(2),
-            TimeSpan.FromMinutes(10),
-            true);
+            TimeSpan.FromMinutes(10));
 
         // Act - Mix operations concurrently
         var tasks = new List<Task<ICircuitBreaker>>();

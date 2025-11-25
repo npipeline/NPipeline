@@ -237,7 +237,7 @@ public sealed class PipelineRunnerErrorTests
         var context = PipelineContext.Default;
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<PipelineExecutionException>(() =>
+        var exception = await Assert.ThrowsAsync<NodeExecutionException>(() =>
             runner.RunAsync<TestPipelineDefinition>(context));
 
         exception.Should().BeSameAs(innerException); // Should not be re-wrapped

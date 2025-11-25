@@ -130,11 +130,10 @@ public sealed class NoOpRetryDelayStrategyTests
 
         // Act
         cancellationTokenSource.Cancel();
-        var result = await strategy.GetDelayAsync(5, cancellationToken);
+        var result = strategy.GetDelayAsync(5, cancellationToken);
 
-        // Assert - this should throw TaskCanceledException
-        Assert.True(true); // If we get here, the test passed (no exception thrown for NoOp strategy)
-        _ = result; // Use the result to avoid warning
+        // Assert - the ValueTask should be cancelled, so awaiting it should throw TaskCanceledException
+        await Assert.ThrowsAsync<TaskCanceledException>(async () => await result);
     }
 
     [Fact]
@@ -320,12 +319,12 @@ public sealed class NoOpRetryDelayStrategyTests
     public void Constructor_ShouldBePrivate()
     {
         // Arrange & Act
-        var constructorInfo = typeof(NoOpRetryDelayStrategy).GetConstructors(
-            BindingFlags.NonPublic |
+        var publicConstructors = typeof(NoOpRetryDelayStrategy).GetConstructors(
+            BindingFlags.Public |
             BindingFlags.Instance);
 
         // Assert
-        constructorInfo.Should().BeEmpty();
+        publicConstructors.Should().BeEmpty();
     }
 
     [Fact]

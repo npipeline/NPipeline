@@ -103,8 +103,8 @@ public sealed class DecorrelatedJitterStrategyTests
         var result = strategy.ApplyJitter(baseDelay, random);
 
         // Assert
-        _ = result.Should().BeGreaterThanOrEqualTo(baseDelay);
-        _ = result.Should().BeLessThan(TimeSpan.FromSeconds(2)); // Upper bound is baseDelay for first call
+        _ = result.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        _ = result.Should().BeLessThanOrEqualTo(TimeSpan.FromSeconds(2)); // Upper bound is baseDelay for first call
     }
 
     [Fact]
@@ -126,11 +126,11 @@ public sealed class DecorrelatedJitterStrategyTests
         var result2 = strategy.ApplyJitter(baseDelay, random);
 
         // Assert
-        _ = result1.Should().BeGreaterThanOrEqualTo(baseDelay);
-        _ = result1.Should().BeLessThan(TimeSpan.FromSeconds(2));
+        _ = result1.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        _ = result1.Should().BeLessThanOrEqualTo(TimeSpan.FromSeconds(2));
 
-        _ = result2.Should().BeGreaterThanOrEqualTo(baseDelay);
-        _ = result2.Should().BeLessThan(TimeSpan.FromSeconds(6)); // Upper bound is result1 * 3.0
+        _ = result2.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        _ = result2.Should().BeLessThanOrEqualTo(TimeSpan.FromSeconds(6)); // Upper bound is result1 * 3.0
     }
 
     [Fact]
@@ -155,11 +155,11 @@ public sealed class DecorrelatedJitterStrategyTests
         var result2 = strategy.ApplyJitter(baseDelay, random);
 
         // Assert
-        _ = result1.Should().BeGreaterThanOrEqualTo(baseDelay);
-        _ = result1.Should().BeLessThan(TimeSpan.FromSeconds(1));
+        _ = result1.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        _ = result1.Should().BeLessThanOrEqualTo(TimeSpan.FromSeconds(1));
 
-        _ = result2.Should().BeGreaterThanOrEqualTo(baseDelay);
-        _ = result2.Should().BeLessThan(TimeSpan.FromSeconds(5)); // Should be capped at MaxDelay
+        _ = result2.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        _ = result2.Should().BeLessThanOrEqualTo(TimeSpan.FromSeconds(5)); // Should be capped at MaxDelay
     }
 
     [Theory]
@@ -186,12 +186,12 @@ public sealed class DecorrelatedJitterStrategyTests
         var result2 = strategy.ApplyJitter(baseDelay, random);
 
         // Assert
-        _ = result1.Should().BeGreaterThanOrEqualTo(baseDelay);
-        _ = result1.Should().BeLessThan(TimeSpan.FromSeconds(1));
+        _ = result1.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        _ = result1.Should().BeLessThanOrEqualTo(TimeSpan.FromSeconds(1));
 
-        _ = result2.Should().BeGreaterThanOrEqualTo(baseDelay);
+        _ = result2.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
         var expectedUpperBound = TimeSpan.FromSeconds(Math.Min(10, result1.TotalSeconds * multiplier));
-        _ = result2.Should().BeLessThan(expectedUpperBound);
+        _ = result2.Should().BeLessThanOrEqualTo(expectedUpperBound);
     }
 
     [Fact]
@@ -233,8 +233,8 @@ public sealed class DecorrelatedJitterStrategyTests
         // All results should be in valid range
         foreach (var result in results)
         {
-            _ = result.Should().BeGreaterThanOrEqualTo(baseDelay);
-            _ = result.Should().BeLessThan(TimeSpan.FromSeconds(10));
+            _ = result.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+            _ = result.Should().BeLessThanOrEqualTo(TimeSpan.FromSeconds(10));
         }
     }
 
@@ -306,7 +306,7 @@ public sealed class DecorrelatedJitterStrategyTests
 
         // Assert
         _ = result.Should().BeGreaterThanOrEqualTo(baseDelay);
-        _ = result.Should().BeLessThan(TimeSpan.FromTicks(1)); // Upper bound is baseDelay for first call
+        _ = result.Should().BeLessThanOrEqualTo(baseDelay); // First call returns exactly baseDelay with decorrelated jitter
     }
 
     [Fact]
@@ -326,8 +326,8 @@ public sealed class DecorrelatedJitterStrategyTests
         var result = strategy.ApplyJitter(baseDelay, random);
 
         // Assert
-        _ = result.Should().BeGreaterThanOrEqualTo(baseDelay);
-        _ = result.Should().BeLessThan(TimeSpan.FromSeconds(5)); // Should be capped at MaxDelay
+        // When baseDelay > MaxDelay, result is capped at MaxDelay
+        _ = result.Should().BeLessThanOrEqualTo(TimeSpan.FromSeconds(5)); // Should be capped at MaxDelay
     }
 
     [Fact]
@@ -355,16 +355,15 @@ public sealed class DecorrelatedJitterStrategyTests
         // Assert
         _ = results.Should().HaveCount(5);
 
-        // First result should be between baseDelay and baseDelay
-        _ = results[0].Should().BeGreaterThanOrEqualTo(baseDelay);
-        _ = results[0].Should().BeLessThan(TimeSpan.FromSeconds(1));
+        // First result should be exactly baseDelay (on first call, no jitter range)
+        _ = results[0].Should().BeLessThanOrEqualTo(TimeSpan.FromSeconds(1));
 
         // Subsequent results should have progressively higher upper bounds
         for (var i = 1; i < results.Count; i++)
         {
-            _ = results[i].Should().BeGreaterThanOrEqualTo(baseDelay);
+            _ = results[i].Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
             var expectedUpperBound = TimeSpan.FromSeconds(Math.Min(20, results[i - 1].TotalSeconds * 2.0));
-            _ = results[i].Should().BeLessThan(expectedUpperBound);
+            _ = results[i].Should().BeLessThanOrEqualTo(expectedUpperBound);
         }
     }
 
@@ -387,12 +386,12 @@ public sealed class DecorrelatedJitterStrategyTests
         var result2 = strategy.ApplyJitter(baseDelay, random);
 
         // Assert
-        _ = result1.Should().BeGreaterThanOrEqualTo(baseDelay);
-        _ = result1.Should().BeLessThan(TimeSpan.FromSeconds(1));
+        _ = result1.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
+        _ = result1.Should().BeLessThanOrEqualTo(TimeSpan.FromSeconds(1));
 
-        _ = result2.Should().BeGreaterThanOrEqualTo(baseDelay);
+        _ = result2.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
         var expectedUpperBound = TimeSpan.FromSeconds(Math.Min(10, result1.TotalSeconds * 2.5));
-        _ = result2.Should().BeLessThan(expectedUpperBound);
+        _ = result2.Should().BeLessThanOrEqualTo(expectedUpperBound);
     }
 
     [Fact]

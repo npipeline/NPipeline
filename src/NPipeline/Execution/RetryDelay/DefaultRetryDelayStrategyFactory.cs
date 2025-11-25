@@ -278,7 +278,6 @@ public class DefaultRetryDelayStrategyFactory : IRetryDelayStrategyFactory
     /// <param name="configuration">The jitter strategy configuration.</param>
     /// <returns>A jitter strategy implementation.</returns>
     /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
-    /// <exception cref="NotSupportedException">Thrown when the jitter strategy type is not supported.</exception>
     /// <remarks>
     ///     This method uses a switch expression to map configuration types to strategy implementations,
     ///     making it easy to add new jitter strategies in the future.

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using FakeItEasy;
 using FluentAssertions;
 using NPipeline.Configuration;
@@ -22,8 +23,7 @@ public sealed class CircuitBreakerTests : IDisposable
         _defaultOptions = new PipelineCircuitBreakerOptions(
             3,
             TimeSpan.FromMinutes(1),
-            TimeSpan.FromMinutes(5),
-            true);
+            TimeSpan.FromMinutes(5));
     }
 
     public void Dispose()
@@ -125,9 +125,7 @@ public sealed class CircuitBreakerTests : IDisposable
         var options = new PipelineCircuitBreakerOptions(
             2,
             TimeSpan.FromMinutes(1),
-            TimeSpan.FromMinutes(5),
-            true,
-            CircuitBreakerThresholdType.ConsecutiveFailures);
+            TimeSpan.FromMinutes(5));
 
         using var circuitBreaker = new CircuitBreaker(options, _logger);
 
@@ -186,8 +184,7 @@ public sealed class CircuitBreakerTests : IDisposable
             TimeSpan.FromMinutes(1),
             TimeSpan.FromMinutes(5),
             true,
-            CircuitBreakerThresholdType.RollingWindowRate,
-            0.5);
+            CircuitBreakerThresholdType.RollingWindowRate);
 
         using var circuitBreaker = new CircuitBreaker(options, _logger);
 
@@ -237,7 +234,6 @@ public sealed class CircuitBreakerTests : IDisposable
             2,
             TimeSpan.FromMilliseconds(100), // Short duration for testing
             TimeSpan.FromMinutes(5),
-            true,
             HalfOpenSuccessThreshold: 2);
 
         using var circuitBreaker = new CircuitBreaker(options, _logger);
@@ -247,7 +243,8 @@ public sealed class CircuitBreakerTests : IDisposable
         _ = circuitBreaker.RecordFailure();
 
         // Poll until the circuit breaker transitions to Half-Open
-        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var sw = Stopwatch.StartNew();
+
         while (circuitBreaker.State != CircuitBreakerState.HalfOpen && sw.ElapsedMilliseconds < 1000)
         {
             Thread.Sleep(10);
@@ -278,8 +275,7 @@ public sealed class CircuitBreakerTests : IDisposable
         var options = new PipelineCircuitBreakerOptions(
             2,
             TimeSpan.FromMilliseconds(100), // Short duration for testing
-            TimeSpan.FromMinutes(5),
-            true);
+            TimeSpan.FromMinutes(5));
 
         using var circuitBreaker = new CircuitBreaker(options, _logger);
 
@@ -288,7 +284,8 @@ public sealed class CircuitBreakerTests : IDisposable
         _ = circuitBreaker.RecordFailure();
 
         // Poll until the circuit breaker transitions to Half-Open
-        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var sw = Stopwatch.StartNew();
+
         while (circuitBreaker.State != CircuitBreakerState.HalfOpen && sw.ElapsedMilliseconds < 1000)
         {
             Thread.Sleep(10);
@@ -312,7 +309,6 @@ public sealed class CircuitBreakerTests : IDisposable
             2,
             TimeSpan.FromMilliseconds(100), // Short duration for testing
             TimeSpan.FromMinutes(5),
-            true,
             HalfOpenMaxAttempts: 3,
             HalfOpenSuccessThreshold: 3); // Changed from 1 to 3 to match expected behavior
 
@@ -323,7 +319,8 @@ public sealed class CircuitBreakerTests : IDisposable
         _ = circuitBreaker.RecordFailure();
 
         // Poll until the circuit breaker transitions to Half-Open
-        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var sw = Stopwatch.StartNew();
+
         while (circuitBreaker.State != CircuitBreakerState.HalfOpen && sw.ElapsedMilliseconds < 1000)
         {
             Thread.Sleep(10);
@@ -403,8 +400,7 @@ public sealed class CircuitBreakerTests : IDisposable
         var options = new PipelineCircuitBreakerOptions(
             10,
             TimeSpan.FromMinutes(1),
-            TimeSpan.FromMinutes(5),
-            true);
+            TimeSpan.FromMinutes(5));
 
         using var circuitBreaker = new CircuitBreaker(options, _logger);
         var tasks = new List<Task>();
@@ -434,8 +430,7 @@ public sealed class CircuitBreakerTests : IDisposable
         var options = new PipelineCircuitBreakerOptions(
             3,
             TimeSpan.FromMilliseconds(50), // Short duration for testing
-            TimeSpan.FromMinutes(5),
-            true);
+            TimeSpan.FromMinutes(5));
 
         using var circuitBreaker = new CircuitBreaker(options, _logger);
 
@@ -452,7 +447,8 @@ public sealed class CircuitBreakerTests : IDisposable
         _ = circuitBreaker.RecordFailure(); // Should trip to Open
 
         // Poll until the circuit breaker transitions to Half-Open
-        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var sw = Stopwatch.StartNew();
+
         while (circuitBreaker.State != CircuitBreakerState.HalfOpen && sw.ElapsedMilliseconds < 1000)
         {
             Thread.Sleep(10);
@@ -485,8 +481,7 @@ public sealed class CircuitBreakerTests : IDisposable
         var options = new PipelineCircuitBreakerOptions(
             invalidThreshold,
             TimeSpan.FromMinutes(1),
-            TimeSpan.FromMinutes(5),
-            true);
+            TimeSpan.FromMinutes(5));
 
         _ = ((Func<CircuitBreaker>)(() => new CircuitBreaker(options, _logger)))
             .Should().Throw<ArgumentOutOfRangeException>();
@@ -502,7 +497,6 @@ public sealed class CircuitBreakerTests : IDisposable
             3,
             TimeSpan.FromMinutes(1),
             TimeSpan.FromMinutes(5),
-            true,
             FailureRateThreshold: invalidRate);
 
         _ = ((Func<CircuitBreaker>)(() => new CircuitBreaker(options, _logger)))
@@ -535,8 +529,7 @@ public sealed class CircuitBreakerTests : IDisposable
         var options = new PipelineCircuitBreakerOptions(
             2,
             TimeSpan.Zero, // Zero duration
-            TimeSpan.FromMinutes(5),
-            true);
+            TimeSpan.FromMinutes(5));
 
         using var circuitBreaker = new CircuitBreaker(options, _logger);
 
@@ -561,7 +554,6 @@ public sealed class CircuitBreakerTests : IDisposable
             2,
             TimeSpan.FromMinutes(1),
             TimeSpan.FromMinutes(5),
-            true,
             TrackOperationsInWindow: false);
 
         using var circuitBreaker = new CircuitBreaker(options, _logger);
@@ -588,8 +580,6 @@ public sealed class CircuitBreakerTests : IDisposable
             2,
             TimeSpan.FromMinutes(1),
             TimeSpan.FromMinutes(5),
-            true,
-            CircuitBreakerThresholdType.ConsecutiveFailures,
             TrackOperationsInWindow: false);
 
         using var circuitBreaker = new CircuitBreaker(options, _logger);
