@@ -43,10 +43,10 @@ For developers comfortable with basics who want to build robust pipelines:
 
 ### Module 1: Advanced Nodes (60 minutes)
 
-- [Advanced Node Types](core-concepts/advanced-nodes/index.md) - Beyond basic transforms
-- [Batching Nodes](core-concepts/advanced-nodes/batching.md) - Processing data in batches
-- [Aggregation Nodes](core-concepts/advanced-nodes/aggregation.md) - Data aggregation patterns
-- [Join Nodes](core-concepts/advanced-nodes/join.md) - Combining multiple data streams
+- [Advanced Node Types](core-concepts/nodes/index.md) - Beyond basic transforms
+- [Batching Nodes](core-concepts/nodes/batching.md) - Processing data in batches
+- [Aggregation Nodes](core-concepts/nodes/aggregation.md) - Data aggregation patterns
+- [Join Nodes](core-concepts/nodes/join.md) - Combining multiple data streams
 
 ### Module 2: Resilience Patterns (90 minutes)
 
@@ -73,7 +73,7 @@ For experienced developers who want to master NPipeline:
 ### Module 1: Advanced Architecture (120 minutes)
 
 - [Performance Optimization](advanced-topics/performance-hygiene.md) - Advanced optimization techniques
-- [Dynamic Pipelines](core-concepts/advanced-nodes/index.md) - Working with complex node configurations
+- [Dynamic Pipelines](core-concepts/nodes/index.md) - Working with complex node configurations
 - [Custom Extensions](extensions/index.md) - Building custom extensions
 
 ### Module 2: Production Readiness (120 minutes)

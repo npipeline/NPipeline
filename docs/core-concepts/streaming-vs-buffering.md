@@ -244,5 +244,5 @@ NPipeline is designed to support both paradigms, allowing you to combine streami
 ## Next Steps
 
 * **[Error Handling](resilience/error-handling-guide.md)**: Learn how to manage errors effectively in both streaming and buffering pipelines.
-* **[Advanced Node Types (e.g., Aggregation)](advanced-nodes/aggregation.md)**: Explore nodes that inherently involve buffering for their operations.
+* **[Advanced Node Types (e.g., Aggregation)](nodes/aggregation.md)**: Explore nodes that inherently involve buffering for their operations.
 

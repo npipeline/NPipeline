@@ -255,14 +255,14 @@ The key: each node solves one problem, and you compose them.
 
 ## See Also
 
-- [Batching Nodes](./advanced-nodes/batching.md) - Deep dive into batching configuration and patterns
-- [Aggregation Nodes](./advanced-nodes/aggregation.md) - Master event-time aggregation, windows, and watermarks
+- [Batching Nodes](./nodes/batching.md) - Deep dive into batching configuration and patterns
+- [Aggregation Nodes](./nodes/aggregation.md) - Master event-time aggregation, windows, and watermarks
 - [Common Patterns](./common-patterns.md) - Real-world examples of grouping in production pipelines
 - [Error Handling Guide](./resilience/error-handling-guide.md) - Handle errors in grouped operations
 - [Execution Strategies](./pipeline-execution/execution-strategies.md) - Control how grouped operations execute
 
 ## Next Steps
 
-- [Batching Nodes](./advanced-nodes/batching.md) - Deep dive into batching configuration and patterns
-- [Aggregation Nodes](./advanced-nodes/aggregation.md) - Master event-time aggregation, windows, and watermarks
+- [Batching Nodes](./nodes/batching.md) - Deep dive into batching configuration and patterns
+- [Aggregation Nodes](./nodes/aggregation.md) - Master event-time aggregation, windows, and watermarks
 - [Common Patterns](./common-patterns.md) - Real-world examples of grouping in production pipelines

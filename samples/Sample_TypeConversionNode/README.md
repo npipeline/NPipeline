@@ -330,7 +330,7 @@ factory.Register<CustomType, StandardType>(ConvertCustomToStandard);
 
 ## Related Documentation
 
-- [Type Conversion Nodes](../../docs/core-concepts/advanced-nodes/type-conversion.md)
+- [Type Conversion Nodes](../../docs/core-concepts/nodes/type-conversion.md)
 - [Pipeline Builder](../../docs/core-concepts/pipeline-builder.md)
 - [Error Handling](../../docs/core-concepts/error-handling.md)
 - [Testing](../../docs/testing/index.md)

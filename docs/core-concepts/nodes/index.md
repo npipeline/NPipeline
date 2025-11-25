@@ -1,10 +1,10 @@
 ---
-title: Nodes (Source, Transform, Sink)
-description: Explore the fundamental building blocks of any NPipeline – Source, Transform, and Sink nodes.
+title: Nodes (Source, Transform, Sink, and Specialized)
+description: Explore the fundamental building blocks of any NPipeline – Source, Transform, Sink, and specialized nodes for complex data processing patterns.
 sidebar_position: 4
 ---
 
-# Nodes: Source, Transform, and Sink
+# Nodes: Source, Transform, Sink, and Specialized
 
 ## Prerequisites
 
@@ -18,6 +18,8 @@ Nodes are the fundamental building blocks of any NPipeline. They encapsulate the
 * **Transform Nodes (`ITransformNode<TIn, TOut>`):** Process and transform data items.
 * **Sink Nodes (`ISinkNode<TIn>`):** Consume data items, typically as the final step in a pipeline.
 
+In addition to these core node types, NPipeline offers specialized nodes for complex data processing patterns like aggregation, batching, joining, and branching.
+
 All nodes implement the `INode` interface, which provides a common base for all processing units within NPipeline.
 
 ## The Node Hierarchy
@@ -28,11 +30,12 @@ The `INode` interface is the common root for all pipeline nodes. It is a simple 
 public interface INode : IAsyncDisposable { }
 ```
 
-There are three specialized types of nodes, each with a distinct role in the pipeline:
+There are several specialized types of nodes, each with a distinct role in the pipeline:
 
 1. **`ISourceNode<TOut>`**: Produces data to start a pipeline.
 2. **`ITransformNode<TIn, TOut>`**: Processes data from an upstream node and passes it to a downstream node.
 3. **`ISinkNode<TIn>`**: Consumes data, typically at the end of a pipeline.
+4. **Specialized Nodes**: Handle complex data processing patterns like aggregation, batching, joining, and branching.
 
 ## Core Node Types
 
@@ -216,6 +219,27 @@ public sealed class ConsoleSink : ISinkNode<string>
 }
 ```
 
+## Specialized Node Types
+
+Beyond the basic source, transform, and sink nodes, NPipeline offers a suite of specialized node types designed to handle more complex data processing patterns. These nodes enable sophisticated operations like aggregating data, joining streams, batching items for efficiency, and duplicating data paths for branching logic or monitoring.
+
+### Topics in this Section
+
+#### Core Node Types
+* **[Source Nodes](source-nodes.md)**: Learn about nodes that initiate data flow in your pipeline.
+* **[Transform Nodes](transform-nodes.md)**: Explore nodes that process and transform data items.
+* **[Sink Nodes](sink-nodes.md)**: Understand nodes that consume data as the final step in a pipeline.
+
+#### Specialized Node Types
+* **[Aggregation Nodes](aggregation.md)**: Learn how to perform various aggregation operations on data streams.
+* **[Batching Nodes](batching.md)**: Understand how to batch data for improved processing efficiency.
+* **[Join Nodes](join.md)**: Explore different types of join operations for combining data streams.
+* **[Lookup Nodes](lookup.md)**: Learn how to enrich data by looking up values from external sources.
+* **[Time-Windowed Join Nodes](time-windowed-join.md)**: Discover how to join data streams based on defined time windows.
+* **[Branch Nodes](branch.md)**: Understand how to duplicate data streams for parallel processing.
+* **[Tap Nodes](tap.md)**: Learn about non-intrusive monitoring and side-channel processing.
+* **[Type Conversion Nodes](type-conversion.md)**: Learn how to convert data types within your pipeline.
+
 ## Choosing the Right Node Type
 
 ```mermaid
@@ -225,13 +249,13 @@ graph TD
     B -->|Transform/process data| D{Do I need to combine multiple inputs?}
     B -->|Consume/store data| E[Use SINK NODE]
     
-    D -->|Yes, combine streams| F[Use ADVANCED NODES<br>Join, Aggregate, or Batch]
+    D -->|Yes, combine streams| F[Use SPECIALIZED NODES<br>Join, Aggregate, Batch, or Branch]
     D -->|No, single input| G[Use TRANSFORM NODE]
     
     C --> H[Configure data production<br>ISourceNode&lt;TOut&gt;]
     G --> I[Configure data transformation<br>ITransformNode&lt;TIn, TOut&gt;]
     E --> J[Configure data consumption<br>ISinkNode&lt;TIn&gt;]
-    F --> K[Choose specific advanced node type]
+    F --> K[Choose specific specialized node type]
 ```
 
 This decision tree helps you select the appropriate node type based on your specific data processing needs:
@@ -239,7 +263,7 @@ This decision tree helps you select the appropriate node type based on your spec
 * **Source Nodes** are your starting point when you need to generate or fetch data from external systems
 * **Transform Nodes** handle the processing of data from a single input stream to produce output
 * **Sink Nodes** are endpoints that consume data, typically for storage or external system integration
-* **Advanced Nodes** provide specialized patterns for combining or grouping multiple data streams
+* **Specialized Nodes** provide specific patterns for combining, grouping, or managing complex data flows
 
 ## Node Connectivity
 
@@ -284,22 +308,8 @@ public static class Program
 }
 ```
 
-## Beyond Basic Nodes: Advanced Node Types
-
-Beyond the three core node types, NPipeline offers sophisticated advanced node types for complex data processing patterns:
-
-- **[Advanced Node Types Overview](../advanced-nodes/index.md)**: Explore aggregation, batching, joins, lookups, and more
-  - **[Batching Nodes](../advanced-nodes/batching.md)**: Group items for efficient bulk operations
-  - **[Aggregation Nodes](../advanced-nodes/aggregation.md)**: Perform windowed aggregations with event-time semantics
-  - **[Join Nodes](../advanced-nodes/join.md)**: Combine multiple streams of data
-  - **[Lookup Nodes](../advanced-nodes/lookup.md)**: Enrich data with external information
-  - **[Time-Windowed Join Nodes](../advanced-nodes/time-windowed-join.md)**: Join streams based on time windows
-  - **[Branch Nodes](../advanced-nodes/branch.md)**: Duplicate data streams for parallel processing
-  - **[Type Conversion Nodes](../advanced-nodes/type-conversion.md)**: Convert between data types
-
 ## See Also
 
-- [Advanced Node Types](../advanced-nodes/index.md) - Explore aggregation, batching, joins, lookups, and more
 - [PipelineBuilder](../pipelinebuilder.md) - Learn how to connect nodes together
 - [Pipeline Execution](../pipeline-execution/index.md) - Understand how nodes are executed
 - [Error Handling](../resilience/error-handling-guide.md) - Handle errors within nodes
@@ -308,5 +318,5 @@ Beyond the three core node types, NPipeline offers sophisticated advanced node t
 ## Next Steps
 
 - [PipelineBuilder](../pipelinebuilder.md) - Learn how to connect these nodes together
-- [Advanced Node Types](../advanced-nodes/index.md) - Explore more sophisticated node patterns
 - [Execution Strategies](../pipeline-execution/execution-strategies.md) - Control how nodes process data
+- [Specialized Node Types](aggregation.md) - Explore more sophisticated node patterns

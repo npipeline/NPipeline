@@ -228,16 +228,16 @@ functionality and features like advanced parallelism, simplifying testing workfl
 
 ### Advanced Nodes
 
-- **[Advanced Nodes Overview](docs/core-concepts/advanced-nodes/index.md)** - Specialized node types
-- **[Aggregation](docs/core-concepts/advanced-nodes/aggregation.md)** - Combining multiple items
-- **[Batching](docs/core-concepts/advanced-nodes/batching.md)** - Processing data in batches
-- **[Branch](docs/core-concepts/advanced-nodes/branch.md)** - Splitting data flows
-- **[Join](docs/core-concepts/advanced-nodes/join.md)** - Combining data from multiple sources
-- **[Time-Windowed Join](docs/core-concepts/advanced-nodes/time-windowed-join.md)** - Joining with time constraints
-- **[Lookup](docs/core-concepts/advanced-nodes/lookup.md)** - Enriching data with lookups
-- **[Tap](docs/core-concepts/advanced-nodes/tap.md)** - Non-intrusive monitoring and side-channel processing
-- **[Type Conversion](docs/core-concepts/advanced-nodes/type-conversion.md)** - Converting between types
-- **[ValueTask Transforms](docs/core-concepts/advanced-nodes/valuetask-transforms.md)** - High-performance transformations
+- **[Advanced Nodes Overview](docs/core-concepts/nodes/index.md)** - Specialized node types
+- **[Aggregation](docs/core-concepts/nodes/aggregation.md)** - Combining multiple items
+- **[Batching](docs/core-concepts/nodes/batching.md)** - Processing data in batches
+- **[Branch](docs/core-concepts/nodes/branch.md)** - Splitting data flows
+- **[Join](docs/core-concepts/nodes/join.md)** - Combining data from multiple sources
+- **[Time-Windowed Join](docs/core-concepts/nodes/time-windowed-join.md)** - Joining with time constraints
+- **[Lookup](docs/core-concepts/nodes/lookup.md)** - Enriching data with lookups
+- **[Tap](docs/core-concepts/nodes/tap.md)** - Non-intrusive monitoring and side-channel processing
+- **[Type Conversion](docs/core-concepts/nodes/type-conversion.md)** - Converting between types
+- **[ValueTask Transforms](docs/core-concepts/nodes/valuetask-transforms.md)** - High-performance transformations
 
 ### Best Practices & Patterns
 
