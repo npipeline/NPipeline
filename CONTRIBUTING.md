@@ -35,27 +35,86 @@ Thank you for your interest in contributing to NPipeline! This guide will help y
    git remote add upstream https://github.com/NPipeline/NPipeline.git
    ```
 
-3. **Restore NuGet packages**:
+3. **Build the solution** using the build script (recommended method):
 
    ```bash
+   # On Mac/Linux
+   ./build.sh
+   
+   # On Windows
+   .\build.ps1
+   ```
+   
+   This will restore packages, build the solution, and run tests automatically.
+
+4. **Alternative: Manual setup** (if you prefer not to use the build scripts):
+
+   ```bash
+   # Restore NuGet packages
    dotnet restore
-   ```
-
-4. **Build the solution** to verify everything is working:
-
-   ```bash
+   
+   # Build the solution to verify everything is working
    dotnet build --configuration Release
-   ```
-
-5. **Run tests** to ensure all tests pass:
-
-   ```bash
+   
+   # Run tests to ensure all tests pass
    dotnet test --configuration Release --no-build
    ```
 
 ## Build and Test Commands
 
-### Building the Solution
+### Using Build Scripts (Recommended)
+
+The project provides standardized build scripts for a consistent development experience across platforms:
+
+#### Mac/Linux (build.sh)
+
+```bash
+# Basic build (Release configuration)
+./build.sh
+
+# Debug build
+./build.sh -c Debug
+
+# Build with packaging
+./build.sh -p
+
+# Run tests only
+./build.sh -t
+
+# Clean, restore, build, and test
+./build.sh -f
+
+# Get help with all available options
+./build.sh -h
+```
+
+#### Windows (build.ps1)
+
+```powershell
+# Basic build (Release configuration)
+.\build.ps1
+
+# Debug build
+.\build.ps1 -Configuration Debug
+
+# Build with packaging
+.\build.ps1 -Pack
+
+# Run tests only
+.\build.ps1 -Test
+
+# Clean, restore, build, and test
+.\build.ps1 -Full
+
+# Get help with all available options
+.\build.ps1 -Help
+```
+
+### Manual Commands
+
+If you prefer to use dotnet commands directly, or need more granular control:
+
+#### Building the Solution
 
 ```bash
 # Build the entire solution in Release mode
@@ -68,7 +127,7 @@ dotnet build src/NPipeline/NPipeline.csproj --configuration Release
 dotnet build --configuration Release --verbosity normal
 ```
 
-### Running Tests
+#### Running Tests
 
 ```bash
 # Run all tests
@@ -84,7 +143,7 @@ dotnet test --configuration Release --verbosity normal
 dotnet test --configuration Release --collect:"XPlat Code Coverage"
 ```
 
-### Packaging
+#### Packaging
 
 ```bash
 # Create NuGet packages
