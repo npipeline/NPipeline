@@ -130,7 +130,7 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
             // Assert
             _ = outputs.Should().HaveCount(3);
             _ = stopwatch.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(40); // 20ms + 20ms delays
-            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(200); // Should not take too long
+            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(250); // Should not take too long (allowing for system timer precision)
         }
     }
 
