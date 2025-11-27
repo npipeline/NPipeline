@@ -14,20 +14,22 @@ Build-time analyzers are diagnostic tools that scan your code at compile time—
 
 Think of them as **automated code review** by experts who understand how high-performance streaming systems should work.
 
-## The NPL 9000 Series: Performance and Resilience Hygiene Toolkit
+## The NP9000 Series: Performance and Resilience Hygiene Toolkit
 
-The NPL 9000 series (NP9XXX) diagnostics represent a curated set of enforcement rules that protect you from the most common—and most dangerous—mistakes when building streaming data pipelines:
+The NP9000 series (NP9XXX) diagnostics represent a curated set of enforcement rules that protect you from the most common—and most dangerous—mistakes when building streaming data pipelines:
 
 | Code Range | Category | Purpose |
 |-----------|----------|---------|
 | **NP90XX** | **Resilience** | Enforces proper error handling and recovery configuration |
 | **NP91XX** | **Performance** | Catches blocking operations, non-streaming patterns, and async/await anti-patterns |
 | **NP92XX** | **Data Flow** | Ensures proper data consumption and processing patterns |
+| **NP93XX** | **Reliability** | Detects inefficient exception handling and unsafe access patterns |
 | **NP94XX** | **Best Practices** | Validates dependency injection, resource management, and framework contract compliance |
+| **NP95XX** | **Configuration** | Detects configuration issues that can cause performance problems or silent failures |
 
 ### Why This Matters
 
-Before these analyzers existed, developers could:
+Without these analyzers, developers could:
 
 - ✗ Configure error handlers to restart nodes without the required prerequisites, causing silent failures
 - ✗ Block on async code, causing deadlocks and thread pool starvation
@@ -40,7 +42,7 @@ Before these analyzers existed, developers could:
 
 ## The Problem These Analyzers Solve
 
-### Before: Silent Failures at Runtime
+### Problematic Code: Silent Failures at Runtime
 
 ```csharp
 // ❌ Looks correct but will fail silently at runtime
@@ -64,7 +66,7 @@ public class MyErrorHandler : IPipelineErrorHandler
 // The entire pipeline crashes instead of gracefully restarting the node.
 ```
 
-### After: Build-Time Enforcement
+### Solution: Build-Time Enforcement
 
 ```text
 CSC : warning NP9002: Error handler can return PipelineErrorDecision.RestartNode 
@@ -78,9 +80,12 @@ You fix it during development, not during a production incident.
 The analyzers are organized into focused sections based on what they protect:
 
 - **[Resilience Analyzers](./resilience.md)** - Detect incomplete resilience configuration that could lead to silent failures
-- **[Performance Analyzers](./performance.md)** - Identify blocking operations, non-streaming patterns, and async/await anti-patterns  
+- **[Reliability Analyzers](./reliability.md)** - Identify inefficient exception handling patterns and unsafe access patterns
+- **[Performance Analyzers](./performance.md)** - Identify blocking operations, non-streaming patterns, and async/await anti-patterns
 - **[Best Practice Analyzers](./best-practices.md)** - Flag dependency injection anti-patterns, unsafe context access, and framework contract violations
 - **[Data Processing Analyzers](./data-processing.md)** - Ensure proper input consumption and streaming patterns in pipeline nodes
+- **[Configuration Analyzers](./configuration.md)** - Detect configuration issues that can cause performance problems, resource leaks, or silent failures
+- **[Code Fix Providers](./code-fixes.md)** - Automated code fixes for common analyzer issues
 
 ## Installation
 
@@ -105,11 +110,19 @@ dotnet add package NPipeline.Analyzers
 | **NP9103** | Performance | Swallowed OperationCanceledException | Re-throw or handle explicitly |
 | **NP9104** | Performance | Synchronous over async (fire-and-forget) | Await the async call |
 | **NP9105** | Performance | Disrespecting cancellation token | Check token and propagate |
+| **NP9205** | Performance | LINQ operations in hot paths | Use imperative alternatives |
+| **NP9206** | Performance | Inefficient string operations | Use StringBuilder, interpolation, or spans |
+| **NP9207** | Performance | Anonymous object allocation in hot paths | Use named types or value types |
 | **NP9209** | Performance | Missing ValueTask optimization | Use ValueTask for sync-heavy paths |
 | **NP9211** | Performance | Non-streaming patterns in SourceNode | Use IAsyncEnumerable with yield |
+| **NP9302** | Reliability | Inefficient exception handling patterns | Use specific exception handling |
 | **NP9312** | Data Processing | SinkNode input not consumed | Iterate the input pipe |
 | **NP9313** | Best Practice | Unsafe PipelineContext access | Use null-safe patterns |
 | **NP9409** | Best Practice | Direct dependency instantiation | Use constructor injection |
+| **NP9501** | Configuration | Unbounded materialization configuration | Set MaxMaterializedItems value |
+| **NP9502** | Configuration | Inappropriate parallelism configuration | Match parallelism to workload |
+| **NP9503** | Configuration | Batching configuration mismatch | Align batch size and timeout |
+| **NP9504** | Configuration | Timeout configuration issues | Set appropriate timeouts |
 
 ## Philosophy
 
@@ -138,14 +151,29 @@ You can adjust analyzer severity in your `.editorconfig`:
 dotnet_diagnostic.NP9002.severity = error
 dotnet_diagnostic.NP9102.severity = error
 dotnet_diagnostic.NP9104.severity = error
+dotnet_diagnostic.NP9205.severity = error
+dotnet_diagnostic.NP9206.severity = error
+dotnet_diagnostic.NP9207.severity = error
 dotnet_diagnostic.NP9211.severity = error
-dotnet_diagnostic.NP9409.severity = error
+dotnet_diagnostic.NP9302.severity = error
+dotnet_diagnostic.NP9312.severity = error
 dotnet_diagnostic.NP9313.severity = error
+dotnet_diagnostic.NP9409.severity = error
+dotnet_diagnostic.NP9501.severity = error
+dotnet_diagnostic.NP9502.severity = warning
+dotnet_diagnostic.NP9503.severity = warning
+dotnet_diagnostic.NP9504.severity = warning
+dotnet_diagnostic.NP9505.severity = warning
+dotnet_diagnostic.NP9506.severity = warning
+dotnet_diagnostic.NP9507.severity = warning
 ```
 
 ## See Also
 
 - [Resilience Analyzers](./resilience.md) - Build resilient error handling
+- [Reliability Analyzers](./reliability.md) - Improve exception handling and access patterns
 - [Performance Analyzers](./performance.md) - Write fast, non-blocking code
 - [Best Practice Analyzers](./best-practices.md) - Follow framework design principles
 - [Data Processing Analyzers](./data-processing.md) - Ensure data flows correctly
+- [Configuration Analyzers](./configuration.md) - Optimize pipeline configuration for performance and reliability
+- [Code Fix Providers](./code-fixes.md) - Automated code fixes for common analyzer issues

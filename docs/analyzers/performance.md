@@ -312,11 +312,288 @@ public async ValueTask<string> GetDataAsync(string id)
 
 **Important:** ValueTask comes with critical constraints that you must understand to avoid subtle bugs. For complete implementation guidance, including dangerous constraints and real-world examples, see [**Synchronous Fast Paths and ValueTask Optimization**](../advanced-topics/synchronous-fast-paths.md)—the dedicated deep-dive guide that covers the complete pattern and critical safety considerations.
 
+### NP9205: LINQ Operations in Hot Paths
+
+**ID:** `NP9205`
+**Severity:** Warning
+**Category:** Performance
+
+This analyzer detects LINQ operations in high-frequency execution paths that cause unnecessary allocations and GC pressure, significantly impacting performance in high-throughput NPipeline scenarios.
+
+#### Why This Matters
+
+LINQ in hot paths causes:
+
+1. **Excessive Allocations**: Each LINQ operation creates intermediate collections
+2. **GC Pressure**: Frequent garbage collection reduces throughput
+3. **Poor Performance**: Overhead of delegates and iterators
+4. **Memory Fragmentation**: Many small objects fragment the heap
+
+#### Problematic Patterns
+
+```csharp
+// ❌ PROBLEM: LINQ in ExecuteAsync method
+public class BadTransform : ITransformNode<Input, Output>
+{
+    protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
+    {
+        // NP9205: LINQ in hot path creates allocations
+        var filtered = input.Items.Where(x => x.IsActive).ToList();
+        var sorted = filtered.OrderBy(x => x.Priority).ToList();
+        var grouped = sorted.GroupBy(x => x.Category).ToList();
+        
+        return new Output(grouped);
+    }
+}
+
+// ❌ PROBLEM: LINQ in loop
+foreach (var batch in batches)
+{
+    // NP9205: LINQ inside loop creates pressure
+    var processed = batch.Select(x => ProcessItem(x)).Where(x => x != null).ToList();
+    await SendBatchAsync(processed);
+}
+
+// ❌ PROBLEM: Materializing LINQ results
+var items = sourceData.Where(x => x.IsValid).Select(x => x.Transform()).ToArray(); // NP9205: Immediate materialization
+```
+
+#### Solution: Use Imperative Alternatives
+
+```csharp
+// ✅ CORRECT: Use imperative processing
+public class GoodTransform : ITransformNode<Input, Output>
+{
+    protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
+    {
+        var filtered = new List<Item>();
+        foreach (var item in input.Items)
+        {
+            if (item.IsActive)
+                filtered.Add(item);
+        }
+        
+        filtered.Sort((x, y) => x.Priority.CompareTo(y.Priority));
+        
+        var grouped = new Dictionary<string, List<Item>>();
+        foreach (var item in filtered)
+        {
+            if (!grouped.ContainsKey(item.Category))
+                grouped[item.Category] = new List<Item>();
+            grouped[item.Category].Add(item);
+        }
+        
+        return new Output(grouped.Values.ToList());
+    }
+}
+
+// ✅ CORRECT: Process items directly in loop
+foreach (var batch in batches)
+{
+    var processed = new List<Item>();
+    foreach (var item in batch)
+    {
+        var result = ProcessItem(item);
+        if (result != null)
+            processed.Add(result);
+    }
+    await SendBatchAsync(processed);
+}
+```
+
+#### LINQ Alternatives Guidelines
+
+| LINQ Operation | Imperative Alternative | Performance Benefit |
+|----------------|----------------------|-------------------|
+| Where() | foreach with if | No intermediate collection |
+| Select() | foreach with transformation | No delegate overhead |
+| OrderBy() | Sort() with comparer | In-place sorting |
+| GroupBy() | Dictionary grouping | Direct grouping |
+| ToList()/ToArray() | Pre-sized collection | No resizing |
+
+### NP9206: Inefficient String Operations
+
+**ID:** `NP9206`
+**Severity:** Warning
+**Category:** Performance
+
+This analyzer detects inefficient string operations that cause excessive allocations and GC pressure in performance-critical NPipeline code, particularly in high-throughput scenarios.
+
+#### Why This Matters
+
+Inefficient string operations cause:
+
+1. **Memory Pressure**: Excessive allocations increase GC frequency
+2. **Poor Performance**: String operations are expensive in hot paths
+3. **Reduced Throughput**: Time spent on string operations reduces processing capacity
+4. **Scalability Issues**: Performance degrades with increased load
+
+#### Problematic Patterns
+
+```csharp
+// ❌ PROBLEM: String concatenation in loop
+public class BadTransform : ITransformNode<Input, Output>
+{
+    protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
+    {
+        string result = "";
+        foreach (var item in input.Items) // NP9206: Concatenation in loop
+        {
+            result += item.ToString(); // Creates new string each iteration
+        }
+        return new Output(result);
+    }
+}
+
+// ❌ PROBLEM: Inefficient string formatting
+protected override async Task<string> ProcessAsync(Data data, CancellationToken cancellationToken)
+{
+    return string.Format("{0}-{1}-{2}", data.Id, data.Name, data.Value); // NP9206: Inefficient formatting
+}
+
+// ❌ PROBLEM: String operations in LINQ
+var results = items.Select(x => x.Name.ToUpper().Substring(0, 5).Trim()); // NP9206: Multiple allocations per item
+```
+
+#### Solution: Use Efficient String Operations
+
+```csharp
+// ✅ CORRECT: Use StringBuilder for concatenation
+public class GoodTransform : ITransformNode<Input, Output>
+{
+    protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
+    {
+        var sb = new StringBuilder();
+        foreach (var item in input.Items)
+        {
+            sb.Append(item.ToString());
+        }
+        return new Output(sb.ToString());
+    }
+}
+
+// ✅ CORRECT: Use string interpolation
+protected override async Task<string> ProcessAsync(Data data, CancellationToken cancellationToken)
+{
+    return $"{data.Id}-{data.Name}-{data.Value}"; // Efficient formatting
+}
+
+// ✅ CORRECT: Use span-based operations
+protected override async Task<string> ProcessAsync(string input, CancellationToken cancellationToken)
+{
+    return input.AsSpan().Slice(0, Math.Min(5, input.Length)).Trim().ToString(); // Zero-allocation where possible
+}
+```
+
+#### String Operation Guidelines
+
+| Operation | Efficient Alternative | When to Use |
+|------------|----------------------|--------------|
+| Concatenation in loop | StringBuilder | Multiple concatenations |
+| String.Format | Interpolation | Simple formatting |
+| Substring/Trim | AsSpan().Slice() | Hot paths |
+| ToUpper/ToLower | string.Create with Span | Case conversion in hot paths |
+| Join | string.Join with Span | Array/list joining |
+
+### NP9207: Anonymous Object Allocation
+
+**ID:** `NP9207`
+**Severity:** Warning
+**Category:** Performance
+
+This analyzer detects anonymous object creation in performance-critical NPipeline code that causes unnecessary GC pressure and allocation overhead, particularly in high-throughput scenarios.
+
+#### Why This Matters
+
+Anonymous object allocations cause:
+
+1. **GC Pressure**: Each anonymous object creates heap allocation
+2. **Memory Overhead**: Anonymous objects have additional metadata
+3. **Poor Cache Locality**: Scattered object references
+4. **Reduced Throughput**: Time spent in garbage collection
+
+#### Problematic Patterns
+
+```csharp
+// ❌ PROBLEM: Anonymous objects in ExecuteAsync
+protected override async Task ExecuteAsync(IDataPipe<Output> output, PipelineContext context, CancellationToken cancellationToken)
+{
+    foreach (var item in inputItems)
+    {
+        // NP9207: Anonymous object allocation in hot path
+        var result = new { Id = item.Id, Name = item.Name, Value = item.Value * 2 };
+        await output.ProduceAsync(new Output(result), cancellationToken);
+    }
+}
+
+// ❌ PROBLEM: Anonymous objects in LINQ
+var processed = items.Select(x => new // NP9207: Anonymous object in LINQ
+{
+    Id = x.Id,
+    ProcessedValue = x.Value * 2,
+    Timestamp = DateTime.UtcNow
+}).ToList();
+
+// ❌ PROBLEM: Anonymous objects in loops
+foreach (var item in largeCollection)
+{
+    // NP9207: Anonymous object allocation per iteration
+    var temp = new { Original = item, Processed = Process(item) };
+    results.Add(temp);
+}
+```
+
+#### Solution: Use Named Types or Value Types
+
+```csharp
+// ✅ CORRECT: Define named type for results
+public record ProcessedItem(int Id, string Name, double Value);
+
+protected override async Task ExecuteAsync(IDataPipe<Output> output, PipelineContext context, CancellationToken cancellationToken)
+{
+    foreach (var item in inputItems)
+    {
+        var result = new ProcessedItem(item.Id, item.Name, item.Value * 2);
+        await output.ProduceAsync(new Output(result), cancellationToken);
+    }
+}
+
+// ✅ CORRECT: Use named type in LINQ
+public record ProcessedData(int Id, double ProcessedValue, DateTime Timestamp);
+
+var processed = items.Select(x => new ProcessedData(
+    x.Id,
+    x.Value * 2,
+    DateTime.UtcNow)).ToList();
+
+// ✅ CORRECT: Use struct for value-type data
+public readonly struct ProcessedItem
+{
+    public readonly int Id;
+    public readonly double ProcessedValue;
+    
+    public ProcessedItem(int id, double processedValue)
+    {
+        Id = id;
+        ProcessedValue = processedValue;
+    }
+}
+```
+
+#### Anonymous Object Alternatives
+
+| Scenario | Recommended Alternative | Benefit |
+|----------|----------------------|----------|
+| Temporary data transfer | Named record/class | Type safety, reuse |
+| Key-value pairs | Tuple or struct | Stack allocation for structs |
+| Multiple return values | Out parameters or struct | No heap allocation |
+| LINQ projections | Named type constructor | Clearer intent |
+
 ### NP9211: Non-Streaming Patterns in SourceNode
 
-**ID:** `NP9211`  
-**Severity:** Warning  
-**Category:** Performance  
+**ID:** `NP9211`
+**Severity:** Warning
+**Category:** Performance
 
 This analyzer detects non-streaming patterns in SourceNode implementations that can lead to memory issues and poor performance. See the [Data Processing Analyzers](./data-processing.md) section for detailed information about this analyzer.
 
@@ -346,8 +623,18 @@ dotnet_diagnostic.NP9104.severity = error
 # Treat ignored cancellation tokens as errors
 dotnet_diagnostic.NP9105.severity = error
 
+# Treat LINQ in hot paths as warnings
+dotnet_diagnostic.NP9205.severity = warning
+
+# Treat inefficient string operations as warnings
+dotnet_diagnostic.NP9206.severity = warning
+
+# Treat anonymous object allocation as warnings
+dotnet_diagnostic.NP9207.severity = warning
+
 # Treat missing ValueTask optimization as warnings
 dotnet_diagnostic.NP9209.severity = warning
+
 
 # Treat non-streaming patterns as errors
 dotnet_diagnostic.NP9211.severity = error
@@ -356,4 +643,4 @@ dotnet_diagnostic.NP9211.severity = error
 ## See Also
 
 - [Performance Hygiene](../advanced-topics/performance-hygiene.md)
-- [Synchronous Fast Paths](../advanced-topics/synchronous-fast-paths.md)
+- [Performance Characteristics](../architecture/performance-characteristics.md)

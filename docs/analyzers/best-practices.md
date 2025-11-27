@@ -489,9 +489,9 @@ public class GoodNode : TransformNode<string, string>
 5. **Make dependencies explicit** - avoid optional dependencies when possible
 6. **Register dependencies** in your DI container at application startup
 
-#### Migration Guide
+#### Implementation Guide
 
-To migrate from anti-patterns to proper dependency injection:
+To implement proper dependency injection instead of anti-patterns:
 
 1. **Identify direct instantiations** using the NP9409 analyzer
 2. **Extract dependencies** to constructor parameters

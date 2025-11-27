@@ -27,7 +27,7 @@ CSC : warning NP9002: Error handler can return PipelineErrorDecision.RestartNode
 but the node may not have all three mandatory prerequisites configured...
 ```
 
-This gets flagged immediately at build time, before deployment.
+This gets flagged immediately at build time, during development.
 
 #### Solution: Complete Configuration
 

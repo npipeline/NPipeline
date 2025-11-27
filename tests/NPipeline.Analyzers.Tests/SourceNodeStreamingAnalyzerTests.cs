@@ -5,7 +5,6 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using NPipeline.DataFlow;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using Xunit;
 
 namespace NPipeline.Analyzers.Tests;
 

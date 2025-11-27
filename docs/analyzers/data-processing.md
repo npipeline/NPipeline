@@ -252,9 +252,9 @@ public class FilteringSourceNode : SourceNode<FilteredData>
 | Data generation | Generate and yield items | No need to store all items |
 | Small datasets (< 1000 items) | Either approach is fine | Memory impact is negligible |
 
-#### Migration Guide
+#### Implementation Guide
 
-To migrate existing non-streaming SourceNode implementations:
+To implement streaming SourceNode implementations:
 
 1. **Identify non-streaming patterns** using the NP9211 analyzer
 2. **Replace List and Array allocations** with `IAsyncEnumerable` methods
