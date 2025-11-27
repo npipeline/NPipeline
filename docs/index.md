@@ -9,7 +9,7 @@ sidebar_position: 0
 
 NPipeline is a powerful and flexible .NET library for building high-performance, graph-based streaming data pipelines.
 
-## 🚀 Choose Your Path
+## Choose Your Path
 
 | Experience Level | Recommended Path | Time Required |
 |------------------|------------------|---------------|
@@ -21,30 +21,30 @@ NPipeline is a powerful and flexible .NET library for building high-performance,
 
 ## Documentation Sections
 
-### [🎯 Getting Started](./getting-started/installation.md)
+### [Getting Started](./getting-started/installation.md)
 Install NPipeline and build your first pipeline in 15 minutes.
 
-### [💡 Introduction](./introduction/index.md)  
+### [Introduction](./introduction/index.md)  
 Understand the "why" behind NPipeline and what makes it powerful.
 
-### [🧱 Core Concepts](./core-concepts/index.md)  
+### [Core Concepts](./core-concepts/index.md)  
 **Start here for implementation.** Learn the building blocks: nodes, pipelines, 
 execution, and resilience.
 
-### [🏗️ Architecture](./architecture/index.md)  
+### [Architecture](./architecture/index.md)  
 **For the curious.** Deep dive into how NPipeline works internally and why it's fast.
 
-### [🔌 Connectors](./connectors/index.md)  
+### [Connectors](./connectors/index.md)  
 Connect to external systems: CSV files, databases, message queues.
 
-### [🧩 Extensions](./extensions/index.md)  
+### [Extensions](./extensions/index.md)  
 Dependency injection, parallelism, testing utilities, and more.
 
-### [🚀 Advanced Topics](./advanced-topics/performance-hygiene.md)  
+### [Advanced Topics](./advanced-topics/performance-hygiene.md)  
 Performance optimization, testing strategies, and expert patterns.
 
-### [🔍 Build-Time Analyzers](./analyzers/index.md)  
+### [Build-Time Analyzers](./analyzers/index.md)  
 Catch errors at compile-time with automated best practice enforcement.
 
-### [📚 Reference](./reference/error-codes.md)  
+### [Reference](./reference/error-codes.md)  
 Error codes, API reference, FAQ, and troubleshooting.
