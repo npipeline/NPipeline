@@ -3,18 +3,17 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using NPipeline.Nodes;
 
-namespace NPipeline.Analyzers.Tests
-{
+namespace NPipeline.Analyzers.Tests;
 
-    /// <summary>
-    ///     Tests for InefficientStringOperationsAnalyzer.
-    /// </summary>
-    public sealed class InefficientStringOperationsAnalyzerTests
+/// <summary>
+///     Tests for InefficientStringOperationsAnalyzer.
+/// </summary>
+public sealed class InefficientStringOperationsAnalyzerTests
+{
+    [Fact]
+    public void ShouldDetectStringConcatenationInLoop()
     {
-        [Fact]
-        public void ShouldDetectStringConcatenationInLoop()
-        {
-            var code = """
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -32,16 +31,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in loop");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in loop");
+    }
 
-        [Fact]
-        public void ShouldDetectStringConcatenationInHotPath()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectStringConcatenationInHotPath()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestNode : INode
@@ -58,16 +57,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in hot path");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in hot path");
+    }
 
-        [Fact]
-        public void ShouldDetectMultipleStringConcatenations()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectMultipleStringConcatenations()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -80,16 +79,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect multiple string concatenations");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect multiple string concatenations");
+    }
 
-        [Fact]
-        public void ShouldDetectStringConcatenationInAsyncMethod()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectStringConcatenationInAsyncMethod()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestClass
@@ -105,16 +104,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in async method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in async method");
+    }
 
-        [Fact]
-        public void ShouldDetectStringConcatenationInNPipelineNodeClass()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectStringConcatenationInNPipelineNodeClass()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<int, string>
@@ -127,16 +126,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in NPipeline node class");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in NPipeline node class");
+    }
 
-        [Fact]
-        public void ShouldDetectStringConcatenationInWhileLoop()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectStringConcatenationInWhileLoop()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -156,16 +155,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in while loop");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in while loop");
+    }
 
-        [Fact]
-        public void ShouldDetectStringConcatenationInForLoop()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectStringConcatenationInForLoop()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -183,16 +182,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in for loop");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in for loop");
+    }
 
-        [Fact]
-        public void ShouldDetectStringConcatenationInDoWhileLoop()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectStringConcatenationInDoWhileLoop()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -212,16 +211,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in do-while loop");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in do-while loop");
+    }
 
-        [Fact]
-        public void ShouldDetectStringConcatenationInSinkNode()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectStringConcatenationInSinkNode()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestSinkNode : ISinkNode<string>
@@ -237,16 +236,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in sink node");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in sink node");
+    }
 
-        [Fact]
-        public void ShouldDetectStringConcatenationInAggregateNode()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectStringConcatenationInAggregateNode()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestAggregateNode : IAggregateNode<int>
@@ -267,16 +266,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in aggregate node");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in aggregate node");
+    }
 
-        [Fact]
-        public void ShouldIgnoreStringConcatenationInNonHotPathMethod()
-        {
-            var code = """
+    [Fact]
+    public void ShouldIgnoreStringConcatenationInNonHotPathMethod()
+    {
+        var code = """
                    public class TestClass
                    {
                        public void ProcessData(string[] items)
@@ -292,16 +291,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
-            Assert.False(hasDiagnostic, "Analyzer should not detect string concatenation in non-hot path method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
+        Assert.False(hasDiagnostic, "Analyzer should not detect string concatenation in non-hot path method");
+    }
 
-        [Fact]
-        public void ShouldIgnoreStringConcatenationInNonAsyncMethod()
-        {
-            var code = """
+    [Fact]
+    public void ShouldIgnoreStringConcatenationInNonAsyncMethod()
+    {
+        var code = """
                    public class TestClass
                    {
                        public string ProcessData(string[] items)
@@ -317,16 +316,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
-            Assert.False(hasDiagnostic, "Analyzer should not detect string concatenation in non-async method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
+        Assert.False(hasDiagnostic, "Analyzer should not detect string concatenation in non-async method");
+    }
 
-        [Fact]
-        public void ShouldIgnoreStringConcatenationInNonNodeClass()
-        {
-            var code = """
+    [Fact]
+    public void ShouldIgnoreStringConcatenationInNonNodeClass()
+    {
+        var code = """
                    public class RegularClass
                    {
                        public async Task ProcessDataAsync(string[] items)
@@ -342,16 +341,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
-            Assert.False(hasDiagnostic, "Analyzer should not detect string concatenation in non-NPipeline node class");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
+        Assert.False(hasDiagnostic, "Analyzer should not detect string concatenation in non-NPipeline node class");
+    }
 
-        [Fact]
-        public void ShouldDetectStringConcatenationInValueTaskReturningMethod()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectStringConcatenationInValueTaskReturningMethod()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -365,16 +364,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in ValueTask-returning method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in ValueTask-returning method");
+    }
 
-        [Fact]
-        public void ShouldDetectMultipleStringConcatenationsInSameExpression()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectMultipleStringConcatenationsInSameExpression()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -387,16 +386,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect multiple string concatenations in same expression");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect multiple string concatenations in same expression");
+    }
 
-        [Fact]
-        public void ShouldDetectStringConcatenationInRunAsyncMethod()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectStringConcatenationInRunAsyncMethod()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestSourceNode : ISourceNode<int>
@@ -414,21 +413,21 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in RunAsync method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientStringOperationsAnalyzer.InefficientStringOperationsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in RunAsync method");
+    }
 
-        private static IEnumerable<Diagnostic> GetDiagnostics(string code)
+    private static IEnumerable<Diagnostic> GetDiagnostics(string code)
+    {
+        var syntaxTree = CSharpSyntaxTree.ParseText(code);
+
+        // Get path to NPipeline assembly
+        var nPipelineAssemblyPath = typeof(INode).Assembly.Location;
+
+        var references = new[]
         {
-            var syntaxTree = CSharpSyntaxTree.ParseText(code);
-
-            // Get path to NPipeline assembly
-            var nPipelineAssemblyPath = typeof(INode).Assembly.Location;
-
-            var references = new[]
-            {
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Task).Assembly.Location),
@@ -436,15 +435,14 @@ namespace NPipeline.Analyzers.Tests
             MetadataReference.CreateFromFile(nPipelineAssemblyPath),
         };
 
-            var compilation = CSharpCompilation.Create("TestAssembly")
-                .AddReferences(references)
-                .AddSyntaxTrees(syntaxTree);
+        var compilation = CSharpCompilation.Create("TestAssembly")
+            .AddReferences(references)
+            .AddSyntaxTrees(syntaxTree);
 
-            var analyzer = new InefficientStringOperationsAnalyzer();
-            var compilationWithAnalyzers = compilation.WithAnalyzers([analyzer]);
-            var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
+        var analyzer = new InefficientStringOperationsAnalyzer();
+        var compilationWithAnalyzers = compilation.WithAnalyzers([analyzer]);
+        var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
 
-            return diagnostics;
-        }
+        return diagnostics;
     }
 }

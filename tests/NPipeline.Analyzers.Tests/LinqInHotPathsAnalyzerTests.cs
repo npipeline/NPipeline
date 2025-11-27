@@ -3,18 +3,17 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using NPipeline.Nodes;
 
-namespace NPipeline.Analyzers.Tests
-{
+namespace NPipeline.Analyzers.Tests;
 
-    /// <summary>
-    ///     Tests for LinqInHotPathsAnalyzer.
-    /// </summary>
-    public sealed class LinqInHotPathsAnalyzerTests
+/// <summary>
+///     Tests for LinqInHotPathsAnalyzer.
+/// </summary>
+public sealed class LinqInHotPathsAnalyzerTests
+{
+    [Fact]
+    public void ShouldDetectLinqInExecuteAsyncMethod()
     {
-        [Fact]
-        public void ShouldDetectLinqInExecuteAsyncMethod()
-        {
-            var code = """
+        var code = """
                    using System.Linq;
                    using NPipeline.Nodes;
 
@@ -30,16 +29,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect LINQ in ExecuteAsync method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect LINQ in ExecuteAsync method");
+    }
 
-        [Fact]
-        public void ShouldDetectLinqInProcessAsyncMethod()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectLinqInProcessAsyncMethod()
+    {
+        var code = """
                    using System.Linq;
                    using NPipeline.Nodes;
 
@@ -56,16 +55,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect LINQ in ProcessAsync method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect LINQ in ProcessAsync method");
+    }
 
-        [Fact]
-        public void ShouldDetectLinqInRunAsyncMethod()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectLinqInRunAsyncMethod()
+    {
+        var code = """
                    using System.Linq;
                    using NPipeline.Nodes;
 
@@ -81,16 +80,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect LINQ in RunAsync method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect LINQ in RunAsync method");
+    }
 
-        [Fact]
-        public void ShouldDetectLinqInAsyncMethod()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectLinqInAsyncMethod()
+    {
+        var code = """
                    using System.Linq;
                    using NPipeline.Nodes;
 
@@ -105,16 +104,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect LINQ in async method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect LINQ in async method");
+    }
 
-        [Fact]
-        public void ShouldDetectLinqInNPipelineNodeClass()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectLinqInNPipelineNodeClass()
+    {
+        var code = """
                    using System.Linq;
                    using NPipeline.Nodes;
 
@@ -129,16 +128,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect LINQ in NPipeline node class");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect LINQ in NPipeline node class");
+    }
 
-        [Fact]
-        public void ShouldDetectLinqInSinkNode()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectLinqInSinkNode()
+    {
+        var code = """
                    using System.Linq;
                    using NPipeline.Nodes;
 
@@ -155,16 +154,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect LINQ in sink node");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect LINQ in sink node");
+    }
 
-        [Fact]
-        public void ShouldDetectLinqInAggregateNode()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectLinqInAggregateNode()
+    {
+        var code = """
                    using System.Linq;
                    using NPipeline.Nodes;
 
@@ -183,16 +182,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect LINQ in aggregate node");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect LINQ in aggregate node");
+    }
 
-        [Fact]
-        public void ShouldIgnoreLinqInNonHotPathMethod()
-        {
-            var code = """
+    [Fact]
+    public void ShouldIgnoreLinqInNonHotPathMethod()
+    {
+        var code = """
                    using System.Linq;
 
                    public class TestClass
@@ -206,16 +205,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
-            Assert.False(hasDiagnostic, "Analyzer should not detect LINQ in non-hot path method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
+        Assert.False(hasDiagnostic, "Analyzer should not detect LINQ in non-hot path method");
+    }
 
-        [Fact]
-        public void ShouldIgnoreLinqInNonAsyncMethod()
-        {
-            var code = """
+    [Fact]
+    public void ShouldIgnoreLinqInNonAsyncMethod()
+    {
+        var code = """
                    using System.Linq;
 
                    public class TestClass
@@ -229,16 +228,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
-            Assert.False(hasDiagnostic, "Analyzer should not detect LINQ in non-async method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
+        Assert.False(hasDiagnostic, "Analyzer should not detect LINQ in non-async method");
+    }
 
-        [Fact]
-        public void ShouldIgnoreLinqInNonNodeClass()
-        {
-            var code = """
+    [Fact]
+    public void ShouldIgnoreLinqInNonNodeClass()
+    {
+        var code = """
                    using System.Linq;
 
                    public class RegularClass
@@ -252,16 +251,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
-            Assert.False(hasDiagnostic, "Analyzer should not detect LINQ in non-NPipeline node class");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
+        Assert.False(hasDiagnostic, "Analyzer should not detect LINQ in non-NPipeline node class");
+    }
 
-        [Fact]
-        public void ShouldDetectMultipleLinqOperations()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectMultipleLinqOperations()
+    {
+        var code = """
                    using System.Linq;
                    using NPipeline.Nodes;
 
@@ -277,16 +276,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var linqDiagnostics = diagnostics.Where(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId).ToList();
-            Assert.True(linqDiagnostics.Count >= 2, "Analyzer should detect multiple LINQ operations");
-        }
+        var linqDiagnostics = diagnostics.Where(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId).ToList();
+        Assert.True(linqDiagnostics.Count >= 2, "Analyzer should detect multiple LINQ operations");
+    }
 
-        [Fact]
-        public void ShouldDetectChainedLinqOperations()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectChainedLinqOperations()
+    {
+        var code = """
                    using System.Linq;
                    using NPipeline.Nodes;
 
@@ -306,16 +305,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect chained LINQ operations");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect chained LINQ operations");
+    }
 
-        [Fact]
-        public void ShouldDetectLinqInValueTaskReturningMethod()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectLinqInValueTaskReturningMethod()
+    {
+        var code = """
                    using System.Linq;
                    using NPipeline.Nodes;
 
@@ -330,17 +329,17 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
-            Assert.True(hasDiagnostic, "Analyzer should detect LINQ in ValueTask-returning method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
+        Assert.True(hasDiagnostic, "Analyzer should detect LINQ in ValueTask-returning method");
+    }
 
-        [Fact]
-        public void ShouldDetectCommonLinqMethods()
+    [Fact]
+    public void ShouldDetectCommonLinqMethods()
+    {
+        var linqMethods = new[]
         {
-            var linqMethods = new[]
-            {
             "Where", "Select", "SelectMany", "GroupBy", "OrderBy", "OrderByDescending",
             "ThenBy", "ThenByDescending", "ToList", "ToArray", "ToDictionary", "ToHashSet",
             "First", "FirstOrDefault", "Single", "SingleOrDefault", "Last", "LastOrDefault",
@@ -349,34 +348,34 @@ namespace NPipeline.Analyzers.Tests
             "TakeWhile", "Join", "GroupJoin", "Zip", "SequenceEqual", "All", "Any", "Contains",
         };
 
-            foreach (var method in linqMethods)
-            {
-                var code = $$"""
+        foreach (var method in linqMethods)
+        {
+            var code = $$"""
                          using System.Linq;
                          using NPipeline.Nodes;
- 
+
                          public class TestTransformNode : ITransformNode<string, string>
                          {
                              public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                              {
                                  // NP9201: {{method}} in hot path
                                  var items = input.Split(' ');
-                                 var result = items.{method}(x => x.Length > 0);
+                                 var result = items.{{method}}(x => x.Length > 0);
                                  return string.Join(",", result);
                              }
                          }
                          """;
 
-                var diagnostics = GetDiagnostics(code);
-                var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
-                Assert.True(hasDiagnostic, $"Analyzer should detect {method} LINQ method");
-            }
+            var diagnostics = GetDiagnostics(code);
+            var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
+            Assert.True(hasDiagnostic, $"Analyzer should detect {method} LINQ method");
         }
+    }
 
-        [Fact]
-        public void ShouldIgnoreNonSystemLinqMethods()
-        {
-            var code = """
+    [Fact]
+    public void ShouldIgnoreNonSystemLinqMethods()
+    {
+        var code = """
                    using System.Linq;
                    using NPipeline.Nodes;
 
@@ -400,36 +399,35 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
-            Assert.False(hasDiagnostic, "Analyzer should not detect non-System.Linq methods");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
+        Assert.False(hasDiagnostic, "Analyzer should not detect non-System.Linq methods");
+    }
 
-        private static IEnumerable<Diagnostic> GetDiagnostics(string code)
+    private static IEnumerable<Diagnostic> GetDiagnostics(string code)
+    {
+        var syntaxTree = CSharpSyntaxTree.ParseText(code);
+
+        // Get path to NPipeline assembly
+        var nPipelineAssemblyPath = typeof(INode).Assembly.Location;
+
+        var references = new[]
         {
-            var syntaxTree = CSharpSyntaxTree.ParseText(code);
+            MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(Task).Assembly.Location),
+            MetadataReference.CreateFromFile(nPipelineAssemblyPath),
+        };
 
-            // Get path to NPipeline assembly
-            var nPipelineAssemblyPath = typeof(INode).Assembly.Location;
+        var compilation = CSharpCompilation.Create("TestAssembly")
+            .AddReferences(references)
+            .AddSyntaxTrees(syntaxTree);
 
-            var references = new[]
-            {
-                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(Task).Assembly.Location),
-                MetadataReference.CreateFromFile(nPipelineAssemblyPath),
-            };
+        var analyzer = new LinqInHotPathsAnalyzer();
+        var compilationWithAnalyzers = compilation.WithAnalyzers([analyzer]);
+        var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
 
-            var compilation = CSharpCompilation.Create("TestAssembly")
-                .AddReferences(references)
-                .AddSyntaxTrees(syntaxTree);
-
-            var analyzer = new LinqInHotPathsAnalyzer();
-            var compilationWithAnalyzers = compilation.WithAnalyzers([analyzer]);
-            var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
-
-            return diagnostics;
-        }
+        return diagnostics;
     }
 }

@@ -3,18 +3,17 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using NPipeline.Nodes;
 
-namespace NPipeline.Analyzers.Tests
-{
+namespace NPipeline.Analyzers.Tests;
 
-    /// <summary>
-    ///     Tests for InefficientExceptionHandlingAnalyzer.
-    /// </summary>
-    public sealed class InefficientExceptionHandlingAnalyzerTests
+/// <summary>
+///     Tests for InefficientExceptionHandlingAnalyzer.
+/// </summary>
+public sealed class InefficientExceptionHandlingAnalyzerTests
+{
+    [Fact]
+    public void ShouldDetectCatchAllException()
     {
-        [Fact]
-        public void ShouldDetectCatchAllException()
-        {
-            var code = """
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -35,16 +34,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.True(hasDiagnostic, "Analyzer should detect catch-all exception handler");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.True(hasDiagnostic, "Analyzer should detect catch-all exception handler");
+    }
 
-        [Fact]
-        public void ShouldCatchAllExceptionWithoutType()
-        {
-            var code = """
+    [Fact]
+    public void ShouldCatchAllExceptionWithoutType()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -65,16 +64,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.True(hasDiagnostic, "Analyzer should detect catch-all exception handler without type");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.True(hasDiagnostic, "Analyzer should detect catch-all exception handler without type");
+    }
 
-        [Fact]
-        public void ShouldDetectEmptyCatchBlock()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectEmptyCatchBlock()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -94,16 +93,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.True(hasDiagnostic, "Analyzer should detect empty catch block");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.True(hasDiagnostic, "Analyzer should detect empty catch block");
+    }
 
-        [Fact]
-        public void ShouldDetectExceptionSwallowing()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectExceptionSwallowing()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -125,16 +124,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.True(hasDiagnostic, "Analyzer should detect exception swallowing pattern");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.True(hasDiagnostic, "Analyzer should detect exception swallowing pattern");
+    }
 
-        [Fact]
-        public void ShouldDetectInefficientExceptionFiltering()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectInefficientExceptionFiltering()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -154,16 +153,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.True(hasDiagnostic, "Analyzer should detect inefficient exception filtering");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.True(hasDiagnostic, "Analyzer should detect inefficient exception filtering");
+    }
 
-        [Fact]
-        public void ShouldDetectImproperRethrow()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectImproperRethrow()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -184,16 +183,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.True(hasDiagnostic, "Analyzer should detect improper re-throw pattern");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.True(hasDiagnostic, "Analyzer should detect improper re-throw pattern");
+    }
 
-        [Fact]
-        public void ShouldDetectExceptionHandlingInProcessAsync()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectExceptionHandlingInProcessAsync()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -214,16 +213,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.True(hasDiagnostic, "Analyzer should detect exception handling in ProcessAsync method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in ProcessAsync method");
+    }
 
-        [Fact]
-        public void ShouldDetectExceptionHandlingInSinkNode()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectExceptionHandlingInSinkNode()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestSinkNode : ISinkNode<string>
@@ -244,16 +243,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.True(hasDiagnostic, "Analyzer should detect exception handling in sink node");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in sink node");
+    }
 
-        [Fact]
-        public void ShouldDetectExceptionHandlingInSourceNode()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectExceptionHandlingInSourceNode()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestSourceNode : ISourceNode<int>
@@ -274,16 +273,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.True(hasDiagnostic, "Analyzer should detect exception handling in source node");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in source node");
+    }
 
-        [Fact]
-        public void ShouldDetectExceptionHandlingInAggregateNode()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectExceptionHandlingInAggregateNode()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestAggregateNode : IAggregateNode<int>
@@ -307,16 +306,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.True(hasDiagnostic, "Analyzer should detect exception handling in aggregate node");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in aggregate node");
+    }
 
-        [Fact]
-        public void ShouldIgnoreSpecificExceptionHandling()
-        {
-            var code = """
+    [Fact]
+    public void ShouldIgnoreSpecificExceptionHandling()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -337,16 +336,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.False(hasDiagnostic, "Analyzer should not flag specific exception handling");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.False(hasDiagnostic, "Analyzer should not flag specific exception handling");
+    }
 
-        [Fact]
-        public void ShouldIgnoreExceptionHandlingInNonHotPathMethod()
-        {
-            var code = """
+    [Fact]
+    public void ShouldIgnoreExceptionHandlingInNonHotPathMethod()
+    {
+        var code = """
                    public class TestClass
                    {
                        public void ProcessData(string data)
@@ -366,16 +365,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.False(hasDiagnostic, "Analyzer should not flag exception handling in non-hot path method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.False(hasDiagnostic, "Analyzer should not flag exception handling in non-hot path method");
+    }
 
-        [Fact]
-        public void ShouldIgnoreExceptionHandlingInNonAsyncMethod()
-        {
-            var code = """
+    [Fact]
+    public void ShouldIgnoreExceptionHandlingInNonAsyncMethod()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -398,16 +397,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.False(hasDiagnostic, "Analyzer should not flag exception handling in non-async method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.False(hasDiagnostic, "Analyzer should not flag exception handling in non-async method");
+    }
 
-        [Fact]
-        public void ShouldIgnoreExceptionHandlingInNonNodeClass()
-        {
-            var code = """
+    [Fact]
+    public void ShouldIgnoreExceptionHandlingInNonNodeClass()
+    {
+        var code = """
                    public class RegularClass
                    {
                        public async Task ProcessDataAsync(string data)
@@ -427,16 +426,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.False(hasDiagnostic, "Analyzer should not flag exception handling in non-NPipeline node class");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.False(hasDiagnostic, "Analyzer should not flag exception handling in non-NPipeline node class");
+    }
 
-        [Fact]
-        public void ShouldDetectExceptionHandlingInValueTaskReturningMethod()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectExceptionHandlingInValueTaskReturningMethod()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -457,16 +456,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.True(hasDiagnostic, "Analyzer should detect exception handling in ValueTask-returning method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in ValueTask-returning method");
+    }
 
-        [Fact]
-        public void ShouldDetectExceptionHandlingInRunAsyncMethod()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectExceptionHandlingInRunAsyncMethod()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestSourceNode : ISourceNode<int>
@@ -487,16 +486,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.True(hasDiagnostic, "Analyzer should detect exception handling in RunAsync method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in RunAsync method");
+    }
 
-        [Fact]
-        public void ShouldDetectExceptionHandlingInHandleAsyncMethod()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectExceptionHandlingInHandleAsyncMethod()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -517,16 +516,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.True(hasDiagnostic, "Analyzer should detect exception handling in HandleAsync method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in HandleAsync method");
+    }
 
-        [Fact]
-        public void ShouldDetectExceptionHandlingInExecuteMethod()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectExceptionHandlingInExecuteMethod()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -547,16 +546,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.True(hasDiagnostic, "Analyzer should detect exception handling in Execute method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in Execute method");
+    }
 
-        [Fact]
-        public void ShouldDetectExceptionHandlingInProcessMethod()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectExceptionHandlingInProcessMethod()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -577,16 +576,16 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.True(hasDiagnostic, "Analyzer should detect exception handling in Process method");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in Process method");
+    }
 
-        [Fact]
-        public void ShouldDetectExceptionHandlingWithLoggingOnly()
-        {
-            var code = """
+    [Fact]
+    public void ShouldDetectExceptionHandlingWithLoggingOnly()
+    {
+        var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -607,21 +606,21 @@ namespace NPipeline.Analyzers.Tests
                    }
                    """;
 
-            var diagnostics = GetDiagnostics(code);
+        var diagnostics = GetDiagnostics(code);
 
-            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-            Assert.True(hasDiagnostic, "Analyzer should detect exception swallowing with logging only");
-        }
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+        Assert.True(hasDiagnostic, "Analyzer should detect exception swallowing with logging only");
+    }
 
-        private static IEnumerable<Diagnostic> GetDiagnostics(string code)
+    private static IEnumerable<Diagnostic> GetDiagnostics(string code)
+    {
+        var syntaxTree = CSharpSyntaxTree.ParseText(code);
+
+        // Get path to NPipeline assembly
+        var nPipelineAssemblyPath = typeof(INode).Assembly.Location;
+
+        var references = new[]
         {
-            var syntaxTree = CSharpSyntaxTree.ParseText(code);
-
-            // Get path to NPipeline assembly
-            var nPipelineAssemblyPath = typeof(INode).Assembly.Location;
-
-            var references = new[]
-            {
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Task).Assembly.Location),
@@ -629,15 +628,14 @@ namespace NPipeline.Analyzers.Tests
             MetadataReference.CreateFromFile(nPipelineAssemblyPath),
         };
 
-            var compilation = CSharpCompilation.Create("TestAssembly")
-                .AddReferences(references)
-                .AddSyntaxTrees(syntaxTree);
+        var compilation = CSharpCompilation.Create("TestAssembly")
+            .AddReferences(references)
+            .AddSyntaxTrees(syntaxTree);
 
-            var analyzer = new InefficientExceptionHandlingAnalyzer();
-            var compilationWithAnalyzers = compilation.WithAnalyzers([analyzer]);
-            var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
+        var analyzer = new InefficientExceptionHandlingAnalyzer();
+        var compilationWithAnalyzers = compilation.WithAnalyzers([analyzer]);
+        var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
 
-            return diagnostics;
-        }
+        return diagnostics;
     }
 }
