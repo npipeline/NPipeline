@@ -27,7 +27,7 @@ public sealed class InappropriateParallelismConfigurationAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InappropriateParallelismConfigurationAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InappropriateParallelismConfigurationAnalyzer.InappropriateParallelismConfigurationId);
         Assert.True(hasDiagnostic, "Analyzer should detect excessive parallelism");
     }
 
@@ -49,7 +49,7 @@ public sealed class InappropriateParallelismConfigurationAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InappropriateParallelismConfigurationAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InappropriateParallelismConfigurationAnalyzer.InappropriateParallelismConfigurationId);
         Assert.True(hasDiagnostic, "Analyzer should detect high parallelism for I/O-bound workload");
     }
 
@@ -71,7 +71,7 @@ public sealed class InappropriateParallelismConfigurationAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InappropriateParallelismConfigurationAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InappropriateParallelismConfigurationAnalyzer.InappropriateParallelismConfigurationId);
         Assert.True(hasDiagnostic, "Analyzer should detect low parallelism for CPU-bound workload");
     }
 
@@ -93,7 +93,7 @@ public sealed class InappropriateParallelismConfigurationAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InappropriateParallelismConfigurationAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InappropriateParallelismConfigurationAnalyzer.InappropriateParallelismConfigurationId);
         Assert.True(hasDiagnostic, "Analyzer should detect single-threaded CPU-bound workload");
     }
 
@@ -115,7 +115,7 @@ public sealed class InappropriateParallelismConfigurationAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InappropriateParallelismConfigurationAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InappropriateParallelismConfigurationAnalyzer.InappropriateParallelismConfigurationId);
         Assert.True(hasDiagnostic, "Analyzer should detect PreserveOrdering with high parallelism");
     }
 
@@ -141,7 +141,7 @@ public sealed class InappropriateParallelismConfigurationAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InappropriateParallelismConfigurationAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InappropriateParallelismConfigurationAnalyzer.InappropriateParallelismConfigurationId);
         Assert.True(hasDiagnostic, "Analyzer should detect excessive parallelism in WithParallelism method");
     }
 
@@ -163,7 +163,7 @@ public sealed class InappropriateParallelismConfigurationAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InappropriateParallelismConfigurationAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InappropriateParallelismConfigurationAnalyzer.InappropriateParallelismConfigurationId);
         Assert.False(hasDiagnostic, "Analyzer should not flag appropriate parallelism");
     }
 
@@ -185,7 +185,7 @@ public sealed class InappropriateParallelismConfigurationAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InappropriateParallelismConfigurationAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InappropriateParallelismConfigurationAnalyzer.InappropriateParallelismConfigurationId);
         Assert.False(hasDiagnostic, "Analyzer should not flag appropriate I/O-bound parallelism");
     }
 
@@ -207,7 +207,7 @@ public sealed class InappropriateParallelismConfigurationAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InappropriateParallelismConfigurationAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == InappropriateParallelismConfigurationAnalyzer.InappropriateParallelismConfigurationId);
         Assert.False(hasDiagnostic, "Analyzer should not flag PreserveOrdering with low parallelism");
     }
 

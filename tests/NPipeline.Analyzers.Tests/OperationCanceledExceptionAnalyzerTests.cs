@@ -26,7 +26,7 @@ public sealed class OperationCanceledExceptionAnalyzerTests
                            {
                                await SomeOperationAsync();
                            }
-                           catch (Exception ex) // Should trigger NP9103
+                           catch (Exception ex) // Should trigger NP9102
                            {
                                Console.WriteLine(ex.Message);
                                // Missing re-throw for OperationCanceledException
@@ -59,7 +59,7 @@ public sealed class OperationCanceledExceptionAnalyzerTests
                            {
                                await SomeOperationAsync();
                            }
-                           catch (OperationCanceledException) // Should trigger NP9103
+                           catch (OperationCanceledException) // Should trigger NP9102
                            {
                                Console.WriteLine("Operation was cancelled");
                                // Missing re-throw
@@ -160,7 +160,7 @@ public sealed class OperationCanceledExceptionAnalyzerTests
                            {
                                await SomeOperationAsync();
                            }
-                           catch (AggregateException aex) // Should trigger NP9103
+                           catch (AggregateException aex) // Should trigger NP9102
                            {
                                Console.WriteLine(aex.Message);
                                // Missing check for inner OperationCanceledException

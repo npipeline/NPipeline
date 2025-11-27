@@ -17,7 +17,7 @@ public sealed class TimeoutConfigurationCodeFixProvider : CodeFixProvider
 {
     /// <inheritdoc />
     public override ImmutableArray<string> FixableDiagnosticIds =>
-        [TimeoutConfigurationAnalyzer.DiagnosticId];
+        [TimeoutConfigurationAnalyzer.TimeoutConfigurationId];
 
     /// <inheritdoc />
     public override FixAllProvider GetFixAllProvider()

@@ -17,7 +17,7 @@ public sealed class UnboundedMaterializationConfigurationCodeFixProvider : CodeF
 {
     /// <inheritdoc />
     public override ImmutableArray<string> FixableDiagnosticIds =>
-        [UnboundedMaterializationConfigurationAnalyzer.DiagnosticId];
+        [UnboundedMaterializationConfigurationAnalyzer.UnboundedMaterializationConfigurationId];
 
     /// <inheritdoc />
     public override FixAllProvider GetFixAllProvider()

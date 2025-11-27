@@ -69,7 +69,7 @@ public class MyErrorHandler : IPipelineErrorHandler
 ### Solution: Build-Time Enforcement
 
 ```text
-CSC : warning NP9002: Error handler can return PipelineErrorDecision.RestartNode 
+CSC : warning NP9001: Error handler can return PipelineErrorDecision.RestartNode
 but the node may not have all three mandatory prerequisites configured...
 ```
 
@@ -105,20 +105,20 @@ dotnet add package NPipeline.Analyzers
 
 | Code | Category | Problem | Fix |
 |------|----------|---------|-----|
-| **NP9002** | Resilience | Incomplete resilience configuration | Add missing prerequisites |
-| **NP9102** | Performance | Blocking operations in async methods | Use await instead of .Result/.Wait() |
-| **NP9103** | Performance | Swallowed OperationCanceledException | Re-throw or handle explicitly |
-| **NP9104** | Performance | Synchronous over async (fire-and-forget) | Await the async call |
-| **NP9105** | Performance | Disrespecting cancellation token | Check token and propagate |
-| **NP9205** | Performance | LINQ operations in hot paths | Use imperative alternatives |
-| **NP9206** | Performance | Inefficient string operations | Use StringBuilder, interpolation, or spans |
-| **NP9207** | Performance | Anonymous object allocation in hot paths | Use named types or value types |
-| **NP9209** | Performance | Missing ValueTask optimization | Use ValueTask for sync-heavy paths |
-| **NP9211** | Performance | Non-streaming patterns in SourceNode | Use IAsyncEnumerable with yield |
-| **NP9302** | Reliability | Inefficient exception handling patterns | Use specific exception handling |
-| **NP9312** | Data Processing | SinkNode input not consumed | Iterate the input pipe |
-| **NP9313** | Best Practice | Unsafe PipelineContext access | Use null-safe patterns |
-| **NP9409** | Best Practice | Direct dependency instantiation | Use constructor injection |
+| **NP9001** | Resilience | Incomplete resilience configuration | Add missing prerequisites |
+| **NP9101** | Performance | Blocking operations in async methods | Use await instead of .Result/.Wait() |
+| **NP9102** | Performance | Swallowed OperationCanceledException | Re-throw or handle explicitly |
+| **NP9103** | Performance | Synchronous over async (fire-and-forget) | Await the async call |
+| **NP9104** | Performance | Disrespecting cancellation token | Check token and propagate |
+| **NP9201** | Performance | LINQ operations in hot paths | Use imperative alternatives |
+| **NP9202** | Performance | Inefficient string operations | Use StringBuilder, interpolation, or spans |
+| **NP9203** | Performance | Anonymous object allocation in hot paths | Use named types or value types |
+| **NP9204** | Performance | Missing ValueTask optimization | Use ValueTask for sync-heavy paths |
+| **NP9205** | Performance | Non-streaming patterns in SourceNode | Use IAsyncEnumerable with yield |
+| **NP9301** | Reliability | Inefficient exception handling patterns | Use specific exception handling |
+| **NP9302** | Data Processing | SinkNode input not consumed | Iterate the input pipe |
+| **NP9303** | Best Practice | Unsafe PipelineContext access | Use null-safe patterns |
+| **NP9401** | Best Practice | Direct dependency instantiation | Use constructor injection |
 | **NP9501** | Configuration | Unbounded materialization configuration | Set MaxMaterializedItems value |
 | **NP9502** | Configuration | Inappropriate parallelism configuration | Match parallelism to workload |
 | **NP9503** | Configuration | Batching configuration mismatch | Align batch size and timeout |
@@ -148,24 +148,21 @@ You can adjust analyzer severity in your `.editorconfig`:
 
 ```ini
 # Treat all analyzer warnings as errors
-dotnet_diagnostic.NP9002.severity = error
-dotnet_diagnostic.NP9102.severity = error
-dotnet_diagnostic.NP9104.severity = error
+dotnet_diagnostic.NP9001.severity = error
+dotnet_diagnostic.NP9101.severity = error
+dotnet_diagnostic.NP9103.severity = error
+dotnet_diagnostic.NP9201.severity = error
+dotnet_diagnostic.NP9202.severity = error
+dotnet_diagnostic.NP9203.severity = error
 dotnet_diagnostic.NP9205.severity = error
-dotnet_diagnostic.NP9206.severity = error
-dotnet_diagnostic.NP9207.severity = error
-dotnet_diagnostic.NP9211.severity = error
+dotnet_diagnostic.NP9301.severity = error
 dotnet_diagnostic.NP9302.severity = error
-dotnet_diagnostic.NP9312.severity = error
-dotnet_diagnostic.NP9313.severity = error
-dotnet_diagnostic.NP9409.severity = error
+dotnet_diagnostic.NP9303.severity = error
+dotnet_diagnostic.NP9401.severity = error
 dotnet_diagnostic.NP9501.severity = error
 dotnet_diagnostic.NP9502.severity = warning
 dotnet_diagnostic.NP9503.severity = warning
 dotnet_diagnostic.NP9504.severity = warning
-dotnet_diagnostic.NP9505.severity = warning
-dotnet_diagnostic.NP9506.severity = warning
-dotnet_diagnostic.NP9507.severity = warning
 ```
 
 ## See Also

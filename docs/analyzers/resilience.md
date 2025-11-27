@@ -8,9 +8,9 @@ sidebar_position: 2
 
 Resilience analyzers protect against incomplete error handling configuration that can cause silent failures, where error recovery appears to succeed but silently fails at runtime.
 
-### NP9002: Incomplete Resilient Configuration
+### NP9001: Incomplete Resilient Configuration
 
-**ID:** `NP9002`  
+**ID:** `NP9001`
 **Severity:** Warning  
 **Category:** Resilience  
 
@@ -23,7 +23,7 @@ Without using this analyzer, developers can easily miss one of the three mandato
 #### With the Analyzer
 
 ```text
-CSC : warning NP9002: Error handler can return PipelineErrorDecision.RestartNode 
+CSC : warning NP9001: Error handler can return PipelineErrorDecision.RestartNode
 but the node may not have all three mandatory prerequisites configured...
 ```
 

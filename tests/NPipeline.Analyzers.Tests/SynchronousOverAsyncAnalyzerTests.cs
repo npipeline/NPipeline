@@ -20,7 +20,7 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                    {
                        public string GetData()
                        {
-                           return GetDataAsync().Result; // Should trigger NP9104
+                           return GetDataAsync().Result; // Should trigger NP9103
                        }
 
                        private async Task<string> GetDataAsync()
@@ -47,7 +47,7 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                    {
                        public void DoWork()
                        {
-                           DoWorkAsync().Wait(); // Should trigger NP9104
+                           DoWorkAsync().Wait(); // Should trigger NP9103
                        }
 
                        private async Task DoWorkAsync()
@@ -73,7 +73,7 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                    {
                        public async Task ProcessDataAsync()
                        {
-                           DoWorkAsync(); // Should trigger NP9104 - not awaited
+                           DoWorkAsync(); // Should trigger NP9103 - not awaited
                            await Task.Delay(100);
                        }
 
@@ -104,7 +104,7 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                            {
                                // Synchronous work wrapped in Task.Run
                                return "result";
-                           }); // Should trigger NP9104
+                           }); // Should trigger NP9103
                        }
                    }
                    """;
@@ -126,7 +126,7 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                        public Task<string> GetDataAsync()
                        {
                            var task = SomeOtherAsyncMethod();
-                           return task.GetAwaiter().GetResult(); // Should trigger NP9104
+                           return task.GetAwaiter().GetResult(); // Should trigger NP9103
                        }
 
                        private async Task<string> SomeOtherAsyncMethod()
@@ -207,9 +207,9 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                    {
                        public string TestMethod()
                        {
-                           var task1 = GetDataAsync(); // Should trigger NP9104
-                           var task2 = GetMoreDataAsync(); // Should trigger NP9104
-                           return task1.Result + " " + task2.GetAwaiter().GetResult(); // Should trigger NP9104 twice
+                           var task1 = GetDataAsync(); // Should trigger NP9103
+                           var task2 = GetMoreDataAsync(); // Should trigger NP9103
+                           return task1.Result + " " + task2.GetAwaiter().GetResult(); // Should trigger NP9103 twice
                        }
 
                        private async Task<string> GetDataAsync()
@@ -247,16 +247,16 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                        public void TestMultiplePatterns()
                        {
                            // Pattern 1: Direct async call without await
-                           GetDataAsync(); // Should trigger NP9104
+                           GetDataAsync(); // Should trigger NP9103
                            
                            // Pattern 2: Using .Result
-                           var data = GetDataAsync().Result; // Should trigger NP9104
+                           var data = GetDataAsync().Result; // Should trigger NP9103
                            
                            // Pattern 3: Using .Wait()
-                           GetDataAsync().Wait(); // Should trigger NP9104
+                           GetDataAsync().Wait(); // Should trigger NP9103
                            
                            // Pattern 4: Using GetAwaiter().GetResult()
-                           var moreData = GetDataAsync().GetAwaiter().GetResult(); // Should trigger NP9104
+                           var moreData = GetDataAsync().GetAwaiter().GetResult(); // Should trigger NP9103
                        }
 
                        private async Task<string> GetDataAsync()
@@ -286,14 +286,14 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                        public async Task ProcessDataAsync()
                        {
                            // Pattern 1: Direct async call without await
-                           DoWorkAsync(); // Should trigger NP9104
+                           DoWorkAsync(); // Should trigger NP9103
                            
                            // Pattern 2: Multiple async calls without await
-                           DoMoreWorkAsync(); // Should trigger NP9104
-                           DoEvenMoreWorkAsync(); // Should trigger NP9104
+                           DoMoreWorkAsync(); // Should trigger NP9103
+                           DoEvenMoreWorkAsync(); // Should trigger NP9103
                            
                            // Pattern 3: Async call in expression without await
-                           var result = "Value: " + GetDataAsync(); // Should trigger NP9104
+                           var result = "Value: " + GetDataAsync(); // Should trigger NP9103
                            
                            await Task.Delay(100); // Proper await to show mixed patterns
                        }
@@ -340,17 +340,17 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                        public async Task ProcessDataAsync()
                        {
                            // Pattern 1: Simple Task.Run with lambda
-                           var result1 = await Task.Run(() => ComputeSomething()); // Should trigger NP9104
+                           var result1 = await Task.Run(() => ComputeSomething()); // Should trigger NP9103
                            
                            // Pattern 2: Task.Run with async lambda
                            var result2 = await Task.Run(async () => 
                            {
                                await Task.Delay(100);
                                return "computed";
-                           }); // Should trigger NP9104
+                           }); // Should trigger NP9103
                            
                            // Pattern 3: Task.Run with method group
-                           var result3 = await Task.Run(ComputeSomething); // Should trigger NP9104
+                           var result3 = await Task.Run(ComputeSomething); // Should trigger NP9103
                        }
                        
                        private string ComputeSomething()
@@ -378,27 +378,27 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                        public Task<string> GetDataAsync()
                        {
                            var task = SomeOtherAsyncMethod();
-                           return Task.FromResult(task.Result); // Should trigger NP9104
+                           return Task.FromResult(task.Result); // Should trigger NP9103
                        }
                        
                        // Pattern 2: Task<T>-returning method with blocking
                        public Task<int> GetCountAsync()
                        {
                            var task = GetCountInternalAsync();
-                           return Task.FromResult(task.GetAwaiter().GetResult()); // Should trigger NP9104
+                           return Task.FromResult(task.GetAwaiter().GetResult()); // Should trigger NP9103
                        }
                        
                        // Pattern 3: ValueTask-returning method with blocking
                        public ValueTask<string> GetValueAsync()
                        {
                            var task = SomeOtherAsyncMethod();
-                           return new ValueTask<string>(task.Result); // Should trigger NP9104
+                           return new ValueTask<string>(task.Result); // Should trigger NP9103
                        }
                        
                        // Pattern 4: Task-returning method with Wait()
                        public Task ProcessAsync()
                        {
-                           DoWorkAsync().Wait(); // Should trigger NP9104
+                           DoWorkAsync().Wait(); // Should trigger NP9103
                            return Task.CompletedTask;
                        }
 
@@ -563,18 +563,18 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                        // Complex pattern: Nested calls with blocking
                        public string GetNestedData()
                        {
-                           var outerTask = GetOuterDataAsync(); // Should trigger NP9104
-                           var innerTask = GetInnerDataAsync(); // Should trigger NP9104
-                           return outerTask.Result + ":" + innerTask.GetAwaiter().GetResult(); // Should trigger NP9104 twice
+                           var outerTask = GetOuterDataAsync(); // Should trigger NP9103
+                           var innerTask = GetInnerDataAsync(); // Should trigger NP9103
+                           return outerTask.Result + ":" + innerTask.GetAwaiter().GetResult(); // Should trigger NP9103 twice
                        }
                        
                        // Complex pattern: Async method with mixed awaited and non-awaited calls
                        public async Task ProcessMixedAsync()
                        {
                            var awaited = await GetDataAsync(); // Properly awaited
-                           DoWorkAsync(); // Should trigger NP9104 - not awaited
-                           var blocked = GetMoreDataAsync().Result; // Should trigger NP9104 - blocking
-                           await Task.Run(() => ComputeSomething()); // Should trigger NP9104 - Task.Run
+                           DoWorkAsync(); // Should trigger NP9103 - not awaited
+                           var blocked = GetMoreDataAsync().Result; // Should trigger NP9103 - blocking
+                           await Task.Run(() => ComputeSomething()); // Should trigger NP9103 - Task.Run
                        }
                        
                        // Complex pattern: Conditional blocking
@@ -582,7 +582,7 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                        {
                            if (useAsync)
                            {
-                               return GetDataAsync().Result; // Should trigger NP9104
+                               return GetDataAsync().Result; // Should trigger NP9103
                            }
                            else
                            {
@@ -595,7 +595,7 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                        {
                            var tasks = new[] { "a", "b", "c" }
                                .Select(async x => await GetDataAsync(x)) // Properly awaited
-                               .Select(t => t.Result) // Should trigger NP9104 (3 times)
+                               .Select(t => t.Result) // Should trigger NP9103 (3 times)
                                .ToArray();
                            return string.Join(",", tasks);
                        }
@@ -657,7 +657,7 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                        // Sync lambda in async method
                        public async Task ProcessWithLambdaAsync()
                        {
-                           Func<string> syncLambda = () => GetDataAsync().Result; // Should trigger NP9104
+                           Func<string> syncLambda = () => GetDataAsync().Result; // Should trigger NP9103
                            var result = await Task.FromResult(syncLambda());
                        }
                        
@@ -666,7 +666,7 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                        {
                            Func<Task<string>> asyncLambda = async () => 
                            {
-                               return GetDataAsync().Result; // Should trigger NP9104
+                               return GetDataAsync().Result; // Should trigger NP9103
                            };
                            var result = await asyncLambda();
                        }
@@ -676,7 +676,7 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                        {
                            Func<Task<string>> lambda = () => Task.Run(() => 
                            {
-                               return ComputeSomething(); // Should trigger NP9104
+                               return ComputeSomething(); // Should trigger NP9103
                            });
                            var result = await lambda();
                        }
@@ -687,7 +687,7 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                            var items = new[] { 1, 2, 3 };
                            var results = items
                                .Select(async x => await GetDataAsync(x)) // Properly awaited
-                               .Select(t => t.Result) // Should trigger NP9104 (3 times)
+                               .Select(t => t.Result) // Should trigger NP9103 (3 times)
                                .ToArray();
                        }
 
@@ -731,7 +731,7 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                        {
                            string LocalFunction()
                            {
-                               return GetDataAsync().Result; // Should trigger NP9104
+                               return GetDataAsync().Result; // Should trigger NP9103
                            }
                            
                            var result = await Task.FromResult(LocalFunction());
@@ -742,7 +742,7 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                        {
                            async Task<string> AsyncLocalFunction()
                            {
-                               DoWorkAsync(); // Should trigger NP9104 - not awaited
+                               DoWorkAsync(); // Should trigger NP9103 - not awaited
                                return "done";
                            }
                            
@@ -754,7 +754,7 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                        {
                            Task<string> LocalFunction()
                            {
-                               return Task.FromResult(GetDataAsync().Result); // Should trigger NP9104
+                               return Task.FromResult(GetDataAsync().Result); // Should trigger NP9103
                            }
                            
                            return LocalFunction();
@@ -792,13 +792,13 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                        // Generic sync method calling async without await
                        public T GetData<T>()
                        {
-                           return GetDataAsync<T>().Result; // Should trigger NP9104
+                           return GetDataAsync<T>().Result; // Should trigger NP9103
                        }
                        
                        // Generic async method not awaiting
                        public async Task<T> ProcessDataAsync<T>()
                        {
-                           GetDataAsync<T>(); // Should trigger NP9104 - not awaited
+                           GetDataAsync<T>(); // Should trigger NP9103 - not awaited
                            return await Task.FromResult(default(T));
                        }
                        
@@ -806,7 +806,7 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                        public Task<T> GetTaskData<T>()
                        {
                            var task = GetDataAsync<T>();
-                           return Task.FromResult(task.GetAwaiter().GetResult()); // Should trigger NP9104
+                           return Task.FromResult(task.GetAwaiter().GetResult()); // Should trigger NP9103
                        }
 
                        private async Task<T> GetDataAsync<T>()
@@ -834,16 +834,16 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                    public class TestClass
                    {
                        // Expression-bodied property with blocking
-                       public string Data => GetDataAsync().Result; // Should trigger NP9104
+                       public string Data => GetDataAsync().Result; // Should trigger NP9103
                        
                        // Expression-bodied method with blocking
-                       public string GetData() => GetDataAsync().GetAwaiter().GetResult(); // Should trigger NP9104
+                       public string GetData() => GetDataAsync().GetAwaiter().GetResult(); // Should trigger NP9103
                        
                        // Expression-bodied async method not awaiting
-                       public async Task ProcessAsync() => DoWorkAsync(); // Should trigger NP9104
+                       public async Task ProcessAsync() => DoWorkAsync(); // Should trigger NP9103
                        
                        // Expression-bodied Task-returning method with blocking
-                       public Task<string> GetTaskData() => Task.FromResult(GetDataAsync().Result); // Should trigger NP9104
+                       public Task<string> GetTaskData() => Task.FromResult(GetDataAsync().Result); // Should trigger NP9103
 
                        private async Task<string> GetDataAsync()
                        {
@@ -877,20 +877,20 @@ public sealed class SynchronousOverAsyncAnalyzerTests
                        // Constructor with blocking
                        public TestClass()
                        {
-                           InitializeAsync().Wait(); // Should trigger NP9104
-                           var data = GetDataAsync().Result; // Should trigger NP9104
+                           InitializeAsync().Wait(); // Should trigger NP9103
+                           var data = GetDataAsync().Result; // Should trigger NP9103
                        }
                        
                        // Static constructor with blocking
                        static TestClass()
                        {
-                           StaticInitializeAsync().GetAwaiter().GetResult(); // Should trigger NP9104
+                           StaticInitializeAsync().GetAwaiter().GetResult(); // Should trigger NP9103
                        }
                        
                        // Destructor with blocking
                        ~TestClass()
                        {
-                           CleanupAsync().Wait(); // Should trigger NP9104
+                           CleanupAsync().Wait(); // Should trigger NP9103
                        }
 
                        private async Task InitializeAsync()
@@ -951,6 +951,6 @@ public sealed class SynchronousOverAsyncAnalyzerTests
             Console.WriteLine($"  - {diagnostic.Id}: {diagnostic.GetMessage()}");
         }
 
-        return diagnostics.Where(d => d.Id == "NP9104").ToArray();
+        return diagnostics.Where(d => d.Id == "NP9103").ToArray();
     }
 }

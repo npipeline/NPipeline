@@ -19,7 +19,7 @@ public sealed class CancellationTokenRespectAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for when cancellation tokens are not properly respected.
     /// </summary>
-    public const string CancellationTokenNotRespectedId = "NP9105";
+    public const string CancellationTokenNotRespectedId = "NP9104";
 
     private static readonly DiagnosticDescriptor CancellationTokenNotRespectedRule = new(
         CancellationTokenNotRespectedId,

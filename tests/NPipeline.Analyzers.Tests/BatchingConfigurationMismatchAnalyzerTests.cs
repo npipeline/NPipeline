@@ -34,7 +34,7 @@ public sealed class BatchingConfigurationMismatchAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.BatchingConfigurationMismatchId);
         Assert.True(hasDiagnostic, "Analyzer should detect large batch size with short timeout");
     }
 
@@ -62,7 +62,7 @@ public sealed class BatchingConfigurationMismatchAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.BatchingConfigurationMismatchId);
         Assert.True(hasDiagnostic, "Analyzer should detect small batch size with long timeout");
     }
 
@@ -90,7 +90,7 @@ public sealed class BatchingConfigurationMismatchAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.BatchingConfigurationMismatchId);
         Assert.True(hasDiagnostic, "Analyzer should detect medium batch size with short timeout");
     }
 
@@ -118,7 +118,7 @@ public sealed class BatchingConfigurationMismatchAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.BatchingConfigurationMismatchId);
         Assert.True(hasDiagnostic, "Analyzer should detect medium batch size with long timeout");
     }
 
@@ -146,7 +146,7 @@ public sealed class BatchingConfigurationMismatchAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.BatchingConfigurationMismatchId);
         Assert.False(hasDiagnostic, "Analyzer should not detect balanced configuration");
     }
 
@@ -173,7 +173,7 @@ public sealed class BatchingConfigurationMismatchAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.BatchingConfigurationMismatchId);
         Assert.True(hasDiagnostic, "Analyzer should detect BatchingStrategy large batch size with short timeout");
     }
 
@@ -200,7 +200,7 @@ public sealed class BatchingConfigurationMismatchAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.BatchingConfigurationMismatchId);
         Assert.True(hasDiagnostic, "Analyzer should detect BatchingStrategy small batch size with long timeout");
     }
 
@@ -227,7 +227,7 @@ public sealed class BatchingConfigurationMismatchAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.BatchingConfigurationMismatchId);
         Assert.True(hasDiagnostic, "Analyzer should detect BatchingStrategy medium batch size with short timeout");
     }
 
@@ -254,7 +254,7 @@ public sealed class BatchingConfigurationMismatchAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.BatchingConfigurationMismatchId);
         Assert.False(hasDiagnostic, "Analyzer should not detect balanced BatchingStrategy configuration");
     }
 
@@ -285,7 +285,7 @@ public sealed class BatchingConfigurationMismatchAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.BatchingConfigurationMismatchId);
         Assert.True(hasDiagnostic, "Analyzer should detect WithBatching large batch size with short timeout");
     }
 
@@ -316,7 +316,7 @@ public sealed class BatchingConfigurationMismatchAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.BatchingConfigurationMismatchId);
         Assert.True(hasDiagnostic, "Analyzer should detect WithBatching small batch size with long timeout");
     }
 
@@ -347,7 +347,7 @@ public sealed class BatchingConfigurationMismatchAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == BatchingConfigurationMismatchAnalyzer.BatchingConfigurationMismatchId);
         Assert.False(hasDiagnostic, "Analyzer should not detect WithBatching balanced configuration");
     }
 

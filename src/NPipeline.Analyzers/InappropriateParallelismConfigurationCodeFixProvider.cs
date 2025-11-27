@@ -17,7 +17,7 @@ public sealed class InappropriateParallelismConfigurationCodeFixProvider : CodeF
 {
     /// <inheritdoc />
     public override ImmutableArray<string> FixableDiagnosticIds =>
-        [InappropriateParallelismConfigurationAnalyzer.DiagnosticId];
+        [InappropriateParallelismConfigurationAnalyzer.InappropriateParallelismConfigurationId];
 
     /// <inheritdoc />
     public override FixAllProvider GetFixAllProvider()

@@ -8,9 +8,9 @@ sidebar_position: 5
 
 Best practice analyzers enforce architectural patterns that ensure your code is testable, maintainable, and follows the framework's design principles.
 
-### NP9313: Unsafe PipelineContext Access
+### NP9303: Unsafe PipelineContext Access
 
-**ID:** `NP9313`  
+**ID:** `NP9303`
 **Severity:** Warning  
 **Category:** Best Practice  
 
@@ -22,7 +22,7 @@ This analyzer detects unsafe access patterns to nullable properties on PipelineC
 // ❌ PROBLEM: Direct access to potentially null property
 public async Task HandleErrorAsync(PipelineContext context, Exception error)
 {
-    // NP9313: PipelineErrorHandler might be null
+    // NP9303: PipelineErrorHandler might be null
     await context.PipelineErrorHandler.HandleNodeFailureAsync(
         "nodeId", error, context, cancellationToken);
 }
@@ -30,14 +30,14 @@ public async Task HandleErrorAsync(PipelineContext context, Exception error)
 // ❌ PROBLEM: Direct dictionary access without existence check
 public string GetParameter(PipelineContext context, string key)
 {
-    // NP9313: Dictionary might not contain key, and Parameters might be null
+    // NP9303: Dictionary might not contain key, and Parameters might be null
     return context.Parameters[key].ToString();
 }
 
 // ❌ PROBLEM: Unsafe cast
 public void ProcessConfig(PipelineContext context)
 {
-    // NP9313: Configuration might be null or wrong type
+    // NP9303: Configuration might be null or wrong type
     var config = (MyConfig)context.Configuration;
     ProcessConfig(config);
 }
@@ -112,9 +112,9 @@ public string GetValue(PipelineContext context)
 4. **Testability**: Easier to test code that handles null cases explicitly
 5. **Maintainability**: Future developers understand property optionality
 
-### NP9409: Missing Dependency Injection for Services
+### NP9401: Missing Dependency Injection for Services
 
-**ID:** `NP9409`  
+**ID:** `NP9401`
 **Severity:** Warning  
 **Category:** Best Practice  
 
@@ -132,7 +132,7 @@ When node implementations directly instantiate their dependencies or use service
 // ❌ PROBLEM: Direct service instantiation
 public class BadTransformNode : TransformNode<string, string>
 {
-    private readonly BadService _badService = new BadService(); // NP9409: Direct instantiation
+    private readonly BadService _badService = new BadService(); // NP9401: Direct instantiation
 
     public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
     {
@@ -147,7 +147,7 @@ public class BadSourceNode : SourceNode<int>
 
     public BadSourceNode()
     {
-        _service = new BadService(); // NP9409: Static singleton assignment
+        _service = new BadService(); // NP9401: Static singleton assignment
     }
 }
 
@@ -163,7 +163,7 @@ public class BadSinkNode : SinkNode<string>
 
     public override async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
     {
-        var badService = _serviceProvider.GetService(typeof(BadService)) as BadService; // NP9409: Service locator
+        var badService = _serviceProvider.GetService(typeof(BadService)) as BadService; // NP9401: Service locator
         await foreach (var item in input.WithCancellation(cancellationToken))
         {
             // Process item
@@ -180,8 +180,8 @@ public class BadSinkNode : SinkNode<string>
 // ❌ PROBLEM: Direct instantiation with 'new'
 public class TransformNodeWithDirectInstantiation : TransformNode<string, string>
 {
-    private readonly EmailService _emailService = new EmailService(); // NP9409
-    private readonly LoggingService _loggingService = new LoggingService(); // NP9409
+    private readonly EmailService _emailService = new EmailService(); // NP9401
+    private readonly LoggingService _loggingService = new LoggingService(); // NP9401
 
     public override async Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
     {
@@ -202,7 +202,7 @@ public class NodeWithStaticSingleton : TransformNode<int, int>
 
     public NodeWithStaticSingleton()
     {
-        _dataService = new DataService(); // NP9409: Static singleton assignment
+        _dataService = new DataService(); // NP9401: Static singleton assignment
     }
 
     public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
@@ -218,7 +218,7 @@ public class NodeWithStaticProperty : TransformNode<string, bool>
 
     static NodeWithStaticProperty()
     {
-        Cache = new CacheService(); // NP9409: Static singleton assignment
+        Cache = new CacheService(); // NP9401: Static singleton assignment
     }
 
     public override Task<bool> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
@@ -243,8 +243,8 @@ public class NodeWithServiceLocator : TransformNode<string, string>
 
     public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
     {
-        var processor = _provider.GetService(typeof(DataProcessor)) as DataProcessor; // NP9409
-        var validator = _provider.GetService<IValidator>(); // NP9409
+        var processor = _provider.GetService(typeof(DataProcessor)) as DataProcessor; // NP9401
+        var validator = _provider.GetService<IValidator>(); // NP9401
         return Task.FromResult(processor.Process(item));
     }
 }
@@ -261,7 +261,7 @@ public class NodeWithRequiredServiceLocator : TransformNode<double, double>
 
     public override Task<double> ExecuteAsync(double item, PipelineContext context, CancellationToken cancellationToken)
     {
-        var calculator = _provider.GetRequiredService<ICalculator>(); // NP9409
+        var calculator = _provider.GetRequiredService<ICalculator>(); // NP9401
         return Task.FromResult(calculator.Calculate(item));
     }
 }
@@ -493,7 +493,7 @@ public class GoodNode : TransformNode<string, string>
 
 To implement proper dependency injection instead of anti-patterns:
 
-1. **Identify direct instantiations** using the NP9409 analyzer
+1. **Identify direct instantiations** using the NP9401 analyzer
 2. **Extract dependencies** to constructor parameters
 3. **Register dependencies** in your DI container
 4. **Update tests** to use mocked dependencies
@@ -516,10 +516,10 @@ Adjust analyzer severity in `.editorconfig`:
 
 ```ini
 # Treat unsafe context access as errors
-dotnet_diagnostic.NP9313.severity = error
+dotnet_diagnostic.NP9303.severity = error
 
 # Treat DI anti-patterns as errors
-dotnet_diagnostic.NP9409.severity = error
+dotnet_diagnostic.NP9401.severity = error
 ```
 
 ## See Also

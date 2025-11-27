@@ -20,7 +20,7 @@ public sealed class SourceNodeStreamingAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for the analyzer.
     /// </summary>
-    public const string SourceNodeStreamingId = "NP9211";
+    public const string SourceNodeStreamingId = "NP9205";
 
     private static readonly DiagnosticDescriptor SourceNodeStreamingRule = new(
         SourceNodeStreamingId,

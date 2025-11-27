@@ -21,7 +21,7 @@ public sealed class ValueTaskOptimizationAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for missing ValueTask optimization.
     /// </summary>
-    public const string MissingValueTaskOptimizationId = "NP9209";
+    public const string MissingValueTaskOptimizationId = "NP9204";
 
     private static readonly DiagnosticDescriptor MissingValueTaskOptimizationRule = new(
         MissingValueTaskOptimizationId,

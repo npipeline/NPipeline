@@ -20,7 +20,7 @@ public sealed class OperationCanceledExceptionAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for swallowing OperationCanceledException.
     /// </summary>
-    public const string SwallowingOperationCanceledExceptionId = "NP9103";
+    public const string SwallowingOperationCanceledExceptionId = "NP9102";
 
     private static readonly DiagnosticDescriptor SwallowingOperationCanceledExceptionRule = new(
         SwallowingOperationCanceledExceptionId,

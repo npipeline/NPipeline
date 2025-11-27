@@ -16,7 +16,7 @@ public sealed class SinkNodeInputConsumptionAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for when SinkNode doesn't consume input parameter.
     /// </summary>
-    public const string SinkNodeInputNotConsumedId = "NP9312";
+    public const string SinkNodeInputNotConsumedId = "NP9302";
 
     private static readonly DiagnosticDescriptor SinkNodeInputNotConsumedRule = new(
         SinkNodeInputNotConsumedId,

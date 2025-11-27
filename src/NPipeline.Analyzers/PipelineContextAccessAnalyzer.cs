@@ -20,7 +20,7 @@ public sealed class PipelineContextAccessAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for unsafe PipelineContext access patterns.
     /// </summary>
-    public const string UnsafePipelineContextAccessId = "NP9313";
+    public const string UnsafePipelineContextAccessId = "NP9303";
 
     private static readonly DiagnosticDescriptor UnsafePipelineContextAccessRule = new(
         UnsafePipelineContextAccessId,

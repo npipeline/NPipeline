@@ -323,9 +323,9 @@ builder.WithRetryOptions(options =>
 
 ---
 
-### NP9312: SinkNode Input Not Consumed
+### NP9302: SinkNode Input Not Consumed
 
-**Message:** `[NP9312] SinkNode '{0}' overrides ExecuteAsync but doesn't consume input parameter. Sink nodes should process all items from input data pipe.`**
+**Message:** `[NP9302] SinkNode '{0}' overrides ExecuteAsync but doesn't consume input parameter. Sink nodes should process all items from input data pipe.`**
 
 **Category:** Node Execution Error
 
@@ -393,9 +393,9 @@ public class MySinkNode : SinkNode<string>
 
 ---
 
-## NP9313: Unsafe PipelineContext Access
+## NP9303: Unsafe PipelineContext Access
 
-**Message:** `[NP9313] Unsafe access pattern '{0}' detected on PipelineContext. This can lead to NullReferenceException at runtime. Use null-conditional operators (?.) or check for null before accessing these properties.`**
+**Message:** `[NP9303] Unsafe access pattern '{0}' detected on PipelineContext. This can lead to NullReferenceException at runtime. Use null-conditional operators (?.) or check for null before accessing these properties.`**
 
 **Category:** Node Execution Error
 
@@ -419,13 +419,13 @@ These unsafe patterns can cause:
 // ❌ PROBLEM: Unsafe access patterns
 public async Task ProcessContext(PipelineContext context)
 {
-    // NP0313: Direct access to nullable property
+    // NP9303: Direct access to nullable property
     var handler = context.PipelineErrorHandler;
     
-    // NP0313: Dictionary access without null check
+    // NP9303: Dictionary access without null check
     var configValue = context.Parameters["retryCount"];
     
-    // NP0313: Method call on nullable property
+    // NP9303: Method call on nullable property
     var stateManager = context.StateManager;
     stateManager.SaveState("key", data);
 }
@@ -647,9 +647,9 @@ public class GoodSourceNode : SourceNode<string>
 
 ---
 
-### NP9409: Missing Dependency Injection
+### NP9401: Missing Dependency Injection
 
-**Message:** `[NP9409] Avoid dependency injection anti-patterns in node implementations. Use constructor injection instead.`
+**Message:** `[NP9401] Avoid dependency injection anti-patterns in node implementations. Use constructor injection instead.`
 
 **Category:** Best Practice
 
@@ -670,7 +670,7 @@ These anti-patterns violate the Dependency Inversion Principle and make code dif
 
 public class BadTransformNode : TransformNode<string, string>
 {
-    private readonly BadService _badService = new BadService(); // NP9409: Direct instantiation
+    private readonly BadService _badService = new BadService(); // NP9401: Direct instantiation
 
     public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
     {
@@ -684,7 +684,7 @@ public class BadSourceNode : SourceNode<int>
 
     public BadSourceNode()
     {
-        _service = new BadService(); // NP9409: Static singleton assignment
+        _service = new BadService(); // NP9401: Static singleton assignment
     }
 }
 
@@ -699,7 +699,7 @@ public class BadSinkNode : SinkNode<string>
 
     public override Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
     {
-        var badService = _serviceProvider.GetService(typeof(BadService)) as BadService; // NP9409: Service locator
+        var badService = _serviceProvider.GetService(typeof(BadService)) as BadService; // NP9401: Service locator
         return Task.CompletedTask;
     }
 }

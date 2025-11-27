@@ -64,7 +64,7 @@ class Input { }
 class Output { }
 ";
 
-        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.DiagnosticId)
+        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.TimeoutConfigurationId)
             .WithLocation(12, 24)
             .WithArguments(
                 "timeout: TimeSpan.FromMilliseconds(100)",
@@ -97,7 +97,7 @@ class Input { }
 class Output { }
 ";
 
-        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.DiagnosticId)
+        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.TimeoutConfigurationId)
             .WithLocation(12, 24)
             .WithArguments(
                 "timeout: TimeSpan.FromMinutes(10)",
@@ -130,7 +130,7 @@ class Input { }
 class Output { }
 ";
 
-        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.DiagnosticId)
+        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.TimeoutConfigurationId)
             .WithLocation(12, 24)
             .WithArguments(
                 "timeout: TimeSpan.Zero",
@@ -159,7 +159,7 @@ class TestTransform
 }
 ";
 
-        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.DiagnosticId)
+        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.TimeoutConfigurationId)
             .WithLocation(11, 19)
             .WithArguments(
                 "timeout: TimeSpan.FromHours(1)",
@@ -192,7 +192,7 @@ class Input { }
 class Output { }
 ";
 
-        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.DiagnosticId)
+        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.TimeoutConfigurationId)
             .WithLocation(12, 24)
             .WithArguments(
                 "timeout: TimeSpan.FromMilliseconds(-100)",
@@ -225,7 +225,7 @@ class Input { }
 class Output { }
 ";
 
-        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.DiagnosticId)
+        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.TimeoutConfigurationId)
             .WithLocation(12, 24)
             .WithArguments(
                 "timeout: TimeSpan.FromMilliseconds(200)",
@@ -258,7 +258,7 @@ class Input { }
 class Output { }
 ";
 
-        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.DiagnosticId)
+        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.TimeoutConfigurationId)
             .WithLocation(12, 24)
             .WithArguments(
                 "timeout: TimeSpan.FromMinutes(8)",
@@ -291,7 +291,7 @@ class Input { }
 class Output { }
 ";
 
-        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.DiagnosticId)
+        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.TimeoutConfigurationId)
             .WithLocation(12, 24)
             .WithArguments(
                 "timeout: TimeSpan.Zero",
@@ -324,7 +324,7 @@ class Input { }
 class Output { }
 ";
 
-        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.DiagnosticId)
+        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.TimeoutConfigurationId)
             .WithLocation(12, 32)
             .WithArguments(
                 "timeout: TimeSpan.FromMilliseconds(50)",
@@ -375,7 +375,7 @@ class Input { }
 class Output { }
 ";
 
-        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.DiagnosticId)
+        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.TimeoutConfigurationId)
             .WithLocation(12, 24)
             .WithArguments(
                 "timeout: TimeSpan.FromMilliseconds(100)",
@@ -426,7 +426,7 @@ class Input { }
 class Output { }
 ";
 
-        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.DiagnosticId)
+        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.TimeoutConfigurationId)
             .WithLocation(12, 24)
             .WithArguments(
                 "timeout: TimeSpan.FromMinutes(10)",
@@ -477,7 +477,7 @@ class Input { }
 class Output { }
 ";
 
-        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.DiagnosticId)
+        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.TimeoutConfigurationId)
             .WithLocation(12, 24)
             .WithArguments(
                 "timeout: TimeSpan.Zero",
@@ -520,7 +520,7 @@ class TestTransform
 }
 ";
 
-        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.DiagnosticId)
+        var expectedDiagnostic = VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.TimeoutConfigurationId)
             .WithLocation(11, 19)
             .WithArguments(
                 "timeout: TimeSpan.FromHours(1)",
@@ -564,21 +564,21 @@ class Output { }
 
         var expectedDiagnostics = new[]
         {
-            VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.DiagnosticId)
+            VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.TimeoutConfigurationId)
                 .WithLocation(13, 24)
                 .WithArguments(
                     "timeout: TimeSpan.FromMilliseconds(50)",
                     "iobound",
                     "For I/O-bound operations, timeouts should be at least 500ms to account for network/database latency."),
 
-            VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.DiagnosticId)
+            VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.TimeoutConfigurationId)
                 .WithLocation(17, 24)
                 .WithArguments(
                     "timeout: TimeSpan.FromMinutes(15)",
                     "cpubound",
                     "For CPU-bound operations, timeouts should not exceed 5 minutes to prevent resource leaks."),
 
-            VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.DiagnosticId)
+            VerifyCS.Diagnostic(TimeoutConfigurationAnalyzer.TimeoutConfigurationId)
                 .WithLocation(21, 19)
                 .WithArguments(
                     "timeout: TimeSpan.FromHours(2)",

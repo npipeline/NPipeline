@@ -17,7 +17,7 @@ public sealed class InefficientExceptionHandlingCodeFixProvider : CodeFixProvide
 {
     /// <inheritdoc />
     public override ImmutableArray<string> FixableDiagnosticIds =>
-        [InefficientExceptionHandlingAnalyzer.DiagnosticId];
+        [InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId];
 
     /// <inheritdoc />
     public override FixAllProvider GetFixAllProvider()

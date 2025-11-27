@@ -12,7 +12,7 @@ namespace NPipeline.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class DependencyInjectionAnalyzer : DiagnosticAnalyzer
 {
-    public const string DependencyInjectionAntiPatternId = "NP9409";
+    public const string DependencyInjectionAntiPatternId = "NP9401";
 
     private static readonly DiagnosticDescriptor DependencyInjectionAntiPatternRule = new(
         DependencyInjectionAntiPatternId,

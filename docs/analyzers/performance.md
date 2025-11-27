@@ -8,9 +8,9 @@ sidebar_position: 3
 
 Performance analyzers detect patterns that harm throughput, increase latency, cause thread starvation, or prevent proper streaming of data. These violations directly contradict NPipeline's core mission of high-performance, non-blocking I/O.
 
-### NP9102: Blocking Operations in Async Methods
+### NP9101: Blocking Operations in Async Methods
 
-**ID:** `NP9102`  
+**ID:** `NP9101`
 **Severity:** Warning  
 **Category:** Performance  
 
@@ -40,34 +40,34 @@ Blocking operations in async code:
 public async Task<string> ProcessDataAsync()
 {
     var task = SomeOperationAsync();
-    return task.Result; // NP9102: Blocks until task completes
+    return task.Result; // NP9101: Blocks until task completes
 }
 
 // ❌ PROBLEM: Blocking on Task.Wait()
 public async Task ProcessDataAsync()
 {
     var task = SomeOperationAsync();
-    task.Wait(); // NP9102: Blocks until task completes
+    task.Wait(); // NP9101: Blocks until task completes
 }
 
 // ❌ PROBLEM: Using GetAwaiter().GetResult()
 public async Task<string> ProcessDataAsync()
 {
     var task = SomeOperationAsync();
-    return task.GetAwaiter().GetResult(); // NP9102: Synchronous blocking
+    return task.GetAwaiter().GetResult(); // NP9101: Synchronous blocking
 }
 
 // ❌ PROBLEM: Synchronous I/O in async method
 public async Task ProcessFileAsync()
 {
-    var content = File.ReadAllText("file.txt"); // NP9102: Synchronous I/O
+    var content = File.ReadAllText("file.txt"); // NP9101: Synchronous I/O
     await ProcessAsync(content);
 }
 
 // ❌ PROBLEM: Thread.Sleep instead of Task.Delay
 public async Task WaitAsync()
 {
-    Thread.Sleep(1000); // NP9102: Blocks the thread
+    Thread.Sleep(1000); // NP9101: Blocks the thread
     await ContinueAsync();
 }
 ```
@@ -97,9 +97,9 @@ public async Task WaitAsync()
 }
 ```
 
-### NP9103: Swallowed OperationCanceledException
+### NP9102: Swallowed OperationCanceledException
 
-**ID:** `NP9103`  
+**ID:** `NP9102`
 **Severity:** Warning  
 **Category:** Performance  
 
@@ -117,7 +117,7 @@ public async Task ProcessAsync(CancellationToken cancellationToken)
     }
     catch (OperationCanceledException)
     {
-        // NP9103: Silently swallowing cancellation
+        // NP9102: Silently swallowing cancellation
         Console.WriteLine("Operation cancelled");
     }
 }
@@ -158,9 +158,9 @@ public async Task ProcessAsync(CancellationToken cancellationToken)
 }
 ```
 
-### NP9104: Synchronous over Async Patterns
+### NP9103: Synchronous over Async Patterns
 
-**ID:** `NP9104`  
+**ID:** `NP9103`
 **Severity:** Warning  
 **Category:** Performance  
 
@@ -172,14 +172,14 @@ This analyzer detects "sync-over-async" patterns like unawaited async method cal
 // ❌ PROBLEM: Fire-and-forget async call (unawaited)
 public async Task ProcessDataAsync()
 {
-    SomeOperationAsync(); // NP9104: Async method not awaited
+    SomeOperationAsync(); // NP9103: Async method not awaited
     DoSomethingElse();
 }
 
 // ❌ PROBLEM: Async method called from sync method
 public void ProcessData()
 {
-    var result = SomeOperationAsync(); // NP9104: Async method not awaited
+    var result = SomeOperationAsync(); // NP9103: Async method not awaited
 }
 
 // ❌ PROBLEM: Task.Run wrapping sync work
@@ -187,7 +187,7 @@ public async Task ProcessDataAsync()
 {
     var result = await Task.Run(() => 
     {
-        return SomeSynchronousOperation(); // NP9104: Unnecessary Task.Run
+        return SomeSynchronousOperation(); // NP9103: Unnecessary Task.Run
     });
 }
 ```
@@ -216,9 +216,9 @@ public async Task ProcessDataAsync()
 }
 ```
 
-### NP9105: Cancellation Token Not Respected
+### NP9104: Cancellation Token Not Respected
 
-**ID:** `NP9105`  
+**ID:** `NP9104`
 **Severity:** Warning  
 **Category:** Performance  
 
@@ -232,7 +232,7 @@ public async Task ProcessItemsAsync(IEnumerable<Item> items, CancellationToken c
 {
     foreach (var item in items)
     {
-        // NP9105: Not checking cancellation token
+        // NP9104: Not checking cancellation token
         await ProcessItemAsync(item);
     }
 }
@@ -270,9 +270,9 @@ private async IAsyncEnumerable<Item> GetItemsAsync([EnumeratorCancellation] Canc
 }
 ```
 
-### NP9209: Missing ValueTask Optimization
+### NP9204: Missing ValueTask Optimization
 
-**ID:** `NP9209`  
+**ID:** `NP9204`
 **Severity:** Warning  
 **Category:** Performance  
 
@@ -312,9 +312,9 @@ public async ValueTask<string> GetDataAsync(string id)
 
 **Important:** ValueTask comes with critical constraints that you must understand to avoid subtle bugs. For complete implementation guidance, including dangerous constraints and real-world examples, see [**Synchronous Fast Paths and ValueTask Optimization**](../advanced-topics/synchronous-fast-paths.md)—the dedicated deep-dive guide that covers the complete pattern and critical safety considerations.
 
-### NP9205: LINQ Operations in Hot Paths
+### NP9201: LINQ Operations in Hot Paths
 
-**ID:** `NP9205`
+**ID:** `NP9201`
 **Severity:** Warning
 **Category:** Performance
 
@@ -337,7 +337,7 @@ public class BadTransform : ITransformNode<Input, Output>
 {
     protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
     {
-        // NP9205: LINQ in hot path creates allocations
+        // NP9201: LINQ in hot path creates allocations
         var filtered = input.Items.Where(x => x.IsActive).ToList();
         var sorted = filtered.OrderBy(x => x.Priority).ToList();
         var grouped = sorted.GroupBy(x => x.Category).ToList();
@@ -349,13 +349,13 @@ public class BadTransform : ITransformNode<Input, Output>
 // ❌ PROBLEM: LINQ in loop
 foreach (var batch in batches)
 {
-    // NP9205: LINQ inside loop creates pressure
+    // NP9201: LINQ inside loop creates pressure
     var processed = batch.Select(x => ProcessItem(x)).Where(x => x != null).ToList();
     await SendBatchAsync(processed);
 }
 
 // ❌ PROBLEM: Materializing LINQ results
-var items = sourceData.Where(x => x.IsValid).Select(x => x.Transform()).ToArray(); // NP9205: Immediate materialization
+var items = sourceData.Where(x => x.IsValid).Select(x => x.Transform()).ToArray(); // NP9201: Immediate materialization
 ```
 
 #### Solution: Use Imperative Alternatives
@@ -411,9 +411,9 @@ foreach (var batch in batches)
 | GroupBy() | Dictionary grouping | Direct grouping |
 | ToList()/ToArray() | Pre-sized collection | No resizing |
 
-### NP9206: Inefficient String Operations
+### NP9202: Inefficient String Operations
 
-**ID:** `NP9206`
+**ID:** `NP9202`
 **Severity:** Warning
 **Category:** Performance
 
@@ -437,7 +437,7 @@ public class BadTransform : ITransformNode<Input, Output>
     protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
     {
         string result = "";
-        foreach (var item in input.Items) // NP9206: Concatenation in loop
+        foreach (var item in input.Items) // NP9202: Concatenation in loop
         {
             result += item.ToString(); // Creates new string each iteration
         }
@@ -448,11 +448,11 @@ public class BadTransform : ITransformNode<Input, Output>
 // ❌ PROBLEM: Inefficient string formatting
 protected override async Task<string> ProcessAsync(Data data, CancellationToken cancellationToken)
 {
-    return string.Format("{0}-{1}-{2}", data.Id, data.Name, data.Value); // NP9206: Inefficient formatting
+    return string.Format("{0}-{1}-{2}", data.Id, data.Name, data.Value); // NP9202: Inefficient formatting
 }
 
 // ❌ PROBLEM: String operations in LINQ
-var results = items.Select(x => x.Name.ToUpper().Substring(0, 5).Trim()); // NP9206: Multiple allocations per item
+var results = items.Select(x => x.Name.ToUpper().Substring(0, 5).Trim()); // NP9202: Multiple allocations per item
 ```
 
 #### Solution: Use Efficient String Operations
@@ -495,9 +495,9 @@ protected override async Task<string> ProcessAsync(string input, CancellationTok
 | ToUpper/ToLower | string.Create with Span | Case conversion in hot paths |
 | Join | string.Join with Span | Array/list joining |
 
-### NP9207: Anonymous Object Allocation
+### NP9203: Anonymous Object Allocation
 
-**ID:** `NP9207`
+**ID:** `NP9203`
 **Severity:** Warning
 **Category:** Performance
 
@@ -520,14 +520,14 @@ protected override async Task ExecuteAsync(IDataPipe<Output> output, PipelineCon
 {
     foreach (var item in inputItems)
     {
-        // NP9207: Anonymous object allocation in hot path
+        // NP9203: Anonymous object allocation in hot path
         var result = new { Id = item.Id, Name = item.Name, Value = item.Value * 2 };
         await output.ProduceAsync(new Output(result), cancellationToken);
     }
 }
 
 // ❌ PROBLEM: Anonymous objects in LINQ
-var processed = items.Select(x => new // NP9207: Anonymous object in LINQ
+var processed = items.Select(x => new // NP9203: Anonymous object in LINQ
 {
     Id = x.Id,
     ProcessedValue = x.Value * 2,
@@ -537,7 +537,7 @@ var processed = items.Select(x => new // NP9207: Anonymous object in LINQ
 // ❌ PROBLEM: Anonymous objects in loops
 foreach (var item in largeCollection)
 {
-    // NP9207: Anonymous object allocation per iteration
+    // NP9203: Anonymous object allocation per iteration
     var temp = new { Original = item, Processed = Process(item) };
     results.Add(temp);
 }
@@ -589,9 +589,9 @@ public readonly struct ProcessedItem
 | Multiple return values | Out parameters or struct | No heap allocation |
 | LINQ projections | Named type constructor | Clearer intent |
 
-### NP9211: Non-Streaming Patterns in SourceNode
+### NP9205: Non-Streaming Patterns in SourceNode
 
-**ID:** `NP9211`
+**ID:** `NP9205`
 **Severity:** Warning
 **Category:** Performance
 
@@ -612,32 +612,31 @@ Adjust analyzer severity in `.editorconfig`:
 
 ```ini
 # Treat blocking operations as errors
-dotnet_diagnostic.NP9102.severity = error
+dotnet_diagnostic.NP9101.severity = error
 
 # Treat swallowed cancellation as errors
-dotnet_diagnostic.NP9103.severity = error
+dotnet_diagnostic.NP9102.severity = error
 
 # Treat fire-and-forget async as errors
-dotnet_diagnostic.NP9104.severity = error
+dotnet_diagnostic.NP9103.severity = error
 
 # Treat ignored cancellation tokens as errors
-dotnet_diagnostic.NP9105.severity = error
+dotnet_diagnostic.NP9104.severity = error
 
 # Treat LINQ in hot paths as warnings
-dotnet_diagnostic.NP9205.severity = warning
+dotnet_diagnostic.NP9201.severity = warning
 
 # Treat inefficient string operations as warnings
-dotnet_diagnostic.NP9206.severity = warning
+dotnet_diagnostic.NP9202.severity = warning
 
 # Treat anonymous object allocation as warnings
-dotnet_diagnostic.NP9207.severity = warning
+dotnet_diagnostic.NP9203.severity = warning
 
 # Treat missing ValueTask optimization as warnings
-dotnet_diagnostic.NP9209.severity = warning
-
+dotnet_diagnostic.NP9204.severity = warning
 
 # Treat non-streaming patterns as errors
-dotnet_diagnostic.NP9211.severity = error
+dotnet_diagnostic.NP9205.severity = error
 ```
 
 ## See Also

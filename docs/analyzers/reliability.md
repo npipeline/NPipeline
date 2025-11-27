@@ -8,9 +8,9 @@ sidebar_position: 2
 
 Reliability analyzers detect inefficient exception handling patterns and unsafe access patterns that can harm performance and reliability in NPipeline pipelines.
 
-### NP9302: Inefficient Exception Handling
+### NP9301: Inefficient Exception Handling
 
-**ID:** `NP9302`  
+**ID:** `NP9301`
 **Severity:** Warning  
 **Category:** Reliability  
 
@@ -35,7 +35,7 @@ public async Task ProcessAsync(Input input, CancellationToken cancellationToken)
     {
         await ProcessItemAsync(input, cancellationToken);
     }
-    catch (Exception ex) // NP9302: Too broad exception handling
+    catch (Exception ex) // NP9301: Too broad exception handling
     {
         _logger.LogError(ex, "Processing failed");
         throw;
@@ -47,7 +47,7 @@ public Item GetItem(string id)
 {
     if (!_cache.TryGetValue(id, out var item))
     {
-        throw new KeyNotFoundException($"Item {id} not found"); // NP9302: Exception for control flow
+        throw new KeyNotFoundException($"Item {id} not found"); // NP9301: Exception for control flow
     }
     return item;
 }
@@ -61,7 +61,7 @@ public async Task ProcessBatchAsync(IEnumerable<Item> items, CancellationToken c
         {
             await ProcessItemAsync(item, cancellationToken);
         }
-        catch (Exception ex) // NP9302: Exception handling in performance-critical loop
+        catch (Exception ex) // NP9301: Exception handling in performance-critical loop
         {
             _logger.LogError(ex, "Failed to process item {ItemId}", item.Id);
         }
@@ -164,7 +164,7 @@ Adjust analyzer severity in `.editorconfig`:
 
 ```ini
 # Treat inefficient exception handling as warnings
-dotnet_diagnostic.NP9302.severity = warning
+dotnet_diagnostic.NP9301.severity = warning
 ```
 
 ## See Also

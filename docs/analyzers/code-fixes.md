@@ -152,7 +152,7 @@ builder.AddTransform<DatabaseTransform, Input, Output>("transform")
 | File I/O | 60 seconds | 10 minutes |
 | CPU-bound | 2 minutes | 30 minutes |
 
-#### NP9102: Blocking Operations in Async Methods
+#### NP9101: Blocking Operations in Async Methods
 
 **Fix Provider:** `BlockingAsyncOperationCodeFixProvider`
 
@@ -165,13 +165,13 @@ This code fix automatically converts blocking operations in async methods to pro
 public async Task<string> ProcessDataAsync()
 {
     var task = SomeOperationAsync();
-    return task.Result; // NP9102: Blocks until task completes
+    return task.Result; // NP9101: Blocks until task completes
 }
 
 // ❌ PROBLEM: Synchronous I/O in async method
 public async Task ProcessFileAsync()
 {
-    var content = File.ReadAllText("file.txt"); // NP9102: Synchronous I/O
+    var content = File.ReadAllText("file.txt"); // NP9101: Synchronous I/O
     await ProcessAsync(content);
 }
 ```
@@ -194,7 +194,7 @@ public async Task ProcessFileAsync()
 }
 ```
 
-#### NP9103: Swallowed OperationCanceledException
+#### NP9102: Swallowed OperationCanceledException
 
 **Fix Provider:** `OperationCanceledExceptionCodeFixProvider`
 
@@ -212,7 +212,7 @@ public async Task ProcessAsync(CancellationToken cancellationToken)
     }
     catch (OperationCanceledException)
     {
-        // NP9103: Silently swallowing cancellation
+        // NP9102: Silently swallowing cancellation
         Console.WriteLine("Operation cancelled");
     }
 }
@@ -240,7 +240,7 @@ public async Task ProcessAsync(CancellationToken cancellationToken)
 }
 ```
 
-#### NP9104: Synchronous over Async Patterns
+#### NP9103: Synchronous over Async Patterns
 
 **Fix Provider:** `SynchronousOverAsyncCodeFixProvider`
 
@@ -252,7 +252,7 @@ This code fix converts fire-and-forget async calls to properly awaited async ope
 // ❌ PROBLEM: Fire-and-forget async call (unawaited)
 public async Task ProcessDataAsync()
 {
-    SomeOperationAsync(); // NP9104: Async method not awaited
+    SomeOperationAsync(); // NP9103: Async method not awaited
     DoSomethingElse();
 }
 ```
@@ -268,7 +268,7 @@ public async Task ProcessDataAsync()
 }
 ```
 
-#### NP9105: Cancellation Token Not Respected
+#### NP9104: Cancellation Token Not Respected
 
 **Fix Provider:** `CancellationTokenRespectCodeFixProvider`
 
@@ -282,7 +282,7 @@ public async Task ProcessItemsAsync(IEnumerable<Item> items, CancellationToken c
 {
     foreach (var item in items)
     {
-        // NP9105: Not checking cancellation token
+        // NP9104: Not checking cancellation token
         await ProcessItemAsync(item);
     }
 }
@@ -302,7 +302,7 @@ public async Task ProcessItemsAsync(IEnumerable<Item> items, CancellationToken c
 }
 ```
 
-#### NP9205: LINQ Operations in Hot Paths
+#### NP9201: LINQ Operations in Hot Paths
 
 **Fix Provider:** `LinqInHotPathsCodeFixProvider`
 
@@ -316,7 +316,7 @@ public class BadTransform : ITransformNode<Input, Output>
 {
     protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
     {
-        // NP9205: LINQ in hot path creates allocations
+        // NP9201: LINQ in hot path creates allocations
         var filtered = input.Items.Where(x => x.IsActive).ToList();
         var sorted = filtered.OrderBy(x => x.Priority).ToList();
         return new Output(sorted);
@@ -346,7 +346,7 @@ public class GoodTransform : ITransformNode<Input, Output>
 }
 ```
 
-#### NP9206: Inefficient String Operations
+#### NP9202: Inefficient String Operations
 
 **Fix Provider:** `InefficientStringOperationsCodeFixProvider`
 
@@ -361,7 +361,7 @@ public class BadTransform : ITransformNode<Input, Output>
     protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
     {
         string result = "";
-        foreach (var item in input.Items) // NP9206: Concatenation in loop
+        foreach (var item in input.Items) // NP9202: Concatenation in loop
         {
             result += item.ToString(); // Creates new string each iteration
         }
@@ -388,7 +388,7 @@ public class GoodTransform : ITransformNode<Input, Output>
 }
 ```
 
-#### NP9207: Anonymous Object Allocation
+#### NP9203: Anonymous Object Allocation
 
 **Fix Provider:** `AnonymousObjectAllocationCodeFixProvider`
 
@@ -402,7 +402,7 @@ protected override async Task ExecuteAsync(IDataPipe<Output> output, PipelineCon
 {
     foreach (var item in inputItems)
     {
-        // NP9207: Anonymous object allocation in hot path
+        // NP9203: Anonymous object allocation in hot path
         var result = new { Id = item.Id, Name = item.Name, Value = item.Value * 2 };
         await output.ProduceAsync(new Output(result), cancellationToken);
     }
@@ -425,7 +425,7 @@ protected override async Task ExecuteAsync(IDataPipe<Output> output, PipelineCon
 }
 ```
 
-#### NP9209: Missing ValueTask Optimization
+#### NP9204: Missing ValueTask Optimization
 
 **Fix Provider:** `ValueTaskOptimizationCodeFixProvider`
 
@@ -463,7 +463,7 @@ public async ValueTask<string> GetDataAsync(string id)
 }
 ```
 
-#### NP9211: Non-Streaming Patterns in SourceNode
+#### NP9205: Non-Streaming Patterns in SourceNode
 
 **Fix Provider:** `SourceNodeStreamingCodeFixProvider`
 
@@ -511,7 +511,7 @@ public class GoodSourceNode : ISourceNode<Output>
 }
 ```
 
-#### NP9302: Inefficient Exception Handling
+#### NP9301: Inefficient Exception Handling
 
 **Fix Provider:** `InefficientExceptionHandlingCodeFixProvider`
 
@@ -527,7 +527,7 @@ public async Task ProcessAsync(Input input, CancellationToken cancellationToken)
     {
         await ProcessItemAsync(input, cancellationToken);
     }
-    catch (Exception ex) // NP9302: Too broad exception handling
+    catch (Exception ex) // NP9301: Too broad exception handling
     {
         _logger.LogError(ex, "Processing failed");
         throw;
@@ -558,7 +558,7 @@ public async Task ProcessAsync(Input input, CancellationToken cancellationToken)
 }
 ```
 
-#### NP9312: SinkNode Input Not Consumed
+#### NP9302: SinkNode Input Not Consumed
 
 **Fix Provider:** `SinkNodeInputConsumptionCodeFixProvider`
 
@@ -572,7 +572,7 @@ public class BadSinkNode : ISinkNode<Input>
 {
     protected override async Task ExecuteAsync(IDataPipe<Input> input, PipelineContext context, CancellationToken cancellationToken)
     {
-        // NP9312: Input pipe not consumed - items are dropped
+        // NP9302: Input pipe not consumed - items are dropped
         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
     }
 }
@@ -594,7 +594,7 @@ public class GoodSinkNode : ISinkNode<Input>
 }
 ```
 
-#### NP9313: Unsafe PipelineContext Access
+#### NP9303: Unsafe PipelineContext Access
 
 **Fix Provider:** `PipelineContextAccessCodeFixProvider`
 
@@ -608,7 +608,7 @@ public class BadTransform : ITransformNode<Input, Output>
 {
     protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
     {
-        // NP9313: Potential null reference exception
+        // NP9303: Potential null reference exception
         var nodeId = context.NodeId;
         var metadata = context.Metadata["key"];
         return new Output(input, nodeId, metadata);
@@ -633,7 +633,7 @@ public class GoodTransform : ITransformNode<Input, Output>
 }
 ```
 
-#### NP9409: Direct Dependency Instantiation
+#### NP9401: Direct Dependency Instantiation
 
 **Fix Provider:** `DependencyInjectionCodeFixProvider`
 
@@ -647,7 +647,7 @@ public class BadTransform : ITransformNode<Input, Output>
 {
     protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
     {
-        // NP9409: Direct instantiation creates tight coupling
+        // NP9401: Direct instantiation creates tight coupling
         var processor = new DataProcessor();
         var result = await processor.ProcessAsync(input);
         return new Output(result);
@@ -676,7 +676,7 @@ public class GoodTransform : ITransformNode<Input, Output>
 }
 ```
 
-#### NP9002: Incomplete Resilience Configuration
+#### NP9001: Incomplete Resilience Configuration
 
 **Fix Provider:** `ResilientExecutionConfigurationCodeFixProvider`
 
@@ -863,32 +863,32 @@ dotnet_code_fix.NP9501.enable = false
 dotnet_code_fix.NP9502.enable = false
 
 # Performance-related code fixes
+dotnet_code_fix.NP9101.enable = true
 dotnet_code_fix.NP9102.enable = true
 dotnet_code_fix.NP9103.enable = true
 dotnet_code_fix.NP9104.enable = true
-dotnet_code_fix.NP9105.enable = true
+dotnet_code_fix.NP9201.enable = true
+dotnet_code_fix.NP9202.enable = true
+dotnet_code_fix.NP9203.enable = true
+dotnet_code_fix.NP9204.enable = true
 dotnet_code_fix.NP9205.enable = true
-dotnet_code_fix.NP9206.enable = true
-dotnet_code_fix.NP9207.enable = true
-dotnet_code_fix.NP9209.enable = true
-dotnet_code_fix.NP9211.enable = true
 
 # Reliability and data processing code fixes
+dotnet_code_fix.NP9301.enable = true
 dotnet_code_fix.NP9302.enable = true
-dotnet_code_fix.NP9312.enable = true
-dotnet_code_fix.NP9313.enable = true
+dotnet_code_fix.NP9303.enable = true
 
 # Best practice and configuration code fixes
-dotnet_code_fix.NP9409.enable = true
-dotnet_code_fix.NP9002.enable = true
+dotnet_code_fix.NP9401.enable = true
+dotnet_code_fix.NP9001.enable = true
 
 # Customize code fix behavior
 dotnet_code_fix.NP9501.default_value = 500
 dotnet_code_fix.NP9502.strategy = conservative
-dotnet_code_fix.NP9102.prefer_async_overloads = true
-dotnet_code_fix.NP9205.use_imperative_alternatives = true
-dotnet_code_fix.NP9206.use_string_builder_threshold = 3
-dotnet_code_fix.NP9207.generate_records = true
+dotnet_code_fix.NP9101.prefer_async_overloads = true
+dotnet_code_fix.NP9201.use_imperative_alternatives = true
+dotnet_code_fix.NP9202.use_string_builder_threshold = 3
+dotnet_code_fix.NP9203.generate_records = true
 ```
 
 ## See Also

@@ -17,7 +17,7 @@ public sealed class BatchingConfigurationMismatchCodeFixProvider : CodeFixProvid
 {
     /// <inheritdoc />
     public override ImmutableArray<string> FixableDiagnosticIds =>
-        [BatchingConfigurationMismatchAnalyzer.DiagnosticId];
+        [BatchingConfigurationMismatchAnalyzer.BatchingConfigurationMismatchId];
 
     /// <inheritdoc />
     public override FixAllProvider GetFixAllProvider()

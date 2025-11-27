@@ -21,7 +21,7 @@ public sealed class BlockingAsyncOperationAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for blocking operations in async methods.
     /// </summary>
-    public const string BlockingAsyncOperationId = "NP9102";
+    public const string BlockingAsyncOperationId = "NP9101";
 
     private static readonly DiagnosticDescriptor BlockingAsyncOperationRule = new(
         BlockingAsyncOperationId,

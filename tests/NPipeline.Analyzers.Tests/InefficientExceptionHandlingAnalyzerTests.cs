@@ -3,17 +3,18 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using NPipeline.Nodes;
 
-namespace NPipeline.Analyzers.Tests;
-
-/// <summary>
-///     Tests for InefficientExceptionHandlingAnalyzer.
-/// </summary>
-public sealed class InefficientExceptionHandlingAnalyzerTests
+namespace NPipeline.Analyzers.Tests
 {
-    [Fact]
-    public void ShouldDetectCatchAllException()
+
+    /// <summary>
+    ///     Tests for InefficientExceptionHandlingAnalyzer.
+    /// </summary>
+    public sealed class InefficientExceptionHandlingAnalyzerTests
     {
-        var code = """
+        [Fact]
+        public void ShouldDetectCatchAllException()
+        {
+            var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -24,7 +25,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await ProcessAsync(input);
                            }
-                           // NP9302: Catch-all exception handler
+                           // NP9301: Catch-all exception handler
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Processing failed");
@@ -34,16 +35,16 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.True(hasDiagnostic, "Analyzer should detect catch-all exception handler");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.True(hasDiagnostic, "Analyzer should detect catch-all exception handler");
+        }
 
-    [Fact]
-    public void ShouldCatchAllExceptionWithoutType()
-    {
-        var code = """
+        [Fact]
+        public void ShouldCatchAllExceptionWithoutType()
+        {
+            var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -54,7 +55,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await ProcessAsync(input);
                            }
-                           // NP9302: Catch-all exception handler without type
+                           // NP9301: Catch-all exception handler without type
                            catch
                            {
                                _logger.LogError("Processing failed");
@@ -64,16 +65,16 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.True(hasDiagnostic, "Analyzer should detect catch-all exception handler without type");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.True(hasDiagnostic, "Analyzer should detect catch-all exception handler without type");
+        }
 
-    [Fact]
-    public void ShouldDetectEmptyCatchBlock()
-    {
-        var code = """
+        [Fact]
+        public void ShouldDetectEmptyCatchBlock()
+        {
+            var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -84,7 +85,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await ProcessAsync(input);
                            }
-                           // NP9302: Empty catch block
+                           // NP9301: Empty catch block
                            catch
                            {
                                // Exception silently ignored
@@ -93,16 +94,16 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.True(hasDiagnostic, "Analyzer should detect empty catch block");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.True(hasDiagnostic, "Analyzer should detect empty catch block");
+        }
 
-    [Fact]
-    public void ShouldDetectExceptionSwallowing()
-    {
-        var code = """
+        [Fact]
+        public void ShouldDetectExceptionSwallowing()
+        {
+            var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -113,7 +114,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                return await TransformAsync(input);
                            }
-                           // NP9302: Exception swallowing pattern
+                           // NP9301: Exception swallowing pattern
                            catch (Exception)
                            {
                                // Log but don't re-throw - silent failure
@@ -124,16 +125,16 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.True(hasDiagnostic, "Analyzer should detect exception swallowing pattern");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.True(hasDiagnostic, "Analyzer should detect exception swallowing pattern");
+        }
 
-    [Fact]
-    public void ShouldDetectInefficientExceptionFiltering()
-    {
-        var code = """
+        [Fact]
+        public void ShouldDetectInefficientExceptionFiltering()
+        {
+            var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -144,7 +145,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await SaveAsync(input);
                            }
-                           // NP9302: Inefficient exception filtering
+                           // NP9301: Inefficient exception filtering
                            catch (Exception ex) when (ex.Message.Contains("timeout"))
                            {
                                _logger.LogWarning($"Timeout occurred: {ex.Message}");
@@ -153,16 +154,16 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.True(hasDiagnostic, "Analyzer should detect inefficient exception filtering");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.True(hasDiagnostic, "Analyzer should detect inefficient exception filtering");
+        }
 
-    [Fact]
-    public void ShouldDetectImproperRethrow()
-    {
-        var code = """
+        [Fact]
+        public void ShouldDetectImproperRethrow()
+        {
+            var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -173,7 +174,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await ProcessAsync(input);
                            }
-                           // NP9302: Improper re-throw pattern
+                           // NP9301: Improper re-throw pattern
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Processing failed");
@@ -183,16 +184,16 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.True(hasDiagnostic, "Analyzer should detect improper re-throw pattern");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.True(hasDiagnostic, "Analyzer should detect improper re-throw pattern");
+        }
 
-    [Fact]
-    public void ShouldDetectExceptionHandlingInProcessAsync()
-    {
-        var code = """
+        [Fact]
+        public void ShouldDetectExceptionHandlingInProcessAsync()
+        {
+            var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -203,7 +204,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await ProcessDataAsync(input);
                            }
-                           // NP9302: Exception handling in ProcessAsync method
+                           // NP9301: Exception handling in ProcessAsync method
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Processing failed");
@@ -213,16 +214,16 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in ProcessAsync method");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.True(hasDiagnostic, "Analyzer should detect exception handling in ProcessAsync method");
+        }
 
-    [Fact]
-    public void ShouldDetectExceptionHandlingInSinkNode()
-    {
-        var code = """
+        [Fact]
+        public void ShouldDetectExceptionHandlingInSinkNode()
+        {
+            var code = """
                    using NPipeline.Nodes;
 
                    public class TestSinkNode : ISinkNode<string>
@@ -233,7 +234,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await SaveAsync(input);
                            }
-                           // NP9302: Exception handling in sink node
+                           // NP9301: Exception handling in sink node
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Save failed");
@@ -243,16 +244,16 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in sink node");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.True(hasDiagnostic, "Analyzer should detect exception handling in sink node");
+        }
 
-    [Fact]
-    public void ShouldDetectExceptionHandlingInSourceNode()
-    {
-        var code = """
+        [Fact]
+        public void ShouldDetectExceptionHandlingInSourceNode()
+        {
+            var code = """
                    using NPipeline.Nodes;
 
                    public class TestSourceNode : ISourceNode<int>
@@ -263,7 +264,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                return await GetDataAsync();
                            }
-                           // NP9302: Exception handling in source node
+                           // NP9301: Exception handling in source node
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Data retrieval failed");
@@ -273,16 +274,16 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in source node");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.True(hasDiagnostic, "Analyzer should detect exception handling in source node");
+        }
 
-    [Fact]
-    public void ShouldDetectExceptionHandlingInAggregateNode()
-    {
-        var code = """
+        [Fact]
+        public void ShouldDetectExceptionHandlingInAggregateNode()
+        {
+            var code = """
                    using NPipeline.Nodes;
 
                    public class TestAggregateNode : IAggregateNode<int>
@@ -296,7 +297,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                return await AggregateAsync(input);
                            }
-                           // NP9302: Exception handling in aggregate node
+                           // NP9301: Exception handling in aggregate node
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Aggregation failed");
@@ -306,16 +307,16 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in aggregate node");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.True(hasDiagnostic, "Analyzer should detect exception handling in aggregate node");
+        }
 
-    [Fact]
-    public void ShouldIgnoreSpecificExceptionHandling()
-    {
-        var code = """
+        [Fact]
+        public void ShouldIgnoreSpecificExceptionHandling()
+        {
+            var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -326,7 +327,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await ProcessAsync(input);
                            }
-                           // This should not trigger NP9302 - specific exception type
+                           // This should not trigger NP9301 - specific exception type
                            catch (IOException ex)
                            {
                                _logger.LogError(ex, "IO processing failed");
@@ -336,16 +337,16 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.False(hasDiagnostic, "Analyzer should not flag specific exception handling");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.False(hasDiagnostic, "Analyzer should not flag specific exception handling");
+        }
 
-    [Fact]
-    public void ShouldIgnoreExceptionHandlingInNonHotPathMethod()
-    {
-        var code = """
+        [Fact]
+        public void ShouldIgnoreExceptionHandlingInNonHotPathMethod()
+        {
+            var code = """
                    public class TestClass
                    {
                        public void ProcessData(string data)
@@ -354,7 +355,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                ProcessItem(data);
                            }
-                           // This should not trigger NP9302 - not a hot path method
+                           // This should not trigger NP9301 - not a hot path method
                            catch (Exception ex)
                            {
                                Console.WriteLine($"Error: {ex.Message}");
@@ -365,16 +366,16 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.False(hasDiagnostic, "Analyzer should not flag exception handling in non-hot path method");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.False(hasDiagnostic, "Analyzer should not flag exception handling in non-hot path method");
+        }
 
-    [Fact]
-    public void ShouldIgnoreExceptionHandlingInNonAsyncMethod()
-    {
-        var code = """
+        [Fact]
+        public void ShouldIgnoreExceptionHandlingInNonAsyncMethod()
+        {
+            var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -385,7 +386,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                return TransformItem(item);
                            }
-                           // This should not trigger NP9302 - not async
+                           // This should not trigger NP9301 - not async
                            catch (Exception ex)
                            {
                                Console.WriteLine($"Error: {ex.Message}");
@@ -397,16 +398,16 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.False(hasDiagnostic, "Analyzer should not flag exception handling in non-async method");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.False(hasDiagnostic, "Analyzer should not flag exception handling in non-async method");
+        }
 
-    [Fact]
-    public void ShouldIgnoreExceptionHandlingInNonNodeClass()
-    {
-        var code = """
+        [Fact]
+        public void ShouldIgnoreExceptionHandlingInNonNodeClass()
+        {
+            var code = """
                    public class RegularClass
                    {
                        public async Task ProcessDataAsync(string data)
@@ -415,7 +416,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await ProcessItemAsync(data);
                            }
-                           // This should not trigger NP9302 - not in NPipeline node
+                           // This should not trigger NP9301 - not in NPipeline node
                            catch (Exception ex)
                            {
                                Console.WriteLine($"Error: {ex.Message}");
@@ -426,16 +427,16 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.False(hasDiagnostic, "Analyzer should not flag exception handling in non-NPipeline node class");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.False(hasDiagnostic, "Analyzer should not flag exception handling in non-NPipeline node class");
+        }
 
-    [Fact]
-    public void ShouldDetectExceptionHandlingInValueTaskReturningMethod()
-    {
-        var code = """
+        [Fact]
+        public void ShouldDetectExceptionHandlingInValueTaskReturningMethod()
+        {
+            var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -446,7 +447,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                return await TransformAsync(input);
                            }
-                           // NP9302: Exception handling in ValueTask-returning method
+                           // NP9301: Exception handling in ValueTask-returning method
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Processing failed");
@@ -456,16 +457,16 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in ValueTask-returning method");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.True(hasDiagnostic, "Analyzer should detect exception handling in ValueTask-returning method");
+        }
 
-    [Fact]
-    public void ShouldDetectExceptionHandlingInRunAsyncMethod()
-    {
-        var code = """
+        [Fact]
+        public void ShouldDetectExceptionHandlingInRunAsyncMethod()
+        {
+            var code = """
                    using NPipeline.Nodes;
 
                    public class TestSourceNode : ISourceNode<int>
@@ -476,7 +477,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                return await GetDataAsync();
                            }
-                           // NP9302: Exception handling in RunAsync method
+                           // NP9301: Exception handling in RunAsync method
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Data retrieval failed");
@@ -486,16 +487,16 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in RunAsync method");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.True(hasDiagnostic, "Analyzer should detect exception handling in RunAsync method");
+        }
 
-    [Fact]
-    public void ShouldDetectExceptionHandlingInHandleAsyncMethod()
-    {
-        var code = """
+        [Fact]
+        public void ShouldDetectExceptionHandlingInHandleAsyncMethod()
+        {
+            var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -506,7 +507,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                return await ProcessAsync(input);
                            }
-                           // NP9302: Exception handling in HandleAsync method
+                           // NP9301: Exception handling in HandleAsync method
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Processing failed");
@@ -516,16 +517,16 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in HandleAsync method");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.True(hasDiagnostic, "Analyzer should detect exception handling in HandleAsync method");
+        }
 
-    [Fact]
-    public void ShouldDetectExceptionHandlingInExecuteMethod()
-    {
-        var code = """
+        [Fact]
+        public void ShouldDetectExceptionHandlingInExecuteMethod()
+        {
+            var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -536,7 +537,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                return await ProcessAsync(input);
                            }
-                           // NP9302: Exception handling in Execute method
+                           // NP9301: Exception handling in Execute method
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Processing failed");
@@ -546,16 +547,16 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in Execute method");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.True(hasDiagnostic, "Analyzer should detect exception handling in Execute method");
+        }
 
-    [Fact]
-    public void ShouldDetectExceptionHandlingInProcessMethod()
-    {
-        var code = """
+        [Fact]
+        public void ShouldDetectExceptionHandlingInProcessMethod()
+        {
+            var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -566,7 +567,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                return await ProcessAsync(input);
                            }
-                           // NP9302: Exception handling in Process method
+                           // NP9301: Exception handling in Process method
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Processing failed");
@@ -576,16 +577,16 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in Process method");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.True(hasDiagnostic, "Analyzer should detect exception handling in Process method");
+        }
 
-    [Fact]
-    public void ShouldDetectExceptionHandlingWithLoggingOnly()
-    {
-        var code = """
+        [Fact]
+        public void ShouldDetectExceptionHandlingWithLoggingOnly()
+        {
+            var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
@@ -596,7 +597,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await ProcessAsync(input);
                            }
-                           // NP9302: Exception swallowing with logging only
+                           // NP9301: Exception swallowing with logging only
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Processing failed");
@@ -606,21 +607,21 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                    }
                    """;
 
-        var diagnostics = GetDiagnostics(code);
+            var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.DiagnosticId);
-        Assert.True(hasDiagnostic, "Analyzer should detect exception swallowing with logging only");
-    }
+            var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
+            Assert.True(hasDiagnostic, "Analyzer should detect exception swallowing with logging only");
+        }
 
-    private static IEnumerable<Diagnostic> GetDiagnostics(string code)
-    {
-        var syntaxTree = CSharpSyntaxTree.ParseText(code);
-
-        // Get path to NPipeline assembly
-        var nPipelineAssemblyPath = typeof(INode).Assembly.Location;
-
-        var references = new[]
+        private static IEnumerable<Diagnostic> GetDiagnostics(string code)
         {
+            var syntaxTree = CSharpSyntaxTree.ParseText(code);
+
+            // Get path to NPipeline assembly
+            var nPipelineAssemblyPath = typeof(INode).Assembly.Location;
+
+            var references = new[]
+            {
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Task).Assembly.Location),
@@ -628,14 +629,15 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
             MetadataReference.CreateFromFile(nPipelineAssemblyPath),
         };
 
-        var compilation = CSharpCompilation.Create("TestAssembly")
-            .AddReferences(references)
-            .AddSyntaxTrees(syntaxTree);
+            var compilation = CSharpCompilation.Create("TestAssembly")
+                .AddReferences(references)
+                .AddSyntaxTrees(syntaxTree);
 
-        var analyzer = new InefficientExceptionHandlingAnalyzer();
-        var compilationWithAnalyzers = compilation.WithAnalyzers([analyzer]);
-        var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
+            var analyzer = new InefficientExceptionHandlingAnalyzer();
+            var compilationWithAnalyzers = compilation.WithAnalyzers([analyzer]);
+            var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
 
-        return diagnostics;
+            return diagnostics;
+        }
     }
 }

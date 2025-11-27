@@ -31,7 +31,7 @@ public sealed class UnboundedMaterializationConfigurationAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.UnboundedMaterializationConfigurationId);
         Assert.True(hasDiagnostic, "Analyzer should detect MaxMaterializedItems explicitly set to null");
     }
 
@@ -55,7 +55,7 @@ public sealed class UnboundedMaterializationConfigurationAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.UnboundedMaterializationConfigurationId);
         Assert.True(hasDiagnostic, "Analyzer should detect missing MaxMaterializedItems parameter");
     }
 
@@ -76,7 +76,7 @@ public sealed class UnboundedMaterializationConfigurationAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.UnboundedMaterializationConfigurationId);
         Assert.True(hasDiagnostic, "Analyzer should detect missing MaxMaterializedItems in positional arguments");
     }
 
@@ -101,7 +101,7 @@ public sealed class UnboundedMaterializationConfigurationAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.UnboundedMaterializationConfigurationId);
         Assert.False(hasDiagnostic, "Analyzer should not report when MaxMaterializedItems has valid value");
     }
 
@@ -122,7 +122,7 @@ public sealed class UnboundedMaterializationConfigurationAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.UnboundedMaterializationConfigurationId);
         Assert.False(hasDiagnostic, "Analyzer should not report when MaxMaterializedItems is provided positionally");
     }
 
@@ -149,7 +149,7 @@ public sealed class UnboundedMaterializationConfigurationAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.UnboundedMaterializationConfigurationId);
         Assert.False(hasDiagnostic, "Analyzer should not analyze non-PipelineRetryOptions objects");
     }
 
@@ -170,7 +170,7 @@ public sealed class UnboundedMaterializationConfigurationAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.UnboundedMaterializationConfigurationId);
         Assert.True(hasDiagnostic, "Analyzer should detect null in 4th positional argument");
     }
 
@@ -198,7 +198,7 @@ public sealed class UnboundedMaterializationConfigurationAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.UnboundedMaterializationConfigurationId);
         Assert.False(hasDiagnostic, "Analyzer should ignore additional named arguments after MaxMaterializedItems");
     }
 
@@ -223,7 +223,7 @@ public sealed class UnboundedMaterializationConfigurationAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.UnboundedMaterializationConfigurationId);
         Assert.True(hasDiagnostic, "Analyzer should detect null MaxMaterializedItems in mixed argument styles");
     }
 
@@ -244,7 +244,7 @@ public sealed class UnboundedMaterializationConfigurationAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.DiagnosticId);
+        var hasDiagnostic = diagnostics.Any(d => d.Id == UnboundedMaterializationConfigurationAnalyzer.UnboundedMaterializationConfigurationId);
         Assert.False(hasDiagnostic, "Analyzer should not analyze static property access");
     }
 

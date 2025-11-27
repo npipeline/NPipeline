@@ -8,9 +8,9 @@ sidebar_position: 4
 
 Data processing analyzers protect the integrity of data flow through your pipelines. They detect patterns that cause data loss, memory bloat, or improper stream handling.
 
-### NP9211: Non-Streaming Patterns in SourceNode
+### NP9205: Non-Streaming Patterns in SourceNode
 
-**ID:** `NP9211`  
+**ID:** `NP9205`
 **Severity:** Warning  
 **Category:** Performance  
 
@@ -39,18 +39,18 @@ public class BadSourceNode : SourceNode<string>
 {
     protected override async Task ExecuteAsync(IDataPipe<string> output, PipelineContext context, CancellationToken cancellationToken)
     {
-        // NP9211: Allocating List<T> and populating it
+        // NP9205: Allocating List<T> and populating it
         var items = new List<string>();
         
         // Read all lines from file into memory
-        var lines = File.ReadAllLines("large-file.txt"); // NP9211: Synchronous I/O
+        var lines = File.ReadAllLines("large-file.txt"); // NP9205: Synchronous I/O
         
         foreach (var line in lines)
         {
             items.Add(line);
         }
         
-        // NP9211: Materializing collection with ToList()
+        // NP9205: Materializing collection with ToList()
         foreach (var item in items.ToList())
         {
             await output.ProduceAsync(item, cancellationToken);
@@ -63,10 +63,10 @@ public class AnotherBadSourceNode : SourceNode<int>
 {
     protected override async Task ExecuteAsync(IDataPipe<int> output, PipelineContext context, CancellationToken cancellationToken)
     {
-        // NP9211: Creating array and then converting to async enumerable
-        var numbers = Enumerable.Range(0, 1000000).ToArray(); // NP9211: Array allocation
+        // NP9205: Creating array and then converting to async enumerable
+        var numbers = Enumerable.Range(0, 1000000).ToArray(); // NP9205: Array allocation
         
-        // NP9211: Using ToAsyncEnumerable on materialized collection
+        // NP9205: Using ToAsyncEnumerable on materialized collection
         await foreach (var number in numbers.ToAsyncEnumerable())
         {
             await output.ProduceAsync(number, cancellationToken);
@@ -256,16 +256,16 @@ public class FilteringSourceNode : SourceNode<FilteredData>
 
 To implement streaming SourceNode implementations:
 
-1. **Identify non-streaming patterns** using the NP9211 analyzer
+1. **Identify non-streaming patterns** using the NP9205 analyzer
 2. **Replace List and Array allocations** with `IAsyncEnumerable` methods
 3. **Convert synchronous I/O** to async equivalents (`File.ReadAllText` → `File.ReadAllTextAsync`)
 4. **Remove .ToAsyncEnumerable()** calls on materialized collections
 5. **Use yield return** to stream items one at a time
 6. **Add cancellation support** with `[EnumeratorCancellation]` attribute
 
-### NP9312: Input Parameter Not Consumed
+### NP9302: Input Parameter Not Consumed
 
-**ID:** `NP9312`  
+**ID:** `NP9302`
 **Severity:** Error  
 **Category:** Data Processing  
 
@@ -396,10 +396,10 @@ Adjust analyzer severity in `.editorconfig`:
 
 ```ini
 # Treat non-streaming patterns as errors
-dotnet_diagnostic.NP9211.severity = error
+dotnet_diagnostic.NP9205.severity = error
 
 # Treat unconsummed input as errors
-dotnet_diagnostic.NP9312.severity = error
+dotnet_diagnostic.NP9302.severity = error
 ```
 
 ## See Also

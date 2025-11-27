@@ -19,7 +19,7 @@ public sealed class SynchronousOverAsyncAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for synchronous over async anti-patterns.
     /// </summary>
-    public const string SynchronousOverAsyncId = "NP9104";
+    public const string SynchronousOverAsyncId = "NP9103";
 
     private static readonly DiagnosticDescriptor SynchronousOverAsyncRule = new(
         SynchronousOverAsyncId,

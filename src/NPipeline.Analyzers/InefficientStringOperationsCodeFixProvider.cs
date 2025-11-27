@@ -18,7 +18,7 @@ public sealed class InefficientStringOperationsCodeFixProvider : CodeFixProvider
 {
     /// <inheritdoc />
     public override ImmutableArray<string> FixableDiagnosticIds =>
-        [InefficientStringOperationsAnalyzer.DiagnosticId];
+        [InefficientStringOperationsAnalyzer.InefficientStringOperationsId];
 
     /// <inheritdoc />
     public override FixAllProvider GetFixAllProvider()

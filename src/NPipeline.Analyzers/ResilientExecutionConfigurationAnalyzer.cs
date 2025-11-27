@@ -21,7 +21,7 @@ public sealed class ResilientExecutionConfigurationAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for when RestartNode can be returned without proper configuration.
     /// </summary>
-    public const string IncompleteResilientConfigurationId = "NP9002";
+    public const string IncompleteResilientConfigurationId = "NP9001";
 
     private static readonly DiagnosticDescriptor IncompleteResilientConfigurationRule = new(
         IncompleteResilientConfigurationId,
