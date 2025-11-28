@@ -3,14 +3,13 @@
 using System.Runtime.CompilerServices;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
-using NPipeline.Benchmarks.Common;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Execution;
 using NPipeline.Execution.Factories;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using static NPipeline.Benchmarks.Common.BenchmarkDataGenerators;
+using static NPipeline.Benchmarks.BenchmarkDataGenerators;
 
 namespace NPipeline.Benchmarks.Benchmarks;
 

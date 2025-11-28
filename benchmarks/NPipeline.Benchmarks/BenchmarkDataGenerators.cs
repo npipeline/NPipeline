@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 
-namespace NPipeline.Benchmarks.Common;
+namespace NPipeline.Benchmarks;
 
 /// <summary>
 ///     Helper class for generating realistic test data for benchmarks.
@@ -20,7 +20,7 @@ public static class BenchmarkDataGenerators
     /// <summary>
     ///     Generates a sequence of integers with configurable complexity.
     /// </summary>
-    public static async IAsyncEnumerable<int> GenerateIntegers(
+    private static async IAsyncEnumerable<int> GenerateIntegers(
         int count,
         int startValue = 0,
         int step = 1,

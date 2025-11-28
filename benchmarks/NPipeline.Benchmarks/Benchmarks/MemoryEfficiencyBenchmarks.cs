@@ -2,7 +2,6 @@
 
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
-using NPipeline.Benchmarks.Common;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.DataFlow.Windowing;

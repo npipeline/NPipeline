@@ -103,7 +103,7 @@ public class StrategyBenchmarks
             var batch = b.AddBatcher<int>("batch", batchSize, TimeSpan.FromSeconds(10));
 
             // Adapter: IReadOnlyCollection<int> -> IEnumerable<int> for the unbatcher input
-            var cast = b.AddTransform<IReadOnlyCollection<int>, IEnumerable<int>>("cast", coll => coll);
+            var cast = b.AddTransform<CollectionToEnumerableCast, IReadOnlyCollection<int>, IEnumerable<int>>("cast");
 
             var unbatch = b.AddUnbatcher<int>("unbatch");
             var sink = b.AddSink<BlackHoleSink, int>("sink");
@@ -148,6 +148,14 @@ public class StrategyBenchmarks
         public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item);
+        }
+    }
+
+    private sealed class CollectionToEnumerableCast : TransformNode<IReadOnlyCollection<int>, IEnumerable<int>>
+    {
+        public override Task<IEnumerable<int>> ExecuteAsync(IReadOnlyCollection<int> item, PipelineContext context, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<IEnumerable<int>>(item);
         }
     }
 
