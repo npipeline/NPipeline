@@ -206,70 +206,7 @@ builder.WithRetryOptions(specificNodeHandle, new PipelineRetryOptions(
 ));
 ```
 
-## Integrating External Retry Libraries
-
-For advanced retry patterns like exponential backoff and jitter, you can integrate external libraries like Polly:
-
-```csharp
-using Polly;
-using Polly.Retry;
-using NPipeline.ErrorHandling;
-
-public class AdvancedRetryHandler : INodeErrorHandler<ITransformNode<string, string>, string>
-{
-    private readonly AsyncRetryPolicy _retryPolicy;
-
-    public AdvancedRetryHandler()
-    {
-        // Configure exponential backoff with jitter
-        _retryPolicy = Policy
-            .Handle<HttpRequestException>() // Retry on network errors
-            .WaitAndRetryAsync(
-                retryCount: 5,
-                sleepDurationProvider: retryAttempt =>
-                    TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)) + // Exponential backoff
-                    TimeSpan.FromMilliseconds(new Random().Next(0, 1000)), // Add jitter
-                onRetry: (outcome, timespan, retryAttempt, context) =>
-                {
-                    Console.WriteLine($"Retry {retryAttempt} after {timespan.TotalSeconds}s due to: {outcome.Exception?.Message}");
-                });
-    }
-
-    public async Task<NodeErrorDecision> HandleAsync(
-        ITransformNode<string, string> node,
-        string failedItem,
-        Exception error,
-        PipelineContext context,
-        CancellationToken cancellationToken)
-    {
-        if (error is HttpRequestException)
-        {
-            try
-            {
-                // Execute the retry policy
-                await _retryPolicy.ExecuteAsync(async () =>
-                {
-                    // In a real implementation, you would re-execute the node logic here
-                    // This is a simplified example
-                    Console.WriteLine($"Retrying processing of: {failedItem}");
-                    await Task.Delay(100, cancellationToken);
-                });
-
-                return NodeErrorDecision.Retry;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"All retries failed: {ex.Message}");
-                return NodeErrorDecision.DeadLetter; // Send to dead-letter after all retries fail
-            }
-        }
-
-        return NodeErrorDecision.Skip; // For other error types, just skip
-    }
-}
-```
-
-## Built-in Retry Delay Strategies
+## Retry Delay Strategies
 
 NPipeline provides built-in retry delay strategies that combine **backoff** (how delays increase over time) with **jitter** (randomness to prevent synchronized retries). These strategies are essential for distributed systems to prevent thundering herd problems.
 
