@@ -36,7 +36,7 @@ public class PriorityMergeStrategy : IMergeStrategy<MarketDataTick>
         _logger = logger;
         _delayTolerance = delayTolerance ?? TimeSpan.FromMilliseconds(50);
         _bufferSize = bufferSize;
-        _temporalAlignment = new TemporalAlignmentStrategy(_delayTolerance, null);
+        _temporalAlignment = new TemporalAlignmentStrategy(_delayTolerance);
     }
 
     /// <summary>

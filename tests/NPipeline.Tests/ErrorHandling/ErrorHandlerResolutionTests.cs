@@ -400,7 +400,7 @@ public sealed class ErrorHandlerResolutionTests
 
             builder.Connect(source, transform);
             builder.Connect(transform, sink);
-            builder.WithErrorHandler<NodeLevelTestErrorHandler, string, string>(transform);
+            transform.WithErrorHandler<string, string, NodeLevelTestErrorHandler>(builder);
         }
     }
 
@@ -414,7 +414,7 @@ public sealed class ErrorHandlerResolutionTests
 
             builder.Connect(source, transform);
             builder.Connect(transform, sink);
-            builder.WithErrorHandler<FailNodeLevelErrorHandler, string, string>(transform);
+            transform.WithErrorHandler<string, string, FailNodeLevelErrorHandler>(builder);
         }
     }
 
@@ -428,7 +428,7 @@ public sealed class ErrorHandlerResolutionTests
 
             builder.Connect(source, transform);
             builder.Connect(transform, sink);
-            builder.WithErrorHandler<GlobalTestErrorHandler, string, string>(transform);
+            transform.WithErrorHandler<string, string, GlobalTestErrorHandler>(builder);
         }
     }
 
@@ -442,7 +442,7 @@ public sealed class ErrorHandlerResolutionTests
 
             builder.Connect(source, transform);
             builder.Connect(transform, sink);
-            builder.WithErrorHandler<FailGlobalErrorHandler, string, string>(transform);
+            transform.WithErrorHandler<string, string, FailGlobalErrorHandler>(builder);
         }
     }
 
@@ -471,7 +471,7 @@ public sealed class ErrorHandlerResolutionTests
 
             builder.Connect(source, transform);
             builder.Connect(transform, sink);
-            builder.WithErrorHandler<NodeLevelTestErrorHandler, string, string>(transform);
+            transform.WithErrorHandler<string, string, NodeLevelTestErrorHandler>(builder);
         }
     }
 
@@ -485,7 +485,7 @@ public sealed class ErrorHandlerResolutionTests
 
             builder.Connect(source, transform);
             builder.Connect(transform, sink);
-            builder.WithErrorHandler<SkipDecisionHandler, string, string>(transform);
+            transform.WithErrorHandler<string, string, SkipDecisionHandler>(builder);
         }
     }
 
@@ -499,7 +499,7 @@ public sealed class ErrorHandlerResolutionTests
 
             builder.Connect(source, transform);
             builder.Connect(transform, sink);
-            builder.WithErrorHandler<FailDecisionHandler, string, string>(transform);
+            transform.WithErrorHandler<string, string, FailDecisionHandler>(builder);
         }
     }
 

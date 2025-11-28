@@ -19,9 +19,7 @@ public sealed record CircuitBreakerMemoryManagementOptions(
     /// </summary>
     public static CircuitBreakerMemoryManagementOptions Default { get; } = new(
         TimeSpan.FromMinutes(5),
-        TimeSpan.FromMinutes(30),
-        true,
-        1000);
+        TimeSpan.FromMinutes(30));
 
     /// <summary>
     ///     Disabled instance with automatic cleanup turned off.

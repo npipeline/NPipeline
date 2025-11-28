@@ -101,7 +101,7 @@ public sealed class ErrorAndContextTests
             var crash = builder.AddTransform<CrashingNode, int, int>("crash");
             var sink = builder.AddSink<FinalSinkNode, int>("sink");
 
-            builder.WithErrorHandler<TestErrorHandler, int, int>(crash);
+            crash.WithErrorHandler<int, int, TestErrorHandler>(builder);
 
             builder.Connect(source, crash);
             builder.Connect(crash, sink);

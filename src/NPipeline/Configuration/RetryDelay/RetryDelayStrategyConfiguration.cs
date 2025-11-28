@@ -41,14 +41,10 @@ public sealed record RetryDelayStrategyConfiguration(
     public void Validate()
     {
         if (BackoffConfiguration is null)
-        {
             throw new ArgumentNullException(nameof(BackoffConfiguration), "BackoffConfiguration cannot be null.");
-        }
 
         if (JitterConfiguration is null)
-        {
             throw new ArgumentNullException(nameof(JitterConfiguration), "JitterConfiguration cannot be null.");
-        }
 
         // Validate individual configurations
         BackoffConfiguration.Validate();

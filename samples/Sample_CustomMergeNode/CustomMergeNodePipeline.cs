@@ -45,13 +45,11 @@ public class CustomMergeNodePipeline : IPipelineDefinition
         // Create merge strategies with null loggers for now
         var priorityStrategy = new PriorityMergeStrategy(
             null,
-            TimeSpan.FromMilliseconds(50),
-            1000);
+            TimeSpan.FromMilliseconds(50));
 
         // Create the priority-based merge node with backpressure handling
         var mergeNode = new PriorityBasedMergeNode(
-            priorityStrategy,
-            null);
+            priorityStrategy);
 
         // Add market data sources
         var nyseSource = builder.AddSource<NyseMarketDataSource, MarketDataTick>("nyse-source");

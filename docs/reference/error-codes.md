@@ -122,7 +122,7 @@ builder.Build(); // Would throw NP0105
 
 **Cause:** You connected two nodes with incompatible types. The output type of one doesn't match the input type of the other.
 
-**Solution:** Add a type conversion or transformation node between them, or adjust your node types.
+**Solution:** Add an appropriate transformation node between them to handle the type conversion, or adjust your node types to be compatible.
 
 **Example:**
 
@@ -153,19 +153,20 @@ builder.Connect("converter", "trans"); // ✅ Works
 
 **Message:** `[NP0203] Cannot register type mappings after execution has begun...`**
 
-**Cause:** Attempted to configure type mappings on a TypeConversionNode after the pipeline has started executing.
+**Cause:** Attempted to configure type mappings after the pipeline has started executing.
 
 **Solution:** Configure all mappings before the pipeline starts executing or when building.
 
 **Example:**
 
 ```csharp
-var typeNode = new TypeConversionNode<dynamic, Order>();
-// Configure mappings BEFORE execution
-typeNode.Map(x => x.Id, y => y.OrderId);
+// Configure all type mappings BEFORE pipeline execution
+var builder = new PipelineBuilder();
+// Add your nodes and configure mappings here
+var pipeline = builder.Build();
 
-// Then use in pipeline
-builder.AddTransform<TypeConversionNode<dynamic, Order>>("converter");
+// Then execute the pipeline
+await pipeline.ExecuteAsync(source, context);
 ```
 
 ---

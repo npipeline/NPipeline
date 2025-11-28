@@ -236,7 +236,6 @@ functionality and features like enhanced parallelism, simplifying testing workfl
 - **[Time-Windowed Join](docs/core-concepts/nodes/time-windowed-join.md)** - Joining with time constraints
 - **[Lookup](docs/core-concepts/nodes/lookup.md)** - Enriching data with lookups
 - **[Tap](docs/core-concepts/nodes/tap.md)** - Non-intrusive monitoring and side-channel processing
-- **[Type Conversion](docs/core-concepts/nodes/type-conversion.md)** - Converting between types
 - **[ValueTask Transforms](docs/core-concepts/nodes/valuetask-transforms.md)** - High-performance transformations
 
 ### Best Practices & Patterns

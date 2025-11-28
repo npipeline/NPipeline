@@ -17,10 +17,10 @@ namespace Sample_UnbatchingNode.Nodes;
 public class MarketDataSource : SourceNode<MarketDataEvent>
 {
     private readonly int _eventCount;
+    private readonly string[] _eventTypes;
+    private readonly string[] _exchanges;
     private readonly TimeSpan _interval;
     private readonly int _symbolCount;
-    private readonly string[] _exchanges;
-    private readonly string[] _eventTypes;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="MarketDataSource" /> class.
@@ -50,10 +50,11 @@ public class MarketDataSource : SourceNode<MarketDataEvent>
         var events = new List<MarketDataEvent>();
         var random = new Random(42); // Fixed seed for reproducible results
         var baseTime = DateTime.UtcNow;
-        
+
         // Generate base prices for each symbol
         var basePrices = new Dictionary<string, decimal>();
-        for (int i = 0; i < _symbolCount; i++)
+
+        for (var i = 0; i < _symbolCount; i++)
         {
             var symbol = GetSymbol(i);
             basePrices[symbol] = 100m + i * 50m + (decimal)random.NextDouble() * 20m; // Base price between 100-200
@@ -71,7 +72,7 @@ public class MarketDataSource : SourceNode<MarketDataEvent>
             var priceChangePercent = (random.NextDouble() - 0.5) * 2.0; // ±1% change
             var priceChangeDecimal = (decimal)priceChangePercent / 100m;
             var currentPrice = basePrice * (1m + priceChangeDecimal);
-            
+
             // Update base price for next event (momentum)
             basePrices[symbol] = currentPrice;
 

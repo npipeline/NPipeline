@@ -114,8 +114,10 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
                                 nodeId, item?.ToString() ?? "null", queue.Reader.Count);
                         }
                         else
+                        {
                             logger.Log(LogLevel.Warning, "Node {NodeId}, Failed to enqueue item even after dropping oldest: {Item}", nodeId,
                                 item?.ToString() ?? "null");
+                        }
                     }
 
                     if (DateTimeOffset.UtcNow - lastMetricsEmit >= TimeSpan.FromSeconds(1))

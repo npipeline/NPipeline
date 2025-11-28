@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,15 +42,15 @@ public sealed class Program
             Console.WriteLine();
 
             // Configure pipeline parameters
-            var pipelineParameters = new System.Collections.Generic.Dictionary<string, object>
+            var pipelineParameters = new Dictionary<string, object>
             {
-                ["BatchSize"] = 10,                    // Smaller batches for more frequent processing
+                ["BatchSize"] = 10, // Smaller batches for more frequent processing
                 ["BatchTimeout"] = TimeSpan.FromSeconds(1.5),
-                ["MarketDataEventCount"] = 75,         // Reduced for clearer demonstration
+                ["MarketDataEventCount"] = 75, // Reduced for clearer demonstration
                 ["MarketDataInterval"] = TimeSpan.FromMilliseconds(100),
-                ["PriceAnomalyThreshold"] = 1.5m,      // More sensitive for demonstration
-                ["VolatilityThreshold"] = 3.0m,        // More sensitive for demonstration
-                ["AnomalyScoreThreshold"] = 0.6         // More sensitive for demonstration
+                ["PriceAnomalyThreshold"] = 1.5m, // More sensitive for demonstration
+                ["VolatilityThreshold"] = 3.0m, // More sensitive for demonstration
+                ["AnomalyScoreThreshold"] = 0.6, // More sensitive for demonstration
             };
 
             Console.WriteLine("Pipeline Configuration:");

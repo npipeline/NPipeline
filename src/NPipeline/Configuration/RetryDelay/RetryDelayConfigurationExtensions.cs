@@ -71,9 +71,9 @@ public static class RetryDelayConfigurationExtensions
     /// <exception cref="ArgumentException">Thrown when any parameter is invalid.</exception>
     /// <remarks>
     ///     This is a convenience method that creates exponential backoff configuration
-    /// with full jitter, which is a common and effective combination for distributed systems
-    /// with transient failures. The full jitter helps prevent thundering herd problems
-    /// while exponential backoff provides controlled delay growth.
+    ///     with full jitter, which is a common and effective combination for distributed systems
+    ///     with transient failures. The full jitter helps prevent thundering herd problems
+    ///     while exponential backoff provides controlled delay growth.
     /// </remarks>
     public static PipelineRetryOptions WithExponentialBackoffAndFullJitter(
         this PipelineRetryOptions retryOptions,

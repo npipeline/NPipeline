@@ -4,8 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -64,9 +62,9 @@ public class BatchEventExtractor : TransformNode<BatchAnalyticsWrapper, IReadOnl
 /// </summary>
 public class AlertGeneratorTransform : TransformNode<MarketDataEvent, AlertEvent>
 {
+    private readonly double _anomalyScoreThreshold;
     private readonly decimal _priceAnomalyThreshold;
     private readonly decimal _volatilityThreshold;
-    private readonly double _anomalyScoreThreshold;
 
     /// <summary>
     ///     Initializes a new instance of <see cref="AlertGeneratorTransform" /> class.
@@ -101,7 +99,9 @@ public class AlertGeneratorTransform : TransformNode<MarketDataEvent, AlertEvent
         var alerts = GenerateAlertsForEvent(marketEvent, context).ToList();
 
         // Return the first alert (or null if no alerts)
-        return Task.FromResult(alerts.Count > 0 ? alerts[0] : null!);
+        return Task.FromResult(alerts.Count > 0
+            ? alerts[0]
+            : null!);
     }
 
     private IEnumerable<AlertEvent> GenerateAlertsForEvent(MarketDataEvent marketEvent, PipelineContext context)
@@ -111,6 +111,7 @@ public class AlertGeneratorTransform : TransformNode<MarketDataEvent, AlertEvent
 
         // Try to find batch analytics context from the pipeline context
         BatchAnalyticsResult? batchAnalytics = null;
+
         foreach (var key in context.Parameters.Keys.Where(k => k.StartsWith("BatchAnalytics_", StringComparison.OrdinalIgnoreCase)))
         {
             if (context.Parameters[key] is BatchAnalyticsResult analytics)
@@ -122,13 +123,9 @@ public class AlertGeneratorTransform : TransformNode<MarketDataEvent, AlertEvent
 
         // If we have batch analytics, use them; otherwise simulate
         if (batchAnalytics != null && batchAnalytics.Symbol == marketEvent.Symbol)
-        {
             alerts.AddRange(GenerateAlertsWithBatchContext(marketEvent, batchAnalytics, now));
-        }
         else
-        {
             alerts.AddRange(GenerateAlertsWithSimulatedContext(marketEvent, now));
-        }
 
         return alerts;
     }
@@ -140,8 +137,11 @@ public class AlertGeneratorTransform : TransformNode<MarketDataEvent, AlertEvent
         // Generate alerts based on actual batch analytics
         if (batchAnalytics.AnomalyScore >= _anomalyScoreThreshold)
         {
-            var severity = batchAnalytics.AnomalyScore >= 0.9 ? "Critical" :
-                          batchAnalytics.AnomalyScore >= 0.8 ? "High" : "Medium";
+            var severity = batchAnalytics.AnomalyScore >= 0.9
+                ? "Critical"
+                : batchAnalytics.AnomalyScore >= 0.8
+                    ? "High"
+                    : "Medium";
 
             yield return new AlertEvent(
                 $"Alert-{Guid.NewGuid():N}",
@@ -159,10 +159,16 @@ public class AlertGeneratorTransform : TransformNode<MarketDataEvent, AlertEvent
 
         // Price anomaly alert based on deviation from batch average
         var priceDeviation = Math.Abs(marketEvent.Price - batchAnalytics.AveragePrice) / batchAnalytics.AveragePrice * 100m;
+
         if (priceDeviation >= _priceAnomalyThreshold)
         {
-            var direction = marketEvent.Price > batchAnalytics.AveragePrice ? "Above" : "Below";
-            var severity = priceDeviation >= _priceAnomalyThreshold * 2m ? "High" : "Medium";
+            var direction = marketEvent.Price > batchAnalytics.AveragePrice
+                ? "Above"
+                : "Below";
+
+            var severity = priceDeviation >= _priceAnomalyThreshold * 2m
+                ? "High"
+                : "Medium";
 
             yield return new AlertEvent(
                 $"Alert-{Guid.NewGuid():N}",
@@ -180,7 +186,7 @@ public class AlertGeneratorTransform : TransformNode<MarketDataEvent, AlertEvent
 
         // Volume spike alert
         var avgVolume = batchAnalytics.OriginalEvents.Average(e => (decimal)e.Volume);
-        var volumeRatio = (decimal)marketEvent.Volume / avgVolume;
+        var volumeRatio = marketEvent.Volume / avgVolume;
 
         if (volumeRatio >= 3.0m) // Volume is 3x the batch average
         {
@@ -206,11 +212,12 @@ public class AlertGeneratorTransform : TransformNode<MarketDataEvent, AlertEvent
 
         var simulatedVolatility = (decimal)(random.NextDouble() * 15.0); // 0-15% volatility
         var simulatedAnomalyScore = random.NextDouble(); // 0-1 anomaly score
+
         var simulatedTrend = random.NextDouble() switch
         {
             > 0.7 => "Up",
             < 0.3 => "Down",
-            _ => "Stable"
+            _ => "Stable",
         };
 
         var simulatedBatchId = $"Simulated-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N")[..8]}";
@@ -218,8 +225,11 @@ public class AlertGeneratorTransform : TransformNode<MarketDataEvent, AlertEvent
         // Generate alerts based on simulated batch analytics
         if (simulatedAnomalyScore >= _anomalyScoreThreshold)
         {
-            var severity = simulatedAnomalyScore >= 0.9 ? "Critical" :
-                          simulatedAnomalyScore >= 0.8 ? "High" : "Medium";
+            var severity = simulatedAnomalyScore >= 0.9
+                ? "Critical"
+                : simulatedAnomalyScore >= 0.8
+                    ? "High"
+                    : "Medium";
 
             yield return new AlertEvent(
                 $"Alert-{Guid.NewGuid():N}",
@@ -238,8 +248,11 @@ public class AlertGeneratorTransform : TransformNode<MarketDataEvent, AlertEvent
         // Price volatility alert
         if (simulatedVolatility >= _volatilityThreshold)
         {
-            var severity = simulatedVolatility >= 10.0m ? "Critical" :
-                          simulatedVolatility >= 7.5m ? "High" : "Medium";
+            var severity = simulatedVolatility >= 10.0m
+                ? "Critical"
+                : simulatedVolatility >= 7.5m
+                    ? "High"
+                    : "Medium";
 
             yield return new AlertEvent(
                 $"Alert-{Guid.NewGuid():N}",

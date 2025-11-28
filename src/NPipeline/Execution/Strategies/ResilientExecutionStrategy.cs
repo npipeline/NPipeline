@@ -253,8 +253,10 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                 logger.Log(LogLevel.Debug, "Circuit breaker resolved for node {NodeId}. State: {State}", nodeId, circuitBreaker.State);
             }
             else
+            {
                 logger.Log(LogLevel.Warning,
                     "Circuit breaker options enabled but manager unavailable for node {NodeId}. Resilience will continue without breaker integration.", nodeId);
+            }
         }
 
         while (!cancellationToken.IsCancellationRequested)
@@ -374,20 +376,24 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
 
                         // Apply retry delay before restarting the node
                         var delayStrategy = context.GetRetryDelayStrategy();
+
                         try
                         {
                             var delay = await delayStrategy.GetDelayAsync(failures, cancellationToken).ConfigureAwait(false);
+
                             if (delay > TimeSpan.Zero)
                             {
-                                logger.Log(LogLevel.Debug, "Applying retry delay of {Delay}ms for node {NodeId} after {FailureCount} failures", 
+                                logger.Log(LogLevel.Debug, "Applying retry delay of {Delay}ms for node {NodeId} after {FailureCount} failures",
                                     delay.TotalMilliseconds, nodeId, failures);
+
                                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                             }
                         }
                         catch (Exception delayEx)
                         {
                             // Log delay strategy failure but continue with retry
-                            logger.Log(LogLevel.Warning, delayEx, "Failed to apply retry delay for node {NodeId}. Continuing with retry without delay.", nodeId);
+                            logger.Log(LogLevel.Warning, delayEx, "Failed to apply retry delay for node {NodeId}. Continuing with retry without delay.",
+                                nodeId);
                         }
 
                         context.ExecutionObserver.OnRetry(new NodeRetryEvent(nodeId, RetryKind.NodeRestart, failures, ex));

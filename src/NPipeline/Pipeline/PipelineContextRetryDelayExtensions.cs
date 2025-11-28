@@ -56,11 +56,9 @@ public static class PipelineContextRetryDelayExtensions
         ArgumentNullException.ThrowIfNull(context);
 
         // Check if strategy is already cached
-        if (context.Items.TryGetValue(RetryDelayStrategyCacheKey, out var cachedStrategy) && 
+        if (context.Items.TryGetValue(RetryDelayStrategyCacheKey, out var cachedStrategy) &&
             cachedStrategy is IRetryDelayStrategy strategy)
-        {
             return strategy;
-        }
 
         IRetryDelayStrategy retryDelayStrategy;
 
@@ -93,11 +91,9 @@ public static class PipelineContextRetryDelayExtensions
     private static PipelineRetryOptions GetCurrentRetryOptions(PipelineContext context)
     {
         // Check if we have updated retry options in Properties
-        if (context.Properties.TryGetValue(UpdatedRetryOptionsKey, out var updatedOptions) && 
+        if (context.Properties.TryGetValue(UpdatedRetryOptionsKey, out var updatedOptions) &&
             updatedOptions is PipelineRetryOptions options)
-        {
             return options;
-        }
 
         // Return the original retry options
         return context.RetryOptions;
@@ -193,30 +189,26 @@ public static class PipelineContextRetryDelayExtensions
         TimeSpan? maxDelay = null)
     {
         ArgumentNullException.ThrowIfNull(context);
-        
-        if (baseDelay <= TimeSpan.Zero)
-        {
-            throw new ArgumentException("Base delay must be positive", nameof(baseDelay));
-        }
-        
-        if (multiplier <= 1.0)
-        {
-            throw new ArgumentException("Multiplier must be greater than 1.0", nameof(multiplier));
-        }
 
-        var backoffConfig = new Configuration.RetryDelay.ExponentialBackoffConfiguration(
+        if (baseDelay <= TimeSpan.Zero)
+            throw new ArgumentException("Base delay must be positive", nameof(baseDelay));
+
+        if (multiplier <= 1.0)
+            throw new ArgumentException("Multiplier must be greater than 1.0", nameof(multiplier));
+
+        var backoffConfig = new ExponentialBackoffConfiguration(
             baseDelay, multiplier, maxDelay ?? TimeSpan.FromMinutes(5));
 
-        var jitterConfig = new Configuration.RetryDelay.NoJitterConfiguration();
+        var jitterConfig = new NoJitterConfiguration();
         var strategyConfig = new RetryDelayStrategyConfiguration(backoffConfig, jitterConfig);
 
         // Store the updated retry options in Properties since RetryOptions is read-only
         var updatedRetryOptions = context.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
         context.Properties[UpdatedRetryOptionsKey] = updatedRetryOptions;
-        
+
         // Clear the cached strategy to force recreation
         context.Items.Remove(RetryDelayStrategyCacheKey);
-        
+
         return context;
     }
 
@@ -249,30 +241,26 @@ public static class PipelineContextRetryDelayExtensions
         TimeSpan? maxDelay = null)
     {
         ArgumentNullException.ThrowIfNull(context);
-        
-        if (baseDelay <= TimeSpan.Zero)
-        {
-            throw new ArgumentException("Base delay must be positive", nameof(baseDelay));
-        }
-        
-        if (increment <= TimeSpan.Zero)
-        {
-            throw new ArgumentException("Increment must be positive", nameof(increment));
-        }
 
-        var backoffConfig = new Configuration.RetryDelay.LinearBackoffConfiguration(
+        if (baseDelay <= TimeSpan.Zero)
+            throw new ArgumentException("Base delay must be positive", nameof(baseDelay));
+
+        if (increment <= TimeSpan.Zero)
+            throw new ArgumentException("Increment must be positive", nameof(increment));
+
+        var backoffConfig = new LinearBackoffConfiguration(
             baseDelay, increment, maxDelay ?? TimeSpan.FromMinutes(5));
 
-        var jitterConfig = new Configuration.RetryDelay.NoJitterConfiguration();
+        var jitterConfig = new NoJitterConfiguration();
         var strategyConfig = new RetryDelayStrategyConfiguration(backoffConfig, jitterConfig);
 
         // Store the updated retry options in Properties since RetryOptions is read-only
         var updatedRetryOptions = context.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
         context.Properties[UpdatedRetryOptionsKey] = updatedRetryOptions;
-        
+
         // Clear the cached strategy to force recreation
         context.Items.Remove(RetryDelayStrategyCacheKey);
-        
+
         return context;
     }
 
@@ -300,23 +288,21 @@ public static class PipelineContextRetryDelayExtensions
         TimeSpan delay)
     {
         ArgumentNullException.ThrowIfNull(context);
-        
-        if (delay <= TimeSpan.Zero)
-        {
-            throw new ArgumentException("Delay must be positive", nameof(delay));
-        }
 
-        var backoffConfig = new Configuration.RetryDelay.FixedDelayConfiguration(delay);
-        var jitterConfig = new Configuration.RetryDelay.NoJitterConfiguration();
+        if (delay <= TimeSpan.Zero)
+            throw new ArgumentException("Delay must be positive", nameof(delay));
+
+        var backoffConfig = new FixedDelayConfiguration(delay);
+        var jitterConfig = new NoJitterConfiguration();
         var strategyConfig = new RetryDelayStrategyConfiguration(backoffConfig, jitterConfig);
 
         // Store the updated retry options in Properties since RetryOptions is read-only
         var updatedRetryOptions = context.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
         context.Properties[UpdatedRetryOptionsKey] = updatedRetryOptions;
-        
+
         // Clear the cached strategy to force recreation
         context.Items.Remove(RetryDelayStrategyCacheKey);
-        
+
         return context;
     }
 
@@ -350,30 +336,26 @@ public static class PipelineContextRetryDelayExtensions
         TimeSpan? jitterMax = null)
     {
         ArgumentNullException.ThrowIfNull(context);
-        
-        if (baseDelay <= TimeSpan.Zero)
-        {
-            throw new ArgumentException("Base delay must be positive", nameof(baseDelay));
-        }
-        
-        if (multiplier <= 1.0)
-        {
-            throw new ArgumentException("Multiplier must be greater than 1.0", nameof(multiplier));
-        }
 
-        var backoffConfig = new Configuration.RetryDelay.ExponentialBackoffConfiguration(
+        if (baseDelay <= TimeSpan.Zero)
+            throw new ArgumentException("Base delay must be positive", nameof(baseDelay));
+
+        if (multiplier <= 1.0)
+            throw new ArgumentException("Multiplier must be greater than 1.0", nameof(multiplier));
+
+        var backoffConfig = new ExponentialBackoffConfiguration(
             baseDelay, multiplier, maxDelay ?? TimeSpan.FromMinutes(5));
 
-        var jitterConfig = new Configuration.RetryDelay.EqualJitterConfiguration();
+        var jitterConfig = new EqualJitterConfiguration();
         var strategyConfig = new RetryDelayStrategyConfiguration(backoffConfig, jitterConfig);
 
         // Store the updated retry options in Properties since RetryOptions is read-only
         var updatedRetryOptions = context.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
         context.Properties[UpdatedRetryOptionsKey] = updatedRetryOptions;
-        
+
         // Clear the cached strategy to force recreation
         context.Items.Remove(RetryDelayStrategyCacheKey);
-        
+
         return context;
     }
 }

@@ -79,7 +79,7 @@ internal static class ErrorMessages
     {
         return $"[{ErrorCodes.TypeMismatchInConnection}] Type mismatch in connection between nodes '{sourceNodeId}' and '{targetNodeId}'. " +
                $"Output type '{sourceType.Name}' is not compatible with input type '{targetType.Name}'. " +
-               $"Consider adding a type conversion or transformation node between them. " +
+               $"Consider adding a transformation node between them. " +
                $"See: {DocsBaseUrl}#{ErrorCodes.TypeMismatchInConnection}";
     }
 

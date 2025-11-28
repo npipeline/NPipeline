@@ -31,13 +31,13 @@ namespace Sample_UnbatchingNode;
 /// </remarks>
 public class UnbatchingStreamConversionPipeline : IPipelineDefinition
 {
+    private double _anomalyScoreThreshold;
     private int _batchSize;
     private TimeSpan _batchTimeout;
-    private TimeSpan _marketDataInterval;
     private int _marketDataEventCount;
+    private TimeSpan _marketDataInterval;
     private decimal _priceAnomalyThreshold;
     private decimal _volatilityThreshold;
-    private double _anomalyScoreThreshold;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="UnbatchingStreamConversionPipeline" /> class.
@@ -144,7 +144,7 @@ public class UnbatchingStreamConversionPipeline : IPipelineDefinition
         // This is the key component that demonstrates unbatching functionality
         var unbatching = builder.AddTransform<UnbatchingNode<MarketDataEvent>, IEnumerable<MarketDataEvent>, MarketDataEvent>(
             "unbatching-node");
-        
+
         // Configure the UnbatchingExecutionStrategy for the UnbatchingNode
         builder.WithExecutionStrategy(unbatching, new UnbatchingExecutionStrategy());
 

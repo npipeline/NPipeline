@@ -174,5 +174,4 @@ Lookup nodes are powerful for creating rich, contextual data streams within your
 ## Next Steps
 
 * **[Branch Nodes](branch.md)**: Learn about duplicating data streams to multiple downstream paths.
-* **[Type Conversion Nodes](type-conversion.md)**: Discover how to transform data between different types.
 

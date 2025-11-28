@@ -4,8 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -72,7 +70,10 @@ public class BatchAnalyticsTransform : TransformNode<IReadOnlyCollection<MarketD
         // Volume Weighted Average Price (VWAP)
         var totalValue = batch.Sum(e => e.Price * e.Volume);
         var totalVolume = batch.Sum(e => e.Volume);
-        var volumeWeightedAveragePrice = totalVolume > 0 ? totalValue / totalVolume : 0m;
+
+        var volumeWeightedAveragePrice = totalVolume > 0
+            ? totalValue / totalVolume
+            : 0m;
 
         // Price trend analysis
         var priceTrend = CalculatePriceTrend(prices);
@@ -80,7 +81,11 @@ public class BatchAnalyticsTransform : TransformNode<IReadOnlyCollection<MarketD
         // Anomaly detection based on price volatility and volume spikes
         var avgVolume = volumes.Average();
         var maxVolume = volumes.Max();
-        var volumeSpikeRatio = avgVolume > 0 ? (double)(maxVolume / avgVolume) : 0;
+
+        var volumeSpikeRatio = avgVolume > 0
+            ? maxVolume / avgVolume
+            : 0;
+
         var anomalyScore = Math.Min(1.0, (double)(priceVolatility / 10m) + volumeSpikeRatio / 10.0);
 
         var batchId = $"Batch-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N")[..8]}";
@@ -102,9 +107,10 @@ public class BatchAnalyticsTransform : TransformNode<IReadOnlyCollection<MarketD
         var wrapper = new BatchAnalyticsWrapper(analyticsResult, batch.ToList());
 
         stopwatch.Stop();
+
         Console.WriteLine($"Batch analytics completed in {stopwatch.ElapsedMilliseconds}ms - " +
-                         $"Avg Price: {analyticsResult.AveragePrice}, Volatility: {analyticsResult.PriceVolatility}%, " +
-                         $"Trend: {analyticsResult.PriceTrend}, Anomaly Score: {analyticsResult.AnomalyScore}");
+                          $"Avg Price: {analyticsResult.AveragePrice}, Volatility: {analyticsResult.PriceVolatility}%, " +
+                          $"Trend: {analyticsResult.PriceTrend}, Anomaly Score: {analyticsResult.AnomalyScore}");
 
         return Task.FromResult(wrapper);
     }
@@ -139,7 +145,7 @@ public class BatchAnalyticsTransform : TransformNode<IReadOnlyCollection<MarketD
         {
             > 0 when percentChange > 1.0 => "Up",
             < 0 when percentChange > 1.0 => "Down",
-            _ => "Stable"
+            _ => "Stable",
         };
     }
 }

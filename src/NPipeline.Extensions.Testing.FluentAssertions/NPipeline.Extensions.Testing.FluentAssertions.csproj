@@ -6,7 +6,7 @@
         <Nullable>enable</Nullable>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        
+
         <!-- NuGet Packaging Metadata -->
         <PackageId>NPipeline.Extensions.Testing.FluentAssertions</PackageId>
         <Description>FluentAssertions extensions for NPipeline testing - adds fluent assertion methods for pipeline execution results</Description>

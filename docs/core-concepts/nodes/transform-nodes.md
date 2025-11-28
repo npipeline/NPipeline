@@ -206,9 +206,6 @@ public sealed class EnrichmentTransform : ITransformNode<Order, EnrichedOrder>
 
 For validation and filtering transforms that can complete synchronously, consider using `ValueTask<T>` for optimal performance. See the [Synchronous Fast Paths guide](../../advanced-topics/synchronous-fast-paths.md) for complete implementation details and critical constraints.
 
-### Type Conversion
-
-For type conversion transforms that can complete synchronously, consider using `ValueTask<T>` for optimal performance. See the [Synchronous Fast Paths guide](../../advanced-topics/synchronous-fast-paths.md) for complete implementation details and critical constraints.
 
 ## Next Steps
 

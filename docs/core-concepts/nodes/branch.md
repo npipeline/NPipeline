@@ -142,6 +142,5 @@ In this example, the `BranchNode` duplicates the input stream, sending copies to
 ## Next Steps
 
 * **[Tap Nodes](tap.md)**: Learn about non-intrusive monitoring and side-channel processing.
-* **[Type Conversion Nodes](type-conversion.md)**: Discover how to transform data between different types.
 * **[Advanced Error Handling Patterns](../resilience/error-handling-guide.md#advanced-patterns)**: Learn more about handling errors in complex pipeline structures.
 

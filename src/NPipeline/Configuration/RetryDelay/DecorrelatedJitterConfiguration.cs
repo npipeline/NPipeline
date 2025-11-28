@@ -16,8 +16,8 @@ namespace NPipeline.Configuration.RetryDelay;
 /// </remarks>
 public sealed record DecorrelatedJitterConfiguration : JitterStrategyConfiguration
 {
-    private static readonly TimeSpan DefaultMaxDelay = TimeSpan.FromMinutes(1);
     private const double DefaultMultiplier = 3.0;
+    private static readonly TimeSpan DefaultMaxDelay = TimeSpan.FromMinutes(1);
 
     public DecorrelatedJitterConfiguration(TimeSpan? maxDelay = null, double? multiplier = null)
     {

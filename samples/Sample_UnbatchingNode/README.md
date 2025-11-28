@@ -1,6 +1,7 @@
 # Sample_UnbatchingNode
 
-This sample demonstrates the unbatching functionality in NPipeline for converting batched analytics results back to individual item streams. It shows how to efficiently process data in batches for analytics while maintaining the ability to generate individual events for real-time processing and alerting.
+This sample demonstrates the unbatching functionality in NPipeline for converting batched analytics results back to individual item streams. It shows how to
+efficiently process data in batches for analytics while maintaining the ability to generate individual events for real-time processing and alerting.
 
 ## Overview
 
@@ -16,6 +17,7 @@ Unbatching is a crucial pattern for scenarios where you need both efficient batc
 ### Unbatching Pattern
 
 The unbatching pattern involves:
+
 - **Batching for Efficiency**: Collect individual items into batches for cost-effective processing
 - **Batch Analytics**: Perform comprehensive analytics on batches to derive insights
 - **Unbatching for Real-time**: Convert batch results back to individual events for downstream processing
@@ -24,6 +26,7 @@ The unbatching pattern involves:
 ### Financial Trading Scenario
 
 This sample implements a realistic financial trading system:
+
 - **Market Data Ingestion**: Individual market data events from multiple exchanges
 - **Batch Analytics**: Efficient processing of market data in batches for analytics
 - **Real-time Alerting**: Individual alert events generated from batch insights
@@ -48,6 +51,7 @@ dotnet run --project samples/Sample_UnbatchingNode
 ```
 
 This will run the unbatching pipeline with default configuration:
+
 - Batch size: 15 events
 - Batch timeout: 2 seconds
 - Market data events: 100 events
@@ -62,6 +66,7 @@ dotnet test samples/Sample_UnbatchingNode
 ```
 
 The comprehensive test suite covers:
+
 - Different unbatching scenarios
 - Various batch sizes and thresholds
 - Error handling scenarios
@@ -264,12 +269,15 @@ You can extend this sample by:
 
 ## Conclusion
 
-This sample provides a comprehensive demonstration of unbatching functionality in NPipeline. It shows how to combine the efficiency of batch processing with the responsiveness of individual event processing.
+This sample provides a comprehensive demonstration of unbatching functionality in NPipeline. It shows how to combine the efficiency of batch processing with the
+responsiveness of individual event processing.
 
 The key takeaway is that unbatching is a powerful pattern that enables you to:
+
 - Process data efficiently in batches for analytics
 - Convert batch results back to individual events when needed
 - Maintain real-time capabilities while leveraging batch processing benefits
 - Build hybrid systems that optimize for both efficiency and responsiveness
 
-This pattern is particularly valuable in scenarios where you need the cost-effectiveness of batch processing combined with the immediacy of real-time event processing.
+This pattern is particularly valuable in scenarios where you need the cost-effectiveness of batch processing combined with the immediacy of real-time event
+processing.

@@ -6,7 +6,7 @@
         <Nullable>enable</Nullable>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        
+
         <!-- NuGet Packaging Metadata -->
         <PackageId>NPipeline.Connectors.Csv</PackageId>
         <Description>CSV source and sink nodes for NPipeline using CsvHelper - read and write CSV files with configurable options</Description>

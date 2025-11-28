@@ -124,25 +124,8 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ---
 
-### Sample 08: Type Conversion Node
 
-**Concepts demonstrated:**
-
-- `TypeConversionNode<TIn, TOut>` for seamless data type transformations
-- `AutoMap()` for automatic property mapping by name (case-insensitive)
-- `Custom Map()` for explicit property-to-property mapping with converters
-- Factory functions for complex object initialization
-- Error handling with graceful fallbacks for conversion failures
-- Performance optimization through compiled expressions
-- String parsing, JSON deserialization, and legacy system modernization patterns
-
-**What it does:** Demonstrates comprehensive TypeConversionNode functionality for transforming data between different types in real-world scenarios. Shows three parallel data processing paths: string data parsing (simulating CSV/log ingestion), JSON data processing (simulating API integration), and legacy data modernization.
-
-**Key takeaways:** Building robust data integration pipelines that can seamlessly transform between different data formats while maintaining high performance and comprehensive error handling.
-
----
-
-### Sample 09: CSV Connector
+### Sample 08: CSV Connector
 
 **Concepts demonstrated:**
 
@@ -161,7 +144,7 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ---
 
-### Sample 10: AggregateNode
+### Sample 09: AggregateNode
 
 **Concepts demonstrated:**
 
@@ -178,7 +161,7 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ---
 
-### Sample 11: BranchNode
+### Sample 10: BranchNode
 
 **Concepts demonstrated:**
 
@@ -200,7 +183,7 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ### Foundational Advanced Concepts
 
-#### Sample 12: Custom Node Implementation
+#### Sample 11: Custom Node Implementation
 
 **Concepts demonstrated:**
 
@@ -215,7 +198,7 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ---
 
-#### Sample 13: Performance Optimization
+#### Sample 12: Performance Optimization
 
 **Concepts demonstrated:**
 
@@ -232,7 +215,7 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ### Data Processing Patterns
 
-#### Sample 14: Batching Node
+#### Sample 13: Batching Node
 
 **Concepts demonstrated:**
 
@@ -250,7 +233,7 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ---
 
-#### Sample 15: UnbatchingNode - Stream Conversion Patterns
+#### Sample 14: UnbatchingNode - Stream Conversion Patterns
 
 **Concepts demonstrated:**
 
@@ -279,7 +262,7 @@ The pipeline flow demonstrates the complete unbatching pattern:
 
 ### Stream Processing and Windowing
 
-#### Sample 16: Streaming Analytics
+#### Sample 15: Streaming Analytics
 
 **Concepts demonstrated:**
 
@@ -294,7 +277,7 @@ The pipeline flow demonstrates the complete unbatching pattern:
 
 ---
 
-#### Sample 17: WindowingStrategies - Advanced Windowing Strategies
+#### Sample 16: WindowingStrategies - Advanced Windowing Strategies
 
 **Concepts demonstrated:**
 
@@ -323,7 +306,7 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 ---
 
-#### Sample 18: AdvancedAggregateNode
+#### Sample 17: AdvancedAggregateNode
 
 **Concepts demonstrated:**
 
@@ -342,7 +325,7 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 ### Advanced Join Operations
 
-#### Sample 19: Keyed Join Node
+#### Sample 18: Keyed Join Node
 
 **Concepts demonstrated:**
 
@@ -359,7 +342,7 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 ---
 
-#### Sample 20: Time Windowed Join Node
+#### Sample 19: Time Windowed Join Node
 
 **Concepts demonstrated:**
 
@@ -376,7 +359,7 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 ---
 
-#### Sample 21: CustomMergeNode
+#### Sample 20: CustomMergeNode
 
 **Concepts demonstrated:**
 
@@ -399,7 +382,7 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 ### Event-Time Processing
 
-#### Sample 22: WatermarkHandling - Advanced Event-Time Processing
+#### Sample 21: WatermarkHandling - Advanced Event-Time Processing
 
 **Concepts demonstrated:**
 
@@ -423,7 +406,7 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 ### Observability and Monitoring
 
-#### Sample 23: TapNode
+#### Sample 22: TapNode
 
 **Concepts demonstrated:**
 
@@ -443,7 +426,7 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 ### Complex End-to-End Scenarios
 
-#### Sample 24: Complex Data Transformations
+#### Sample 23: Complex Data Transformations
 
 **Concepts demonstrated:**
 
@@ -468,24 +451,23 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 3. **Progress to Intermediate Samples** once you're comfortable with the basics
    - Sample 06: Advanced error handling and resilience patterns
    - Sample 07: LookupNode for data enrichment and external lookups
-   - Sample 08: Type conversion node for data transformation
-   - Sample 09: CSV connector and data processing
-   - Sample 10: AggregateNode for real-time analytics and simple aggregations
-   - Sample 11: BranchNode for parallel data distribution and processing
+   - Sample 08: CSV connector and data processing
+   - Sample 09: AggregateNode for real-time analytics and simple aggregations
+   - Sample 10: BranchNode for parallel data distribution and processing
 4. **Explore Advanced Samples** for production scenarios and optimization techniques
-   - Sample 12: Custom node development and implementation
-   - Sample 13: Performance optimization techniques
-   - Sample 14: Batching node for efficient batch processing
-   - Sample 15: UnbatchingNode for stream conversion patterns and hybrid batch/stream processing
-   - Sample 16: Streaming analytics and basic windowing
-   - Sample 17: WindowingStrategies for advanced windowing strategies and user behavior analytics
-   - Sample 18: AdvancedAggregateNode for complex state management and financial analytics
-   - Sample 19: Keyed join node for stream correlation
-   - Sample 20: Time windowed join node for temporal analysis
-   - Sample 21: CustomMergeNode for advanced stream merging and conflict resolution
-   - Sample 22: WatermarkHandling for advanced event-time processing and IoT sensor networks
-   - Sample 23: TapNode for non-intrusive monitoring and observability
-   - Sample 24: Complex data transformations and end-to-end scenarios
+   - Sample 11: Custom node development and implementation
+   - Sample 12: Performance optimization techniques
+   - Sample 13: Batching node for efficient batch processing
+   - Sample 14: UnbatchingNode for stream conversion patterns and hybrid batch/stream processing
+   - Sample 15: Streaming analytics and basic windowing
+   - Sample 16: WindowingStrategies for advanced windowing strategies and user behavior analytics
+   - Sample 17: AdvancedAggregateNode for complex state management and financial analytics
+   - Sample 18: Keyed join node for stream correlation
+   - Sample 19: Time windowed join node for temporal analysis
+   - Sample 20: CustomMergeNode for advanced stream merging and conflict resolution
+   - Sample 21: WatermarkHandling for advanced event-time processing and IoT sensor networks
+   - Sample 22: TapNode for non-intrusive monitoring and observability
+   - Sample 23: Complex data transformations and end-to-end scenarios
 
 Each sample includes:
 

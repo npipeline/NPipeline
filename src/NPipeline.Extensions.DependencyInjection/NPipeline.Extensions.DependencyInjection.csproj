@@ -6,7 +6,7 @@
         <Nullable>enable</Nullable>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        
+
         <!-- NuGet Packaging Metadata -->
         <PackageId>NPipeline.Extensions.DependencyInjection</PackageId>
         <Description>Microsoft.Extensions.DependencyInjection integration for NPipeline - enables automatic node registration and lifetime management</Description>

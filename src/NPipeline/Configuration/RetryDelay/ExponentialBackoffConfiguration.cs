@@ -15,8 +15,8 @@ namespace NPipeline.Configuration.RetryDelay;
 /// </remarks>
 public sealed record ExponentialBackoffConfiguration : BackoffStrategyConfiguration
 {
-    private static readonly TimeSpan DefaultBaseDelay = TimeSpan.FromSeconds(1);
     private const double DefaultMultiplier = 2.0;
+    private static readonly TimeSpan DefaultBaseDelay = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan DefaultMaxDelay = TimeSpan.FromMinutes(1);
 
     public ExponentialBackoffConfiguration(TimeSpan? baseDelay = null, double? multiplier = null, TimeSpan? maxDelay = null)

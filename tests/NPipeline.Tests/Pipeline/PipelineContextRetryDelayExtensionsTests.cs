@@ -25,9 +25,9 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         var strategy = context.GetRetryDelayStrategy();
 
         // Assert
-        _ = AssertionExtensions.Should(strategy).NotBeNull();
-        _ = AssertionExtensions.Should(strategy).BeOfType<NoOpRetryDelayStrategy>();
-        _ = AssertionExtensions.Should(strategy).BeSameAs(NoOpRetryDelayStrategy.Instance);
+        _ = strategy.Should().NotBeNull();
+        _ = strategy.Should().BeOfType<NoOpRetryDelayStrategy>();
+        _ = strategy.Should().BeSameAs(NoOpRetryDelayStrategy.Instance);
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         var strategy2 = context.GetRetryDelayStrategy();
 
         // Assert
-        _ = AssertionExtensions.Should(strategy1).BeSameAs(strategy2);
+        _ = strategy1.Should().BeSameAs(strategy2);
     }
 
     [Fact]
@@ -61,13 +61,13 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         var strategy = context.GetRetryDelayStrategy();
 
         // Assert
-        _ = AssertionExtensions.Should(strategy).NotBeNull();
-        _ = AssertionExtensions.Should(strategy).BeOfType<CompositeRetryDelayStrategy>();
+        _ = strategy.Should().NotBeNull();
+        _ = strategy.Should().BeOfType<CompositeRetryDelayStrategy>();
 
         // Test that the strategy produces reasonable delays
         var delay = await strategy.GetDelayAsync(2);
-        _ = AssertionExtensions.Should(delay).BeGreaterThan(TimeSpan.Zero);
-        _ = AssertionExtensions.Should(delay).BeLessThanOrEqualTo(TimeSpan.FromSeconds(30));
+        _ = delay.Should().BeGreaterThan(TimeSpan.Zero);
+        _ = delay.Should().BeLessThanOrEqualTo(TimeSpan.FromSeconds(30));
     }
 
     [Fact]
@@ -87,13 +87,13 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         var strategy = context.GetRetryDelayStrategy();
 
         // Assert
-        _ = AssertionExtensions.Should(strategy).NotBeNull();
-        _ = AssertionExtensions.Should(strategy).BeOfType<CompositeRetryDelayStrategy>();
+        _ = strategy.Should().NotBeNull();
+        _ = strategy.Should().BeOfType<CompositeRetryDelayStrategy>();
 
         // Test that the strategy produces reasonable delays
         var delay = await strategy.GetDelayAsync(3);
-        _ = AssertionExtensions.Should(delay).BeGreaterThan(TimeSpan.Zero);
-        _ = AssertionExtensions.Should(delay).BeLessThanOrEqualTo(TimeSpan.FromSeconds(10));
+        _ = delay.Should().BeGreaterThan(TimeSpan.Zero);
+        _ = delay.Should().BeLessThanOrEqualTo(TimeSpan.FromSeconds(10));
     }
 
     [Fact]
@@ -110,12 +110,12 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         var strategy = context.GetRetryDelayStrategy();
 
         // Assert
-        _ = AssertionExtensions.Should(strategy).NotBeNull();
-        _ = AssertionExtensions.Should(strategy).BeOfType<CompositeRetryDelayStrategy>();
+        _ = strategy.Should().NotBeNull();
+        _ = strategy.Should().BeOfType<CompositeRetryDelayStrategy>();
 
         // Test that the strategy produces the expected delay
         var delay = await strategy.GetDelayAsync(5);
-        _ = AssertionExtensions.Should(delay).Be(TimeSpan.FromMilliseconds(200));
+        _ = delay.Should().Be(TimeSpan.FromMilliseconds(200));
     }
 
     [Fact]
@@ -135,13 +135,13 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         var strategy = context.GetRetryDelayStrategy();
 
         // Assert
-        _ = AssertionExtensions.Should(strategy).NotBeNull();
-        _ = AssertionExtensions.Should(strategy).BeOfType<CompositeRetryDelayStrategy>();
+        _ = strategy.Should().NotBeNull();
+        _ = strategy.Should().BeOfType<CompositeRetryDelayStrategy>();
 
         // Test that the strategy produces reasonable delays
         var delay = await strategy.GetDelayAsync(2);
-        _ = AssertionExtensions.Should(delay).BeGreaterThan(TimeSpan.Zero);
-        _ = AssertionExtensions.Should(delay).BeLessThanOrEqualTo(TimeSpan.FromSeconds(30));
+        _ = delay.Should().BeGreaterThan(TimeSpan.Zero);
+        _ = delay.Should().BeLessThanOrEqualTo(TimeSpan.FromSeconds(30));
     }
 
     [Fact]
@@ -158,12 +158,12 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         var strategy = context.GetRetryDelayStrategy();
 
         // Assert
-        _ = AssertionExtensions.Should(strategy).NotBeNull();
-        _ = AssertionExtensions.Should(strategy).BeOfType<CompositeRetryDelayStrategy>();
+        _ = strategy.Should().NotBeNull();
+        _ = strategy.Should().BeOfType<CompositeRetryDelayStrategy>();
 
         // Test that the strategy produces reasonable delays
         var delay = await strategy.GetDelayAsync(1);
-        _ = AssertionExtensions.Should(delay).BeGreaterThan(TimeSpan.Zero);
+        _ = delay.Should().BeGreaterThan(TimeSpan.Zero);
     }
 
     [Fact]
@@ -180,13 +180,13 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         var strategy = context.GetRetryDelayStrategy();
 
         // Assert
-        _ = AssertionExtensions.Should(strategy).NotBeNull();
-        _ = AssertionExtensions.Should(strategy).BeOfType<CompositeRetryDelayStrategy>();
+        _ = strategy.Should().NotBeNull();
+        _ = strategy.Should().BeOfType<CompositeRetryDelayStrategy>();
 
         // Test that the strategy produces deterministic delays (no jitter)
         var delay1 = await strategy.GetDelayAsync(1);
         var delay2 = await strategy.GetDelayAsync(1);
-        _ = AssertionExtensions.Should(delay1).Be(delay2); // Should be deterministic
+        _ = delay1.Should().Be(delay2); // Should be deterministic
     }
 
     [Fact]
@@ -206,9 +206,9 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         var strategy = context.GetRetryDelayStrategy();
 
         // Assert
-        _ = AssertionExtensions.Should(strategy).NotBeNull();
-        _ = AssertionExtensions.Should(strategy).BeOfType<NoOpRetryDelayStrategy>();
-        _ = AssertionExtensions.Should(strategy).BeSameAs(NoOpRetryDelayStrategy.Instance);
+        _ = strategy.Should().NotBeNull();
+        _ = strategy.Should().BeOfType<NoOpRetryDelayStrategy>();
+        _ = strategy.Should().BeSameAs(NoOpRetryDelayStrategy.Instance);
     }
 
     [Fact]
@@ -225,9 +225,9 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         var strategy = context.GetRetryDelayStrategy();
 
         // Assert
-        _ = AssertionExtensions.Should(strategy).NotBeNull();
-        _ = AssertionExtensions.Should(strategy).BeOfType<NoOpRetryDelayStrategy>();
-        _ = AssertionExtensions.Should(strategy).BeSameAs(NoOpRetryDelayStrategy.Instance);
+        _ = strategy.Should().NotBeNull();
+        _ = strategy.Should().BeOfType<NoOpRetryDelayStrategy>();
+        _ = strategy.Should().BeSameAs(NoOpRetryDelayStrategy.Instance);
     }
 
     [Fact]
@@ -244,12 +244,12 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         var strategy = context.GetRetryDelayStrategy();
 
         // Assert
-        _ = AssertionExtensions.Should(strategy).NotBeNull();
-        _ = AssertionExtensions.Should(strategy).BeOfType<NoOpRetryDelayStrategy>();
+        _ = strategy.Should().NotBeNull();
+        _ = strategy.Should().BeOfType<NoOpRetryDelayStrategy>();
 
         // Should fall back to no-op strategy when jitter type is unknown
         var delay = await strategy.GetDelayAsync(1);
-        _ = AssertionExtensions.Should(delay).Be(TimeSpan.Zero);
+        _ = delay.Should().Be(TimeSpan.Zero);
     }
 
     [Fact]
@@ -289,8 +289,8 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         var strategy3 = context.GetRetryDelayStrategy();
 
         // Assert
-        _ = AssertionExtensions.Should(strategy1).BeSameAs(strategy2);
-        _ = AssertionExtensions.Should(strategy2).BeSameAs(strategy3);
+        _ = strategy1.Should().BeSameAs(strategy2);
+        _ = strategy2.Should().BeSameAs(strategy3);
     }
 
     [Fact]
@@ -309,9 +309,9 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         var strategy2 = context2.GetRetryDelayStrategy();
 
         // Assert
-        _ = AssertionExtensions.Should(strategy1).NotBeSameAs(strategy2); // Different contexts should have different instances
-        _ = AssertionExtensions.Should(strategy1).BeOfType<CompositeRetryDelayStrategy>();
-        _ = AssertionExtensions.Should(strategy2).BeOfType<CompositeRetryDelayStrategy>();
+        _ = strategy1.Should().NotBeSameAs(strategy2); // Different contexts should have different instances
+        _ = strategy1.Should().BeOfType<CompositeRetryDelayStrategy>();
+        _ = strategy2.Should().BeOfType<CompositeRetryDelayStrategy>();
     }
 
     [Fact]
@@ -351,11 +351,11 @@ public sealed class PipelineContextRetryDelayExtensionsTests
 
             var strategy = context.GetRetryDelayStrategy();
 
-            _ = AssertionExtensions.Should(strategy).BeOfType(combination.ExpectedType);
+            _ = strategy.Should().BeOfType(combination.ExpectedType);
 
             // Test that the strategy produces reasonable delays
             var delay = await strategy.GetDelayAsync(1);
-            _ = AssertionExtensions.Should(delay).BeGreaterThanOrEqualTo(TimeSpan.Zero);
+            _ = delay.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
         }
     }
 

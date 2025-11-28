@@ -71,7 +71,7 @@ public sealed class ErrorHandlingTests(ITestOutputHelper output)
             var failing = builder.AddTransform<FailingNode, string, string>("failing");
             var sink = builder.AddInMemorySink<string>("sink");
 
-            builder.WithErrorHandler<TestErrorHandler, string, string>(failing);
+            failing.WithErrorHandler<string, string, TestErrorHandler>(builder);
 
             builder.Connect(source, failing);
             builder.Connect(failing, sink);

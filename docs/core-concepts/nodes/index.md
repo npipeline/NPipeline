@@ -238,7 +238,6 @@ Beyond the basic source, transform, and sink nodes, NPipeline offers a suite of 
 * **[Time-Windowed Join Nodes](time-windowed-join.md)**: Discover how to join data streams based on defined time windows.
 * **[Branch Nodes](branch.md)**: Understand how to duplicate data streams for parallel processing.
 * **[Tap Nodes](tap.md)**: Learn about non-intrusive monitoring and side-channel processing.
-* **[Type Conversion Nodes](type-conversion.md)**: Learn how to convert data types within your pipeline.
 
 ## Choosing the Right Node Type
 

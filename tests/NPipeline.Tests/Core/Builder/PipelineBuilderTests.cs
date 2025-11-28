@@ -202,7 +202,7 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
         builder.Connect(source, transform);
 
         // Act
-        builder.WithErrorHandler<TestErrorHandler, string, int>(transform);
+        transform.WithErrorHandler<string, int, TestErrorHandler>(builder);
         var pipeline = builder.Build();
 
         // Assert
