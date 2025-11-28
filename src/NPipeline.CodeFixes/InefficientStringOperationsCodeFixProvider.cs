@@ -6,8 +6,9 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using NPipeline.Analyzers;
 
-namespace NPipeline.Analyzers;
+namespace NPipeline.CodeFixes;
 
 /// <summary>
 ///     Code fix provider that converts inefficient string operations to StringBuilder alternatives.
@@ -357,7 +358,7 @@ var result = sb.ToString();";
 
         // Remove quotes from format string
         if (formatString.StartsWith("\"", StringComparison.Ordinal) && formatString.EndsWith("\"", StringComparison.Ordinal))
-            formatString = formatString[1..^1];
+            formatString = formatString.Substring(1, formatString.Length - 2);
 
         return SyntaxFactory.LiteralExpression(
             SyntaxKind.StringLiteralExpression,

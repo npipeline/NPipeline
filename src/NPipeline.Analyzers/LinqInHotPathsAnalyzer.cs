@@ -138,6 +138,7 @@ public sealed class LinqInHotPathsAnalyzer : DiagnosticAnalyzer
             var containingNamespace = containingType?.ContainingNamespace?.ToDisplayString();
 
             if (!string.IsNullOrEmpty(containingNamespace) &&
+                containingNamespace != null &&
                 containingNamespace.StartsWith("System.Linq", StringComparison.Ordinal))
             {
                 var containingTypeFull = impl.ContainingType?.ToDisplayString();
@@ -245,7 +246,7 @@ public sealed class LinqInHotPathsAnalyzer : DiagnosticAnalyzer
                 var displayFully = t.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
                 if (displayFully == "global::System.Collections.IEnumerable" ||
-                    displayFully.Contains("System.Collections.Generic.IEnumerable<", StringComparison.Ordinal))
+                    displayFully.IndexOf("System.Collections.Generic.IEnumerable<", StringComparison.Ordinal) >= 0)
                     return true;
             }
             catch
@@ -273,12 +274,12 @@ public sealed class LinqInHotPathsAnalyzer : DiagnosticAnalyzer
                 var disp = t.ToDisplayString();
 
                 if (!string.IsNullOrEmpty(disp) && (
-                        disp.Contains("List<", StringComparison.Ordinal) ||
-                        disp.Contains("IList<", StringComparison.Ordinal) ||
-                        disp.Contains("IReadOnlyList<", StringComparison.Ordinal) ||
-                        disp.Contains("IReadOnlyCollection<", StringComparison.Ordinal) ||
-                        disp.Contains("IEnumerable<", StringComparison.Ordinal) ||
-                        disp.Contains("System.Collections.Generic.List<", StringComparison.Ordinal)))
+                        disp.IndexOf("List<", StringComparison.Ordinal) >= 0 ||
+                        disp.IndexOf("IList<", StringComparison.Ordinal) >= 0 ||
+                        disp.IndexOf("IReadOnlyList<", StringComparison.Ordinal) >= 0 ||
+                        disp.IndexOf("IReadOnlyCollection<", StringComparison.Ordinal) >= 0 ||
+                        disp.IndexOf("IEnumerable<", StringComparison.Ordinal) >= 0 ||
+                        disp.IndexOf("System.Collections.Generic.List<", StringComparison.Ordinal) >= 0))
                     return true;
             }
             catch
@@ -296,7 +297,7 @@ public sealed class LinqInHotPathsAnalyzer : DiagnosticAnalyzer
         {
             var ds = receiverType.ToDisplayString();
 
-            if (!string.IsNullOrEmpty(ds) && ds.Contains("IEnumerable", StringComparison.Ordinal))
+            if (!string.IsNullOrEmpty(ds) && ds.IndexOf("IEnumerable", StringComparison.Ordinal) >= 0)
                 return true;
         }
         catch

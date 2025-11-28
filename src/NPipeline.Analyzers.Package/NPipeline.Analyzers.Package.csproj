@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <IsPackable>true</IsPackable>
+        <RootNamespace>NPipeline.Analyzers.Package</RootNamespace>
+        
+        <!-- Package Configuration -->
+        <PackageId>NPipeline.Analyzers</PackageId>
+        <PackageVersion>1.0.0</PackageVersion>
+        <Title>NPipeline Analyzers</Title>
+        <Description>NPipeline analyzers and code fixes for detecting and resolving common pipeline configuration issues</Description>
+        <PackageTags>analyzers;roslyn;npipeline;codefixes;diagnostics</PackageTags>
+        <Authors>NPipeline Team</Authors>
+        <Copyright>Copyright © NPipeline Team</Copyright>
+        <PackageProjectUrl>https://github.com/npipeline/NPipeline</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/npipeline/NPipeline</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        
+        <!-- Analyzer Configuration -->
+        <DevelopmentDependency>true</DevelopmentDependency>
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+        <!-- Suppress release tracking requirement as this is an internal analyzer -->
+        <NoWarn>$(NoWarn);RS2008</NoWarn>
+    </PropertyGroup>
+
+    <!-- Reference both analyzer and code fix projects -->
+    <ItemGroup>
+        <ProjectReference Include="..\NPipeline.Analyzers\NPipeline.Analyzers.csproj"
+                          ReferenceOutputAssembly="false"
+                          OutputItemType="Analyzer" />
+        <ProjectReference Include="..\NPipeline.CodeFixes\NPipeline.CodeFixes.csproj"
+                          ReferenceOutputAssembly="false"
+                          OutputItemType="Analyzer" />
+    </ItemGroup>
+
+    <!-- Include the analyzer and code fix DLLs in the package -->
+    <ItemGroup>
+        <Content Include="..\NPipeline.Analyzers\bin\$(Configuration)\netstandard2.0\NPipeline.Analyzers.dll">
+            <Pack>true</Pack>
+            <PackagePath>analyzers/dotnet/cs</PackagePath>
+            <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+        </Content>
+        <Content Include="..\NPipeline.CodeFixes\bin\$(Configuration)\netstandard2.0\NPipeline.CodeFixes.dll">
+            <Pack>true</Pack>
+            <PackagePath>analyzers/dotnet/cs</PackagePath>
+            <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
+
+    <!-- Ensure the referenced projects are built before packing -->
+    <Target Name="BuildReferencedProjects" BeforeTargets="Pack">
+        <MSBuild Projects="..\NPipeline.Analyzers\NPipeline.Analyzers.csproj" Targets="Build" />
+        <MSBuild Projects="..\NPipeline.CodeFixes\NPipeline.CodeFixes.csproj" Targets="Build" />
+    </Target>
+
+</Project>

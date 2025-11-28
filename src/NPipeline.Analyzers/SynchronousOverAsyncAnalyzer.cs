@@ -54,21 +54,13 @@ public sealed class SynchronousOverAsyncAnalyzer : DiagnosticAnalyzer
         // Determine if this method is async or synchronous
         var isAsyncMethod = IsAsyncMethod(methodDeclaration, context.SemanticModel);
 
-        // Debug output
-        Console.WriteLine($"Analyzing method: {methodDeclaration.Identifier.Text}, IsAsync: {isAsyncMethod}");
-
         // Walk through the method body to find synchronous over async patterns
         var walker = new SynchronousOverAsyncWalker(context.SemanticModel, isAsyncMethod);
         walker.Visit(methodDeclaration.Body);
 
-        // Debug output
-        Console.WriteLine($"Found {walker.SynchronousOverAsyncPatterns.Count} patterns");
-
         // Report any synchronous over async patterns found
         foreach (var (location, pattern) in walker.SynchronousOverAsyncPatterns)
         {
-            Console.WriteLine($"  - Pattern: {pattern}");
-
             var diagnostic = Diagnostic.Create(
                 SynchronousOverAsyncRule,
                 location,
@@ -109,9 +101,6 @@ public sealed class SynchronousOverAsyncAnalyzer : DiagnosticAnalyzer
 
         public override void VisitInvocationExpression(InvocationExpressionSyntax node)
         {
-            // Debug output
-            Console.WriteLine($"  Visiting invocation: {node}");
-
             CheckForSynchronousOverAsyncInvocation(node);
             base.VisitInvocationExpression(node);
         }
@@ -251,15 +240,9 @@ public sealed class SynchronousOverAsyncAnalyzer : DiagnosticAnalyzer
         /// </summary>
         private bool IsAwaited(InvocationExpressionSyntax invocation)
         {
-            // Debug output
-            Console.WriteLine($"      Checking if {invocation} is awaited...");
-
             // Check if invocation is directly awaited
             if (invocation.Parent is AwaitExpressionSyntax)
-            {
-                Console.WriteLine("      Directly awaited: True");
                 return true;
-            }
 
             // Check if invocation is part of an expression that is awaited
             // but only if it's a direct child of awaited expression
@@ -267,33 +250,23 @@ public sealed class SynchronousOverAsyncAnalyzer : DiagnosticAnalyzer
 
             while (current != null)
             {
-                // Debug output
-                Console.WriteLine($"      Checking parent: {current.GetType().Name} - {current}");
-
                 // If we find an await, check if this invocation is part of awaited expression
                 if (current is AwaitExpressionSyntax awaitExpression)
                 {
-                    Console.WriteLine($"      Found await expression: {awaitExpression}");
-
                     // The invocation is awaited if it's the direct expression being awaited
                     // or if it's part of a simple member access chain leading to awaited expression
                     var result = IsPartOfAwaitedExpression(invocation, awaitExpression);
-                    Console.WriteLine($"      Is part of awaited expression: {result}");
                     return result;
                 }
 
-                // Stop at statement boundaries - if we cross a statement boundary, 
+                // Stop at statement boundaries - if we cross a statement boundary,
                 // invocation is not awaited
                 if (current is StatementSyntax)
-                {
-                    Console.WriteLine("      Hit statement boundary, not awaited");
                     return false;
-                }
 
                 current = current.Parent;
             }
 
-            Console.WriteLine("      No await found, not awaited");
             return false;
         }
 

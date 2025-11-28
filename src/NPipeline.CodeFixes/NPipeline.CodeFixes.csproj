@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
@@ -6,7 +6,7 @@
         <Nullable>enable</Nullable>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <IsPackable>false</IsPackable>
-        <RootNamespace>NPipeline.Analyzers</RootNamespace>
+        <RootNamespace>NPipeline.CodeFixes</RootNamespace>
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 
         <!-- Analyzer Configuration -->
@@ -16,12 +16,15 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all" />
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.0.0" PrivateAssets="all" />
     </ItemGroup>
 
     <ItemGroup>
         <InternalsVisibleTo Include="NPipeline.Analyzers.Tests"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\NPipeline.Analyzers\NPipeline.Analyzers.csproj" />
     </ItemGroup>
 
 </Project>

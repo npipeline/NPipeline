@@ -5,8 +5,9 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using NPipeline.Analyzers;
 
-namespace NPipeline.Analyzers;
+namespace NPipeline.CodeFixes;
 
 /// <summary>
 ///     Code fix provider that suggests fixes for unbounded materialization configuration.
@@ -223,13 +224,13 @@ public sealed class UnboundedMaterializationConfigurationCodeFixProvider : CodeF
         // Check for high-throughput indicators
         var highThroughputIndicators = new[] { "Stream", "Batch", "Bulk", "High", "Performance", "Large" };
 
-        if (highThroughputIndicators.Any(indicator => className.Contains(indicator, StringComparison.OrdinalIgnoreCase)))
+        if (highThroughputIndicators.Any(indicator => className.IndexOf(indicator, StringComparison.OrdinalIgnoreCase) >= 0))
             return WorkloadType.HighThroughput;
 
         // Check for memory-constrained indicators
         var memoryConstrainedIndicators = new[] { "Mobile", "Embedded", "Lightweight", "Memory", "Constrained" };
 
-        if (memoryConstrainedIndicators.Any(indicator => className.Contains(indicator, StringComparison.OrdinalIgnoreCase)))
+        if (memoryConstrainedIndicators.Any(indicator => className.IndexOf(indicator, StringComparison.OrdinalIgnoreCase) >= 0))
             return WorkloadType.MemoryConstrained;
 
         // Default to standard

@@ -222,7 +222,7 @@ public sealed class BatchingConfigurationMismatchAnalyzer : DiagnosticAnalyzer
             return false;
 
         var methodName = memberAccess.Name.Identifier.Text;
-        return methodName.Contains("Batching", StringComparison.OrdinalIgnoreCase);
+        return methodName.IndexOf("Batching", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     private static bool TryGetBatchingOptionsArgument(InvocationExpressionSyntax invocation, out ExpressionSyntax batchingOptionsArg)
@@ -235,7 +235,7 @@ public sealed class BatchingConfigurationMismatchAnalyzer : DiagnosticAnalyzer
         // Look for BatchingOptions argument (could be positional or named)
         foreach (var argument in invocation.ArgumentList.Arguments)
         {
-            if (argument.NameColon?.Name.Identifier.Text.Contains("Batching", StringComparison.OrdinalIgnoreCase) == true)
+            if (argument.NameColon?.Name.Identifier.Text.IndexOf("Batching", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 batchingOptionsArg = argument.Expression;
                 return true;
@@ -584,5 +584,15 @@ public sealed class BatchingConfigurationMismatchAnalyzer : DiagnosticAnalyzer
         return false;
     }
 
-    private record BatchingMismatch(string Description, string Impact);
+    private class BatchingMismatch
+    {
+        public string Description { get; }
+        public string Impact { get; }
+
+        public BatchingMismatch(string description, string impact)
+        {
+            Description = description;
+            Impact = impact;
+        }
+    }
 }

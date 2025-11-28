@@ -6,8 +6,9 @@ using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Simplification;
+using NPipeline.Analyzers;
 
-namespace NPipeline.Analyzers;
+namespace NPipeline.CodeFixes;
 
 /// <summary>
 ///     Code fix provider that suggests improvements for proper cancellation token usage.

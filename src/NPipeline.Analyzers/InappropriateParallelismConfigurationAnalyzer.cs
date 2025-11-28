@@ -317,8 +317,8 @@ public sealed class InappropriateParallelismConfigurationAnalyzer : DiagnosticAn
 
         var methodName = memberAccess.Name.Identifier.Text;
 
-        return methodName.Contains("Parallelism", StringComparison.OrdinalIgnoreCase) ||
-               methodName.Contains("Parallel", StringComparison.OrdinalIgnoreCase);
+        return methodName.IndexOf("Parallelism", StringComparison.OrdinalIgnoreCase) >= 0 ||
+               methodName.IndexOf("Parallel", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     private static bool TryGetParallelismValue(InvocationExpressionSyntax invocation, SemanticModel semanticModel, out int parallelismValue)
@@ -358,17 +358,17 @@ public sealed class InappropriateParallelismConfigurationAnalyzer : DiagnosticAn
         // Check for I/O-bound indicators
         var ioIndicators = new[] { "Io", "Database", "File", "Network", "Http", "Api", "Stream" };
 
-        if (ioIndicators.Any(indicator => className.Contains(indicator, StringComparison.OrdinalIgnoreCase)))
+        if (ioIndicators.Any(indicator => className.IndexOf(indicator, StringComparison.OrdinalIgnoreCase) >= 0))
             return WorkloadType.IoBound;
 
         // Check for CPU-bound indicators
         var cpuIndicators = new[] { "Cpu", "Compute", "Process", "Transform", "Calculate", "Math" };
 
-        if (cpuIndicators.Any(indicator => className.Contains(indicator, StringComparison.OrdinalIgnoreCase)))
+        if (cpuIndicators.Any(indicator => className.IndexOf(indicator, StringComparison.OrdinalIgnoreCase) >= 0))
             return WorkloadType.CpuBound;
 
         // Default to CPU-bound for transforms
-        return className.Contains("Transform", StringComparison.OrdinalIgnoreCase)
+        return className.IndexOf("Transform", StringComparison.OrdinalIgnoreCase) >= 0
             ? WorkloadType.CpuBound
             : WorkloadType.Unknown;
     }
@@ -438,17 +438,17 @@ public sealed class InappropriateParallelismConfigurationAnalyzer : DiagnosticAn
         // Check for I/O-bound indicators
         var ioIndicators = new[] { "Io", "Database", "File", "Network", "Http", "Api", "Stream" };
 
-        if (ioIndicators.Any(indicator => typeName.Contains(indicator, StringComparison.OrdinalIgnoreCase)))
+        if (ioIndicators.Any(indicator => typeName.IndexOf(indicator, StringComparison.OrdinalIgnoreCase) >= 0))
             return WorkloadType.IoBound;
 
         // Check for CPU-bound indicators
         var cpuIndicators = new[] { "Cpu", "Compute", "Process", "Transform", "Calculate", "Math" };
 
-        if (cpuIndicators.Any(indicator => typeName.Contains(indicator, StringComparison.OrdinalIgnoreCase)))
+        if (cpuIndicators.Any(indicator => typeName.IndexOf(indicator, StringComparison.OrdinalIgnoreCase) >= 0))
             return WorkloadType.CpuBound;
 
         // Default to CPU-bound for transforms
-        return typeName.Contains("Transform", StringComparison.OrdinalIgnoreCase)
+        return typeName.IndexOf("Transform", StringComparison.OrdinalIgnoreCase) >= 0
             ? WorkloadType.CpuBound
             : WorkloadType.Unknown;
     }

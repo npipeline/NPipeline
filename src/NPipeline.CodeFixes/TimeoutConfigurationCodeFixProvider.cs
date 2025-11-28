@@ -5,8 +5,9 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using NPipeline.Analyzers;
 
-namespace NPipeline.Analyzers;
+namespace NPipeline.CodeFixes;
 
 /// <summary>
 ///     Code fix provider that suggests optimal timeout configurations.
@@ -481,17 +482,17 @@ public sealed class TimeoutConfigurationCodeFixProvider : CodeFixProvider
         // Check for I/O-bound indicators
         var ioIndicators = new[] { "Io", "Database", "File", "Network", "Http", "Api", "Stream" };
 
-        if (ioIndicators.Any(indicator => className.Contains(indicator, StringComparison.OrdinalIgnoreCase)))
+        if (ioIndicators.Any(indicator => className.IndexOf(indicator, StringComparison.OrdinalIgnoreCase) >= 0))
             return WorkloadType.IoBound;
 
         // Check for CPU-bound indicators
         var cpuIndicators = new[] { "Cpu", "Compute", "Process", "Transform" };
 
-        if (cpuIndicators.Any(indicator => className.Contains(indicator, StringComparison.OrdinalIgnoreCase)))
+        if (cpuIndicators.Any(indicator => className.IndexOf(indicator, StringComparison.OrdinalIgnoreCase) >= 0))
             return WorkloadType.CpuBound;
 
         // Default to CPU-bound for transforms
-        return className.Contains("Transform", StringComparison.OrdinalIgnoreCase)
+        return className.IndexOf("Transform", StringComparison.OrdinalIgnoreCase) >= 0
             ? WorkloadType.CpuBound
             : WorkloadType.Unknown;
     }

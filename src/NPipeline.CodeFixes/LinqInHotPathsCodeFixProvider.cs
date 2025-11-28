@@ -5,8 +5,9 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using NPipeline.Analyzers;
 
-namespace NPipeline.Analyzers;
+namespace NPipeline.CodeFixes;
 
 /// <summary>
 ///     Code fix provider that converts LINQ operations to imperative alternatives for better performance.
