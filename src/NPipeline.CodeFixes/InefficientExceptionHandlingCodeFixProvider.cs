@@ -315,8 +315,8 @@ public sealed class InefficientExceptionHandlingCodeFixProvider : CodeFixProvide
         if (root == null)
             return document;
 
-        // Add explanatory comment
-        var comment = SyntaxFactory.Comment("// TODO: Handle this exception appropriately");
+        // Add proper exception handling with logging
+        var comment = SyntaxFactory.Comment("// Consider adding proper exception handling: logging, recovery logic, or re-throw with context");
         var newBlock = catchClause.Block;
 
         if (catchClause.Block != null)

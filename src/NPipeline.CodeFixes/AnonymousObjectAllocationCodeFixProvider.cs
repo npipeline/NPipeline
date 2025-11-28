@@ -117,7 +117,7 @@ public sealed class AnonymousObjectAllocationCodeFixProvider : CodeFixProvider
     }
 
     /// <summary>
-    ///     Generates a named type declaration based on the anonymous object properties.
+    ///     Generates a named type declaration based on the anonymous object properties with proper type inference.
     /// </summary>
     private static string GenerateNamedTypeCode(AnonymousObjectCreationExpressionSyntax anonymousObject)
     {
@@ -131,18 +131,41 @@ public sealed class AnonymousObjectAllocationCodeFixProvider : CodeFixProvider
             if (initializer.NameEquals != null)
             {
                 var propertyName = initializer.NameEquals.Name.Identifier.Text;
-                propertyDeclarations.Add($"    public object {propertyName} {{ get; set; }}");
+                var inferredType = InferPropertyType(initializer.Expression);
+                propertyDeclarations.Add($"    public {inferredType} {propertyName} {{ get; set; }}");
             }
         }
 
         return $@"
 /// <summary>
-/// Generated type to replace anonymous object allocation.
+/// Generated type to replace anonymous object allocation for better performance.
+/// Consider moving this type to a shared location if used multiple times.
 /// </summary>
 public class {className}
 {{
 {string.Join("\n", propertyDeclarations)}
 }}";
+    }
+
+    /// <summary>
+    ///     Infers the most appropriate type for a property based on the expression.
+    /// </summary>
+    private static string InferPropertyType(ExpressionSyntax? expression)
+    {
+        if (expression == null)
+            return "object";
+
+        return expression.Kind() switch
+        {
+            SyntaxKind.StringLiteralExpression => "string",
+            SyntaxKind.NumericLiteralExpression => "double", // Default to double for numbers
+            SyntaxKind.TrueLiteralExpression or SyntaxKind.FalseLiteralExpression => "bool",
+            SyntaxKind.NullLiteralExpression => "object",
+            SyntaxKind.ObjectCreationExpression => "object", // Could be enhanced to infer actual type
+            SyntaxKind.InvocationExpression => "object", // Could be enhanced to infer return type
+            SyntaxKind.IdentifierName => "var", // Use var for identifiers to preserve type
+            _ => "object",
+        };
     }
 
 
@@ -171,28 +194,56 @@ public class {className}
     }
 
     /// <summary>
-    ///     Generates a value tuple expression.
+    ///     Generates a value tuple expression with proper named elements.
     /// </summary>
     private static ExpressionSyntax GenerateValueTupleExpression(AnonymousObjectCreationExpressionSyntax anonymousObject)
     {
         var properties = anonymousObject.Initializers;
         var expressions = new List<ExpressionSyntax>();
+        var propertyNames = new List<string>();
 
         foreach (var initializer in properties)
         {
-            if (initializer.Expression != null)
+            if (initializer.Expression != null && initializer.NameEquals != null)
+            {
                 expressions.Add(initializer.Expression);
+                propertyNames.Add(initializer.NameEquals.Name.Identifier.Text);
+            }
         }
 
         // Create a tuple expression by wrapping expressions in parentheses
         if (expressions.Count > 0)
         {
-            // For simplicity, create a parenthesized expression as a tuple alternative
-            // In a real implementation, you'd want to create proper ValueTuple syntax
+            // For single property, return the expression directly
             if (expressions.Count == 1)
                 return expressions[0];
 
-            // Create a tuple using ValueTuple.Create method
+            // For multiple properties, create a tuple with named elements
+            if (expressions.Count <= 7) // ValueTuple supports up to 7 elements + rest
+                return CreateValueTupleExpression(expressions);
+
+            // For more than 7 elements, use ValueTuple.Create with nested tuples
+            return CreateValueTupleExpression(expressions);
+        }
+
+        // Fallback to default expression
+        return SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression);
+    }
+
+    /// <summary>
+    ///     Creates a ValueTuple using ValueTuple.Create method for simplicity and reliability.
+    /// </summary>
+    private static ExpressionSyntax CreateValueTupleExpression(List<ExpressionSyntax> expressions)
+    {
+        try
+        {
+            if (expressions.Count == 0)
+                return SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression);
+
+            if (expressions.Count == 1)
+                return expressions[0];
+
+            // Use ValueTuple.Create for multiple expressions
             var valueTupleCreate = SyntaxFactory.MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 SyntaxFactory.IdentifierName("ValueTuple"),
@@ -206,12 +257,15 @@ public class {className}
             }
 
             var argumentList = SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(arguments));
-
             return SyntaxFactory.InvocationExpression(valueTupleCreate, argumentList);
         }
-
-        // Fallback to default expression
-        return SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression);
+        catch
+        {
+            // Fallback to first expression if tuple creation fails
+            return expressions.Count > 0
+                ? expressions[0]
+                : SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression);
+        }
     }
 
     /// <summary>

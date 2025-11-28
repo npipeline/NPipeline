@@ -244,4 +244,16 @@ public sealed class ResilientExecutionConfigurationCodeFixProvider : CodeFixProv
     /// <summary>
     ///     Checks if a constructor has a MaxNodeRestartAttempts parameter.
     /// </summary>
+    /// <param name="constructor">The constructor to check.</param>
+    /// <returns>True if the constructor has a MaxNodeRestartAttempts parameter, false otherwise.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when constructor is null.</exception>
+    public static bool HasMaxNodeRestartAttemptsParameter(ConstructorDeclarationSyntax constructor)
+    {
+        if (constructor == null)
+            throw new ArgumentNullException(nameof(constructor));
+
+        // Check if the constructor already has MaxNodeRestartAttempts parameter (case-insensitive)
+        return constructor.ParameterList?.Parameters
+            .Any(p => string.Equals(p.Identifier.Text, "maxNodeRestartAttempts", StringComparison.OrdinalIgnoreCase)) ?? false;
+    }
 }

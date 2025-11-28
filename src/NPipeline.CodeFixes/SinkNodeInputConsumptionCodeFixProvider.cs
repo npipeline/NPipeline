@@ -99,7 +99,7 @@ public sealed class SinkNodeInputConsumptionCodeFixProvider : CodeFixProvider
         var fallbackText = "await foreach (var item in input) { }";
 
         return SyntaxFactory.ParseStatement(fallbackText) as ForEachStatementSyntax
-               ?? throw new InvalidOperationException("Failed to create foreach statement");
+               ?? throw new InvalidOperationException($"Failed to create foreach statement from text: {fallbackText}");
     }
 
     /// <summary>

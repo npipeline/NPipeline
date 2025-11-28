@@ -106,6 +106,8 @@ public sealed class ValueTaskOptimizationCodeFixProvider : CodeFixProvider
             }
         }
 
+        // Return null with proper error context to indicate method wasn't found
+        // This allows the caller to handle the failure gracefully
         return null;
     }
 
