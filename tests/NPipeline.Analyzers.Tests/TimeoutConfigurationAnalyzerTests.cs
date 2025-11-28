@@ -1,3 +1,4 @@
+using NPipeline.CodeFixes;
 using VerifyCS = NPipeline.Analyzers.Tests.CSharpCodeFixVerifier;
 
 namespace NPipeline.Analyzers.Tests;
@@ -15,17 +16,17 @@ class TestTransform
     public void Configure()
     {
         var builder = new PipelineBuilder();
-        
+
         // Valid I/O timeout
         builder.AddTransform<IoBoundTransform, Input, Output>(""transform"")
             .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
                 Timeout: TimeSpan.FromSeconds(1)));
-        
+
         // Valid CPU timeout
         builder.AddTransform<CpuBoundTransform, Input, Output>(""transform"")
             .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
                 Timeout: TimeSpan.FromMinutes(1)));
-        
+
         // Valid retry timeout
         builder.WithRetryOptions(new PipelineRetryOptions(
             Timeout: TimeSpan.FromMinutes(10)));
@@ -52,7 +53,7 @@ class IoBoundTransform
     public void Configure()
     {
         var builder = new PipelineBuilder();
-        
+
         // Too short timeout for I/O operations
         builder.AddTransform<IoBoundTransform, Input, Output>(""transform"")
             .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
@@ -85,7 +86,7 @@ class CpuBoundTransform
     public void Configure()
     {
         var builder = new PipelineBuilder();
-        
+
         // Too long timeout for CPU operations
         builder.AddTransform<CpuBoundTransform, Input, Output>(""transform"")
             .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
@@ -118,7 +119,7 @@ class TestTransform
     public void Configure()
     {
         var builder = new PipelineBuilder();
-        
+
         // Zero timeout causes immediate failures
         builder.AddTransform<TestTransform, Input, Output>(""transform"")
             .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
@@ -151,7 +152,7 @@ class TestTransform
     public void Configure()
     {
         var builder = new PipelineBuilder();
-        
+
         // Excessive timeout for retry operations
         builder.WithRetryOptions(new PipelineRetryOptions(
             Timeout: [|TimeSpan.FromHours(1)|]));
@@ -180,7 +181,7 @@ class TestTransform
     public void Configure()
     {
         var builder = new PipelineBuilder();
-        
+
         // Negative timeout
         builder.AddTransform<TestTransform, Input, Output>(""transform"")
             .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
@@ -213,7 +214,7 @@ class DatabaseTransform
     public void Configure()
     {
         var builder = new PipelineBuilder();
-        
+
         // Too short timeout for database operations
         builder.AddTransform<DatabaseTransform, Input, Output>(""transform"")
             .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
@@ -246,7 +247,7 @@ class ComputeTransform
     public void Configure()
     {
         var builder = new PipelineBuilder();
-        
+
         // Too long timeout for compute operations
         builder.AddTransform<ComputeTransform, Input, Output>(""transform"")
             .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
@@ -279,7 +280,7 @@ class TestTransform
     public void Configure()
     {
         var builder = new PipelineBuilder();
-        
+
         // Zero timeout as constructor argument
         builder.AddTransform<TestTransform, Input, Output>(""transform"")
             .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
@@ -312,7 +313,7 @@ class TestTransform
     public void Configure()
     {
         var builder = new PipelineBuilder();
-        
+
         // Too short timeout with named argument
         builder.AddTransform<TestTransform, Input, Output>(""transform"")
             .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
@@ -345,7 +346,7 @@ class IoBoundTransform
     public void Configure()
     {
         var builder = new PipelineBuilder();
-        
+
         builder.AddTransform<IoBoundTransform, Input, Output>(""transform"")
             .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
                 Timeout: TimeSpan.FromMilliseconds(100)));
@@ -364,7 +365,7 @@ class IoBoundTransform
     public void Configure()
     {
         var builder = new PipelineBuilder();
-        
+
         builder.AddTransform<IoBoundTransform, Input, Output>(""transform"")
             .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
                 Timeout: TimeSpan.FromMilliseconds(500)));
@@ -396,7 +397,7 @@ class CpuBoundTransform
     public void Configure()
     {
         var builder = new PipelineBuilder();
-        
+
         builder.AddTransform<CpuBoundTransform, Input, Output>(""transform"")
             .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
                 Timeout: TimeSpan.FromMinutes(10)));
@@ -415,7 +416,7 @@ class CpuBoundTransform
     public void Configure()
     {
         var builder = new PipelineBuilder();
-        
+
         builder.AddTransform<CpuBoundTransform, Input, Output>(""transform"")
             .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
                 Timeout: TimeSpan.FromMinutes(5)));
@@ -447,7 +448,7 @@ class TestTransform
     public void Configure()
     {
         var builder = new PipelineBuilder();
-        
+
         builder.AddTransform<TestTransform, Input, Output>(""transform"")
             .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
                 Timeout: TimeSpan.Zero));
@@ -466,7 +467,7 @@ class TestTransform
     public void Configure()
     {
         var builder = new PipelineBuilder();
-        
+
         builder.AddTransform<TestTransform, Input, Output>(""transform"")
             .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
                 Timeout: TimeSpan.FromMinutes(1)));
@@ -498,7 +499,7 @@ class TestTransform
     public void Configure()
     {
         var builder = new PipelineBuilder();
-        
+
         builder.WithRetryOptions(new PipelineRetryOptions(
             Timeout: TimeSpan.FromHours(1)));
     }
@@ -513,7 +514,7 @@ class TestTransform
     public void Configure()
     {
         var builder = new PipelineBuilder();
-        
+
         builder.WithRetryOptions(new PipelineRetryOptions(
             Timeout: TimeSpan.FromMinutes(30)));
     }
@@ -541,16 +542,16 @@ class TestTransform
     public void Configure()
     {
         var builder = new PipelineBuilder();
-        
+
         // Multiple timeout issues
         builder.AddTransform<IoBoundTransform, Input, Output>(""ioTransform"")
             .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
                 Timeout: [|TimeSpan.FromMilliseconds(50)|]));
-        
+
         builder.AddTransform<CpuBoundTransform, Input, Output>(""cpuTransform"")
             .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
                 Timeout: [|TimeSpan.FromMinutes(15)|]));
-        
+
         builder.WithRetryOptions(new PipelineRetryOptions(
             Timeout: [|TimeSpan.FromHours(2)|]));
     }
