@@ -510,9 +510,323 @@ JitterStrategy customJitter = (baseDelay, random) =>
     return TimeSpan.FromMilliseconds(jitterMs);
 };
 
-// Use with existing backoff strategy
-var backoff = new ExponentialBackoffStrategy(config);
+// Use with existing backoff strategy delegate
+var backoff = BackoffStrategies.ExponentialBackoff(
+    TimeSpan.FromSeconds(1), 
+    2.0, 
+    TimeSpan.FromMinutes(1));
 var composite = new CompositeRetryDelayStrategy(backoff, customJitter);
+```
+
+### Custom Backoff Strategy
+
+Create custom backoff strategies using the delegate pattern:
+
+```csharp
+// Custom backoff implementation
+BackoffStrategy customBackoff = (attemptNumber) =>
+{
+    // Your custom backoff calculation logic
+    if (attemptNumber < 0)
+        return TimeSpan.Zero;
+    
+    // Example: Fibonacci backoff
+    if (attemptNumber == 0) return TimeSpan.FromSeconds(1);
+    if (attemptNumber == 1) return TimeSpan.FromSeconds(1);
+    
+    var fib = CalculateFibonacci(attemptNumber + 2);
+    return TimeSpan.FromSeconds(Math.Min(fib, 60)); // Cap at 60 seconds
+};
+
+// Use with existing jitter strategy
+var jitter = JitterStrategies.FullJitter();
+var composite = new CompositeRetryDelayStrategy(customBackoff, jitter);
+```
+
+### Advanced Configuration Patterns
+
+#### Conditional Strategy Selection
+
+Select strategies based on runtime conditions:
+
+```csharp
+public class AdaptiveRetryStrategySelector
+{
+    private readonly Dictionary<string, BackoffStrategy> _strategies;
+    
+    public AdaptiveRetryStrategySelector()
+    {
+        _strategies = new Dictionary<string, BackoffStrategy>
+        {
+            ["fast"] = BackoffStrategies.LinearBackoff(
+                TimeSpan.FromMilliseconds(50), 
+                TimeSpan.FromMilliseconds(25), 
+                TimeSpan.FromSeconds(1)),
+            ["normal"] = BackoffStrategies.ExponentialBackoff(
+                TimeSpan.FromSeconds(1), 
+                2.0, 
+                TimeSpan.FromMinutes(1)),
+            ["slow"] = BackoffStrategies.ExponentialBackoff(
+                TimeSpan.FromSeconds(5), 
+                3.0, 
+                TimeSpan.FromMinutes(5))
+        };
+    }
+    
+    public BackoffStrategy SelectStrategy(string mode)
+    {
+        return _strategies.TryGetValue(mode, out var strategy) 
+            ? strategy 
+            : _strategies["normal"];
+    }
+}
+```
+
+#### Composite Strategy with Multiple Delegates
+
+Combine multiple backoff strategies with custom logic:
+
+```csharp
+public class HybridBackoffStrategy
+{
+    private readonly BackoffStrategy _primary;
+    private readonly BackoffStrategy _secondary;
+    private readonly int _switchThreshold;
+    
+    public HybridBackoffStrategy(
+        BackoffStrategy primary,
+        BackoffStrategy secondary,
+        int switchThreshold = 3)
+    {
+        _primary = primary;
+        _secondary = secondary;
+        _switchThreshold = switchThreshold;
+    }
+    
+    public TimeSpan CalculateDelay(int attemptNumber)
+    {
+        return attemptNumber < _switchThreshold
+            ? _primary(attemptNumber)
+            : _secondary(attemptNumber);
+    }
+}
+
+// Usage: Start with exponential, switch to linear after 3 attempts
+var hybrid = new HybridBackoffStrategy(
+    BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(1), 2.0, TimeSpan.FromMinutes(1)),
+    BackoffStrategies.LinearBackoff(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(2)),
+    3);
+```
+
+### Testing with Delegate Strategies
+
+#### Unit Testing Custom Delegates
+
+```csharp
+[Fact]
+public void CustomBackoffStrategy_ReturnsExpectedDelays()
+{
+    // Arrange
+    var customBackoff = BackoffStrategies.ExponentialBackoff(
+        TimeSpan.FromSeconds(1), 
+        2.0, 
+        TimeSpan.FromSeconds(10));
+    
+    // Act & Assert
+    Assert.Equal(TimeSpan.FromSeconds(1), customBackoff(0));
+    Assert.Equal(TimeSpan.FromSeconds(2), customBackoff(1));
+    Assert.Equal(TimeSpan.FromSeconds(4), customBackoff(2));
+    Assert.Equal(TimeSpan.FromSeconds(8), customBackoff(3));
+    Assert.Equal(TimeSpan.FromSeconds(10), customBackoff(4)); // Capped
+}
+```
+
+#### Testing Jitter Combinations
+
+```csharp
+[Fact]
+public async Task BackoffWithJitter_WithinExpectedRange()
+{
+    // Arrange
+    var backoff = BackoffStrategies.ExponentialBackoff(
+        TimeSpan.FromSeconds(1), 
+        2.0, 
+        TimeSpan.FromMinutes(1));
+    var jitter = JitterStrategies.FullJitter();
+    var composite = new CompositeRetryDelayStrategy(backoff, jitter);
+    
+    // Act
+    var delays = new List<TimeSpan>();
+    for (int i = 0; i < 5; i++)
+    {
+        delays.Add(await composite.GetDelayAsync(i));
+    }
+    
+    // Assert
+    foreach (var delay in delays)
+    {
+        Assert.True(delay >= TimeSpan.Zero);
+        Assert.True(delay <= TimeSpan.FromMinutes(1));
+    }
+}
+```
+
+### Performance Optimization with Delegates
+
+#### Caching Delegates
+
+```csharp
+public class OptimizedRetryManager
+{
+    private readonly ConcurrentDictionary<string, BackoffStrategy> _backoffCache = new();
+    private readonly ConcurrentDictionary<string, JitterStrategy> _jitterCache = new();
+    
+    public BackoffStrategy GetBackoffStrategy(string type, TimeSpan baseDelay)
+    {
+        var key = $"{type}_{baseDelay.TotalMilliseconds}";
+        return _backoffCache.GetOrAdd(key, _ => type switch
+        {
+            "exponential" => BackoffStrategies.ExponentialBackoff(baseDelay),
+            "linear" => BackoffStrategies.LinearBackoff(baseDelay),
+            "fixed" => BackoffStrategies.FixedDelay(baseDelay),
+            _ => BackoffStrategies.ExponentialBackoff(baseDelay)
+        });
+    }
+    
+    public JitterStrategy GetJitterStrategy(string type)
+    {
+        return _jitterCache.GetOrAdd(type, _ => type switch
+        {
+            "full" => JitterStrategies.FullJitter(),
+            "equal" => JitterStrategies.EqualJitter(),
+            "decorrelated" => JitterStrategies.DecorrelatedJitter(),
+            _ => JitterStrategies.NoJitter()
+        });
+    }
+}
+```
+
+#### Memory-Efficient Strategy Composition
+
+```csharp
+public class LightweightRetryStrategy : IRetryDelayStrategy
+{
+    private readonly BackoffStrategy _backoff;
+    private readonly JitterStrategy _jitter;
+    private readonly Random _random = new();
+    
+    public LightweightRetryStrategy(BackoffStrategy backoff, JitterStrategy jitter = null)
+    {
+        _backoff = backoff;
+        _jitter = jitter;
+    }
+    
+    public ValueTask<TimeSpan> GetDelayAsync(int attemptNumber, CancellationToken cancellationToken = default)
+    {
+        var baseDelay = _backoff(attemptNumber);
+        
+        if (_jitter != null)
+            return new ValueTask<TimeSpan>(_jitter(baseDelay, _random));
+        
+        return new ValueTask<TimeSpan>(baseDelay);
+    }
+}
+```
+
+### Advanced Monitoring with Delegates
+
+#### Strategy Performance Metrics
+
+```csharp
+public class BackoffMetricsCollector
+{
+    private readonly Dictionary<string, List<TimeSpan>> _metrics = new();
+    
+    public BackoffStrategy WithMetrics(string name, BackoffStrategy strategy)
+    {
+        return attemptNumber =>
+        {
+            var delay = strategy(attemptNumber);
+            
+            if (!_metrics.ContainsKey(name))
+                _metrics[name] = new List<TimeSpan>();
+            
+            _metrics[name].Add(delay);
+            return delay;
+        };
+    }
+    
+    public void ReportMetrics()
+    {
+        foreach (var (name, delays) in _metrics)
+        {
+            var avg = delays.Average(d => d.TotalMilliseconds);
+            var max = delays.Max(d => d.TotalMilliseconds);
+            var min = delays.Min(d => d.TotalMilliseconds);
+            
+            Console.WriteLine($"{name}: Avg={avg:F2}ms, Min={min:F2}ms, Max={max:F2}ms, Count={delays.Count}");
+        }
+    }
+}
+
+// Usage
+var metrics = new BackoffMetricsCollector();
+var backoffWithMetrics = metrics.WithMetrics("exponential", 
+    BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(1), 2.0, TimeSpan.FromMinutes(1)));
+```
+
+#### Strategy Comparison Framework
+
+```csharp
+public class StrategyComparer
+{
+    public async Task CompareStrategiesAsync(
+        IEnumerable<BackoffStrategy> strategies,
+        int maxAttempts = 10)
+    {
+        var results = new List<StrategyResult>();
+        
+        foreach (var strategy in strategies)
+        {
+            var delays = new List<TimeSpan>();
+            var stopwatch = Stopwatch.StartNew();
+            
+            for (int attempt = 0; attempt < maxAttempts; attempt++)
+            {
+                delays.Add(strategy(attempt));
+            }
+            
+            stopwatch.Stop();
+            
+            results.Add(new StrategyResult
+            {
+                StrategyName = strategy.GetType().Name,
+                TotalTime = stopwatch.Elapsed,
+                Delays = delays,
+                AverageDelay = delays.Average(d => d.TotalMilliseconds),
+                MaxDelay = delays.Max(d => d.TotalMilliseconds),
+                MinDelay = delays.Min(d => d.TotalMilliseconds)
+            });
+        }
+        
+        // Print comparison
+        foreach (var result in results.OrderBy(r => r.AverageDelay))
+        {
+            Console.WriteLine($"{result.StrategyName}: Avg={result.AverageDelay:F2}ms, " +
+                             $"Min={result.MinDelay:F2}ms, Max={result.MaxDelay:F2}ms");
+        }
+    }
+    
+    private class StrategyResult
+    {
+        public string StrategyName { get; set; }
+        public TimeSpan TotalTime { get; set; }
+        public List<TimeSpan> Delays { get; set; }
+        public double AverageDelay { get; set; }
+        public double MaxDelay { get; set; }
+        public double MinDelay { get; set; }
+    }
+}
 ```
 
 ## Best Practices Summary

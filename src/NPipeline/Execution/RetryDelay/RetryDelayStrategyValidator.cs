@@ -1,4 +1,4 @@
-using NPipeline.Execution.RetryDelay.Backoff;
+using NPipeline.Configuration.RetryDelay;
 
 namespace NPipeline.Execution.RetryDelay;
 
@@ -59,7 +59,7 @@ public static class RetryDelayStrategyValidator
     /// </summary>
     /// <param name="backoffStrategy">The backoff strategy to validate.</param>
     /// <exception cref="ArgumentNullException">Thrown when backoffStrategy is null.</exception>
-    public static void ValidateBackoffStrategy(IBackoffStrategy backoffStrategy)
+    public static void ValidateBackoffStrategy(BackoffStrategy backoffStrategy)
     {
         ArgumentNullException.ThrowIfNull(backoffStrategy);
     }

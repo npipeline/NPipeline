@@ -36,9 +36,9 @@ graph TD
     end
     
     subgraph "Backoff Strategy Implementation"
-        E[IBackoffStrategy<br>Interface] --> F[ExponentialBackoffStrategy]
-        E --> G[LinearBackoffStrategy]
-        E --> H[FixedDelayStrategy]
+        E[BackoffStrategy<br>Delegate Type] --> F[BackoffStrategies.ExponentialBackoff()]
+        E --> G[BackoffStrategies.LinearBackoff()]
+        E --> H[BackoffStrategies.FixedDelay()]
     end
     
     B --> I[Validates parameters<br>Creates immutable config]
@@ -129,10 +129,10 @@ graph TD
 The actual retry delay calculation is performed by strategy implementations:
 
 ```
-IBackoffStrategy
-├── ExponentialBackoffStrategy
-├── LinearBackoffStrategy
-└── FixedDelayStrategy
+BackoffStrategy (Delegate)
+├── BackoffStrategies.ExponentialBackoff()
+├── BackoffStrategies.LinearBackoff()
+└── BackoffStrategies.FixedDelay()
 
 JitterStrategy (Delegate)
 ├── JitterStrategies.FullJitter()
@@ -141,15 +141,15 @@ JitterStrategy (Delegate)
 └── JitterStrategies.NoJitter()
 ```
 
-These implement the mathematical formulas for delay calculation. The jitter strategies are now implemented as static methods that return delegates, providing a more streamlined API while maintaining the same functionality.
+These implement the mathematical formulas for delay calculation. Both backoff and jitter strategies are now implemented as static methods that return delegates, providing a more streamlined API while maintaining the same functionality.
 
 ### 4. Composite Strategy
 
 ```
 IRetryDelayStrategy
 └── CompositeRetryDelayStrategy
-    ├── Combines: IBackoffStrategy
-    ├── Combines: JitterStrategy (optional)
+    ├── Combines: BackoffStrategy (delegate)
+    ├── Combines: JitterStrategy (delegate)
     └── Handles: Cancellation, async execution
 ```
 
@@ -198,16 +198,28 @@ PipelineContextRetryDelayExtensions
 Each backoff/jitter type implements a different strategy:
 
 ```csharp
-// Strategy interface
-public interface IBackoffStrategy
+// Backoff strategy delegate type
+public delegate TimeSpan BackoffStrategy(int attemptNumber);
+
+// Static factory methods for creating strategies
+public static class BackoffStrategies
 {
-    TimeSpan CalculateDelay(int attemptNumber);
+    public static BackoffStrategy ExponentialBackoff(TimeSpan baseDelay, double multiplier = 2.0, TimeSpan? maxDelay = null);
+    public static BackoffStrategy LinearBackoff(TimeSpan baseDelay, TimeSpan? increment = null, TimeSpan? maxDelay = null);
+    public static BackoffStrategy FixedDelay(TimeSpan delay);
 }
 
-// Different implementations
-public class ExponentialBackoffStrategy : IBackoffStrategy { }
-public class LinearBackoffStrategy : IBackoffStrategy { }
-public class FixedDelayStrategy : IBackoffStrategy { }
+// Jitter strategy delegate type
+public delegate TimeSpan JitterStrategy(TimeSpan baseDelay, Random random);
+
+// Static factory methods for creating jitter strategies
+public static class JitterStrategies
+{
+    public static JitterStrategy FullJitter();
+    public static JitterStrategy EqualJitter();
+    public static JitterStrategy DecorrelatedJitter();
+    public static JitterStrategy NoJitter();
+}
 ```
 
 ### Composite Pattern
@@ -217,13 +229,13 @@ Combines backoff and jitter into a single strategy:
 ```csharp
 public class CompositeRetryDelayStrategy : IRetryDelayStrategy
 {
-    private readonly IBackoffStrategy _backoff;
+    private readonly BackoffStrategy _backoff;
     private readonly JitterStrategy _jitter;
     
     public async ValueTask<TimeSpan> GetDelayAsync(int attemptNumber)
     {
         // Get base delay from backoff strategy
-        var baseDelay = _backoff.CalculateDelay(attemptNumber);
+        var baseDelay = _backoff(attemptNumber);
         
         // Apply jitter if present
         if (_jitter != null)
@@ -246,7 +258,10 @@ public class DefaultRetryDelayStrategyFactory
         JitterStrategy jitterStrategy = null)
     {
         config.Validate();
-        var backoff = new ExponentialBackoffStrategy(config);
+        var backoff = BackoffStrategies.ExponentialBackoff(
+            config.BaseDelay, 
+            config.Multiplier, 
+            config.MaxDelay);
         return new CompositeRetryDelayStrategy(backoff, jitterStrategy);
     }
 }
@@ -265,20 +280,11 @@ public class ExponentialBackoffConfiguration
     public TimeSpan MaxDelay { get; init; }
 }
 
-// Implementation - uses configuration
-public class ExponentialBackoffStrategy
-{
-    private readonly ExponentialBackoffConfiguration _config;
-    
-    public TimeSpan CalculateDelay(int attempt)
-    {
-        return TimeSpan.FromMilliseconds(
-            Math.Min(
-                _config.BaseDelay.TotalMilliseconds * 
-                Math.Pow(_config.Multiplier, attempt),
-                _config.MaxDelay.TotalMilliseconds));
-    }
-}
+// Implementation - uses configuration with delegate
+var backoff = BackoffStrategies.ExponentialBackoff(
+    config.BaseDelay, 
+    config.Multiplier, 
+    config.MaxDelay);
 ```
 
 ## Data Flow
@@ -293,8 +299,8 @@ public class ExponentialBackoffStrategy
 
 2. Factory.CreateStrategy(configuration)
    ├── Validate configurations
-   ├── Create backoff strategy
-   ├── Create jitter strategy
+   ├── Create backoff strategy delegate
+   ├── Create jitter strategy delegate
    └── Return composite strategy
 
 3. PipelineContext.GetRetryDelayStrategy()
@@ -316,7 +322,7 @@ public class ExponentialBackoffStrategy
 ```
 async Task<TimeSpan> GetDelayAsync(attemptNumber)
 │
-├─ BackoffStrategy.CalculateDelay(synchronous)
+├─ BackoffStrategy(attemptNumber) (synchronous delegate)
 │  └─ Returns base delay
 │
 ├─ JitterStrategy.ApplyJitter (may be async)
@@ -333,9 +339,9 @@ Each configuration component validates independently:
 RetryDelayStrategyConfiguration
 ├── Validates self
 ├── BackoffStrategyConfiguration.Validate()
-│  └── Specific validation rules
+│  └─ Specific validation rules
 └── JitterStrategyConfiguration.Validate()
-   └── Specific validation rules
+   └─ Specific validation rules
 ```
 
 **Validation Timing:**
@@ -348,7 +354,7 @@ RetryDelayStrategyConfiguration
 ### Memory Usage
 
 - **Configurations**: Immutable, small (few properties)
-- **Strategies**: Stateless except decorrelated jitter (previous delay)
+- **Strategies**: Stateless delegates - minimal memory footprint
 - **Factory**: Singleton pattern recommended
 - **PipelineContext**: Caches single strategy per context
 
@@ -362,7 +368,7 @@ RetryDelayStrategyConfiguration
 ### Thread Safety
 
 - **Configurations**: Immutable - fully thread-safe
-- **Strategies**: Stateless - thread-safe
+- **Strategies**: Stateless delegates - thread-safe
 - **Decorrelated Jitter**: Thread-safe with proper locking
 - **Factory**: Thread-safe (pure function pattern)
 
@@ -379,13 +385,12 @@ public class CustomBackoffConfiguration : BackoffStrategyConfiguration
     }
 }
 
-public class CustomBackoffStrategy : IBackoffStrategy
+// Create a custom backoff delegate
+BackoffStrategy customBackoff = (attemptNumber) =>
 {
-    public TimeSpan CalculateDelay(int attemptNumber)
-    {
-        // Your delay calculation logic
-    }
-}
+    // Your delay calculation logic
+    return TimeSpan.FromSeconds(Math.Pow(2, attemptNumber));
+};
 
 // Extend factory
 public class ExtendedFactory : DefaultRetryDelayStrategyFactory
@@ -394,7 +399,10 @@ public class ExtendedFactory : DefaultRetryDelayStrategyFactory
         CustomBackoffConfiguration config)
     {
         config.Validate();
-        var backoff = new CustomBackoffStrategy(config);
+        var backoff = BackoffStrategies.ExponentialBackoff(
+            config.BaseDelay, 
+            config.Multiplier, 
+            config.MaxDelay);
         return new CompositeRetryDelayStrategy(backoff, null);
     }
 }
@@ -416,7 +424,10 @@ var config = new CustomJitterConfiguration();
 var jitter = JitterStrategies.Custom(config);
 
 // Or use directly with backoff
-var backoff = new ExponentialBackoffStrategy(config);
+var backoff = BackoffStrategies.ExponentialBackoff(
+    TimeSpan.FromSeconds(1), 
+    2.0, 
+    TimeSpan.FromMinutes(1));
 var composite = new CompositeRetryDelayStrategy(backoff, customJitter);
 ```
 
@@ -507,14 +518,16 @@ public class PipelineContext
 
 ```csharp
 [Fact]
-public void ExponentialBackoff_WithValidConfig_CalculatesCorrectly()
+public void ExponentialBackoff_WithValidParameters_CalculatesCorrectly()
 {
-    var config = new ExponentialBackoffConfiguration(...);
-    var strategy = new ExponentialBackoffStrategy(config);
+    var backoff = BackoffStrategies.ExponentialBackoff(
+        TimeSpan.FromSeconds(1), 
+        2.0, 
+        TimeSpan.FromMinutes(1));
     
-    Assert.Equal(TimeSpan.FromSeconds(1), strategy.CalculateDelay(0));
-    Assert.Equal(TimeSpan.FromSeconds(2), strategy.CalculateDelay(1));
-    Assert.Equal(TimeSpan.FromSeconds(4), strategy.CalculateDelay(2));
+    Assert.Equal(TimeSpan.FromSeconds(1), backoff(0));
+    Assert.Equal(TimeSpan.FromSeconds(2), backoff(1));
+    Assert.Equal(TimeSpan.FromSeconds(4), backoff(2));
 }
 ```
 
@@ -524,7 +537,10 @@ public void ExponentialBackoff_WithValidConfig_CalculatesCorrectly()
 [Fact]
 public async Task CompositeStrategy_WithBackoffAndJitter_WorksTogether()
 {
-    var backoff = new ExponentialBackoffStrategy(...);
+    var backoff = BackoffStrategies.ExponentialBackoff(
+        TimeSpan.FromSeconds(1), 
+        2.0, 
+        TimeSpan.FromMinutes(1));
     var jitter = JitterStrategies.FullJitter();
     var composite = new CompositeRetryDelayStrategy(backoff, jitter);
     
@@ -544,7 +560,7 @@ public void Factory_CreatesCorrectStrategies()
     
     var strategy = factory.CreateExponentialBackoff(
         new ExponentialBackoffConfiguration(),
-        new FullJitterConfiguration());
+        null);
     
     Assert.IsType<CompositeRetryDelayStrategy>(strategy);
 }
@@ -555,11 +571,11 @@ public void Factory_CreatesCorrectStrategies()
 NPipeline's retry delay architecture provides:
 
 - **Separation of Concerns**: Backoff and jitter are independent
-- **Flexibility**: Easy to add new strategies
-- **Performance**: Minimal overhead with caching
+- **Flexibility**: Easy to add new strategies through delegates
+- **Performance**: Minimal overhead with caching and stateless delegates
 - **Testability**: Each component can be tested independently
 - **Observability**: Clear design makes debugging easier
-- **Extensibility**: Custom strategies can be added
+- **Extensibility**: Custom strategies can be added as delegates
 
 This architecture enables robust, configurable retry behavior for resilient data pipelines.
 

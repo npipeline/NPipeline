@@ -1,9 +1,4 @@
 using NPipeline.Configuration.RetryDelay;
-using NPipeline.Execution.RetryDelay.Backoff;
-using ExponentialBackoffConfiguration = NPipeline.Configuration.RetryDelay.ExponentialBackoffConfiguration;
-using FixedDelayConfiguration = NPipeline.Configuration.RetryDelay.FixedDelayConfiguration;
-using JitterConfig = NPipeline.Configuration.RetryDelay.JitterStrategyConfiguration;
-using LinearBackoffConfiguration = NPipeline.Configuration.RetryDelay.LinearBackoffConfiguration;
 
 namespace NPipeline.Execution.RetryDelay;
 
@@ -14,8 +9,8 @@ namespace NPipeline.Execution.RetryDelay;
 ///     <para>
 ///         This factory creates retry delay strategies based on configuration objects.
 ///         It supports all built-in backoff and jitter strategies and can be
-///         extended with custom implementations through the IBackoffStrategy and
-///         JitterStrategy delegate.
+///         extended with custom implementations through the BackoffStrategy and
+///         JitterStrategy delegates.
 ///     </para>
 ///     <para>
 ///         The factory follows a consistent pattern:
@@ -35,22 +30,9 @@ namespace NPipeline.Execution.RetryDelay;
 ///         </list>
 ///     </para>
 /// </remarks>
-public sealed class DefaultRetryDelayStrategyFactory : IRetryDelayStrategyFactory
+public sealed class DefaultRetryDelayStrategyFactory(Random? random = null) : IRetryDelayStrategyFactory
 {
-    private readonly Random _random;
-
-    /// <summary>
-    ///     Initializes a new instance of the DefaultRetryDelayStrategyFactory class.
-    /// </summary>
-    /// <param name="random">Random instance for jitter calculations. If null, Random.Shared is used.</param>
-    /// <remarks>
-    ///     The random instance is used for jitter calculations and is shared
-    ///     across all created strategies to ensure consistent randomization.
-    /// </remarks>
-    public DefaultRetryDelayStrategyFactory(Random? random = null)
-    {
-        _random = random ?? Random.Shared;
-    }
+    private readonly Random _random = random ?? Random.Shared;
 
     /// <inheritdoc />
     public IRetryDelayStrategy CreateStrategy(RetryDelayStrategyConfiguration configuration)
@@ -68,16 +50,16 @@ public sealed class DefaultRetryDelayStrategyFactory : IRetryDelayStrategyFactor
     }
 
     /// <inheritdoc />
-    public IRetryDelayStrategy CreateExponentialBackoff(ExponentialBackoffConfiguration configuration, JitterStrategy? jitterStrategy = null)
+    public IRetryDelayStrategy CreateExponentialBackoff(
+        ExponentialBackoffConfiguration configuration,
+        JitterStrategy? jitterStrategy = null)
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
-        var backoffStrategy = new ExponentialBackoffStrategy(new Backoff.ExponentialBackoffConfiguration
-        {
-            BaseDelay = configuration.BaseDelay,
-            Multiplier = configuration.Multiplier,
-            MaxDelay = configuration.MaxDelay,
-        });
+        var backoffStrategy = BackoffStrategies.ExponentialBackoff(
+            configuration.BaseDelay,
+            configuration.Multiplier,
+            configuration.MaxDelay);
 
         return jitterStrategy is not null
             ? new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, _random)
@@ -85,16 +67,16 @@ public sealed class DefaultRetryDelayStrategyFactory : IRetryDelayStrategyFactor
     }
 
     /// <inheritdoc />
-    public IRetryDelayStrategy CreateLinearBackoff(LinearBackoffConfiguration configuration, JitterStrategy? jitterStrategy = null)
+    public IRetryDelayStrategy CreateLinearBackoff(
+        LinearBackoffConfiguration configuration,
+        JitterStrategy? jitterStrategy = null)
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
-        var backoffStrategy = new LinearBackoffStrategy(new Backoff.LinearBackoffConfiguration
-        {
-            BaseDelay = configuration.BaseDelay,
-            Increment = configuration.Increment,
-            MaxDelay = configuration.MaxDelay,
-        });
+        var backoffStrategy = BackoffStrategies.LinearBackoff(
+            configuration.BaseDelay,
+            configuration.Increment,
+            configuration.MaxDelay);
 
         return jitterStrategy is not null
             ? new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, _random)
@@ -102,14 +84,13 @@ public sealed class DefaultRetryDelayStrategyFactory : IRetryDelayStrategyFactor
     }
 
     /// <inheritdoc />
-    public IRetryDelayStrategy CreateFixedDelay(FixedDelayConfiguration configuration, JitterStrategy? jitterStrategy = null)
+    public IRetryDelayStrategy CreateFixedDelay(
+        FixedDelayConfiguration configuration,
+        JitterStrategy? jitterStrategy = null)
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
-        var backoffStrategy = new FixedDelayStrategy(new Backoff.FixedDelayConfiguration
-        {
-            Delay = configuration.Delay,
-        });
+        var backoffStrategy = BackoffStrategies.FixedDelay(configuration.Delay);
 
         return jitterStrategy is not null
             ? new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, _random)
@@ -147,37 +128,30 @@ public sealed class DefaultRetryDelayStrategyFactory : IRetryDelayStrategyFactor
     }
 
     /// <inheritdoc />
-    public IBackoffStrategy CreateBackoffStrategy(BackoffStrategyConfiguration configuration)
+    public BackoffStrategy CreateBackoffStrategy(BackoffStrategyConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
         return configuration switch
         {
             ExponentialBackoffConfiguration exponentialConfig =>
-                new ExponentialBackoffStrategy(new Backoff.ExponentialBackoffConfiguration
-                {
-                    BaseDelay = exponentialConfig.BaseDelay,
-                    Multiplier = exponentialConfig.Multiplier,
-                    MaxDelay = exponentialConfig.MaxDelay,
-                }),
+                BackoffStrategies.ExponentialBackoff(
+                    exponentialConfig.BaseDelay,
+                    exponentialConfig.Multiplier,
+                    exponentialConfig.MaxDelay),
             LinearBackoffConfiguration linearConfig =>
-                new LinearBackoffStrategy(new Backoff.LinearBackoffConfiguration
-                {
-                    BaseDelay = linearConfig.BaseDelay,
-                    Increment = linearConfig.Increment,
-                    MaxDelay = linearConfig.MaxDelay,
-                }),
+                BackoffStrategies.LinearBackoff(
+                    linearConfig.BaseDelay,
+                    linearConfig.Increment,
+                    linearConfig.MaxDelay),
             FixedDelayConfiguration fixedConfig =>
-                new FixedDelayStrategy(new Backoff.FixedDelayConfiguration
-                {
-                    Delay = fixedConfig.Delay,
-                }),
+                BackoffStrategies.FixedDelay(fixedConfig.Delay),
             _ => throw new ArgumentException($"Unknown backoff strategy type: {configuration.GetType().Name}"),
         };
     }
 
     /// <inheritdoc />
-    public JitterStrategy CreateJitterStrategy(JitterConfig configuration)
+    public JitterStrategy CreateJitterStrategy(JitterStrategyConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
 

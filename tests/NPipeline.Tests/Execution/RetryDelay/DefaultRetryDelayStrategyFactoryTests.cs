@@ -14,40 +14,49 @@ public sealed class DefaultRetryDelayStrategyFactoryTests
     }
 
     [Fact]
-    public void Constructor_WithNullRandom_ShouldCreateInstance()
-    {
-        // Act
-        var factory = new DefaultRetryDelayStrategyFactory();
-
-        // Assert
-        _ = factory.Should().NotBeNull();
-    }
-
-    [Fact]
-    public void Constructor_WithCustomRandom_ShouldCreateInstance()
-    {
-        // Arrange & Act & Assert
-        // DefaultRetryDelayStrategyFactory doesn't have a constructor that takes Random
-        // This test should verify the default constructor works
-        var factory = new DefaultRetryDelayStrategyFactory();
-        _ = factory.Should().NotBeNull();
-    }
-
-    [Fact]
-    public void CreateExponentialBackoff_WithValidConfiguration_ShouldReturnStrategy()
+    public async Task CreateExponentialBackoff_WithValidConfiguration_ShouldCreateStrategy()
     {
         // Arrange
-        var configuration = new ExponentialBackoffConfiguration(
-            TimeSpan.FromMilliseconds(100),
-            2.0,
-            TimeSpan.FromSeconds(10));
+        var configuration = new ExponentialBackoffConfiguration
+        {
+            BaseDelay = TimeSpan.FromSeconds(1),
+            Multiplier = 2.0,
+            MaxDelay = TimeSpan.FromMinutes(1),
+        };
 
         // Act
         var strategy = _factory.CreateExponentialBackoff(configuration);
 
         // Assert
-        _ = strategy.Should().NotBeNull();
-        _ = strategy.Should().BeOfType<CompositeRetryDelayStrategy>();
+        var compositeStrategy = strategy as CompositeRetryDelayStrategy;
+        _ = compositeStrategy.Should().NotBeNull();
+
+        // Test that the strategy works correctly
+        var delay = await strategy.GetDelayAsync(0);
+        _ = delay.Should().Be(TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public async Task CreateLinearBackoff_WithValidConfiguration_ShouldCreateStrategy()
+    {
+        // Arrange
+        var configuration = new LinearBackoffConfiguration
+        {
+            BaseDelay = TimeSpan.FromSeconds(1),
+            Increment = TimeSpan.FromMilliseconds(500),
+            MaxDelay = TimeSpan.FromMinutes(2),
+        };
+
+        // Act
+        var strategy = _factory.CreateLinearBackoff(configuration);
+
+        // Assert
+        var compositeStrategy = strategy as CompositeRetryDelayStrategy;
+        _ = compositeStrategy.Should().NotBeNull();
+
+        // Test that the strategy works correctly
+        var delay = await strategy.GetDelayAsync(0);
+        _ = delay.Should().Be(TimeSpan.FromSeconds(1));
     }
 
     [Fact]
@@ -83,23 +92,6 @@ public sealed class DefaultRetryDelayStrategyFactoryTests
 
         // Act & Assert
         _ = Assert.Throws<ArgumentException>(() => _factory.CreateExponentialBackoff(invalidConfiguration));
-    }
-
-    [Fact]
-    public void CreateLinearBackoff_WithValidConfiguration_ShouldReturnStrategy()
-    {
-        // Arrange
-        var configuration = new LinearBackoffConfiguration(
-            TimeSpan.FromMilliseconds(100),
-            TimeSpan.FromMilliseconds(50),
-            TimeSpan.FromSeconds(10));
-
-        // Act
-        var strategy = _factory.CreateLinearBackoff(configuration);
-
-        // Assert
-        _ = strategy.Should().NotBeNull();
-        _ = strategy.Should().BeOfType<CompositeRetryDelayStrategy>();
     }
 
     [Fact]
@@ -213,7 +205,6 @@ public sealed class DefaultRetryDelayStrategyFactoryTests
     {
         // Arrange
         var maxDelay = TimeSpan.FromSeconds(30);
-        const double multiplier = 3.0;
 
         // Act
         var strategy = _factory.CreateDecorrelatedJitter(maxDelay);
@@ -228,7 +219,6 @@ public sealed class DefaultRetryDelayStrategyFactoryTests
     {
         // Arrange
         var invalidMaxDelay = TimeSpan.Zero; // Invalid
-        const double multiplier = 3.0;
 
         // Act & Assert
         _ = Assert.Throws<ArgumentException>(() => _factory.CreateDecorrelatedJitter(invalidMaxDelay));

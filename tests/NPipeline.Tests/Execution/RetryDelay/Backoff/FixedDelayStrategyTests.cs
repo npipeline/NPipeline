@@ -1,5 +1,5 @@
 using FluentAssertions;
-using NPipeline.Execution.RetryDelay.Backoff;
+using NPipeline.Execution.RetryDelay;
 
 namespace NPipeline.Tests.Execution.RetryDelay.Backoff;
 
@@ -10,14 +10,10 @@ public sealed class FixedDelayStrategyTests
     [InlineData(-10)]
     public void CalculateDelay_WithNegativeAttempt_ReturnsZero(int attempt)
     {
-        var configuration = new FixedDelayConfiguration
-        {
-            Delay = TimeSpan.FromMilliseconds(25),
-        };
+        var delay = TimeSpan.FromMilliseconds(25);
+        var strategy = BackoffStrategies.FixedDelay(delay);
 
-        var strategy = new FixedDelayStrategy(configuration);
-
-        _ = strategy.CalculateDelay(attempt).Should().Be(TimeSpan.Zero);
+        _ = strategy(attempt).Should().Be(TimeSpan.Zero);
     }
 
     [Theory]
@@ -26,13 +22,9 @@ public sealed class FixedDelayStrategyTests
     [InlineData(5)]
     public void CalculateDelay_WithValidAttempt_ReturnsConfiguredDelay(int attempt)
     {
-        var configuration = new FixedDelayConfiguration
-        {
-            Delay = TimeSpan.FromMilliseconds(25),
-        };
+        var delay = TimeSpan.FromMilliseconds(25);
+        var strategy = BackoffStrategies.FixedDelay(delay);
 
-        var strategy = new FixedDelayStrategy(configuration);
-
-        _ = strategy.CalculateDelay(attempt).Should().Be(configuration.Delay);
+        _ = strategy(attempt).Should().Be(delay);
     }
 }

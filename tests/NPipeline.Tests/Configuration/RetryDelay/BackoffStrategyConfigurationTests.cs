@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using NPipeline.Execution.RetryDelay.Backoff;
+using NPipeline.Configuration.RetryDelay;
 
 namespace NPipeline.Tests.Configuration.RetryDelay;
 

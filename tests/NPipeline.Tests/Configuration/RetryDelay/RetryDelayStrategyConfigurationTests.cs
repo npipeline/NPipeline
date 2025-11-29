@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using AwesomeAssertions;
+using NPipeline.Configuration.RetryDelay;
 using NPipeline.Execution.RetryDelay;
-using NPipeline.Execution.RetryDelay.Backoff;
 
 namespace NPipeline.Tests.Configuration.RetryDelay;
 

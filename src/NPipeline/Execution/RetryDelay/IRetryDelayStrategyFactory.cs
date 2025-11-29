@@ -1,4 +1,7 @@
 using NPipeline.Configuration.RetryDelay;
+using ConfigExponentialBackoffConfiguration = NPipeline.Configuration.RetryDelay.ExponentialBackoffConfiguration;
+using ConfigFixedDelayConfiguration = NPipeline.Configuration.RetryDelay.FixedDelayConfiguration;
+using ConfigLinearBackoffConfiguration = NPipeline.Configuration.RetryDelay.LinearBackoffConfiguration;
 
 namespace NPipeline.Execution.RetryDelay;
 
@@ -27,7 +30,7 @@ public interface IRetryDelayStrategyFactory
     /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
     /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
     IRetryDelayStrategy CreateExponentialBackoff(
-        ExponentialBackoffConfiguration configuration,
+        ConfigExponentialBackoffConfiguration configuration,
         JitterStrategy? jitterStrategy = null);
 
     /// <summary>
@@ -39,7 +42,7 @@ public interface IRetryDelayStrategyFactory
     /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
     /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
     IRetryDelayStrategy CreateLinearBackoff(
-        LinearBackoffConfiguration configuration,
+        ConfigLinearBackoffConfiguration configuration,
         JitterStrategy? jitterStrategy = null);
 
     /// <summary>
@@ -51,7 +54,7 @@ public interface IRetryDelayStrategyFactory
     /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
     /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
     IRetryDelayStrategy CreateFixedDelay(
-        FixedDelayConfiguration configuration,
+        ConfigFixedDelayConfiguration configuration,
         JitterStrategy? jitterStrategy = null);
 
     /// <summary>
@@ -111,4 +114,22 @@ public interface IRetryDelayStrategyFactory
     /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
     /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
     IRetryDelayStrategy CreateStrategy(RetryDelayStrategyConfiguration configuration);
+
+    /// <summary>
+    ///     Creates a backoff strategy from configuration.
+    /// </summary>
+    /// <param name="configuration">The backoff strategy configuration.</param>
+    /// <returns>A configured backoff strategy delegate.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
+    BackoffStrategy CreateBackoffStrategy(BackoffStrategyConfiguration configuration);
+
+    /// <summary>
+    ///     Creates a jitter strategy from configuration.
+    /// </summary>
+    /// <param name="configuration">The jitter strategy configuration.</param>
+    /// <returns>A configured jitter strategy delegate.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
+    JitterStrategy CreateJitterStrategy(JitterStrategyConfiguration configuration);
 }

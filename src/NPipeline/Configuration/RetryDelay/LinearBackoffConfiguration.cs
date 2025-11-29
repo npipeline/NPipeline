@@ -17,7 +17,7 @@ public sealed record LinearBackoffConfiguration : BackoffStrategyConfiguration
 {
     private static readonly TimeSpan DefaultBaseDelay = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan DefaultIncrement = TimeSpan.FromSeconds(1);
-    private static readonly TimeSpan DefaultMaxDelay = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan DefaultMaxDelay = TimeSpan.FromMinutes(1);
 
     public LinearBackoffConfiguration(TimeSpan? baseDelay = null, TimeSpan? increment = null, TimeSpan? maxDelay = null)
     {
@@ -47,7 +47,7 @@ public sealed record LinearBackoffConfiguration : BackoffStrategyConfiguration
     ///     Gets the maximum delay to prevent linear growth from becoming excessive.
     /// </summary>
     /// <remarks>
-    ///     Must be greater than or equal to BaseDelay. Default is 30 seconds.
+    ///     Must be greater than or equal to BaseDelay. Default is 1 minute.
     ///     When calculated delay exceeds this value, the max delay is used instead.
     /// </remarks>
     public TimeSpan MaxDelay { get; init; }

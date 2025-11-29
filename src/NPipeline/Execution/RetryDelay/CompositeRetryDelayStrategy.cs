@@ -1,5 +1,3 @@
-using NPipeline.Execution.RetryDelay.Backoff;
-
 namespace NPipeline.Execution.RetryDelay;
 
 /// <summary>
@@ -9,7 +7,7 @@ namespace NPipeline.Execution.RetryDelay;
 ///     <para>
 ///         This composite strategy applies a backoff algorithm to calculate the base delay,
 ///         then applies jitter to add randomness and prevent thundering herd problems.
-///         The jitter is applied using the provided Random instance for thread safety.
+///         The jitter is applied using provided Random instance for thread safety.
 ///     </para>
 ///     <para>
 ///         Either the backoff strategy or jitter strategy can be null, but not both.
@@ -18,11 +16,11 @@ namespace NPipeline.Execution.RetryDelay;
 ///     </para>
 /// </remarks>
 public sealed class CompositeRetryDelayStrategy(
-    IBackoffStrategy backoffStrategy,
+    BackoffStrategy backoffStrategy,
     JitterStrategy? jitterStrategy,
     Random random) : IRetryDelayStrategy
 {
-    private readonly IBackoffStrategy _backoffStrategy = backoffStrategy ?? throw new ArgumentNullException(nameof(backoffStrategy));
+    private readonly BackoffStrategy _backoffStrategy = backoffStrategy ?? throw new ArgumentNullException(nameof(backoffStrategy));
     private readonly JitterStrategy? _jitterStrategy = jitterStrategy;
     private readonly Random _random = random ?? throw new ArgumentNullException(nameof(random));
 
@@ -44,7 +42,7 @@ public sealed class CompositeRetryDelayStrategy(
             return ValueTask.FromCanceled<TimeSpan>(cancellationToken);
 
         // Calculate base delay using backoff strategy
-        var baseDelay = _backoffStrategy.CalculateDelay(attemptNumber);
+        var baseDelay = _backoffStrategy.Invoke(attemptNumber);
 
         // Apply jitter if a jitter strategy is provided
         if (_jitterStrategy != null)
