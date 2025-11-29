@@ -943,14 +943,6 @@ public sealed class SynchronousOverAsyncAnalyzerTests
         var compilationWithAnalyzers = compilation.WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(analyzer));
         var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
 
-        // Debug output
-        Console.WriteLine($"Diagnostic count: {diagnostics.Length}");
-
-        foreach (var diagnostic in diagnostics)
-        {
-            Console.WriteLine($"  - {diagnostic.Id}: {diagnostic.GetMessage()}");
-        }
-
         return diagnostics.Where(d => d.Id == "NP9103").ToArray();
     }
 }

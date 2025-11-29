@@ -66,8 +66,8 @@ public sealed class PipelineContextAccessAnalyzer : DiagnosticAnalyzer
         // Check for unsafe access to nullable properties
         if (IsNullableProperty(propertyName))
         {
-            // Check if null-conditional operator is used
-            if (!IsNullConditionalAccess(memberAccess))
+            // Check if null-conditional operator is used or if access is within an if-null check / pattern match
+            if (!IsNullConditionalAccess(memberAccess) && !IsWithinNullCheck(memberAccess))
             {
                 var diagnostic = Diagnostic.Create(
                     UnsafePipelineContextAccessRule,
@@ -89,8 +89,8 @@ public sealed class PipelineContextAccessAnalyzer : DiagnosticAnalyzer
         if (!IsPipelineContextDictionaryAccess(elementAccess, context.SemanticModel))
             return;
 
-        // Check if null-conditional operator is used
-        if (!IsNullConditionalAccess(elementAccess))
+        // Check if null-conditional operator is used or if access is within an if-null check / pattern match
+        if (!IsNullConditionalAccess(elementAccess) && !IsWithinNullCheck(elementAccess))
         {
             var diagnostic = Diagnostic.Create(
                 UnsafePipelineContextAccessRule,
@@ -110,18 +110,29 @@ public sealed class PipelineContextAccessAnalyzer : DiagnosticAnalyzer
         // Check if this is a method call on a nullable PipelineContext property
         if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
         {
-            if (!IsPipelineContextMemberAccess(memberAccess, context.SemanticModel))
-                return;
+            // Handle calls like: context.PipelineErrorHandler.Handle... => nestedAccess is context.PipelineErrorHandler
+            var nestedAccess = memberAccess.Expression as MemberAccessExpressionSyntax;
 
-            var propertyName = memberAccess.Expression is MemberAccessExpressionSyntax nestedAccess
+            if (nestedAccess != null)
+            {
+                if (!IsPipelineContextMemberAccess(nestedAccess, context.SemanticModel))
+                    return;
+            }
+            else
+            {
+                // Fallback: check outer memberAccess directly
+                if (!IsPipelineContextMemberAccess(memberAccess, context.SemanticModel))
+                    return;
+            }
+
+            var propertyName = nestedAccess is not null
                 ? nestedAccess.Name.Identifier.Text
                 : memberAccess.Expression is IdentifierNameSyntax identifier
                     ? identifier.Identifier.Text
                     : string.Empty;
 
-            // Check if this is a method call on a nullable property without null check
-            if (IsNullableProperty(propertyName) &&
-                !IsWithinNullCheck(invocation))
+            // Check if this is a method call on a nullable property and not within a null-check
+            if (IsNullableProperty(propertyName) && !IsWithinNullCheck(invocation))
             {
                 var methodName = memberAccess.Name.Identifier.Text;
 
@@ -202,16 +213,15 @@ public sealed class PipelineContextAccessAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Determines if invocation is within a null check context.
     /// </summary>
-    private static bool IsWithinNullCheck(InvocationExpressionSyntax invocation)
+    private static bool IsWithinNullCheck(SyntaxNode node)
     {
-        // Check if invocation is within an if statement that checks for null
-        var current = invocation.Parent;
+        // Walk up the syntax tree to find an enclosing if-statement and inspect its condition
+        var current = node.Parent;
 
         while (current != null)
         {
             if (current is IfStatementSyntax ifStatement)
             {
-                // Check if the condition is a null check on the relevant property
                 if (IsNullCheckCondition(ifStatement.Condition))
                     return true;
             }
@@ -230,9 +240,14 @@ public sealed class PipelineContextAccessAnalyzer : DiagnosticAnalyzer
         if (condition == null)
             return false;
 
-        // Check for patterns like: context.Property != null
+        // Handle compound logical expressions (e.g., pattern && null check)
         if (condition is BinaryExpressionSyntax binaryExpression)
         {
+            // Logical AND/OR: inspect both sides
+            if (binaryExpression.Kind() is SyntaxKind.LogicalAndExpression or SyntaxKind.LogicalOrExpression)
+                return IsNullCheckCondition(binaryExpression.Left) || IsNullCheckCondition(binaryExpression.Right);
+
+            // Equality / inequality null checks
             if (binaryExpression.Kind() is SyntaxKind.NotEqualsExpression or SyntaxKind.EqualsExpression)
             {
                 // Check if one side is a null literal
@@ -240,11 +255,17 @@ public sealed class PipelineContextAccessAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        // Check for patterns like: context.Property is not null
+        // Check for patterns like: context.Property is not null OR declaration/pattern matches
         if (condition is IsPatternExpressionSyntax isPattern)
         {
-            return isPattern.Pattern is ConstantPatternSyntax constantPattern &&
-                   IsNullLiteralExpression(constantPattern.Expression);
+            // ConstantPatternSyntax with null literal => null check
+            if (isPattern.Pattern is ConstantPatternSyntax constantPattern &&
+                IsNullLiteralExpression(constantPattern.Expression))
+                return true;
+
+            // Declaration pattern or recursive pattern (e.g., 'is { }' or 'is var h') implies non-null
+            if (isPattern.Pattern is DeclarationPatternSyntax || isPattern.Pattern is RecursivePatternSyntax)
+                return true;
         }
 
         return false;

@@ -40,13 +40,6 @@ public class SinkNodeInputConsumptionAnalyzerTests
 
         var diagnostics = await GetDiagnostics(testCode);
 
-        Console.WriteLine($"Total diagnostics found: {diagnostics.Length}");
-
-        foreach (var diagnostic in diagnostics)
-        {
-            Console.WriteLine($"Diagnostic: {diagnostic.Id} - {diagnostic.GetMessage()}");
-        }
-
         Assert.Single(diagnostics);
         Assert.Equal("NP9302", diagnostics[0].Id);
     }
@@ -85,13 +78,6 @@ public class SinkNodeInputConsumptionAnalyzerTests
 
         var diagnostics = await GetDiagnostics(testCode);
 
-        Console.WriteLine($"Total diagnostics found: {diagnostics.Length}");
-
-        foreach (var diagnostic in diagnostics)
-        {
-            Console.WriteLine($"Diagnostic: {diagnostic.Id} - {diagnostic.GetMessage()}");
-        }
-
         Assert.Empty(diagnostics);
     }
 
@@ -126,14 +112,6 @@ public class SinkNodeInputConsumptionAnalyzerTests
                        """;
 
         var diagnostics = await GetDiagnostics(testCode);
-
-        Console.WriteLine($"Total diagnostics found: {diagnostics.Length}");
-
-        foreach (var diagnostic in diagnostics)
-        {
-            Console.WriteLine($"Diagnostic: {diagnostic.Id} - {diagnostic.GetMessage()}");
-        }
-
         Assert.Empty(diagnostics);
     }
 
@@ -164,23 +142,8 @@ public class SinkNodeInputConsumptionAnalyzerTests
 
         var diagnostics = await compilationWithAnalyzers.GetAllDiagnosticsAsync();
 
-        // Debug: Print all diagnostics to see what we're getting
-        Console.WriteLine("=== ALL DIAGNOSTICS ===");
-
-        foreach (var diagnostic in diagnostics)
-        {
-            Console.WriteLine($"Diagnostic: {diagnostic.Id} - {diagnostic.GetMessage()}");
-        }
-
         // Filter to only include our analyzer's diagnostics
         var filteredDiagnostics = diagnostics.Where(d => d.Id == "NP9302").ToArray();
-
-        Console.WriteLine("=== FILTERED DIAGNOSTICS (NP9302) ===");
-
-        foreach (var diagnostic in filteredDiagnostics)
-        {
-            Console.WriteLine($"Filtered Diagnostic: {diagnostic.Id} - {diagnostic.GetMessage()}");
-        }
 
         return filteredDiagnostics;
     }

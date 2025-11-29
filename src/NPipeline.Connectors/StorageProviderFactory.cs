@@ -17,64 +17,40 @@ namespace NPipeline.Connectors;
 public static class StorageProviderFactory
 {
     /// <summary>
-    ///     Creates a resolver with optional built-in providers and additional providers.
+    ///     Creates a resolver with optional built-in providers, additional providers, and configuration.
     /// </summary>
-    /// <param name="includeFileSystem">When true, registers <see cref="FileSystemStorageProvider" />.</param>
+    /// <param name="configuration">Optional connector configuration describing provider instances.</param>
     /// <param name="additionalProviders">Optional additional providers to register.</param>
-    public static IStorageResolver CreateResolver(
-        bool includeFileSystem = true,
-        IEnumerable<IStorageProvider>? additionalProviders = null)
-    {
-        var resolver = new StorageResolver();
-
-        if (includeFileSystem)
-            resolver.RegisterProvider(new FileSystemStorageProvider());
-
-        if (additionalProviders is not null)
-        {
-            foreach (var p in additionalProviders)
-            {
-                resolver.RegisterProvider(p);
-            }
-        }
-
-        return resolver;
-    }
-
-    /// <summary>
-    ///     Creates a resolver from a configuration model and optionally also includes built-in providers.
-    /// </summary>
-    /// <param name="configuration">Connector configuration describing provider instances.</param>
     /// <param name="includeFileSystem">When true, registers <see cref="FileSystemStorageProvider" />.</param>
-    public static IStorageResolver CreateResolverFromConfiguration(
-        ConnectorConfiguration configuration,
+    public static IStorageResolver CreateResolver(
+        ConnectorConfiguration? configuration = null,
+        IEnumerable<IStorageProvider>? additionalProviders = null,
         bool includeFileSystem = true)
     {
-        ArgumentNullException.ThrowIfNull(configuration);
-
         var resolver = new StorageResolver();
 
         if (includeFileSystem)
             resolver.RegisterProvider(new FileSystemStorageProvider());
 
-        if (configuration.Providers is { Count: > 0 })
+        if (configuration?.Providers is { Count: > 0 })
         {
             foreach (var kvp in configuration.Providers)
             {
                 var cfg = kvp.Value;
 
-                if (cfg.Enabled is false)
+                if (!cfg.Enabled)
                     continue;
 
-                var instance = CreateProviderInstance(cfg, out _);
+                if (TryCreateProviderInstance(cfg, out var provider) && provider != null)
+                    resolver.RegisterProvider(provider);
+            }
+        }
 
-                if (instance is null)
-
-                    // Skip invalid entries; in non-DI scenarios we prefer soft-fail and let usage sites throw if needed.
-                    // A future enhancement could expose a validation API that returns all errors.
-                    continue;
-
-                resolver.RegisterProvider(instance);
+        if (additionalProviders is not null)
+        {
+            foreach (var provider in additionalProviders)
+            {
+                resolver.RegisterProvider(provider);
             }
         }
 
@@ -82,7 +58,55 @@ public static class StorageProviderFactory
     }
 
     /// <summary>
-    ///     Attempts to resolve a provider for the specified URI; throws a helpful exception if not found.
+    ///     Creates a resolver and returns per-provider creation errors when building from configuration.
+    /// </summary>
+    public static IStorageResolver CreateResolver(
+        ConnectorConfiguration? configuration,
+        IEnumerable<IStorageProvider>? additionalProviders,
+        bool includeFileSystem,
+        out IReadOnlyDictionary<string, IReadOnlyList<string>> errors)
+    {
+        var resolver = new StorageResolver();
+        var errorDict = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+
+        if (includeFileSystem)
+            resolver.RegisterProvider(new FileSystemStorageProvider());
+
+        if (configuration?.Providers is { Count: > 0 })
+        {
+            foreach (var kvp in configuration.Providers)
+            {
+                var name = kvp.Key;
+                var cfg = kvp.Value;
+
+                if (!cfg.Enabled)
+                    continue;
+
+                if (TryCreateProviderInstance(cfg, out var instance, out var errs))
+                    resolver.RegisterProvider(instance!);
+                else
+                {
+                    errorDict[name] = errs != null && errs.Count > 0
+                        ? errs
+                        : new List<string> { $"Failed to create provider '{cfg.ProviderType}'" };
+                }
+            }
+        }
+
+        if (additionalProviders is not null)
+        {
+            foreach (var provider in additionalProviders)
+            {
+                resolver.RegisterProvider(provider);
+            }
+        }
+
+        errors = errorDict;
+        return resolver;
+    }
+
+    /// <summary>
+    ///     Attempts to resolve a provider for specified URI; throws a helpful exception if not found.
     /// </summary>
     public static IStorageProvider GetProviderOrThrow(IStorageResolver resolver, StorageUri uri)
     {
@@ -112,41 +136,86 @@ public static class StorageProviderFactory
         }
     }
 
-    private static IStorageProvider? CreateProviderInstance(
+    /// <summary>
+    ///     Attempts to create a single provider instance from configuration.
+    /// </summary>
+    public static bool TryCreateProviderInstance(
         StorageProviderConfig config,
-        out List<string> errors)
+        out IStorageProvider? instance)
     {
-        errors = [];
+        instance = null;
+
+        if (string.IsNullOrWhiteSpace(config.ProviderType))
+            return false;
+
+        var type = ResolveType(config.ProviderType);
+
+        if (type == null || !typeof(IStorageProvider).IsAssignableFrom(type))
+            return false;
+
+        var ctor = type.GetConstructor(Type.EmptyTypes);
+
+        if (ctor == null)
+            return false;
+
+        try
+        {
+            instance = (IStorageProvider?)Activator.CreateInstance(type);
+
+            if (instance is IConfigurableStorageProvider configurable && config.Settings is { Count: > 0 })
+                configurable.Configure(config.Settings);
+
+            return instance != null;
+        }
+        catch
+        {
+            // Swallow and indicate failure; detailed overload below captures errors when needed.
+            return false;
+        }
+    }
+
+    /// <summary>
+    ///     Attempts to create a single provider instance from configuration and returns detailed errors.
+    /// </summary>
+    public static bool TryCreateProviderInstance(
+        StorageProviderConfig config,
+        out IStorageProvider? instance,
+        out IReadOnlyList<string> errors)
+    {
+        instance = null;
+        var errorList = new List<string>();
 
         if (string.IsNullOrWhiteSpace(config.ProviderType))
         {
-            errors.Add("ProviderType is required.");
-            return null;
+            errorList.Add("ProviderType is required.");
+            errors = errorList;
+            return false;
         }
 
         var type = ResolveType(config.ProviderType);
 
-        if (type is null)
+        if (type == null)
         {
-            errors.Add($"Could not resolve provider type '{config.ProviderType}'. Ensure the assembly is loaded.");
-            return null;
+            errorList.Add($"Could not resolve provider type '{config.ProviderType}'. Ensure the assembly is loaded.");
+            errors = errorList;
+            return false;
         }
 
         if (!typeof(IStorageProvider).IsAssignableFrom(type))
         {
-            errors.Add($"Type '{type.FullName}' does not implement {nameof(IStorageProvider)}.");
-            return null;
+            errorList.Add($"Type '{type.FullName}' does not implement {nameof(IStorageProvider)}.");
+            errors = errorList;
+            return false;
         }
 
         var ctor = type.GetConstructor(Type.EmptyTypes);
 
-        if (ctor is null)
+        if (ctor == null)
         {
-            errors.Add($"Type '{type.FullName}' does not have a public parameterless constructor.");
-            return null;
+            errorList.Add($"Type '{type.FullName}' does not have a public parameterless constructor.");
+            errors = errorList;
+            return false;
         }
-
-        IStorageProvider? instance;
 
         try
         {
@@ -154,12 +223,13 @@ public static class StorageProviderFactory
         }
         catch (Exception ex)
         {
-            errors.Add($"Failed to construct '{type.FullName}': {ex.Message}");
-            return null;
+            errorList.Add($"Failed to construct '{type.FullName}': {ex.Message}");
+            instance = null;
+            errors = errorList;
+            return false;
         }
 
-        if (instance is IConfigurableStorageProvider configurable
-            && config.Settings is { Count: > 0 })
+        if (instance is IConfigurableStorageProvider configurable && config.Settings is { Count: > 0 })
         {
             try
             {
@@ -167,67 +237,15 @@ public static class StorageProviderFactory
             }
             catch (Exception ex)
             {
-                errors.Add($"Failed to configure '{type.FullName}': {ex.Message}");
-                return null;
+                errorList.Add($"Failed to configure '{type.FullName}': {ex.Message}");
+                instance = null;
+                errors = errorList;
+                return false;
             }
         }
 
-        return instance;
-    }
-
-    private static Type? ResolveType(string typeName)
-    {
-        // Try assembly-qualified or fully-qualified name first
-        var t = Type.GetType(typeName, false, false);
-
-        if (t is not null)
-            return t;
-
-        // Fall back to searching loaded assemblies by FullName / Namespace+Name
-        var asms = AppDomain.CurrentDomain.GetAssemblies();
-
-        foreach (var asm in asms)
-        {
-            if (asm.IsDynamic)
-                continue;
-
-            try
-            {
-                var candidate = asm.GetType(typeName, false, false);
-
-                if (candidate is not null)
-                    return candidate;
-            }
-            catch
-            {
-                // ignore
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    ///     Builds a resolver from an existing set of providers. Useful for DI scenarios where the container
-    ///     already constructed providers and we only need a resolver facade.
-    /// </summary>
-    /// <param name="providers">Providers to register in the resolver.</param>
-    /// <param name="includeFileSystem">When true, also registers <see cref="FileSystemStorageProvider" />.</param>
-    public static IStorageResolver CreateResolverFromProviders(
-        IEnumerable<IStorageProvider> providers,
-        bool includeFileSystem = false)
-    {
-        var resolver = new StorageResolver();
-
-        if (includeFileSystem)
-            resolver.RegisterProvider(new FileSystemStorageProvider());
-
-        foreach (var p in providers)
-        {
-            resolver.RegisterProvider(p);
-        }
-
-        return resolver;
+        errors = errorList;
+        return instance != null;
     }
 
     /// <summary>
@@ -251,20 +269,17 @@ public static class StorageProviderFactory
                 var name = kvp.Key;
                 var cfg = kvp.Value;
 
-                if (cfg.Enabled is false)
+                if (!cfg.Enabled)
                     continue;
 
-                var instance = CreateProviderInstance(cfg, out var errs);
-
-                if (instance is null)
+                if (TryCreateProviderInstance(cfg, out var instance, out var errs))
+                    result[name] = instance!;
+                else
                 {
-                    if (errs.Count > 0)
-                        errorDict[name] = errs;
-
-                    continue;
+                    errorDict[name] = errs != null && errs.Count > 0
+                        ? errs
+                        : new List<string> { $"Failed to create provider '{cfg.ProviderType}'" };
                 }
-
-                result[name] = instance;
             }
         }
 
@@ -272,37 +287,35 @@ public static class StorageProviderFactory
         return result;
     }
 
-    /// <summary>
-    ///     Overload of <see cref="CreateResolverFromConfiguration(ConnectorConfiguration, bool)" /> that also
-    ///     returns per-entry errors rather than silently skipping invalid entries.
-    /// </summary>
-    public static IStorageResolver CreateResolverFromConfiguration(
-        ConnectorConfiguration configuration,
-        bool includeFileSystem,
-        out IReadOnlyDictionary<string, IReadOnlyList<string>> errors)
+    private static Type? ResolveType(string typeName)
     {
-        ArgumentNullException.ThrowIfNull(configuration);
+        // Try assembly-qualified or fully-qualified name first
+        var t = Type.GetType(typeName, false, false);
 
-        var providers = CreateProvidersFromConfiguration(configuration, out errors);
-        return CreateResolverFromProviders(providers.Values, includeFileSystem);
-    }
+        if (t != null)
+            return t;
 
-    /// <summary>
-    ///     Attempts to create a single provider instance from configuration with detailed errors.
-    /// </summary>
-    public static bool TryCreateProviderInstance(
-        StorageProviderConfig config,
-        out IStorageProvider? instance,
-        out IReadOnlyList<string> errors)
-    {
-        instance = null;
-        var created = CreateProviderInstance(config, out var errorList);
-        errors = errorList;
+        // Fall back to searching loaded assemblies by FullName / Namespace+Name
+        var asms = AppDomain.CurrentDomain.GetAssemblies();
 
-        if (created is null)
-            return false;
+        foreach (var asm in asms)
+        {
+            if (asm.IsDynamic)
+                continue;
 
-        instance = created;
-        return true;
+            try
+            {
+                var candidate = asm.GetType(typeName, false, false);
+
+                if (candidate != null)
+                    return candidate;
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        return null;
     }
 }

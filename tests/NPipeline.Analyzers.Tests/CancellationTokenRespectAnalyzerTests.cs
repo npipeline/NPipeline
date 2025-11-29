@@ -161,14 +161,6 @@ public sealed class CancellationTokenRespectAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        // Debug: Print all diagnostics
-        Console.WriteLine($"Diagnostics count: {diagnostics.Count()}");
-
-        foreach (var diagnostic in diagnostics)
-        {
-            Console.WriteLine($"Diagnostic: {diagnostic.Id} - {diagnostic.GetMessage()}");
-        }
-
         // The analyzer should not report any diagnostic
         var hasDiagnostic = diagnostics.Any(d => d.Id == CancellationTokenRespectAnalyzer.CancellationTokenNotRespectedId);
         Assert.False(hasDiagnostic, "Analyzer should not report when loop has cancellation check");
@@ -201,14 +193,6 @@ public sealed class CancellationTokenRespectAnalyzerTests
                    """;
 
         var diagnostics = GetDiagnostics(code);
-
-        // Debug: Print all diagnostics
-        Console.WriteLine($"Diagnostics count: {diagnostics.Count()}");
-
-        foreach (var diagnostic in diagnostics)
-        {
-            Console.WriteLine($"Diagnostic: {diagnostic.Id} - {diagnostic.GetMessage()}");
-        }
 
         // The analyzer should not report any diagnostic
         var hasDiagnostic = diagnostics.Any(d => d.Id == CancellationTokenRespectAnalyzer.CancellationTokenNotRespectedId);

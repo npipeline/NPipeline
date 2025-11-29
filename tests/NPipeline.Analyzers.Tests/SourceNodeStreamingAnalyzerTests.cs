@@ -308,14 +308,6 @@ public sealed class SourceNodeStreamingAnalyzerTests
         var compilation2 = compilation.WithAnalyzers(new[] { analyzer }.ToImmutableArray<DiagnosticAnalyzer>());
         var diagnostics = compilation2.GetAnalyzerDiagnosticsAsync().Result;
 
-        // Debug output
-        Console.WriteLine($"Total diagnostics found: {diagnostics.ToArray().Length}");
-
-        foreach (var diagnostic in diagnostics)
-        {
-            Console.WriteLine($"  - {diagnostic.Id}: {diagnostic.GetMessage()}");
-        }
-
         return diagnostics;
     }
 }

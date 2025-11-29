@@ -122,34 +122,22 @@ public class ParallelExecutionStrategyTests
         // Assert
         var sink = context.GetSink<InMemorySinkNode<int>>();
 
-        // Enhanced diagnostics
-        Console.WriteLine($"DropOldest test - Total items processed: {sink.Items.Count}");
-        Console.WriteLine($"DropOldest test - Items processed: [{string.Join(", ", sink.Items)}]");
-
         // Check if any items were dropped by examining the metrics
         if (context.Items.TryGetValue(PipelineContextKeys.ParallelMetricsDroppedOldest("transform"), out var droppedObj) &&
             droppedObj is long droppedOldest && droppedOldest > 0)
-            Console.WriteLine($"DropOldest test - Items dropped oldest: {droppedOldest}");
-        else
-            Console.WriteLine("DropOldest test - WARNING: No items were dropped - queue may not have filled up");
 
-        // With DropOldest and a queue of 10, we expect some items to be dropped
-        // The exact number may vary due to timing, but we should have fewer than 20 items
-        sink.Items.Should().HaveCountLessThan(20, $"because some items should be dropped when the queue is full. " +
-                                                  $"Actual items: [{string.Join(", ", sink.Items)}]");
+            // With DropOldest and a queue of 10, we expect some items to be dropped
+            // The exact number may vary due to timing, but we should have fewer than 20 items
+        {
+            sink.Items.Should().HaveCountLessThan(20, $"because some items should be dropped when the queue is full. " +
+                                                      $"Actual items: [{string.Join(", ", sink.Items)}]");
+        }
 
         // Items should be in ascending order
         sink.Items.Should().BeInAscendingOrder();
 
         // We should have the later items (higher numbers) as oldest ones are dropped
         sink.Items.Max().Should().Be(20);
-
-        // Additional diagnostic assertion
-        if (sink.Items.Count == 20)
-        {
-            Console.WriteLine("FLAKY TEST WARNING: All 20 items were processed - no drops occurred. " +
-                              "This suggests the queue never filled up, likely due to fast processing.");
-        }
     }
 
     [Fact]

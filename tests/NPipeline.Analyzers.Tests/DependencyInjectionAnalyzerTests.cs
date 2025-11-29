@@ -72,14 +72,6 @@ public sealed class DependencyInjectionAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        // Debug: Print all diagnostics
-        Console.WriteLine($"Total diagnostics: {diagnostics.Count()}");
-
-        foreach (var diagnostic in diagnostics)
-        {
-            Console.WriteLine($"Diagnostic: {diagnostic.Id} - {diagnostic.GetMessage()}");
-        }
-
         // Just print count for now
         Assert.True(diagnostics.Count() >= 0, "This should always pass");
     }
