@@ -4,7 +4,6 @@ using BenchmarkDotNet.Running;
 using Microsoft.Extensions.Logging;
 using NPipeline.Execution.RetryDelay;
 using NPipeline.Execution.RetryDelay.Backoff;
-using NPipeline.Execution.RetryDelay.Jitter;
 
 namespace Sample_RetryDelay;
 
@@ -28,7 +27,7 @@ public static class PerformanceComparison
         Console.WriteLine("This will test the performance of delay calculations only.");
         Console.WriteLine();
 
-        // Run the benchmarks
+        // Run benchmarks
         var summary = BenchmarkRunner.Run<RetryDelayBenchmarks>();
 
         Console.WriteLine();
@@ -210,7 +209,7 @@ public static class PerformanceComparison
 
             var delays = await Task.WhenAll(tasks);
 
-            // Analyze the distribution
+            // Analyze distribution
             var buckets = new int[10]; // Divide time into 10 buckets
             var minDelay = delays.Min();
             var maxDelay = delays.Max();
@@ -388,7 +387,7 @@ public static class PerformanceComparison
                 Multiplier = 2.0,
                 MaxDelay = TimeSpan.FromSeconds(30),
             }),
-            new FullJitterStrategy(new FullJitterConfiguration()),
+            JitterStrategies.FullJitter(),
             Random.Shared);
     }
 
@@ -401,7 +400,7 @@ public static class PerformanceComparison
                 Increment = TimeSpan.FromMilliseconds(100),
                 MaxDelay = TimeSpan.FromSeconds(10),
             }),
-            new EqualJitterStrategy(new EqualJitterConfiguration()),
+            JitterStrategies.EqualJitter(),
             Random.Shared);
     }
 
@@ -412,7 +411,7 @@ public static class PerformanceComparison
             {
                 Delay = TimeSpan.FromMilliseconds(500),
             }),
-            new NoJitterStrategy(new NoJitterConfiguration()),
+            JitterStrategies.NoJitter(),
             Random.Shared);
     }
 
@@ -425,7 +424,7 @@ public static class PerformanceComparison
                 Multiplier = 2.0,
                 MaxDelay = TimeSpan.FromSeconds(30),
             }),
-            new NoJitterStrategy(new NoJitterConfiguration()),
+            JitterStrategies.NoJitter(),
             Random.Shared);
     }
 
@@ -438,7 +437,7 @@ public static class PerformanceComparison
                 Multiplier = 2.0,
                 MaxDelay = TimeSpan.FromSeconds(30),
             }),
-            new EqualJitterStrategy(new EqualJitterConfiguration()),
+            JitterStrategies.EqualJitter(),
             Random.Shared);
     }
 
@@ -451,7 +450,7 @@ public static class PerformanceComparison
                 Multiplier = 2.0,
                 MaxDelay = TimeSpan.FromSeconds(30),
             }),
-            new DecorrelatedJitterStrategy(new DecorrelatedJitterConfiguration()),
+            JitterStrategies.DecorrelatedJitter(TimeSpan.FromSeconds(30), 3.0),
             Random.Shared);
     }
 
@@ -498,7 +497,7 @@ public class RetryDelayBenchmarks
                 Multiplier = 2.0,
                 MaxDelay = TimeSpan.FromSeconds(30),
             }),
-            new FullJitterStrategy(new FullJitterConfiguration()),
+            JitterStrategies.FullJitter(),
             Random.Shared);
 
         _linearEqualJitter = new CompositeRetryDelayStrategy(
@@ -508,7 +507,7 @@ public class RetryDelayBenchmarks
                 Increment = TimeSpan.FromMilliseconds(100),
                 MaxDelay = TimeSpan.FromSeconds(10),
             }),
-            new EqualJitterStrategy(new EqualJitterConfiguration()),
+            JitterStrategies.EqualJitter(),
             Random.Shared);
 
         _fixedNoJitter = new CompositeRetryDelayStrategy(
@@ -516,7 +515,7 @@ public class RetryDelayBenchmarks
             {
                 Delay = TimeSpan.FromMilliseconds(500),
             }),
-            new NoJitterStrategy(new NoJitterConfiguration()),
+            JitterStrategies.NoJitter(),
             Random.Shared);
 
         _noOp = NoOpRetryDelayStrategy.Instance;

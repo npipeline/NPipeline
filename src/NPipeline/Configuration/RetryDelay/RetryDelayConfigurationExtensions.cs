@@ -1,4 +1,22 @@
+using NPipeline.Execution.RetryDelay;
+
 namespace NPipeline.Configuration.RetryDelay;
+
+/// <summary>
+///     Simple wrapper configuration for JitterStrategy delegates.
+/// </summary>
+public sealed record DelegateJitterStrategyConfiguration(JitterStrategy JitterStrategy) : JitterStrategyConfiguration
+{
+    /// <inheritdoc />
+    public override string StrategyType => "Delegate";
+
+    /// <inheritdoc />
+    public override void Validate()
+    {
+        if (JitterStrategy is null)
+            throw new ArgumentNullException(nameof(JitterStrategy), "JitterStrategy cannot be null.");
+    }
+}
 
 /// <summary>
 ///     Extension methods for configuring retry delay strategies on PipelineRetryOptions.
@@ -18,7 +36,7 @@ namespace NPipeline.Configuration.RetryDelay;
 ///                         baseDelay: TimeSpan.FromSeconds(1),
 ///                         multiplier: 2.0,
 ///                         maxDelay: TimeSpan.FromMinutes(1)),
-///                     new FullJitterConfiguration())
+///                     JitterStrategies.FullJitter())
 ///                 .WithExponentialBackoffAndFullJitter();
 ///         </code>
 ///     </para>
@@ -30,9 +48,9 @@ public static class RetryDelayConfigurationExtensions
     /// </summary>
     /// <param name="retryOptions">The retry options to configure.</param>
     /// <param name="backoffConfiguration">The backoff strategy configuration.</param>
-    /// <param name="jitterConfiguration">The jitter strategy configuration.</param>
+    /// <param name="jitterStrategy">The jitter strategy delegate.</param>
     /// <returns>A new PipelineRetryOptions instance with configured delay strategy.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when retryOptions, backoffConfiguration, or jitterConfiguration is null.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when retryOptions, backoffConfiguration, or jitterStrategy is null.</exception>
     /// <exception cref="ArgumentException">Thrown when any configuration parameter is invalid.</exception>
     /// <remarks>
     ///     This method creates a new RetryDelayStrategyConfiguration with specified
@@ -42,17 +60,19 @@ public static class RetryDelayConfigurationExtensions
     public static PipelineRetryOptions WithDelayStrategy(
         this PipelineRetryOptions retryOptions,
         BackoffStrategyConfiguration backoffConfiguration,
-        JitterStrategyConfiguration jitterConfiguration)
+        JitterStrategy jitterStrategy)
     {
         ArgumentNullException.ThrowIfNull(retryOptions);
         ArgumentNullException.ThrowIfNull(backoffConfiguration);
-        ArgumentNullException.ThrowIfNull(jitterConfiguration);
+        ArgumentNullException.ThrowIfNull(jitterStrategy);
+
+        var jitterConfig = new DelegateJitterStrategyConfiguration(jitterStrategy);
 
         var delayStrategyConfiguration = new RetryDelayStrategyConfiguration(
             backoffConfiguration,
-            jitterConfiguration);
+            jitterConfig);
 
-        // Validate the configuration
+        // Validate configuration
         delayStrategyConfiguration.Validate();
 
         // Create new retry options with delay strategy
@@ -64,7 +84,7 @@ public static class RetryDelayConfigurationExtensions
     /// </summary>
     /// <param name="retryOptions">The retry options to configure.</param>
     /// <param name="baseDelay">The base delay for first retry attempt. Default is 1 second.</param>
-    /// <param name="multiplier">The multiplier applied to the delay for each subsequent retry. Default is 2.0.</param>
+    /// <param name="multiplier">The multiplier applied to delay for each subsequent retry. Default is 2.0.</param>
     /// <param name="maxDelay">The maximum delay to prevent exponential growth. Default is 1 minute.</param>
     /// <returns>A new PipelineRetryOptions instance with exponential backoff and full jitter configured.</returns>
     /// <exception cref="ArgumentNullException">Thrown when retryOptions is null.</exception>
@@ -88,9 +108,9 @@ public static class RetryDelayConfigurationExtensions
             multiplier ?? 2.0,
             maxDelay ?? TimeSpan.FromMinutes(1));
 
-        var jitterConfig = new FullJitterConfiguration();
+        var jitterStrategy = JitterStrategies.FullJitter();
 
-        return retryOptions.WithDelayStrategy(backoffConfig, jitterConfig);
+        return retryOptions.WithDelayStrategy(backoffConfig, jitterStrategy);
     }
 
     /// <summary>
@@ -121,9 +141,9 @@ public static class RetryDelayConfigurationExtensions
             increment ?? TimeSpan.FromSeconds(1),
             maxDelay ?? TimeSpan.FromSeconds(30));
 
-        var jitterConfig = new EqualJitterConfiguration();
+        var jitterStrategy = JitterStrategies.EqualJitter();
 
-        return retryOptions.WithDelayStrategy(backoffConfig, jitterConfig);
+        return retryOptions.WithDelayStrategy(backoffConfig, jitterStrategy);
     }
 
     /// <summary>
@@ -146,8 +166,8 @@ public static class RetryDelayConfigurationExtensions
         ArgumentNullException.ThrowIfNull(retryOptions);
 
         var backoffConfig = new FixedDelayConfiguration(delay ?? TimeSpan.FromSeconds(1));
-        var jitterConfig = new NoJitterConfiguration();
+        var jitterStrategy = JitterStrategies.NoJitter();
 
-        return retryOptions.WithDelayStrategy(backoffConfig, jitterConfig);
+        return retryOptions.WithDelayStrategy(backoffConfig, jitterStrategy);
     }
 }

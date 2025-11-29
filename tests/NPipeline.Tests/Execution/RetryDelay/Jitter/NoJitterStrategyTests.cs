@@ -1,40 +1,29 @@
 using AwesomeAssertions;
-using NPipeline.Execution.RetryDelay.Jitter;
+using NPipeline.Execution.RetryDelay;
 
 namespace NPipeline.Tests.Execution.RetryDelay.Jitter;
 
 public sealed class NoJitterStrategyTests
 {
     [Fact]
-    public void Constructor_WithValidConfiguration_ShouldCreateInstance()
+    public void CreateNoJitter_ShouldReturnValidDelegate()
     {
-        // Arrange
-        var configuration = new NoJitterConfiguration();
-
         // Act
-        var strategy = new NoJitterStrategy(configuration);
+        var strategy = JitterStrategies.NoJitter();
 
         // Assert
         _ = strategy.Should().NotBeNull();
     }
 
     [Fact]
-    public void Constructor_WithNullConfiguration_ShouldThrowArgumentNullException()
-    {
-        // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => new NoJitterStrategy(null!));
-    }
-
-    [Fact]
     public void ApplyJitter_WithNullRandom_ShouldThrowArgumentNullException()
     {
         // Arrange
-        var configuration = new NoJitterConfiguration();
-        var strategy = new NoJitterStrategy(configuration);
+        var strategy = JitterStrategies.NoJitter();
         var baseDelay = TimeSpan.FromSeconds(1);
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => strategy.ApplyJitter(baseDelay, null!));
+        _ = Assert.Throws<ArgumentNullException>(() => strategy(baseDelay, null!));
     }
 
     [Theory]
@@ -44,13 +33,12 @@ public sealed class NoJitterStrategyTests
     public void ApplyJitter_WithNegativeBaseDelay_ShouldReturnZero(int delayMs)
     {
         // Arrange
-        var configuration = new NoJitterConfiguration();
-        var strategy = new NoJitterStrategy(configuration);
+        var strategy = JitterStrategies.NoJitter();
         var baseDelay = TimeSpan.FromMilliseconds(delayMs);
         var random = new Random(42);
 
         // Act
-        var result = strategy.ApplyJitter(baseDelay, random);
+        var result = strategy(baseDelay, random);
 
         // Assert
         _ = result.Should().Be(TimeSpan.Zero);
@@ -60,13 +48,12 @@ public sealed class NoJitterStrategyTests
     public void ApplyJitter_WithZeroBaseDelay_ShouldReturnZero()
     {
         // Arrange
-        var configuration = new NoJitterConfiguration();
-        var strategy = new NoJitterStrategy(configuration);
+        var strategy = JitterStrategies.NoJitter();
         var baseDelay = TimeSpan.Zero;
         var random = new Random(42);
 
         // Act
-        var result = strategy.ApplyJitter(baseDelay, random);
+        var result = strategy(baseDelay, random);
 
         // Assert
         _ = result.Should().Be(TimeSpan.Zero);
@@ -81,13 +68,12 @@ public sealed class NoJitterStrategyTests
     public void ApplyJitter_WithPositiveBaseDelay_ShouldReturnBaseDelay(int baseDelayMs)
     {
         // Arrange
-        var configuration = new NoJitterConfiguration();
-        var strategy = new NoJitterStrategy(configuration);
+        var strategy = JitterStrategies.NoJitter();
         var baseDelay = TimeSpan.FromMilliseconds(baseDelayMs);
         var random = new Random(42);
 
         // Act
-        var result = strategy.ApplyJitter(baseDelay, random);
+        var result = strategy(baseDelay, random);
 
         // Assert
         _ = result.Should().Be(TimeSpan.FromMilliseconds(baseDelayMs));
@@ -97,13 +83,12 @@ public sealed class NoJitterStrategyTests
     public void ApplyJitter_WithVerySmallBaseDelay_ShouldReturnBaseDelay()
     {
         // Arrange
-        var configuration = new NoJitterConfiguration();
-        var strategy = new NoJitterStrategy(configuration);
+        var strategy = JitterStrategies.NoJitter();
         var baseDelay = TimeSpan.FromTicks(1); // Smallest possible TimeSpan
         var random = new Random(42);
 
         // Act
-        var result = strategy.ApplyJitter(baseDelay, random);
+        var result = strategy(baseDelay, random);
 
         // Assert
         _ = result.Should().Be(TimeSpan.FromTicks(1));
@@ -113,13 +98,12 @@ public sealed class NoJitterStrategyTests
     public void ApplyJitter_WithLargeBaseDelay_ShouldReturnBaseDelay()
     {
         // Arrange
-        var configuration = new NoJitterConfiguration();
-        var strategy = new NoJitterStrategy(configuration);
+        var strategy = JitterStrategies.NoJitter();
         var baseDelay = TimeSpan.FromMinutes(5); // Large delay
         var random = new Random(42);
 
         // Act
-        var result = strategy.ApplyJitter(baseDelay, random);
+        var result = strategy(baseDelay, random);
 
         // Assert
         _ = result.Should().Be(TimeSpan.FromMinutes(5));
@@ -129,8 +113,7 @@ public sealed class NoJitterStrategyTests
     public void ApplyJitter_WithMultipleCalls_ShouldReturnConsistentResults()
     {
         // Arrange
-        var configuration = new NoJitterConfiguration();
-        var strategy = new NoJitterStrategy(configuration);
+        var strategy = JitterStrategies.NoJitter();
         var baseDelay = TimeSpan.FromMilliseconds(1000);
         var random = new Random(); // No seed for true randomness
 
@@ -139,7 +122,7 @@ public sealed class NoJitterStrategyTests
 
         for (var i = 0; i < 100; i++)
         {
-            results.Add(strategy.ApplyJitter(baseDelay, random));
+            results.Add(strategy(baseDelay, random));
         }
 
         // Assert
@@ -155,15 +138,14 @@ public sealed class NoJitterStrategyTests
     public void ApplyJitter_WithDifferentRandomInstances_ShouldReturnSameResult()
     {
         // Arrange
-        var configuration = new NoJitterConfiguration();
-        var strategy = new NoJitterStrategy(configuration);
+        var strategy = JitterStrategies.NoJitter();
         var baseDelay = TimeSpan.FromMilliseconds(1000);
         var random1 = new Random(42);
         var random2 = new Random(24); // Different seed
 
         // Act
-        var result1 = strategy.ApplyJitter(baseDelay, random1);
-        var result2 = strategy.ApplyJitter(baseDelay, random2);
+        var result1 = strategy(baseDelay, random1);
+        var result2 = strategy(baseDelay, random2);
 
         // Assert
         _ = result1.Should().Be(result2);
@@ -174,13 +156,12 @@ public sealed class NoJitterStrategyTests
     public void ApplyJitter_WithMaxValueBaseDelay_ShouldReturnMaxValue()
     {
         // Arrange
-        var configuration = new NoJitterConfiguration();
-        var strategy = new NoJitterStrategy(configuration);
+        var strategy = JitterStrategies.NoJitter();
         var baseDelay = TimeSpan.MaxValue;
         var random = new Random(42);
 
         // Act
-        var result = strategy.ApplyJitter(baseDelay, random);
+        var result = strategy(baseDelay, random);
 
         // Assert
         _ = result.Should().Be(TimeSpan.MaxValue);
@@ -190,13 +171,12 @@ public sealed class NoJitterStrategyTests
     public void ApplyJitter_WithFractionalBaseDelay_ShouldReturnExactDelay()
     {
         // Arrange
-        var configuration = new NoJitterConfiguration();
-        var strategy = new NoJitterStrategy(configuration);
+        var strategy = JitterStrategies.NoJitter();
         var baseDelay = TimeSpan.FromMilliseconds(123.456);
         var random = new Random(42);
 
         // Act
-        var result = strategy.ApplyJitter(baseDelay, random);
+        var result = strategy(baseDelay, random);
 
         // Assert
         _ = result.Should().Be(TimeSpan.FromMilliseconds(123.456));
@@ -206,8 +186,7 @@ public sealed class NoJitterStrategyTests
     public void ApplyJitter_WithConcurrentCalls_ShouldBeThreadSafe()
     {
         // Arrange
-        var configuration = new NoJitterConfiguration();
-        var strategy = new NoJitterStrategy(configuration);
+        var strategy = JitterStrategies.NoJitter();
         var baseDelay = TimeSpan.FromMilliseconds(1000);
         var results = new List<TimeSpan>();
         var lockObject = new object();
@@ -220,7 +199,7 @@ public sealed class NoJitterStrategyTests
 
             for (var j = 0; j < 100; j++)
             {
-                var result = strategy.ApplyJitter(baseDelay, random);
+                var result = strategy(baseDelay, random);
                 localResults.Add(result);
             }
 
@@ -250,13 +229,12 @@ public sealed class NoJitterStrategyTests
     public void ApplyJitter_WithVariousBaseDelays_ShouldReturnExactBaseDelay(int baseDelayMs)
     {
         // Arrange
-        var configuration = new NoJitterConfiguration();
-        var strategy = new NoJitterStrategy(configuration);
+        var strategy = JitterStrategies.NoJitter();
         var baseDelay = TimeSpan.FromMilliseconds(baseDelayMs);
         var random = new Random(42);
 
         // Act
-        var result = strategy.ApplyJitter(baseDelay, random);
+        var result = strategy(baseDelay, random);
 
         // Assert
         _ = result.Should().Be(TimeSpan.FromMilliseconds(baseDelayMs));
@@ -266,13 +244,12 @@ public sealed class NoJitterStrategyTests
     public void ApplyJitter_WithMinValueBaseDelay_ShouldReturnMinValue()
     {
         // Arrange
-        var configuration = new NoJitterConfiguration();
-        var strategy = new NoJitterStrategy(configuration);
+        var strategy = JitterStrategies.NoJitter();
         var baseDelay = TimeSpan.MinValue;
         var random = new Random(42);
 
         // Act
-        var result = strategy.ApplyJitter(baseDelay, random);
+        var result = strategy(baseDelay, random);
 
         // Assert
         _ = result.Should().Be(TimeSpan.Zero); // Negative delays return zero
@@ -282,13 +259,12 @@ public sealed class NoJitterStrategyTests
     public void ApplyJitter_WithZeroTicksBaseDelay_ShouldReturnZero()
     {
         // Arrange
-        var configuration = new NoJitterConfiguration();
-        var strategy = new NoJitterStrategy(configuration);
+        var strategy = JitterStrategies.NoJitter();
         var baseDelay = TimeSpan.FromTicks(0);
         var random = new Random(42);
 
         // Act
-        var result = strategy.ApplyJitter(baseDelay, random);
+        var result = strategy(baseDelay, random);
 
         // Assert
         _ = result.Should().Be(TimeSpan.Zero);
@@ -298,15 +274,14 @@ public sealed class NoJitterStrategyTests
     public void ApplyJitter_RandomParameterNotUsed_ShouldStillWork()
     {
         // Arrange
-        var configuration = new NoJitterConfiguration();
-        var strategy = new NoJitterStrategy(configuration);
+        var strategy = JitterStrategies.NoJitter();
         var baseDelay = TimeSpan.FromMilliseconds(1000);
         var random = new Random(42);
 
         // Act - Call multiple times to verify random doesn't affect result
-        var result1 = strategy.ApplyJitter(baseDelay, random);
-        var result2 = strategy.ApplyJitter(baseDelay, random);
-        var result3 = strategy.ApplyJitter(baseDelay, random);
+        var result1 = strategy(baseDelay, random);
+        var result2 = strategy(baseDelay, random);
+        var result3 = strategy(baseDelay, random);
 
         // Assert
         _ = result1.Should().Be(TimeSpan.FromMilliseconds(1000));
@@ -318,19 +293,18 @@ public sealed class NoJitterStrategyTests
     public void ApplyJitter_WithDifferentRandomStates_ShouldReturnConsistentResult()
     {
         // Arrange
-        var configuration = new NoJitterConfiguration();
-        var strategy = new NoJitterStrategy(configuration);
+        var strategy = JitterStrategies.NoJitter();
         var baseDelay = TimeSpan.FromMilliseconds(1000);
         var random = new Random(42);
 
         // Act
-        var result1 = strategy.ApplyJitter(baseDelay, random);
+        var result1 = strategy(baseDelay, random);
 
         // Modify random state
         random.Next();
         random.NextDouble();
 
-        var result2 = strategy.ApplyJitter(baseDelay, random);
+        var result2 = strategy(baseDelay, random);
 
         // Assert
         _ = result1.Should().Be(result2);

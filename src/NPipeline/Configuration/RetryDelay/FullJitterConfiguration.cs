@@ -5,32 +5,24 @@ namespace NPipeline.Configuration.RetryDelay;
 /// </summary>
 /// <remarks>
 ///     <para>
-///         Full jitter generates a random delay between 0 and the base delay.
-///         This strategy is most effective at preventing thundering herd problems
-///         where multiple clients retry simultaneously.
+///         Full jitter applies maximum randomness to retry delays,
+///         distributing them uniformly between 0 and the base delay.
+///         This provides the best protection against thundering herd problems.
 ///     </para>
 ///     <para>
-///         The formula used is: jitteredDelay = random.Next(0, baseDelay.TotalMilliseconds)
+///         This strategy is recommended for distributed systems
+///         where preventing synchronized retries is critical.
 ///     </para>
 /// </remarks>
 public sealed record FullJitterConfiguration : JitterStrategyConfiguration
 {
-    /// <summary>
-    ///     Gets the strategy type identifier for full jitter.
-    /// </summary>
+    /// <inheritdoc />
     public override string StrategyType => "FullJitter";
 
-    /// <summary>
-    ///     Validates the configuration parameters.
-    /// </summary>
-    /// <exception cref="ArgumentException">Thrown when any parameter is invalid.</exception>
-    /// <remarks>
-    ///     Full jitter doesn't require any specific configuration parameters,
-    ///     so this method is provided for consistency with other jitter strategies.
-    /// </remarks>
+    /// <inheritdoc />
     public override void Validate()
     {
-        // Full jitter doesn't require any configuration parameters
-        // This method is provided for consistency with other jitter strategies
+        // Full jitter has no configurable parameters
+        // No validation needed
     }
 }

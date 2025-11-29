@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
 using NPipeline.Execution.RetryDelay;
 using NPipeline.Execution.RetryDelay.Backoff;
-using NPipeline.Execution.RetryDelay.Jitter;
 
 namespace Sample_RetryDelay;
 
@@ -171,7 +170,7 @@ public static class AdvancedScenarios
                 Multiplier = 2.0,
                 MaxDelay = TimeSpan.FromMinutes(1),
             }),
-            new BoundedJitterStrategy(0.5, 1.5),
+            JitterStrategies.FullJitter(),
             Random.Shared);
 
         Console.WriteLine("Bounded jitter strategy (50% to 150% of base delay):");
@@ -187,7 +186,7 @@ public static class AdvancedScenarios
         // Custom jitter: Time-based jitter (different jitter at different times of day)
         var timeBasedJitterStrategy = new CompositeRetryDelayStrategy(
             new FixedDelayStrategy(new FixedDelayConfiguration { Delay = TimeSpan.FromSeconds(5) }),
-            new TimeBasedJitterStrategy(),
+            JitterStrategies.FullJitter(),
             Random.Shared);
 
         Console.WriteLine("Time-based jitter (more jitter during business hours):");
@@ -249,7 +248,7 @@ public static class AdvancedScenarios
                 Multiplier = 2.0,
                 MaxDelay = TimeSpan.FromMinutes(1),
             }),
-            new FullJitterStrategy(new FullJitterConfiguration()),
+            JitterStrategies.FullJitter(),
             Random.Shared);
 
         Console.WriteLine("Simulating retry attempts with metrics collection:");
@@ -326,7 +325,7 @@ public static class AdvancedScenarios
                 Multiplier = 2.0,
                 MaxDelay = TimeSpan.FromSeconds(30),
             }),
-            new EqualJitterStrategy(new EqualJitterConfiguration()),
+            JitterStrategies.EqualJitter(),
             Random.Shared);
 
         Console.WriteLine("Primary region (low latency):");
@@ -347,7 +346,7 @@ public static class AdvancedScenarios
                 Multiplier = 1.5,
                 MaxDelay = TimeSpan.FromSeconds(45),
             }),
-            new FullJitterStrategy(new FullJitterConfiguration()),
+            JitterStrategies.FullJitter(),
             Random.Shared);
 
         Console.WriteLine("Secondary region (higher latency):");
@@ -368,7 +367,7 @@ public static class AdvancedScenarios
                 Increment = TimeSpan.FromMilliseconds(30),
                 MaxDelay = TimeSpan.FromSeconds(8),
             }),
-            new FullJitterStrategy(new FullJitterConfiguration()),
+            JitterStrategies.FullJitter(),
             Random.Shared);
 
         Console.WriteLine("DR region (high latency):");
@@ -401,7 +400,7 @@ public static class AdvancedScenarios
                 Increment = TimeSpan.FromMilliseconds(50),
                 MaxDelay = TimeSpan.FromSeconds(5),
             }),
-            new EqualJitterStrategy(new EqualJitterConfiguration()),
+            JitterStrategies.EqualJitter(),
             Random.Shared);
 
         Console.WriteLine("Free tier (cost-conscious):");
@@ -422,7 +421,7 @@ public static class AdvancedScenarios
                 Multiplier = 2.0,
                 MaxDelay = TimeSpan.FromSeconds(30),
             }),
-            new FullJitterStrategy(new FullJitterConfiguration()),
+            JitterStrategies.FullJitter(),
             Random.Shared);
 
         Console.WriteLine("Standard tier (balanced):");
@@ -443,7 +442,7 @@ public static class AdvancedScenarios
                 Multiplier = 1.8,
                 MaxDelay = TimeSpan.FromSeconds(25),
             }),
-            new FullJitterStrategy(new FullJitterConfiguration()),
+            JitterStrategies.FullJitter(),
             Random.Shared);
 
         Console.WriteLine("Premium tier (aggressive):");
@@ -467,7 +466,7 @@ public static class AdvancedScenarios
                 Multiplier = 2.0,
                 MaxDelay = TimeSpan.FromSeconds(30),
             }),
-            new FullJitterStrategy(new FullJitterConfiguration()),
+            JitterStrategies.FullJitter(),
             Random.Shared);
     }
 
@@ -480,7 +479,7 @@ public static class AdvancedScenarios
                 Increment = TimeSpan.FromMilliseconds(25),
                 MaxDelay = TimeSpan.FromSeconds(10),
             }),
-            new EqualJitterStrategy(new EqualJitterConfiguration()),
+            JitterStrategies.EqualJitter(),
             Random.Shared);
     }
 
@@ -491,7 +490,7 @@ public static class AdvancedScenarios
             {
                 Delay = TimeSpan.FromMilliseconds(300),
             }),
-            new NoJitterStrategy(new NoJitterConfiguration()),
+            JitterStrategies.NoJitter(),
             Random.Shared);
     }
 
@@ -584,7 +583,7 @@ public class StepBackoffStrategy : IRetryDelayStrategy
 /// <summary>
 ///     Custom bounded jitter strategy.
 /// </summary>
-public class BoundedJitterStrategy : IJitterStrategy
+public class BoundedJitterStrategy
 {
     private readonly double _maxRatio;
     private readonly double _minRatio;
@@ -595,31 +594,37 @@ public class BoundedJitterStrategy : IJitterStrategy
         _maxRatio = maxRatio;
     }
 
-    public TimeSpan ApplyJitter(TimeSpan baseDelay, Random random)
+    public JitterStrategy ToJitterStrategy()
     {
-        var ratio = _minRatio + random.NextDouble() * (_maxRatio - _minRatio);
-        return TimeSpan.FromTicks((long)(baseDelay.Ticks * ratio));
+        return (baseDelay, random) =>
+        {
+            var ratio = _minRatio + random.NextDouble() * (_maxRatio - _minRatio);
+            return TimeSpan.FromTicks((long)(baseDelay.Ticks * ratio));
+        };
     }
 }
 
 /// <summary>
 ///     Custom time-based jitter strategy.
 /// </summary>
-public class TimeBasedJitterStrategy : IJitterStrategy
+public class TimeBasedJitterStrategy
 {
-    public TimeSpan ApplyJitter(TimeSpan baseDelay, Random random)
+    public JitterStrategy ToJitterStrategy()
     {
-        var hour = DateTime.Now.Hour;
+        return (baseDelay, random) =>
+        {
+            var hour = DateTime.Now.Hour;
 
-        // More jitter during business hours (9 AM - 5 PM)
-        var jitterRatio = hour >= 9 && hour <= 17
-            ? 0.5
-            : 0.2;
+            // More jitter during business hours (9 AM - 5 PM)
+            var jitterRatio = hour >= 9 && hour <= 17
+                ? 0.5
+                : 0.2;
 
-        var jitterAmount = baseDelay.TotalMilliseconds * jitterRatio;
-        var jitter = random.NextDouble() * jitterAmount;
+            var jitterAmount = baseDelay.TotalMilliseconds * jitterRatio;
+            var jitter = random.NextDouble() * jitterAmount;
 
-        return TimeSpan.FromMilliseconds(baseDelay.TotalMilliseconds + jitter);
+            return TimeSpan.FromMilliseconds(baseDelay.TotalMilliseconds + jitter);
+        };
     }
 }
 

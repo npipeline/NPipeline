@@ -1,9 +1,4 @@
 using NPipeline.Configuration.RetryDelay;
-using NPipeline.Execution.RetryDelay.Jitter;
-using DecorrelatedJitterConfiguration = NPipeline.Execution.RetryDelay.Jitter.DecorrelatedJitterConfiguration;
-using EqualJitterConfiguration = NPipeline.Execution.RetryDelay.Jitter.EqualJitterConfiguration;
-using FullJitterConfiguration = NPipeline.Execution.RetryDelay.Jitter.FullJitterConfiguration;
-using NoJitterConfiguration = NPipeline.Execution.RetryDelay.Jitter.NoJitterConfiguration;
 
 namespace NPipeline.Execution.RetryDelay;
 
@@ -33,7 +28,7 @@ public interface IRetryDelayStrategyFactory
     /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
     IRetryDelayStrategy CreateExponentialBackoff(
         ExponentialBackoffConfiguration configuration,
-        IJitterStrategy? jitterStrategy = null);
+        JitterStrategy? jitterStrategy = null);
 
     /// <summary>
     ///     Creates a linear backoff strategy with specified configuration.
@@ -45,7 +40,7 @@ public interface IRetryDelayStrategyFactory
     /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
     IRetryDelayStrategy CreateLinearBackoff(
         LinearBackoffConfiguration configuration,
-        IJitterStrategy? jitterStrategy = null);
+        JitterStrategy? jitterStrategy = null);
 
     /// <summary>
     ///     Creates a fixed delay strategy with specified configuration.
@@ -57,7 +52,7 @@ public interface IRetryDelayStrategyFactory
     /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
     IRetryDelayStrategy CreateFixedDelay(
         FixedDelayConfiguration configuration,
-        IJitterStrategy? jitterStrategy = null);
+        JitterStrategy? jitterStrategy = null);
 
     /// <summary>
     ///     Creates a no-operation retry delay strategy.
@@ -70,40 +65,43 @@ public interface IRetryDelayStrategyFactory
     IRetryDelayStrategy CreateNoOp();
 
     /// <summary>
-    ///     Creates a full jitter strategy with the specified configuration.
+    ///     Creates a full jitter strategy.
     /// </summary>
-    /// <param name="configuration">The configuration for full jitter.</param>
-    /// <returns>A configured full jitter strategy.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
-    IJitterStrategy CreateFullJitter(FullJitterConfiguration configuration);
+    /// <returns>A jitter strategy that applies full jitter.</returns>
+    /// <remarks>
+    ///     This method creates a full jitter strategy.
+    /// </remarks>
+    JitterStrategy CreateFullJitter();
 
     /// <summary>
-    ///     Creates a decorrelated jitter strategy with the specified configuration.
+    ///     Creates a decorrelated jitter strategy with the specified parameters.
     /// </summary>
-    /// <param name="configuration">The configuration for decorrelated jitter.</param>
-    /// <returns>A configured decorrelated jitter strategy.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
-    IJitterStrategy CreateDecorrelatedJitter(DecorrelatedJitterConfiguration configuration);
+    /// <param name="maxDelay">The maximum delay to prevent excessive growth.</param>
+    /// <param name="multiplier">The multiplier for the previous delay.</param>
+    /// <returns>A jitter strategy that applies decorrelated jitter.</returns>
+    /// <exception cref="ArgumentException">Thrown when maxDelay is not positive or multiplier is less than 1.0.</exception>
+    /// <remarks>
+    ///     This method creates a decorrelated jitter strategy.
+    /// </remarks>
+    JitterStrategy CreateDecorrelatedJitter(TimeSpan maxDelay, double multiplier = 3.0);
 
     /// <summary>
-    ///     Creates an equal jitter strategy with the specified configuration.
+    ///     Creates an equal jitter strategy.
     /// </summary>
-    /// <param name="configuration">The configuration for equal jitter.</param>
-    /// <returns>A configured equal jitter strategy.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
-    IJitterStrategy CreateEqualJitter(EqualJitterConfiguration configuration);
+    /// <returns>A jitter strategy that applies equal jitter.</returns>
+    /// <remarks>
+    ///     This method creates an equal jitter strategy.
+    /// </remarks>
+    JitterStrategy CreateEqualJitter();
 
     /// <summary>
-    ///     Creates a no jitter strategy with the specified configuration.
+    ///     Creates a no jitter strategy.
     /// </summary>
-    /// <param name="configuration">The configuration for no jitter.</param>
-    /// <returns>A configured no jitter strategy.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
-    IJitterStrategy CreateNoJitter(NoJitterConfiguration configuration);
+    /// <returns>A jitter strategy that doesn't apply any jitter.</returns>
+    /// <remarks>
+    ///     This method creates a no jitter strategy.
+    /// </remarks>
+    JitterStrategy CreateNoJitter();
 
     /// <summary>
     ///     Creates a retry delay strategy from configuration.

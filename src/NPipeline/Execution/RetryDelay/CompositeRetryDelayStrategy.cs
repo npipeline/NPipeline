@@ -1,5 +1,4 @@
 using NPipeline.Execution.RetryDelay.Backoff;
-using NPipeline.Execution.RetryDelay.Jitter;
 
 namespace NPipeline.Execution.RetryDelay;
 
@@ -20,11 +19,11 @@ namespace NPipeline.Execution.RetryDelay;
 /// </remarks>
 public sealed class CompositeRetryDelayStrategy(
     IBackoffStrategy backoffStrategy,
-    IJitterStrategy? jitterStrategy,
+    JitterStrategy? jitterStrategy,
     Random random) : IRetryDelayStrategy
 {
     private readonly IBackoffStrategy _backoffStrategy = backoffStrategy ?? throw new ArgumentNullException(nameof(backoffStrategy));
-    private readonly IJitterStrategy? _jitterStrategy = jitterStrategy;
+    private readonly JitterStrategy? _jitterStrategy = jitterStrategy;
     private readonly Random _random = random ?? throw new ArgumentNullException(nameof(random));
 
     /// <summary>
@@ -50,7 +49,7 @@ public sealed class CompositeRetryDelayStrategy(
         // Apply jitter if a jitter strategy is provided
         if (_jitterStrategy != null)
         {
-            var jitteredDelay = _jitterStrategy.ApplyJitter(baseDelay, _random);
+            var jitteredDelay = _jitterStrategy(baseDelay, _random);
             return ValueTask.FromResult(jitteredDelay);
         }
 

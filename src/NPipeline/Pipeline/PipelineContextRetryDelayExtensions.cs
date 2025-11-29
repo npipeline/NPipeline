@@ -27,11 +27,11 @@ public static class PipelineContextRetryDelayExtensions
     ///     Gets retry delay strategy from pipeline context.
     /// </summary>
     /// <param name="context">The pipeline context to get the strategy from.</param>
-    /// <returns>The retry delay strategy configured for the context.</returns>
+    /// <returns>The retry delay strategy configured for context.</returns>
     /// <exception cref="ArgumentNullException">Thrown when context is null.</exception>
     /// <remarks>
     ///     <para>
-    ///         This method retrieves retry delay strategy from the pipeline context,
+    ///         This method retrieves retry delay strategy from pipeline context,
     ///         using the following logic:
     ///         <list type="number">
     ///             <item>
@@ -84,7 +84,7 @@ public static class PipelineContextRetryDelayExtensions
     }
 
     /// <summary>
-    ///     Gets the current retry options, checking for updated ones in Properties.
+    ///     Gets current retry options, checking for updated ones in Properties.
     /// </summary>
     /// <param name="context">The pipeline context.</param>
     /// <returns>The current retry options.</returns>
@@ -199,7 +199,7 @@ public static class PipelineContextRetryDelayExtensions
         var backoffConfig = new ExponentialBackoffConfiguration(
             baseDelay, multiplier, maxDelay ?? TimeSpan.FromMinutes(5));
 
-        var jitterConfig = new NoJitterConfiguration();
+        var jitterConfig = new DecorrelatedJitterConfiguration(TimeSpan.FromMinutes(1), 3.0);
         var strategyConfig = new RetryDelayStrategyConfiguration(backoffConfig, jitterConfig);
 
         // Store the updated retry options in Properties since RetryOptions is read-only
@@ -251,7 +251,7 @@ public static class PipelineContextRetryDelayExtensions
         var backoffConfig = new LinearBackoffConfiguration(
             baseDelay, increment, maxDelay ?? TimeSpan.FromMinutes(5));
 
-        var jitterConfig = new NoJitterConfiguration();
+        var jitterConfig = new DecorrelatedJitterConfiguration(TimeSpan.FromMinutes(1), 3.0);
         var strategyConfig = new RetryDelayStrategyConfiguration(backoffConfig, jitterConfig);
 
         // Store the updated retry options in Properties since RetryOptions is read-only
@@ -293,7 +293,7 @@ public static class PipelineContextRetryDelayExtensions
             throw new ArgumentException("Delay must be positive", nameof(delay));
 
         var backoffConfig = new FixedDelayConfiguration(delay);
-        var jitterConfig = new NoJitterConfiguration();
+        var jitterConfig = new DecorrelatedJitterConfiguration(TimeSpan.FromMinutes(1), 3.0);
         var strategyConfig = new RetryDelayStrategyConfiguration(backoffConfig, jitterConfig);
 
         // Store the updated retry options in Properties since RetryOptions is read-only
@@ -313,7 +313,6 @@ public static class PipelineContextRetryDelayExtensions
     /// <param name="baseDelay">The base delay for exponential backoff.</param>
     /// <param name="multiplier">The multiplier for exponential backoff.</param>
     /// <param name="maxDelay">The maximum delay for exponential backoff.</param>
-    /// <param name="jitterMax">The maximum jitter to apply.</param>
     /// <returns>The pipeline context for method chaining.</returns>
     /// <exception cref="ArgumentNullException">Thrown when context is null.</exception>
     /// <exception cref="ArgumentException">Thrown when parameters are invalid.</exception>
@@ -332,8 +331,7 @@ public static class PipelineContextRetryDelayExtensions
         this PipelineContext context,
         TimeSpan baseDelay,
         double multiplier = 2.0,
-        TimeSpan? maxDelay = null,
-        TimeSpan? jitterMax = null)
+        TimeSpan? maxDelay = null)
     {
         ArgumentNullException.ThrowIfNull(context);
 
@@ -346,7 +344,7 @@ public static class PipelineContextRetryDelayExtensions
         var backoffConfig = new ExponentialBackoffConfiguration(
             baseDelay, multiplier, maxDelay ?? TimeSpan.FromMinutes(5));
 
-        var jitterConfig = new EqualJitterConfiguration();
+        var jitterConfig = new DecorrelatedJitterConfiguration(TimeSpan.FromMinutes(1), 3.0);
         var strategyConfig = new RetryDelayStrategyConfiguration(backoffConfig, jitterConfig);
 
         // Store the updated retry options in Properties since RetryOptions is read-only

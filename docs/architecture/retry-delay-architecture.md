@@ -75,7 +75,7 @@ Each configuration:
 
 ### 2. Jitter Strategies
 
-Jitter strategies add randomness to backoff delays to prevent synchronized retries.
+Jitter strategies add randomness to backoff delays to prevent synchronized retries. The implementation has been simplified to use delegate-based strategies instead of interface-based classes.
 
 ```mermaid
 graph TD
@@ -87,10 +87,10 @@ graph TD
     end
     
     subgraph "Jitter Strategy Implementation"
-        F[IJitterStrategy<br>Interface] --> G[FullJitterStrategy]
-        F --> H[EqualJitterStrategy]
-        F --> I[DecorrelatedJitterStrategy]
-        F --> J[NoJitterStrategy]
+        F[JitterStrategy<br>Delegate Type] --> G[JitterStrategies.FullJitter()]
+        F --> H[JitterStrategies.EqualJitter()]
+        F --> I[JitterStrategies.DecorrelatedJitter()]
+        F --> J[JitterStrategies.NoJitter()]
     end
     
     subgraph "Jitter Application"
@@ -134,14 +134,14 @@ IBackoffStrategy
 ├── LinearBackoffStrategy
 └── FixedDelayStrategy
 
-IJitterStrategy
-├── FullJitterStrategy
-├── EqualJitterStrategy
-├── DecorrelatedJitterStrategy
-└── NoJitterStrategy
+JitterStrategy (Delegate)
+├── JitterStrategies.FullJitter()
+├── JitterStrategies.EqualJitter()
+├── JitterStrategies.DecorrelatedJitter()
+└── JitterStrategies.NoJitter()
 ```
 
-These implement the mathematical formulas for delay calculation.
+These implement the mathematical formulas for delay calculation. The jitter strategies are now implemented as static methods that return delegates, providing a more streamlined API while maintaining the same functionality.
 
 ### 4. Composite Strategy
 
@@ -149,7 +149,7 @@ These implement the mathematical formulas for delay calculation.
 IRetryDelayStrategy
 └── CompositeRetryDelayStrategy
     ├── Combines: IBackoffStrategy
-    ├── Combines: IJitterStrategy (optional)
+    ├── Combines: JitterStrategy (optional)
     └── Handles: Cancellation, async execution
 ```
 
@@ -218,7 +218,7 @@ Combines backoff and jitter into a single strategy:
 public class CompositeRetryDelayStrategy : IRetryDelayStrategy
 {
     private readonly IBackoffStrategy _backoff;
-    private readonly IJitterStrategy _jitter;
+    private readonly JitterStrategy _jitter;
     
     public async ValueTask<TimeSpan> GetDelayAsync(int attemptNumber)
     {
@@ -227,7 +227,7 @@ public class CompositeRetryDelayStrategy : IRetryDelayStrategy
         
         // Apply jitter if present
         if (_jitter != null)
-            return _jitter.ApplyJitter(baseDelay, _random);
+            return _jitter(baseDelay, _random);
         
         return baseDelay;
     }
@@ -243,7 +243,7 @@ public class DefaultRetryDelayStrategyFactory
 {
     public IRetryDelayStrategy CreateExponentialBackoff(
         ExponentialBackoffConfiguration config,
-        IJitterStrategy jitterStrategy = null)
+        JitterStrategy jitterStrategy = null)
     {
         config.Validate();
         var backoff = new ExponentialBackoffStrategy(config);
@@ -403,16 +403,48 @@ public class ExtendedFactory : DefaultRetryDelayStrategyFactory
 ### Adding Custom Jitter Strategy
 
 ```csharp
+// Create a custom jitter delegate
+JitterStrategy customJitter = (baseDelay, random) =>
+{
+    // Your custom jitter calculation logic
+    var jitterMs = random.NextDouble() * baseDelay.TotalMilliseconds * 0.1;
+    return TimeSpan.FromMilliseconds(jitterMs);
+};
+
+// Use with configuration
+var config = new CustomJitterConfiguration();
+var jitter = JitterStrategies.Custom(config);
+
+// Or use directly with backoff
+var backoff = new ExponentialBackoffStrategy(config);
+var composite = new CompositeRetryDelayStrategy(backoff, customJitter);
+```
+
+For configuration-based custom jitter:
+
+```csharp
 public class CustomJitterConfiguration : JitterStrategyConfiguration
 {
-    public override void Validate() { }
+    public double JitterFactor { get; init; } = 0.1;
+    
+    public override void Validate()
+    {
+        if (JitterFactor < 0 || JitterFactor > 1.0)
+            throw new ArgumentException("JitterFactor must be between 0 and 1.0");
+    }
 }
 
-public class CustomJitterStrategy : IJitterStrategy
+// Extend JitterStrategies with a static method
+public static class JitterStrategies
 {
-    public TimeSpan ApplyJitter(TimeSpan baseDelay, Random random)
+    public static JitterStrategy Custom(CustomJitterConfiguration config)
     {
-        // Your jitter calculation logic
+        config.Validate();
+        return (baseDelay, random) =>
+        {
+            var jitterMs = random.NextDouble() * baseDelay.TotalMilliseconds * config.JitterFactor;
+            return TimeSpan.FromMilliseconds(jitterMs);
+        };
     }
 }
 ```
@@ -493,7 +525,7 @@ public void ExponentialBackoff_WithValidConfig_CalculatesCorrectly()
 public async Task CompositeStrategy_WithBackoffAndJitter_WorksTogether()
 {
     var backoff = new ExponentialBackoffStrategy(...);
-    var jitter = new FullJitterStrategy(...);
+    var jitter = JitterStrategies.FullJitter();
     var composite = new CompositeRetryDelayStrategy(backoff, jitter);
     
     var delay = await composite.GetDelayAsync(1);

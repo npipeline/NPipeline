@@ -184,12 +184,11 @@ public async Task TestJitterDistribution()
         multiplier: 2.0,
         maxDelay: TimeSpan.FromMinutes(1));
 
-    var jitterConfig = new FullJitterConfiguration();
+    var jitter = JitterStrategies.FullJitter();
     var random = new Random(42); // Fixed seed for reproducibility
 
     var factory = new DefaultRetryDelayStrategyFactory();
-    var jitterStrategy = factory.CreateFullJitter(jitterConfig);
-    var strategy = factory.CreateExponentialBackoff(config, jitterStrategy);
+    var strategy = factory.CreateExponentialBackoff(config, jitter);
 
     // Test multiple attempts with same seed
     var delays = new List<TimeSpan>();
@@ -496,6 +495,24 @@ var composed = new ComposedRetryStrategy(
         fixedDelay             // Attempts 6+
     },
     attempt => attempt / 3);   // Switch strategy every 3 attempts
+```
+
+### Custom Jitter Strategy
+
+Create custom jitter strategies using the delegate pattern:
+
+```csharp
+// Custom jitter implementation
+JitterStrategy customJitter = (baseDelay, random) =>
+{
+    // Your custom jitter calculation logic
+    var jitterMs = random.NextDouble() * baseDelay.TotalMilliseconds * 0.1;
+    return TimeSpan.FromMilliseconds(jitterMs);
+};
+
+// Use with existing backoff strategy
+var backoff = new ExponentialBackoffStrategy(config);
+var composite = new CompositeRetryDelayStrategy(backoff, customJitter);
 ```
 
 ## Best Practices Summary

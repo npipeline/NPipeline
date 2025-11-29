@@ -5,33 +5,24 @@ namespace NPipeline.Configuration.RetryDelay;
 /// </summary>
 /// <remarks>
 ///     <para>
-///         Equal jitter splits the delay into two equal parts: one deterministic
-///         and one random, providing a balance between predictability and randomness.
-///         This strategy is effective when you want some jitter while maintaining
-///         a minimum guaranteed delay between retries.
+///         Equal jitter splits the delay into two equal parts,
+///         keeping one part fixed and applying jitter to the other.
+///         This provides a balance between predictability and randomness.
 ///     </para>
 ///     <para>
-///         The formula used is: jitteredDelay = (baseDelay / 2) + random.Next(0, baseDelay / 2)
+///         This strategy is useful when you want some jitter
+///         but still maintain a minimum delay for responsiveness.
 ///     </para>
 /// </remarks>
 public sealed record EqualJitterConfiguration : JitterStrategyConfiguration
 {
-    /// <summary>
-    ///     Gets the strategy type identifier for equal jitter.
-    /// </summary>
+    /// <inheritdoc />
     public override string StrategyType => "EqualJitter";
 
-    /// <summary>
-    ///     Validates the configuration parameters.
-    /// </summary>
-    /// <exception cref="ArgumentException">Thrown when any parameter is invalid.</exception>
-    /// <remarks>
-    ///     Equal jitter doesn't require any specific configuration parameters,
-    ///     so this method is provided for consistency with other jitter strategies.
-    /// </remarks>
+    /// <inheritdoc />
     public override void Validate()
     {
-        // Equal jitter doesn't require any configuration parameters
-        // This method is provided for consistency with other jitter strategies
+        // Equal jitter has no configurable parameters
+        // No validation needed
     }
 }

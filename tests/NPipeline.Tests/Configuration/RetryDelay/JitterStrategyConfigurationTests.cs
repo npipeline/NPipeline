@@ -1,52 +1,65 @@
 using AwesomeAssertions;
-using NPipeline.Execution.RetryDelay.Jitter;
+using NPipeline.Execution.RetryDelay;
 
 namespace NPipeline.Tests.Configuration.RetryDelay;
 
 public sealed class JitterStrategyConfigurationTests
 {
-    #region FullJitterConfiguration Tests
+    #region FullJitterStrategy Tests
 
     [Fact]
-    public void FullJitterConfiguration_DefaultValues_ShouldBeValid()
+    public void FullJitterStrategy_ShouldBeValid()
     {
         // Arrange & Act
-        var configuration = new FullJitterConfiguration();
+        var jitterStrategy = JitterStrategies.FullJitter();
 
-        // Assert - Full jitter doesn't have any configurable properties
-        // Should not throw when validating defaults
-        var validateAction = () => configuration.Validate();
-        _ = validateAction.Should().NotThrow();
+        // Assert - Full jitter should be a valid delegate
+        _ = jitterStrategy.Should().NotBeNull();
+
+        // Should not throw when executing with valid inputs
+        var action = () => jitterStrategy(TimeSpan.FromSeconds(1), new Random());
+        _ = action.Should().NotThrow();
     }
 
     [Fact]
-    public void FullJitterConfiguration_Validate_ShouldAlwaysSucceed()
+    public void FullJitterStrategy_WithVariousInputs_ShouldReturnValidTimeSpan()
     {
         // Arrange
-        var configuration = new FullJitterConfiguration();
+        var jitterStrategy = JitterStrategies.FullJitter();
+        var random = new Random(42); // Fixed seed for reproducible tests
 
         // Act & Assert
-        var validateAction = () => configuration.Validate();
-        _ = validateAction.Should().NotThrow();
+        var result1 = jitterStrategy(TimeSpan.FromMilliseconds(100), random);
+        var result2 = jitterStrategy(TimeSpan.FromSeconds(1), random);
+        var result3 = jitterStrategy(TimeSpan.FromMinutes(1), random);
+
+        // All results should be positive and less than or equal to the input
+        _ = result1.Should().BeGreaterThan(TimeSpan.Zero);
+        _ = result1.Should().BeLessThanOrEqualTo(TimeSpan.FromMilliseconds(100));
+
+        _ = result2.Should().BeGreaterThan(TimeSpan.Zero);
+        _ = result2.Should().BeLessThanOrEqualTo(TimeSpan.FromSeconds(1));
+
+        _ = result3.Should().BeGreaterThan(TimeSpan.Zero);
+        _ = result3.Should().BeLessThanOrEqualTo(TimeSpan.FromMinutes(1));
     }
 
     #endregion
 
-    #region DecorrelatedJitterConfiguration Tests
+    #region DecorrelatedJitterStrategy Tests
 
     [Fact]
-    public void DecorrelatedJitterConfiguration_DefaultValues_ShouldBeValid()
+    public void DecorrelatedJitterStrategy_DefaultValues_ShouldBeValid()
     {
         // Arrange & Act
-        var configuration = new DecorrelatedJitterConfiguration();
+        var jitterStrategy = JitterStrategies.DecorrelatedJitter(TimeSpan.FromMinutes(1));
 
         // Assert
-        _ = configuration.MaxDelay.Should().Be(TimeSpan.FromMinutes(1));
-        _ = configuration.Multiplier.Should().Be(3.0);
+        _ = jitterStrategy.Should().NotBeNull();
 
-        // Should not throw when validating defaults
-        var validateAction = () => configuration.Validate();
-        _ = validateAction.Should().NotThrow();
+        // Should not throw when executing with valid inputs
+        var action = () => jitterStrategy(TimeSpan.FromSeconds(1), new Random());
+        _ = action.Should().NotThrow();
     }
 
     [Theory]
@@ -56,18 +69,18 @@ public sealed class JitterStrategyConfigurationTests
     [InlineData(1000000000)] // 100 milliseconds
     [InlineData(10000000000)] // 1 second
     [InlineData(60000000000)] // 1 minute
-    public void DecorrelatedJitterConfiguration_WithValidMaxDelay_ShouldValidate(long maxDelayTicks)
+    public void DecorrelatedJitterStrategy_WithValidMaxDelay_ShouldValidate(long maxDelayTicks)
     {
         // Arrange
-        var configuration = new DecorrelatedJitterConfiguration
-        {
-            MaxDelay = TimeSpan.FromTicks(maxDelayTicks),
-            Multiplier = 3.0,
-        };
+        var maxDelay = TimeSpan.FromTicks(maxDelayTicks);
+        var jitterStrategy = JitterStrategies.DecorrelatedJitter(maxDelay);
 
         // Act & Assert
-        var validateAction = () => configuration.Validate();
-        _ = validateAction.Should().NotThrow();
+        _ = jitterStrategy.Should().NotBeNull();
+
+        // Should not throw when executing with valid inputs
+        var action = () => jitterStrategy(TimeSpan.FromSeconds(1), new Random());
+        _ = action.Should().NotThrow();
     }
 
     [Theory]
@@ -75,21 +88,17 @@ public sealed class JitterStrategyConfigurationTests
     [InlineData(-1)] // Negative
     [InlineData(-1000)] // Negative microsecond
     [InlineData(long.MinValue)] // Very negative
-    public void DecorrelatedJitterConfiguration_WithInvalidMaxDelay_ShouldThrowArgumentException(long maxDelayTicks)
+    public void DecorrelatedJitterStrategy_WithInvalidMaxDelay_ShouldThrowArgumentException(long maxDelayTicks)
     {
         // Arrange
-        var configuration = new DecorrelatedJitterConfiguration
-        {
-            MaxDelay = TimeSpan.FromTicks(maxDelayTicks),
-            Multiplier = 3.0,
-        };
+        var maxDelay = TimeSpan.FromTicks(maxDelayTicks);
 
         // Act & Assert
-        var validateAction = () => configuration.Validate();
+        var action = () => JitterStrategies.DecorrelatedJitter(maxDelay);
 
-        _ = validateAction.Should().Throw<ArgumentException>()
+        _ = action.Should().Throw<ArgumentException>()
             .WithMessage("*MaxDelay must be a positive TimeSpan*")
-            .And.ParamName.Should().Be("MaxDelay");
+            .And.ParamName.Should().Be("maxDelay");
     }
 
     [Theory]
@@ -100,18 +109,18 @@ public sealed class JitterStrategyConfigurationTests
     [InlineData(5.0)] // Larger multiplier
     [InlineData(10.0)] // Large multiplier
     [InlineData(100.0)] // Very large multiplier
-    public void DecorrelatedJitterConfiguration_WithValidMultiplier_ShouldValidate(double multiplier)
+    public void DecorrelatedJitterStrategy_WithValidMultiplier_ShouldValidate(double multiplier)
     {
         // Arrange
-        var configuration = new DecorrelatedJitterConfiguration
-        {
-            MaxDelay = TimeSpan.FromMinutes(1),
-            Multiplier = multiplier,
-        };
+        var maxDelay = TimeSpan.FromMinutes(1);
+        var jitterStrategy = JitterStrategies.DecorrelatedJitter(maxDelay, multiplier);
 
         // Act & Assert
-        var validateAction = () => configuration.Validate();
-        _ = validateAction.Should().NotThrow();
+        _ = jitterStrategy.Should().NotBeNull();
+
+        // Should not throw when executing with valid inputs
+        var action = () => jitterStrategy(TimeSpan.FromSeconds(1), new Random());
+        _ = action.Should().NotThrow();
     }
 
     [Theory]
@@ -121,100 +130,118 @@ public sealed class JitterStrategyConfigurationTests
     [InlineData(-1.0)] // Negative
     [InlineData(-10.0)] // More negative
     [InlineData(double.MinValue)] // Very negative
-    public void DecorrelatedJitterConfiguration_WithInvalidMultiplier_ShouldThrowArgumentException(double multiplier)
+    public void DecorrelatedJitterStrategy_WithInvalidMultiplier_ShouldThrowArgumentException(double multiplier)
     {
         // Arrange
-        var configuration = new DecorrelatedJitterConfiguration
-        {
-            MaxDelay = TimeSpan.FromMinutes(1),
-            Multiplier = multiplier,
-        };
+        var maxDelay = TimeSpan.FromMinutes(1);
 
         // Act & Assert
-        var validateAction = () => configuration.Validate();
+        var action = () => JitterStrategies.DecorrelatedJitter(maxDelay, multiplier);
 
-        _ = validateAction.Should().Throw<ArgumentException>()
+        _ = action.Should().Throw<ArgumentException>()
             .WithMessage("*Multiplier must be greater than or equal to 1.0*")
-            .And.ParamName.Should().Be("Multiplier");
+            .And.ParamName.Should().Be("multiplier");
     }
 
     #endregion
 
-    #region EqualJitterConfiguration Tests
+    #region EqualJitterStrategy Tests
 
     [Fact]
-    public void EqualJitterConfiguration_DefaultValues_ShouldBeValid()
+    public void EqualJitterStrategy_ShouldBeValid()
     {
         // Arrange & Act
-        var configuration = new EqualJitterConfiguration();
+        var jitterStrategy = JitterStrategies.EqualJitter();
 
-        // Assert - Equal jitter doesn't have any configurable properties
-        // Should not throw when validating defaults
-        var validateAction = () => configuration.Validate();
-        _ = validateAction.Should().NotThrow();
+        // Assert - Equal jitter should be a valid delegate
+        _ = jitterStrategy.Should().NotBeNull();
+
+        // Should not throw when executing with valid inputs
+        var action = () => jitterStrategy(TimeSpan.FromSeconds(1), new Random());
+        _ = action.Should().NotThrow();
     }
 
     [Fact]
-    public void EqualJitterConfiguration_Validate_ShouldAlwaysSucceed()
+    public void EqualJitterStrategy_WithVariousInputs_ShouldReturnValidTimeSpan()
     {
         // Arrange
-        var configuration = new EqualJitterConfiguration();
+        var jitterStrategy = JitterStrategies.EqualJitter();
+        var random = new Random(42); // Fixed seed for reproducible tests
 
         // Act & Assert
-        var validateAction = () => configuration.Validate();
-        _ = validateAction.Should().NotThrow();
+        var result1 = jitterStrategy(TimeSpan.FromMilliseconds(100), random);
+        var result2 = jitterStrategy(TimeSpan.FromSeconds(1), random);
+        var result3 = jitterStrategy(TimeSpan.FromMinutes(1), random);
+
+        // All results should be positive and less than or equal to the input
+        _ = result1.Should().BeGreaterThan(TimeSpan.Zero);
+        _ = result1.Should().BeLessThanOrEqualTo(TimeSpan.FromMilliseconds(100));
+
+        _ = result2.Should().BeGreaterThan(TimeSpan.Zero);
+        _ = result2.Should().BeLessThanOrEqualTo(TimeSpan.FromSeconds(1));
+
+        _ = result3.Should().BeGreaterThan(TimeSpan.Zero);
+        _ = result3.Should().BeLessThanOrEqualTo(TimeSpan.FromMinutes(1));
     }
 
     #endregion
 
-    #region NoJitterConfiguration Tests
+    #region NoJitterStrategy Tests
 
     [Fact]
-    public void NoJitterConfiguration_DefaultValues_ShouldBeValid()
+    public void NoJitterStrategy_ShouldBeValid()
     {
         // Arrange & Act
-        var configuration = new NoJitterConfiguration();
+        var jitterStrategy = JitterStrategies.NoJitter();
 
-        // Assert - No jitter doesn't have any configurable properties
-        // Should not throw when validating defaults
-        var validateAction = () => configuration.Validate();
-        _ = validateAction.Should().NotThrow();
+        // Assert - No jitter should be a valid delegate
+        _ = jitterStrategy.Should().NotBeNull();
+
+        // Should not throw when executing with valid inputs
+        var action = () => jitterStrategy(TimeSpan.FromSeconds(1), new Random());
+        _ = action.Should().NotThrow();
     }
 
     [Fact]
-    public void NoJitterConfiguration_Validate_ShouldAlwaysSucceed()
+    public void NoJitterStrategy_WithVariousInputs_ShouldReturnInputTimeSpan()
     {
         // Arrange
-        var configuration = new NoJitterConfiguration();
+        var jitterStrategy = JitterStrategies.NoJitter();
+        var random = new Random(42); // Fixed seed for reproducible tests
 
         // Act & Assert
-        var validateAction = () => configuration.Validate();
-        _ = validateAction.Should().NotThrow();
+        var input1 = TimeSpan.FromMilliseconds(100);
+        var input2 = TimeSpan.FromSeconds(1);
+        var input3 = TimeSpan.FromMinutes(1);
+
+        var result1 = jitterStrategy(input1, random);
+        var result2 = jitterStrategy(input2, random);
+        var result3 = jitterStrategy(input3, random);
+
+        // No jitter should return the input TimeSpan exactly
+        _ = result1.Should().Be(input1);
+        _ = result2.Should().Be(input2);
+        _ = result3.Should().Be(input3);
     }
 
     #endregion
 
-    #region Cross-Configuration Tests
+    #region Cross-Strategy Tests
 
     [Fact]
-    public void AllJitterConfigurations_WithVeryLargeValues_ShouldValidate()
+    public void AllJitterStrategies_WithVeryLargeValues_ShouldValidate()
     {
         // Arrange
-        var decorrelatedConfig = new DecorrelatedJitterConfiguration
-        {
-            MaxDelay = TimeSpan.FromDays(30), // 30 days
-            Multiplier = 100.0,
-        };
-
-        var fullConfig = new FullJitterConfiguration();
-        var equalConfig = new EqualJitterConfiguration();
-        var noConfig = new NoJitterConfiguration();
+        var decorrelatedStrategy = JitterStrategies.DecorrelatedJitter(TimeSpan.FromDays(30), 100.0);
+        var fullStrategy = JitterStrategies.FullJitter();
+        var equalStrategy = JitterStrategies.EqualJitter();
+        var noStrategy = JitterStrategies.NoJitter();
 
         // Act & Assert
-        var validateDecorrelated = () => decorrelatedConfig.Validate();
-        var validateFull = () => fullConfig.Validate();
-        var validateEqual = () => equalConfig.Validate();
-        var validateNo = () => noConfig.Validate();
+        var validateDecorrelated = () => decorrelatedStrategy(TimeSpan.FromSeconds(1), new Random());
+        var validateFull = () => fullStrategy(TimeSpan.FromSeconds(1), new Random());
+        var validateEqual = () => equalStrategy(TimeSpan.FromSeconds(1), new Random());
+        var validateNo = () => noStrategy(TimeSpan.FromSeconds(1), new Random());
 
         _ = validateDecorrelated.Should().NotThrow();
         _ = validateFull.Should().NotThrow();
@@ -223,24 +250,19 @@ public sealed class JitterStrategyConfigurationTests
     }
 
     [Fact]
-    public void AllJitterConfigurations_WithVerySmallValues_ShouldValidate()
+    public void AllJitterStrategies_WithVerySmallValues_ShouldValidate()
     {
         // Arrange
-        var decorrelatedConfig = new DecorrelatedJitterConfiguration
-        {
-            MaxDelay = TimeSpan.FromTicks(1), // Smallest possible
-            Multiplier = 1.0,
-        };
-
-        var fullConfig = new FullJitterConfiguration();
-        var equalConfig = new EqualJitterConfiguration();
-        var noConfig = new NoJitterConfiguration();
+        var decorrelatedStrategy = JitterStrategies.DecorrelatedJitter(TimeSpan.FromTicks(1), 1.0);
+        var fullStrategy = JitterStrategies.FullJitter();
+        var equalStrategy = JitterStrategies.EqualJitter();
+        var noStrategy = JitterStrategies.NoJitter();
 
         // Act & Assert
-        var validateDecorrelated = () => decorrelatedConfig.Validate();
-        var validateFull = () => fullConfig.Validate();
-        var validateEqual = () => equalConfig.Validate();
-        var validateNo = () => noConfig.Validate();
+        var validateDecorrelated = () => decorrelatedStrategy(TimeSpan.FromTicks(1), new Random());
+        var validateFull = () => fullStrategy(TimeSpan.FromTicks(1), new Random());
+        var validateEqual = () => equalStrategy(TimeSpan.FromTicks(1), new Random());
+        var validateNo = () => noStrategy(TimeSpan.FromTicks(1), new Random());
 
         _ = validateDecorrelated.Should().NotThrow();
         _ = validateFull.Should().NotThrow();
@@ -249,27 +271,27 @@ public sealed class JitterStrategyConfigurationTests
     }
 
     [Fact]
-    public void AllJitterConfigurations_WithBoundaryMultiplierValues_ShouldValidate()
+    public void AllJitterStrategies_WithBoundaryMultiplierValues_ShouldValidate()
     {
         // Arrange
-        var decorrelatedConfig1 = new DecorrelatedJitterConfiguration
-        {
-            MaxDelay = TimeSpan.FromMinutes(1),
-            Multiplier = 1.0, // Minimum valid
-        };
-
-        var decorrelatedConfig2 = new DecorrelatedJitterConfiguration
-        {
-            MaxDelay = TimeSpan.FromMinutes(1),
-            Multiplier = double.MaxValue, // Maximum possible
-        };
+        var decorrelatedStrategy1 = JitterStrategies.DecorrelatedJitter(TimeSpan.FromMinutes(1), 1.0);
+        var decorrelatedStrategy2 = JitterStrategies.DecorrelatedJitter(TimeSpan.FromMinutes(1), double.MaxValue);
+        var fullStrategy = JitterStrategies.FullJitter();
+        var equalStrategy = JitterStrategies.EqualJitter();
+        var noStrategy = JitterStrategies.NoJitter();
 
         // Act & Assert
-        var validate1 = () => decorrelatedConfig1.Validate();
-        var validate2 = () => decorrelatedConfig2.Validate();
+        var validate1 = () => decorrelatedStrategy1(TimeSpan.FromSeconds(1), new Random());
+        var validate2 = () => decorrelatedStrategy2(TimeSpan.FromSeconds(1), new Random());
+        var validateFull = () => fullStrategy(TimeSpan.FromSeconds(1), new Random());
+        var validateEqual = () => equalStrategy(TimeSpan.FromSeconds(1), new Random());
+        var validateNo = () => noStrategy(TimeSpan.FromSeconds(1), new Random());
 
         _ = validate1.Should().NotThrow();
         _ = validate2.Should().NotThrow();
+        _ = validateFull.Should().NotThrow();
+        _ = validateEqual.Should().NotThrow();
+        _ = validateNo.Should().NotThrow();
     }
 
     [Theory]
@@ -280,41 +302,37 @@ public sealed class JitterStrategyConfigurationTests
     [InlineData(2.5)] // Half fraction
     [InlineData(10.0)] // Round number
     [InlineData(10.5)] // Round with fraction
-    public void DecorrelatedJitterConfiguration_WithFractionalMultipliers_ShouldValidate(double multiplier)
+    public void DecorrelatedJitterStrategy_WithFractionalMultipliers_ShouldValidate(double multiplier)
     {
         // Arrange
-        var configuration = new DecorrelatedJitterConfiguration
-        {
-            MaxDelay = TimeSpan.FromMinutes(1),
-            Multiplier = multiplier,
-        };
+        var jitterStrategy = JitterStrategies.DecorrelatedJitter(TimeSpan.FromMinutes(1), multiplier);
 
         // Act & Assert
-        var validateAction = () => configuration.Validate();
+        var validateAction = () => jitterStrategy(TimeSpan.FromSeconds(1), new Random());
         _ = validateAction.Should().NotThrow();
     }
 
     [Fact]
-    public void AllJitterConfigurations_ShouldHaveConsistentValidationPattern()
+    public void AllJitterStrategies_ShouldHaveConsistentBehavior()
     {
         // Arrange
-        var fullConfig = new FullJitterConfiguration();
-        var equalConfig = new EqualJitterConfiguration();
-        var noConfig = new NoJitterConfiguration();
+        var fullStrategy = JitterStrategies.FullJitter();
+        var equalStrategy = JitterStrategies.EqualJitter();
+        var noStrategy = JitterStrategies.NoJitter();
 
-        // Act & Assert - All should validate without throwing
-        var validateFull = () => fullConfig.Validate();
-        var validateEqual = () => equalConfig.Validate();
-        var validateNo = () => noConfig.Validate();
+        // Act & Assert - All should be valid delegates
+        _ = fullStrategy.Should().NotBeNull();
+        _ = equalStrategy.Should().NotBeNull();
+        _ = noStrategy.Should().NotBeNull();
+
+        // All should execute without throwing
+        var validateFull = () => fullStrategy(TimeSpan.FromSeconds(1), new Random());
+        var validateEqual = () => equalStrategy(TimeSpan.FromSeconds(1), new Random());
+        var validateNo = () => noStrategy(TimeSpan.FromSeconds(1), new Random());
 
         _ = validateFull.Should().NotThrow();
         _ = validateEqual.Should().NotThrow();
         _ = validateNo.Should().NotThrow();
-
-        // All non-parameterized configurations should have Validate methods for consistency
-        _ = fullConfig.Should().BeOfType<FullJitterConfiguration>();
-        _ = equalConfig.Should().BeOfType<EqualJitterConfiguration>();
-        _ = noConfig.Should().BeOfType<NoJitterConfiguration>();
     }
 
     #endregion

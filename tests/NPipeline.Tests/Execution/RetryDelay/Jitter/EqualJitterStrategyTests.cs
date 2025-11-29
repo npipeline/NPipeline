@@ -1,40 +1,29 @@
 using AwesomeAssertions;
-using NPipeline.Execution.RetryDelay.Jitter;
+using NPipeline.Execution.RetryDelay;
 
 namespace NPipeline.Tests.Execution.RetryDelay.Jitter;
 
 public sealed class EqualJitterStrategyTests
 {
     [Fact]
-    public void Constructor_WithValidConfiguration_ShouldCreateInstance()
+    public void CreateEqualJitter_ShouldReturnValidDelegate()
     {
-        // Arrange
-        var configuration = new EqualJitterConfiguration();
-
         // Act
-        var strategy = new EqualJitterStrategy(configuration);
+        var strategy = JitterStrategies.EqualJitter();
 
         // Assert
         _ = strategy.Should().NotBeNull();
     }
 
     [Fact]
-    public void Constructor_WithNullConfiguration_ShouldThrowArgumentNullException()
-    {
-        // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => new EqualJitterStrategy(null!));
-    }
-
-    [Fact]
     public void ApplyJitter_WithNullRandom_ShouldThrowArgumentNullException()
     {
         // Arrange
-        var configuration = new EqualJitterConfiguration();
-        var strategy = new EqualJitterStrategy(configuration);
+        var strategy = JitterStrategies.EqualJitter();
         var baseDelay = TimeSpan.FromSeconds(1);
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => strategy.ApplyJitter(baseDelay, null!));
+        _ = Assert.Throws<ArgumentNullException>(() => strategy(baseDelay, null!));
     }
 
     [Theory]
@@ -44,13 +33,12 @@ public sealed class EqualJitterStrategyTests
     public void ApplyJitter_WithNegativeBaseDelay_ShouldReturnZero(int delayMs)
     {
         // Arrange
-        var configuration = new EqualJitterConfiguration();
-        var strategy = new EqualJitterStrategy(configuration);
+        var strategy = JitterStrategies.EqualJitter();
         var baseDelay = TimeSpan.FromMilliseconds(delayMs);
         var random = new Random(42);
 
         // Act
-        var result = strategy.ApplyJitter(baseDelay, random);
+        var result = strategy(baseDelay, random);
 
         // Assert
         _ = result.Should().Be(TimeSpan.Zero);
@@ -60,13 +48,12 @@ public sealed class EqualJitterStrategyTests
     public void ApplyJitter_WithZeroBaseDelay_ShouldReturnZero()
     {
         // Arrange
-        var configuration = new EqualJitterConfiguration();
-        var strategy = new EqualJitterStrategy(configuration);
+        var strategy = JitterStrategies.EqualJitter();
         var baseDelay = TimeSpan.Zero;
         var random = new Random(42);
 
         // Act
-        var result = strategy.ApplyJitter(baseDelay, random);
+        var result = strategy(baseDelay, random);
 
         // Assert
         _ = result.Should().Be(TimeSpan.Zero);
@@ -79,13 +66,12 @@ public sealed class EqualJitterStrategyTests
     public void ApplyJitter_WithPositiveBaseDelay_ShouldReturnDelayInRange(int baseDelayMs)
     {
         // Arrange
-        var configuration = new EqualJitterConfiguration();
-        var strategy = new EqualJitterStrategy(configuration);
+        var strategy = JitterStrategies.EqualJitter();
         var baseDelay = TimeSpan.FromMilliseconds(baseDelayMs);
         var random = new Random(42);
 
         // Act
-        var result = strategy.ApplyJitter(baseDelay, random);
+        var result = strategy(baseDelay, random);
 
         // Assert
         _ = result.Should().BeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(baseDelayMs / 2.0));
@@ -96,13 +82,12 @@ public sealed class EqualJitterStrategyTests
     public void ApplyJitter_WithEvenBaseDelay_ShouldCalculateCorrectly()
     {
         // Arrange
-        var configuration = new EqualJitterConfiguration();
-        var strategy = new EqualJitterStrategy(configuration);
+        var strategy = JitterStrategies.EqualJitter();
         var baseDelay = TimeSpan.FromMilliseconds(1000); // Even number
         var random = new Random(42);
 
         // Act
-        var result = strategy.ApplyJitter(baseDelay, random);
+        var result = strategy(baseDelay, random);
 
         // Assert
         _ = result.Should().BeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(500)); // baseDelay / 2
@@ -113,13 +98,12 @@ public sealed class EqualJitterStrategyTests
     public void ApplyJitter_WithOddBaseDelay_ShouldCalculateCorrectly()
     {
         // Arrange
-        var configuration = new EqualJitterConfiguration();
-        var strategy = new EqualJitterStrategy(configuration);
+        var strategy = JitterStrategies.EqualJitter();
         var baseDelay = TimeSpan.FromMilliseconds(1001); // Odd number
         var random = new Random(42);
 
         // Act
-        var result = strategy.ApplyJitter(baseDelay, random);
+        var result = strategy(baseDelay, random);
 
         // Assert
         _ = result.Should().BeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(500.5)); // baseDelay / 2
@@ -130,8 +114,7 @@ public sealed class EqualJitterStrategyTests
     public void ApplyJitter_WithMultipleCalls_ShouldProduceDifferentResults()
     {
         // Arrange
-        var configuration = new EqualJitterConfiguration();
-        var strategy = new EqualJitterStrategy(configuration);
+        var strategy = JitterStrategies.EqualJitter();
         var baseDelay = TimeSpan.FromMilliseconds(1000);
         var random = new Random();
 
@@ -140,7 +123,7 @@ public sealed class EqualJitterStrategyTests
 
         for (var i = 0; i < 100; i++)
         {
-            results.Add(strategy.ApplyJitter(baseDelay, random));
+            results.Add(strategy(baseDelay, random));
         }
 
         // Assert
@@ -162,15 +145,14 @@ public sealed class EqualJitterStrategyTests
     public void ApplyJitter_WithFixedSeed_ShouldProduceConsistentResults()
     {
         // Arrange
-        var configuration = new EqualJitterConfiguration();
-        var strategy = new EqualJitterStrategy(configuration);
+        var strategy = JitterStrategies.EqualJitter();
         var baseDelay = TimeSpan.FromMilliseconds(1000);
         var random1 = new Random(42);
         var random2 = new Random(42);
 
         // Act
-        var result1 = strategy.ApplyJitter(baseDelay, random1);
-        var result2 = strategy.ApplyJitter(baseDelay, random2);
+        var result1 = strategy(baseDelay, random1);
+        var result2 = strategy(baseDelay, random2);
 
         // Assert
         _ = result1.Should().Be(result2);
@@ -180,13 +162,12 @@ public sealed class EqualJitterStrategyTests
     public void ApplyJitter_WithVerySmallBaseDelay_ShouldHandleEdgeCase()
     {
         // Arrange
-        var configuration = new EqualJitterConfiguration();
-        var strategy = new EqualJitterStrategy(configuration);
+        var strategy = JitterStrategies.EqualJitter();
         var baseDelay = TimeSpan.FromTicks(1); // Smallest possible TimeSpan
         var random = new Random(42);
 
         // Act
-        var result = strategy.ApplyJitter(baseDelay, random);
+        var result = strategy(baseDelay, random);
 
         // Assert
         _ = result.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero); // baseDelay / 2 = 0.5 ticks, rounded down
@@ -197,13 +178,12 @@ public sealed class EqualJitterStrategyTests
     public void ApplyJitter_WithLargeBaseDelay_ShouldHandleCorrectly()
     {
         // Arrange
-        var configuration = new EqualJitterConfiguration();
-        var strategy = new EqualJitterStrategy(configuration);
+        var strategy = JitterStrategies.EqualJitter();
         var baseDelay = TimeSpan.FromMinutes(5); // Large delay
         var random = new Random(42);
 
         // Act
-        var result = strategy.ApplyJitter(baseDelay, random);
+        var result = strategy(baseDelay, random);
 
         // Assert
         _ = result.Should().BeGreaterThanOrEqualTo(TimeSpan.FromMinutes(2.5)); // baseDelay / 2
@@ -214,8 +194,7 @@ public sealed class EqualJitterStrategyTests
     public void ApplyJitter_StatisticalDistribution_ShouldBeInCorrectRange()
     {
         // Arrange
-        var configuration = new EqualJitterConfiguration();
-        var strategy = new EqualJitterStrategy(configuration);
+        var strategy = JitterStrategies.EqualJitter();
         var baseDelay = TimeSpan.FromMilliseconds(1000);
         var random = new Random(42);
 
@@ -224,12 +203,12 @@ public sealed class EqualJitterStrategyTests
 
         for (var i = 0; i < 1000; i++)
         {
-            var jitteredDelay = strategy.ApplyJitter(baseDelay, random);
+            var jitteredDelay = strategy(baseDelay, random);
             results.Add((int)jitteredDelay.TotalMilliseconds);
         }
 
         // Assert
-        // Results should be distributed in the upper half of the range
+        // Results should be distributed in upper half of the range
         results.Min().Should().BeGreaterThanOrEqualTo(500);
         results.Max().Should().BeLessThan(1000);
 
@@ -243,8 +222,7 @@ public sealed class EqualJitterStrategyTests
     public void ApplyJitter_WithConcurrentCalls_ShouldBeThreadSafe()
     {
         // Arrange
-        var configuration = new EqualJitterConfiguration();
-        var strategy = new EqualJitterStrategy(configuration);
+        var strategy = JitterStrategies.EqualJitter();
         var baseDelay = TimeSpan.FromMilliseconds(1000);
         var results = new List<TimeSpan>();
         var lockObject = new object();
@@ -257,7 +235,7 @@ public sealed class EqualJitterStrategyTests
 
             for (var j = 0; j < 100; j++)
             {
-                var result = strategy.ApplyJitter(baseDelay, random);
+                var result = strategy(baseDelay, random);
                 localResults.Add(result);
             }
 
@@ -287,13 +265,12 @@ public sealed class EqualJitterStrategyTests
     public void ApplyJitter_WithVariousBaseDelays_ShouldMaintainCorrectRange(int baseDelayMs)
     {
         // Arrange
-        var configuration = new EqualJitterConfiguration();
-        var strategy = new EqualJitterStrategy(configuration);
+        var strategy = JitterStrategies.EqualJitter();
         var baseDelay = TimeSpan.FromMilliseconds(baseDelayMs);
         var random = new Random(42);
 
         // Act
-        var result = strategy.ApplyJitter(baseDelay, random);
+        var result = strategy(baseDelay, random);
 
         // Assert
         _ = result.Should().BeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(baseDelayMs / 2.0));
@@ -304,13 +281,12 @@ public sealed class EqualJitterStrategyTests
     public void ApplyJitter_WithFractionalBaseDelay_ShouldHandleCorrectly()
     {
         // Arrange
-        var configuration = new EqualJitterConfiguration();
-        var strategy = new EqualJitterStrategy(configuration);
+        var strategy = JitterStrategies.EqualJitter();
         var baseDelay = TimeSpan.FromMilliseconds(123.456);
         var random = new Random(42);
 
         // Act
-        var result = strategy.ApplyJitter(baseDelay, random);
+        var result = strategy(baseDelay, random);
 
         // Assert
         _ = result.Should().BeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(61.728)); // baseDelay / 2

@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using NPipeline.Execution.RetryDelay;
 using NPipeline.Execution.RetryDelay.Backoff;
-using NPipeline.Execution.RetryDelay.Jitter;
 
 namespace NPipeline.Tests.Execution.RetryDelay;
 
@@ -12,7 +11,7 @@ public sealed class CompositeRetryDelayStrategyTests
     {
         // Arrange
         var backoffStrategy = new ExponentialBackoffStrategy(new ExponentialBackoffConfiguration());
-        var jitterStrategy = new FullJitterStrategy(new FullJitterConfiguration());
+        var jitterStrategy = JitterStrategies.FullJitter();
         var random = new Random(42);
 
         // Act
@@ -26,7 +25,7 @@ public sealed class CompositeRetryDelayStrategyTests
     public void Constructor_WithNullBackoffStrategy_ShouldThrowArgumentNullException()
     {
         // Arrange
-        var jitterStrategy = new FullJitterStrategy(new FullJitterConfiguration());
+        var jitterStrategy = JitterStrategies.FullJitter();
         var random = new Random(42);
 
         // Act & Assert
@@ -38,7 +37,7 @@ public sealed class CompositeRetryDelayStrategyTests
     {
         // Arrange
         var backoffStrategy = new ExponentialBackoffStrategy(new ExponentialBackoffConfiguration());
-        var jitterStrategy = new FullJitterStrategy(new FullJitterConfiguration());
+        var jitterStrategy = JitterStrategies.FullJitter();
 
         // Act & Assert
         _ = Assert.Throws<ArgumentNullException>(() => new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, null!));
@@ -63,7 +62,7 @@ public sealed class CompositeRetryDelayStrategyTests
     {
         // Arrange
         var backoffStrategy = new ExponentialBackoffStrategy(new ExponentialBackoffConfiguration());
-        var jitterStrategy = new FullJitterStrategy(new FullJitterConfiguration());
+        var jitterStrategy = JitterStrategies.FullJitter();
         var random = new Random(42);
         var strategy = new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, random);
         var cancellationTokenSource = new CancellationTokenSource();
@@ -83,7 +82,7 @@ public sealed class CompositeRetryDelayStrategyTests
     {
         // Arrange
         var backoffStrategy = new ExponentialBackoffStrategy(new ExponentialBackoffConfiguration());
-        var jitterStrategy = new FullJitterStrategy(new FullJitterConfiguration());
+        var jitterStrategy = JitterStrategies.FullJitter();
         var random = new Random(42);
         var strategy = new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, random);
 
@@ -99,7 +98,7 @@ public sealed class CompositeRetryDelayStrategyTests
     {
         // Arrange
         var backoffStrategy = new FixedDelayStrategy(new FixedDelayConfiguration { Delay = TimeSpan.FromMilliseconds(1000) });
-        var jitterStrategy = new FullJitterStrategy(new FullJitterConfiguration());
+        var jitterStrategy = JitterStrategies.FullJitter();
         var random = new Random(42);
         var strategy = new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, random);
 
@@ -138,7 +137,7 @@ public sealed class CompositeRetryDelayStrategyTests
             Multiplier = 2.0,
         });
 
-        var jitterStrategy = new FullJitterStrategy(new FullJitterConfiguration());
+        var jitterStrategy = JitterStrategies.FullJitter();
         var random = new Random(42);
         var strategy = new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, random);
 
@@ -168,7 +167,7 @@ public sealed class CompositeRetryDelayStrategyTests
             Increment = TimeSpan.FromMilliseconds(50),
         });
 
-        var jitterStrategy = new EqualJitterStrategy(new EqualJitterConfiguration());
+        var jitterStrategy = JitterStrategies.EqualJitter();
         var random = new Random(42);
         var strategy = new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, random);
 
@@ -195,11 +194,7 @@ public sealed class CompositeRetryDelayStrategyTests
         // Arrange
         var backoffStrategy = new FixedDelayStrategy(new FixedDelayConfiguration { Delay = TimeSpan.FromMilliseconds(1000) });
 
-        var jitterStrategy = new DecorrelatedJitterStrategy(new DecorrelatedJitterConfiguration
-        {
-            MaxDelay = TimeSpan.FromMilliseconds(2000),
-            Multiplier = 2.0,
-        });
+        var jitterStrategy = JitterStrategies.DecorrelatedJitter(TimeSpan.FromMilliseconds(2000), 2.0);
 
         var random = new Random(42);
         var strategy = new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, random);
@@ -240,7 +235,7 @@ public sealed class CompositeRetryDelayStrategyTests
     {
         // Arrange
         var backoffStrategy = new FixedDelayStrategy(new FixedDelayConfiguration { Delay = TimeSpan.FromMilliseconds(1000) });
-        var jitterStrategy = new FullJitterStrategy(new FullJitterConfiguration());
+        var jitterStrategy = JitterStrategies.FullJitter();
         var random = new Random(42);
         var strategy = new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, random);
         var results = new List<TimeSpan>();
@@ -294,20 +289,20 @@ public sealed class CompositeRetryDelayStrategyTests
         {
             new
             {
-                Backoff = new ExponentialBackoffStrategy(new ExponentialBackoffConfiguration()),
-                Jitter = new FullJitterStrategy(new FullJitterConfiguration()),
+                Backoff = (IBackoffStrategy)new ExponentialBackoffStrategy(new ExponentialBackoffConfiguration()),
+                Jitter = JitterStrategies.FullJitter(),
                 Name = "Exponential + Full",
             },
             new
             {
-                Backoff = new LinearBackoffStrategy(new LinearBackoffConfiguration()),
-                Jitter = new EqualJitterStrategy(new EqualJitterConfiguration()),
+                Backoff = (IBackoffStrategy)new LinearBackoffStrategy(new LinearBackoffConfiguration()),
+                Jitter = JitterStrategies.EqualJitter(),
                 Name = "Linear + Equal",
             },
             new
             {
-                Backoff = new FixedDelayStrategy(new FixedDelayConfiguration { Delay = TimeSpan.FromMilliseconds(1000) }),
-                Jitter = new DecorrelatedJitterStrategy(new DecorrelatedJitterConfiguration()),
+                Backoff = (IBackoffStrategy)new FixedDelayStrategy(new FixedDelayConfiguration { Delay = TimeSpan.FromMilliseconds(1000) }),
+                Jitter = JitterStrategies.DecorrelatedJitter(TimeSpan.FromMilliseconds(2000)),
                 Name = "Fixed + Decorrelated",
             },
         };
@@ -315,9 +310,13 @@ public sealed class CompositeRetryDelayStrategyTests
         var random = new Random(42);
 
         // Act & Assert
-        foreach (dynamic strategyConfig in strategies)
+        foreach (var strategyConfig in strategies)
         {
-            var strategy = new CompositeRetryDelayStrategy(strategyConfig.Backoff, strategyConfig.Jitter, random);
+            var strategy = new CompositeRetryDelayStrategy(
+                (IBackoffStrategy)strategyConfig.GetType().GetProperty("Backoff")!.GetValue(strategyConfig)!,
+                (JitterStrategy)strategyConfig.GetType().GetProperty("Jitter")!.GetValue(strategyConfig)!,
+                random);
+
             var result = await strategy.GetDelayAsync(0);
 
             // All should return valid delays
@@ -330,7 +329,7 @@ public sealed class CompositeRetryDelayStrategyTests
     {
         // Arrange
         var backoffStrategy = new FixedDelayStrategy(new FixedDelayConfiguration { Delay = TimeSpan.FromMilliseconds(500) });
-        var jitterStrategy = new FullJitterStrategy(new FullJitterConfiguration());
+        var jitterStrategy = JitterStrategies.FullJitter();
         var random = new Random(42);
         var strategy = new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, random);
 
@@ -353,7 +352,7 @@ public sealed class CompositeRetryDelayStrategyTests
             MaxDelay = TimeSpan.FromMilliseconds(10000),
         });
 
-        var jitterStrategy = new FullJitterStrategy(new FullJitterConfiguration());
+        var jitterStrategy = JitterStrategies.FullJitter();
         var random = new Random(42);
         var strategy = new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, random);
 
@@ -371,7 +370,7 @@ public sealed class CompositeRetryDelayStrategyTests
     {
         // Arrange
         var backoffStrategy = new FixedDelayStrategy(new FixedDelayConfiguration { Delay = TimeSpan.FromMilliseconds(1000) });
-        var jitterStrategy = new FullJitterStrategy(new FullJitterConfiguration());
+        var jitterStrategy = JitterStrategies.FullJitter();
         var random1 = new Random(42);
         var random2 = new Random(42);
         var strategy1 = new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, random1);
@@ -390,7 +389,7 @@ public sealed class CompositeRetryDelayStrategyTests
     {
         // Arrange
         var backoffStrategy = new FixedDelayStrategy(new FixedDelayConfiguration { Delay = TimeSpan.FromMilliseconds(1000) });
-        var jitterStrategy = new FullJitterStrategy(new FullJitterConfiguration());
+        var jitterStrategy = JitterStrategies.FullJitter();
         var random1 = new Random(42);
         var random2 = new Random(24); // Different seed
         var strategy1 = new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, random1);

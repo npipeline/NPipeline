@@ -111,11 +111,11 @@ public static class BasicUsageExamples
             1.5, // Slower growth than default 2.0
             TimeSpan.FromSeconds(30));
 
-        var jitterConfig = new EqualJitterConfiguration();
+        var jitterStrategy = JitterStrategies.EqualJitter();
 
         // Combine using extension method
         var retryOptions = PipelineRetryOptions.Default
-            .WithDelayStrategy(backoffConfig, jitterConfig);
+            .WithDelayStrategy(backoffConfig, jitterStrategy);
 
         // Create strategy from configuration
         var factory = new DefaultRetryDelayStrategyFactory();
@@ -134,7 +134,7 @@ public static class BasicUsageExamples
 
     /// <summary>
     ///     Example 5: Using factory to create strategies.
-    ///     Shows how to use the factory for strategy creation.
+    ///     Shows how to use factory for strategy creation.
     /// </summary>
     public static async Task FactoryStrategyCreationExample()
     {
@@ -146,11 +146,12 @@ public static class BasicUsageExamples
             3.0,
             TimeSpan.FromMinutes(2));
 
-        var jitterConfig = new FullJitterConfiguration();
+        var jitterStrategy = JitterStrategies.FullJitter();
 
         // Create composite configuration
         var compositeConfig = new RetryDelayStrategyConfiguration(
-            backoffConfig, jitterConfig);
+            backoffConfig,
+            new DelegateJitterStrategyConfiguration(jitterStrategy));
 
         // Create strategy using factory
         var factory = new DefaultRetryDelayStrategyFactory();
@@ -181,19 +182,19 @@ public static class BasicUsageExamples
                 TimeSpan.FromSeconds(1),
                 2.0,
                 TimeSpan.FromSeconds(16)),
-            new NoJitterConfiguration());
+            new DelegateJitterStrategyConfiguration(JitterStrategies.NoJitter()));
 
         var linearConfig = new RetryDelayStrategyConfiguration(
             new LinearBackoffConfiguration(
                 TimeSpan.FromSeconds(1),
                 TimeSpan.FromSeconds(2),
                 TimeSpan.FromSeconds(16)),
-            new NoJitterConfiguration());
+            new DelegateJitterStrategyConfiguration(JitterStrategies.NoJitter()));
 
         var fixedConfig = new RetryDelayStrategyConfiguration(
             new FixedDelayConfiguration(
                 TimeSpan.FromSeconds(8)),
-            new NoJitterConfiguration());
+            new DelegateJitterStrategyConfiguration(JitterStrategies.NoJitter()));
 
         // Create strategies using factory
         var factory = new DefaultRetryDelayStrategyFactory();

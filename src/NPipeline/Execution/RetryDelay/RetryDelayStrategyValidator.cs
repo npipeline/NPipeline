@@ -1,5 +1,4 @@
 using NPipeline.Execution.RetryDelay.Backoff;
-using NPipeline.Execution.RetryDelay.Jitter;
 
 namespace NPipeline.Execution.RetryDelay;
 
@@ -63,16 +62,6 @@ public static class RetryDelayStrategyValidator
     public static void ValidateBackoffStrategy(IBackoffStrategy backoffStrategy)
     {
         ArgumentNullException.ThrowIfNull(backoffStrategy);
-    }
-
-    /// <summary>
-    ///     Validates a jitter strategy.
-    /// </summary>
-    /// <param name="jitterStrategy">The jitter strategy to validate.</param>
-    /// <exception cref="ArgumentNullException">Thrown when jitterStrategy is null.</exception>
-    public static void ValidateJitterStrategy(IJitterStrategy jitterStrategy)
-    {
-        ArgumentNullException.ThrowIfNull(jitterStrategy);
     }
 
     /// <summary>

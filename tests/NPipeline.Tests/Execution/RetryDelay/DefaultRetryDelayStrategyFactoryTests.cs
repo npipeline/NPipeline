@@ -1,11 +1,6 @@
 using AwesomeAssertions;
 using NPipeline.Configuration.RetryDelay;
 using NPipeline.Execution.RetryDelay;
-using NPipeline.Execution.RetryDelay.Jitter;
-using DecorrelatedJitterConfiguration = NPipeline.Execution.RetryDelay.Jitter.DecorrelatedJitterConfiguration;
-using EqualJitterConfiguration = NPipeline.Execution.RetryDelay.Jitter.EqualJitterConfiguration;
-using FullJitterConfiguration = NPipeline.Execution.RetryDelay.Jitter.FullJitterConfiguration;
-using NoJitterConfiguration = NPipeline.Execution.RetryDelay.Jitter.NoJitterConfiguration;
 
 namespace NPipeline.Tests.Execution.RetryDelay;
 
@@ -60,8 +55,7 @@ public sealed class DefaultRetryDelayStrategyFactoryTests
     {
         // Arrange
         var backoffConfiguration = new ExponentialBackoffConfiguration();
-        var jitterConfiguration = new FullJitterConfiguration();
-        var jitterStrategy = _factory.CreateFullJitter(jitterConfiguration);
+        var jitterStrategy = _factory.CreateFullJitter();
 
         // Act
         var strategy = _factory.CreateExponentialBackoff(backoffConfiguration, jitterStrategy);
@@ -113,8 +107,7 @@ public sealed class DefaultRetryDelayStrategyFactoryTests
     {
         // Arrange
         var backoffConfiguration = new LinearBackoffConfiguration();
-        var jitterConfiguration = new EqualJitterConfiguration();
-        var jitterStrategy = _factory.CreateEqualJitter(jitterConfiguration);
+        var jitterStrategy = _factory.CreateEqualJitter();
 
         // Act
         var strategy = _factory.CreateLinearBackoff(backoffConfiguration, jitterStrategy);
@@ -163,8 +156,7 @@ public sealed class DefaultRetryDelayStrategyFactoryTests
     {
         // Arrange
         var backoffConfiguration = new FixedDelayConfiguration(TimeSpan.FromMilliseconds(1000));
-        var jitterConfiguration = new DecorrelatedJitterConfiguration();
-        var jitterStrategy = _factory.CreateDecorrelatedJitter(jitterConfiguration);
+        var jitterStrategy = _factory.CreateDecorrelatedJitter(TimeSpan.FromSeconds(30));
 
         // Act
         var strategy = _factory.CreateFixedDelay(backoffConfiguration, jitterStrategy);
@@ -206,100 +198,73 @@ public sealed class DefaultRetryDelayStrategyFactoryTests
     }
 
     [Fact]
-    public void CreateFullJitter_WithValidConfiguration_ShouldReturnStrategy()
+    public void CreateFullJitter_ShouldReturnStrategy()
     {
-        // Arrange
-        var configuration = new FullJitterConfiguration();
-
         // Act
-        var strategy = _factory.CreateFullJitter(configuration);
+        var strategy = _factory.CreateFullJitter();
 
         // Assert
         _ = strategy.Should().NotBeNull();
-        _ = strategy.Should().BeOfType<FullJitterStrategy>();
+        _ = strategy.Should().BeOfType<JitterStrategy>();
     }
 
     [Fact]
-    public void CreateFullJitter_WithNullConfiguration_ShouldThrowArgumentNullException()
-    {
-        // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => _factory.CreateFullJitter(null!));
-    }
-
-    [Fact]
-    public void CreateDecorrelatedJitter_WithValidConfiguration_ShouldReturnStrategy()
+    public void CreateDecorrelatedJitter_WithValidParameters_ShouldReturnStrategy()
     {
         // Arrange
-        var configuration = new DecorrelatedJitterConfiguration();
+        var maxDelay = TimeSpan.FromSeconds(30);
+        const double multiplier = 3.0;
 
         // Act
-        var strategy = _factory.CreateDecorrelatedJitter(configuration);
+        var strategy = _factory.CreateDecorrelatedJitter(maxDelay);
 
         // Assert
         _ = strategy.Should().NotBeNull();
-        _ = strategy.Should().BeOfType<DecorrelatedJitterStrategy>();
+        _ = strategy.Should().BeOfType<JitterStrategy>();
     }
 
     [Fact]
-    public void CreateDecorrelatedJitter_WithNullConfiguration_ShouldThrowArgumentNullException()
-    {
-        // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => _factory.CreateDecorrelatedJitter(null!));
-    }
-
-    [Fact]
-    public void CreateDecorrelatedJitter_WithInvalidConfiguration_ShouldThrowArgumentException()
+    public void CreateDecorrelatedJitter_WithInvalidMaxDelay_ShouldThrowArgumentException()
     {
         // Arrange
-        var invalidConfiguration = new DecorrelatedJitterConfiguration
-        {
-            Multiplier = 0.5, // Invalid - less than 1.0
-        };
+        var invalidMaxDelay = TimeSpan.Zero; // Invalid
+        const double multiplier = 3.0;
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentException>(() => _factory.CreateDecorrelatedJitter(invalidConfiguration));
+        _ = Assert.Throws<ArgumentException>(() => _factory.CreateDecorrelatedJitter(invalidMaxDelay));
     }
 
     [Fact]
-    public void CreateEqualJitter_WithValidConfiguration_ShouldReturnStrategy()
+    public void CreateDecorrelatedJitter_WithInvalidMultiplier_ShouldThrowArgumentException()
     {
         // Arrange
-        var configuration = new EqualJitterConfiguration();
+        var maxDelay = TimeSpan.FromSeconds(30);
+        const double invalidMultiplier = 0.5; // Invalid - less than 1.0
 
+        // Act & Assert
+        _ = Assert.Throws<ArgumentException>(() => _factory.CreateDecorrelatedJitter(maxDelay, invalidMultiplier));
+    }
+
+    [Fact]
+    public void CreateEqualJitter_ShouldReturnStrategy()
+    {
         // Act
-        var strategy = _factory.CreateEqualJitter(configuration);
+        var strategy = _factory.CreateEqualJitter();
 
         // Assert
         _ = strategy.Should().NotBeNull();
-        _ = strategy.Should().BeOfType<EqualJitterStrategy>();
+        _ = strategy.Should().BeOfType<JitterStrategy>();
     }
 
     [Fact]
-    public void CreateEqualJitter_WithNullConfiguration_ShouldThrowArgumentNullException()
+    public void CreateNoJitter_ShouldReturnStrategy()
     {
-        // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => _factory.CreateEqualJitter(null!));
-    }
-
-    [Fact]
-    public void CreateNoJitter_WithValidConfiguration_ShouldReturnStrategy()
-    {
-        // Arrange
-        var configuration = new NoJitterConfiguration();
-
         // Act
-        var strategy = _factory.CreateNoJitter(configuration);
+        var strategy = _factory.CreateNoJitter();
 
         // Assert
         _ = strategy.Should().NotBeNull();
-        _ = strategy.Should().BeOfType<NoJitterStrategy>();
-    }
-
-    [Fact]
-    public void CreateNoJitter_WithNullConfiguration_ShouldThrowArgumentNullException()
-    {
-        // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => _factory.CreateNoJitter(null!));
+        _ = strategy.Should().BeOfType<JitterStrategy>();
     }
 
     [Theory]
@@ -362,8 +327,7 @@ public sealed class DefaultRetryDelayStrategyFactoryTests
         var factory = new DefaultRetryDelayStrategyFactory();
 
         var backoffConfiguration = new ExponentialBackoffConfiguration();
-        var jitterConfiguration = new FullJitterConfiguration();
-        var jitterStrategy = factory.CreateFullJitter(jitterConfiguration);
+        var jitterStrategy = factory.CreateFullJitter();
 
         // Act
         var strategy1 = factory.CreateExponentialBackoff(backoffConfiguration, jitterStrategy);
@@ -393,8 +357,7 @@ public sealed class DefaultRetryDelayStrategyFactoryTests
             tasks[i] = Task.Run(async () =>
             {
                 var backoffConfig = new ExponentialBackoffConfiguration();
-                var jitterConfig = new FullJitterConfiguration();
-                var jitterStrategy = _factory.CreateFullJitter(jitterConfig);
+                var jitterStrategy = _factory.CreateFullJitter();
 
                 var strategy = _factory.CreateExponentialBackoff(backoffConfig, jitterStrategy);
                 _ = strategy.Should().NotBeNull();
@@ -415,20 +378,16 @@ public sealed class DefaultRetryDelayStrategyFactoryTests
         var exponentialConfig = new ExponentialBackoffConfiguration();
         var linearConfig = new LinearBackoffConfiguration();
         var fixedConfig = new FixedDelayConfiguration(TimeSpan.FromMilliseconds(200));
-        var fullJitterConfig = new FullJitterConfiguration();
-        var decorrelatedJitterConfig = new DecorrelatedJitterConfiguration();
-        var equalJitterConfig = new EqualJitterConfiguration();
-        var noJitterConfig = new NoJitterConfiguration();
 
         // Act
         var exponentialStrategy = _factory.CreateExponentialBackoff(exponentialConfig);
         var linearStrategy = _factory.CreateLinearBackoff(linearConfig);
         var fixedStrategy = _factory.CreateFixedDelay(fixedConfig);
         var noOpStrategy = _factory.CreateNoOp();
-        var fullJitterStrategy = _factory.CreateFullJitter(fullJitterConfig);
-        var decorrelatedJitterStrategy = _factory.CreateDecorrelatedJitter(decorrelatedJitterConfig);
-        var equalJitterStrategy = _factory.CreateEqualJitter(equalJitterConfig);
-        var noJitterStrategy = _factory.CreateNoJitter(noJitterConfig);
+        var fullJitterStrategy = _factory.CreateFullJitter();
+        var decorrelatedJitterStrategy = _factory.CreateDecorrelatedJitter(TimeSpan.FromSeconds(30));
+        var equalJitterStrategy = _factory.CreateEqualJitter();
+        var noJitterStrategy = _factory.CreateNoJitter();
 
         // Assert
         _ = exponentialStrategy.Should().NotBeNull();
@@ -450,8 +409,7 @@ public sealed class DefaultRetryDelayStrategyFactoryTests
             2.0,
             TimeSpan.FromSeconds(5));
 
-        var jitterConfig = new FullJitterConfiguration();
-        var jitterStrategy = _factory.CreateFullJitter(jitterConfig);
+        var jitterStrategy = _factory.CreateFullJitter();
 
         // Act
         var strategy = _factory.CreateExponentialBackoff(backoffConfig, jitterStrategy);

@@ -287,25 +287,20 @@ context.UseFixedDelay(
 
 ### Available Jitter Strategies
 
-#### Full Jitter
-
-Provides best protection against thundering herd:
+Jitter strategies are now implemented as delegates rather than interfaces, providing a more streamlined API:
 
 ```csharp
-var config = new FullJitterConfiguration();
+// Jitter strategy delegate type
+using JitterStrategy = Func<TimeSpan, Random, TimeSpan>;
+
+// Built-in jitter strategies
+JitterStrategy fullJitter = JitterStrategies.FullJitter();
+JitterStrategy equalJitter = JitterStrategies.EqualJitter();
+JitterStrategy decorrelatedJitter = JitterStrategies.DecorrelatedJitter();
+JitterStrategy noJitter = JitterStrategies.NoJitter();
 ```
 
-**Formula:** `random(0, baseDelay)`
-
-#### Equal Jitter
-
-Balances predictability with randomness:
-
-```csharp
-var config = new EqualJitterConfiguration();
-```
-
-**Formula:** `baseDelay/2 + random(0, baseDelay/2)`
+This delegate approach reduces complexity while maintaining the same functionality. Each jitter strategy takes a base delay and a Random instance, and returns a jittered delay.
 
 #### Decorrelated Jitter
 
@@ -423,17 +418,6 @@ public interface IBackoffStrategy
 
 Determines how delays increase over time based on attempt number.
 
-#### IJitterStrategy
-
-```csharp
-public interface IJitterStrategy
-{
-    TimeSpan ApplyJitter(TimeSpan baseDelay, Random random);
-}
-```
-
-Adds randomness to retry delays to prevent synchronized retries.
-
 ### Strategy Classes
 
 #### ExponentialBackoffStrategy
@@ -474,10 +458,12 @@ Returns the same delay for all attempts.
 
 #### Jitter Strategies
 
-**FullJitterStrategy:** `random(0, baseDelay)`
-**EqualJitterStrategy:** `baseDelay/2 + random(0, baseDelay/2)`
-**DecorrelatedJitterStrategy:** `random(baseDelay, min(maxDelay, previousDelay × multiplier))`
-**NoJitterStrategy:** Returns baseDelay unchanged
+**JitterStrategies.FullJitter():** Returns a delegate that implements `random(0, baseDelay)`
+**JitterStrategies.EqualJitter():** Returns a delegate that implements `baseDelay/2 + random(0, baseDelay/2)`
+**JitterStrategies.DecorrelatedJitter():** Returns a delegate that implements `random(baseDelay, min(maxDelay, previousDelay × multiplier))`
+**JitterStrategies.NoJitter():** Returns a delegate that returns baseDelay unchanged
+
+These static methods on the `JitterStrategies` class provide convenient access to built-in jitter implementations as delegates, eliminating the need to instantiate strategy classes.
 
 #### CompositeRetryDelayStrategy
 
@@ -486,11 +472,11 @@ public sealed class CompositeRetryDelayStrategy : IRetryDelayStrategy
 {
     public CompositeRetryDelayStrategy(
         IBackoffStrategy backoffStrategy,
-        IJitterStrategy jitterStrategy);
+        JitterStrategy jitterStrategy);
 }
 ```
 
-Combines backoff and jitter strategies.
+Combines backoff and jitter strategies. The jitter strategy is now a delegate rather than an interface implementation.
 
 #### NoOpRetryDelayStrategy
 
@@ -618,13 +604,13 @@ public static class PipelineContextRetryDelayExtensions
 public sealed class DefaultRetryDelayStrategyFactory
 {
     public IRetryDelayStrategy CreateStrategy(RetryDelayStrategyConfiguration configuration);
-    public IRetryDelayStrategy CreateExponentialBackoff(ExponentialBackoffConfiguration config);
-    public IRetryDelayStrategy CreateLinearBackoff(LinearBackoffConfiguration config);
-    public IRetryDelayStrategy CreateFixedDelay(FixedDelayConfiguration config);
+    public IRetryDelayStrategy CreateExponentialBackoff(ExponentialBackoffConfiguration config, JitterStrategy jitterStrategy = null);
+    public IRetryDelayStrategy CreateLinearBackoff(LinearBackoffConfiguration config, JitterStrategy jitterStrategy = null);
+    public IRetryDelayStrategy CreateFixedDelay(FixedDelayConfiguration config, JitterStrategy jitterStrategy = null);
 }
 ```
 
-Creates retry delay strategies from configurations.
+Creates retry delay strategies from configurations. The jitter strategy parameter is now a delegate rather than an interface implementation.
 
 ### Validation
 
