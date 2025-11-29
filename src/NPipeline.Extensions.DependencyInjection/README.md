@@ -1,10 +1,13 @@
 # NPipeline Extensions for DependencyInjection
 
-NPipeline.Extensions.DependencyInjection provides seamless integration between NPipeline and Microsoft.Extensions.DependencyInjection, enabling automatic node discovery, service lifetime management, and dependency injection support for pipeline components.
+NPipeline.Extensions.DependencyInjection provides seamless integration between NPipeline and Microsoft.Extensions.DependencyInjection, enabling automatic node
+discovery, service lifetime management, and dependency injection support for pipeline components.
 
 ## About NPipeline
 
-NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for resilience patterns and error handling.
+NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based
+applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for
+resilience patterns and error handling.
 
 ## Installation
 
@@ -85,10 +88,10 @@ services.AddNPipeline(builder =>
     builder.AddNode<SingletonNode>(ServiceLifetime.Singleton)
            .AddNode<ScopedNode>(ServiceLifetime.Scoped)
            .AddNode<TransientNode>(ServiceLifetime.Transient);
-    
+
     // Register pipelines with specific lifetimes
     builder.AddPipeline<MyPipeline>(ServiceLifetime.Scoped);
-    
+
     // Register error handlers with specific lifetimes
     builder.AddErrorHandler<MyErrorHandler>(ServiceLifetime.Singleton)
            .AddPipelineErrorHandler<MyPipelineErrorHandler>(ServiceLifetime.Transient);
@@ -139,17 +142,17 @@ services.AddNPipeline(builder =>
     // Register node-specific error handlers
     builder.AddErrorHandler<MyNodeErrorHandler>()
            .AddErrorHandler<RetryErrorHandler>(ServiceLifetime.Singleton);
-    
+
     // Register pipeline-level error handlers
     builder.AddPipelineErrorHandler<MyPipelineErrorHandler>();
-    
+
     // Register dead letter sinks for failed items
     builder.AddDeadLetterSink<MyDeadLetterSink>();
-    
+
     // Register lineage sinks for tracking
     builder.AddLineageSink<MyLineageSink>()
            .AddPipelineLineageSink<MyPipelineLineageSink>();
-    
+
     // Register lineage sink providers
     builder.AddLineageSinkProvider<MyLineageSinkProvider>();
 });
@@ -167,17 +170,17 @@ services.AddNPipeline(builder =>
     // Nodes
     builder.AddNode<TNode>()                    // Transient lifetime
            .AddNode<TNode>(lifetime);           // Specific lifetime
-    
+
     // Pipeline Definitions
     builder.AddPipeline<TPipeline>()             // Transient lifetime
            .AddPipeline<TPipeline>(lifetime);   // Specific lifetime
-    
+
     // Error Handlers
     builder.AddErrorHandler<THandler>()          // Transient lifetime
            .AddErrorHandler<THandler>(lifetime) // Specific lifetime
            .AddPipelineErrorHandler<THandler>()  // Transient lifetime
            .AddPipelineErrorHandler<THandler>(lifetime); // Specific lifetime
-    
+
     // Sinks
     builder.AddDeadLetterSink<TSink>()           // Transient lifetime
            .AddDeadLetterSink<TSink>(lifetime)  // Specific lifetime
@@ -185,7 +188,7 @@ services.AddNPipeline(builder =>
            .AddLineageSink<TSink>(lifetime)     // Specific lifetime
            .AddPipelineLineageSink<TSink>()      // Transient lifetime
            .AddPipelineLineageSink<TSink>(lifetime); // Specific lifetime
-    
+
     // Providers
     builder.AddLineageSinkProvider<TProvider>()  // Transient lifetime
            .AddLineageSinkProvider<TProvider>(lifetime); // Specific lifetime
@@ -230,10 +233,10 @@ services.AddNPipeline(builder =>
 {
     // Use Scoped for stateful nodes that need per-request isolation
     builder.AddNode<StatefulTransformNode>(ServiceLifetime.Scoped);
-    
+
     // Use Singleton for stateless, thread-safe nodes
     builder.AddNode<ThreadSafeValidatorNode>(ServiceLifetime.Singleton);
-    
+
     // Use Transient for lightweight nodes
     builder.AddNode<SimpleTransformNode>(); // Uses default Transient
 });
@@ -248,20 +251,20 @@ public class MyTransformNode : ITransformNode<Input, Output>
 {
     private readonly ILogger<MyTransformNode> _logger;
     private readonly IValidationService _validator;
-    
+
     public MyTransformNode(ILogger<MyTransformNode> logger, IValidationService validator)
     {
         _logger = logger;
         _validator = validator;
     }
-    
+
     public async Task<Output> TransformAsync(Input input, PipelineContext context)
     {
         _logger.LogInformation("Processing item: {ItemId}", input.Id);
-        
+
         if (!_validator.Validate(input))
             throw new ValidationException("Invalid input");
-            
+
         return new Output { ProcessedData = input.Data.ToUpper() };
     }
 }
@@ -283,16 +286,16 @@ services.AddNPipeline(builder =>
 public class ConfigurablePipeline : IPipelineDefinition
 {
     private readonly IConfiguration _configuration;
-    
+
     public ConfigurablePipeline(IConfiguration configuration)
     {
         _configuration = configuration;
     }
-    
+
     public void Define(PipelineBuilder builder)
     {
         var batchSize = _configuration.GetValue<int>("Pipeline:BatchSize", 100);
-        
+
         builder.Source<DataSourceNode>()
                .Transform<DataTransformNode>()
                .Batch(batchSize)
@@ -317,19 +320,19 @@ public class DatabaseErrorHandler : INodeErrorHandler
 {
     private readonly ILogger<DatabaseErrorHandler> _logger;
     private readonly IErrorRepository _errorRepository;
-    
+
     public DatabaseErrorHandler(ILogger<DatabaseErrorHandler> logger, IErrorRepository errorRepository)
     {
         _logger = logger;
         _errorRepository = errorRepository;
     }
-    
+
     public async Task<ErrorHandlingResult> HandleAsync(ErrorContext context, CancellationToken cancellationToken)
     {
         _logger.LogError(context.Exception, "Error processing item");
-        
+
         await _errorRepository.LogErrorAsync(context, cancellationToken);
-        
+
         return ErrorHandlingResult.Retry;
     }
 }

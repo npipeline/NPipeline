@@ -586,13 +586,13 @@ public sealed class BatchingConfigurationMismatchAnalyzer : DiagnosticAnalyzer
 
     private class BatchingMismatch
     {
-        public string Description { get; }
-        public string Impact { get; }
-
         public BatchingMismatch(string description, string impact)
         {
             Description = description;
             Impact = impact;
         }
+
+        public string Description { get; }
+        public string Impact { get; }
     }
 }

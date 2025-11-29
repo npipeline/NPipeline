@@ -1,10 +1,14 @@
 # NPipeline Analyzers
 
-NPipeline Analyzers is a comprehensive Roslyn analyzer package designed to help developers build efficient, robust, and performant data processing pipelines using the NPipeline framework. This package provides real-time diagnostics and code fixes to detect and resolve common pipeline configuration issues, performance bottlenecks, and anti-patterns.
+NPipeline Analyzers is a comprehensive Roslyn analyzer package designed to help developers build efficient, robust, and performant data processing pipelines
+using the NPipeline framework. This package provides real-time diagnostics and code fixes to detect and resolve common pipeline configuration issues,
+performance bottlenecks, and anti-patterns.
 
 ## About NPipeline
 
-NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for resilience patterns and error handling.
+NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based
+applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for
+resilience patterns and error handling.
 
 ## Installation
 
@@ -26,27 +30,32 @@ dotnet add package NPipeline.Analyzers
 The package includes 18 comprehensive analyzers covering different aspects of pipeline development:
 
 ### Performance Analyzers
+
 1. **AnonymousObjectAllocationAnalyzer** - Detects anonymous object allocations in hot paths that can cause GC pressure
 2. **InefficientStringOperationsAnalyzer** - Identifies inefficient string concatenation and manipulation in performance-critical code
 3. **LinqInHotPathsAnalyzer** - Detects LINQ operations in high-frequency execution paths that cause unnecessary allocations
 4. **ValueTaskOptimizationAnalyzer** - Identifies opportunities to optimize synchronous completions with ValueTask
 
 ### Configuration Analyzers
+
 5. **BatchingConfigurationMismatchAnalyzer** - Detects mismatched batch size and timeout configurations
 6. **InappropriateParallelismConfigurationAnalyzer** - Identifies inappropriate parallelism settings that can cause resource contention
 7. **TimeoutConfigurationAnalyzer** - Detects timeout values that are too short or too long for the workload type
 8. **UnboundedMaterializationConfigurationAnalyzer** - Identifies potential memory leaks from unbounded materialization
 
 ### Async/Cancellation Analyzers
+
 9. **BlockingAsyncOperationAnalyzer** - Detects blocking calls on async operations that can cause deadlocks
 10. **CancellationTokenRespectAnalyzer** - Ensures proper cancellation token propagation and usage
 11. **SynchronousOverAsyncAnalyzer** - Identifies synchronous-over-asynchronous anti-patterns
 
 ### Error Handling Analyzers
+
 12. **InefficientExceptionHandlingAnalyzer** - Detects inefficient exception handling patterns in hot paths
 13. **OperationCanceledExceptionAnalyzer** - Ensures proper handling of OperationCanceledException
 
 ### Pipeline-Specific Analyzers
+
 14. **DependencyInjectionAnalyzer** - Detects dependency injection anti-patterns in node implementations
 15. **PipelineContextAccessAnalyzer** - Identifies unsafe access patterns on PipelineContext properties
 16. **ResilientExecutionConfigurationAnalyzer** - Validates resilient execution strategy configurations
@@ -164,11 +173,13 @@ public async Task ProcessAsync(CancellationToken cancellationToken)
 ### Performance Impact
 
 The analyzers are designed to have minimal impact on build performance:
+
 - Most analysis is incremental and only runs on changed files
 - Complex analyses are limited to specific contexts (hot paths, pipeline nodes)
 - Caching is used to avoid redundant analysis
 
 If you experience performance issues:
+
 1. **Update to the latest version** of the package
 2. **Exclude test projects** from analysis if not needed
 3. **Consider disabling specific analyzers** that aren't relevant to your project

@@ -1,10 +1,14 @@
 # NPipeline Extensions Testing
 
-NPipeline Extensions Testing is a comprehensive testing utilities package designed to help developers test their NPipeline pipelines effectively. This package provides in-memory test nodes, a test harness framework, assertion helpers, and pipeline testing utilities to simplify unit testing, integration testing, and performance testing of data processing pipelines.
+NPipeline Extensions Testing is a comprehensive testing utilities package designed to help developers test their NPipeline pipelines effectively. This package
+provides in-memory test nodes, a test harness framework, assertion helpers, and pipeline testing utilities to simplify unit testing, integration testing, and
+performance testing of data processing pipelines.
 
 ## About NPipeline
 
-NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for resilience patterns and error handling.
+NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based
+applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for
+resilience patterns and error handling.
 
 ## Installation
 
@@ -36,13 +40,13 @@ public class MyPipelineTests
     {
         // Arrange
         var testData = new List<string> { "item1", "item2", "item3" };
-        
+
         // Act
         var result = await new PipelineTestHarness<MyProcessingPipeline>()
             .WithParameter("inputData", testData)
             .CaptureErrors()
             .RunAsync();
-        
+
         // Assert
         result.Success.Should().BeTrue();
         result.Errors.Should().BeEmpty();
@@ -131,19 +135,19 @@ public class TransformNodeTests
         {
             return Task.FromResult(input.Length);
         });
-        
+
         var source = new InMemorySourceNode<string>(new[] { "short", "medium", "very long" });
         var sink = new InMemorySinkNode<int>();
-        
+
         // Act
         var pipeline = PipelineBuilder
             .Start.With(source)
             .Then.With(mockTransform)
             .End.With(sink)
             .Build();
-            
+
         await new PipelineRunner().RunAsync(pipeline);
-        
+
         // Assert
         sink.Items.Should().BeEquivalentTo(new[] { 5, 6, 9 });
     }
@@ -163,13 +167,13 @@ public class PipelineIntegrationTests
         // Arrange
         var testData = LoadTestData();
         var pipeline = new DataProcessingPipeline();
-        
+
         // Act
         var result = await new PipelineTestHarness<DataProcessingPipeline>()
             .WithParameter("dataSource", testData)
             .CaptureErrors()
             .RunAsync();
-        
+
         // Assert
         result.Should().Succeed();
         result.Context.GetSink<ProcessedDataSink>().Items.Should().HaveCount(testData.Count);
@@ -190,12 +194,12 @@ public class PerformanceTests
     {
         // Arrange
         var largeDataSet = GenerateTestData(10000);
-        
+
         // Act
         var result = await new PipelineTestHarness<HighVolumePipeline>()
             .WithParameter("inputData", largeDataSet)
             .RunAsync();
-        
+
         // Assert
         result.Should().Succeed();
         result.Duration.Should().BeLessThan(TimeSpan.FromSeconds(10));

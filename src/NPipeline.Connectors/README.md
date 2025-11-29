@@ -1,10 +1,14 @@
 # NPipeline.Connectors
 
-NPipeline.Connectors is a comprehensive storage abstraction layer for the NPipeline framework that provides a unified interface for accessing different storage systems. It enables pipeline components to work with various storage backends (local file system, cloud storage, databases) through a consistent API, supporting pluggable storage providers with scheme-based URI resolution.
+NPipeline.Connectors is a comprehensive storage abstraction layer for the NPipeline framework that provides a unified interface for accessing different storage
+systems. It enables pipeline components to work with various storage backends (local file system, cloud storage, databases) through a consistent API, supporting
+pluggable storage providers with scheme-based URI resolution.
 
 ## About NPipeline
 
-NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for resilience patterns and error handling.
+NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based
+applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for
+resilience patterns and error handling.
 
 ## Installation
 
@@ -36,7 +40,7 @@ var resolver = StorageProviderFactory.CreateResolver(includeFileSystem: true);
 // Create a resolver with additional custom providers
 var customProviders = new[] { new S3StorageProvider(), new AzureBlobStorageProvider() };
 var resolver = StorageProviderFactory.CreateResolver(
-    includeFileSystem: true, 
+    includeFileSystem: true,
     additionalProviders: customProviders);
 
 // Create from configuration
@@ -117,9 +121,9 @@ NPipeline.Connectors supports an extensible set of storage schemes through its p
 ### Built-in Schemes
 
 - **file** - Local file system access (Windows, Linux, macOS)
-  - Supports absolute paths: `file:///C:/data/input.csv`
-  - Supports relative paths: `file://./data/input.csv`
-  - Supports UNC paths: `file://server/share/data/input.csv`
+    - Supports absolute paths: `file:///C:/data/input.csv`
+    - Supports relative paths: `file://./data/input.csv`
+    - Supports UNC paths: `file://server/share/data/input.csv`
 
 ### Extensible Scheme Support
 
@@ -211,7 +215,7 @@ public class S3StorageProvider : IStorageProvider
             BucketName = uri.Host,
             Key = uri.Path.TrimStart('/')
         };
-        
+
         var response = await client.GetObjectAsync(request, cancellationToken);
         return response.ResponseStream;
     }
@@ -226,7 +230,7 @@ public class S3StorageProvider : IStorageProvider
             Key = uri.Path.TrimStart('/'),
             InputStream = new MemoryStream() // Will be replaced with actual stream
         };
-        
+
         // Return a stream that uploads to S3 when disposed
         return new S3UploadStream(client, request, cancellationToken);
     }
@@ -283,13 +287,13 @@ using NPipeline.Connectors.Abstractions;
 public class ConfigurableStorageProvider : IStorageProvider, IConfigurableStorageProvider
 {
     public StorageScheme Scheme { get; private set; } = StorageScheme.Custom;
-    
+
     public void Configure(IReadOnlyDictionary<string, string> settings)
     {
         // Apply configuration settings
         if (settings.TryGetValue("Scheme", out var scheme))
             Scheme = new StorageScheme(scheme);
-            
+
         // Configure other properties...
     }
 

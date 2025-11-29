@@ -1,10 +1,14 @@
 # NPipeline.Extensions.Testing.FluentAssertions
 
-NPipeline.Extensions.Testing.FluentAssertions provides FluentAssertions extensions for testing NPipeline pipelines. This package adds fluent assertion methods specifically designed for pipeline execution results and in-memory sink nodes, making it easier to write expressive and readable tests for your data processing pipelines.
+NPipeline.Extensions.Testing.FluentAssertions provides FluentAssertions extensions for testing NPipeline pipelines. This package adds fluent assertion methods
+specifically designed for pipeline execution results and in-memory sink nodes, making it easier to write expressive and readable tests for your data processing
+pipelines.
 
 ## About NPipeline
 
-NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for resilience patterns and error handling.
+NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based
+applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for
+resilience patterns and error handling.
 
 ## Installation
 
@@ -73,21 +77,21 @@ public async Task Pipeline_Should_Process_Data_Correctly()
     var source = new InMemorySourceNode<int>([1, 2, 3, 4, 5]);
     var transform = new TransformNode<int, int>(x => x * 2);
     var sink = new InMemorySinkNode<int>();
-    
+
     var pipeline = PipelineBuilder.Create()
         .AddSource(source)
         .AddNode(transform)
         .AddSink(sink)
         .Build();
-    
+
     // Act
     var result = await pipeline.ExecuteAsync();
-    
+
     // Assert
     result.ShouldBeSuccessful()
           .ShouldHaveNoErrors()
           .ShouldCompleteWithin(TimeSpan.FromSeconds(1));
-    
+
     sink.ShouldHaveReceived(5)
         .ShouldContain(2)
         .ShouldContain(10)
@@ -109,7 +113,8 @@ MIT License - see LICENSE file for details.
 
 - **[NPipeline](https://www.nuget.org/packages/NPipeline)** - Core pipeline framework
 - **[NPipeline.Extensions.Testing](https://www.nuget.org/packages/NPipeline.Extensions.Testing)** - Core testing utilities for NPipeline
-- **[NPipeline.Extensions.Testing.AwesomeAssertions](https://www.nuget.org/packages/NPipeline.Extensions.Testing.AwesomeAssertions)** - Alternative assertion library support
+- **[NPipeline.Extensions.Testing.AwesomeAssertions](https://www.nuget.org/packages/NPipeline.Extensions.Testing.AwesomeAssertions)** - Alternative assertion
+  library support
 
 ## Support
 

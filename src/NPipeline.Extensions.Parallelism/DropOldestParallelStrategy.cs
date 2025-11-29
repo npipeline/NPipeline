@@ -96,27 +96,49 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
                         // Drop oldest: read and discard one item, then try to write the new one
                         logger.Log(LogLevel.Debug, "Node {NodeId}, Queue full, attempting to drop oldest item", nodeId);
 
-                        if (queue.Reader.TryRead(out _))
-                        {
-                            metrics.IncrementDroppedOldest();
-                            logger.Log(LogLevel.Debug, "Node {NodeId}, Dropped oldest item, queue count after drop: {Count}", nodeId, queue.Reader.Count);
+                        // Keep trying to drop oldest and write the new item until successful
+                        var dropAttempts = 0;
+                        var maxDropAttempts = 3; // Prevent infinite loop
 
-                            observer?.OnDrop(new QueueDropEvent(nodeId, BoundedQueuePolicy.DropOldest.ToString(),
-                                QueueDropKind.Oldest, boundedCapacity,
-                                queue.Reader.Count, (int)metrics.DroppedNewest, (int)metrics.DroppedOldest, (int)metrics.Enqueued));
+                        while (dropAttempts < maxDropAttempts)
+                        {
+                            if (queue.Reader.TryRead(out _))
+                            {
+                                metrics.IncrementDroppedOldest();
+                                dropAttempts++;
+
+                                logger.Log(LogLevel.Debug, "Node {NodeId}, Dropped oldest item (attempt {Attempt}), queue count after drop: {Count}",
+                                    nodeId, dropAttempts, queue.Reader.Count);
+
+                                observer?.OnDrop(new QueueDropEvent(nodeId, BoundedQueuePolicy.DropOldest.ToString(),
+                                    QueueDropKind.Oldest, boundedCapacity,
+                                    queue.Reader.Count, (int)metrics.DroppedNewest, (int)metrics.DroppedOldest, (int)metrics.Enqueued));
+                            }
+                            else
+                            {
+                                // No items to drop, break out of loop
+                                logger.Log(LogLevel.Debug, "Node {NodeId}, No items available to drop", nodeId);
+                                break;
+                            }
+
+                            if (queue.Writer.TryWrite(item))
+                            {
+                                metrics.IncrementEnqueued();
+
+                                logger.Log(LogLevel.Debug, "Node {NodeId}, Successfully enqueued new item after dropping oldest: {Item}, queue count: {Count}",
+                                    nodeId, item?.ToString() ?? "null", queue.Reader.Count);
+
+                                break; // Success, exit the loop
+                            }
+
+                            logger.Log(LogLevel.Debug, "Node {NodeId}, Failed to enqueue after dropping oldest (attempt {Attempt}), will retry",
+                                nodeId, dropAttempts);
                         }
 
-                        if (queue.Writer.TryWrite(item))
+                        if (dropAttempts >= maxDropAttempts)
                         {
-                            metrics.IncrementEnqueued();
-
-                            logger.Log(LogLevel.Debug, "Node {NodeId}, Successfully enqueued new item after dropping oldest: {Item}, queue count: {Count}",
-                                nodeId, item?.ToString() ?? "null", queue.Reader.Count);
-                        }
-                        else
-                        {
-                            logger.Log(LogLevel.Warning, "Node {NodeId}, Failed to enqueue item even after dropping oldest: {Item}", nodeId,
-                                item?.ToString() ?? "null");
+                            logger.Log(LogLevel.Warning, "Node {NodeId}, Failed to enqueue item {Item} after {MaxAttempts} drop attempts",
+                                nodeId, item?.ToString() ?? "null", maxDropAttempts);
                         }
                     }
 

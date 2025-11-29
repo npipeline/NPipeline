@@ -1,10 +1,13 @@
 # NPipeline Extensions Parallelism
 
-NPipeline Extensions Parallelism is a high-performance package that provides configurable parallel execution strategies for NPipeline pipelines. This package enables developers to implement efficient parallel processing with configurable backpressure handling, queue policies, and performance monitoring capabilities.
+NPipeline Extensions Parallelism is a high-performance package that provides configurable parallel execution strategies for NPipeline pipelines. This package
+enables developers to implement efficient parallel processing with configurable backpressure handling, queue policies, and performance monitoring capabilities.
 
 ## About NPipeline
 
-NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for resilience patterns and error handling.
+NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based
+applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for
+resilience patterns and error handling.
 
 ## Installation
 
@@ -18,7 +21,8 @@ The package provides multiple execution strategies to handle different parallel 
 
 ### BlockingParallelStrategy
 
-The default strategy that preserves ordering and applies end-to-end backpressure using TPL Dataflow. This strategy is ideal for scenarios requiring flow control and ordered output.
+The default strategy that preserves ordering and applies end-to-end backpressure using TPL Dataflow. This strategy is ideal for scenarios requiring flow control
+and ordered output.
 
 - **Preserves input ordering** in output
 - **Applies backpressure** to prevent memory buildup
@@ -27,7 +31,8 @@ The default strategy that preserves ordering and applies end-to-end backpressure
 
 ### DropOldestParallelStrategy
 
-A strategy that drops the oldest items when the input queue is full, prioritizing newer data. This strategy is suitable for real-time scenarios where freshness is critical.
+A strategy that drops the oldest items when the input queue is full, prioritizing newer data. This strategy is suitable for real-time scenarios where freshness
+is critical.
 
 - **Drops oldest items** when queue is full
 - **Prioritizes newer data** for processing
@@ -36,7 +41,8 @@ A strategy that drops the oldest items when the input queue is full, prioritizin
 
 ### DropNewestParallelStrategy
 
-A strategy that drops the newest items when the input queue is full, preserving older data. This strategy is suitable for analytics scenarios where historical data is important.
+A strategy that drops the newest items when the input queue is full, preserving older data. This strategy is suitable for analytics scenarios where historical
+data is important.
 
 - **Drops newest items** when queue is full
 - **Preserves older data** in the queue
@@ -45,7 +51,8 @@ A strategy that drops the newest items when the input queue is full, preserving 
 
 ### ParallelExecutionStrategy
 
-A facade strategy that automatically selects the appropriate concrete implementation based on the configured queue policy. This provides a unified interface while allowing runtime strategy selection.
+A facade strategy that automatically selects the appropriate concrete implementation based on the configured queue policy. This provides a unified interface
+while allowing runtime strategy selection.
 
 ## Queue Policies
 
@@ -64,6 +71,7 @@ var options = new ParallelOptions(
 ```
 
 **Performance implications:**
+
 - Provides natural backpressure to upstream components
 - Prevents memory buildup under sustained load
 - May increase latency when queues are full
@@ -81,6 +89,7 @@ var options = new ParallelOptions(
 ```
 
 **Performance implications:**
+
 - Maintains constant memory usage
 - Prioritizes data freshness
 - May cause data loss under sustained load
@@ -98,6 +107,7 @@ var options = new ParallelOptions(
 ```
 
 **Performance implications:**
+
 - Maintains constant memory usage
 - Preserves historical data
 - May cause data loss for recent items
@@ -128,7 +138,7 @@ await pipeline.ExecuteAsync(context);
 // Drop oldest policy for real-time processing
 var realtimeTransform = builder
     .AddTransform<RealtimeTransform, SensorData, AlertData>()
-    .WithDropOldestParallelism(builder, 
+    .WithDropOldestParallelism(builder,
         maxDegreeOfParallelism: 8,
         maxQueueLength: 100);
 
@@ -142,7 +152,7 @@ var analyticsTransform = builder
 // Custom parallel options
 var customTransform = builder
     .AddTransform<CustomTransform, InputData, OutputData>()
-    .WithParallelism(builder, 
+    .WithParallelism(builder,
         new ParallelOptions(
             MaxDegreeOfParallelism: 6,
             MaxQueueLength: 500,
@@ -187,13 +197,13 @@ builder.WithExecutionStrategy(transformNodeHandle, strategy);
 
 ### Strategy Selection Guidelines
 
-| Scenario | Recommended Strategy | Reason |
-|----------|---------------------|--------|
-| Batch processing with ordering requirements | BlockingParallelStrategy | Preserves order and prevents data loss |
-| Real-time alerts with latency sensitivity | DropOldestParallelStrategy | Prioritizes newest data |
-| Analytics with data completeness requirements | DropNewestParallelStrategy | Preserves historical data |
-| High-throughput with controlled memory usage | Drop policies | Bounded memory usage |
-| Variable load with backpressure needs | BlockingParallelStrategy | Natural flow control |
+| Scenario                                      | Recommended Strategy       | Reason                                 |
+|-----------------------------------------------|----------------------------|----------------------------------------|
+| Batch processing with ordering requirements   | BlockingParallelStrategy   | Preserves order and prevents data loss |
+| Real-time alerts with latency sensitivity     | DropOldestParallelStrategy | Prioritizes newest data                |
+| Analytics with data completeness requirements | DropNewestParallelStrategy | Preserves historical data              |
+| High-throughput with controlled memory usage  | Drop policies              | Bounded memory usage                   |
+| Variable load with backpressure needs         | BlockingParallelStrategy   | Natural flow control                   |
 
 ### Memory Usage Patterns
 

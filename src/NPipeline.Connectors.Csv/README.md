@@ -1,10 +1,13 @@
 # NPipeline CSV Connector
 
-NPipeline CSV Connector provides source and sink nodes for reading and writing CSV files using the popular CsvHelper library. This package enables seamless integration of CSV data processing into your NPipeline workflows with configurable parsing options and type-safe operations.
+NPipeline CSV Connector provides source and sink nodes for reading and writing CSV files using the popular CsvHelper library. This package enables seamless
+integration of CSV data processing into your NPipeline workflows with configurable parsing options and type-safe operations.
 
 ## About NPipeline
 
-NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for resilience patterns and error handling.
+NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based
+applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for
+resilience patterns and error handling.
 
 ## Installation
 
@@ -100,13 +103,13 @@ public class CsvProcessingPipeline : IPipelineDefinition
     {
         // Add CSV source
         var source = builder.AddSource<CsvSourceNode<Customer>, Customer>("csv-source");
-        
+
         // Add a transform (example)
         var transform = builder.AddTransform<CustomerTransform, Customer, Customer>("transform");
-        
+
         // Add CSV sink
         var sink = builder.AddSink<CsvSinkNode<Customer>, Customer>("csv-sink");
-        
+
         // Connect the nodes
         builder.Connect(source, transform);
         builder.Connect(transform, sink);

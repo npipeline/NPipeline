@@ -155,7 +155,7 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
     /// <summary>
     ///     Registers code fixes for invocation expressions.
     /// </summary>
-    private static async Task RegisterInvocationFixes(
+    private static Task RegisterInvocationFixes(
         CodeFixContext context,
         InvocationExpressionSyntax invocation,
         Diagnostic diagnostic)
@@ -164,10 +164,10 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
         {
             // Validate input parameters
             if (context.Document == null || invocation == null || diagnostic == null)
-                return;
+                return Task.CompletedTask;
 
             if (invocation.Expression is not MemberAccessExpressionSyntax memberAccess)
-                return;
+                return Task.CompletedTask;
 
             var methodName = memberAccess.Name.Identifier.Text;
 
@@ -214,12 +214,14 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
             // Log the error but don't throw to avoid breaking the analyzer
             CodeFixLogger.LogError($"Error in RegisterInvocationFixes: {ex.Message}");
         }
+
+        return Task.CompletedTask;
     }
 
     /// <summary>
     ///     Registers code fixes for member access expressions.
     /// </summary>
-    private static async Task RegisterMemberAccessFixes(
+    private static Task RegisterMemberAccessFixes(
         CodeFixContext context,
         MemberAccessExpressionSyntax memberAccess,
         Diagnostic diagnostic)
@@ -228,7 +230,7 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
         {
             // Validate input parameters
             if (context.Document == null || memberAccess == null || diagnostic == null)
-                return;
+                return Task.CompletedTask;
 
             var propertyName = memberAccess.Name.Identifier.Text;
 
@@ -253,6 +255,8 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
             // Log the error but don't throw to avoid breaking the analyzer
             CodeFixLogger.LogError($"Error in RegisterMemberAccessFixes: {ex.Message}");
         }
+
+        return Task.CompletedTask;
     }
 
     /// <summary>

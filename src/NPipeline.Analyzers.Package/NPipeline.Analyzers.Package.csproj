@@ -7,7 +7,7 @@
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <IsPackable>true</IsPackable>
         <RootNamespace>NPipeline.Analyzers.Package</RootNamespace>
-        
+
         <!-- Package Configuration -->
         <PackageId>NPipeline.Analyzers</PackageId>
         <PackageVersion>0.1.0</PackageVersion>
@@ -21,7 +21,7 @@
         <PackageProjectUrl>https://github.com/npipeline/NPipeline</PackageProjectUrl>
         <RepositoryUrl>https://github.com/npipeline/NPipeline</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
-        
+
         <!-- Analyzer Configuration -->
         <DevelopmentDependency>true</DevelopmentDependency>
         <IncludeBuildOutput>false</IncludeBuildOutput>
@@ -48,8 +48,8 @@
 
     <!-- Ensure referenced projects are built before packing -->
     <Target Name="BuildReferencedProjects" BeforeTargets="Pack">
-        <MSBuild Projects="..\NPipeline.Analyzers\NPipeline.Analyzers.csproj" Targets="Build" Properties="Configuration=Release" />
-        <MSBuild Projects="..\NPipeline.CodeFixes\NPipeline.CodeFixes.csproj" Targets="Build" Properties="Configuration=Release" />
+        <MSBuild Projects="..\NPipeline.Analyzers\NPipeline.Analyzers.csproj" Targets="Build" Properties="Configuration=Release"/>
+        <MSBuild Projects="..\NPipeline.CodeFixes\NPipeline.CodeFixes.csproj" Targets="Build" Properties="Configuration=Release"/>
     </Target>
 
 </Project>
