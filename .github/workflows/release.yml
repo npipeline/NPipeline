@@ -46,14 +46,14 @@ jobs:
       run: dotnet pack --no-build --configuration Release --output ./artifacts/packages
       
     - name: Upload packages as artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: nuget-packages
         path: ./artifacts/packages/*.nupkg
         retention-days: 30
         
     - name: Upload symbols as artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: nuget-symbols
         path: ./artifacts/packages/*.snupkg
