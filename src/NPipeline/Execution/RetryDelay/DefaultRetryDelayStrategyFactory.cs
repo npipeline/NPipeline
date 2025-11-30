@@ -3,29 +3,20 @@ using NPipeline.Configuration.RetryDelay;
 namespace NPipeline.Execution.RetryDelay;
 
 /// <summary>
-///     Default implementation of retry delay strategy factory.
+///     Simplified implementation of retry delay strategy factory.
 /// </summary>
 /// <remarks>
 ///     <para>
-///         This factory creates retry delay strategies based on configuration objects.
-///         It supports all built-in backoff and jitter strategies and can be
-///         extended with custom implementations through the BackoffStrategy and
-///         JitterStrategy delegates.
+///         This factory creates retry delay strategies based on the simplified
+///         RetryDelayStrategyConfiguration that uses delegates directly.
+///         It eliminates the need for complex configuration class parsing
+///         while maintaining all functionality.
 ///     </para>
 ///     <para>
-///         The factory follows a consistent pattern:
+///         The factory follows a simple pattern:
 ///         <list type="number">
 ///             <item>
-///                 <description>Create backoff strategy from BackoffStrategyConfiguration</description>
-///             </item>
-///             <item>
-///                 <description>Create jitter strategy from JitterStrategyConfiguration</description>
-///             </item>
-///             <item>
-///                 <description>Combine into CompositeRetryDelayStrategy if both are present</description>
-///             </item>
-///             <item>
-///                 <description>Return single strategy if only one is present</description>
+///                 <description>Create CompositeRetryDelayStrategy from backoff and jitter delegates</description>
 ///             </item>
 ///         </list>
 ///     </para>
@@ -39,27 +30,24 @@ public sealed class DefaultRetryDelayStrategyFactory(Random? random = null) : IR
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
-        // Create backoff strategy
-        var backoffStrategy = CreateBackoffStrategy(configuration.BackoffConfiguration);
+        // Create backoff strategy from delegate
+        var backoffStrategy = configuration.BackoffStrategy;
 
-        // Create jitter strategy
-        var jitterStrategy = CreateJitterStrategy(configuration.JitterConfiguration);
+        // Get jitter strategy delegate if provided
+        var jitterStrategy = configuration.JitterStrategy;
 
-        // Combine strategies
+        // Combine into CompositeRetryDelayStrategy
         return new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, _random);
     }
 
     /// <inheritdoc />
     public IRetryDelayStrategy CreateExponentialBackoff(
-        ExponentialBackoffConfiguration configuration,
+        TimeSpan baseDelay,
+        double multiplier = 2.0,
+        TimeSpan? maxDelay = null,
         JitterStrategy? jitterStrategy = null)
     {
-        ArgumentNullException.ThrowIfNull(configuration);
-
-        var backoffStrategy = BackoffStrategies.ExponentialBackoff(
-            configuration.BaseDelay,
-            configuration.Multiplier,
-            configuration.MaxDelay);
+        var backoffStrategy = BackoffStrategies.ExponentialBackoff(baseDelay, multiplier, maxDelay);
 
         return jitterStrategy is not null
             ? new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, _random)
@@ -68,15 +56,12 @@ public sealed class DefaultRetryDelayStrategyFactory(Random? random = null) : IR
 
     /// <inheritdoc />
     public IRetryDelayStrategy CreateLinearBackoff(
-        LinearBackoffConfiguration configuration,
+        TimeSpan baseDelay,
+        TimeSpan? increment = null,
+        TimeSpan? maxDelay = null,
         JitterStrategy? jitterStrategy = null)
     {
-        ArgumentNullException.ThrowIfNull(configuration);
-
-        var backoffStrategy = BackoffStrategies.LinearBackoff(
-            configuration.BaseDelay,
-            configuration.Increment,
-            configuration.MaxDelay);
+        var backoffStrategy = BackoffStrategies.LinearBackoff(baseDelay, increment, maxDelay);
 
         return jitterStrategy is not null
             ? new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, _random)
@@ -85,12 +70,10 @@ public sealed class DefaultRetryDelayStrategyFactory(Random? random = null) : IR
 
     /// <inheritdoc />
     public IRetryDelayStrategy CreateFixedDelay(
-        FixedDelayConfiguration configuration,
+        TimeSpan delay,
         JitterStrategy? jitterStrategy = null)
     {
-        ArgumentNullException.ThrowIfNull(configuration);
-
-        var backoffStrategy = BackoffStrategies.FixedDelay(configuration.Delay);
+        var backoffStrategy = BackoffStrategies.FixedDelay(delay);
 
         return jitterStrategy is not null
             ? new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, _random)
@@ -127,43 +110,40 @@ public sealed class DefaultRetryDelayStrategyFactory(Random? random = null) : IR
         return JitterStrategies.NoJitter();
     }
 
-    /// <inheritdoc />
-    public BackoffStrategy CreateBackoffStrategy(BackoffStrategyConfiguration configuration)
+    // Legacy methods for backward compatibility - marked as obsolete
+    [Obsolete("Use CreateStrategy(RetryDelayStrategyConfiguration) instead")]
+    public IRetryDelayStrategy CreateExponentialBackoff(
+        object configuration,
+        JitterStrategy? jitterStrategy = null)
     {
-        ArgumentNullException.ThrowIfNull(configuration);
-
-        return configuration switch
-        {
-            ExponentialBackoffConfiguration exponentialConfig =>
-                BackoffStrategies.ExponentialBackoff(
-                    exponentialConfig.BaseDelay,
-                    exponentialConfig.Multiplier,
-                    exponentialConfig.MaxDelay),
-            LinearBackoffConfiguration linearConfig =>
-                BackoffStrategies.LinearBackoff(
-                    linearConfig.BaseDelay,
-                    linearConfig.Increment,
-                    linearConfig.MaxDelay),
-            FixedDelayConfiguration fixedConfig =>
-                BackoffStrategies.FixedDelay(fixedConfig.Delay),
-            _ => throw new ArgumentException($"Unknown backoff strategy type: {configuration.GetType().Name}"),
-        };
+        throw new NotSupportedException("This method is obsolete. Use the new delegate-based API instead.");
     }
 
-    /// <inheritdoc />
-    public JitterStrategy CreateJitterStrategy(JitterStrategyConfiguration configuration)
+    [Obsolete("Use CreateStrategy(RetryDelayStrategyConfiguration) instead")]
+    public IRetryDelayStrategy CreateLinearBackoff(
+        object configuration,
+        JitterStrategy? jitterStrategy = null)
     {
-        ArgumentNullException.ThrowIfNull(configuration);
+        throw new NotSupportedException("This method is obsolete. Use the new delegate-based API instead.");
+    }
 
-        return configuration switch
-        {
-            DelegateJitterStrategyConfiguration delegateConfig => delegateConfig.JitterStrategy,
-            DecorrelatedJitterConfiguration decorrelatedConfig => JitterStrategies.DecorrelatedJitter(decorrelatedConfig.MaxDelay,
-                decorrelatedConfig.Multiplier),
-            FullJitterConfiguration => JitterStrategies.FullJitter(),
-            EqualJitterConfiguration => JitterStrategies.EqualJitter(),
-            NoJitterConfiguration => JitterStrategies.NoJitter(),
-            _ => throw new ArgumentException($"Unknown jitter strategy configuration type: {configuration.GetType().Name}"),
-        };
+    [Obsolete("Use CreateStrategy(RetryDelayStrategyConfiguration) instead")]
+    public IRetryDelayStrategy CreateFixedDelay(
+        object configuration,
+        JitterStrategy? jitterStrategy = null)
+    {
+        throw new NotSupportedException("This method is obsolete. Use the new delegate-based API instead.");
+    }
+
+    [Obsolete("Configuration classes are no longer supported")]
+    public BackoffStrategy CreateBackoffStrategy(object configuration)
+    {
+        throw new NotSupportedException("Configuration classes are no longer supported. Use BackoffStrategies static methods directly.");
+    }
+
+    [Obsolete("Configuration classes are no longer supported")]
+    public JitterStrategy CreateJitterStrategy(object configuration)
+    {
+        throw new NotSupportedException("Configuration classes are no longer supported. Use JitterStrategies static methods directly.");
     }
 }

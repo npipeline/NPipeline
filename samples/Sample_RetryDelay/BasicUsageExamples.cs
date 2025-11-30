@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+using NPipeline.Configuration.RetryDelay;
 using NPipeline.Execution.RetryDelay;
 
 namespace Sample_RetryDelay;
@@ -8,8 +8,6 @@ namespace Sample_RetryDelay;
 /// </summary>
 public static class BasicUsageExamples
 {
-    private static readonly ILogger logger = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger(typeof(BasicUsageExamples));
-
     /// <summary>
     ///     Runs all basic usage examples.
     /// </summary>
@@ -31,13 +29,16 @@ public static class BasicUsageExamples
         Console.WriteLine("Exponential Backoff with Full Jitter:");
         Console.WriteLine("=====================================");
 
-        var strategy = new CompositeRetryDelayStrategy(
+        var factory = new DefaultRetryDelayStrategyFactory();
+
+        var configuration = new RetryDelayStrategyConfiguration(
             BackoffStrategies.ExponentialBackoff(
                 TimeSpan.FromMilliseconds(100),
                 2.0,
                 TimeSpan.FromSeconds(30)),
-            JitterStrategies.FullJitter(),
-            new Random(42));
+            JitterStrategies.FullJitter());
+
+        var strategy = factory.CreateStrategy(configuration);
 
         for (var i = 0; i < 5; i++)
         {
@@ -56,13 +57,16 @@ public static class BasicUsageExamples
         Console.WriteLine("Linear Backoff with Equal Jitter:");
         Console.WriteLine("=================================");
 
-        var strategy = new CompositeRetryDelayStrategy(
+        var factory = new DefaultRetryDelayStrategyFactory();
+
+        var configuration = new RetryDelayStrategyConfiguration(
             BackoffStrategies.LinearBackoff(
                 TimeSpan.FromMilliseconds(100),
                 TimeSpan.FromMilliseconds(50),
                 TimeSpan.FromSeconds(30)),
-            JitterStrategies.EqualJitter(),
-            new Random(42));
+            JitterStrategies.EqualJitter());
+
+        var strategy = factory.CreateStrategy(configuration);
 
         for (var i = 0; i < 5; i++)
         {
@@ -81,10 +85,13 @@ public static class BasicUsageExamples
         Console.WriteLine("Fixed Delay with No Jitter:");
         Console.WriteLine("===========================");
 
-        var strategy = new CompositeRetryDelayStrategy(
+        var factory = new DefaultRetryDelayStrategyFactory();
+
+        var configuration = new RetryDelayStrategyConfiguration(
             BackoffStrategies.FixedDelay(TimeSpan.FromMilliseconds(1000)),
-            JitterStrategies.NoJitter(),
-            new Random(42));
+            JitterStrategies.NoJitter());
+
+        var strategy = factory.CreateStrategy(configuration);
 
         for (var i = 0; i < 5; i++)
         {
@@ -103,13 +110,16 @@ public static class BasicUsageExamples
         Console.WriteLine("Custom Configuration Example:");
         Console.WriteLine("=============================");
 
-        var strategy = new CompositeRetryDelayStrategy(
+        var factory = new DefaultRetryDelayStrategyFactory();
+
+        var configuration = new RetryDelayStrategyConfiguration(
             BackoffStrategies.ExponentialBackoff(
                 TimeSpan.FromMilliseconds(50),
                 1.5,
                 TimeSpan.FromMinutes(2)),
-            JitterStrategies.DecorrelatedJitter(TimeSpan.FromMinutes(1), 2.5),
-            new Random(123));
+            JitterStrategies.DecorrelatedJitter(TimeSpan.FromMinutes(1), 2.5));
+
+        var strategy = factory.CreateStrategy(configuration);
 
         for (var i = 0; i < 5; i++)
         {
@@ -128,16 +138,19 @@ public static class BasicUsageExamples
         Console.WriteLine("Error Handling Example:");
         Console.WriteLine("======================");
 
+        var factory = new DefaultRetryDelayStrategyFactory();
+
         try
         {
             // This should throw due to invalid parameters
-            var strategy = new CompositeRetryDelayStrategy(
+            var configuration = new RetryDelayStrategyConfiguration(
                 BackoffStrategies.ExponentialBackoff(
                     TimeSpan.FromMilliseconds(-100), // Invalid
                     2.0,
                     TimeSpan.FromSeconds(30)),
-                JitterStrategies.FullJitter(),
-                new Random(42));
+                JitterStrategies.FullJitter());
+
+            var strategy = factory.CreateStrategy(configuration);
 
             Console.WriteLine("Strategy created successfully (unexpected)");
         }
@@ -148,20 +161,20 @@ public static class BasicUsageExamples
 
         try
         {
-            // This should throw due to invalid jitter
-            var strategy = new CompositeRetryDelayStrategy(
+            // This should work fine - null jitter is valid
+            var configuration = new RetryDelayStrategyConfiguration(
                 BackoffStrategies.ExponentialBackoff(
                     TimeSpan.FromMilliseconds(100),
                     2.0,
-                    TimeSpan.FromSeconds(30)),
-                null!, // Invalid
-                new Random(42));
+                    TimeSpan.FromSeconds(30))); // Valid - jitter is optional
 
-            Console.WriteLine("Strategy created successfully (unexpected)");
+            var strategy = factory.CreateStrategy(configuration);
+
+            Console.WriteLine("Strategy created successfully with null jitter (expected)");
         }
-        catch (ArgumentNullException ex)
+        catch (Exception ex)
         {
-            Console.WriteLine($"Caught expected exception: {ex.Message}");
+            Console.WriteLine($"Caught unexpected exception: {ex.Message}");
         }
 
         Console.WriteLine();
@@ -175,21 +188,24 @@ public static class BasicUsageExamples
         Console.WriteLine("Best Practices Example:");
         Console.WriteLine("======================");
 
+        var factory = new DefaultRetryDelayStrategyFactory();
+
         // Use reasonable defaults
-        var strategy = new CompositeRetryDelayStrategy(
+        var configuration = new RetryDelayStrategyConfiguration(
             BackoffStrategies.ExponentialBackoff(
                 TimeSpan.FromMilliseconds(100),
                 2.0,
                 TimeSpan.FromMinutes(1)),
-            JitterStrategies.FullJitter(),
-            Random.Shared);
+            JitterStrategies.FullJitter());
+
+        var strategy = factory.CreateStrategy(configuration);
 
         Console.WriteLine("Strategy created with best practices:");
         Console.WriteLine("- Used reasonable base delay (100ms)");
         Console.WriteLine("- Used standard multiplier (2.0)");
         Console.WriteLine("- Set reasonable max delay (1 minute)");
         Console.WriteLine("- Added jitter for thundering herd prevention");
-        Console.WriteLine("- Used shared random instance");
+        Console.WriteLine("- Used factory pattern for strategy creation");
 
         for (var i = 0; i < 3; i++)
         {

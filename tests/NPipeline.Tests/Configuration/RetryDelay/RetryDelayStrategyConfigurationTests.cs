@@ -13,15 +13,26 @@ public sealed class RetryDelayStrategyConfigurationTests
     public void ConfigurationValidation_ShouldBePerformant()
     {
         // Arrange
-        var configurations = new object[]
+        var configurations = new[]
         {
-            new ExponentialBackoffConfiguration(),
-            new LinearBackoffConfiguration(),
-            new FixedDelayConfiguration(),
-            JitterStrategies.FullJitter(),
-            JitterStrategies.DecorrelatedJitter(TimeSpan.FromMinutes(1)),
-            JitterStrategies.EqualJitter(),
-            JitterStrategies.NoJitter(),
+            new RetryDelayStrategyConfiguration(
+                BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(1), 2.0, TimeSpan.FromMinutes(1)),
+                JitterStrategies.NoJitter()),
+            new RetryDelayStrategyConfiguration(
+                BackoffStrategies.LinearBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(1)),
+                JitterStrategies.NoJitter()),
+            new RetryDelayStrategyConfiguration(
+                BackoffStrategies.FixedDelay(TimeSpan.FromSeconds(1)),
+                JitterStrategies.NoJitter()),
+            new RetryDelayStrategyConfiguration(
+                BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(1), 2.0, TimeSpan.FromMinutes(1)),
+                JitterStrategies.FullJitter()),
+            new RetryDelayStrategyConfiguration(
+                BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(1), 2.0, TimeSpan.FromMinutes(1)),
+                JitterStrategies.DecorrelatedJitter(TimeSpan.FromMinutes(1))),
+            new RetryDelayStrategyConfiguration(
+                BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(1), 2.0, TimeSpan.FromMinutes(1)),
+                JitterStrategies.EqualJitter()),
         };
 
         // Act
@@ -31,11 +42,9 @@ public sealed class RetryDelayStrategyConfigurationTests
         {
             foreach (var config in configurations)
             {
-                // For jitter strategies, just execute them to simulate validation
-                if (config is JitterStrategy jitterStrategy)
-                    _ = jitterStrategy(TimeSpan.FromSeconds(1), new Random());
-                else
-                    ((dynamic)config).Validate();
+                // Validate configurations by creating strategies
+                var factory = new DefaultRetryDelayStrategyFactory();
+                _ = factory.CreateStrategy(config);
             }
         }
 
@@ -53,86 +62,91 @@ public sealed class RetryDelayStrategyConfigurationTests
     public void AllConfigurations_WithDefaultValues_ShouldValidate()
     {
         // Arrange
-        var exponentialConfig = new ExponentialBackoffConfiguration();
-        var linearConfig = new LinearBackoffConfiguration();
-        var fixedConfig = new FixedDelayConfiguration();
-        var fullJitterStrategy = JitterStrategies.FullJitter();
-        var decorrelatedJitterStrategy = JitterStrategies.DecorrelatedJitter(TimeSpan.FromMinutes(1));
-        var equalJitterStrategy = JitterStrategies.EqualJitter();
-        var noJitterStrategy = JitterStrategies.NoJitter();
+        var exponentialConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(1), 2.0, TimeSpan.FromMinutes(1)),
+            JitterStrategies.NoJitter());
+
+        var linearConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.LinearBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(1)),
+            JitterStrategies.NoJitter());
+
+        var fixedConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.FixedDelay(TimeSpan.FromSeconds(1)),
+            JitterStrategies.NoJitter());
+
+        var fullJitterConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(1), 2.0, TimeSpan.FromMinutes(1)),
+            JitterStrategies.FullJitter());
+
+        var decorrelatedJitterConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(1), 2.0, TimeSpan.FromMinutes(1)),
+            JitterStrategies.DecorrelatedJitter(TimeSpan.FromMinutes(1)));
+
+        var equalJitterConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(1), 2.0, TimeSpan.FromMinutes(1)),
+            JitterStrategies.EqualJitter());
+
+        var noJitterConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(1), 2.0, TimeSpan.FromMinutes(1)),
+            JitterStrategies.NoJitter());
 
         // Act & Assert
+        var factory = new DefaultRetryDelayStrategyFactory();
+
         _ = exponentialConfig.Should().NotBeNull();
         _ = linearConfig.Should().NotBeNull();
         _ = fixedConfig.Should().NotBeNull();
-        _ = fullJitterStrategy.Should().NotBeNull();
-        _ = decorrelatedJitterStrategy.Should().NotBeNull();
-        _ = equalJitterStrategy.Should().NotBeNull();
-        _ = noJitterStrategy.Should().NotBeNull();
+        _ = fullJitterConfig.Should().NotBeNull();
+        _ = decorrelatedJitterConfig.Should().NotBeNull();
+        _ = equalJitterConfig.Should().NotBeNull();
+        _ = noJitterConfig.Should().NotBeNull();
 
-        // Validate configurations
-        var validateExponential = () => exponentialConfig.Validate();
-        var validateLinear = () => linearConfig.Validate();
-        var validateFixed = () => fixedConfig.Validate();
+        // Validate configurations by creating strategies
+        var createExponential = () => factory.CreateStrategy(exponentialConfig);
+        var createLinear = () => factory.CreateStrategy(linearConfig);
+        var createFixed = () => factory.CreateStrategy(fixedConfig);
+        var createFullJitter = () => factory.CreateStrategy(fullJitterConfig);
+        var createDecorrelatedJitter = () => factory.CreateStrategy(decorrelatedJitterConfig);
+        var createEqualJitter = () => factory.CreateStrategy(equalJitterConfig);
+        var createNoJitter = () => factory.CreateStrategy(noJitterConfig);
 
-        _ = validateExponential.Should().NotThrow();
-        _ = validateLinear.Should().NotThrow();
-        _ = validateFixed.Should().NotThrow();
-
-        // Test jitter strategies
-        Action validateFullJitter = () => fullJitterStrategy(TimeSpan.FromSeconds(1), new Random());
-        Action validateDecorrelatedJitter = () => decorrelatedJitterStrategy(TimeSpan.FromSeconds(1), new Random());
-        Action validateEqualJitter = () => equalJitterStrategy(TimeSpan.FromSeconds(1), new Random());
-        Action validateNoJitter = () => noJitterStrategy(TimeSpan.FromSeconds(1), new Random());
-
-        _ = validateFullJitter.Should().NotThrow();
-        _ = validateDecorrelatedJitter.Should().NotThrow();
-        _ = validateEqualJitter.Should().NotThrow();
-        _ = validateNoJitter.Should().NotThrow();
+        _ = createExponential.Should().NotThrow();
+        _ = createLinear.Should().NotThrow();
+        _ = createFixed.Should().NotThrow();
+        _ = createFullJitter.Should().NotThrow();
+        _ = createDecorrelatedJitter.Should().NotThrow();
+        _ = createEqualJitter.Should().NotThrow();
+        _ = createNoJitter.Should().NotThrow();
     }
 
     [Fact]
     public void ConfigurationValidation_ShouldProvideMeaningfulErrorMessages()
     {
         // Arrange & Act & Assert
-        var exponentialConfig = new ExponentialBackoffConfiguration
-        {
-            BaseDelay = TimeSpan.Zero,
-        };
 
-        var validateExponential = () => exponentialConfig.Validate();
+        // Test invalid base delay (zero)
+        var createExponential = () => BackoffStrategies.ExponentialBackoff(TimeSpan.Zero, 2.0, TimeSpan.FromMinutes(1));
 
-        _ = validateExponential.Should().Throw<ArgumentException>()
-            .WithMessage("*BaseDelay must be a positive TimeSpan*")
-            .And.ParamName.Should().Be("BaseDelay");
+        _ = createExponential.Should().Throw<ArgumentException>()
+            .WithMessage("*BaseDelay must be a positive TimeSpan*");
 
-        var linearConfig = new LinearBackoffConfiguration
-        {
-            Increment = TimeSpan.FromSeconds(-1),
-        };
+        // Test invalid increment (negative)
+        var createLinear = () => BackoffStrategies.LinearBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(-1), TimeSpan.FromMinutes(1));
 
-        var validateLinear = () => linearConfig.Validate();
+        _ = createLinear.Should().Throw<ArgumentException>()
+            .WithMessage("*Increment must be a non-negative TimeSpan*");
 
-        _ = validateLinear.Should().Throw<ArgumentException>()
-            .WithMessage("*Increment must be a non-negative TimeSpan*")
-            .And.ParamName.Should().Be("Increment");
+        // Test invalid fixed delay (zero)
+        var createFixed = () => BackoffStrategies.FixedDelay(TimeSpan.Zero);
 
-        var fixedConfig = new FixedDelayConfiguration
-        {
-            Delay = TimeSpan.Zero,
-        };
+        _ = createFixed.Should().Throw<ArgumentException>()
+            .WithMessage("*Delay must be a positive TimeSpan*");
 
-        var validateFixed = () => fixedConfig.Validate();
+        // Test invalid decorrelated jitter (zero max delay)
+        Action createDecorrelated = () => JitterStrategies.DecorrelatedJitter(TimeSpan.Zero);
 
-        _ = validateFixed.Should().Throw<ArgumentException>()
-            .WithMessage("*Delay must be a positive TimeSpan*")
-            .And.ParamName.Should().Be("Delay");
-
-        Action validateDecorrelated = () => JitterStrategies.DecorrelatedJitter(TimeSpan.Zero);
-
-        _ = validateDecorrelated.Should().Throw<ArgumentException>()
-            .WithMessage("*MaxDelay must be a positive TimeSpan*")
-            .And.ParamName.Should().Be("maxDelay");
+        _ = createDecorrelated.Should().Throw<ArgumentException>()
+            .WithMessage("*MaxDelay must be a positive TimeSpan*");
     }
 
     #endregion
@@ -143,11 +157,17 @@ public sealed class RetryDelayStrategyConfigurationTests
     public void BackoffConfigurations_ShouldBeCompatibleWithAllJitterStrategies()
     {
         // Arrange
-        var backoffConfigs = new object[]
+        var backoffConfigs = new[]
         {
-            new ExponentialBackoffConfiguration(),
-            new LinearBackoffConfiguration(),
-            new FixedDelayConfiguration(),
+            new RetryDelayStrategyConfiguration(
+                BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(1), 2.0, TimeSpan.FromMinutes(1)),
+                JitterStrategies.NoJitter()),
+            new RetryDelayStrategyConfiguration(
+                BackoffStrategies.LinearBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(1)),
+                JitterStrategies.NoJitter()),
+            new RetryDelayStrategyConfiguration(
+                BackoffStrategies.FixedDelay(TimeSpan.FromSeconds(1)),
+                JitterStrategies.NoJitter()),
         };
 
         var jitterStrategies = new[]
@@ -159,24 +179,12 @@ public sealed class RetryDelayStrategyConfigurationTests
         };
 
         // Act & Assert
+        var factory = new DefaultRetryDelayStrategyFactory();
+
         foreach (var backoffConfig in backoffConfigs)
         {
-            // Use explicit type casting to avoid dynamic call issues
-            if (backoffConfig is ExponentialBackoffConfiguration expConfig)
-            {
-                var validateBackoff = () => expConfig.Validate();
-                _ = validateBackoff.Should().NotThrow();
-            }
-            else if (backoffConfig is LinearBackoffConfiguration linConfig)
-            {
-                var validateBackoff = () => linConfig.Validate();
-                _ = validateBackoff.Should().NotThrow();
-            }
-            else if (backoffConfig is FixedDelayConfiguration fixedConfig)
-            {
-                var validateBackoff = () => fixedConfig.Validate();
-                _ = validateBackoff.Should().NotThrow();
-            }
+            var createBackoff = () => factory.CreateStrategy(backoffConfig);
+            _ = createBackoff.Should().NotThrow();
         }
 
         foreach (var jitterStrategy in jitterStrategies)
@@ -190,36 +198,37 @@ public sealed class RetryDelayStrategyConfigurationTests
     public void Configurations_WithExtremeValues_ShouldValidateWhenAppropriate()
     {
         // Arrange
-        var extremeExponentialConfig = new ExponentialBackoffConfiguration
-        {
-            BaseDelay = TimeSpan.FromTicks(1), // Minimum
-            Multiplier = double.MaxValue, // Maximum
-            MaxDelay = TimeSpan.MaxValue, // Maximum
-        };
+        var extremeExponentialConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.ExponentialBackoff(
+                TimeSpan.FromTicks(1), // Minimum
+                double.MaxValue, // Maximum
+                TimeSpan.MaxValue), // Maximum
+            JitterStrategies.NoJitter());
 
-        var extremeLinearConfig = new LinearBackoffConfiguration
-        {
-            BaseDelay = TimeSpan.FromTicks(1), // Minimum
-            Increment = TimeSpan.MaxValue, // Maximum
-            MaxDelay = TimeSpan.MaxValue, // Maximum
-        };
+        var extremeLinearConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.LinearBackoff(
+                TimeSpan.FromTicks(1), // Minimum
+                TimeSpan.MaxValue, // Maximum
+                TimeSpan.MaxValue), // Maximum
+            JitterStrategies.NoJitter());
 
-        var extremeFixedConfig = new FixedDelayConfiguration
-        {
-            Delay = TimeSpan.MaxValue, // Maximum
-        };
+        var extremeFixedConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.FixedDelay(TimeSpan.MaxValue), // Maximum
+            JitterStrategies.NoJitter());
 
         var extremeDecorrelatedStrategy = JitterStrategies.DecorrelatedJitter(TimeSpan.MaxValue, double.MaxValue);
 
         // Act & Assert
-        var validateExponential = () => extremeExponentialConfig.Validate();
-        var validateLinear = () => extremeLinearConfig.Validate();
-        var validateFixed = () => extremeFixedConfig.Validate();
+        var factory = new DefaultRetryDelayStrategyFactory();
+
+        var createExponential = () => factory.CreateStrategy(extremeExponentialConfig);
+        var createLinear = () => factory.CreateStrategy(extremeLinearConfig);
+        var createFixed = () => factory.CreateStrategy(extremeFixedConfig);
         Action validateDecorrelated = () => extremeDecorrelatedStrategy(TimeSpan.FromSeconds(1), new Random());
 
-        _ = validateExponential.Should().NotThrow();
-        _ = validateLinear.Should().NotThrow();
-        _ = validateFixed.Should().NotThrow();
+        _ = createExponential.Should().NotThrow();
+        _ = createLinear.Should().NotThrow();
+        _ = createFixed.Should().NotThrow();
         _ = validateDecorrelated.Should().NotThrow();
     }
 
@@ -233,16 +242,17 @@ public sealed class RetryDelayStrategyConfigurationTests
         int baseDelaySeconds, double multiplier, int maxDelaySeconds)
     {
         // Arrange
-        var configuration = new ExponentialBackoffConfiguration
-        {
-            BaseDelay = TimeSpan.FromSeconds(baseDelaySeconds),
-            Multiplier = multiplier,
-            MaxDelay = TimeSpan.FromSeconds(maxDelaySeconds),
-        };
+        var configuration = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.ExponentialBackoff(
+                TimeSpan.FromSeconds(baseDelaySeconds),
+                multiplier,
+                TimeSpan.FromSeconds(maxDelaySeconds)),
+            JitterStrategies.NoJitter());
 
         // Act & Assert
-        var validateAction = () => configuration.Validate();
-        _ = validateAction.Should().NotThrow();
+        var factory = new DefaultRetryDelayStrategyFactory();
+        var createAction = () => factory.CreateStrategy(configuration);
+        _ = createAction.Should().NotThrow();
     }
 
     [Theory]
@@ -254,16 +264,17 @@ public sealed class RetryDelayStrategyConfigurationTests
         int baseDelaySeconds, int incrementSeconds, int maxDelaySeconds)
     {
         // Arrange
-        var configuration = new LinearBackoffConfiguration
-        {
-            BaseDelay = TimeSpan.FromSeconds(baseDelaySeconds),
-            Increment = TimeSpan.FromSeconds(incrementSeconds),
-            MaxDelay = TimeSpan.FromSeconds(maxDelaySeconds),
-        };
+        var configuration = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.LinearBackoff(
+                TimeSpan.FromSeconds(baseDelaySeconds),
+                TimeSpan.FromSeconds(incrementSeconds),
+                TimeSpan.FromSeconds(maxDelaySeconds)),
+            JitterStrategies.NoJitter());
 
         // Act & Assert
-        var validateAction = () => configuration.Validate();
-        _ = validateAction.Should().NotThrow();
+        var factory = new DefaultRetryDelayStrategyFactory();
+        var createAction = () => factory.CreateStrategy(configuration);
+        _ = createAction.Should().NotThrow();
     }
 
     [Theory]
@@ -294,35 +305,31 @@ public sealed class RetryDelayStrategyConfigurationTests
         // Arrange
         var minimumTimeSpan = TimeSpan.FromTicks(1);
 
-        var exponentialConfig = new ExponentialBackoffConfiguration
-        {
-            BaseDelay = minimumTimeSpan,
-            MaxDelay = minimumTimeSpan,
-        };
+        var exponentialConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.ExponentialBackoff(minimumTimeSpan, 2.0, minimumTimeSpan),
+            JitterStrategies.NoJitter());
 
-        var linearConfig = new LinearBackoffConfiguration
-        {
-            BaseDelay = minimumTimeSpan,
-            Increment = minimumTimeSpan,
-            MaxDelay = minimumTimeSpan,
-        };
+        var linearConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.LinearBackoff(minimumTimeSpan, minimumTimeSpan, minimumTimeSpan),
+            JitterStrategies.NoJitter());
 
-        var fixedConfig = new FixedDelayConfiguration
-        {
-            Delay = minimumTimeSpan,
-        };
+        var fixedConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.FixedDelay(minimumTimeSpan),
+            JitterStrategies.NoJitter());
 
         var decorrelatedStrategy = JitterStrategies.DecorrelatedJitter(minimumTimeSpan);
 
         // Act & Assert
-        var validateExponential = () => exponentialConfig.Validate();
-        var validateLinear = () => linearConfig.Validate();
-        var validateFixed = () => fixedConfig.Validate();
+        var factory = new DefaultRetryDelayStrategyFactory();
+
+        var createExponential = () => factory.CreateStrategy(exponentialConfig);
+        var createLinear = () => factory.CreateStrategy(linearConfig);
+        var createFixed = () => factory.CreateStrategy(fixedConfig);
         Action validateDecorrelated = () => decorrelatedStrategy(minimumTimeSpan, new Random());
 
-        _ = validateExponential.Should().NotThrow();
-        _ = validateLinear.Should().NotThrow();
-        _ = validateFixed.Should().NotThrow();
+        _ = createExponential.Should().NotThrow();
+        _ = createLinear.Should().NotThrow();
+        _ = createFixed.Should().NotThrow();
         _ = validateDecorrelated.Should().NotThrow();
     }
 
@@ -332,30 +339,15 @@ public sealed class RetryDelayStrategyConfigurationTests
         // Arrange
         var zeroTimeSpan = TimeSpan.Zero;
 
-        var exponentialConfig = new ExponentialBackoffConfiguration
-        {
-            BaseDelay = zeroTimeSpan,
-        };
-
-        var linearConfig = new LinearBackoffConfiguration
-        {
-            BaseDelay = zeroTimeSpan,
-        };
-
-        var fixedConfig = new FixedDelayConfiguration
-        {
-            Delay = zeroTimeSpan,
-        };
-
         // Act & Assert
-        var validateExponential = () => exponentialConfig.Validate();
-        var validateLinear = () => linearConfig.Validate();
-        var validateFixed = () => fixedConfig.Validate();
+        var createExponential = () => BackoffStrategies.ExponentialBackoff(zeroTimeSpan, 2.0, TimeSpan.FromMinutes(1));
+        var createLinear = () => BackoffStrategies.LinearBackoff(zeroTimeSpan, TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(1));
+        var createFixed = () => BackoffStrategies.FixedDelay(zeroTimeSpan);
         Action validateDecorrelated = () => JitterStrategies.DecorrelatedJitter(zeroTimeSpan);
 
-        _ = validateExponential.Should().Throw<ArgumentException>();
-        _ = validateLinear.Should().Throw<ArgumentException>();
-        _ = validateFixed.Should().Throw<ArgumentException>();
+        _ = createExponential.Should().Throw<ArgumentException>();
+        _ = createLinear.Should().Throw<ArgumentException>();
+        _ = createFixed.Should().Throw<ArgumentException>();
         _ = validateDecorrelated.Should().Throw<ArgumentException>();
     }
 
@@ -365,31 +357,125 @@ public sealed class RetryDelayStrategyConfigurationTests
         // Arrange
         var negativeTimeSpan = TimeSpan.FromSeconds(-1);
 
-        var exponentialConfig = new ExponentialBackoffConfiguration
-        {
-            BaseDelay = negativeTimeSpan,
-        };
-
-        var linearConfig = new LinearBackoffConfiguration
-        {
-            BaseDelay = negativeTimeSpan,
-        };
-
-        var fixedConfig = new FixedDelayConfiguration
-        {
-            Delay = negativeTimeSpan,
-        };
-
         // Act & Assert
-        var validateExponential = () => exponentialConfig.Validate();
-        var validateLinear = () => linearConfig.Validate();
-        var validateFixed = () => fixedConfig.Validate();
+        var createExponential = () => BackoffStrategies.ExponentialBackoff(negativeTimeSpan, 2.0, TimeSpan.FromMinutes(1));
+        var createLinear = () => BackoffStrategies.LinearBackoff(negativeTimeSpan, TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(1));
+        var createFixed = () => BackoffStrategies.FixedDelay(negativeTimeSpan);
         Action validateDecorrelated = () => JitterStrategies.DecorrelatedJitter(negativeTimeSpan);
 
-        _ = validateExponential.Should().Throw<ArgumentException>();
-        _ = validateLinear.Should().Throw<ArgumentException>();
-        _ = validateFixed.Should().Throw<ArgumentException>();
+        _ = createExponential.Should().Throw<ArgumentException>();
+        _ = createLinear.Should().Throw<ArgumentException>();
+        _ = createFixed.Should().Throw<ArgumentException>();
         _ = validateDecorrelated.Should().Throw<ArgumentException>();
+    }
+
+    #endregion
+
+    #region Null Jitter Strategy Tests
+
+    [Fact]
+    public void Configuration_WithBackoffAndNullJitter_ShouldValidate()
+    {
+        // Arrange
+        var configuration = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(1), 2.0, TimeSpan.FromMinutes(1))); // JitterStrategy is null (valid)
+
+        // Act & Assert - Should not throw
+        configuration.Validate();
+    }
+
+    [Fact]
+    public void Configuration_WithBackoffAndNullJitter_ShouldCreateStrategySuccessfully()
+    {
+        // Arrange
+        var configuration = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.LinearBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(1))); // JitterStrategy is null (valid)
+
+        var factory = new DefaultRetryDelayStrategyFactory();
+
+        // Act & Assert - Should not throw
+        var createAction = () => factory.CreateStrategy(configuration);
+        _ = createAction.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Configuration_WithBackoffAndNullJitter_ShouldWorkWithAllBackoffTypes()
+    {
+        // Arrange
+        var exponentialConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(1), 2.0, TimeSpan.FromMinutes(1)));
+
+        var linearConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.LinearBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(1)));
+
+        var fixedConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.FixedDelay(TimeSpan.FromSeconds(1)));
+
+        var factory = new DefaultRetryDelayStrategyFactory();
+
+        // Act & Assert - All should work without jitter
+        var createExponential = () => factory.CreateStrategy(exponentialConfig);
+        var createLinear = () => factory.CreateStrategy(linearConfig);
+        var createFixed = () => factory.CreateStrategy(fixedConfig);
+
+        _ = createExponential.Should().NotThrow();
+        _ = createLinear.Should().NotThrow();
+        _ = createFixed.Should().NotThrow();
+    }
+
+    [Fact]
+    public async Task Configuration_WithBackoffAndNullJitter_ShouldProduceDeterministicDelays()
+    {
+        // Arrange
+        var configuration = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.ExponentialBackoff(TimeSpan.FromMilliseconds(100), 2.0, TimeSpan.FromSeconds(5))); // No jitter for deterministic behavior
+
+        var factory = new DefaultRetryDelayStrategyFactory();
+        var strategy = factory.CreateStrategy(configuration);
+
+        // Act
+        var delay1 = await strategy.GetDelayAsync(1);
+        var delay2 = await strategy.GetDelayAsync(1);
+        var delay3 = await strategy.GetDelayAsync(2);
+
+        // Assert - Should be deterministic without jitter
+        _ = delay1.Should().Be(delay2); // Same attempt should produce same delay
+        _ = delay3.Should().BeGreaterThan(delay1); // Higher attempt should produce greater delay
+        _ = delay1.Should().Be(TimeSpan.FromMilliseconds(200)); // 100ms * 2^1
+        _ = delay3.Should().Be(TimeSpan.FromMilliseconds(400)); // 100ms * 2^2
+    }
+
+    [Fact]
+    public void Validator_WithBackoffAndNullJitter_ShouldValidateSuccessfully()
+    {
+        // Arrange
+        var configuration = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(1), 2.0, TimeSpan.FromMinutes(1))); // JitterStrategy is null (valid)
+
+        // Act & Assert - Should not throw
+        var validateAction = () => RetryDelayStrategyValidator.ValidateRetryDelayStrategyConfiguration(configuration);
+        _ = validateAction.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Validator_WithNullBackoffAndNullJitter_ShouldThrowArgumentNullException()
+    {
+        // Arrange & Act & Assert - Test that validator properly handles null BackoffStrategy
+        // Since BackoffStrategy is non-nullable in the record, we need to test the validator directly
+        var validateAction = () => RetryDelayStrategyValidator.ValidateRetryDelayStrategyConfiguration(null!);
+        _ = validateAction.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Validator_WithBackoffAndNullJitter_ShouldNotCallJitterValidation()
+    {
+        // Arrange
+        var configuration = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(1), 2.0, TimeSpan.FromMinutes(1))); // JitterStrategy is null (valid)
+
+        // Act & Assert - Should not throw and should not attempt to validate null jitter
+        var validateAction = () => RetryDelayStrategyValidator.ValidateRetryDelayStrategyConfiguration(configuration);
+        _ = validateAction.Should().NotThrow();
     }
 
     #endregion
@@ -400,23 +486,29 @@ public sealed class RetryDelayStrategyConfigurationTests
     public void AllConfigurations_ShouldHaveReasonableDefaultValues()
     {
         // Arrange & Act
-        var exponentialConfig = new ExponentialBackoffConfiguration();
-        var linearConfig = new LinearBackoffConfiguration();
-        var fixedConfig = new FixedDelayConfiguration();
+        var factory = new DefaultRetryDelayStrategyFactory();
+
+        // Test default strategies
+        var exponentialConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(1), 2.0, TimeSpan.FromMinutes(1)),
+            JitterStrategies.NoJitter());
+
+        var linearConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.LinearBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(1)),
+            JitterStrategies.NoJitter());
+
+        var fixedConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.FixedDelay(TimeSpan.FromSeconds(1)),
+            JitterStrategies.NoJitter());
 
         // Assert
-        // Exponential defaults
-        _ = exponentialConfig.BaseDelay.Should().Be(TimeSpan.FromSeconds(1));
-        _ = exponentialConfig.Multiplier.Should().Be(2.0);
-        _ = exponentialConfig.MaxDelay.Should().Be(TimeSpan.FromMinutes(1));
+        var createExponential = () => factory.CreateStrategy(exponentialConfig);
+        var createLinear = () => factory.CreateStrategy(linearConfig);
+        var createFixed = () => factory.CreateStrategy(fixedConfig);
 
-        // Linear defaults
-        _ = linearConfig.BaseDelay.Should().Be(TimeSpan.FromSeconds(1));
-        _ = linearConfig.Increment.Should().Be(TimeSpan.FromSeconds(1));
-        _ = linearConfig.MaxDelay.Should().Be(TimeSpan.FromMinutes(1));
-
-        // Fixed defaults
-        _ = fixedConfig.Delay.Should().Be(TimeSpan.FromSeconds(1));
+        _ = createExponential.Should().NotThrow();
+        _ = createLinear.Should().NotThrow();
+        _ = createFixed.Should().NotThrow();
 
         // Decorrelated defaults - test with default parameters
         var decorrelatedStrategy = JitterStrategies.DecorrelatedJitter(TimeSpan.FromMinutes(1));
@@ -427,32 +519,24 @@ public sealed class RetryDelayStrategyConfigurationTests
     public void Configurations_ShouldMaintainImmutabilityAfterValidation()
     {
         // Arrange
-        var exponentialConfig = new ExponentialBackoffConfiguration
-        {
-            BaseDelay = TimeSpan.FromSeconds(5),
-            Multiplier = 3.0,
-            MaxDelay = TimeSpan.FromMinutes(2),
-        };
+        var exponentialConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(5), 3.0, TimeSpan.FromMinutes(2)),
+            JitterStrategies.NoJitter());
 
-        var linearConfig = new LinearBackoffConfiguration
-        {
-            BaseDelay = TimeSpan.FromSeconds(3),
-            Increment = TimeSpan.FromSeconds(2),
-            MaxDelay = TimeSpan.FromMinutes(5),
-        };
+        var linearConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.LinearBackoff(TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(2), TimeSpan.FromMinutes(5)),
+            JitterStrategies.NoJitter());
 
         // Act
-        exponentialConfig.Validate();
-        linearConfig.Validate();
+        var factory = new DefaultRetryDelayStrategyFactory();
+        _ = factory.CreateStrategy(exponentialConfig);
+        _ = factory.CreateStrategy(linearConfig);
 
         // Assert - Values should remain unchanged after validation
-        _ = exponentialConfig.BaseDelay.Should().Be(TimeSpan.FromSeconds(5));
-        _ = exponentialConfig.Multiplier.Should().Be(3.0);
-        _ = exponentialConfig.MaxDelay.Should().Be(TimeSpan.FromMinutes(2));
-
-        _ = linearConfig.BaseDelay.Should().Be(TimeSpan.FromSeconds(3));
-        _ = linearConfig.Increment.Should().Be(TimeSpan.FromSeconds(2));
-        _ = linearConfig.MaxDelay.Should().Be(TimeSpan.FromMinutes(5));
+        _ = exponentialConfig.BackoffStrategy.Should().NotBeNull();
+        _ = exponentialConfig.JitterStrategy.Should().NotBeNull();
+        _ = linearConfig.BackoffStrategy.Should().NotBeNull();
+        _ = linearConfig.JitterStrategy.Should().NotBeNull();
     }
 
     #endregion

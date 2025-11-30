@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using NPipeline.Configuration;
 using NPipeline.Configuration.RetryDelay;
 using NPipeline.ErrorHandling;
+using NPipeline.Execution.RetryDelay;
 using NPipeline.Execution.Strategies;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -16,11 +17,11 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
     {
         // Arrange
         var delayConfig = new RetryDelayStrategyConfiguration(
-            new ExponentialBackoffConfiguration(
+            BackoffStrategies.ExponentialBackoff(
                 TimeSpan.FromMilliseconds(10),
                 2.0,
                 TimeSpan.FromSeconds(1)),
-            new NoJitterConfiguration());
+            JitterStrategies.NoJitter());
 
         var context = CreatePipelineContextWithRetryDelay(delayConfig);
         var innerStrategy = new SequentialExecutionStrategy();
@@ -36,7 +37,7 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
         {
             await using var result = await resilientStrategy.ExecuteAsync(input, node, context, CancellationToken.None);
 
-            // Consume the result to trigger retries
+            // Consume result to trigger retries
             var outputs = new List<string>();
 
             await foreach (var item in result.WithCancellation(CancellationToken.None))
@@ -58,11 +59,11 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
     {
         // Arrange
         var delayConfig = new RetryDelayStrategyConfiguration(
-            new LinearBackoffConfiguration(
+            BackoffStrategies.LinearBackoff(
                 TimeSpan.FromMilliseconds(10),
                 TimeSpan.FromMilliseconds(5),
                 TimeSpan.FromSeconds(1)),
-            new NoJitterConfiguration());
+            JitterStrategies.NoJitter());
 
         var context = CreatePipelineContextWithRetryDelay(delayConfig);
         var innerStrategy = new SequentialExecutionStrategy();
@@ -78,7 +79,7 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
         {
             await using var result = await resilientStrategy.ExecuteAsync(input, node, context, CancellationToken.None);
 
-            // Consume the result to trigger retries
+            // Consume result to trigger retries
             var outputs = new List<string>();
 
             await foreach (var item in result.WithCancellation(CancellationToken.None))
@@ -100,8 +101,8 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
     {
         // Arrange
         var delayConfig = new RetryDelayStrategyConfiguration(
-            new FixedDelayConfiguration(TimeSpan.FromMilliseconds(20)),
-            new NoJitterConfiguration());
+            BackoffStrategies.FixedDelay(TimeSpan.FromMilliseconds(20)),
+            JitterStrategies.NoJitter());
 
         var context = CreatePipelineContextWithRetryDelay(delayConfig);
         var innerStrategy = new SequentialExecutionStrategy();
@@ -117,7 +118,7 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
         {
             await using var result = await resilientStrategy.ExecuteAsync(input, node, context, CancellationToken.None);
 
-            // Consume the result to trigger retries
+            // Consume result to trigger retries
             var outputs = new List<string>();
 
             await foreach (var item in result.WithCancellation(CancellationToken.None))
@@ -139,11 +140,11 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
     {
         // Arrange
         var delayConfig = new RetryDelayStrategyConfiguration(
-            new ExponentialBackoffConfiguration(
+            BackoffStrategies.ExponentialBackoff(
                 TimeSpan.FromMilliseconds(10),
                 2.0,
                 TimeSpan.FromSeconds(1)),
-            new FullJitterConfiguration());
+            JitterStrategies.FullJitter());
 
         var context = CreatePipelineContextWithRetryDelay(delayConfig);
         var innerStrategy = new SequentialExecutionStrategy();
@@ -159,7 +160,7 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
         {
             await using var result = await resilientStrategy.ExecuteAsync(input, node, context, CancellationToken.None);
 
-            // Consume the result to trigger retries
+            // Consume result to trigger retries
             var outputs = new List<string>();
 
             await foreach (var item in result.WithCancellation(CancellationToken.None))
@@ -183,11 +184,11 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
     {
         // Arrange
         var delayConfig = new RetryDelayStrategyConfiguration(
-            new ExponentialBackoffConfiguration(
+            BackoffStrategies.ExponentialBackoff(
                 TimeSpan.FromSeconds(1),
                 2.0,
                 TimeSpan.FromSeconds(10)),
-            new NoJitterConfiguration());
+            JitterStrategies.NoJitter());
 
         var context = CreatePipelineContextWithRetryDelay(delayConfig);
         var innerStrategy = new SequentialExecutionStrategy();
@@ -218,10 +219,11 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
             cts.Cancel();
 
             // Wait for task to complete or timeout
-            await Task.WhenAny(executeTask, Task.Delay(2000));
+            var completedTask = Task.WhenAny(executeTask, Task.Delay(2000));
+            _ = await completedTask;
 
-            // Either the task completed (with or without exception) or we timed out
-            // Both are acceptable - the important thing is we didn't wait forever
+            // Either task completed (with or without exception) or we timed out
+            // Both are acceptable - important thing is we didn't wait forever
             Assert.True(true);
         }
     }
@@ -231,11 +233,11 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
     {
         // Arrange
         var delayConfig = new RetryDelayStrategyConfiguration(
-            new ExponentialBackoffConfiguration(
+            BackoffStrategies.ExponentialBackoff(
                 TimeSpan.FromMilliseconds(1),
                 2.0,
                 TimeSpan.FromSeconds(1)),
-            new NoJitterConfiguration());
+            JitterStrategies.NoJitter());
 
         var context = CreatePipelineContextWithRetryDelay(delayConfig, 2);
         var innerStrategy = new SequentialExecutionStrategy();
@@ -279,7 +281,7 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
         {
             await using var result = await resilientStrategy.ExecuteAsync(input, node, context, CancellationToken.None);
 
-            // Consume the result to trigger retries
+            // Consume result to trigger retries
             var outputs = new List<string>();
 
             await foreach (var item in result.WithCancellation(CancellationToken.None))

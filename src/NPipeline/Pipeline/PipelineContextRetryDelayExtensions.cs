@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using NPipeline.Configuration;
 using NPipeline.Configuration.RetryDelay;
 using NPipeline.Execution.RetryDelay;
@@ -17,22 +18,28 @@ namespace NPipeline.Pipeline;
 ///         When no delay strategy is configured, a NoOpRetryDelayStrategy
 ///         is returned to provide consistent behavior.
 ///     </para>
+///     <para>
+///         Thread Safety: The caching mechanism is thread-safe to prevent
+///         race conditions when multiple threads access the same context
+///         concurrently.
+///     </para>
 /// </remarks>
 public static class PipelineContextRetryDelayExtensions
 {
     private const string RetryDelayStrategyCacheKey = "NPipeline.RetryDelayStrategy";
     private const string UpdatedRetryOptionsKey = "NPipeline.UpdatedRetryOptions";
+    private static readonly object CacheLock = new();
 
     /// <summary>
     ///     Gets retry delay strategy from pipeline context.
     /// </summary>
-    /// <param name="context">The pipeline context to get the strategy from.</param>
+    /// <param name="context">The pipeline context to get strategy from.</param>
     /// <returns>The retry delay strategy configured for context.</returns>
     /// <exception cref="ArgumentNullException">Thrown when context is null.</exception>
     /// <remarks>
     ///     <para>
     ///         This method retrieves retry delay strategy from pipeline context,
-    ///         using the following logic:
+    ///         using following logic:
     ///         <list type="number">
     ///             <item>
     ///                 <description>If a strategy is already cached in context.Items, return it</description>
@@ -46,41 +53,53 @@ public static class PipelineContextRetryDelayExtensions
     ///         </list>
     ///     </para>
     ///     <para>
-    ///         The strategy is cached using the key "NPipeline.RetryDelayStrategy"
+    ///         The strategy is cached using key "NPipeline.RetryDelayStrategy"
     ///         to avoid repeated creation and ensure consistent behavior across
     ///         multiple calls within the same pipeline execution.
+    ///     </para>
+    ///     <para>
+    ///         Thread Safety: This method uses double-checked locking pattern
+    ///         to ensure thread-safe strategy creation and caching.
     ///     </para>
     /// </remarks>
     public static IRetryDelayStrategy GetRetryDelayStrategy(this PipelineContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        // Check if strategy is already cached
+        // Double-checked locking pattern for thread safety
         if (context.Items.TryGetValue(RetryDelayStrategyCacheKey, out var cachedStrategy) &&
             cachedStrategy is IRetryDelayStrategy strategy)
             return strategy;
 
-        IRetryDelayStrategy retryDelayStrategy;
-
-        // Get the current retry options (check if we have updated ones)
-        var currentRetryOptions = GetCurrentRetryOptions(context);
-
-        // Check if delay strategy is configured
-        if (currentRetryOptions.DelayStrategyConfiguration is { } delayConfig)
+        lock (CacheLock)
         {
-            // Create strategy from configuration using factory
-            retryDelayStrategy = CreateStrategyFromConfiguration(delayConfig);
-        }
-        else
-        {
-            // Fallback to no-op strategy
-            retryDelayStrategy = NoOpRetryDelayStrategy.Instance;
-        }
+            // Check again inside the lock in case another thread created the strategy
+            if (context.Items.TryGetValue(RetryDelayStrategyCacheKey, out var cachedStrategyInsideLock) &&
+                cachedStrategyInsideLock is IRetryDelayStrategy strategyInsideLock)
+                return strategyInsideLock;
 
-        // Cache strategy
-        context.Items[RetryDelayStrategyCacheKey] = retryDelayStrategy;
+            IRetryDelayStrategy retryDelayStrategy;
 
-        return retryDelayStrategy;
+            // Get current retry options (check if we have updated ones)
+            var currentRetryOptions = GetCurrentRetryOptions(context);
+
+            // Check if delay strategy is configured
+            if (currentRetryOptions.DelayStrategyConfiguration is { } delayConfig)
+            {
+                // Create strategy from configuration using factory
+                retryDelayStrategy = CreateStrategyFromConfiguration(delayConfig);
+            }
+            else
+            {
+                // Fallback to no-op strategy
+                retryDelayStrategy = NoOpRetryDelayStrategy.Instance;
+            }
+
+            // Cache strategy
+            context.Items[RetryDelayStrategyCacheKey] = retryDelayStrategy;
+
+            return retryDelayStrategy;
+        }
     }
 
     /// <summary>
@@ -95,7 +114,7 @@ public static class PipelineContextRetryDelayExtensions
             updatedOptions is PipelineRetryOptions options)
             return options;
 
-        // Return the original retry options
+        // Return original retry options
         return context.RetryOptions;
     }
 
@@ -107,9 +126,13 @@ public static class PipelineContextRetryDelayExtensions
     /// <remarks>
     ///     <para>
     ///         This method uses DefaultRetryDelayStrategyFactory to create
-    ///         the appropriate strategy based on configuration. It includes
+    ///         appropriate strategy based on configuration. It includes
     ///         proper error handling and falls back to NoOpRetryDelayStrategy
     ///         if strategy creation fails.
+    ///     </para>
+    ///     <para>
+    ///         Production Logging: When fallback occurs, logs the error for
+    ///         observability and debugging purposes.
     ///     </para>
     /// </remarks>
     private static IRetryDelayStrategy CreateStrategyFromConfiguration(RetryDelayStrategyConfiguration configuration)
@@ -122,17 +145,20 @@ public static class PipelineContextRetryDelayExtensions
             var factory = new DefaultRetryDelayStrategyFactory();
             return factory.CreateStrategy(configuration);
         }
-        catch
+        catch (Exception ex)
         {
             // Log error and fall back to no-op strategy
-            // Note: In a real implementation, you might want to use a logger here
-            // For now, we'll fall back silently to maintain backward compatibility
+            Debug.WriteLine($"RetryDelayStrategy: Failed to create strategy from configuration. " +
+                            $"Error: {ex.Message}. Falling back to NoOpRetryDelayStrategy. " +
+                            $"Configuration: BackoffStrategy={configuration.BackoffStrategy?.GetType().Name ?? "null"}, " +
+                            $"JitterStrategy={configuration.JitterStrategy?.GetType().Name ?? "null"}");
+
             return NoOpRetryDelayStrategy.Instance;
         }
     }
 
     /// <summary>
-    ///     Gets the retry delay for the specified attempt number.
+    ///     Gets retry delay for specified attempt number.
     /// </summary>
     /// <param name="context">The pipeline context.</param>
     /// <param name="attempt">The attempt number (0-based).</param>
@@ -161,7 +187,7 @@ public static class PipelineContextRetryDelayExtensions
     }
 
     /// <summary>
-    ///     Configures the pipeline context to use exponential backoff delay.
+    ///     Configures the pipeline context to use exponential backoff delay with decorrelated jitter.
     /// </summary>
     /// <param name="context">The pipeline context to configure.</param>
     /// <param name="baseDelay">The base delay for exponential backoff.</param>
@@ -173,8 +199,9 @@ public static class PipelineContextRetryDelayExtensions
     /// <remarks>
     ///     <para>
     ///         This method configures the pipeline context to use
-    ///         exponential backoff delay strategy. The delay grows
-    ///         exponentially with each retry attempt: delay = baseDelay * multiplier^attempt.
+    ///         an exponential backoff delay strategy with decorrelated jitter.
+    ///         The delay grows exponentially with each retry attempt: delay = baseDelay * multiplier^attempt,
+    ///         and decorrelated jitter adds randomness to prevent thundering herd problems.
     ///     </para>
     ///     <para>
     ///         The maxDelay parameter ensures that the delay never exceeds
@@ -196,24 +223,24 @@ public static class PipelineContextRetryDelayExtensions
         if (multiplier <= 1.0)
             throw new ArgumentException("Multiplier must be greater than 1.0", nameof(multiplier));
 
-        var backoffConfig = new ExponentialBackoffConfiguration(
+        var backoffStrategy = BackoffStrategies.ExponentialBackoff(
             baseDelay, multiplier, maxDelay ?? TimeSpan.FromMinutes(5));
 
-        var jitterConfig = new DecorrelatedJitterConfiguration(TimeSpan.FromMinutes(1), 3.0);
-        var strategyConfig = new RetryDelayStrategyConfiguration(backoffConfig, jitterConfig);
+        var jitterStrategy = JitterStrategies.DecorrelatedJitter(TimeSpan.FromMinutes(1));
+        var strategyConfig = new RetryDelayStrategyConfiguration(backoffStrategy, jitterStrategy);
 
-        // Store the updated retry options in Properties since RetryOptions is read-only
+        // Store updated retry options in Properties since RetryOptions is read-only
         var updatedRetryOptions = context.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
         context.Properties[UpdatedRetryOptionsKey] = updatedRetryOptions;
 
-        // Clear the cached strategy to force recreation
-        context.Items.Remove(RetryDelayStrategyCacheKey);
+        // Clear cached strategy to force recreation
+        _ = context.Items.Remove(RetryDelayStrategyCacheKey);
 
         return context;
     }
 
     /// <summary>
-    ///     Configures the pipeline context to use linear backoff delay.
+    ///     Configures the pipeline context to use linear backoff delay with decorrelated jitter.
     /// </summary>
     /// <param name="context">The pipeline context to configure.</param>
     /// <param name="baseDelay">The base delay for linear backoff.</param>
@@ -225,8 +252,9 @@ public static class PipelineContextRetryDelayExtensions
     /// <remarks>
     ///     <para>
     ///         This method configures the pipeline context to use
-    ///         linear backoff delay strategy. The delay grows linearly
-    ///         with each retry attempt: delay = baseDelay + (increment * attempt).
+    ///         a linear backoff delay strategy with decorrelated jitter.
+    ///         The delay grows linearly with each retry attempt: delay = baseDelay + (increment * attempt),
+    ///         and decorrelated jitter adds randomness to prevent thundering herd problems.
     ///     </para>
     ///     <para>
     ///         The maxDelay parameter ensures that the delay never exceeds
@@ -248,24 +276,24 @@ public static class PipelineContextRetryDelayExtensions
         if (increment <= TimeSpan.Zero)
             throw new ArgumentException("Increment must be positive", nameof(increment));
 
-        var backoffConfig = new LinearBackoffConfiguration(
+        var backoffStrategy = BackoffStrategies.LinearBackoff(
             baseDelay, increment, maxDelay ?? TimeSpan.FromMinutes(5));
 
-        var jitterConfig = new DecorrelatedJitterConfiguration(TimeSpan.FromMinutes(1), 3.0);
-        var strategyConfig = new RetryDelayStrategyConfiguration(backoffConfig, jitterConfig);
+        var jitterStrategy = JitterStrategies.DecorrelatedJitter(TimeSpan.FromMinutes(1));
+        var strategyConfig = new RetryDelayStrategyConfiguration(backoffStrategy, jitterStrategy);
 
-        // Store the updated retry options in Properties since RetryOptions is read-only
+        // Store updated retry options in Properties since RetryOptions is read-only
         var updatedRetryOptions = context.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
         context.Properties[UpdatedRetryOptionsKey] = updatedRetryOptions;
 
-        // Clear the cached strategy to force recreation
-        context.Items.Remove(RetryDelayStrategyCacheKey);
+        // Clear cached strategy to force recreation
+        _ = context.Items.Remove(RetryDelayStrategyCacheKey);
 
         return context;
     }
 
     /// <summary>
-    ///     Configures the pipeline context to use fixed delay.
+    ///     Configures the pipeline context to use fixed delay with decorrelated jitter.
     /// </summary>
     /// <param name="context">The pipeline context to configure.</param>
     /// <param name="delay">The fixed delay between retry attempts.</param>
@@ -275,12 +303,13 @@ public static class PipelineContextRetryDelayExtensions
     /// <remarks>
     ///     <para>
     ///         This method configures the pipeline context to use
-    ///         fixed delay strategy. The delay remains constant for
-    ///         all retry attempts.
+    ///         a fixed delay strategy with decorrelated jitter.
+    ///         The delay remains constant for all retry attempts,
+    ///         and decorrelated jitter adds randomness to prevent thundering herd problems.
     ///     </para>
     ///     <para>
     ///         Fixed delay is useful when you want consistent retry
-    ///         intervals regardless of the attempt number.
+    ///         intervals regardless of attempt number, but still need some jitter.
     ///     </para>
     /// </remarks>
     public static PipelineContext UseFixedDelay(
@@ -292,16 +321,16 @@ public static class PipelineContextRetryDelayExtensions
         if (delay <= TimeSpan.Zero)
             throw new ArgumentException("Delay must be positive", nameof(delay));
 
-        var backoffConfig = new FixedDelayConfiguration(delay);
-        var jitterConfig = new DecorrelatedJitterConfiguration(TimeSpan.FromMinutes(1), 3.0);
-        var strategyConfig = new RetryDelayStrategyConfiguration(backoffConfig, jitterConfig);
+        var backoffStrategy = BackoffStrategies.FixedDelay(delay);
+        var jitterStrategy = JitterStrategies.DecorrelatedJitter(TimeSpan.FromMinutes(1));
+        var strategyConfig = new RetryDelayStrategyConfiguration(backoffStrategy, jitterStrategy);
 
-        // Store the updated retry options in Properties since RetryOptions is read-only
+        // Store updated retry options in Properties since RetryOptions is read-only
         var updatedRetryOptions = context.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
         context.Properties[UpdatedRetryOptionsKey] = updatedRetryOptions;
 
-        // Clear the cached strategy to force recreation
-        context.Items.Remove(RetryDelayStrategyCacheKey);
+        // Clear cached strategy to force recreation
+        _ = context.Items.Remove(RetryDelayStrategyCacheKey);
 
         return context;
     }
@@ -320,14 +349,14 @@ public static class PipelineContextRetryDelayExtensions
     ///     <para>
     ///         This method configures the pipeline context to use
     ///         exponential backoff with equal jitter. Equal jitter adds
-    ///         randomness to the delay while maintaining the exponential growth pattern.
+    ///         randomness to delay while maintaining the exponential growth pattern.
     ///     </para>
     ///     <para>
-    ///         Equal jitter is calculated as: delay + random(0, jitterMax),
-    ///         where jitterMax is typically a fraction of the base delay.
+    ///         Equal jitter is calculated as: delay/2 + random(0, delay/2),
+    ///         providing a balance between predictability and randomness.
     ///     </para>
     /// </remarks>
-    public static PipelineContext UseExponentialBackoffWithJitter(
+    public static PipelineContext UseExponentialBackoffWithEqualJitter(
         this PipelineContext context,
         TimeSpan baseDelay,
         double multiplier = 2.0,
@@ -341,18 +370,18 @@ public static class PipelineContextRetryDelayExtensions
         if (multiplier <= 1.0)
             throw new ArgumentException("Multiplier must be greater than 1.0", nameof(multiplier));
 
-        var backoffConfig = new ExponentialBackoffConfiguration(
+        var backoffStrategy = BackoffStrategies.ExponentialBackoff(
             baseDelay, multiplier, maxDelay ?? TimeSpan.FromMinutes(5));
 
-        var jitterConfig = new DecorrelatedJitterConfiguration(TimeSpan.FromMinutes(1), 3.0);
-        var strategyConfig = new RetryDelayStrategyConfiguration(backoffConfig, jitterConfig);
+        var jitterStrategy = JitterStrategies.EqualJitter();
+        var strategyConfig = new RetryDelayStrategyConfiguration(backoffStrategy, jitterStrategy);
 
-        // Store the updated retry options in Properties since RetryOptions is read-only
+        // Store updated retry options in Properties since RetryOptions is read-only
         var updatedRetryOptions = context.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
         context.Properties[UpdatedRetryOptionsKey] = updatedRetryOptions;
 
-        // Clear the cached strategy to force recreation
-        context.Items.Remove(RetryDelayStrategyCacheKey);
+        // Clear cached strategy to force recreation
+        _ = context.Items.Remove(RetryDelayStrategyCacheKey);
 
         return context;
     }

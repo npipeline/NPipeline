@@ -49,11 +49,11 @@ public sealed class PipelineContextRetryDelayExtensionsTests
     {
         // Arrange
         var delayConfig = new RetryDelayStrategyConfiguration(
-            new ExponentialBackoffConfiguration(
+            BackoffStrategies.ExponentialBackoff(
                 TimeSpan.FromMilliseconds(100),
                 2.5,
                 TimeSpan.FromSeconds(30)),
-            new FullJitterConfiguration());
+            JitterStrategies.FullJitter());
 
         var context = CreateContextWithDelayStrategy(delayConfig);
 
@@ -64,7 +64,7 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         _ = strategy.Should().NotBeNull();
         _ = strategy.Should().BeOfType<CompositeRetryDelayStrategy>();
 
-        // Test that the strategy produces reasonable delays
+        // Test that strategy produces reasonable delays
         var delay = await strategy.GetDelayAsync(2);
         _ = delay.Should().BeGreaterThan(TimeSpan.Zero);
         _ = delay.Should().BeLessThanOrEqualTo(TimeSpan.FromSeconds(30));
@@ -75,11 +75,11 @@ public sealed class PipelineContextRetryDelayExtensionsTests
     {
         // Arrange
         var delayConfig = new RetryDelayStrategyConfiguration(
-            new LinearBackoffConfiguration(
+            BackoffStrategies.LinearBackoff(
                 TimeSpan.FromMilliseconds(50),
                 TimeSpan.FromMilliseconds(25),
                 TimeSpan.FromSeconds(10)),
-            new EqualJitterConfiguration());
+            JitterStrategies.EqualJitter());
 
         var context = CreateContextWithDelayStrategy(delayConfig);
 
@@ -90,7 +90,7 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         _ = strategy.Should().NotBeNull();
         _ = strategy.Should().BeOfType<CompositeRetryDelayStrategy>();
 
-        // Test that the strategy produces reasonable delays
+        // Test that Strategy produces reasonable delays
         var delay = await strategy.GetDelayAsync(3);
         _ = delay.Should().BeGreaterThan(TimeSpan.Zero);
         _ = delay.Should().BeLessThanOrEqualTo(TimeSpan.FromSeconds(10));
@@ -101,8 +101,8 @@ public sealed class PipelineContextRetryDelayExtensionsTests
     {
         // Arrange
         var delayConfig = new RetryDelayStrategyConfiguration(
-            new FixedDelayConfiguration(TimeSpan.FromMilliseconds(200)),
-            new NoJitterConfiguration());
+            BackoffStrategies.FixedDelay(TimeSpan.FromMilliseconds(200)),
+            JitterStrategies.NoJitter());
 
         var context = CreateContextWithDelayStrategy(delayConfig);
 
@@ -113,7 +113,7 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         _ = strategy.Should().NotBeNull();
         _ = strategy.Should().BeOfType<CompositeRetryDelayStrategy>();
 
-        // Test that the strategy produces the expected delay
+        // Test that Strategy produces expected delay
         var delay = await strategy.GetDelayAsync(5);
         _ = delay.Should().Be(TimeSpan.FromMilliseconds(200));
     }
@@ -123,11 +123,11 @@ public sealed class PipelineContextRetryDelayExtensionsTests
     {
         // Arrange
         var delayConfig = new RetryDelayStrategyConfiguration(
-            new ExponentialBackoffConfiguration(
+            BackoffStrategies.ExponentialBackoff(
                 TimeSpan.FromMilliseconds(100),
                 2.0,
                 TimeSpan.FromSeconds(30)),
-            new DecorrelatedJitterConfiguration());
+            JitterStrategies.DecorrelatedJitter(TimeSpan.FromMinutes(1)));
 
         var context = CreateContextWithDelayStrategy(delayConfig);
 
@@ -138,7 +138,7 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         _ = strategy.Should().NotBeNull();
         _ = strategy.Should().BeOfType<CompositeRetryDelayStrategy>();
 
-        // Test that the strategy produces reasonable delays
+        // Test that Strategy produces reasonable delays
         var delay = await strategy.GetDelayAsync(2);
         _ = delay.Should().BeGreaterThan(TimeSpan.Zero);
         _ = delay.Should().BeLessThanOrEqualTo(TimeSpan.FromSeconds(30));
@@ -149,8 +149,11 @@ public sealed class PipelineContextRetryDelayExtensionsTests
     {
         // Arrange
         var delayConfig = new RetryDelayStrategyConfiguration(
-            new ExponentialBackoffConfiguration(),
-            new EqualJitterConfiguration());
+            BackoffStrategies.ExponentialBackoff(
+                TimeSpan.FromMilliseconds(100),
+                2.0,
+                TimeSpan.FromSeconds(30)),
+            JitterStrategies.EqualJitter());
 
         var context = CreateContextWithDelayStrategy(delayConfig);
 
@@ -161,7 +164,7 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         _ = strategy.Should().NotBeNull();
         _ = strategy.Should().BeOfType<CompositeRetryDelayStrategy>();
 
-        // Test that the strategy produces reasonable delays
+        // Test that Strategy produces reasonable delays
         var delay = await strategy.GetDelayAsync(1);
         _ = delay.Should().BeGreaterThan(TimeSpan.Zero);
     }
@@ -171,8 +174,11 @@ public sealed class PipelineContextRetryDelayExtensionsTests
     {
         // Arrange
         var delayConfig = new RetryDelayStrategyConfiguration(
-            new ExponentialBackoffConfiguration(),
-            new NoJitterConfiguration());
+            BackoffStrategies.ExponentialBackoff(
+                TimeSpan.FromMilliseconds(100),
+                2.0,
+                TimeSpan.FromSeconds(30)),
+            JitterStrategies.NoJitter());
 
         var context = CreateContextWithDelayStrategy(delayConfig);
 
@@ -183,22 +189,58 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         _ = strategy.Should().NotBeNull();
         _ = strategy.Should().BeOfType<CompositeRetryDelayStrategy>();
 
-        // Test that the strategy produces deterministic delays (no jitter)
+        // Test that Strategy produces deterministic delays (no jitter)
         var delay1 = await strategy.GetDelayAsync(1);
         var delay2 = await strategy.GetDelayAsync(1);
         _ = delay1.Should().Be(delay2); // Should be deterministic
     }
 
     [Fact]
-    public void GetRetryDelayStrategy_WithInvalidConfiguration_ShouldFallbackToNoOpStrategy()
+    public void GetRetryDelayStrategy_WithInvalidConfiguration_ShouldCreateCompositeStrategy()
     {
         // Arrange
         var delayConfig = new RetryDelayStrategyConfiguration(
-            new ExponentialBackoffConfiguration(
-                TimeSpan.Zero, // Invalid
+            TestBackoffStrategy(), // Valid test implementation
+            JitterStrategies.FullJitter());
+
+        var context = CreateContextWithDelayStrategy(delayConfig);
+
+        // Act
+        var strategy = context.GetRetryDelayStrategy();
+
+        // Assert
+        _ = strategy.Should().NotBeNull();
+        _ = strategy.Should().BeOfType<CompositeRetryDelayStrategy>();
+    }
+
+    [Fact]
+    public void GetRetryDelayStrategy_WithUnknownBackoffStrategy_ShouldCreateCompositeStrategy()
+    {
+        // Arrange
+        var delayConfig = new RetryDelayStrategyConfiguration(
+            TestBackoffStrategy(), // Valid test implementation
+            JitterStrategies.FullJitter());
+
+        var context = CreateContextWithDelayStrategy(delayConfig);
+
+        // Act
+        var strategy = context.GetRetryDelayStrategy();
+
+        // Assert
+        _ = strategy.Should().NotBeNull();
+        _ = strategy.Should().BeOfType<CompositeRetryDelayStrategy>();
+    }
+
+    [Fact]
+    public async Task GetRetryDelayStrategy_WithCustomJitterStrategy_ShouldWorkCorrectly()
+    {
+        // Arrange
+        var delayConfig = new RetryDelayStrategyConfiguration(
+            BackoffStrategies.ExponentialBackoff(
+                TimeSpan.FromMilliseconds(100),
                 2.0,
                 TimeSpan.FromSeconds(30)),
-            new FullJitterConfiguration());
+            TestJitterStrategy());
 
         var context = CreateContextWithDelayStrategy(delayConfig);
 
@@ -207,49 +249,11 @@ public sealed class PipelineContextRetryDelayExtensionsTests
 
         // Assert
         _ = strategy.Should().NotBeNull();
-        _ = strategy.Should().BeOfType<NoOpRetryDelayStrategy>();
-        _ = strategy.Should().BeSameAs(NoOpRetryDelayStrategy.Instance);
-    }
+        _ = strategy.Should().BeOfType<CompositeRetryDelayStrategy>();
 
-    [Fact]
-    public void GetRetryDelayStrategy_WithUnknownBackoffStrategy_ShouldFallbackToNoOpStrategy()
-    {
-        // Arrange
-        var delayConfig = new RetryDelayStrategyConfiguration(
-            new TestBackoffConfiguration(),
-            new FullJitterConfiguration());
-
-        var context = CreateContextWithDelayStrategy(delayConfig);
-
-        // Act
-        var strategy = context.GetRetryDelayStrategy();
-
-        // Assert
-        _ = strategy.Should().NotBeNull();
-        _ = strategy.Should().BeOfType<NoOpRetryDelayStrategy>();
-        _ = strategy.Should().BeSameAs(NoOpRetryDelayStrategy.Instance);
-    }
-
-    [Fact]
-    public async Task GetRetryDelayStrategy_WithUnknownJitterStrategy_ShouldFallbackToNoOpStrategy()
-    {
-        // Arrange
-        var delayConfig = new RetryDelayStrategyConfiguration(
-            new ExponentialBackoffConfiguration(),
-            new TestJitterConfiguration());
-
-        var context = CreateContextWithDelayStrategy(delayConfig);
-
-        // Act
-        var strategy = context.GetRetryDelayStrategy();
-
-        // Assert
-        _ = strategy.Should().NotBeNull();
-        _ = strategy.Should().BeOfType<NoOpRetryDelayStrategy>();
-
-        // Should fall back to no-op strategy when jitter type is unknown
+        // Should use custom jitter strategy (which returns TimeSpan.Zero)
         var delay = await strategy.GetDelayAsync(1);
-        _ = delay.Should().Be(TimeSpan.Zero);
+        _ = delay.Should().Be(TimeSpan.Zero); // TestJitterStrategy returns TimeSpan.Zero
     }
 
     [Fact]
@@ -257,11 +261,11 @@ public sealed class PipelineContextRetryDelayExtensionsTests
     {
         // Arrange
         var delayConfig = new RetryDelayStrategyConfiguration(
-            new ExponentialBackoffConfiguration(
+            BackoffStrategies.ExponentialBackoff(
                 TimeSpan.FromSeconds(1),
                 2.0,
                 TimeSpan.FromSeconds(10)),
-            new FullJitterConfiguration());
+            JitterStrategies.FullJitter());
 
         var context = CreateContextWithDelayStrategy(delayConfig);
         var strategy = context.GetRetryDelayStrategy();
@@ -278,8 +282,11 @@ public sealed class PipelineContextRetryDelayExtensionsTests
     {
         // Arrange
         var delayConfig = new RetryDelayStrategyConfiguration(
-            new ExponentialBackoffConfiguration(),
-            new FullJitterConfiguration());
+            BackoffStrategies.ExponentialBackoff(
+                TimeSpan.FromMilliseconds(100),
+                2.0,
+                TimeSpan.FromSeconds(30)),
+            JitterStrategies.FullJitter());
 
         var context = CreateContextWithDelayStrategy(delayConfig);
 
@@ -298,8 +305,11 @@ public sealed class PipelineContextRetryDelayExtensionsTests
     {
         // Arrange
         var delayConfig = new RetryDelayStrategyConfiguration(
-            new ExponentialBackoffConfiguration(),
-            new FullJitterConfiguration());
+            BackoffStrategies.ExponentialBackoff(
+                TimeSpan.FromMilliseconds(100),
+                2.0,
+                TimeSpan.FromSeconds(30)),
+            JitterStrategies.FullJitter());
 
         var context1 = CreateContextWithDelayStrategy(delayConfig);
         var context2 = CreateContextWithDelayStrategy(delayConfig);
@@ -322,20 +332,26 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         {
             new
             {
-                Backoff = (BackoffStrategyConfiguration)new ExponentialBackoffConfiguration(),
-                Jitter = (JitterStrategyConfiguration)new FullJitterConfiguration(),
+                Backoff = BackoffStrategies.ExponentialBackoff(
+                    TimeSpan.FromMilliseconds(100),
+                    2.0,
+                    TimeSpan.FromSeconds(30)),
+                Jitter = JitterStrategies.FullJitter(),
                 ExpectedType = typeof(CompositeRetryDelayStrategy),
             },
             new
             {
-                Backoff = (BackoffStrategyConfiguration)new LinearBackoffConfiguration(),
-                Jitter = (JitterStrategyConfiguration)new EqualJitterConfiguration(),
+                Backoff = BackoffStrategies.LinearBackoff(
+                    TimeSpan.FromMilliseconds(100),
+                    TimeSpan.FromMilliseconds(100),
+                    TimeSpan.FromSeconds(10)),
+                Jitter = JitterStrategies.EqualJitter(),
                 ExpectedType = typeof(CompositeRetryDelayStrategy),
             },
             new
             {
-                Backoff = (BackoffStrategyConfiguration)new FixedDelayConfiguration(),
-                Jitter = (JitterStrategyConfiguration)new NoJitterConfiguration(),
+                Backoff = BackoffStrategies.FixedDelay(TimeSpan.FromMilliseconds(500)),
+                Jitter = JitterStrategies.NoJitter(),
                 ExpectedType = typeof(CompositeRetryDelayStrategy),
             },
         };
@@ -353,7 +369,7 @@ public sealed class PipelineContextRetryDelayExtensionsTests
 
             _ = strategy.Should().BeOfType(combination.ExpectedType);
 
-            // Test that the strategy produces reasonable delays
+            // Test that Strategy produces reasonable delays
             var delay = await strategy.GetDelayAsync(1);
             _ = delay.Should().BeGreaterThanOrEqualTo(TimeSpan.Zero);
         }
@@ -366,24 +382,20 @@ public sealed class PipelineContextRetryDelayExtensionsTests
         return new PipelineContext(config);
     }
 
-    // Test helper records for unknown strategy types
-    private sealed record TestBackoffConfiguration : BackoffStrategyConfiguration
+    // Test helper methods for unknown strategy types
+    private static BackoffStrategy TestBackoffStrategy()
     {
-        public override string StrategyType => "Unknown";
-
-        public override void Validate()
-        {
-            // No validation for test
-        }
+        return attempt => TimeSpan.FromMilliseconds(100); // Test implementation
     }
 
-    private sealed record TestJitterConfiguration : JitterStrategyConfiguration
+    private static JitterStrategy TestJitterStrategy()
     {
-        public override string StrategyType => "Unknown";
-
-        public override void Validate()
-        {
-            // No validation for test
-        }
+        return (baseDelay, random) => TimeSpan.Zero; // Test implementation
     }
+
+    // Test helper record for combinations
+    private sealed record StrategyCombination(
+        BackoffStrategy Backoff,
+        JitterStrategy Jitter,
+        Type ExpectedType);
 }

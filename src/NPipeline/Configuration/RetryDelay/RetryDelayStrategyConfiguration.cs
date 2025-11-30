@@ -1,13 +1,16 @@
+using NPipeline.Execution.RetryDelay;
+
 namespace NPipeline.Configuration.RetryDelay;
 
 /// <summary>
-///     Configuration for retry delay strategies combining backoff and jitter approaches.
+///     Simple configuration for retry delay strategies using delegates.
 /// </summary>
 /// <remarks>
 ///     <para>
-///         This configuration combines a backoff strategy (which determines how delays increase over time)
-///         with a jitter strategy (which adds randomness to prevent thundering herd problems).
-///         The combination provides both controlled delay growth and distributed retry timing.
+///         This simplified configuration uses delegates directly instead of complex configuration classes.
+///         It combines a backoff strategy delegate with an optional jitter strategy delegate.
+///         This approach eliminates the need for multiple configuration classes while maintaining
+///         all of the functionality.
 ///     </para>
 ///     <para>
 ///         Common combinations:
@@ -25,32 +28,16 @@ namespace NPipeline.Configuration.RetryDelay;
 ///     </para>
 /// </remarks>
 public sealed record RetryDelayStrategyConfiguration(
-    BackoffStrategyConfiguration BackoffConfiguration,
-    JitterStrategyConfiguration JitterConfiguration)
+    BackoffStrategy BackoffStrategy,
+    JitterStrategy? JitterStrategy = null)
 {
     /// <summary>
     ///     Validates the retry delay strategy configuration.
     /// </summary>
-    /// <exception cref="ArgumentNullException">Thrown when BackoffConfiguration or JitterConfiguration is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when any configuration parameter is invalid.</exception>
-    /// <exception cref="InvalidOperationException">Thrown when the configuration state is invalid.</exception>
-    /// <remarks>
-    ///     This method validates both the backoff and jitter configurations and ensures
-    ///     they are compatible with each other.
-    /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown when BackoffStrategy is null.</exception>
     public void Validate()
     {
-        if (BackoffConfiguration is null)
-            throw new ArgumentNullException(nameof(BackoffConfiguration), "BackoffConfiguration cannot be null.");
-
-        if (JitterConfiguration is null)
-            throw new ArgumentNullException(nameof(JitterConfiguration), "JitterConfiguration cannot be null.");
-
-        // Validate individual configurations
-        BackoffConfiguration.Validate();
-        JitterConfiguration.Validate();
-
-        // Additional cross-validation can be added here if needed
-        // For example, certain combinations might not be recommended
+        if (BackoffStrategy is null)
+            throw new ArgumentNullException(nameof(BackoffStrategy), "BackoffStrategy cannot be null.");
     }
 }

@@ -19,42 +19,6 @@ namespace NPipeline.Execution.RetryDelay;
 public static class RetryDelayStrategyValidator
 {
     /// <summary>
-    ///     Validates an exponential backoff configuration.
-    /// </summary>
-    /// <param name="configuration">The configuration to validate.</param>
-    /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
-    public static void ValidateExponentialBackoffConfiguration(ExponentialBackoffConfiguration configuration)
-    {
-        ArgumentNullException.ThrowIfNull(configuration);
-        configuration.Validate();
-    }
-
-    /// <summary>
-    ///     Validates a linear backoff configuration.
-    /// </summary>
-    /// <param name="configuration">The configuration to validate.</param>
-    /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
-    public static void ValidateLinearBackoffConfiguration(LinearBackoffConfiguration configuration)
-    {
-        ArgumentNullException.ThrowIfNull(configuration);
-        configuration.Validate();
-    }
-
-    /// <summary>
-    ///     Validates a fixed delay configuration.
-    /// </summary>
-    /// <param name="configuration">The configuration to validate.</param>
-    /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
-    public static void ValidateFixedDelayConfiguration(FixedDelayConfiguration configuration)
-    {
-        ArgumentNullException.ThrowIfNull(configuration);
-        configuration.Validate();
-    }
-
-    /// <summary>
     ///     Validates a backoff strategy.
     /// </summary>
     /// <param name="backoffStrategy">The backoff strategy to validate.</param>
@@ -65,6 +29,16 @@ public static class RetryDelayStrategyValidator
     }
 
     /// <summary>
+    ///     Validates a jitter strategy.
+    /// </summary>
+    /// <param name="jitterStrategy">The jitter strategy to validate.</param>
+    /// <exception cref="ArgumentNullException">Thrown when jitterStrategy is null.</exception>
+    public static void ValidateJitterStrategy(JitterStrategy jitterStrategy)
+    {
+        ArgumentNullException.ThrowIfNull(jitterStrategy);
+    }
+
+    /// <summary>
     ///     Validates a retry delay strategy.
     /// </summary>
     /// <param name="retryDelayStrategy">The retry delay strategy to validate.</param>
@@ -72,6 +46,26 @@ public static class RetryDelayStrategyValidator
     public static void ValidateRetryDelayStrategy(IRetryDelayStrategy retryDelayStrategy)
     {
         ArgumentNullException.ThrowIfNull(retryDelayStrategy);
+    }
+
+    /// <summary>
+    ///     Validates a retry delay strategy configuration.
+    /// </summary>
+    /// <param name="configuration">The configuration to validate.</param>
+    /// <exception cref="ArgumentNullException">Thrown when configuration is null.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when BackoffStrategy is null.</exception>
+    public static void ValidateRetryDelayStrategyConfiguration(RetryDelayStrategyConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        if (configuration.BackoffStrategy is null)
+            throw new ArgumentNullException(nameof(configuration), "BackoffStrategy cannot be null.");
+
+        ValidateBackoffStrategy(configuration.BackoffStrategy);
+
+        // Only validate jitter strategy if it's present (it's optional)
+        if (configuration.JitterStrategy is not null)
+            ValidateJitterStrategy(configuration.JitterStrategy);
     }
 
     /// <summary>
