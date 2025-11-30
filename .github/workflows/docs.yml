@@ -25,7 +25,7 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0  # Needed for source link
         
@@ -105,7 +105,7 @@ jobs:
         tar -xf artifact.tar -C ../site
         
     - name: Checkout npipeline.dev repo
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         repository: npipeline/npipeline.dev
         token: ${{ secrets.NPIPELINE_DEV_TOKEN }}
