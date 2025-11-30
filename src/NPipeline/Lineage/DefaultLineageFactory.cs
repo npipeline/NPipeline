@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using NPipeline.Utils;
 
 namespace NPipeline.Lineage;
 
@@ -37,7 +38,7 @@ internal sealed class DefaultLineageFactory : ILineageFactory
     /// </summary>
     /// <remarks>
     ///     This is consulted only when no explicit sink (instance or type) is configured and item-level lineage is enabled.
-    ///     It allows optional packages (e.g., NPipeline.Lineage) to supply a sensible default without reflection.
+    ///     It allows optional packages (e.g., NPipeline.Extensions.Lineage) to supply a sensible default without reflection.
     ///     Returns null when no provider is registered or available.
     /// </remarks>
     /// <returns>An <see cref="IPipelineLineageSinkProvider" /> instance or null.</returns>
@@ -60,7 +61,7 @@ internal sealed class DefaultLineageFactory : ILineageFactory
     }
 
     /// <summary>
-    ///     Attempts to create an instance of the specified type with improved error handling.
+    ///     Attempts to create an instance of the specified type using the centralized InstanceFactory.
     /// </summary>
     /// <typeparam name="T">The interface type expected.</typeparam>
     /// <param name="type">The concrete type to instantiate.</param>
@@ -68,29 +69,10 @@ internal sealed class DefaultLineageFactory : ILineageFactory
     /// <returns>The created instance or null if creation fails.</returns>
     private static T? TryCreateInstance<T>(Type type, string methodName) where T : class
     {
-        if (!typeof(T).IsAssignableFrom(type))
-        {
-            Debug.WriteLine($"DefaultLineageFactory.{methodName}: Type {type.FullName} does not implement {typeof(T).Name}");
-            return null;
-        }
+        if (InstanceFactory.TryCreate<T>(type, out var instance, out var error))
+            return instance;
 
-        try
-        {
-            var instance = Activator.CreateInstance(type);
-
-            if (instance is T typedInstance)
-            {
-                Debug.WriteLine($"DefaultLineageFactory.{methodName}: Successfully created instance of {type.FullName}");
-                return typedInstance;
-            }
-
-            Debug.WriteLine($"DefaultLineageFactory.{methodName}: Created instance of {type.FullName} but it's not assignable to {typeof(T).Name}");
-            return null;
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"DefaultLineageFactory.{methodName}: Failed to create instance of {type.FullName}: {ex.Message}");
-            return null;
-        }
+        Debug.WriteLine($"DefaultLineageFactory.{methodName}: Failed to create instance of {type?.FullName ?? "null"}: {error}");
+        return null;
     }
 }

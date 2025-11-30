@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using NPipeline.Utils;
 
 namespace NPipeline.ErrorHandling;
 
@@ -39,7 +40,7 @@ internal sealed class DefaultErrorHandlerFactory : IErrorHandlerFactory
     }
 
     /// <summary>
-    ///     Attempts to create an instance of the specified type with improved error handling.
+    ///     Attempts to create an instance of the specified type using the centralized InstanceFactory.
     /// </summary>
     /// <typeparam name="T">The interface type expected.</typeparam>
     /// <param name="type">The concrete type to instantiate.</param>
@@ -47,29 +48,10 @@ internal sealed class DefaultErrorHandlerFactory : IErrorHandlerFactory
     /// <returns>The created instance or null if creation fails.</returns>
     private static T? TryCreateInstance<T>(Type type, string methodName) where T : class
     {
-        if (!typeof(T).IsAssignableFrom(type))
-        {
-            Debug.WriteLine($"DefaultErrorHandlerFactory.{methodName}: Type {type.FullName} does not implement {typeof(T).Name}");
-            return null;
-        }
+        if (InstanceFactory.TryCreate<T>(type, out var instance, out var error))
+            return instance;
 
-        try
-        {
-            var instance = Activator.CreateInstance(type);
-
-            if (instance is T typedInstance)
-            {
-                Debug.WriteLine($"DefaultErrorHandlerFactory.{methodName}: Successfully created instance of {type.FullName}");
-                return typedInstance;
-            }
-
-            Debug.WriteLine($"DefaultErrorHandlerFactory.{methodName}: Created instance of {type.FullName} but it's not assignable to {typeof(T).Name}");
-            return null;
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"DefaultErrorHandlerFactory.{methodName}: Failed to create instance of {type.FullName}: {ex.Message}");
-            return null;
-        }
+        Debug.WriteLine($"DefaultErrorHandlerFactory.{methodName}: Failed to create instance of {type?.FullName ?? "null"}: {error}");
+        return null;
     }
 }
