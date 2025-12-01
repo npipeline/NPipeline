@@ -51,10 +51,17 @@ public sealed class ListDataPipe<T>(IReadOnlyList<T> items, string streamName = 
 
     private async IAsyncEnumerable<T> ToAsyncEnumerableTyped([EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        var count = 0;
         foreach (var item in Items)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            await Task.Yield(); // Yield to allow cancellation to be processed.
+
+            // Yield periodically to allow cancellation processing without per-item overhead
+            if (++count % 100 == 0)
+            {
+                await Task.Yield();
+            }
+
             yield return item;
         }
     }
