@@ -518,7 +518,7 @@ public async Task PipelineProcessesData()
     var sink = new InMemorySinkNode<int>();
 
     var context = new PipelineContext();
-    var runner = new PipelineRunner();
+    var runner = PipelineRunner.Create();
 
     // Register nodes
     context.Items["source"] = source;

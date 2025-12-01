@@ -112,7 +112,7 @@ public class MyPipelineDefinition : IPipelineDefinition
     }
 }
 
-var runner = new PipelineRunner();
+var runner = PipelineRunner.Create();
 await runner.RunAsync<MyPipelineDefinition>(context);
 await runner.RunAsync(pipeline, context);
 ```

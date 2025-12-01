@@ -361,7 +361,7 @@ public static class EcommercePipeline
         );
         var context = new PipelineContext(config);
 
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
         await runner.RunAsync<EcommercePipelineDefinition>(context);
     }
 }
@@ -452,7 +452,7 @@ public static class AnalyticsPipeline
         var context = PipelineContext.WithRetry(retryOptions);
         context.AddPipelineErrorHandler<AnalyticsErrorHandler>();
 
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
         await runner.RunAsync<AnalyticsPipelineDefinition>(context);
     }
 }
@@ -533,7 +533,7 @@ public static class MicroservicePipeline
 
         context.AddPipelineErrorHandler<MicroserviceErrorHandler>();
 
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
         await runner.RunAsync<MicroservicePipelineDefinition>(context);
     }
 }

@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using NPipeline.Observability.Logging;
 
 namespace NPipeline.Execution;
 
@@ -14,6 +14,7 @@ namespace NPipeline.Execution;
 /// </remarks>
 public sealed class CompositeExecutionObserver : IExecutionObserver
 {
+    private readonly IPipelineLogger _logger;
     private readonly IExecutionObserver[] _observers;
 
     /// <summary>
@@ -21,11 +22,23 @@ public sealed class CompositeExecutionObserver : IExecutionObserver
     /// </summary>
     /// <param name="observers">The observers to aggregate. Null entries are filtered out.</param>
     public CompositeExecutionObserver(params IExecutionObserver[] observers)
+        : this(null, observers)
+    {
+    }
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="CompositeExecutionObserver" /> class with logging support.
+    /// </summary>
+    /// <param name="loggerFactory">Optional logger factory used for diagnostics.</param>
+    /// <param name="observers">The observers to aggregate. Null entries are filtered out.</param>
+    public CompositeExecutionObserver(IPipelineLoggerFactory? loggerFactory, params IExecutionObserver[] observers)
     {
         // Filter out null entries to ensure we never try to invoke null references
         _observers = (observers ?? Array.Empty<IExecutionObserver>())
             .Where(o => o is not null)
             .ToArray();
+
+        _logger = (loggerFactory ?? NullPipelineLoggerFactory.Instance).CreateLogger(nameof(CompositeExecutionObserver));
     }
 
     /// <summary>
@@ -123,11 +136,13 @@ public sealed class CompositeExecutionObserver : IExecutionObserver
     ///     Logs observer failures using the standard diagnostics mechanism.
     ///     This ensures observability issues don't break the pipeline.
     /// </summary>
-    private static void LogObserverFailure(IExecutionObserver observer, string methodName, Exception ex)
+    private void LogObserverFailure(IExecutionObserver observer, string methodName, Exception ex)
     {
-        // Use System.Diagnostics to report the failure
-        Debug.WriteLine(
-            $"[ExecutionObserver] {observer.GetType().Name}.{methodName}() threw an exception. " +
-            $"The observer will not receive further notifications. Exception: {ex.Message}");
+        _logger.Log(
+            LogLevel.Warning,
+            ex,
+            "Execution observer {Observer}.{Method} threw an exception and will be skipped.",
+            observer.GetType().Name,
+            methodName);
     }
 }

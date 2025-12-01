@@ -4,7 +4,6 @@ using AwesomeAssertions;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.Branching;
 using NPipeline.Execution;
-using NPipeline.Execution.Factories;
 using NPipeline.Extensions.Testing;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -28,7 +27,7 @@ public sealed class BranchTests(ITestOutputHelper output)
         context.Items["sink1"] = sink1;
         context.Items["sink2"] = sink2;
 
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
 
         // Act
         await runner.RunAsync<BranchingPipeline>(context);
@@ -64,7 +63,7 @@ public sealed class BranchTests(ITestOutputHelper output)
         ctx.Items["collect1"] = collect1;
         ctx.Items["collect2"] = collect2;
 
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
         await runner.RunAsync<BranchingPipelineForIdenticalSequences>(ctx);
 
         // Since the sinks are manually created and registered in the context,
@@ -97,7 +96,7 @@ public sealed class BranchTests(ITestOutputHelper output)
         context.Items["sink2"] = sink2;
 
         // Act
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
         await runner.RunAsync<BranchingPipeline>(context);
 
         // Assert

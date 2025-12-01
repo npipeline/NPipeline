@@ -66,7 +66,7 @@ Pipelines are executed using the `PipelineRunner` class, which provides multiple
 
 ```csharp
 // Create a runner with default services
-var runner = new PipelineRunner();
+var runner = PipelineRunner.Create();
 
 // Run the pipeline using a pipeline definition
 await runner.RunAsync<MyPipelineDefinition>();
@@ -87,7 +87,7 @@ You can pass a `CancellationToken` to control pipeline execution. This is useful
 
 ```csharp
 var cts = new CancellationTokenSource();
-var runner = new PipelineRunner();
+var runner = PipelineRunner.Create();
 
 // Start the pipeline with a cancellation token
 var pipelineTask = runner.RunAsync<MyPipelineDefinition>(cts.Token);
@@ -108,22 +108,26 @@ catch (OperationCanceledException)
 
 ### Advanced Execution Options
 
-The `PipelineRunner` provides several constructors for different use cases:
+The `PipelineRunner` provides a static factory method and a builder for different use cases:
 
 ```csharp
-// Default constructor with all default services
-var runner = new PipelineRunner();
+// Default runner with all default services
+var runner = PipelineRunner.Create();
 
-// With custom factories
-var runner = new PipelineRunner(customPipelineFactory, customNodeFactory);
+// With custom factories using the Builder
+var runner = new PipelineRunnerBuilder()
+    .WithPipelineFactory(customPipelineFactory)
+    .WithNodeFactory(customNodeFactory)
+    .Build();
 
-// With full dependency injection
-var runner = new PipelineRunner(
-    pipelineFactory,
-    nodeFactory,
-    executionCoordinator,
-    infrastructureService,
-    observabilitySurface);
+// With full dependency injection (all custom dependencies)
+var runner = new PipelineRunnerBuilder()
+    .WithPipelineFactory(pipelineFactory)
+    .WithNodeFactory(nodeFactory)
+    .WithExecutionCoordinator(executionCoordinator)
+    .WithInfrastructureService(infrastructureService)
+    .WithObservabilitySurface(observabilitySurface)
+    .Build();
 ```
 
 ## Pipeline Context

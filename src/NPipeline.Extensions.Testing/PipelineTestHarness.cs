@@ -47,7 +47,7 @@ public sealed class PipelineTestHarness<TPipeline> where TPipeline : IPipelineDe
     public PipelineTestHarness(PipelineContext? context = null, IPipelineRunner? pipelineRunner = null)
     {
         Context = context ?? new PipelineContext();
-        _pipelineRunner = pipelineRunner ?? new PipelineRunner();
+        _pipelineRunner = pipelineRunner ?? PipelineRunner.Create();
     }
 
     /// <summary>

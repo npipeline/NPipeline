@@ -26,12 +26,13 @@ public sealed class CsvIntegrationTests
             };
 
             // Write: CsvSinkNode<int>
-            var sink = new CsvSinkNode<int>(uri, null, cfg);
+            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var sink = new CsvSinkNode<int>(uri, resolver, cfg);
             IDataPipe<int> input = new StreamingDataPipe<int>(Enumerable.Range(1, 5).ToAsyncEnumerable());
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read: CsvSourceNode<int>
-            var src = new CsvSourceNode<int>(uri, null, cfg);
+            var src = new CsvSourceNode<int>(uri, resolver, cfg);
             var outPipe = src.ExecuteAsync(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<int>();

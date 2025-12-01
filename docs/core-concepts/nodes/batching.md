@@ -112,7 +112,7 @@ public static class Program
     public static async Task Main(string[] args)
     {
         var context = PipelineContext.Default;
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
         
         Console.WriteLine("Starting batching pipeline...");
         await runner.RunAsync<BatchingPipelineDefinition>(context);

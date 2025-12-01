@@ -68,7 +68,7 @@ public static class Program
     public static async Task Main(string[] args)
     {
         var context = PipelineContext.Default;
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
         
         Console.WriteLine("Starting Tap pipeline...");
         await runner.RunAsync<TapPipelineDefinition>(context);

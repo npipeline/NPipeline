@@ -399,10 +399,11 @@ public class Program
 
 ### How It Works
 
-* `AddNPipeline(Assembly.GetExecutingAssembly())`: Registers core NPipeline services and automatically scans the provided assembly for pipeline definitions and nodes.
-* When nodes are instantiated (like `NotificationTransform`), the service provider automatically resolves their dependencies.
-* This ensures that `NotificationTransform` receives its `IEmailService` dependency from the container.
-* The `DiContainerNodeFactory` is used instead of the default `DefaultNodeFactory`, enabling constructor injection for nodes.
+- `AddNPipeline(Assembly.GetExecutingAssembly())`: Registers core NPipeline services and automatically scans the provided assembly for pipeline definitions and nodes.
+- When nodes are instantiated (like `NotificationTransform`), the service provider automatically resolves their dependencies.
+- This ensures that `NotificationTransform` receives its `IEmailService` dependency from the container.
+- The `DiContainerNodeFactory` is used instead of the default `DefaultNodeFactory`, enabling constructor injection for nodes.
+- **Note:** The default `DefaultNodeFactory` requires nodes to have a public parameterless constructor and supports an optional `IErrorHandlerFactory` dependency only when explicitly provided. For full constructor injection support, use `DiContainerNodeFactory` with DI.
 
 ## Resolving Services within Nodes
 

@@ -55,12 +55,13 @@ public sealed class PipelineRunnerErrorTests
             .Throws(new NodeExecutionException(nodeId, "Node execution failed",
                 new RetryExhaustedException(nodeId, 3, new InvalidOperationException("Simulated failure"))));
 
-        var runner = new PipelineRunner(
-            _pipelineFactory,
-            _nodeFactory,
-            _executionCoordinator,
-            _infrastructureService,
-            _observabilitySurface);
+        var runner = new PipelineRunnerBuilder()
+            .WithPipelineFactory(_pipelineFactory)
+            .WithNodeFactory(_nodeFactory)
+            .WithExecutionCoordinator(_executionCoordinator)
+            .WithInfrastructureService(_infrastructureService)
+            .WithObservabilitySurface(_observabilitySurface)
+            .Build();
 
         var context = PipelineContext.Default;
 
@@ -110,12 +111,13 @@ public sealed class PipelineRunnerErrorTests
                 A<CancellationToken>._))
             .Throws(new NodeExecutionException(nodeId, "Node execution failed", new CircuitBreakerTrippedException(2, nodeId)));
 
-        var runner = new PipelineRunner(
-            _pipelineFactory,
-            _nodeFactory,
-            _executionCoordinator,
-            _infrastructureService,
-            _observabilitySurface);
+        var runner = new PipelineRunnerBuilder()
+            .WithPipelineFactory(_pipelineFactory)
+            .WithNodeFactory(_nodeFactory)
+            .WithExecutionCoordinator(_executionCoordinator)
+            .WithInfrastructureService(_infrastructureService)
+            .WithObservabilitySurface(_observabilitySurface)
+            .Build();
 
         var context = PipelineContext.Default;
 
@@ -174,12 +176,13 @@ public sealed class PipelineRunnerErrorTests
                 await execBody(); // This should not be reached
             });
 
-        var runner = new PipelineRunner(
-            _pipelineFactory,
-            _nodeFactory,
-            _executionCoordinator,
-            _infrastructureService,
-            _observabilitySurface);
+        var runner = new PipelineRunnerBuilder()
+            .WithPipelineFactory(_pipelineFactory)
+            .WithNodeFactory(_nodeFactory)
+            .WithExecutionCoordinator(_executionCoordinator)
+            .WithInfrastructureService(_infrastructureService)
+            .WithObservabilitySurface(_observabilitySurface)
+            .Build();
 
         var context = new PipelineContextBuilder()
             .WithCancellation(cts.Token)
@@ -227,12 +230,13 @@ public sealed class PipelineRunnerErrorTests
                 A<CancellationToken>._))
             .Throws(innerException); // Directly throw NodeExecutionException
 
-        var runner = new PipelineRunner(
-            _pipelineFactory,
-            _nodeFactory,
-            _executionCoordinator,
-            _infrastructureService,
-            _observabilitySurface);
+        var runner = new PipelineRunnerBuilder()
+            .WithPipelineFactory(_pipelineFactory)
+            .WithNodeFactory(_nodeFactory)
+            .WithExecutionCoordinator(_executionCoordinator)
+            .WithInfrastructureService(_infrastructureService)
+            .WithObservabilitySurface(_observabilitySurface)
+            .Build();
 
         var context = PipelineContext.Default;
 
@@ -280,12 +284,13 @@ public sealed class PipelineRunnerErrorTests
                 A<CancellationToken>._))
             .Throws(innerException); // Directly throw a general Exception
 
-        var runner = new PipelineRunner(
-            _pipelineFactory,
-            _nodeFactory,
-            _executionCoordinator,
-            _infrastructureService,
-            _observabilitySurface);
+        var runner = new PipelineRunnerBuilder()
+            .WithPipelineFactory(_pipelineFactory)
+            .WithNodeFactory(_nodeFactory)
+            .WithExecutionCoordinator(_executionCoordinator)
+            .WithInfrastructureService(_infrastructureService)
+            .WithObservabilitySurface(_observabilitySurface)
+            .Build();
 
         var context = PipelineContext.Default;
 

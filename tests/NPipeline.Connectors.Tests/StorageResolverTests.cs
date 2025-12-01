@@ -27,8 +27,6 @@ public sealed class StorageResolverTests
 
         var all = resolver.GetAvailableProviders().ToArray();
 
-        // Discovery may auto-register additional providers (e.g., FileSystem).
-        // Assert idempotency for the same provider type.
         all.Count(p => p is FooProvider).Should().Be(1);
         all.Single(p => p is FooProvider).Scheme.ToString().Should().Be("foo");
     }

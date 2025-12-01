@@ -69,7 +69,6 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
         var logger = context.LoggerFactory.CreateLogger(nameof(ParallelExecutionStrategyBase));
         using var itemActivity = context.Tracer.StartActivity("Item.Transform");
         var attempt = 0;
-        logger.Log(LogLevel.Debug, "Starting processing of item {Item} for node {NodeId}", item?.ToString() ?? "(null)", nodeId);
 
         while (true)
         {
@@ -77,23 +76,12 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
 
             try
             {
-                logger.Log(LogLevel.Debug, "Attempt {Attempt} for item {Item} for node {NodeId}", attempt + 1, item?.ToString() ?? "(null)", nodeId);
-                var valueTaskTransform = node as IValueTaskTransform<TIn, TOut>;
-
-                var work = valueTaskTransform is not null
-                    ? valueTaskTransform.ExecuteValueTaskAsync(item, context, cancellationToken)
-                    : new ValueTask<TOut>(node.ExecuteAsync(item, context, cancellationToken));
-
-                var result = await work.ConfigureAwait(false);
-                logger.Log(LogLevel.Debug, "Success on attempt {Attempt} for item {Item} for node {NodeId}", attempt + 1, item?.ToString() ?? "(null)", nodeId);
-                return result;
+                return await ExecuteNodeAsync(node, item, context, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                logger.Log(LogLevel.Debug, ex, "Exception on attempt {Attempt} for item {Item} for node {NodeId}: {Message}", attempt + 1,
-                    item?.ToString() ?? "(null)", nodeId, ex.Message);
-
-                itemActivity.RecordException(ex);
+                itemActivity?.RecordException(ex);
+                LogNodeFailure(logger, nodeId, attempt + 1, ex);
 
                 if (node.ErrorHandler is null)
                     throw;
@@ -101,42 +89,22 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
                 if (node.ErrorHandler is not INodeErrorHandler<ITransformNode<TIn, TOut>, TIn> typedHandler)
                     throw;
 
-                var decision = await typedHandler.HandleAsync(node, item, ex, context, cancellationToken);
-
-                logger.Log(LogLevel.Debug, "Error handler decision: {Decision} for item {Item} for node {NodeId}", decision, item?.ToString() ?? "(null)",
-                    nodeId);
+                var decision = await HandleNodeErrorAsync(node, nodeId, item, ex, context, typedHandler, cancellationToken).ConfigureAwait(false);
 
                 switch (decision)
                 {
                     case NodeErrorDecision.Skip:
                         return default;
                     case NodeErrorDecision.DeadLetter:
-                        if (context.DeadLetterSink is not null)
-                            await context.DeadLetterSink.HandleAsync(nodeId, item!, ex, context, cancellationToken);
-
                         return default;
                     case NodeErrorDecision.Retry:
                         attempt++;
 
-                        logger.Log(LogLevel.Debug, "Retry attempt {Attempt} for item {Item} for node {NodeId}, max retries: {MaxRetries}", attempt,
-                            item?.ToString() ?? "(null)", nodeId, effectiveRetries.MaxItemRetries);
-
                         if (attempt > effectiveRetries.MaxItemRetries)
                             throw;
 
-                        itemActivity.SetTag("retry.attempt", attempt.ToString());
-
-                        // Record retry metrics if metrics collection is enabled
-                        if (metrics is not null)
-                        {
-                            logger.Log(LogLevel.Debug, "Recording retry attempt {Attempt} for item {Item} for node {NodeId}", attempt,
-                                item?.ToString() ?? "(null)", nodeId);
-
-                            metrics.RecordRetry(attempt);
-                        }
-
-                        // Notify observer of retry event (independent of metrics collection)
-                        observer?.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, attempt, ex));
+                        itemActivity?.SetTag("retry.attempt", attempt.ToString());
+                        PublishRetryInstrumentation(metrics, observer, nodeId, attempt, ex);
                         continue;
                     case NodeErrorDecision.Fail:
                     default:
@@ -144,5 +112,52 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
                 }
             }
         }
+    }
+
+    private static ValueTask<TOut> ExecuteNodeAsync<TIn, TOut>(
+        ITransformNode<TIn, TOut> node,
+        TIn item,
+        PipelineContext context,
+        CancellationToken cancellationToken)
+    {
+        return node is IValueTaskTransform<TIn, TOut> fastPath
+            ? fastPath.ExecuteValueTaskAsync(item, context, cancellationToken)
+            : new ValueTask<TOut>(node.ExecuteAsync(item, context, cancellationToken));
+    }
+
+    private static async Task<NodeErrorDecision> HandleNodeErrorAsync<TIn, TOut>(
+        ITransformNode<TIn, TOut> node,
+        string nodeId,
+        TIn item,
+        Exception exception,
+        PipelineContext context,
+        INodeErrorHandler<ITransformNode<TIn, TOut>, TIn> handler,
+        CancellationToken cancellationToken)
+    {
+        var decision = await handler.HandleAsync(node, item, exception, context, cancellationToken).ConfigureAwait(false);
+
+        if (decision == NodeErrorDecision.DeadLetter && context.DeadLetterSink is not null)
+            await context.DeadLetterSink.HandleAsync(nodeId, item!, exception, context, cancellationToken).ConfigureAwait(false);
+
+        return decision;
+    }
+
+    private static void PublishRetryInstrumentation(
+        ParallelExecutionMetrics? metrics,
+        IExecutionObserver? observer,
+        string nodeId,
+        int attempt,
+        Exception exception)
+    {
+        metrics?.RecordRetry(attempt);
+        observer?.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, attempt, exception));
+    }
+
+    private static void LogNodeFailure(IPipelineLogger logger, string nodeId, int attemptNumber, Exception exception)
+    {
+        if (!logger.IsEnabled(LogLevel.Debug))
+            return;
+
+        logger.Log(LogLevel.Debug, exception, "Node {NodeId} failed on attempt {Attempt}.", nodeId, attemptNumber);
     }
 }

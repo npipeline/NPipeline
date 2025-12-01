@@ -83,7 +83,7 @@ public static class Program
         );
 
         var context = PipelineContext.Default;
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
         
         Console.WriteLine("Starting lookup pipeline...");
         await runner.RunAsync<LookupPipelineDefinition>(context);

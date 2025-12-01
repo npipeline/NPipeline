@@ -223,7 +223,7 @@ var retryOptions = new PipelineRetryOptions(
 );
 
 var context = PipelineContext.WithRetry(retryOptions);
-var runner = new PipelineRunner();
+var runner = PipelineRunner.Create();
 await runner.RunAsync<BasicCircuitBreakerPipelineDefinition>(context);
 ```
 

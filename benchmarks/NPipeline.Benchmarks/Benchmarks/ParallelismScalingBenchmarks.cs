@@ -5,7 +5,6 @@ using BenchmarkDotNet.Order;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Execution;
-using NPipeline.Execution.Factories;
 using NPipeline.Extensions.Parallelism;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -29,7 +28,7 @@ public class ParallelismScalingBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        _runner = PipelineRunner.Create();
         _ctx = PipelineContext.Default;
         _ctx.Parameters["count"] = ItemCount;
         _ctx.Parameters["parallelism"] = ParallelismDegree;

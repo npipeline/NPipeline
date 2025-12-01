@@ -4,8 +4,6 @@ using NPipeline.DataFlow.DataPipes;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution.Annotations;
 using NPipeline.Execution.CircuitBreaking;
-using NPipeline.Execution.Factories;
-using NPipeline.Execution.Services;
 using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
@@ -28,9 +26,7 @@ namespace NPipeline.Execution;
 ///     </para>
 /// </summary>
 /// <remarks>
-///     This class provides multiple constructors for different use cases:
-///     - Default constructor with all default services for simple scenarios
-///     - Dependency injection constructor for custom configurations
+///     This class is designed to be used with dependency injection or created via <see cref="Create" />.
 /// </remarks>
 public sealed class PipelineRunner(
     IPipelineFactory pipelineFactory,
@@ -39,62 +35,26 @@ public sealed class PipelineRunner(
     IPipelineInfrastructureService infrastructureService,
     IObservabilitySurface observabilitySurface) : IPipelineRunner
 {
-    /// <summary>
-    ///     Creates a new PipelineRunner with default factories for simple use cases.
-    ///     This constructor provides the most straightforward way to execute pipelines without
-    ///     requiring explicit configuration of all dependencies.
-    /// </summary>
-    /// <example>
-    ///     <code>
-    ///     var runner = new PipelineRunner();
-    ///     await runner.RunAsync&lt;MyPipelineDefinition&gt;();
-    ///     </code>
-    /// </example>
-    public PipelineRunner() : this(
-        new PipelineFactory(),
-        new DefaultNodeFactory(),
-        new PipelineExecutionCoordinator(
-            new NodeExecutor(new LineageService(), new CountingService(), new PipeMergeService(new MergeStrategySelector()), new BranchService()),
-            new TopologyService(),
-            new NodeInstantiationService()),
-        new PipelineInfrastructureService(
-            ErrorHandlingService.Instance,
-            PersistenceService.Instance),
-        new ObservabilitySurface())
-    {
-    }
-
-    /// <summary>
-    ///     This constructor allows custom factories to be specified while using default implementations for other services.
-    /// </summary>
-    /// <param name="pipelineFactory">Custom factory for creating pipeline instances.</param>
-    /// <param name="nodeFactory">Custom factory for creating node instances.</param>
-    /// <example>
-    ///     <code>
-    ///     var customPipelineFactory = new MyCustomPipelineFactory();
-    ///     var customNodeFactory = new MyCustomNodeFactory();
-    ///     var runner = new PipelineRunner(customPipelineFactory, customNodeFactory);
-    ///     await runner.RunAsync&lt;MyPipelineDefinition&gt;();
-    ///     </code>
-    /// </example>
-    public PipelineRunner(IPipelineFactory pipelineFactory, INodeFactory nodeFactory) : this(
-        pipelineFactory,
-        nodeFactory,
-        new PipelineExecutionCoordinator(
-            new NodeExecutor(new LineageService(), new CountingService(), new PipeMergeService(new MergeStrategySelector()), new BranchService()),
-            new TopologyService(),
-            new NodeInstantiationService()),
-        new PipelineInfrastructureService(
-            ErrorHandlingService.Instance,
-            PersistenceService.Instance),
-        new ObservabilitySurface())
-    {
-    }
-
     /// <inheritdoc />
     public async Task RunAsync<TDefinition>(PipelineContext context) where TDefinition : IPipelineDefinition, new()
     {
         await RunAsync<TDefinition>(context, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    ///     Creates a new PipelineRunner with default factories for simple use cases.
+    ///     This method provides the most straightforward way to execute pipelines without
+    ///     requiring explicit configuration of all dependencies.
+    /// </summary>
+    /// <example>
+    ///     <code>
+    ///     var runner = PipelineRunner.Create();
+    ///     await runner.RunAsync&lt;MyPipelineDefinition&gt;();
+    ///     </code>
+    /// </example>
+    public static PipelineRunner Create()
+    {
+        return new PipelineRunnerBuilder().Build();
     }
 
     /// <summary>
@@ -109,7 +69,7 @@ public sealed class PipelineRunner(
     /// <exception cref="RetryExhaustedException">Thrown when all retry attempts are exhausted.</exception>
     /// <example>
     ///     <code>
-    ///     var runner = new PipelineRunner();
+    ///     var runner = PipelineRunner.Create();
     ///     await runner.RunAsync&lt;MyDataProcessingPipeline&gt;(cancellationToken);
     ///     </code>
     /// </example>
@@ -137,7 +97,7 @@ public sealed class PipelineRunner(
     ///     <code>
     ///     var context = PipelineContext.Default;
     ///     context.Items["customSetting"] = "value";
-    ///     var runner = new PipelineRunner();
+    ///     var runner = PipelineRunner.Create();
     ///     await runner.RunAsync&lt;MyDataProcessingPipeline&gt;(context, cancellationToken);
     ///     </code>
     /// </example>

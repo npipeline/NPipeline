@@ -433,7 +433,7 @@ public async Task FullResilienceChain_ShouldWork_IntegrationTest()
     context.AddPipelineErrorHandler<TestErrorHandler>();
 
     // Act
-    var runner = new PipelineRunner();
+    var runner = PipelineRunner.Create();
     var result = await runner.RunAsync<FullResiliencePipeline>(context);
 
     // Assert - should complete successfully with resilience applied

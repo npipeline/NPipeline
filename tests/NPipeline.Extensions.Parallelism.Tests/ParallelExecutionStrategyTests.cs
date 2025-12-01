@@ -19,7 +19,7 @@ public class ParallelExecutionStrategyTests
         // Arrange
         var sourceData = Enumerable.Range(1, 10).ToList();
         var context = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
 
         // Act
         await runner.RunAsync<DefaultOptionsPipeline>(context);
@@ -36,7 +36,7 @@ public class ParallelExecutionStrategyTests
         // Arrange
         var sourceData = Enumerable.Range(1, 10).ToList();
         var context = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
 
         // Act
         await runner.RunAsync<PreserveOrderingPipeline>(context);
@@ -53,7 +53,7 @@ public class ParallelExecutionStrategyTests
         // Arrange
         var sourceData = Enumerable.Range(1, 100).ToList();
         var context = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
 
         // Act
         await runner.RunAsync<BoundedQueuePipeline>(context);
@@ -76,7 +76,7 @@ public class ParallelExecutionStrategyTests
             ["sink"] = slowSink,
         };
 
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
 
         // Act
         await runner.RunAsync<SlowSinkPipeline>(context);
@@ -91,7 +91,7 @@ public class ParallelExecutionStrategyTests
         // Arrange
         var sourceData = Enumerable.Range(1, 20).ToList();
         var context = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
 
         // Act
         await runner.RunAsync<DropNewestPipeline>(context);
@@ -114,7 +114,7 @@ public class ParallelExecutionStrategyTests
         // Arrange
         var sourceData = Enumerable.Range(1, 20).ToList();
         var context = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
 
         // Act
         await runner.RunAsync<DropOldestPipeline>(context);
@@ -146,7 +146,7 @@ public class ParallelExecutionStrategyTests
         // Arrange
         var sourceData = Enumerable.Range(1, 10).ToList();
         var context = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
 
         // Act & Assert
         await runner.Invoking(async r => await r.RunAsync<ErrorHandlingPipeline>(context))
@@ -160,7 +160,7 @@ public class ParallelExecutionStrategyTests
         // Arrange
         var sourceData = Enumerable.Range(1, 20).ToList();
         var context = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
 
         // Act & Assert
         await runner.Invoking(async r => await r.RunAsync<MultipleErrorsPipeline>(context))
@@ -174,7 +174,7 @@ public class ParallelExecutionStrategyTests
         // Arrange
         var sourceData = Enumerable.Range(1, 10).ToList();
         var context = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
 
         // Act & Assert
         await runner.Invoking(async r => await r.RunAsync<SlowFailingPipeline>(context))
@@ -188,7 +188,7 @@ public class ParallelExecutionStrategyTests
         // Arrange
         var sourceData = Enumerable.Range(1, 10).ToList();
         var context = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
 
         // Act & Assert
         await runner.Invoking(async r => await r.RunAsync<ErrorHandlingPipeline>(context))
@@ -202,7 +202,7 @@ public class ParallelExecutionStrategyTests
         // Arrange
         var sourceData = Enumerable.Range(1, 10).ToList();
         var context = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
 
         // Act & Assert
         await runner.Invoking(async r => await r.RunAsync<MultipleErrorsPipeline>(context))
@@ -216,7 +216,7 @@ public class ParallelExecutionStrategyTests
         // Arrange
         var sourceData = Enumerable.Range(1, 10).ToList();
         var context = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
 
         // Act & Assert
         await runner.Invoking(async r => await r.RunAsync<SlowFailingPipeline>(context))
@@ -231,7 +231,7 @@ public class ParallelExecutionStrategyTests
         using var cts = new CancellationTokenSource();
         var nodeFactory = new DefaultNodeFactory();
         var pipelineFactory = new PipelineFactory();
-        var pipelineRunner = new PipelineRunner(pipelineFactory, nodeFactory);
+        var pipelineRunner = new PipelineRunnerBuilder().WithPipelineFactory(pipelineFactory).WithNodeFactory(nodeFactory).Build();
         var testRunner = new TestPipelineRunner(pipelineRunner);
 
         var context = new PipelineContextBuilder()
@@ -260,7 +260,7 @@ public class ParallelExecutionStrategyTests
         cts.Cancel(); // Cancel immediately
         var nodeFactory = new DefaultNodeFactory();
         var pipelineFactory = new PipelineFactory();
-        var pipelineRunner = new PipelineRunner(pipelineFactory, nodeFactory);
+        var pipelineRunner = new PipelineRunnerBuilder().WithPipelineFactory(pipelineFactory).WithNodeFactory(nodeFactory).Build();
         var testRunner = new TestPipelineRunner(pipelineRunner);
 
         var context = new PipelineContextBuilder()
@@ -281,7 +281,7 @@ public class ParallelExecutionStrategyTests
         using var cts = new CancellationTokenSource();
         var nodeFactory = new DefaultNodeFactory();
         var pipelineFactory = new PipelineFactory();
-        var pipelineRunner = new PipelineRunner(pipelineFactory, nodeFactory);
+        var pipelineRunner = new PipelineRunnerBuilder().WithPipelineFactory(pipelineFactory).WithNodeFactory(nodeFactory).Build();
         var testRunner = new TestPipelineRunner(pipelineRunner);
 
         var context = new PipelineContextBuilder()
@@ -772,7 +772,7 @@ public class ParallelExecutionStrategyTests
         var pipeline = new ConfigurationTestPipeline();
         var nodeFactory = new DefaultNodeFactory();
         var pipelineFactory = new PipelineFactory();
-        var pipelineRunner = new PipelineRunner(pipelineFactory, nodeFactory);
+        var pipelineRunner = new PipelineRunnerBuilder().WithPipelineFactory(pipelineFactory).WithNodeFactory(nodeFactory).Build();
         var testRunner = new TestPipelineRunner(pipelineRunner);
         var context = PipelineContext.Default;
 
@@ -800,7 +800,7 @@ public class ParallelExecutionStrategyTests
         var pipeline = new ConfigurationTestPipeline();
         var nodeFactory = new DefaultNodeFactory();
         var pipelineFactory = new PipelineFactory();
-        var pipelineRunner = new PipelineRunner(pipelineFactory, nodeFactory);
+        var pipelineRunner = new PipelineRunnerBuilder().WithPipelineFactory(pipelineFactory).WithNodeFactory(nodeFactory).Build();
         var testRunner = new TestPipelineRunner(pipelineRunner);
         var context = PipelineContext.Default;
 
@@ -828,7 +828,7 @@ public class ParallelExecutionStrategyTests
         var pipeline = new ConfigurationTestPipeline();
         var nodeFactory = new DefaultNodeFactory();
         var pipelineFactory = new PipelineFactory();
-        var pipelineRunner = new PipelineRunner(pipelineFactory, nodeFactory);
+        var pipelineRunner = new PipelineRunnerBuilder().WithPipelineFactory(pipelineFactory).WithNodeFactory(nodeFactory).Build();
         var testRunner = new TestPipelineRunner(pipelineRunner);
         var context = PipelineContext.Default;
 
@@ -856,7 +856,7 @@ public class ParallelExecutionStrategyTests
         var pipeline = new ConfigurationTestPipeline();
         var nodeFactory = new DefaultNodeFactory();
         var pipelineFactory = new PipelineFactory();
-        var pipelineRunner = new PipelineRunner(pipelineFactory, nodeFactory);
+        var pipelineRunner = new PipelineRunnerBuilder().WithPipelineFactory(pipelineFactory).WithNodeFactory(nodeFactory).Build();
         var testRunner = new TestPipelineRunner(pipelineRunner);
         var context = PipelineContext.Default;
 
@@ -884,7 +884,7 @@ public class ParallelExecutionStrategyTests
         var pipeline = new ConfigurationTestPipeline();
         var nodeFactory = new DefaultNodeFactory();
         var pipelineFactory = new PipelineFactory();
-        var pipelineRunner = new PipelineRunner(pipelineFactory, nodeFactory);
+        var pipelineRunner = new PipelineRunnerBuilder().WithPipelineFactory(pipelineFactory).WithNodeFactory(nodeFactory).Build();
         var testRunner = new TestPipelineRunner(pipelineRunner);
         var context = PipelineContext.Default;
 
@@ -913,7 +913,7 @@ public class ParallelExecutionStrategyTests
         var pipeline = new ConfigurationTestPipeline();
         var nodeFactory = new DefaultNodeFactory();
         var pipelineFactory = new PipelineFactory();
-        var pipelineRunner = new PipelineRunner(pipelineFactory, nodeFactory);
+        var pipelineRunner = new PipelineRunnerBuilder().WithPipelineFactory(pipelineFactory).WithNodeFactory(nodeFactory).Build();
         var testRunner = new TestPipelineRunner(pipelineRunner);
         var context = PipelineContext.Default;
 
@@ -942,7 +942,7 @@ public class ParallelExecutionStrategyTests
         var pipeline = new ConfigurationTestPipeline();
         var nodeFactory = new DefaultNodeFactory();
         var pipelineFactory = new PipelineFactory();
-        var pipelineRunner = new PipelineRunner(pipelineFactory, nodeFactory);
+        var pipelineRunner = new PipelineRunnerBuilder().WithPipelineFactory(pipelineFactory).WithNodeFactory(nodeFactory).Build();
         var testRunner = new TestPipelineRunner(pipelineRunner);
         var context = PipelineContext.Default;
 
@@ -971,7 +971,7 @@ public class ParallelExecutionStrategyTests
         var pipeline = new ConfigurationTestPipeline();
         var nodeFactory = new DefaultNodeFactory();
         var pipelineFactory = new PipelineFactory();
-        var pipelineRunner = new PipelineRunner(pipelineFactory, nodeFactory);
+        var pipelineRunner = new PipelineRunnerBuilder().WithPipelineFactory(pipelineFactory).WithNodeFactory(nodeFactory).Build();
         var testRunner = new TestPipelineRunner(pipelineRunner);
         var context = PipelineContext.Default;
 
@@ -992,7 +992,7 @@ public class ParallelExecutionStrategyTests
         var pipeline = new ConfigurationTestPipeline();
         var nodeFactory = new DefaultNodeFactory();
         var pipelineFactory = new PipelineFactory();
-        var pipelineRunner = new PipelineRunner(pipelineFactory, nodeFactory);
+        var pipelineRunner = new PipelineRunnerBuilder().WithPipelineFactory(pipelineFactory).WithNodeFactory(nodeFactory).Build();
         var testRunner = new TestPipelineRunner(pipelineRunner);
         var context = PipelineContext.Default;
 
@@ -1017,7 +1017,7 @@ public class ParallelExecutionStrategyTests
     public async Task EdgeCase_EmptyInput_HandlesGracefully()
     {
         // Arrange
-        var runner = new TestPipelineRunner(new PipelineRunner());
+        var runner = new TestPipelineRunner(PipelineRunner.Create());
         var context = PipelineContext.Default;
 
         // Act
@@ -1032,7 +1032,7 @@ public class ParallelExecutionStrategyTests
     public async Task EdgeCase_SingleItem_ProcessesCorrectly()
     {
         // Arrange
-        var runner = new TestPipelineRunner(new PipelineRunner());
+        var runner = new TestPipelineRunner(PipelineRunner.Create());
         var context = PipelineContext.Default;
 
         // Act
@@ -1047,7 +1047,7 @@ public class ParallelExecutionStrategyTests
     public async Task EdgeCase_LargeNumberOfItems_ProcessesCorrectly()
     {
         // Arrange
-        var runner = new TestPipelineRunner(new PipelineRunner());
+        var runner = new TestPipelineRunner(PipelineRunner.Create());
         var context = PipelineContext.Default;
 
         // Act
@@ -1134,7 +1134,7 @@ public class ParallelExecutionStrategyTests
         const int itemCount = 10000;
         var sourceData = Enumerable.Range(1, itemCount).ToList();
         var context = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
 
         // Act
         await runner.RunAsync<StressTestPipeline>(context);
@@ -1162,7 +1162,7 @@ public class ParallelExecutionStrategyTests
             {
                 var nodeFactory = new DefaultNodeFactory();
                 var pipelineFactory = new PipelineFactory();
-                var pipelineRunner = new PipelineRunner(pipelineFactory, nodeFactory);
+                var pipelineRunner = new PipelineRunnerBuilder().WithPipelineFactory(pipelineFactory).WithNodeFactory(nodeFactory).Build();
                 var testRunner = new TestPipelineRunner(pipelineRunner);
                 var context = PipelineContext.Default;
 
@@ -1198,7 +1198,7 @@ public class ParallelExecutionStrategyTests
         {
             var nodeFactory = new DefaultNodeFactory();
             var pipelineFactory = new PipelineFactory();
-            var pipelineRunner = new PipelineRunner(pipelineFactory, nodeFactory);
+            var pipelineRunner = new PipelineRunnerBuilder().WithPipelineFactory(pipelineFactory).WithNodeFactory(nodeFactory).Build();
             var testRunner = new TestPipelineRunner(pipelineRunner);
             var context = PipelineContext.Default;
 
@@ -1214,7 +1214,7 @@ public class ParallelExecutionStrategyTests
         using var cts = new CancellationTokenSource();
         var nodeFactory = new DefaultNodeFactory();
         var pipelineFactory = new PipelineFactory();
-        var pipelineRunner = new PipelineRunner(pipelineFactory, nodeFactory);
+        var pipelineRunner = new PipelineRunnerBuilder().WithPipelineFactory(pipelineFactory).WithNodeFactory(nodeFactory).Build();
         var testRunner = new TestPipelineRunner(pipelineRunner);
 
         var context = new PipelineContextBuilder()

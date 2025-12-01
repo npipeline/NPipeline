@@ -91,7 +91,7 @@ Instead of calling `Build()` yourself, you pass the definition type to a `Pipeli
 ```csharp
 public static async Task Main(string[] args)
 {
-    var runner = new PipelineRunner();
+    var runner = PipelineRunner.Create();
 
     Console.WriteLine("Starting pipeline from definition...");
     await runner.RunAsync<MyHelloWorldPipelineDefinition>();
@@ -129,7 +129,7 @@ public static class Program
 {
     public static async Task Main(string[] args)
     {
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
 
         // Execute the pipeline definition
         await runner.RunAsync<HelloWorldPipelineDefinition>();
@@ -183,7 +183,7 @@ public static class Program
         var pipeline = builder.Build();
 
         // Execute using a custom runner that accepts a Pipeline instance
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
 
         // Since PipelineRunner only works with IPipelineDefinition,
         // we need to create a wrapper definition

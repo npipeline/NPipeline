@@ -71,7 +71,7 @@ public static class Program
         context.SetSourceData(testData);
 
         Console.WriteLine("Starting parallel pipeline...");
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
         await runner.RunAsync<ParallelPipeline>(context);
         Console.WriteLine("Parallel pipeline finished.");
     }
@@ -145,7 +145,7 @@ public static class Program
         context.SetSourceData(testData);
 
         Console.WriteLine("Starting non-ordered parallel pipeline...");
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
         await runner.RunAsync<NonOrderedParallelPipeline>(context);
         Console.WriteLine("Non-ordered parallel pipeline finished.");
     }

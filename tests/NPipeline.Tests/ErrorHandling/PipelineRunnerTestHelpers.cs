@@ -80,12 +80,13 @@ public static class PipelineRunnerTestHelpers
             IPipelineInfrastructureService? infrastructureService = null,
             IObservabilitySurface? observabilitySurface = null)
         {
-            return new PipelineRunner(
-                pipelineFactory ?? CreatePipelineFactory(),
-                nodeFactory ?? CreateNodeFactory(),
-                executionCoordinator ?? CreateExecutionCoordinator(),
-                infrastructureService ?? CreateInfrastructureService(),
-                observabilitySurface ?? CreateObservabilitySurface());
+            return new PipelineRunnerBuilder()
+                .WithPipelineFactory(pipelineFactory ?? CreatePipelineFactory())
+                .WithNodeFactory(nodeFactory ?? CreateNodeFactory())
+                .WithExecutionCoordinator(executionCoordinator ?? CreateExecutionCoordinator())
+                .WithInfrastructureService(infrastructureService ?? CreateInfrastructureService())
+                .WithObservabilitySurface(observabilitySurface ?? CreateObservabilitySurface())
+                .Build();
         }
     }
 

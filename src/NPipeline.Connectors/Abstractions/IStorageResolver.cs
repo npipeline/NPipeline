@@ -5,7 +5,7 @@ namespace NPipeline.Connectors.Abstractions;
 /// </summary>
 /// <remarks>
 ///     Design goals:
-///     - Support automatic discovery (reflection-based) and manual registration
+///     - Prioritize explicit/manual registration while allowing optional discovery implementations
 ///     - Thread-safe provider enumeration and resolution
 ///     - No DI dependency; usable in both DI and non-DI scenarios
 /// </remarks>
@@ -32,8 +32,7 @@ public interface IStorageResolver
     void RegisterProvider(IStorageProvider provider);
 
     /// <summary>
-    ///     Triggers discovery of providers if the implementation supports it and it has not yet run.
-    ///     Implementations may perform no-op if discovery is not supported or already completed.
+    ///     Allows implementations that support discovery to trigger it manually; no-op for others.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token for discovery workloads.</param>
     void EnsureDiscovered(CancellationToken cancellationToken = default);

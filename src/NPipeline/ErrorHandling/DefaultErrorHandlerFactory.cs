@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using NPipeline.Observability.Logging;
 using NPipeline.Utils;
 
 namespace NPipeline.ErrorHandling;
@@ -9,6 +9,14 @@ namespace NPipeline.ErrorHandling;
 /// </summary>
 internal sealed class DefaultErrorHandlerFactory : IErrorHandlerFactory
 {
+    private readonly IPipelineLogger _logger;
+
+    public DefaultErrorHandlerFactory(IPipelineLoggerFactory? loggerFactory = null)
+    {
+        var factory = loggerFactory ?? NullPipelineLoggerFactory.Instance;
+        _logger = factory.CreateLogger(nameof(DefaultErrorHandlerFactory));
+    }
+
     /// <summary>
     ///     Creates an instance of the specified error handler type.
     /// </summary>
@@ -46,12 +54,19 @@ internal sealed class DefaultErrorHandlerFactory : IErrorHandlerFactory
     /// <param name="type">The concrete type to instantiate.</param>
     /// <param name="methodName">The name of the calling method for diagnostics.</param>
     /// <returns>The created instance or null if creation fails.</returns>
-    private static T? TryCreateInstance<T>(Type type, string methodName) where T : class
+    private T? TryCreateInstance<T>(Type type, string methodName) where T : class
     {
         if (InstanceFactory.TryCreate<T>(type, out var instance, out var error))
             return instance;
 
-        Debug.WriteLine($"DefaultErrorHandlerFactory.{methodName}: Failed to create instance of {type?.FullName ?? "null"}: {error}");
+        _logger.Log(
+            LogLevel.Warning,
+            "{Factory}.{Method}: Failed to create instance of {Type}: {Message}",
+            nameof(DefaultErrorHandlerFactory),
+            methodName,
+            type?.FullName ?? "null",
+            error ?? "unknown error");
+
         return null;
     }
 }

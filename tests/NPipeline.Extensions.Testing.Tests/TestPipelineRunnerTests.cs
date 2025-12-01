@@ -16,7 +16,12 @@ public class TestPipelineRunnerTests
         // Arrange
         var nodeFactory = new SimpleNodeFactory();
         var pipelineFactory = new PipelineFactory();
-        var pipelineRunner = new PipelineRunner(pipelineFactory, nodeFactory);
+
+        var pipelineRunner = new PipelineRunnerBuilder()
+            .WithPipelineFactory(pipelineFactory)
+            .WithNodeFactory(nodeFactory)
+            .Build();
+
         var testRunner = new TestPipelineRunner(pipelineRunner);
         var context = PipelineContext.Default;
 

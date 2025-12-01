@@ -230,19 +230,19 @@ public static class Program
 
         // Example with inner join (default)
         var innerJoinContext = PipelineContext.Default;
-        var innerJoinRunner = new PipelineRunner();
+        var innerJoinRunner = PipelineRunner.Create();
         Console.WriteLine("Running inner join pipeline...");
         await innerJoinRunner.RunAsync<InnerJoinPipelineDefinition>(innerJoinContext);
 
         // Example with left outer join
         var leftOuterContext = PipelineContext.Default;
-        var leftOuterRunner = new PipelineRunner();
+        var leftOuterRunner = PipelineRunner.Create();
         Console.WriteLine("\nRunning left outer join pipeline...");
         await leftOuterRunner.RunAsync<LeftOuterJoinPipelineDefinition>(leftOuterContext);
 
         // Example with full outer join
         var fullOuterContext = PipelineContext.Default;
-        var fullOuterRunner = new PipelineRunner();
+        var fullOuterRunner = PipelineRunner.Create();
         Console.WriteLine("\nRunning full outer join pipeline...");
         await fullOuterRunner.RunAsync<FullOuterJoinPipelineDefinition>(fullOuterContext);
     }

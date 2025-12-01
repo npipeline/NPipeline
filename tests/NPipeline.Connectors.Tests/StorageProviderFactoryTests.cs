@@ -72,12 +72,16 @@ public class StorageProviderFactoryTests
             },
         };
 
-        var resolver = StorageProviderFactory.CreateResolver(config, null, true, out var errors);
+        var result = StorageProviderFactory.CreateResolver(new StorageResolverOptions
+        {
+            Configuration = config,
+            CollectErrors = true,
+        });
 
-        Assert.NotNull(resolver);
-        Assert.NotNull(errors);
-        Assert.True(errors.ContainsKey("bad"));
-        Assert.Contains(errors["bad"], e => e.Contains("Could not resolve provider type") || e.Contains("Failed to create provider"));
+        Assert.NotNull(result.Resolver);
+        Assert.NotNull(result.Errors);
+        Assert.True(result.Errors.ContainsKey("bad"));
+        Assert.Contains(result.Errors["bad"], e => e.Contains("Could not resolve provider type") || e.Contains("Failed to create provider"));
     }
 
     [Fact]
@@ -86,11 +90,16 @@ public class StorageProviderFactoryTests
         var config = new ConnectorConfiguration();
         var extras = new List<IStorageProvider> { new TestProvider() };
 
-        var resolver = StorageProviderFactory.CreateResolver(config, extras, true, out var errors);
+        var result = StorageProviderFactory.CreateResolver(new StorageResolverOptions
+        {
+            Configuration = config,
+            AdditionalProviders = extras,
+            CollectErrors = true,
+        });
 
-        Assert.NotNull(resolver);
-        Assert.NotNull(errors);
-        Assert.Empty(errors);
+        Assert.NotNull(result.Resolver);
+        Assert.NotNull(result.Errors);
+        Assert.Empty(result.Errors);
     }
 
     private sealed class NoParameterlessCtorProvider : IStorageProvider

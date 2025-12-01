@@ -16,7 +16,7 @@ For a deeper understanding of how pipeline execution works under the hood, see t
 The simplest way to execute a pipeline is with the `PipelineRunner`:
 
 ```csharp
-var runner = new PipelineRunner();
+var runner = PipelineRunner.Create();
 await runner.RunAsync<MyPipelineDefinition>();
 ```
 
@@ -46,7 +46,7 @@ You can pass state and configuration to your pipeline using `PipelineContext`:
 var context = new PipelineContext(PipelineContextConfiguration.WithCancellation(cancellationToken));
 context.Items["key"] = "value"; // Pass state to nodes
 
-var runner = new PipelineRunner();
+var runner = PipelineRunner.Create();
 await runner.RunAsync<MyPipelineDefinition>(context);
 ```
 
@@ -57,7 +57,7 @@ NPipeline supports cancellation through `CancellationToken` propagation. Pass a 
 ```csharp
 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
-var runner = new PipelineRunner();
+var runner = PipelineRunner.Create();
 try
 {
     await runner.RunAsync<MyPipelineDefinition>(cts.Token);

@@ -852,7 +852,7 @@ public static class Program
 {
     public static async Task Main(string[] args)
     {
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
         var context = PipelineContext.Default;
 
         var pipeline = PipelineBuilder.Create<ErrorHandlingPipelineDefinition>();
@@ -986,7 +986,7 @@ public static class Program
 {
     public static async Task Main(string[] args)
     {
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
 
         // Configure retry options at context level
         var retryOptions = new PipelineRetryOptions(
@@ -1007,7 +1007,7 @@ public static class Program
             .AddSingleton<IDeadLetterSink, FileDeadLetterSink>()
             .BuildServiceProvider();
 
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
         await runner.RunAsync<ProductionPipelineDefinition>(context);
     }
 }

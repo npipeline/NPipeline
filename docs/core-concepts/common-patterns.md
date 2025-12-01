@@ -100,7 +100,7 @@ public static class Program
 {
     public static async Task Main()
     {
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
         await runner.RunAsync<EtlPipeline>();
     }
 }

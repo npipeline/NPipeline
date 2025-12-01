@@ -70,7 +70,7 @@ For the most basic case, just create a context:
 // This gives you a fully configured context with all defaults
 var context = new PipelineContext();
 
-var runner = new PipelineRunner();
+var runner = PipelineRunner.Create();
 await runner.RunAsync<MyPipeline>(context);
 ```
 
@@ -307,7 +307,7 @@ public static class Program
         context.Items["Logger"] = logger;
         context.Items["CorrelationId"] = correlationId;
 
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
 
         Console.WriteLine($"Starting pipeline with CorrelationId: {correlationId}");
         await runner.RunAsync<MyPipelineDefinition>(context); // Pass the custom context
@@ -424,7 +424,7 @@ public static class Program
 {
     public static async Task Main(string[] args)
     {
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
         await runner.RunAsync<ContextAwarePipelineDefinition>();
     }
 }

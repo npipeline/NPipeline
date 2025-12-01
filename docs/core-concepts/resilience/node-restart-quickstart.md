@@ -205,7 +205,7 @@ definition.Define(builder, context);
 //       _ => Task.FromResult(PipelineErrorDecision.FailPipeline)
 //   };
 
-var runner = new PipelineRunner();
+var runner = PipelineRunner.Create();
 await runner.RunAsync<MyPipelineDefinition>(context);
 ```
 

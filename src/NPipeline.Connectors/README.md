@@ -35,15 +35,18 @@ The `StorageProviderFactory` provides factory methods to create and configure st
 
 ```csharp
 // Create a resolver with built-in file system provider
-var resolver = StorageProviderFactory.CreateResolver(includeFileSystem: true);
+var resolver = StorageProviderFactory.CreateResolver().Resolver;
 
 // Create a resolver with additional custom providers
 var customProviders = new[] { new S3StorageProvider(), new AzureBlobStorageProvider() };
-var resolver = StorageProviderFactory.CreateResolver(
-    includeFileSystem: true,
-    additionalProviders: customProviders);
+var resolverResult = StorageProviderFactory.CreateResolver(new StorageResolverOptions
+{
+    IncludeFileSystem = true,
+    AdditionalProviders = customProviders,
+});
+var resolver = resolverResult.Resolver;
 
-// Create from configuration
+// Create from configuration and capture errors
 var config = new ConnectorConfiguration
 {
     Providers = new Dictionary<string, StorageProviderConfig>
@@ -60,17 +63,29 @@ var config = new ConnectorConfiguration
         }
     }
 };
-var resolver = StorageProviderFactory.CreateResolverFromConfiguration(config);
+var (configuredResolver, errors) = StorageProviderFactory.CreateResolver(new StorageResolverOptions
+{
+    Configuration = config,
+    CollectErrors = true,
+});
+
+if (errors.Count > 0)
+{
+    // log or surface configuration issues here
+}
+
+// Register a friendly alias for custom providers
+StorageProviderFactory.RegisterProviderAlias("s3", typeof(S3StorageProvider));
 ```
 
 ### StorageResolver
 
-The `StorageResolver` is responsible for discovering and resolving storage providers based on URI schemes:
+The `StorageResolver` maintains a thread-safe list of explicitly registered providers and resolves them based on URI schemes:
 
 ```csharp
 var resolver = new StorageResolver();
 
-// Register providers manually
+// Register providers manually (factory helpers call this for you)
 resolver.RegisterProvider(new FileSystemStorageProvider());
 resolver.RegisterProvider(new S3StorageProvider());
 
@@ -149,7 +164,7 @@ var inputUri = StorageUri.FromFilePath("./data/input.csv");
 var outputUri = StorageUri.FromFilePath("./data/output.csv");
 
 // Create resolver with file system provider
-var resolver = StorageProviderFactory.CreateResolver();
+var resolver = StorageProviderFactory.CreateResolver().Resolver;
 var provider = StorageProviderFactory.GetProviderOrThrow(resolver, inputUri);
 
 // Read from file
@@ -192,7 +207,7 @@ var s3Uri = StorageUri.Parse("s3://my-bucket/data/input.csv");
 var provider = resolver.ResolveProvider(s3Uri);
 ```
 
-### Custom Provider Implementation
+### Custom Provider Example (S3)
 
 ```csharp
 using NPipeline.Connectors.Abstractions;
@@ -278,7 +293,7 @@ services.AddConnectorsFromConfiguration(config =>
 });
 ```
 
-### Custom Provider Implementation
+### Configurable Provider Implementation
 
 ```csharp
 using NPipeline.Connectors.Configuration;

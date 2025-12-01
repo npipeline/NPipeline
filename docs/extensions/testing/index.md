@@ -103,7 +103,7 @@ public class MyPipelineTests
         builder.Connect(transform, sink);
 
         var pipeline = builder.Build();
-        await new PipelineRunner().RunAsync(pipeline, context);
+        await PipelineRunner.Create().RunAsync(pipeline, context);
 
         // Assert
         sink.ShouldHaveReceived(3);
@@ -157,7 +157,7 @@ Test entire pipelines to verify end-to-end behavior:
         var pipeline = builder.Build();
 
         // Act
-        await new PipelineRunner().RunAsync(pipeline, context);
+        await PipelineRunner.Create().RunAsync(pipeline, context);
 
         // Assert
         sink.ShouldHaveReceived(3);
@@ -189,7 +189,7 @@ Test error scenarios and recovery:
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            new PipelineRunner().RunAsync(pipeline, context));
+            PipelineRunner.Create().RunAsync(pipeline, context));
     }
 ```
 

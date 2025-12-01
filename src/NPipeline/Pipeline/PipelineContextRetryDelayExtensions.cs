@@ -1,7 +1,7 @@
-using System.Diagnostics;
 using NPipeline.Configuration;
 using NPipeline.Configuration.RetryDelay;
 using NPipeline.Execution.RetryDelay;
+using NPipeline.Observability.Logging;
 
 namespace NPipeline.Pipeline;
 
@@ -87,7 +87,7 @@ public static class PipelineContextRetryDelayExtensions
             if (currentRetryOptions.DelayStrategyConfiguration is { } delayConfig)
             {
                 // Create strategy from configuration using factory
-                retryDelayStrategy = CreateStrategyFromConfiguration(delayConfig);
+                retryDelayStrategy = CreateStrategyFromConfiguration(context, delayConfig);
             }
             else
             {
@@ -135,8 +135,12 @@ public static class PipelineContextRetryDelayExtensions
     ///         observability and debugging purposes.
     ///     </para>
     /// </remarks>
-    private static IRetryDelayStrategy CreateStrategyFromConfiguration(RetryDelayStrategyConfiguration configuration)
+    private static IRetryDelayStrategy CreateStrategyFromConfiguration(
+        PipelineContext context,
+        RetryDelayStrategyConfiguration configuration)
     {
+        var logger = context.LoggerFactory.CreateLogger(nameof(PipelineContextRetryDelayExtensions));
+
         try
         {
             // Validate configuration first
@@ -148,10 +152,12 @@ public static class PipelineContextRetryDelayExtensions
         catch (Exception ex)
         {
             // Log error and fall back to no-op strategy
-            Debug.WriteLine($"RetryDelayStrategy: Failed to create strategy from configuration. " +
-                            $"Error: {ex.Message}. Falling back to NoOpRetryDelayStrategy. " +
-                            $"Configuration: BackoffStrategy={configuration.BackoffStrategy?.GetType().Name ?? "null"}, " +
-                            $"JitterStrategy={configuration.JitterStrategy?.GetType().Name ?? "null"}");
+            logger.Log(
+                LogLevel.Warning,
+                ex,
+                "RetryDelayStrategy: Failed to create strategy from configuration. BackoffStrategy={Backoff}, JitterStrategy={Jitter}",
+                configuration.BackoffStrategy?.GetType().Name ?? "null",
+                configuration.JitterStrategy?.GetType().Name ?? "null");
 
             return NoOpRetryDelayStrategy.Instance;
         }

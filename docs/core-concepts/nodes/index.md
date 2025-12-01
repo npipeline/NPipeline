@@ -299,7 +299,7 @@ public static class Program
     public static async Task Main(string[] args)
     {
         // Create a pipeline runner to execute the defined pipeline
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
         
         // Run the pipeline using the definition
         await runner.RunAsync<NumberPipelineDefinition>();

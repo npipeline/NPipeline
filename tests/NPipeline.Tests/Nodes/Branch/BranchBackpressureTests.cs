@@ -2,7 +2,6 @@ using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Execution;
-using NPipeline.Execution.Factories;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using Xunit.Abstractions;
@@ -20,7 +19,7 @@ public sealed class BranchBackpressureTests(ITestOutputHelper output)
 
         // Arrange
         var ctx = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
 
         // Act
         await runner.RunAsync<BranchingPipeline>(ctx);

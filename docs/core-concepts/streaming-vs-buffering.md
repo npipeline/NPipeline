@@ -118,7 +118,7 @@ public static class Program
     public static async Task Main(string[] args)
     {
         var context = new PipelineContext();
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
 
         Console.WriteLine("Starting streaming pipeline...");
         await runner.RunAsync<StreamingPipelineDefinition>(context);
@@ -203,7 +203,7 @@ public static class Program
     public static async Task Main(string[] args)
     {
         var context = new PipelineContext();
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
 
         Console.WriteLine("Starting buffering pipeline...");
         await runner.RunAsync<BufferingPipelineDefinition>(context);

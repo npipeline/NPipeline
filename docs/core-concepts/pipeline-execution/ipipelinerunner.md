@@ -112,7 +112,7 @@ public static class Program
 {
     public static async Task Main(string[] args)
     {
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
         var context = PipelineContext.Default;
 
         Console.WriteLine("Starting pipeline execution...");
@@ -164,7 +164,7 @@ public static class Program
 {
     public static async Task Main(string[] args)
     {
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
         using var cts = new CancellationTokenSource();
 
         // Create context with cancellation token

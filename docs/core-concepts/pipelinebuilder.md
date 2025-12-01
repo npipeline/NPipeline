@@ -121,7 +121,7 @@ public static class Program
     public static async Task Main(string[] args)
     {
         // Create pipeline runner to execute the defined pipeline
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
         
         // Run the pipeline using the definition
         await runner.RunAsync<HelloWorldPipelineDefinition>();
@@ -175,7 +175,7 @@ public static class Program
         var pipeline = builder.Build();
         
         // Execute the pipeline
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
         await runner.RunAsync(() => pipeline);
     }
 }

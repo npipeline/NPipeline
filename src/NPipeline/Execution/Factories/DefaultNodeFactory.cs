@@ -6,21 +6,12 @@ namespace NPipeline.Execution.Factories;
 
 /// <summary>
 ///     Default in-core implementation of <see cref="INodeFactory" /> for non-DI scenarios.
-///     Uses Activator.CreateInstance and applies builder-specified execution strategy / error handler metadata.
-///     Keeps the core dependency-free while providing a ready-to-use manual factory.
+///     Uses Activator.CreateInstance with parameterless constructors.
+///     For complex dependency injection scenarios, use DIContainerNodeFactory or pre-configured instances.
 /// </summary>
-public sealed class DefaultNodeFactory : INodeFactory
+public sealed class DefaultNodeFactory(IErrorHandlerFactory? errorHandlerFactory = null) : INodeFactory
 {
-    private readonly IErrorHandlerFactory _errorHandlerFactory;
-
-    /// <summary>
-    ///     Creates a new <see cref="DefaultNodeFactory" />.
-    /// </summary>
-    /// <param name="errorHandlerFactory">Optional error handler factory for creating node error handlers; defaults to <see cref="DefaultErrorHandlerFactory" />.</param>
-    public DefaultNodeFactory(IErrorHandlerFactory? errorHandlerFactory = null)
-    {
-        _errorHandlerFactory = errorHandlerFactory ?? new DefaultErrorHandlerFactory();
-    }
+    private readonly IErrorHandlerFactory _errorHandlerFactory = errorHandlerFactory ?? new DefaultErrorHandlerFactory();
 
     /// <inheritdoc />
     public INode Create(NodeDefinition nodeDefinition, PipelineGraph graph)
@@ -31,64 +22,32 @@ public sealed class DefaultNodeFactory : INodeFactory
         if (graph.PreconfiguredNodeInstances.TryGetValue(nodeDefinition.Id, out var preconfigured))
             return preconfigured;
 
-        object? instance = null;
-
-        // First try simple parameterless path
-        if (nodeDefinition.NodeType.GetConstructor(Type.EmptyTypes) is not null)
-            instance = Activator.CreateInstance(nodeDefinition.NodeType);
-        else
+        // Try simple parameterless constructor
+        try
         {
-            // Attempt heuristic-based ctor resolution: pick the public ctor with the fewest parameters where all parameters are either optional
-            // or of a trivially satisfiable known type (currently IErrorHandlerFactory). This keeps DefaultNodeFactory lightweight without full DI.
-            var ctors = nodeDefinition.NodeType.GetConstructors();
-            var ordered = ctors.OrderBy(c => c.GetParameters().Length).ToList();
+            var instance = Activator.CreateInstance(nodeDefinition.NodeType)
+                           ?? throw new InvalidOperationException(
+                               $"Failed to create node instance of type '{nodeDefinition.NodeType.FullName}'. Activator returned null.");
 
-            foreach (var ctor in ordered)
-            {
-                var parms = ctor.GetParameters();
-                var args = new object?[parms.Length];
-                var viable = true;
-
-                for (var i = 0; i < parms.Length; i++)
-                {
-                    var p = parms[i];
-
-                    if (p.HasDefaultValue)
-                    {
-                        args[i] = p.DefaultValue;
-                        continue;
-                    }
-
-                    // Known injectable types
-                    if (p.ParameterType.IsAssignableFrom(typeof(IErrorHandlerFactory)))
-                    {
-                        args[i] = _errorHandlerFactory;
-                        continue;
-                    }
-
-                    // Give up on this constructor
-                    viable = false;
-                    break;
-                }
-
-                if (!viable)
-                    continue;
-
-                try
-                {
-                    instance = ctor.Invoke(args);
-                    break;
-                }
-                catch
-                {
-                    // Try next ctor
-                }
-            }
+            return ConfigureNode((INode)instance, nodeDefinition);
         }
+        catch (MissingMethodException)
+        {
+            throw new InvalidOperationException(
+                $"Failed to create node instance of type '{nodeDefinition.NodeType.FullName}'. " +
+                "Ensure a public parameterless constructor exists, or register a pre-configured instance using PipelineBuilder.AddPreconfiguredNodeInstance(). " +
+                "For dependency injection scenarios, use DIContainerNodeFactory from NPipeline.Extensions.DependencyInjection or provide a custom INodeFactory implementation.");
+        }
+    }
 
-        instance ??= Activator.CreateInstance(nodeDefinition.NodeType) ?? throw new InvalidOperationException(
-            $"Failed to create node instance of type '{nodeDefinition.NodeType.FullName}'. Ensure a public parameterless constructor exists, provide optional parameters, or register a pre-configured instance.");
-
+    /// <summary>
+    ///     Configures a node instance with execution strategy and error handler if applicable.
+    /// </summary>
+    /// <param name="instance">The node instance to configure.</param>
+    /// <param name="nodeDefinition">The node definition containing configuration.</param>
+    /// <returns>The configured node instance.</returns>
+    private INode ConfigureNode(INode instance, NodeDefinition nodeDefinition)
+    {
         if (instance is ITransformNode transformNode)
         {
             // Apply execution strategy if specified.
@@ -100,6 +59,6 @@ public sealed class DefaultNodeFactory : INodeFactory
                 transformNode.ErrorHandler = _errorHandlerFactory.CreateNodeErrorHandler(nodeDefinition.ErrorHandlerType);
         }
 
-        return (INode)instance;
+        return instance;
     }
 }

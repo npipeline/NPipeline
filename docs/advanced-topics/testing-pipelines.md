@@ -192,7 +192,7 @@ public class ParsingTransformTests
         var context = new PipelineContext();
         context.SetSourceData(inputData);
 
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<FormatException>(

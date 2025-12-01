@@ -172,7 +172,7 @@ public class PipelineRunner
 ```csharp
 // Using only PipelineContext
 var context = PipelineContext.Default;
-var runner = new PipelineRunner();
+var runner = PipelineRunner.Create();
 await runner.RunAsync<MyPipeline>(context);
 
 // Using only CancellationToken

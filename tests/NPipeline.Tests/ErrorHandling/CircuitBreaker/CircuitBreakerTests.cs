@@ -3,7 +3,6 @@ using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
-using NPipeline.Execution.Factories;
 using NPipeline.Execution.Strategies;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -15,7 +14,7 @@ public sealed class CircuitBreakerTests
     [Fact]
     public async Task CircuitBreaker_Trips_AfterThreshold()
     {
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
 
         var ctx = new PipelineContextBuilder()
             .WithErrorHandler(new AlwaysRestartHandler())

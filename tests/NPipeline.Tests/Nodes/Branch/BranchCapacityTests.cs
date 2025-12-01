@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using NPipeline.DataFlow.Branching;
 using NPipeline.Execution;
-using NPipeline.Execution.Factories;
 using NPipeline.Extensions.Testing;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -23,7 +22,7 @@ public sealed class BranchCapacityTests
             { "s2", collect2 },
         };
 
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
         await runner.RunAsync<BranchingPipeline>(ctx);
         var metrics = ctx.GetBranchMetrics("t");
         metrics.Should().NotBeNull();

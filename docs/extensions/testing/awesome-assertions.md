@@ -107,7 +107,7 @@ public class InMemorySinkTests
         var pipeline = builder.Build();
 
         // Act
-        await new PipelineRunner().RunAsync(pipeline, context);
+        await PipelineRunner.Create().RunAsync(pipeline, context);
 
         // Assert
         sink.ShouldContain("A");
@@ -178,7 +178,7 @@ public class PipelineWithErrorHandlingTests
         var pipeline = builder.Build();
 
         // Act
-        await new PipelineRunner().RunAsync(pipeline, context);
+        await PipelineRunner.Create().RunAsync(pipeline, context);
 
         // Assert
         sink.ShouldHaveReceived(2); // Only "apple" and "banana" should pass filter

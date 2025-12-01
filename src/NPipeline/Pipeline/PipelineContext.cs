@@ -76,8 +76,8 @@ public sealed class PipelineContext
         Tracer = config.Tracer ?? NullPipelineTracer.Instance;
         PipelineErrorHandler = config.PipelineErrorHandler;
         DeadLetterSink = config.DeadLetterSink;
-        ErrorHandlerFactory = config.ErrorHandlerFactory ?? new DefaultErrorHandlerFactory();
-        LineageFactory = config.LineageFactory ?? new DefaultLineageFactory();
+        ErrorHandlerFactory = config.ErrorHandlerFactory ?? new DefaultErrorHandlerFactory(LoggerFactory);
+        LineageFactory = config.LineageFactory ?? new DefaultLineageFactory(LoggerFactory);
         ObservabilityFactory = config.ObservabilityFactory ?? new DefaultObservabilityFactory();
         RetryOptions = config.RetryOptions ?? PipelineRetryOptions.Default;
     }

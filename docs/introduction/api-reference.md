@@ -343,7 +343,7 @@ public class PipelineRunner
 **Usage:**
 
 ```csharp
-var runner = new PipelineRunner();
+var runner = PipelineRunner.Create();
 var context = new PipelineContextBuilder()
     .WithCancellation(cancellationToken)
     .Build();
@@ -589,7 +589,7 @@ public class MyPipeline : IPipelineDefinition
 }
 
 // Execute
-var runner = new PipelineRunner();
+var runner = PipelineRunner.Create();
 var context = new PipelineContext();
 await runner.RunAsync<MyPipeline>(context);
 ```

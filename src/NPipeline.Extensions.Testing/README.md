@@ -73,7 +73,7 @@ var pipeline = PipelineBuilder
     .Build();
 
 // Execute pipeline
-await new PipelineRunner().RunAsync(pipeline);
+await PipelineRunner.Create().RunAsync(pipeline);
 
 // Verify results
 sink.Items.Should().HaveCount(5);
@@ -146,7 +146,7 @@ public class TransformNodeTests
             .End.With(sink)
             .Build();
 
-        await new PipelineRunner().RunAsync(pipeline);
+        await PipelineRunner.Create().RunAsync(pipeline);
 
         // Assert
         sink.Items.Should().BeEquivalentTo(new[] { 5, 6, 9 });

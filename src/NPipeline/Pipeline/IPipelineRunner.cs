@@ -32,7 +32,7 @@ namespace NPipeline.Pipeline;
 /// }
 /// 
 /// // Run the pipeline
-/// var runner = new PipelineRunner();
+/// var runner = PipelineRunner.Create();
 /// var context = PipelineContext.Default;
 /// await runner.RunAsync&lt;DataProcessingPipeline&gt;(context);
 /// </code>

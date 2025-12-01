@@ -6,7 +6,6 @@ using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
-using NPipeline.Execution.Factories;
 using NPipeline.Extensions.Testing;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -24,7 +23,7 @@ public class ParallelMetricsTests
     public async Task DropNewestPolicy_Should_Record_Metrics()
     {
         var ctx = PipelineContext.Default;
-        PipelineRunner runner = new(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
         await runner.RunAsync<DropNewestMetricsPipeline>(ctx);
 
         _ = ctx.Items.TryGetValue(DropNewestMetricsPipeline.NodeIdKey, out var idObj).Should().BeTrue();
@@ -50,7 +49,7 @@ public class ParallelMetricsTests
         AttemptCounts.Clear();
 
         var ctx = PipelineContext.Default;
-        PipelineRunner runner = new(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
 
         // Run the pipeline - it should complete successfully with retries
         await runner.RunAsync<TestPipeline>(ctx);

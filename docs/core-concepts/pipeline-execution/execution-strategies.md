@@ -201,7 +201,7 @@ public static class Program
 {
     public static async Task Main(string[] args)
     {
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
         var context = PipelineContext.Default;
 
         // Configure parallel execution for the 'asyncProcessor' node
@@ -381,7 +381,7 @@ public static class Program
 {
     public static async Task Main(string[] args)
     {
-        var runner = new PipelineRunner();
+        var runner = PipelineRunner.Create();
 
         // Configure retry options with materialization limit
         var retryOptions = new PipelineRetryOptions(

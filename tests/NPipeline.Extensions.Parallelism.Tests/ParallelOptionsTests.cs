@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
-using NPipeline.Execution.Factories;
 using NPipeline.Extensions.Testing;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -19,7 +18,7 @@ public class ParallelOptionsTests
     {
         SharedTestState.Reset(25, 40);
         var ctx = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
         await runner.RunAsync<TestDefinitionWithDop2>(ctx);
         SharedTestState.Peak.Should().BeLessThanOrEqualTo(2);
 
@@ -34,7 +33,7 @@ public class ParallelOptionsTests
     {
         SharedTestState.Reset(40, 10);
         var ctx = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
         await runner.RunAsync<TestDefinitionBounded>(ctx);
 
         // Collect sink data
@@ -49,7 +48,7 @@ public class ParallelOptionsTests
         // Fast transform, slow sink simulation: sink delay already encoded in transform delay; we inflate item count.
         SharedTestState.Reset(100, 5);
         var ctx = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
         await runner.RunAsync<TestDefinitionOutputCap>(ctx);
 
         // Collect sink data
@@ -68,7 +67,7 @@ public class ParallelOptionsTests
     {
         SharedTestState.Reset(10, 1);
         var ctx = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
 
         // The pipeline should succeed after retries, not throw an exception
         await runner.RunAsync<TestDefinitionRetryMetrics>(ctx);
@@ -102,7 +101,7 @@ public class ParallelOptionsTests
     {
         SharedTestState.Reset(1, 5);
         var ctx = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
         var act = () => runner.RunAsync<TestDefinitionDropNewest>(ctx).GetAwaiter().GetResult();
         act.Should().NotThrow(); // now implemented
     }
@@ -112,7 +111,7 @@ public class ParallelOptionsTests
     {
         SharedTestState.Reset(60, 25); // fast producer, slower consumer
         var ctx = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
         await runner.RunAsync<TestDefinitionDropNewest>(ctx);
 
         // Collect sink data
@@ -130,7 +129,7 @@ public class ParallelOptionsTests
     {
         SharedTestState.Reset(60, 25);
         var ctx = PipelineContext.Default;
-        var runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        var runner = PipelineRunner.Create();
         await runner.RunAsync<TestDefinitionDropOldest>(ctx);
 
         // Collect sink data

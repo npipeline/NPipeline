@@ -26,7 +26,7 @@ namespace NPipeline.Pipeline;
 /// await pipeline.ExecuteAsync();
 /// 
 /// // Or use the IPipelineRunner directly, which uses a factory internally
-/// var runner = new PipelineRunner();
+/// var runner = PipelineRunner.Create();
 /// await runner.RunAsync&lt;MyDataProcessingPipeline&gt;(context);
 /// </code>
 /// </example>

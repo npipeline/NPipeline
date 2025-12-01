@@ -42,9 +42,13 @@ public class Customer
     public string Email { get; set; }
 }
 
+// Create a storage resolver for file operations
+var resolver = StorageProviderFactory.CreateResolver().Resolver;
+
 // Create a CSV source node
 var csvSource = new CsvSourceNode<Customer>(
-    StorageUri.FromFilePath("customers.csv")
+    StorageUri.FromFilePath("customers.csv"),
+    resolver
 );
 
 // Use in a pipeline
@@ -55,9 +59,13 @@ var source = builder.AddSource(() => csvSource, "csv-source");
 ### Writing CSV Files
 
 ```csharp
+// Create a storage resolver for file operations
+var resolver = StorageProviderFactory.CreateResolver().Resolver;
+
 // Create a CSV sink node
 var csvSink = new CsvSinkNode<Customer>(
-    StorageUri.FromFilePath("output.csv")
+    StorageUri.FromFilePath("output.csv"),
+    resolver
 );
 
 // Use in a pipeline
@@ -82,11 +90,15 @@ var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
 // Custom encoding
 var encoding = Encoding.UTF8;
 
+// Create storage resolver
+var resolver = StorageProviderFactory.CreateResolver().Resolver;
+
 // Create source with custom configuration
 var csvSource = new CsvSourceNode<Customer>(
     StorageUri.FromFilePath("data.csv"),
-    configuration: csvConfig,
-    encoding: encoding
+    resolver,
+    csvConfig,
+    encoding
 );
 ```
 

@@ -24,17 +24,12 @@ public sealed class CsvSourceNode<T> : SourceNode<T>
     private readonly IStorageResolver? _resolver;
     private readonly StorageUri _uri;
 
-    /// <summary>
-    ///     Construct a CSV source that resolves a storage provider from a resolver at execution time.
-    /// </summary>
-    public CsvSourceNode(
+    private CsvSourceNode(
         StorageUri uri,
-        IStorageResolver? resolver = null,
-        CsvConfiguration? configuration = null,
-        Encoding? encoding = null)
+        CsvConfiguration? configuration,
+        Encoding? encoding)
     {
         _uri = uri ?? throw new ArgumentNullException(nameof(uri));
-        _resolver = resolver;
 
         _csvConfiguration = configuration ?? new CsvConfiguration(CultureInfo.InvariantCulture)
         {
@@ -45,6 +40,19 @@ public sealed class CsvSourceNode<T> : SourceNode<T>
     }
 
     /// <summary>
+    ///     Construct a CSV source that resolves a storage provider from a resolver at execution time.
+    /// </summary>
+    public CsvSourceNode(
+        StorageUri uri,
+        IStorageResolver resolver,
+        CsvConfiguration? configuration = null,
+        Encoding? encoding = null)
+        : this(uri, configuration, encoding)
+    {
+        _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
+    }
+
+    /// <summary>
     ///     Construct a CSV source that uses a specific storage provider.
     /// </summary>
     public CsvSourceNode(
@@ -52,7 +60,7 @@ public sealed class CsvSourceNode<T> : SourceNode<T>
         StorageUri uri,
         CsvConfiguration? configuration = null,
         Encoding? encoding = null)
-        : this(uri, null, configuration, encoding)
+        : this(uri, configuration, encoding)
     {
         _provider = provider ?? throw new ArgumentNullException(nameof(provider));
     }
@@ -60,7 +68,7 @@ public sealed class CsvSourceNode<T> : SourceNode<T>
     public override IDataPipe<T> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
     {
         var provider = _provider ?? StorageProviderFactory.GetProviderOrThrow(
-            _resolver ?? StorageProviderFactory.CreateResolver(),
+            _resolver ?? throw new InvalidOperationException("No storage resolver configured for CsvSourceNode."),
             _uri);
 
         if (provider is IStorageProviderMetadataProvider metaProvider)

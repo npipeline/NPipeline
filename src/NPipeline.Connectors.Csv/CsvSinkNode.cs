@@ -22,19 +22,27 @@ public sealed class CsvSinkNode<T> : SinkNode<T>
     private readonly IStorageResolver? _resolver;
     private readonly StorageUri _uri;
 
+    private CsvSinkNode(
+        StorageUri uri,
+        CsvConfiguration? configuration,
+        Encoding? encoding)
+    {
+        _uri = uri ?? throw new ArgumentNullException(nameof(uri));
+        _csvConfiguration = configuration ?? new CsvConfiguration(CultureInfo.InvariantCulture);
+        _encoding = encoding ?? new UTF8Encoding(false);
+    }
+
     /// <summary>
     ///     Construct a CSV sink node that resolves a storage provider from a resolver at execution time.
     /// </summary>
     public CsvSinkNode(
         StorageUri uri,
-        IStorageResolver? resolver = null,
+        IStorageResolver resolver,
         CsvConfiguration? configuration = null,
         Encoding? encoding = null)
+        : this(uri, configuration, encoding)
     {
-        _uri = uri ?? throw new ArgumentNullException(nameof(uri));
-        _resolver = resolver;
-        _csvConfiguration = configuration ?? new CsvConfiguration(CultureInfo.InvariantCulture);
-        _encoding = encoding ?? new UTF8Encoding(false);
+        _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
     }
 
     /// <summary>
@@ -45,7 +53,7 @@ public sealed class CsvSinkNode<T> : SinkNode<T>
         StorageUri uri,
         CsvConfiguration? configuration = null,
         Encoding? encoding = null)
-        : this(uri, null, configuration, encoding)
+        : this(uri, configuration, encoding)
     {
         _provider = provider ?? throw new ArgumentNullException(nameof(provider));
     }
@@ -53,7 +61,7 @@ public sealed class CsvSinkNode<T> : SinkNode<T>
     public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
         var provider = _provider ?? StorageProviderFactory.GetProviderOrThrow(
-            _resolver ?? StorageProviderFactory.CreateResolver(),
+            _resolver ?? throw new InvalidOperationException("No storage resolver configured for CsvSinkNode."),
             _uri);
 
         if (provider is IStorageProviderMetadataProvider metaProvider)

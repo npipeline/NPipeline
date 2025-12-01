@@ -432,7 +432,7 @@ Use `InMemorySourceNode` and `InMemorySinkNode`:
 var context = new PipelineContext();
 context.Items[typeof(InMemorySourceNode<int>).FullName!] = new[] { 1, 2, 3 };
 
-var runner = new PipelineRunner();
+var runner = PipelineRunner.Create();
 await runner.RunAsync<TestPipeline>(context);
 
 // Retrieve results

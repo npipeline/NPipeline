@@ -10,7 +10,6 @@ using NPipeline.DataFlow.DataPipes;
 using NPipeline.DataFlow.Windowing;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
-using NPipeline.Execution.Factories;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -37,7 +36,7 @@ public class PipelineExecutionBenchmarks : IDisposable
     [GlobalSetup]
     public void Setup()
     {
-        _runner = new PipelineRunner(new PipelineFactory(), new DefaultNodeFactory());
+        _runner = PipelineRunner.Create();
         _cancellationTokenSource = new CancellationTokenSource();
 
         _ctx = new PipelineContext(new PipelineContextConfiguration(new Dictionary<string, object>
