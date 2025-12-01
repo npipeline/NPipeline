@@ -19,7 +19,7 @@ public sealed class NodeConfigurationExtensionsTests
     {
         public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new ListDataPipe<int>(new[] { 1, 2, 3 });
+            return new InMemoryDataPipe<int>(new[] { 1, 2, 3 });
         }
     }
 

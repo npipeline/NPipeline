@@ -60,14 +60,14 @@ public sealed class InMemorySourceNode<T> : SourceNode<T>
     public override IDataPipe<T> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
     {
         if (!_useContext)
-            return new ListDataPipe<T>(_items!);
+            return new InMemoryDataPipe<T>(_items!);
 
         var items = ResolveFromContext(context, context.CurrentNodeId)
                     ?? throw new InvalidOperationException(
                         $"No source data configured for node '{context.CurrentNodeId}' of type '{typeof(T).Name}'. " +
-                        $"Set data via context.SetSourceData<{typeof(T).Name}>(...) before running, or use the InMemorySourceNode<T>(IEnumerable<T>) constructor.");
+                        $"Set data via context.SetSourceData<{typeof(T).Name}>(...) before running, or use InMemorySourceNode<T>(IEnumerable<T>) constructor.");
 
-        return new ListDataPipe<T>(items);
+        return new InMemoryDataPipe<T>(items);
     }
 
     // private static IReadOnlyList<T>? TryCoerce(object? value)

@@ -58,8 +58,8 @@ public class UnreliableSource : SourceNode<string>
 
         Console.WriteLine($"UnreliableSource: Successfully generated {messages.Count} messages");
 
-        // Return a ListDataPipe containing our messages
-        return new ListDataPipe<string>(messages, "UnreliableSource");
+        // Return a InMemoryDataPipe containing our messages
+        return new InMemoryDataPipe<string>(messages, "UnreliableSource");
     }
 
     /// <summary>

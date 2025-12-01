@@ -406,7 +406,7 @@ public sealed class InefficientStringOperationsAnalyzerTests
                            var message = "Starting source node at " + DateTime.Now;
                            await LogAsync(message);
                            
-                           return new ListDataPipe<int>(new List<int> { 1, 2, 3 });
+                           return new InMemoryDataPipe<int>(new List<int> { 1, 2, 3 });
                        }
                        
                        private async Task LogAsync(string message) { /* ... */ }

@@ -27,7 +27,7 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
         var innerStrategy = new SequentialExecutionStrategy();
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
 
-        await using var input = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>([1, 2, 3], "test-input");
+        await using var input = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1, 2, 3], "test-input");
         var node = new FailingTransformNode(2); // Fail twice, then succeed
 
         var stopwatch = Stopwatch.StartNew();
@@ -69,7 +69,7 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
         var innerStrategy = new SequentialExecutionStrategy();
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
 
-        await using var input = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>([1, 2, 3], "test-input");
+        await using var input = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1, 2, 3], "test-input");
         var node = new FailingTransformNode(2); // Fail twice, then succeed
 
         var stopwatch = Stopwatch.StartNew();
@@ -108,7 +108,7 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
         var innerStrategy = new SequentialExecutionStrategy();
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
 
-        await using var input = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>([1, 2, 3], "test-input");
+        await using var input = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1, 2, 3], "test-input");
         var node = new FailingTransformNode(2); // Fail twice, then succeed
 
         var stopwatch = Stopwatch.StartNew();
@@ -150,7 +150,7 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
         var innerStrategy = new SequentialExecutionStrategy();
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
 
-        await using var input = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>([1, 2, 3], "test-input");
+        await using var input = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1, 2, 3], "test-input");
         var node = new FailingTransformNode(2); // Fail twice, then succeed
 
         var stopwatch = Stopwatch.StartNew();
@@ -194,7 +194,7 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
         var innerStrategy = new SequentialExecutionStrategy();
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
 
-        await using var input = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>([1, 2, 3], "test-input");
+        await using var input = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1, 2, 3], "test-input");
         var node = new FailingTransformNode(10); // Always fail
 
         using var cts = new CancellationTokenSource();
@@ -243,7 +243,7 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
         var innerStrategy = new SequentialExecutionStrategy();
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
 
-        await using var input = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>([1, 2, 3], "test-input");
+        await using var input = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1, 2, 3], "test-input");
         var node = new FailingTransformNode(10); // Always fail
 
         // Act & Assert
@@ -271,7 +271,7 @@ public sealed class ResilientExecutionStrategyRetryDelayTests
         var innerStrategy = new SequentialExecutionStrategy();
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
 
-        await using var input = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>([1, 2, 3], "test-input");
+        await using var input = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1, 2, 3], "test-input");
         var node = new FailingTransformNode(2); // Fail twice, then succeed
 
         var stopwatch = Stopwatch.StartNew();

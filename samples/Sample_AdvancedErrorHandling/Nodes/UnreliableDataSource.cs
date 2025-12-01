@@ -49,7 +49,7 @@ public class UnreliableDataSource : SourceNode<SourceData>
 
         Console.WriteLine($"Successfully generated {dataItems.Count} data items (with some failures simulated for downstream processing)");
 
-        // Return a ListDataPipe containing our data items
-        return new ListDataPipe<SourceData>(dataItems, "UnreliableDataSource");
+        // Return a InMemoryDataPipe containing our data items
+        return new InMemoryDataPipe<SourceData>(dataItems, "UnreliableDataSource");
     }
 }

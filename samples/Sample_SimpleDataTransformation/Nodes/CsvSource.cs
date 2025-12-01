@@ -63,7 +63,7 @@ public class CsvSource : SourceNode<Person>
             throw;
         }
 
-        // Return a ListDataPipe containing our Person objects
-        return new ListDataPipe<Person>(people, "CsvSource");
+        // Return a InMemoryDataPipe containing our Person objects
+        return new InMemoryDataPipe<Person>(people, "CsvSource");
     }
 }

@@ -55,6 +55,6 @@ public class ProductSource : SourceNode<Product>
 
         _logger?.LogInformation("ProductSource: Finished generating {Count} products", products.Count);
 
-        return new ListDataPipe<Product>(products, "ProductSource");
+        return new InMemoryDataPipe<Product>(products, "ProductSource");
     }
 }

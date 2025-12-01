@@ -10,7 +10,7 @@ public sealed class SequentialExecutionStrategyValueTaskTests
     [Fact]
     public async Task Should_PreferValueTaskPath_WhenTransformOverrides()
     {
-        await using var input = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>(new[] { 1, 2, 3 }, "input");
+        await using var input = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>(new[] { 1, 2, 3 }, "input");
         var transform = new ValueTaskFriendlyTransform();
         var strategy = new SequentialExecutionStrategy();
         var context = new PipelineContextBuilder().Build();

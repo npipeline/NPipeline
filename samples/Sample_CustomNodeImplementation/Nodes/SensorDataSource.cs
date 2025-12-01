@@ -87,6 +87,6 @@ public class SensorDataSource : SourceNode<SensorData>
 
         Console.WriteLine($"Generated {sensorDataList.Count} sensor readings from {_sensorIds.Count} sensors");
 
-        return new ListDataPipe<SensorData>(sensorDataList, "SensorDataSource");
+        return new InMemoryDataPipe<SensorData>(sensorDataList, "SensorDataSource");
     }
 }

@@ -105,7 +105,7 @@ public class MarketDataSource : SourceNode<MarketDataEvent>
             Console.WriteLine($"  {group.Key}: {group.Count()} events");
         }
 
-        return new ListDataPipe<MarketDataEvent>(events, "MarketDataSource");
+        return new InMemoryDataPipe<MarketDataEvent>(events, "MarketDataSource");
     }
 
     private static string GetSymbol(int index)

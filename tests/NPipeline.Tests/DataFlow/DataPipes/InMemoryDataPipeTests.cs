@@ -3,7 +3,7 @@ using NPipeline.DataFlow;
 
 namespace NPipeline.Tests.DataFlow.DataPipes;
 
-public sealed class ListDataPipeTests
+public sealed class InMemoryDataPipeTests
 {
     [Fact]
     public void Constructor_WithNullItems_ThrowsArgumentNullException()
@@ -12,7 +12,7 @@ public sealed class ListDataPipeTests
         IReadOnlyList<int> nullItems = null!;
 
         // Act
-        Action act = () => _ = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>(nullItems);
+        Action act = () => _ = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>(nullItems);
 
         // Assert
         _ = act.Should().Throw<ArgumentNullException>()
@@ -27,7 +27,7 @@ public sealed class ListDataPipeTests
         var streamName = "TestStream";
 
         // Act
-        NPipeline.DataFlow.DataPipes.ListDataPipe<int> pipe = new(items, streamName);
+        NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int> pipe = new(items, streamName);
 
         // Assert
         _ = pipe.Items.Should().BeSameAs(items);
@@ -42,7 +42,7 @@ public sealed class ListDataPipeTests
         List<int> items = [1, 2, 3];
 
         // Act
-        NPipeline.DataFlow.DataPipes.ListDataPipe<int> pipe = new(items);
+        NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int> pipe = new(items);
 
         // Assert
         _ = pipe.StreamName.Should().BeEmpty();
@@ -53,7 +53,7 @@ public sealed class ListDataPipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        NPipeline.DataFlow.DataPipes.ListDataPipe<int> pipe = new(items);
+        NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int> pipe = new(items);
         List<int> enumeratedItems = [];
 
         // Act
@@ -71,7 +71,7 @@ public sealed class ListDataPipeTests
     {
         // Arrange
         List<int> items = [];
-        NPipeline.DataFlow.DataPipes.ListDataPipe<int> pipe = new(items);
+        NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int> pipe = new(items);
         List<int> enumeratedItems = [];
 
         // Act
@@ -89,7 +89,7 @@ public sealed class ListDataPipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3, 4, 5];
-        NPipeline.DataFlow.DataPipes.ListDataPipe<int> pipe = new(items);
+        NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int> pipe = new(items);
         CancellationTokenSource cts = new();
         List<int> enumeratedItems = [];
 
@@ -119,7 +119,7 @@ public sealed class ListDataPipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        IDataPipe<int> pipe = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>(items);
+        IDataPipe<int> pipe = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>(items);
         List<object> enumeratedItems = [];
 
         // Act
@@ -137,7 +137,7 @@ public sealed class ListDataPipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        NPipeline.DataFlow.DataPipes.ListDataPipe<int> pipe = new(items);
+        NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int> pipe = new(items);
 
         // Act
         List<int> firstEnumeration = [];
@@ -163,7 +163,7 @@ public sealed class ListDataPipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        NPipeline.DataFlow.DataPipes.ListDataPipe<int> pipe = new(items);
+        NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int> pipe = new(items);
 
         // Act & Assert
         var act = async () => await pipe.DisposeAsync();
@@ -175,7 +175,7 @@ public sealed class ListDataPipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        NPipeline.DataFlow.DataPipes.ListDataPipe<int> pipe = new(items);
+        NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int> pipe = new(items);
 
         // Act
         await foreach (var item in pipe)
@@ -193,16 +193,16 @@ public sealed class ListDataPipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        NPipeline.DataFlow.DataPipes.ListDataPipe<int> pipe = new(items);
+        NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int> pipe = new(items);
         await pipe.DisposeAsync();
 
         // Act & Assert
         await foreach (var item in pipe)
         {
-            // This should not throw since ListDataPipe doesn't track disposal
+            // This should not throw since InMemoryDataPipe doesn't track disposal
         }
 
-        // Note: ListDataPipe doesn't track disposal state, so this test documents current behavior
+        // Note: InMemoryDataPipe doesn't track disposal state, so this test documents current behavior
     }
 
     [Fact]
@@ -210,7 +210,7 @@ public sealed class ListDataPipeTests
     {
         // Arrange
         List<string> items = ["test1", "test2"];
-        NPipeline.DataFlow.DataPipes.ListDataPipe<string> pipe = new(items);
+        NPipeline.DataFlow.DataPipes.InMemoryDataPipe<string> pipe = new(items);
 
         // Act & Assert
         _ = pipe.GetDataType().Should().Be<string>();
@@ -221,7 +221,7 @@ public sealed class ListDataPipeTests
     {
         // Arrange
         List<string?> items = ["test1", null, "test3"];
-        NPipeline.DataFlow.DataPipes.ListDataPipe<string?> pipe = new(items);
+        NPipeline.DataFlow.DataPipes.InMemoryDataPipe<string?> pipe = new(items);
         List<string?> enumeratedItems = [];
 
         // Act
@@ -244,7 +244,7 @@ public sealed class ListDataPipeTests
             new() { Id = 2, Name = "Test2" },
         ];
 
-        NPipeline.DataFlow.DataPipes.ListDataPipe<TestData> pipe = new(items);
+        NPipeline.DataFlow.DataPipes.InMemoryDataPipe<TestData> pipe = new(items);
         List<TestData> enumeratedItems = [];
 
         // Act

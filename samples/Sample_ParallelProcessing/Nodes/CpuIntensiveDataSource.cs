@@ -42,7 +42,7 @@ public class CpuIntensiveDataSource : SourceNode<CpuIntensiveWorkItem>
         Console.WriteLine($"Data size range: {workItems.Min(w => w.DataSize)} - {workItems.Max(w => w.DataSize)}");
         Console.WriteLine($"Complexity range: {workItems.Min(w => w.Complexity)} - {workItems.Max(w => w.Complexity)}");
 
-        // Return a ListDataPipe containing our work items
-        return new ListDataPipe<CpuIntensiveWorkItem>(workItems, "CpuIntensiveDataSource");
+        // Return a InMemoryDataPipe containing our work items
+        return new InMemoryDataPipe<CpuIntensiveWorkItem>(workItems, "CpuIntensiveDataSource");
     }
 }

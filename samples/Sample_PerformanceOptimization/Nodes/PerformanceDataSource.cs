@@ -54,8 +54,8 @@ public class PerformanceDataSource : SourceNode<PerformanceDataItem>
         Console.WriteLine($"  Complex (8-10): {items.Count(x => x.ProcessingComplexity > 7)} items");
         Console.WriteLine();
 
-        // Return a ListDataPipe containing our test items
-        return new ListDataPipe<PerformanceDataItem>(items, "PerformanceDataSource");
+        // Return a InMemoryDataPipe containing our test items
+        return new InMemoryDataPipe<PerformanceDataItem>(items, "PerformanceDataSource");
     }
 
     /// <summary>

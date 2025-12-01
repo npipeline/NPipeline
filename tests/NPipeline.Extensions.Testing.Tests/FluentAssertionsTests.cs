@@ -12,7 +12,7 @@ public class FluentAssertionsTests
         // Arrange
         var sink = new InMemorySinkNode<int>();
         var context = PipelineContext.Default;
-        var data = new ListDataPipe<int>([1, 2, 3]);
+        var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
         // Act
         await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -27,7 +27,7 @@ public class FluentAssertionsTests
         // Arrange
         var sink = new InMemorySinkNode<int>();
         var context = PipelineContext.Default;
-        var data = new ListDataPipe<int>([1, 2, 3]);
+        var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
         // Act
         await sink.ExecuteAsync(data, context, CancellationToken.None);

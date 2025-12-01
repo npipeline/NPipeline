@@ -10,7 +10,7 @@ public sealed class ParallelExecutionStrategyValueTaskTests
     [Fact]
     public async Task Should_PreferValueTaskPath_WhenTransformOverrides()
     {
-        await using ListDataPipe<int> input = new([1, 2, 3], "input");
+        await using InMemoryDataPipe<int> input = new([1, 2, 3], "input");
         ValueTaskFriendlyTransform transform = new();
         ParallelExecutionStrategy strategy = new(1);
         var context = new PipelineContextBuilder().Build();
@@ -34,7 +34,7 @@ public sealed class ParallelExecutionStrategyValueTaskTests
     [Fact]
     public async Task DropOldest_Should_PreferValueTaskPath_WhenTransformOverrides()
     {
-        await using ListDataPipe<int> input = new([10, 20, 30], "input");
+        await using InMemoryDataPipe<int> input = new([10, 20, 30], "input");
         ValueTaskFriendlyTransform transform = new();
         DropOldestParallelStrategy strategy = new(1);
         var context = new PipelineContextBuilder().Build();
@@ -66,7 +66,7 @@ public sealed class ParallelExecutionStrategyValueTaskTests
     [Fact]
     public async Task DropNewest_Should_PreferValueTaskPath_WhenTransformOverrides()
     {
-        await using ListDataPipe<int> input = new([7, 8, 9], "input");
+        await using InMemoryDataPipe<int> input = new([7, 8, 9], "input");
         ValueTaskFriendlyTransform transform = new();
         DropNewestParallelStrategy strategy = new(1);
         var context = new PipelineContextBuilder().Build();

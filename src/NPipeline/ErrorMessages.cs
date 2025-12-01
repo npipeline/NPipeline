@@ -208,12 +208,12 @@ internal static class ErrorMessages
                $"See: {DocsBaseUrl}#{ErrorCodes.LineageCardinalityMismatch}";
     }
 
-    public static string FailedToExtractItemsFromListDataPipe(Exception innerException)
+    public static string FailedToExtractItemsFromInMemoryDataPipe(Exception innerException)
     {
-        return $"[{ErrorCodes.FailedToExtractItemsFromListDataPipe}] Failed to extract items from ListDataPipe. " +
+        return $"[{ErrorCodes.FailedToExtractItemsFromInMemoryDataPipe}] Failed to extract items from InMemoryDataPipe. " +
                $"Inner error: {innerException.Message}. " +
                $"The pipe may be corrupted or disposed. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.FailedToExtractItemsFromListDataPipe}";
+               $"See: {DocsBaseUrl}#{ErrorCodes.FailedToExtractItemsFromInMemoryDataPipe}";
     }
 
     public static string CircuitBreakerTripped(int failureThreshold, string nodeId)

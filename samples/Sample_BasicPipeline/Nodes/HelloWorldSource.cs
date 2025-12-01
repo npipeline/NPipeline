@@ -40,8 +40,8 @@ public class HelloWorldSource : SourceNode<string>
 
         Console.WriteLine($"Generated {messages.Count} Hello World messages");
 
-        // Return a ListDataPipe containing our messages
-        // Normally a source should generate data asynchronously, but for simplicity we return all at once here using ListDataPipe
-        return new ListDataPipe<string>(messages, "HelloWorldSource");
+        // Return a InMemoryDataPipe containing our messages
+        // Normally a source should generate data asynchronously, but for simplicity we return all at once here using InMemoryDataPipe
+        return new InMemoryDataPipe<string>(messages, "HelloWorldSource");
     }
 }

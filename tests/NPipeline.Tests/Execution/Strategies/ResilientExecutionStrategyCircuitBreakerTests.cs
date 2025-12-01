@@ -17,7 +17,7 @@ public sealed class ResilientExecutionStrategyCircuitBreakerTests
         var context = CreatePipelineContextWithCircuitBreaker();
         var innerStrategy = new SequentialExecutionStrategy();
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
-        await using var input = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>([1, 2, 3], "test-input");
+        await using var input = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1, 2, 3], "test-input");
         var node = new TestTransformNode();
 
         // Act
@@ -39,7 +39,7 @@ public sealed class ResilientExecutionStrategyCircuitBreakerTests
         var context = CreatePipelineContextWithoutCircuitBreaker();
         var innerStrategy = new SequentialExecutionStrategy();
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
-        await using var input = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>([1, 2, 3], "test-input");
+        await using var input = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1, 2, 3], "test-input");
         var node = new TestTransformNode();
 
         // Act
@@ -62,7 +62,7 @@ public sealed class ResilientExecutionStrategyCircuitBreakerTests
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
 
         // Increase input items to ensure we have enough failures to trip circuit breaker
-        await using var input = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "test-input");
+        await using var input = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "test-input");
         var node = new FailingTransformNode(10); // Fail more times to ensure circuit breaker trips
 
         // Act & Assert
@@ -109,7 +109,7 @@ public sealed class ResilientExecutionStrategyCircuitBreakerTests
         using (context.ScopedNode("recovery-node"))
         {
             // Act 1: trigger breaker
-            await using (var initialInput = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>([1], "first"))
+            await using (var initialInput = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1], "first"))
             {
                 await using var result = await resilientStrategy.ExecuteAsync(initialInput, node, context, CancellationToken.None);
 
@@ -141,7 +141,7 @@ public sealed class ResilientExecutionStrategyCircuitBreakerTests
             }
 
             // Act 2: half-open should permit execution and recover to closed
-            await using var recoveryInput = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>([2], "second");
+            await using var recoveryInput = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([2], "second");
             await using var recoveryResult = await resilientStrategy.ExecuteAsync(recoveryInput, node, context, CancellationToken.None);
 
             var outputs = new List<string>();

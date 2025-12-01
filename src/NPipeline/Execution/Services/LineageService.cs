@@ -68,7 +68,7 @@ public sealed class LineageService : ILineageService
             return (IDataPipe)Activator.CreateInstance(lineagePipeType, wrappedStream, $"LineageWrapped_{currentNodeId}")!;
         }
 
-        // Handle non-streaming pipes (like ListDataPipe)
+        // Handle non-streaming pipes (like InMemoryDataPipe)
         var enumerableData = ExtractDataFromPipe(output);
 
         var toAsyncDel = EnumerableToAsyncDelegates.GetOrAdd(outType, static t => BuildEnumerableToAsyncDelegate(t));
@@ -216,11 +216,11 @@ public sealed class LineageService : ILineageService
         // Handle different pipe types by extracting their underlying data
         return pipe switch
         {
-            // ListDataPipe has an Items property that contains the data
+            // InMemoryDataPipe has an Items property that contains the data
             var listPipe when listPipe.GetType().IsGenericType &&
-                              listPipe.GetType().GetGenericTypeDefinition() == typeof(ListDataPipe<>) =>
+                              listPipe.GetType().GetGenericTypeDefinition() == typeof(InMemoryDataPipe<>) =>
                 listPipe.GetType().GetProperty("Items")?.GetValue(listPipe) as IEnumerable ??
-                throw new InvalidOperationException("Failed to extract Items from ListDataPipe"),
+                throw new InvalidOperationException("Failed to extract Items from InMemoryDataPipe"),
 
             // For any other non-streaming pipe, try to materialize its async enumerable
             _ => MaterializePipeData(pipe),

@@ -75,7 +75,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
                            var numbers = Enumerable.Range(1, 100);
                            // NP9203: Anonymous object in hot path
                            var enriched = numbers.Select(x => new { Value = x, IsEven = x % 2 == 0 }).ToList();
-                           return new ListDataPipe<int>(enriched.Select(e => e.Value));
+                           return new InMemoryDataPipe<int>(enriched.Select(e => e.Value));
                        }
                    }
                    """;
@@ -175,7 +175,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
                            var items = new List<int>();
                            // NP9203: Anonymous object in aggregate node
                            var aggregated = items.Select(x => new { Value = x, Category = x > 0 ? "Positive" : "Negative" }).ToList();
-                           return new ListDataPipe<int>(aggregated.Select(a => a.Value));
+                           return new InMemoryDataPipe<int>(aggregated.Select(a => a.Value));
                        }
                    }
                    """;

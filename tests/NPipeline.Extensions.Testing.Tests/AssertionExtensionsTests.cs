@@ -19,7 +19,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -34,7 +34,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -50,7 +50,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -65,7 +65,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -81,7 +81,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -96,7 +96,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -112,7 +112,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -127,7 +127,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -143,7 +143,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([2, 4, 6]);
+            var data = new InMemoryDataPipe<int>([2, 4, 6]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -158,7 +158,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -219,7 +219,7 @@ public class AssertionExtensionsTests
             var sink = new InMemorySinkNode<TestObject>();
             var context = PipelineContext.Default;
 
-            var data = new ListDataPipe<TestObject>([
+            var data = new InMemoryDataPipe<TestObject>([
                 new TestObject { Name = "Test1", Value = 1 },
                 new TestObject { Name = "Test2", Value = 2 },
             ]);
@@ -244,7 +244,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -259,7 +259,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -275,7 +275,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -290,7 +290,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -306,7 +306,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -321,7 +321,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -337,7 +337,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -352,7 +352,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -368,7 +368,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([2, 4, 6]);
+            var data = new InMemoryDataPipe<int>([2, 4, 6]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -383,7 +383,7 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new ListDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataPipe<int>([1, 2, 3]);
 
             // Act
             await sink.ExecuteAsync(data, context, CancellationToken.None);
@@ -444,7 +444,7 @@ public class AssertionExtensionsTests
             var sink = new InMemorySinkNode<TestObject>();
             var context = PipelineContext.Default;
 
-            var data = new ListDataPipe<TestObject>([
+            var data = new InMemoryDataPipe<TestObject>([
                 new TestObject { Name = "Test1", Value = 1 },
                 new TestObject { Name = "Test2", Value = 2 },
             ]);

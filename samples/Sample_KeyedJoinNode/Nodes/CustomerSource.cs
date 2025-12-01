@@ -54,6 +54,6 @@ public class CustomerSource : SourceNode<Customer>
 
         _logger?.LogInformation("CustomerSource: Finished generating {Count} customers", customers.Count);
 
-        return new ListDataPipe<Customer>(customers, "CustomerSource");
+        return new InMemoryDataPipe<Customer>(customers, "CustomerSource");
     }
 }

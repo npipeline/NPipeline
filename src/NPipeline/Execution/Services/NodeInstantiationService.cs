@@ -292,7 +292,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
                 ? new List<object?> { result }
                 : new List<object?>();
 
-            return new ListDataPipe<object?>(list, $"AggregateResult_{def.Id}");
+            return new InMemoryDataPipe<object?>(list, $"AggregateResult_{def.Id}");
         };
     }
 

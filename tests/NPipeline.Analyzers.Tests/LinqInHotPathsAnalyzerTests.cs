@@ -75,7 +75,7 @@ public sealed class LinqInHotPathsAnalyzerTests
                            var numbers = Enumerable.Range(1, 100);
                            // NP9201: LINQ in hot path
                            var filtered = numbers.Where(x => x % 2 == 0).ToList();
-                           return new ListDataPipe<int>(filtered);
+                           return new InMemoryDataPipe<int>(filtered);
                        }
                    }
                    """;
@@ -177,7 +177,7 @@ public sealed class LinqInHotPathsAnalyzerTests
                            var items = new List<int>();
                            // NP9201: LINQ in aggregate node
                            var filtered = items.Where(x => x > 0).OrderBy(x => x).ToList();
-                           return new ListDataPipe<int>(filtered);
+                           return new InMemoryDataPipe<int>(filtered);
                        }
                    }
                    """;

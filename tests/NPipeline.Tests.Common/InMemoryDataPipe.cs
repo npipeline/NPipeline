@@ -6,9 +6,9 @@ namespace NPipeline.Tests.Common;
 /// <summary>
 ///     A basic, in-memory implementation of IDataPipe for testing purposes.
 ///     It holds all items in a List, which is ideal for providing mock data to nodes in unit tests.
-///     THIS IMPLEMENTATION SHOULD NOT BE USED IN PRODUCTION CODE as it buffers the entire stream in memory.
+///     THIS IMPLEMENTATION SHOULD NOT BE USED IN PRODUCTION CODE as it buffers entire stream in memory.
 /// </summary>
-public sealed class ListDataPipe<T>(IEnumerable<T> data, string streamName = "TestStream") : IDataPipe<T>
+public sealed class InMemoryDataPipe<T>(IEnumerable<T> data, string streamName = "TestStream") : IDataPipe<T>
     where T : notnull
 {
     private readonly List<T> _data = data?.ToList() ?? throw new ArgumentNullException(nameof(data));
@@ -17,7 +17,7 @@ public sealed class ListDataPipe<T>(IEnumerable<T> data, string streamName = "Te
 
     public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
     {
-        return new ListDataPipeEnumerator(_data, cancellationToken);
+        return new InMemoryDataPipeEnumerator(_data, cancellationToken);
     }
 
     public async IAsyncEnumerable<object?> ToAsyncEnumerable([EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -40,7 +40,7 @@ public sealed class ListDataPipe<T>(IEnumerable<T> data, string streamName = "Te
         return ValueTask.CompletedTask;
     }
 
-    private sealed class ListDataPipeEnumerator(List<T> data, CancellationToken cancellationToken) : IAsyncEnumerator<T>
+    private sealed class InMemoryDataPipeEnumerator(List<T> data, CancellationToken cancellationToken) : IAsyncEnumerator<T>
     {
         private int _currentIndex = -1;
 

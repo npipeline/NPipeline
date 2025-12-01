@@ -79,6 +79,6 @@ public class OrderSource : SourceNode<Order>
 
         _logger?.LogInformation("OrderSource: Finished generating {MaxOrders} orders", _maxOrders);
 
-        return new ListDataPipe<Order>(orders, "OrderSource");
+        return new InMemoryDataPipe<Order>(orders, "OrderSource");
     }
 }

@@ -46,6 +46,6 @@ public class ProductSource : SourceNode<Product>
         }
 
         Console.WriteLine($"Generated {products.Count} products");
-        return new ListDataPipe<Product>(products, "ProductSource");
+        return new InMemoryDataPipe<Product>(products, "ProductSource");
     }
 }

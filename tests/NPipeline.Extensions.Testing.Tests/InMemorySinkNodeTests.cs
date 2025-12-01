@@ -25,7 +25,7 @@ public class InMemorySinkNodeTests
         var sink = new InMemorySinkNode<int>();
         var context = PipelineContext.Default;
         var items = new[] { 1, 2, 3 };
-        var dataPipe = new ListDataPipe<int>(items);
+        var dataPipe = new InMemoryDataPipe<int>(items);
 
         // Act
         await sink.ExecuteAsync(dataPipe, context, CancellationToken.None);
@@ -45,7 +45,7 @@ public class InMemorySinkNodeTests
         var cts = new CancellationTokenSource();
 
         // Create a data pipe that will trigger cancellation
-        var dataPipe = new ListDataPipe<int>([1, 2, 3]);
+        var dataPipe = new InMemoryDataPipe<int>([1, 2, 3]);
 
         // Cancel before execution
         cts.Cancel();
@@ -129,7 +129,7 @@ public class InMemorySinkNodeTests
         var sink = new InMemorySinkNode<int>();
         var context = PipelineContext.Default;
         var items = new[] { 1, 2, 3 };
-        var dataPipe = new ListDataPipe<int>(items);
+        var dataPipe = new InMemoryDataPipe<int>(items);
 
         // Act
         await sink.ExecuteAsync(dataPipe, context, CancellationToken.None);
@@ -151,7 +151,7 @@ public class InMemorySinkNodeTests
         var context = PipelineContext.Default;
         context.Items[PipelineContextKeys.TestingParentContext] = parentContext;
         var items = new[] { 1, 2, 3 };
-        var dataPipe = new ListDataPipe<int>(items);
+        var dataPipe = new InMemoryDataPipe<int>(items);
 
         // Act
         await sink.ExecuteAsync(dataPipe, context, CancellationToken.None);
@@ -171,7 +171,7 @@ public class InMemorySinkNodeTests
         // Arrange
         var sink = new InMemorySinkNode<int>();
         var context = PipelineContext.Default;
-        var dataPipe = new ListDataPipe<int>([]);
+        var dataPipe = new InMemoryDataPipe<int>([]);
 
         // Act
         await sink.ExecuteAsync(dataPipe, context, CancellationToken.None);
@@ -189,7 +189,7 @@ public class InMemorySinkNodeTests
         var sink = new InMemorySinkNode<int>();
         var context = PipelineContext.Default;
         var items = new[] { 1, 2, 3 };
-        var dataPipe = new ListDataPipe<int>(items);
+        var dataPipe = new InMemoryDataPipe<int>(items);
 
         // Act
         var executionTask = sink.ExecuteAsync(dataPipe, context, CancellationToken.None);
@@ -202,7 +202,7 @@ public class InMemorySinkNodeTests
         completionResult.Should().BeEquivalentTo(items);
 
         // Verify it's a snapshot by modifying the original items list
-        // (This is more of a conceptual test since ListDataPipe creates its own copy)
+        // (This is more of a conceptual test since InMemoryDataPipe creates its own copy)
         completionResult.Should().NotBeSameAs(items);
     }
 
@@ -222,7 +222,7 @@ public class InMemorySinkNodeTests
     {
         // Arrange
         var sink = new InMemorySinkNode<int>();
-        var dataPipe = new ListDataPipe<int>([1, 2, 3]);
+        var dataPipe = new InMemoryDataPipe<int>([1, 2, 3]);
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(() => sink.ExecuteAsync(dataPipe, null!, CancellationToken.None));

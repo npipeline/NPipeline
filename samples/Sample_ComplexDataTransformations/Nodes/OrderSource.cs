@@ -44,7 +44,7 @@ public class OrderSource : SourceNode<Order>
         }
 
         Console.WriteLine($"Generated {orders.Count} orders");
-        return new ListDataPipe<Order>(orders, "OrderSource");
+        return new InMemoryDataPipe<Order>(orders, "OrderSource");
     }
 }
 

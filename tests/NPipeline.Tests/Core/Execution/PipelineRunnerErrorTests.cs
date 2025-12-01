@@ -327,7 +327,7 @@ public sealed class PipelineRunnerErrorTests
             if (_currentAttempt <= failCount)
                 throw new InvalidOperationException($"Simulated failure on attempt {_currentAttempt}");
 
-            return new ListDataPipe<object>(new List<object> { new() }, "failing-output");
+            return new InMemoryDataPipe<object>(new List<object> { new() }, "failing-output");
         }
 
         public ValueTask DisposeAsync()

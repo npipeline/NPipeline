@@ -44,6 +44,6 @@ public class CustomerSource : SourceNode<Customer>
         }
 
         Console.WriteLine($"Generated {customers.Count} customers");
-        return new ListDataPipe<Customer>(customers, "CustomerSource");
+        return new InMemoryDataPipe<Customer>(customers, "CustomerSource");
     }
 }

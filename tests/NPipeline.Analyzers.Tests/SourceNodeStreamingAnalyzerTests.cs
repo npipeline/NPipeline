@@ -28,7 +28,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
                        {
                            var items = new List<string>(); // Should trigger diagnostic
                            items.Add("test");
-                           return new ListDataPipe<string>(items);
+                           return new InMemoryDataPipe<string>(items);
                        }
                    }
                    """;
@@ -56,7 +56,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
                            {
                                items[i] = i;
                            }
-                           return new ListDataPipe<int>(items);
+                           return new InMemoryDataPipe<int>(items);
                        }
                    }
                    """;
@@ -107,7 +107,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
                        public override IDataPipe<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var lines = File.ReadAllLines("test.txt"); // Should trigger diagnostic
-                           return new ListDataPipe<string>(lines);
+                           return new InMemoryDataPipe<string>(lines);
                        }
                    }
                    """;
@@ -133,7 +133,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
                        public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = Enumerable.Range(1, 100).ToList(); // Should trigger diagnostic
-                           return new ListDataPipe<int>(items);
+                           return new InMemoryDataPipe<int>(items);
                        }
                    }
                    """;
@@ -158,7 +158,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
                        public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = Enumerable.Range(1, 100).ToArray(); // Should trigger diagnostic
-                           return new ListDataPipe<int>(items);
+                           return new InMemoryDataPipe<int>(items);
                        }
                    }
                    """;
@@ -181,7 +181,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
                        public IDataPipe<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = new List<string>(); // Should NOT trigger diagnostic (not a SourceNode)
-                           return new ListDataPipe<string>(items);
+                           return new InMemoryDataPipe<string>(items);
                        }
                    }
                    """;
@@ -206,7 +206,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
                        public IDataPipe<string> SomeOtherMethod(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = new List<string>(); // Should NOT trigger diagnostic (not ExecuteAsync)
-                           return new ListDataPipe<string>(items);
+                           return new InMemoryDataPipe<string>(items);
                        }
 
                        public override IDataPipe<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
@@ -274,7 +274,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
                        public override async Task<IDataPipe<string>> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var lines = await File.ReadAllLinesAsync("test.txt", cancellationToken); // Should NOT trigger diagnostic (async)
-                           return new ListDataPipe<string>(lines);
+                           return new InMemoryDataPipe<string>(lines);
                        }
                    }
                    """;

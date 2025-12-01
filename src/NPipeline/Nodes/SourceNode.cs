@@ -38,7 +38,7 @@ namespace NPipeline.Nodes;
 ///     {
 ///         // Generate range
 ///         var numbers = Enumerable.Range(_start, _end - _start + 1).ToList();
-///         return new ListDataPipe&lt;int&gt;(numbers, "RangeSource");
+///         return new InMemoryDataPipe&lt;int&gt;(numbers, "RangeSource");
 ///     }
 /// }
 /// 
@@ -54,7 +54,7 @@ namespace NPipeline.Nodes;
 ///         CancellationToken cancellationToken)
 ///     {
 ///         var lines = await File.ReadAllLinesAsync(_filePath, cancellationToken);
-///         return new ListDataPipe&lt;string&gt;(lines, "TextFileSource");
+///         return new InMemoryDataPipe&lt;string&gt;(lines, "TextFileSource");
 ///     }
 /// }
 /// </code>

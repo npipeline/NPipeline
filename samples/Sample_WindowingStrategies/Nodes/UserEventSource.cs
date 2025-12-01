@@ -178,7 +178,7 @@ public class UserEventSource : SourceNode<UserEvent>
         Console.WriteLine($"  Average events per user: {(double)events.Count / userGroups.Count:F1}");
         Console.WriteLine($"  Average events per session: {(double)events.Count / sessionGroups.Count:F1}");
 
-        return new ListDataPipe<UserEvent>(events, "UserEventSource");
+        return new InMemoryDataPipe<UserEvent>(events, "UserEventSource");
     }
 
     private static string GenerateIpAddress(Random random, string country)

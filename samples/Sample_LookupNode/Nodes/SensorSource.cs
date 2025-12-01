@@ -51,7 +51,7 @@ public class SensorSource : SourceNode<SensorReading>
         Console.WriteLine($"Total sensor readings generated: {readings.Count}");
         Console.WriteLine();
 
-        return new ListDataPipe<SensorReading>(readings);
+        return new InMemoryDataPipe<SensorReading>(readings);
     }
 
     /// <summary>

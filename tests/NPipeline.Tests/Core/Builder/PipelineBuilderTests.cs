@@ -250,7 +250,7 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
     {
         public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new ListDataPipe<int>([1]);
+            return new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1]);
         }
     }
 

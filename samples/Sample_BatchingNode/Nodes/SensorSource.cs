@@ -84,6 +84,6 @@ public class SensorSource : SourceNode<SensorReading>
             Console.WriteLine($"  {group.Key}: {group.Count()} readings");
         }
 
-        return new ListDataPipe<SensorReading>(readings, "SensorSource");
+        return new InMemoryDataPipe<SensorReading>(readings, "SensorSource");
     }
 }

@@ -85,7 +85,7 @@ public sealed class TransactionSource : SourceNode<Transaction>
             }
 
             _logger.LogInformation("TransactionSource: Completed generating {Count} transactions", transactionCount);
-            return new ListDataPipe<Transaction>(transactions, "TransactionSource");
+            return new InMemoryDataPipe<Transaction>(transactions, "TransactionSource");
         }
         catch (Exception ex)
         {

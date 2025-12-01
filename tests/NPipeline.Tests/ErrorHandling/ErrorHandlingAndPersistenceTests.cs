@@ -90,7 +90,7 @@ public sealed class ErrorHandlingAndPersistenceTests
         public Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(IDataPipe<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context,
             CancellationToken cancellationToken)
         {
-            return Task.FromResult<IDataPipe<TOut>>(new NPipeline.DataFlow.DataPipes.ListDataPipe<TOut>(new List<TOut>(), "empty"));
+            return Task.FromResult<IDataPipe<TOut>>(new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<TOut>(new List<TOut>(), "empty"));
         }
     }
 

@@ -91,7 +91,7 @@ public interface IDataPipe : IAsyncDisposable
 ///         CancellationToken cancellationToken)
 ///     {
 ///         return Task.FromResult&lt;IDataPipe&lt;int&gt;&gt;(
-///             new ListDataPipe&lt;int&gt;(_data, "numbers"));
+///             new InMemoryDataPipe&lt;int&gt;(_data, "numbers"));
 ///     }
 /// }
 /// </code>

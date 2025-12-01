@@ -91,7 +91,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
         public override IDataPipe<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
         {
             var items = new[] { "test1", "test2" };
-            return new ListDataPipe<string>(items);
+            return new InMemoryDataPipe<string>(items);
         }
     }
 
@@ -158,7 +158,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
         public override IDataPipe<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
         {
             var items = new[] { "test1", "test2" };
-            return new ListDataPipe<string>(items);
+            return new InMemoryDataPipe<string>(items);
         }
     }
 

@@ -27,7 +27,7 @@ public sealed class ResilienceIdempotencyTests
     {
         public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new ListDataPipe<int>(new[] { 1 }.ToList(), "s");
+            return new InMemoryDataPipe<int>(new[] { 1 }.ToList(), "s");
         }
     }
 

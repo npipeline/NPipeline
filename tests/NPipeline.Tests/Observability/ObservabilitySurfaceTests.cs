@@ -112,7 +112,7 @@ public sealed class ObservabilitySurfaceTests
     {
         public IDataPipe<object> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new NPipeline.DataFlow.DataPipes.ListDataPipe<object>(new List<object> { 1, 2, 3 }, "dummy");
+            return new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<object>(new List<object> { 1, 2, 3 }, "dummy");
         }
 
         public ValueTask DisposeAsync()

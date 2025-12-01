@@ -91,7 +91,7 @@ public async Task Sink_Should_Receive_Data()
     // Arrange
     var sink = new InMemorySinkNode<string>();
     var context = new PipelineContext();
-    var data = new ListDataPipe<string>(new[] { "a", "b", "c" });
+    var data = new InMemoryDataPipe<string>(new[] { "a", "b", "c" });
 
     // Act
     await sink.ExecuteAsync(data, context, CancellationToken.None);

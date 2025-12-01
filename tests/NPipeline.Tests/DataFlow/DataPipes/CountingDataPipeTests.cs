@@ -59,7 +59,7 @@ public sealed class CountingDataPipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        IDataPipe<int> innerPipe = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>(items);
+        IDataPipe<int> innerPipe = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>(items);
         StatsCounter counter = new();
         var pipe = CreateCountingDataPipe(innerPipe, counter);
 
@@ -81,7 +81,7 @@ public sealed class CountingDataPipeTests
     {
         // Arrange
         List<int> items = [];
-        IDataPipe<int> innerPipe = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>(items);
+        IDataPipe<int> innerPipe = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>(items);
         StatsCounter counter = new();
         var pipe = CreateCountingDataPipe(innerPipe, counter);
 
@@ -144,7 +144,7 @@ public sealed class CountingDataPipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3, 4, 5];
-        IDataPipe<int> innerPipe = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>(items);
+        IDataPipe<int> innerPipe = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>(items);
         StatsCounter counter = new();
         var pipe = CreateCountingDataPipe(innerPipe, counter);
         CancellationTokenSource cts = new();
@@ -177,7 +177,7 @@ public sealed class CountingDataPipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        IDataPipe<int> innerPipe = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>(items);
+        IDataPipe<int> innerPipe = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>(items);
         StatsCounter counter = new();
         var pipe = CreateCountingDataPipe(innerPipe, counter);
 
@@ -206,7 +206,7 @@ public sealed class CountingDataPipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        IDataPipe<int> innerPipe = new NPipeline.DataFlow.DataPipes.ListDataPipe<int>(items);
+        IDataPipe<int> innerPipe = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>(items);
         StatsCounter counter = new();
         IDataPipe pipe = CreateCountingDataPipe(innerPipe, counter);
         List<object> enumeratedItems = [];
@@ -254,7 +254,7 @@ public sealed class CountingDataPipeTests
     {
         // Arrange
         List<string?> items = ["test1", null, "test3"];
-        IDataPipe<string?> innerPipe = new NPipeline.DataFlow.DataPipes.ListDataPipe<string?>(items);
+        IDataPipe<string?> innerPipe = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<string?>(items);
         StatsCounter counter = new();
         var pipe = CreateCountingDataPipe(innerPipe, counter);
         List<string?> enumeratedItems = [];
@@ -280,7 +280,7 @@ public sealed class CountingDataPipeTests
             new() { Id = 2, Name = "Test2" },
         ];
 
-        IDataPipe<TestData> innerPipe = new NPipeline.DataFlow.DataPipes.ListDataPipe<TestData>(items);
+        IDataPipe<TestData> innerPipe = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<TestData>(items);
         StatsCounter counter = new();
         var pipe = CreateCountingDataPipe(innerPipe, counter);
         List<TestData> enumeratedItems = [];
