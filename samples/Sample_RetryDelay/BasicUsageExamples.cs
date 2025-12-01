@@ -133,7 +133,7 @@ public static class BasicUsageExamples
     /// <summary>
     ///     Demonstrates error handling.
     /// </summary>
-    public static async Task ErrorHandlingExample()
+    public static Task ErrorHandlingExample()
     {
         Console.WriteLine("Error Handling Example:");
         Console.WriteLine("======================");
@@ -178,6 +178,7 @@ public static class BasicUsageExamples
         }
 
         Console.WriteLine();
+        return Task.CompletedTask;
     }
 
     /// <summary>

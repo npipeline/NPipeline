@@ -122,7 +122,7 @@ public static class PerformanceComparison
     /// <summary>
     ///     Compares memory usage of different strategies.
     /// </summary>
-    public static async Task CompareMemoryUsage()
+    public static Task CompareMemoryUsage()
     {
         Console.WriteLine("=== Memory Usage Comparison ===");
 
@@ -160,12 +160,13 @@ public static class PerformanceComparison
         }
 
         Console.WriteLine();
+        return Task.CompletedTask;
     }
 
     /// <summary>
     ///     Compares execution speed of different strategies.
     /// </summary>
-    public static async Task CompareExecutionSpeed()
+    public static Task CompareExecutionSpeed()
     {
         Console.WriteLine("=== Execution Speed Comparison ===");
 
@@ -197,12 +198,13 @@ public static class PerformanceComparison
         }
 
         Console.WriteLine();
+        return Task.CompletedTask;
     }
 
     /// <summary>
     ///     Compares scalability of different strategies.
     /// </summary>
-    public static async Task CompareScalability()
+    public static Task CompareScalability()
     {
         Console.WriteLine("=== Scalability Comparison ===");
 
@@ -238,6 +240,7 @@ public static class PerformanceComparison
         }
 
         Console.WriteLine();
+        return Task.CompletedTask;
     }
 
     /// <summary>
