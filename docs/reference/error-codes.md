@@ -468,9 +468,9 @@ public async Task ProcessContext(PipelineContext context)
 
 ## NP04xx - Configuration Errors
 
-### NP9002: Incomplete Resilient Configuration
+### NP9001: Incomplete Resilient Configuration
 
-**Message:** `[NP9002] Error handler can return PipelineErrorDecision.RestartNode but may not have all three mandatory prerequisites configured. Missing prerequisites will silently disable restart, causing the entire pipeline to fail instead of recovering the failed node.`
+**Message:** `[NP9001] Error handler can return PipelineErrorDecision.RestartNode but may not have all three mandatory prerequisites configured. Missing prerequisites will silently disable restart, causing the entire pipeline to fail instead of recovering the failed node.`
 
 **Category:** Configuration Error
 
@@ -543,9 +543,9 @@ await pipeline.ExecuteAsync(source, context);
 
 ## NP90xx-NP94xx - Analyzer Diagnostics
 
-### NP9211: Non-Streaming Patterns in SourceNode
+### NP9205: Non-Streaming Patterns in SourceNode
 
-**Message:** `[NP9211] Non-streaming patterns detected in SourceNode implementation. Consider using IAsyncEnumerable with yield return for better performance and memory efficiency.`
+**Message:** `[NP9205] Non-streaming patterns detected in SourceNode implementation. Consider using IAsyncEnumerable with yield return for better performance and memory efficiency.`
 
 **Category:** Performance
 
@@ -573,18 +573,18 @@ public class BadSourceNode : SourceNode<string>
 {
     protected override async Task ExecuteAsync(IDataPipe<string> output, PipelineContext context, CancellationToken cancellationToken)
     {
-        // NP9211: Allocating List<T> and populating it
+        // NP9205: Allocating List<T> and populating it
         var items = new List<string>();
         
         // Read all lines from file into memory
-        var lines = File.ReadAllLines("large-file.txt"); // NP9211: Synchronous I/O
+        var lines = File.ReadAllLines("large-file.txt"); // NP9205: Synchronous I/O
         
         foreach (var line in lines)
         {
             items.Add(line);
         }
         
-        // NP9211: Materializing collection with ToList()
+        // NP9205: Materializing collection with ToList()
         foreach (var item in items.ToList())
         {
             await output.ProduceAsync(item, cancellationToken);
