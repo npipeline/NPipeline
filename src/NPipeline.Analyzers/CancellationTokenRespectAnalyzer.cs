@@ -30,11 +30,11 @@ public sealed class CancellationTokenRespectAnalyzer : DiagnosticAnalyzer
         true,
         "Cancellation tokens should be passed to async operations and checked periodically to ensure responsive cancellation. This helps prevent hanging operations and improves application responsiveness. https://npipeline.dev/docs/core-concepts/cancellation/best-practices.");
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         [CancellationTokenNotRespectedRule];
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

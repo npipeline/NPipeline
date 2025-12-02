@@ -40,10 +40,10 @@ public sealed class LinqInHotPathsAnalyzer : DiagnosticAnalyzer
             "Union", "Intersect", "Except", "Concat", "Reverse", "Skip", "Take", "SkipWhile",
             "TakeWhile", "Join", "GroupJoin", "Zip", "SequenceEqual", "All", "Any", "Contains");
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

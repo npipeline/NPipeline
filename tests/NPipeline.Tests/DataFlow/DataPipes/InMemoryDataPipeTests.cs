@@ -171,17 +171,45 @@ public sealed class InMemoryDataPipeTests
     }
 
     [Fact]
-    public async Task DisposeAsync_AfterEnumeration_DoesNotThrow()
+    public void Dispose_DoesNotThrow()
+    {
+        // Arrange
+        List<int> items = [1, 2, 3];
+        NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int> pipe = new(items);
+
+        // Act & Assert
+        var act = () => ((IDisposable)pipe).Dispose();
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Dispose_AfterEnumeration_DoesNotThrow()
     {
         // Arrange
         List<int> items = [1, 2, 3];
         NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int> pipe = new(items);
 
         // Act
-        await foreach (var item in pipe)
+        // Enumerate all items synchronously
+        foreach (var item in pipe.ToAsyncEnumerable().ToBlockingEnumerable())
         {
             // Process items
         }
+
+        // Assert
+        var act = () => ((IDisposable)pipe).Dispose();
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public async Task DisposeAsync_AfterDispose_DoesNotThrow()
+    {
+        // Arrange
+        List<int> items = [1, 2, 3];
+        NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int> pipe = new(items);
+
+        // Act
+        ((IDisposable)pipe).Dispose(); // Call IDisposable.Dispose first
 
         // Assert
         var act = async () => await pipe.DisposeAsync();
@@ -189,7 +217,44 @@ public sealed class InMemoryDataPipeTests
     }
 
     [Fact]
-    public async Task Enumeration_AfterDispose_DoesNotThrow()
+    public async Task Dispose_AfterDisposeAsync_DoesNotThrow()
+    {
+        // Arrange
+        List<int> items = [1, 2, 3];
+        NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int> pipe = new(items);
+
+        // Act
+        await pipe.DisposeAsync(); // Call DisposeAsync first
+
+        // Assert
+        var act = () => ((IDisposable)pipe).Dispose();
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void InMemoryDataPipe_ImplementsIDisposable()
+    {
+        // Arrange
+        List<int> items = [1, 2, 3];
+        NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int> pipe = new(items);
+
+        // Act & Assert
+        pipe.Should().BeAssignableTo<IDisposable>();
+    }
+
+    [Fact]
+    public void InMemoryDataPipe_ImplementsIAsyncDisposable()
+    {
+        // Arrange
+        List<int> items = [1, 2, 3];
+        NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int> pipe = new(items);
+
+        // Act & Assert
+        pipe.Should().BeAssignableTo<IAsyncDisposable>();
+    }
+
+    [Fact]
+    public async Task Enumeration_AfterDisposeAsync_DoesNotThrow()
     {
         // Arrange
         List<int> items = [1, 2, 3];
@@ -197,7 +262,24 @@ public sealed class InMemoryDataPipeTests
         await pipe.DisposeAsync();
 
         // Act & Assert
-        await foreach (var item in pipe)
+        await foreach (var _ in pipe)
+        {
+            // This should not throw since InMemoryDataPipe doesn't track disposal
+        }
+
+        // Note: InMemoryDataPipe doesn't track disposal state, so this test documents current behavior
+    }
+
+    [Fact]
+    public void Enumeration_AfterDispose_DoesNotThrow()
+    {
+        // Arrange
+        List<int> items = [1, 2, 3];
+        NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int> pipe = new(items);
+        ((IDisposable)pipe).Dispose();
+
+        // Act & Assert
+        foreach (var _ in pipe.ToAsyncEnumerable().ToBlockingEnumerable())
         {
             // This should not throw since InMemoryDataPipe doesn't track disposal
         }

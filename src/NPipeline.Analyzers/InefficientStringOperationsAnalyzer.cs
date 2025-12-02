@@ -30,10 +30,10 @@ public sealed class InefficientStringOperationsAnalyzer : DiagnosticAnalyzer
         + "Avoid string concatenation with '+' in loops and hot path methods. "
         + "https://npipeline.dev/docs/performance/efficient-string-operations.");
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

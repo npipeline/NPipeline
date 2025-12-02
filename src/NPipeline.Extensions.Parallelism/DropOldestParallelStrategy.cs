@@ -24,7 +24,7 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
     {
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(
         IDataPipe<TIn> input,
         ITransformNode<TIn, TOut> node,

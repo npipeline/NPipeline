@@ -8,7 +8,7 @@ namespace NPipeline.Tests.Common;
 ///     It holds all items in a List, which is ideal for providing mock data to nodes in unit tests.
 ///     THIS IMPLEMENTATION SHOULD NOT BE USED IN PRODUCTION CODE as it buffers entire stream in memory.
 /// </summary>
-public sealed class InMemoryDataPipe<T>(IEnumerable<T> data, string streamName = "TestStream") : IDataPipe<T>
+public sealed class InMemoryDataPipe<T>(IEnumerable<T> data, string streamName = "TestStream") : IDataPipe<T>, IAsyncDisposable, IDisposable
     where T : notnull
 {
     private readonly List<T> _data = data?.ToList() ?? throw new ArgumentNullException(nameof(data));
@@ -37,7 +37,13 @@ public sealed class InMemoryDataPipe<T>(IEnumerable<T> data, string streamName =
     public ValueTask DisposeAsync()
     {
         // Nothing to dispose for an in-memory list
+        GC.SuppressFinalize(this);
         return ValueTask.CompletedTask;
+    }
+
+    void IDisposable.Dispose()
+    {
+        DisposeAsync().AsTask().GetAwaiter().GetResult();
     }
 
     private sealed class InMemoryDataPipeEnumerator(List<T> data, CancellationToken cancellationToken) : IAsyncEnumerator<T>

@@ -34,10 +34,10 @@ public sealed class InappropriateParallelismConfigurationAnalyzer : DiagnosticAn
         + "For I/O-bound workloads, use moderate parallelism. Avoid PreserveOrdering with high parallelism. "
         + "https://npipeline.dev/docs/performance/parallelism-configuration.");
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

@@ -7,7 +7,7 @@ namespace NPipeline.DataFlow.DataPipes;
 ///     This is useful for testing or for scenarios where the entire dataset is already in memory.
 /// </summary>
 /// <typeparam name="T">The type of data held by the pipe.</typeparam>
-public sealed class InMemoryDataPipe<T>(IReadOnlyList<T> items, string streamName = "") : IDataPipe<T>, IAsyncDisposable
+public sealed class InMemoryDataPipe<T>(IReadOnlyList<T> items, string streamName = "") : IDataPipe<T>, IAsyncDisposable, IDisposable
 {
     /// <summary>
     ///     The underlying list of items.
@@ -46,21 +46,29 @@ public sealed class InMemoryDataPipe<T>(IReadOnlyList<T> items, string streamNam
     public ValueTask DisposeAsync()
     {
         // Nothing to dispose for an in-memory list
+        GC.SuppressFinalize(this);
         return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    ///     Disposes of the data pipe. This implementation calls DisposeAsync() and suppresses finalization.
+    /// </summary>
+    void IDisposable.Dispose()
+    {
+        DisposeAsync().AsTask().GetAwaiter().GetResult();
     }
 
     private async IAsyncEnumerable<T> ToAsyncEnumerableTyped([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var count = 0;
+
         foreach (var item in Items)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             // Yield periodically to allow cancellation processing without per-item overhead
             if (++count % 100 == 0)
-            {
                 await Task.Yield();
-            }
 
             yield return item;
         }

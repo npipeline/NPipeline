@@ -161,6 +161,30 @@ public sealed class PipeTests
     }
 
     [Fact]
+    public void InMemoryDataPipe_IDisposable_DoesNotThrow()
+    {
+        // Arrange
+        List<int> items = [1, 2, 3];
+        IDisposable pipe = new Common.InMemoryDataPipe<int>(items);
+
+        // Act & Assert
+        var act = () => pipe.Dispose();
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void InMemoryDataPipe_ImplementsBothDisposalInterfaces()
+    {
+        // Arrange
+        List<int> items = [1, 2, 3];
+        Common.InMemoryDataPipe<int> pipe = new(items);
+
+        // Act & Assert
+        pipe.Should().BeAssignableTo<IDisposable>();
+        pipe.Should().BeAssignableTo<IAsyncDisposable>();
+    }
+
+    [Fact]
     public async Task StreamingDataPipe_Dispose_DoesNotThrow()
     {
         // Arrange

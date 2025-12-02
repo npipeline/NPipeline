@@ -31,10 +31,10 @@ public sealed class AnonymousObjectAllocationAnalyzer : DiagnosticAnalyzer
         + "Anonymous objects are particularly problematic in loops, LINQ expressions, and async methods. "
         + "https://npipeline.dev/docs/performance/avoiding-anonymous-object-allocations.");
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

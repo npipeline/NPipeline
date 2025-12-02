@@ -31,10 +31,10 @@ public sealed class BatchingConfigurationMismatchAnalyzer : DiagnosticAnalyzer
         + "Ensure batch sizes and timeouts are properly aligned for optimal performance. "
         + "https://npipeline.dev/docs/performance/batching-configuration.");
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

@@ -14,7 +14,7 @@ namespace NPipeline.Extensions.Parallelism;
 public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
 {
     /// <summary>
-    ///     Initializes a new instance of the <see cref="ParallelExecutionStrategyBase"/> class.
+    ///     Initializes a new instance of the <see cref="ParallelExecutionStrategyBase" /> class.
     /// </summary>
     /// <param name="maxDegreeOfParallelism">The optional maximum degree of parallelism. If null, uses default behavior.</param>
     protected ParallelExecutionStrategyBase(int? maxDegreeOfParallelism = null)
@@ -37,7 +37,8 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation with the output data pipe.</returns>
-    public abstract Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(IDataPipe<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context, CancellationToken cancellationToken);
+    public abstract Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(IDataPipe<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context,
+        CancellationToken cancellationToken);
 
     /// <summary>
     ///     Gets effective retry options for a node, checking per-node, global, and context fallback.
@@ -83,7 +84,9 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
     /// <param name="metrics">Optional metrics for tracking execution.</param>
     /// <param name="observer">Optional observer for execution events.</param>
     /// <returns>A task representing the asynchronous operation with the processed item, or null if skipped.</returns>
-    protected static async Task<TOut?> ExecuteWithRetryAsync<TIn, TOut>(TIn item, ITransformNode<TIn, TOut> node, PipelineContext context, string nodeId, PipelineRetryOptions effectiveRetries, CancellationToken cancellationToken, ParallelExecutionMetrics? metrics = null, IExecutionObserver? observer = null)
+    protected static async Task<TOut?> ExecuteWithRetryAsync<TIn, TOut>(TIn item, ITransformNode<TIn, TOut> node, PipelineContext context, string nodeId,
+        PipelineRetryOptions effectiveRetries, CancellationToken cancellationToken, ParallelExecutionMetrics? metrics = null,
+        IExecutionObserver? observer = null)
     {
         var logger = context.LoggerFactory.CreateLogger(nameof(ParallelExecutionStrategyBase));
         using var itemActivity = context.Tracer.StartActivity("Item.Transform");
@@ -133,14 +136,16 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
         }
     }
 
-    private static ValueTask<TOut> ExecuteNodeAsync<TIn, TOut>(ITransformNode<TIn, TOut> node, TIn item, PipelineContext context, CancellationToken cancellationToken)
+    private static ValueTask<TOut> ExecuteNodeAsync<TIn, TOut>(ITransformNode<TIn, TOut> node, TIn item, PipelineContext context,
+        CancellationToken cancellationToken)
     {
         return node is IValueTaskTransform<TIn, TOut> fastPath
             ? fastPath.ExecuteValueTaskAsync(item, context, cancellationToken)
             : new ValueTask<TOut>(node.ExecuteAsync(item, context, cancellationToken));
     }
 
-    private static async Task<NodeErrorDecision> HandleNodeErrorAsync<TIn, TOut>(ITransformNode<TIn, TOut> node, string nodeId, TIn item, Exception exception, PipelineContext context, INodeErrorHandler<ITransformNode<TIn, TOut>, TIn> handler, CancellationToken cancellationToken)
+    private static async Task<NodeErrorDecision> HandleNodeErrorAsync<TIn, TOut>(ITransformNode<TIn, TOut> node, string nodeId, TIn item, Exception exception,
+        PipelineContext context, INodeErrorHandler<ITransformNode<TIn, TOut>, TIn> handler, CancellationToken cancellationToken)
     {
         var decision = await handler.HandleAsync(node, item, exception, context, cancellationToken).ConfigureAwait(false);
 
@@ -150,7 +155,8 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
         return decision;
     }
 
-    private static void PublishRetryInstrumentation(ParallelExecutionMetrics? metrics, IExecutionObserver? observer, string nodeId, int attempt, Exception exception)
+    private static void PublishRetryInstrumentation(ParallelExecutionMetrics? metrics, IExecutionObserver? observer, string nodeId, int attempt,
+        Exception exception)
     {
         metrics?.RecordRetry(attempt);
         observer?.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, attempt, exception));

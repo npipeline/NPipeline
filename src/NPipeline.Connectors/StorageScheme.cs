@@ -10,7 +10,7 @@ namespace NPipeline.Connectors;
 public readonly record struct StorageScheme
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="StorageScheme"/> struct.
+    ///     Initializes a new instance of the <see cref="StorageScheme" /> struct.
     /// </summary>
     /// <param name="value">The scheme string to initialize with.</param>
     /// <exception cref="ArgumentException">Thrown when the scheme is null, whitespace, or invalid.</exception>
@@ -31,21 +31,24 @@ public readonly record struct StorageScheme
     }
 
     /// <summary>
-    /// Gets the normalized lowercase value of the storage scheme.
+    ///     Gets the normalized lowercase value of the storage scheme.
     /// </summary>
     public string Value { get; }
 
     // Well-known schemes (non-exhaustive). These are conveniences only.
     /// <summary>
-    /// Gets a <see cref="StorageScheme"/> instance representing the "file" scheme.
+    ///     Gets a <see cref="StorageScheme" /> instance representing the "file" scheme.
     /// </summary>
     public static StorageScheme File => new("file");
 
     /// <summary>
-    /// Attempts to parse the specified string into a <see cref="StorageScheme"/> instance.
+    ///     Attempts to parse the specified string into a <see cref="StorageScheme" /> instance.
     /// </summary>
     /// <param name="value">The string to parse.</param>
-    /// <param name="scheme">When this method returns, contains the parsed <see cref="StorageScheme"/> if the parsing succeeded, or the default value if parsing failed.</param>
+    /// <param name="scheme">
+    ///     When this method returns, contains the parsed <see cref="StorageScheme" /> if the parsing succeeded, or the default value if parsing
+    ///     failed.
+    /// </param>
     /// <returns>true if the parsing was successful; otherwise, false.</returns>
     public static bool TryParse(string? value, out StorageScheme scheme)
     {
@@ -64,7 +67,7 @@ public readonly record struct StorageScheme
     }
 
     /// <summary>
-    /// Determines whether the specified string is a valid storage scheme according to RFC 3986.
+    ///     Determines whether the specified string is a valid storage scheme according to RFC 3986.
     /// </summary>
     /// <param name="value">The string to validate.</param>
     /// <returns>true if the string is a valid scheme; otherwise, false.</returns>
@@ -91,27 +94,27 @@ public readonly record struct StorageScheme
     }
 
     /// <summary>
-    /// Implicitly converts a string to a <see cref="StorageScheme"/> instance.
+    ///     Implicitly converts a string to a <see cref="StorageScheme" /> instance.
     /// </summary>
     /// <param name="value">The string to convert.</param>
-    /// <returns>A new <see cref="StorageScheme"/> instance representing the specified string.</returns>
+    /// <returns>A new <see cref="StorageScheme" /> instance representing the specified string.</returns>
     public static implicit operator StorageScheme(string value)
     {
         return new StorageScheme(value);
     }
 
     /// <summary>
-    /// Implicitly converts a <see cref="StorageScheme"/> instance to a string.
+    ///     Implicitly converts a <see cref="StorageScheme" /> instance to a string.
     /// </summary>
-    /// <param name="scheme">The <see cref="StorageScheme"/> to convert.</param>
-    /// <returns>The string representation of the <see cref="StorageScheme"/>.</returns>
+    /// <param name="scheme">The <see cref="StorageScheme" /> to convert.</param>
+    /// <returns>The string representation of the <see cref="StorageScheme" />.</returns>
     public static implicit operator string(StorageScheme scheme)
     {
         return scheme.Value;
     }
 
     /// <summary>
-    /// Returns the string representation of the <see cref="StorageScheme"/>.
+    ///     Returns the string representation of the <see cref="StorageScheme" />.
     /// </summary>
     /// <returns>The normalized scheme value, or an empty string if the value is null.</returns>
     public override string ToString()

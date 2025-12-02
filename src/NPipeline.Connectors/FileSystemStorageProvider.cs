@@ -19,7 +19,7 @@ public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProvid
     ///     Gets the storage scheme supported by this provider.
     /// </summary>
     /// <value>
-    ///     The <see cref="StorageScheme.File"/> scheme indicating this provider handles file system URIs.
+    ///     The <see cref="StorageScheme.File" /> scheme indicating this provider handles file system URIs.
     /// </value>
     public StorageScheme Scheme => StorageScheme.File;
 
@@ -30,7 +30,7 @@ public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProvid
     /// <returns>
     ///     <c>true</c> if the URI scheme matches the provider's supported scheme; otherwise, <c>false</c>.
     /// </returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="uri"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="uri" /> is null.</exception>
     public bool CanHandle(StorageUri uri)
     {
         ArgumentNullException.ThrowIfNull(uri);
@@ -45,7 +45,7 @@ public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProvid
     /// <returns>
     ///     A task that represents the asynchronous operation, containing a readable stream for the file.
     /// </returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="uri"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="uri" /> is null.</exception>
     /// <exception cref="FileNotFoundException">Thrown when the specified file does not exist.</exception>
     /// <exception cref="UnauthorizedAccessException">Thrown when access to the file is denied.</exception>
     public Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
@@ -74,7 +74,7 @@ public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProvid
     /// <returns>
     ///     A task that represents the asynchronous operation, containing a writable stream for the file.
     /// </returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="uri"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="uri" /> is null.</exception>
     /// <exception cref="UnauthorizedAccessException">Thrown when access to the file path is denied.</exception>
     /// <exception cref="DirectoryNotFoundException">Thrown when part of the directory path cannot be found.</exception>
     public Task<Stream> OpenWriteAsync(StorageUri uri, CancellationToken cancellationToken = default)
@@ -107,7 +107,7 @@ public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProvid
     /// <returns>
     ///     A task that represents the asynchronous operation, containing <c>true</c> if the file or directory exists; otherwise, <c>false</c>.
     /// </returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="uri"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="uri" /> is null.</exception>
     public Task<bool> ExistsAsync(StorageUri uri, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(uri);
@@ -125,7 +125,7 @@ public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProvid
     /// <returns>
     ///     A task that represents the asynchronous operation.
     /// </returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="uri"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="uri" /> is null.</exception>
     /// <exception cref="UnauthorizedAccessException">Thrown when access to the file or directory is denied.</exception>
     /// <exception cref="DirectoryNotFoundException">Thrown when the directory to delete does not exist.</exception>
     public Task DeleteAsync(StorageUri uri, CancellationToken cancellationToken = default)
@@ -149,9 +149,9 @@ public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProvid
     /// <param name="recursive">If <c>true</c>, lists all items recursively; otherwise, lists only direct children.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>
-    ///     An asynchronous enumerable of <see cref="StorageItem"/> objects representing the files and directories.
+    ///     An asynchronous enumerable of <see cref="StorageItem" /> objects representing the files and directories.
     /// </returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="prefix"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="prefix" /> is null.</exception>
     public IAsyncEnumerable<StorageItem> ListAsync(
         StorageUri prefix,
         bool recursive = false,
@@ -170,7 +170,7 @@ public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProvid
     ///     A task that represents the asynchronous operation, containing the metadata for the file or directory,
     ///     or <c>null</c> if the file or directory does not exist.
     /// </returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="uri"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="uri" /> is null.</exception>
     public Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(uri);
@@ -219,7 +219,7 @@ public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProvid
     ///     Gets the metadata describing this storage provider's capabilities.
     /// </summary>
     /// <returns>
-    ///     A <see cref="StorageProviderMetadata"/> object containing information about the provider's supported features.
+    ///     A <see cref="StorageProviderMetadata" /> object containing information about the provider's supported features.
     /// </returns>
     public StorageProviderMetadata GetMetadata()
     {

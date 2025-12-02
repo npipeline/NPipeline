@@ -30,10 +30,10 @@ public sealed class InefficientExceptionHandlingAnalyzer : DiagnosticAnalyzer
         + "Avoid empty catch blocks and re-throwing with 'throw;' which loses stack trace information. "
         + "https://npipeline.dev/docs/reliability/efficient-exception-handling.");
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
@@ -63,7 +63,7 @@ public sealed class InefficientExceptionHandlingAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    /// Determines if a syntax node is in a hot path context.
+    ///     Determines if a syntax node is in a hot path context.
     /// </summary>
     private static bool IsInHotPathContext(SyntaxNode node, SemanticModel semanticModel)
     {

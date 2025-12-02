@@ -31,10 +31,10 @@ public sealed class TimeoutConfigurationAnalyzer : DiagnosticAnalyzer
         + "Keep retry timeouts reasonable (< 30 minutes). "
         + "https://npipeline.dev/docs/configuration/timeouts.");
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
