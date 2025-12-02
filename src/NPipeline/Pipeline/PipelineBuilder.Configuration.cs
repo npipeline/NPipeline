@@ -95,6 +95,11 @@ public sealed partial class PipelineBuilder
         return this;
     }
 
+    /// <summary>
+    ///     Adds a pipeline error handler to handle errors that occur during pipeline execution.
+    /// </summary>
+    /// <param name="errorHandler">The error handler instance to use for pipeline-wide error handling.</param>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder AddPipelineErrorHandler(IPipelineErrorHandler errorHandler)
     {
         ArgumentNullException.ThrowIfNull(errorHandler);
@@ -103,6 +108,11 @@ public sealed partial class PipelineBuilder
         return this;
     }
 
+    /// <summary>
+    ///     Adds a pipeline error handler of type T to handle errors that occur during pipeline execution.
+    /// </summary>
+    /// <typeparam name="T">The type of the error handler that implements IPipelineErrorHandler.</typeparam>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder AddPipelineErrorHandler<T>() where T : IPipelineErrorHandler
     {
         ConfigurationState.PipelineErrorHandlerType = typeof(T);
@@ -110,6 +120,11 @@ public sealed partial class PipelineBuilder
         return this;
     }
 
+    /// <summary>
+    ///     Adds a dead letter sink to handle messages that cannot be processed after retry attempts.
+    /// </summary>
+    /// <param name="deadLetterSink">The dead letter sink instance to use for failed messages.</param>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder AddDeadLetterSink(IDeadLetterSink deadLetterSink)
     {
         ConfigurationState.DeadLetterSink = deadLetterSink;
@@ -117,6 +132,11 @@ public sealed partial class PipelineBuilder
         return this;
     }
 
+    /// <summary>
+    ///     Adds a dead letter sink of type T to handle messages that cannot be processed after retry attempts.
+    /// </summary>
+    /// <typeparam name="T">The type of the dead letter sink that implements IDeadLetterSink.</typeparam>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder AddDeadLetterSink<T>() where T : IDeadLetterSink
     {
         ConfigurationState.DeadLetterSinkType = typeof(T);
@@ -124,12 +144,24 @@ public sealed partial class PipelineBuilder
         return this;
     }
 
+    /// <summary>
+    ///     Configures retry options for the pipeline using a configuration function.
+    /// </summary>
+    /// <param name="configure">A function that takes the current retry options and returns modified options.</param>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder WithRetryOptions(Func<PipelineRetryOptions, PipelineRetryOptions> configure)
     {
         _config = _config with { RetryOptions = configure(_config.RetryOptions) };
         return this;
     }
 
+    /// <summary>
+    ///     Configures circuit breaker settings for the pipeline to handle failures gracefully.
+    /// </summary>
+    /// <param name="failureThreshold">The number of failures before opening the circuit breaker. Default is 5.</param>
+    /// <param name="openDuration">The duration to keep the circuit breaker open. Default is 1 minute.</param>
+    /// <param name="samplingWindow">The time window to sample for failure rate calculation. Default is 5 minutes.</param>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder WithCircuitBreaker(int failureThreshold = 5, TimeSpan? openDuration = null, TimeSpan? samplingWindow = null)
     {
         _config = _config with
@@ -142,6 +174,11 @@ public sealed partial class PipelineBuilder
         return this;
     }
 
+    /// <summary>
+    ///     Configures memory management options for the circuit breaker.
+    /// </summary>
+    /// <param name="configure">A function that takes the current memory management options and returns modified options.</param>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder ConfigureCircuitBreakerMemoryManagement(Func<CircuitBreakerMemoryManagementOptions, CircuitBreakerMemoryManagementOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
@@ -151,16 +188,26 @@ public sealed partial class PipelineBuilder
         return this;
     }
 
+    /// <summary>
+    ///     Enables item-level lineage tracking with default options.
+    /// </summary>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder EnableItemLevelLineage()
     {
         _config = _config with
         {
-            ItemLevelLineageEnabled = true, LineageOptions = _config.LineageOptions ?? new LineageOptions { SampleEvery = 1, RedactData = false },
+            ItemLevelLineageEnabled = true,
+            LineageOptions = _config.LineageOptions ?? new LineageOptions { SampleEvery = 1, RedactData = false },
         };
 
         return this;
     }
 
+    /// <summary>
+    ///     Enables item-level lineage tracking with custom configuration options.
+    /// </summary>
+    /// <param name="configure">An action to configure the lineage options.</param>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder EnableItemLevelLineage(Action<LineageOptions> configure)
     {
         var opts = _config.LineageOptions ?? new LineageOptions();
@@ -169,6 +216,11 @@ public sealed partial class PipelineBuilder
         return this;
     }
 
+    /// <summary>
+    ///     Adds a lineage sink to record item-level lineage information.
+    /// </summary>
+    /// <param name="lineageSink">The lineage sink instance to use for recording lineage data.</param>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder AddLineageSink(ILineageSink lineageSink)
     {
         ConfigurationState.LineageSink = lineageSink;
@@ -176,6 +228,11 @@ public sealed partial class PipelineBuilder
         return this;
     }
 
+    /// <summary>
+    ///     Adds a lineage sink of type T to record item-level lineage information.
+    /// </summary>
+    /// <typeparam name="T">The type of the lineage sink that implements ILineageSink.</typeparam>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder AddLineageSink<T>() where T : ILineageSink
     {
         ConfigurationState.LineageSinkType = typeof(T);
@@ -183,6 +240,11 @@ public sealed partial class PipelineBuilder
         return this;
     }
 
+    /// <summary>
+    ///     Adds a pipeline lineage sink to record pipeline-level lineage information.
+    /// </summary>
+    /// <param name="pipelineLineageSink">The pipeline lineage sink instance to use for recording pipeline lineage data.</param>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder AddPipelineLineageSink(IPipelineLineageSink pipelineLineageSink)
     {
         ConfigurationState.PipelineLineageSink = pipelineLineageSink;
@@ -190,6 +252,11 @@ public sealed partial class PipelineBuilder
         return this;
     }
 
+    /// <summary>
+    ///     Adds a pipeline lineage sink of type T to record pipeline-level lineage information.
+    /// </summary>
+    /// <typeparam name="T">The type of the pipeline lineage sink that implements IPipelineLineageSink.</typeparam>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder AddPipelineLineageSink<T>() where T : IPipelineLineageSink
     {
         ConfigurationState.PipelineLineageSinkType = typeof(T);
@@ -197,6 +264,12 @@ public sealed partial class PipelineBuilder
         return this;
     }
 
+    /// <summary>
+    ///     Sets retry options for a specific node identified by its handle.
+    /// </summary>
+    /// <param name="handle">The handle of the node to configure retry options for.</param>
+    /// <param name="options">The retry options to apply to the node.</param>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder WithRetryOptions(NodeHandle handle, PipelineRetryOptions options)
     {
         if (!NodeState.Nodes.ContainsKey(handle.Id))
@@ -206,24 +279,46 @@ public sealed partial class PipelineBuilder
         return this;
     }
 
+    /// <summary>
+    ///     Sets an execution option for a specific node identified by its ID.
+    /// </summary>
+    /// <param name="nodeId">The ID of the node to set the execution option for.</param>
+    /// <param name="option">The execution option to set for the node.</param>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder SetNodeExecutionOption(string nodeId, object option)
     {
         NodeState.ExecutionAnnotations[nodeId] = option;
         return this;
     }
 
+    /// <summary>
+    ///     Sets a global execution observer that will monitor execution across all nodes.
+    /// </summary>
+    /// <param name="observer">The observer instance to use for global execution monitoring.</param>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder SetGlobalExecutionObserver(object observer)
     {
         ConfigurationState.GlobalExecutionObserver = observer;
         return this;
     }
 
+    /// <summary>
+    ///     Sets a global annotation with the specified key and value.
+    /// </summary>
+    /// <param name="key">The key for the global annotation.</param>
+    /// <param name="value">The value for the global annotation.</param>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder SetGlobalAnnotation(string key, object value)
     {
         NodeState.ExecutionAnnotations[$"global::{key}"] = value;
         return this;
     }
 
+    /// <summary>
+    ///     Adds a visualizer to generate visual representations of the pipeline.
+    /// </summary>
+    /// <param name="visualizer">The visualizer instance to use for pipeline visualization.</param>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder AddVisualizer(IPipelineVisualizer visualizer)
     {
         ConfigurationState.Visualizer = visualizer;
@@ -295,14 +390,15 @@ public sealed partial class PipelineBuilder
         ILineageMapper? cachedMapper = null;
 
         if (lineageMapperType is not null)
-
+        {
             // Mapper assumed stateless. Creation once; if it fails we'll fall back at runtime (throw). No caching of failure.
             cachedMapper = (ILineageMapper)Activator.CreateInstance(lineageMapperType)!;
+        }
 
         return (transformInput, nodeId, declaredCardinality, options, cancellationToken) =>
         {
             var typedInput = (IDataPipe<LineagePacket<TIn>>)transformInput;
-            var unwrappedPipe = new StreamingDataPipe<TIn>(Unwrap(typedInput), $"Unwrapped_{typedInput.StreamName}");
+            var unwrappedPipe = new StreamingDataPipe<TIn>(UnwrapIterator(typedInput), $"Unwrapped_{typedInput.StreamName}");
             return (unwrappedPipe, RewrapFunc);
 
             IDataPipe RewrapFunc(IDataPipe outputPipe)
@@ -312,17 +408,11 @@ public sealed partial class PipelineBuilder
                 return new StreamingDataPipe<LineagePacket<TOut>>(rewrappedStream, $"Rewrapped_{outputPipe.StreamName}");
             }
 
-            static IAsyncEnumerable<TIn> Unwrap(IAsyncEnumerable<LineagePacket<TIn>> inputStream)
+            static async IAsyncEnumerable<TIn> UnwrapIterator(IDataPipe<LineagePacket<TIn>> inputStream)
             {
-                return UnwrapIterator(inputStream, CancellationToken.None);
-
-                static async IAsyncEnumerable<TIn> UnwrapIterator(IAsyncEnumerable<LineagePacket<TIn>> inputStream,
-                    [EnumeratorCancellation] CancellationToken ct)
+                await foreach (var packet in inputStream.WithCancellation(CancellationToken.None).ConfigureAwait(false))
                 {
-                    await foreach (var packet in inputStream.WithCancellation(ct).ConfigureAwait(false))
-                    {
-                        yield return packet.Data;
-                    }
+                    yield return packet.Data;
                 }
             }
 
