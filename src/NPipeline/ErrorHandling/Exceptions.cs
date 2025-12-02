@@ -295,3 +295,94 @@ public sealed class MaxNodeRestartAttemptsExceededException : PipelineException
     /// </summary>
     public string ErrorCode { get; }
 }
+
+/// <summary>
+///     Exception thrown when a branch handler fails during execution.
+///     See <see href="~/docs/reference/api/exceptions.md#branchhandlerexception" /> for detailed documentation.
+/// </summary>
+/// <remarks>
+///     <para>
+///         This exception wraps errors that occur in user-provided branch handler delegates within a <c>BranchNode&lt;T&gt;</c>.
+///         Branch handlers are executed in parallel, and by default, exceptions are routed through the pipeline's
+///         error handling system rather than being silently swallowed.
+///     </para>
+///     <para>
+///         The exception provides context about which branch handler failed and which item was being processed,
+///         allowing error handlers to make informed decisions about how to proceed.
+///     </para>
+/// </remarks>
+/// <example>
+///     <code>
+/// // Handle branch handler exceptions in a pipeline error handler
+/// public class MyErrorHandler : IPipelineErrorHandler
+/// {
+///     public Task&lt;PipelineErrorDecision&gt; HandleNodeFailureAsync(
+///         string nodeId,
+///         Exception error,
+///         PipelineContext context,
+///         CancellationToken cancellationToken)
+///     {
+///         if (error is BranchHandlerException branchEx)
+///         {
+///             // Log the branch failure but continue the pipeline
+///             Console.WriteLine($"Branch {branchEx.BranchIndex} failed on node {nodeId}");
+///             return Task.FromResult(PipelineErrorDecision.ContinueWithoutNode);
+///         }
+///         
+///         return Task.FromResult(PipelineErrorDecision.FailPipeline);
+///     }
+/// }
+/// </code>
+/// </example>
+public sealed class BranchHandlerException : PipelineException
+{
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="BranchHandlerException" /> class.
+    /// </summary>
+    /// <param name="nodeId">The ID of the branch node where the handler failed.</param>
+    /// <param name="branchIndex">The zero-based index of the branch handler that failed.</param>
+    /// <param name="innerException">The exception that occurred in the branch handler.</param>
+    public BranchHandlerException(string nodeId, int branchIndex, Exception innerException)
+        : base($"Branch handler {branchIndex} failed in node '{nodeId}'.", innerException)
+    {
+        NodeId = nodeId;
+        BranchIndex = branchIndex;
+        ErrorCode = "BRANCH_HANDLER_FAILED";
+    }
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="BranchHandlerException" /> class with item context.
+    /// </summary>
+    /// <param name="nodeId">The ID of the branch node where the handler failed.</param>
+    /// <param name="branchIndex">The zero-based index of the branch handler that failed.</param>
+    /// <param name="failedItem">The item that was being processed when the failure occurred.</param>
+    /// <param name="innerException">The exception that occurred in the branch handler.</param>
+    public BranchHandlerException(string nodeId, int branchIndex, object? failedItem, Exception innerException)
+        : base($"Branch handler {branchIndex} failed in node '{nodeId}'.", innerException)
+    {
+        NodeId = nodeId;
+        BranchIndex = branchIndex;
+        FailedItem = failedItem;
+        ErrorCode = "BRANCH_HANDLER_FAILED";
+    }
+
+    /// <summary>
+    ///     Gets the ID of the branch node where the handler failed.
+    /// </summary>
+    public string NodeId { get; }
+
+    /// <summary>
+    ///     Gets the zero-based index of the branch handler that failed.
+    /// </summary>
+    public int BranchIndex { get; }
+
+    /// <summary>
+    ///     Gets the item that was being processed when the failure occurred, if available.
+    /// </summary>
+    public object? FailedItem { get; }
+
+    /// <summary>
+    ///     Gets the error code associated with this exception.
+    /// </summary>
+    public string ErrorCode { get; }
+}

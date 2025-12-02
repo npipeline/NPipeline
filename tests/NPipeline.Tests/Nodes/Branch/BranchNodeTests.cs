@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using AwesomeAssertions;
+using NPipeline.Configuration;
+using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -132,10 +134,10 @@ public sealed class BranchNodeTests
     }
 
     [Fact]
-    public async Task BranchNode_ExceptionInOneHandler_OtherHandlersStillExecute()
+    public async Task BranchNode_ExceptionInOneHandler_WithLogAndContinueMode_OtherHandlersStillExecute()
     {
         // Arrange
-        BranchNode<int> node = new();
+        BranchNode<int> node = new() { ErrorHandlingMode = BranchErrorHandlingMode.LogAndContinue };
         List<string> results = [];
 
         node.AddOutput(async x =>
@@ -168,6 +170,151 @@ public sealed class BranchNodeTests
         _ = results.Should().HaveCount(2);
         _ = results.Should().Contain("Handler1");
         _ = results.Should().Contain("Handler3");
+    }
+
+    [Fact]
+    public async Task BranchNode_ExceptionInHandler_WithNoErrorHandler_ThrowsBranchHandlerException()
+    {
+        // Arrange
+        BranchNode<int> node = new();
+        node.AddOutput(async x =>
+        {
+            await Task.Yield();
+            throw new InvalidOperationException("Handler failed");
+        });
+
+        var ctx = PipelineContext.Default;
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<BranchHandlerException>(async () =>
+            await node.ExecuteAsync(42, ctx, CancellationToken.None));
+
+        _ = ex.BranchIndex.Should().Be(0);
+        _ = ex.InnerException.Should().BeOfType<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task BranchNode_ExceptionInHandler_WithErrorHandlerContinue_DoesNotThrow()
+    {
+        // Arrange
+        BranchNode<int> node = new();
+        var errorHandlerCalled = false;
+
+        node.AddOutput(async x =>
+        {
+            await Task.Yield();
+            throw new InvalidOperationException("Handler failed");
+        });
+
+        var config = new PipelineContextConfiguration(
+            PipelineErrorHandler: new ContinueErrorHandler(() => errorHandlerCalled = true));
+        var ctx = new PipelineContext(config);
+
+        // Act
+        var result = await node.ExecuteAsync(42, ctx, CancellationToken.None);
+
+        // Assert
+        _ = result.Should().Be(42);
+        _ = errorHandlerCalled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task BranchNode_ExceptionInHandler_WithErrorHandlerFail_ThrowsBranchHandlerException()
+    {
+        // Arrange
+        BranchNode<int> node = new();
+        var errorHandlerCalled = false;
+
+        node.AddOutput(async x =>
+        {
+            await Task.Yield();
+            throw new InvalidOperationException("Handler failed");
+        });
+
+        var config = new PipelineContextConfiguration(
+            PipelineErrorHandler: new FailErrorHandler(() => errorHandlerCalled = true));
+        var ctx = new PipelineContext(config);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<BranchHandlerException>(async () =>
+            await node.ExecuteAsync(42, ctx, CancellationToken.None));
+
+        _ = errorHandlerCalled.Should().BeTrue();
+        _ = ex.BranchIndex.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task BranchNode_ExceptionInHandler_WithCollectAndThrowMode_ThrowsAggregateException()
+    {
+        // Arrange
+        BranchNode<int> node = new() { ErrorHandlingMode = BranchErrorHandlingMode.CollectAndThrow };
+
+        node.AddOutput(async x =>
+        {
+            await Task.Yield();
+            throw new InvalidOperationException("Handler1 failed");
+        });
+
+        node.AddOutput(async x =>
+        {
+            await Task.Yield();
+            throw new ArgumentException("Handler2 failed");
+        });
+
+        var ctx = PipelineContext.Default;
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<AggregateException>(async () =>
+            await node.ExecuteAsync(42, ctx, CancellationToken.None));
+
+        _ = ex.InnerExceptions.Should().HaveCount(2);
+        _ = ex.InnerExceptions.Should().AllBeAssignableTo<BranchHandlerException>();
+    }
+
+    [Fact]
+    public async Task BranchNode_BranchHandlerException_ContainsFailedItem()
+    {
+        // Arrange
+        BranchNode<string> node = new();
+        node.AddOutput(async x =>
+        {
+            await Task.Yield();
+            throw new InvalidOperationException("Handler failed");
+        });
+
+        var ctx = PipelineContext.Default;
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<BranchHandlerException>(async () =>
+            await node.ExecuteAsync("test-item", ctx, CancellationToken.None));
+
+        _ = ex.FailedItem.Should().Be("test-item");
+    }
+
+    private sealed class ContinueErrorHandler(Action onCalled) : IPipelineErrorHandler
+    {
+        public Task<PipelineErrorDecision> HandleNodeFailureAsync(
+            string nodeId,
+            Exception error,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            onCalled();
+            return Task.FromResult(PipelineErrorDecision.ContinueWithoutNode);
+        }
+    }
+
+    private sealed class FailErrorHandler(Action onCalled) : IPipelineErrorHandler
+    {
+        public Task<PipelineErrorDecision> HandleNodeFailureAsync(
+            string nodeId,
+            Exception error,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            onCalled();
+            return Task.FromResult(PipelineErrorDecision.FailPipeline);
+        }
     }
 
     [Fact]

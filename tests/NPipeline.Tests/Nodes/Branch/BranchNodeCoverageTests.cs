@@ -3,6 +3,8 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using AwesomeAssertions;
+using NPipeline.Configuration;
+using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -151,10 +153,13 @@ public sealed class BranchNodeCoverageTests
     #region Error Handling Tests
 
     [Fact]
-    public async Task BranchNode_ExecuteAsync_WithExceptionInHandler_SwallowsException()
+    public async Task BranchNode_ExecuteAsync_WithLogAndContinueMode_SwallowsException()
     {
         // Arrange
-        var branchNode = new BranchNode<string>();
+        var branchNode = new BranchNode<string>
+        {
+            ErrorHandlingMode = BranchErrorHandlingMode.LogAndContinue
+        };
         var context = PipelineContext.Default;
         var item = "test";
         var successfulHandlerCalled = false;
@@ -180,10 +185,13 @@ public sealed class BranchNodeCoverageTests
     }
 
     [Fact]
-    public async Task BranchNode_ExecuteAsync_WithMultipleFailingHandlers_SwallowsAllExceptions()
+    public async Task BranchNode_ExecuteAsync_WithMultipleFailingHandlers_AndLogAndContinueMode_SwallowsAllExceptions()
     {
         // Arrange
-        var branchNode = new BranchNode<int>();
+        var branchNode = new BranchNode<int>
+        {
+            ErrorHandlingMode = BranchErrorHandlingMode.LogAndContinue
+        };
         var context = PipelineContext.Default;
         var item = 42;
         var handlerCount = 3;
@@ -205,10 +213,13 @@ public sealed class BranchNodeCoverageTests
     }
 
     [Fact]
-    public async Task BranchNode_ExecuteAsync_ExceptionInHandler_DoesNotAffectMainFlow()
+    public async Task BranchNode_ExecuteAsync_ExceptionInHandler_WithLogAndContinueMode_DoesNotAffectMainFlow()
     {
         // Arrange
-        var branchNode = new BranchNode<string>();
+        var branchNode = new BranchNode<string>
+        {
+            ErrorHandlingMode = BranchErrorHandlingMode.LogAndContinue
+        };
         var context = PipelineContext.Default;
         var item = "important-data";
 
@@ -225,6 +236,97 @@ public sealed class BranchNodeCoverageTests
         await act.Should().NotThrowAsync();
         var result = await branchNode.ExecuteAsync(item, context, CancellationToken.None);
         _ = result.Should().Be(item);
+    }
+
+    [Fact]
+    public async Task BranchNode_ExecuteAsync_ExceptionInHandler_WithNoErrorHandler_Throws()
+    {
+        // Arrange
+        var branchNode = new BranchNode<string>();
+        var context = PipelineContext.Default;
+        var item = "test";
+
+        branchNode.AddOutput(async _ =>
+        {
+            await Task.CompletedTask;
+            throw new InvalidOperationException("Handler failed");
+        });
+
+        // Act
+        var act = async () => await branchNode.ExecuteAsync(item, context, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<BranchHandlerException>();
+    }
+
+    [Fact]
+    public async Task BranchNode_ExecuteAsync_ExceptionInHandler_WithContinueErrorHandler_DoesNotThrow()
+    {
+        // Arrange
+        var branchNode = new BranchNode<string>();
+        var item = "test";
+        var errorHandlerCalled = false;
+
+        var config = new PipelineContextConfiguration(
+            PipelineErrorHandler: new TestContinueErrorHandler(() => errorHandlerCalled = true));
+        var context = new PipelineContext(config);
+
+        branchNode.AddOutput(async _ =>
+        {
+            await Task.CompletedTask;
+            throw new InvalidOperationException("Handler failed");
+        });
+
+        // Act
+        var result = await branchNode.ExecuteAsync(item, context, CancellationToken.None);
+
+        // Assert
+        _ = result.Should().Be(item);
+        _ = errorHandlerCalled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task BranchNode_ExecuteAsync_CollectAndThrowMode_CollectsMultipleExceptions()
+    {
+        // Arrange
+        var branchNode = new BranchNode<int>
+        {
+            ErrorHandlingMode = BranchErrorHandlingMode.CollectAndThrow
+        };
+        var context = PipelineContext.Default;
+        var item = 42;
+
+        branchNode.AddOutput(async _ =>
+        {
+            await Task.CompletedTask;
+            throw new InvalidOperationException("Handler 1 failed");
+        });
+
+        branchNode.AddOutput(async _ =>
+        {
+            await Task.CompletedTask;
+            throw new ArgumentException("Handler 2 failed");
+        });
+
+        // Act
+        var act = async () => await branchNode.ExecuteAsync(item, context, CancellationToken.None);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<AggregateException>();
+        _ = ex.Which.InnerExceptions.Should().HaveCount(2);
+    }
+
+    private sealed class TestContinueErrorHandler(Action onCalled) : IPipelineErrorHandler
+    {
+        public Task<PipelineErrorDecision> HandleNodeFailureAsync(
+            string nodeId,
+            Exception error,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            onCalled();
+            return Task.FromResult(PipelineErrorDecision.ContinueWithoutNode);
+        }
     }
 
     #endregion

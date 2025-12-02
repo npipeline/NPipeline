@@ -126,6 +126,67 @@ public sealed class BranchingPipelineDefinition : IPipelineDefinition
 
 In this example, the `BranchNode` duplicates the input stream, sending copies to multiple downstream paths. One copy goes to `RawDataSink` for storage, and another copy goes through `AnomalyDetector` for real-time anomaly alerts.
 
+## Error Handling in Branch Nodes
+
+Branch handlers are user-provided delegates that execute in parallel. When a branch handler throws an exception, the behavior is controlled by the `ErrorHandlingMode` property:
+
+### Error Handling Modes
+
+| Mode | Behavior | Use Case |
+|------|----------|----------|
+| `RouteToErrorHandler` (default) | Exceptions are wrapped in `BranchHandlerException` and routed through the pipeline's `IPipelineErrorHandler`. If no handler is configured, the exception propagates. | Production pipelines with error monitoring |
+| `CollectAndThrow` | All branch exceptions are collected and thrown as an `AggregateException` after all branches complete. | When you need all branches to attempt execution |
+| `LogAndContinue` | Exceptions are logged but swallowed, allowing the pipeline to continue. | Non-critical side effects (use with caution) |
+
+### Example: Configuring Error Handling Mode
+
+```csharp
+// Create a branch node with explicit error handling mode
+var branchNode = new BranchNode<SensorReading>
+{
+    ErrorHandlingMode = BranchErrorHandlingMode.RouteToErrorHandler
+};
+
+branchNode.AddOutput(async reading =>
+{
+    // This handler's errors will be routed through the pipeline error handler
+    await SendToAlertSystemAsync(reading);
+});
+```
+
+### Example: Handling Branch Errors with IPipelineErrorHandler
+
+```csharp
+public class MyErrorHandler : IPipelineErrorHandler
+{
+    public Task<PipelineErrorDecision> HandleNodeFailureAsync(
+        string nodeId,
+        Exception error,
+        PipelineContext context,
+        CancellationToken cancellationToken)
+    {
+        if (error is BranchHandlerException branchEx)
+        {
+            // Log the branch failure but continue the pipeline
+            Console.WriteLine($"Branch {branchEx.BranchIndex} failed: {branchEx.InnerException?.Message}");
+            return Task.FromResult(PipelineErrorDecision.ContinueWithoutNode);
+        }
+
+        // For other errors, fail the pipeline
+        return Task.FromResult(PipelineErrorDecision.FailPipeline);
+    }
+}
+```
+
+### BranchHandlerException Properties
+
+When a branch handler fails, the `BranchHandlerException` provides context about the failure:
+
+- `NodeId`: The ID of the branch node where the failure occurred
+- `BranchIndex`: The zero-based index of the failed branch handler
+- `FailedItem`: The item that was being processed when the failure occurred
+- `InnerException`: The original exception from the branch handler
+
 ## Performance Considerations
 
 * **Memory Usage**: For large-scale fan-out scenarios, be mindful of memory consumption. Each branch maintains its own processing queue and buffers, which can multiply memory usage with multiple branches.
@@ -137,7 +198,7 @@ In this example, the `BranchNode` duplicates the input stream, sending copies to
 
 * **Order of Processing:** While `BranchNode` duplicates items, the order in which items are processed in parallel branches is not guaranteed unless explicitly managed (e.g., by subsequent synchronization points).
 * **Performance Impact:** Duplicating streams and processing them in parallel can increase resource consumption (CPU, memory) if not managed carefully.
-* **Error Handling:** Errors in one branch of a `BranchNode` will typically not affect other branches, allowing for isolated fault tolerance.
+* **Error Handling:** By default, errors in branch handlers are routed through the pipeline's error handling system. Configure `ErrorHandlingMode` to control this behavior.
 
 ## Next Steps
 
