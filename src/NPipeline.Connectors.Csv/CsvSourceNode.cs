@@ -65,6 +65,7 @@ public sealed class CsvSourceNode<T> : SourceNode<T>
         _provider = provider ?? throw new ArgumentNullException(nameof(provider));
     }
 
+    /// <inheritdoc/>
     public override IDataPipe<T> Execute(PipelineContext context, CancellationToken cancellationToken)
     {
         var provider = _provider ?? StorageProviderFactory.GetProviderOrThrow(

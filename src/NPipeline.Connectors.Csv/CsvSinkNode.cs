@@ -58,6 +58,7 @@ public sealed class CsvSinkNode<T> : SinkNode<T>
         _provider = provider ?? throw new ArgumentNullException(nameof(provider));
     }
 
+    /// <inheritdoc/>
     public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
         var provider = _provider ?? StorageProviderFactory.GetProviderOrThrow(

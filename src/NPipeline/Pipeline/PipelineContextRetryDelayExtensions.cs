@@ -121,6 +121,7 @@ public static class PipelineContextRetryDelayExtensions
     /// <summary>
     ///     Creates a retry delay strategy from configuration using factory.
     /// </summary>
+    /// <param name="context">The pipeline context.</param>
     /// <param name="configuration">The delay strategy configuration.</param>
     /// <returns>A retry delay strategy implementation.</returns>
     /// <remarks>

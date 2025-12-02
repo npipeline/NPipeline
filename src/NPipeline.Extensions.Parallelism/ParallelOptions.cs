@@ -8,8 +8,19 @@ namespace NPipeline.Extensions.Parallelism;
 /// </summary>
 public enum BoundedQueuePolicy
 {
+    /// <summary>
+    ///     Blocks the producer when the queue is full until space becomes available.
+    /// </summary>
     Block = 0,
+
+    /// <summary>
+    ///     Drops the newest item when the queue is full to make space for incoming items.
+    /// </summary>
     DropNewest = 1,
+
+    /// <summary>
+    ///     Drops the oldest item when the queue is full to make space for incoming items.
+    /// </summary>
     DropOldest = 2,
 }
 
@@ -38,12 +49,19 @@ public sealed record ParallelOptions(
     int? OutputBufferCapacity = null,
     bool PreserveOrdering = true);
 
+/// <summary>
+///     Extension methods for configuring parallel execution options on pipeline nodes.
+/// </summary>
 public static class ParallelPipelineBuilderExtensions
 {
     /// <summary>
     ///     Attaches parallel execution options to a transform node. These are consumed when the node's execution strategy is
     ///     <see cref="ParallelExecutionStrategy" />.
     /// </summary>
+    /// <param name="builder">The pipeline builder to configure.</param>
+    /// <param name="handle">The handle of the node to configure with parallel options.</param>
+    /// <param name="options">The parallel execution options to apply to the node.</param>
+    /// <returns>The pipeline builder for method chaining.</returns>
     public static PipelineBuilder WithParallelOptions(this PipelineBuilder builder, NodeHandle handle, ParallelOptions options)
     {
         builder.SetNodeExecutionOption(handle.Id, options);

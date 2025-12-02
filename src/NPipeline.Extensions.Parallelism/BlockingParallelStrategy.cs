@@ -24,6 +24,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
     {
     }
 
+    /// <inheritdoc/>
     public override Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(
         IDataPipe<TIn> input,
         ITransformNode<TIn, TOut> node,
@@ -108,7 +109,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         else
         {
             channel = Channel.CreateBounded<TOut>(new BoundedChannelOptions(outputCap.Value)
-                { SingleReader = false, SingleWriter = true, FullMode = BoundedChannelFullMode.Wait });
+            { SingleReader = false, SingleWriter = true, FullMode = BoundedChannelFullMode.Wait });
         }
 
         // Producer: feed block

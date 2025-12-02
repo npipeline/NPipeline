@@ -4,6 +4,9 @@ using NPipeline.Connectors.Configuration;
 
 namespace NPipeline.Connectors.DependencyInjection;
 
+/// <summary>
+///     Provides extension methods for registering NPipeline connectors and storage providers in the dependency injection container.
+/// </summary>
 public static class ServiceCollectionExtensions
 {
     /// <summary>

@@ -12,13 +12,41 @@ public sealed class ParallelExecutionMetrics
     private long _maxItemRetryAttempts;
     private long _processed;
     private long _retryEvents;
+
+    /// <summary>
+    ///     Gets the number of items that were dropped because the queue was full and the newest items were discarded.
+    /// </summary>
     public long DroppedNewest => Interlocked.Read(ref _droppedNewest);
+
+    /// <summary>
+    ///     Gets the number of items that were dropped because the queue was full and the oldest items were discarded.
+    /// </summary>
     public long DroppedOldest => Interlocked.Read(ref _droppedOldest);
+
+    /// <summary>
+    ///     Gets the total number of items that have been successfully processed.
+    /// </summary>
     public long Processed => Interlocked.Read(ref _processed);
+
+    /// <summary>
+    ///     Gets the total number of items that have been enqueued for processing.
+    /// </summary>
     public long Enqueued => Interlocked.Read(ref _enqueued);
-    public long RetryEvents => Interlocked.Read(ref _retryEvents); // total retry attempts (each failed attempt that caused a retry)
-    public long ItemsWithRetry => Interlocked.Read(ref _itemsWithRetry); // number of items that were retried at least once
-    public long MaxItemRetryAttempts => Interlocked.Read(ref _maxItemRetryAttempts); // highest retry attempt count for any single item
+
+    /// <summary>
+    ///     Gets the total number of retry attempts (each failed attempt that caused a retry).
+    /// </summary>
+    public long RetryEvents => Interlocked.Read(ref _retryEvents);
+
+    /// <summary>
+    ///     Gets the number of items that were retried at least once.
+    /// </summary>
+    public long ItemsWithRetry => Interlocked.Read(ref _itemsWithRetry);
+
+    /// <summary>
+    ///     Gets the highest retry attempt count for any single item.
+    /// </summary>
+    public long MaxItemRetryAttempts => Interlocked.Read(ref _maxItemRetryAttempts);
 
     internal long IncrementDroppedNewest()
     {
