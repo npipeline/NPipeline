@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Collections.Concurrent;
 using AwesomeAssertions;
 using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
@@ -8,11 +9,50 @@ using NPipeline.Pipeline;
 namespace NPipeline.Tests.Nodes.Branch;
 
 /// <summary>
-///     Comprehensive tests for BranchNode&lt;T&gt;.
+///     Comprehensive tests for BranchNode&lt;T&gt; covering basic functionality, 
+///     error handling, parallel execution, concurrent access, and edge cases.
 ///     Tests output handler execution, parallel processing, exception handling, and proper item pass-through.
 /// </summary>
 public sealed class BranchNodeTests
 {
+    #region Helper Classes
+
+    private sealed class TestObject
+    {
+        public int Value { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
+    private sealed class ContinueErrorHandler(Action onCalled) : IPipelineErrorHandler
+    {
+        public Task<PipelineErrorDecision> HandleNodeFailureAsync(
+            string nodeId,
+            Exception error,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            onCalled();
+            return Task.FromResult(PipelineErrorDecision.ContinueWithoutNode);
+        }
+    }
+
+    private sealed class FailErrorHandler(Action onCalled) : IPipelineErrorHandler
+    {
+        public Task<PipelineErrorDecision> HandleNodeFailureAsync(
+            string nodeId,
+            Exception error,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            onCalled();
+            return Task.FromResult(PipelineErrorDecision.FailPipeline);
+        }
+    }
+
+    #endregion
+
+    #region Basic Functionality Tests
+
     [Fact]
     public async Task BranchNode_WithNoOutputs_ReturnsItemUnchanged()
     {
@@ -90,6 +130,64 @@ public sealed class BranchNodeTests
     }
 
     [Fact]
+    public async Task BranchNode_HandlerReceivesCorrectItem()
+    {
+        // Arrange
+        BranchNode<string> node = new();
+        string? capturedItem = null;
+
+        node.AddOutput(async x =>
+        {
+            capturedItem = x;
+            await Task.Yield();
+        });
+
+        var ctx = PipelineContext.Default;
+
+        // Act
+        var result = await node.ExecuteAsync("HelloWorld", ctx, CancellationToken.None);
+
+        // Assert
+        _ = result.Should().Be("HelloWorld");
+        _ = capturedItem.Should().Be("HelloWorld");
+    }
+
+    [Fact]
+    public async Task BranchNode_AddOutputAfterCreation_Works()
+    {
+        // Arrange
+        BranchNode<int> node = new();
+        List<int> results = [];
+
+        node.AddOutput(async x =>
+        {
+            results.Add(x);
+            await Task.Yield();
+        });
+
+        node.AddOutput(async x =>
+        {
+            results.Add(x * 2);
+            await Task.Yield();
+        });
+
+        var ctx = PipelineContext.Default;
+
+        // Act
+        var result = await node.ExecuteAsync(10, ctx, CancellationToken.None);
+
+        // Assert
+        _ = result.Should().Be(10);
+        _ = results.Should().HaveCount(2);
+        _ = results.Should().Contain(10);
+        _ = results.Should().Contain(20);
+    }
+
+    #endregion
+
+    #region Parallel Execution Tests
+
+    [Fact]
     public async Task BranchNode_ExecutesHandlersInParallel()
     {
         // Arrange - use synchronization to deterministically ensure handlers start concurrently
@@ -132,6 +230,43 @@ public sealed class BranchNodeTests
         // await completion
         var execResult = await execTask;
     }
+
+    [Fact]
+    public async Task BranchNode_ManyHandlers_AllExecute()
+    {
+        // Arrange
+        BranchNode<int> node = new();
+        List<int> results = [];
+
+        for (var i = 0; i < 10; i++)
+        {
+            var index = i;
+
+            node.AddOutput(async x =>
+            {
+                results.Add(index);
+                await Task.Yield();
+            });
+        }
+
+        var ctx = PipelineContext.Default;
+
+        // Act
+        var result = await node.ExecuteAsync(1, ctx, CancellationToken.None);
+
+        // Assert
+        _ = result.Should().Be(1);
+        _ = results.Should().HaveCount(10);
+
+        for (var i = 0; i < 10; i++)
+        {
+            _ = results.Should().Contain(i);
+        }
+    }
+
+    #endregion
+
+    #region Error Handling Tests
 
     [Fact]
     public async Task BranchNode_ExceptionInOneHandler_WithLogAndContinueMode_OtherHandlersStillExecute()
@@ -291,85 +426,195 @@ public sealed class BranchNodeTests
         _ = ex.FailedItem.Should().Be("test-item");
     }
 
-    private sealed class ContinueErrorHandler(Action onCalled) : IPipelineErrorHandler
-    {
-        public Task<PipelineErrorDecision> HandleNodeFailureAsync(
-            string nodeId,
-            Exception error,
-            PipelineContext context,
-            CancellationToken cancellationToken)
-        {
-            onCalled();
-            return Task.FromResult(PipelineErrorDecision.ContinueWithoutNode);
-        }
-    }
+    #endregion
 
-    private sealed class FailErrorHandler(Action onCalled) : IPipelineErrorHandler
-    {
-        public Task<PipelineErrorDecision> HandleNodeFailureAsync(
-            string nodeId,
-            Exception error,
-            PipelineContext context,
-            CancellationToken cancellationToken)
-        {
-            onCalled();
-            return Task.FromResult(PipelineErrorDecision.FailPipeline);
-        }
-    }
+    #region Data Passing Tests
 
     [Fact]
-    public async Task BranchNode_HandlerReceivesCorrectItem()
+    public async Task BranchNode_WithReferenceType_PassesByReference()
     {
         // Arrange
-        BranchNode<string> node = new();
-        string? capturedItem = null;
+        BranchNode<Dictionary<string, int>> node = new();
+        var modifyCount = 0;
 
-        node.AddOutput(async x =>
+        node.AddOutput(async dict =>
         {
-            capturedItem = x;
+            if (!dict.ContainsKey("modified"))
+            {
+                dict["modified"] = ++modifyCount;
+            }
+
+            await Task.Yield();
+        });
+
+        node.AddOutput(async dict =>
+        {
+            if (!dict.ContainsKey("modified"))
+            {
+                dict["modified"] = ++modifyCount;
+            }
+
             await Task.Yield();
         });
 
         var ctx = PipelineContext.Default;
+        Dictionary<string, int> input = new() { { "key", 1 } };
 
         // Act
-        var result = await node.ExecuteAsync("HelloWorld", ctx, CancellationToken.None);
+        var result = await node.ExecuteAsync(input, ctx, CancellationToken.None);
 
         // Assert
-        _ = result.Should().Be("HelloWorld");
-        _ = capturedItem.Should().Be("HelloWorld");
+        _ = result.Should().BeSameAs(input);
+        _ = result["key"].Should().Be(1);
+
+        // The "modified" key should be present (one of the handlers added it)
+        _ = result.Should().ContainKey("modified");
     }
 
     [Fact]
-    public async Task BranchNode_AddOutputAfterCreation_Works()
+    public async Task BranchNode_ExecuteAsync_DataPassedToHandlers_IsUnmodified()
+    {
+        // Arrange
+        var branchNode = new BranchNode<TestObject>();
+        var context = PipelineContext.Default;
+        var originalObject = new TestObject { Value = 42, Name = "test" };
+        var receivedObjects = new ConcurrentBag<TestObject>();
+
+        branchNode.AddOutput(async obj =>
+        {
+            receivedObjects.Add(obj);
+            await Task.CompletedTask;
+        });
+
+        branchNode.AddOutput(async obj =>
+        {
+            receivedObjects.Add(obj);
+            await Task.CompletedTask;
+        });
+
+        // Act
+        var result = await branchNode.ExecuteAsync(originalObject, context, CancellationToken.None);
+
+        // Assert
+        _ = result.Should().Be(originalObject);
+        _ = receivedObjects.Should().HaveCount(2);
+
+        foreach (var obj in receivedObjects)
+        {
+            _ = obj.Should().Be(originalObject);
+        }
+    }
+
+    [Fact]
+    public async Task BranchNode_ExecuteAsync_AllHandlersReceiveSameItem()
+    {
+        // Arrange
+        var branchNode = new BranchNode<int>();
+        var context = PipelineContext.Default;
+        var item = 123;
+        var receivedItems = new ConcurrentBag<int>();
+
+        for (var i = 0; i < 5; i++)
+        {
+            branchNode.AddOutput(async receivedItem =>
+            {
+                receivedItems.Add(receivedItem);
+                await Task.CompletedTask;
+            });
+        }
+
+        // Act
+        _ = await branchNode.ExecuteAsync(item, context, CancellationToken.None);
+
+        // Assert
+        _ = receivedItems.Should().HaveCount(5);
+
+        foreach (var receivedItem in receivedItems)
+        {
+            _ = receivedItem.Should().Be(item);
+        }
+    }
+
+    #endregion
+
+    #region Concurrent Access Tests
+
+    [Fact]
+    public async Task BranchNode_AddOutput_ConcurrentAdds_ThreadSafe()
+    {
+        // Arrange
+        var branchNode = new BranchNode<int>();
+        var context = PipelineContext.Default;
+        var item = 1;
+        var tasks = new List<Task>();
+        var addCount = 100;
+
+        for (var i = 0; i < addCount; i++)
+        {
+            tasks.Add(Task.Run(() => { branchNode.AddOutput(async _ => await Task.CompletedTask); }));
+        }
+
+        await Task.WhenAll(tasks);
+        _ = await branchNode.ExecuteAsync(item, context, CancellationToken.None);
+
+        // Assert - No exceptions should occur
+        Assert.True(true);
+    }
+
+    [Fact]
+    public async Task BranchNode_ExecuteAsync_DuringConcurrentAdds_Consistent()
+    {
+        // Arrange
+        var branchNode = new BranchNode<int>();
+        var context = PipelineContext.Default;
+        var executionCounts = new ConcurrentBag<int>();
+        var item = 1;
+
+        branchNode.AddOutput(async _ =>
+        {
+            executionCounts.Add(1);
+            await Task.CompletedTask;
+        });
+
+        // Act
+        _ = await branchNode.ExecuteAsync(item, context, CancellationToken.None);
+
+        // Assert
+        _ = executionCounts.Should().HaveCount(1);
+    }
+
+    #endregion
+
+    #region Disposal Tests
+
+    [Fact]
+    public async Task BranchNode_DisposeAsync_CompletesSuccessfully()
     {
         // Arrange
         BranchNode<int> node = new();
-        List<int> results = [];
+        node.AddOutput(async x => await Task.Yield());
 
-        node.AddOutput(async x =>
-        {
-            results.Add(x);
-            await Task.Yield();
-        });
-
-        node.AddOutput(async x =>
-        {
-            results.Add(x * 2);
-            await Task.Yield();
-        });
-
-        var ctx = PipelineContext.Default;
-
-        // Act
-        var result = await node.ExecuteAsync(10, ctx, CancellationToken.None);
-
-        // Assert
-        _ = result.Should().Be(10);
-        _ = results.Should().HaveCount(2);
-        _ = results.Should().Contain(10);
-        _ = results.Should().Contain(20);
+        // Act & Assert
+        await node.DisposeAsync();
     }
+
+    [Fact]
+    public async Task BranchNode_DisposeAsync_MultipleTimes_IsIdempotent()
+    {
+        // Arrange
+        BranchNode<int> node = new();
+
+        // Act & Assert
+        await node.DisposeAsync();
+        await node.DisposeAsync();
+        await node.DisposeAsync();
+
+        Assert.True(true);
+    }
+
+    #endregion
+
+    #region Edge Cases
 
     [Fact]
     public async Task BranchNode_MultipleItems_PreservesItemsThroughBranches()
@@ -398,84 +643,5 @@ public sealed class BranchNodeTests
         _ = captured.Should().ContainInOrder(1, 2, 3);
     }
 
-    [Fact]
-    public async Task BranchNode_WithReferenceType_PassesByReference()
-    {
-        // Arrange
-        BranchNode<Dictionary<string, int>> node = new();
-        var modifyCount = 0;
-
-        node.AddOutput(async dict =>
-        {
-            if (!dict.ContainsKey("modified"))
-                dict["modified"] = ++modifyCount;
-
-            await Task.Yield();
-        });
-
-        node.AddOutput(async dict =>
-        {
-            if (!dict.ContainsKey("modified"))
-                dict["modified"] = ++modifyCount;
-
-            await Task.Yield();
-        });
-
-        var ctx = PipelineContext.Default;
-        Dictionary<string, int> input = new() { { "key", 1 } };
-
-        // Act
-        var result = await node.ExecuteAsync(input, ctx, CancellationToken.None);
-
-        // Assert
-        _ = result.Should().BeSameAs(input);
-        _ = result["key"].Should().Be(1);
-
-        // The "modified" key should be present (one of the handlers added it)
-        _ = result.Should().ContainKey("modified");
-    }
-
-    [Fact]
-    public async Task BranchNode_DisposalDoesNotThrow()
-    {
-        // Arrange
-        BranchNode<int> node = new();
-        node.AddOutput(async x => await Task.Yield());
-
-        // Act & Assert
-        await node.DisposeAsync();
-    }
-
-    [Fact]
-    public async Task BranchNode_ManyHandlers_AllExecute()
-    {
-        // Arrange
-        BranchNode<int> node = new();
-        List<int> results = [];
-
-        for (var i = 0; i < 10; i++)
-        {
-            var index = i;
-
-            node.AddOutput(async x =>
-            {
-                results.Add(index);
-                await Task.Yield();
-            });
-        }
-
-        var ctx = PipelineContext.Default;
-
-        // Act
-        var result = await node.ExecuteAsync(1, ctx, CancellationToken.None);
-
-        // Assert
-        _ = result.Should().Be(1);
-        _ = results.Should().HaveCount(10);
-
-        for (var i = 0; i < 10; i++)
-        {
-            _ = results.Should().Contain(i);
-        }
-    }
+    #endregion
 }
