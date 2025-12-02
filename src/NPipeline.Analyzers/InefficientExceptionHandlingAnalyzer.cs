@@ -63,9 +63,8 @@ public sealed class InefficientExceptionHandlingAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    ///     <summary>
-    ///         Determines if a syntax node is in a hot path context.
-    ///     </summary>
+    /// Determines if a syntax node is in a hot path context.
+    /// </summary>
     private static bool IsInHotPathContext(SyntaxNode node, SemanticModel semanticModel)
     {
         // Find enclosing method

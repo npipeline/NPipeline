@@ -260,7 +260,7 @@ public sealed class SourceNodeStreamingCodeFixProvider : CodeFixProvider
     }
 
     /// <summary>
-    ///     Converts a List<T> creation to IAsyncEnumerable with yield return.
+    ///     Converts a List&lt;T&gt; creation to IAsyncEnumerable with yield return.
     /// </summary>
     private static async Task<Document> ConvertListToAsyncEnumerableAsync(
         Document document,
