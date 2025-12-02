@@ -68,6 +68,16 @@ public class InMemorySinkNode<T> : SinkNode<T>
         }
     }
 
+    /// <summary>
+    ///     Registers this sink node in the specified pipeline context for testing purposes.
+    ///     This allows the sink to be retrieved later for assertions in test code.
+    /// </summary>
+    /// <param name="context">The pipeline context to register this sink in.</param>
+    /// <remarks>
+    ///     The sink is registered using both its own type and the data type T as keys,
+    ///     enabling flexible retrieval in test scenarios. If this is a sub-pipeline,
+    ///     the sink is also registered in the parent context.
+    /// </remarks>
     public void RegisterInContext(PipelineContext context)
     {
         // Register in current context
