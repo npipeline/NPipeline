@@ -19,16 +19,16 @@ internal static class CodeFixLogger
     ///     Logs an error message using appropriate logging mechanism.
     /// </summary>
     /// <param name="message">The error message to log.</param>
+    /// <remarks>
+    ///     Code fix providers run in the IDE context where dependency injection is not available.
+    ///     Debug.WriteLine is the appropriate choice as it integrates with IDE diagnostic output
+    ///     and has zero overhead when no debugger is attached.
+    /// </remarks>
     internal static void LogError(string message)
     {
-        // In a production environment, this would use proper logging infrastructure
-        // For now, we'll use Debug.WriteLine as a fallback
+        // Code fix providers run in IDE context without DI access.
+        // Debug.WriteLine integrates with IDE diagnostic output and is appropriate here.
         Debug.WriteLine($"[CodeFix Error] {message}");
-
-        // TODO: Replace with proper logging framework when available:
-        // - ILogger<T> with dependency injection
-        // - Serilog, NLog, or other structured logging
-        // - Microsoft.Extensions.Logging
     }
 }
 

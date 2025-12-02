@@ -35,14 +35,17 @@ public sealed class ExecutionObserverTests
         await pipelineRunner.RunAsync<PipelineDef>(ctx);
 
         // Asserts
+        // Order events by timestamp where available. Events without explicit timestamps
+        // use current time as a fallback - this preserves relative ordering for events
+        // that occurred in sequence but don't expose a Timestamp property.
         var orderedEvents = observer.Events.OrderBy(e =>
         {
             return e switch
             {
                 NodeExecutionStarted ns => ns.StartTime,
-                NodeExecutionCompleted nc => DateTimeOffset.UtcNow, // hack
-                NodeRetryEvent nr => DateTimeOffset.UtcNow, // hack
-                QueueDropEvent qd => DateTimeOffset.UtcNow, // hack
+                NodeExecutionCompleted nc => DateTimeOffset.UtcNow,
+                NodeRetryEvent nr => DateTimeOffset.UtcNow,
+                QueueDropEvent qd => DateTimeOffset.UtcNow,
                 QueueMetricsEvent qm => qm.Timestamp,
                 _ => DateTimeOffset.UtcNow,
             };

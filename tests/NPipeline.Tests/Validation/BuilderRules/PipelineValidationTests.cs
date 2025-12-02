@@ -138,10 +138,11 @@ public sealed class PipelineValidationTests
         {
             var s = b.AddInMemorySourceWithDataFromContext(c, "s", [1]);
             var t = b.AddTransform<T, int, int>("t");
-            b.Connect(s, t); // introduce back edge cycle
+            b.Connect(s, t);
 
-            // Hack: builder doesn't expose raw edge add; simulate by adding another transform referencing existing ids is not possible
-            // So we construct cycle via two transforms
+            // Create a cycle using two transforms connected in a loop.
+            // This is the idiomatic way to construct cycles for testing since
+            // the builder API intentionally doesn't expose raw edge manipulation.
             var u = b.AddTransform<T, int, int>("u");
             b.Connect(t, u).Connect(u, t);
         }

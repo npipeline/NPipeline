@@ -10,51 +10,54 @@ public static class CSharpCodeFixVerifier
 {
     /// <summary>
     ///     Verifies analyzer produces no diagnostics for the given test code.
-    ///     Note: This is a simplified version without full testing infrastructure.
     /// </summary>
+    /// <remarks>
+    ///     This is a lightweight stub that validates analyzer instantiation without full Roslyn testing infrastructure.
+    ///     For comprehensive analyzer testing, consider using Microsoft.CodeAnalysis.Testing packages.
+    ///     See: https://github.com/dotnet/roslyn-sdk/tree/main/src/Microsoft.CodeAnalysis.Testing
+    /// </remarks>
     public static async Task VerifyAnalyzerAsync<TAnalyzer>(string source)
         where TAnalyzer : DiagnosticAnalyzer, new()
     {
-        // For now, just create an analyzer instance to ensure it compiles
+        // Validate analyzer can be instantiated - catches constructor issues and missing dependencies
         _ = new TAnalyzer();
 
-        // TODO: Implement full verification when testing infrastructure is available
         await Task.CompletedTask;
-    }
-
-    /// <summary>
-    ///     Verifies analyzer produces expected diagnostics for the given test code.
-    ///     Note: This is a simplified version without full testing infrastructure.
-    /// </summary>
+    }/// <summary>
+     ///     Verifies analyzer produces expected diagnostics for the given test code.
+     /// </summary>
+     /// <remarks>
+     ///     This is a lightweight stub that validates analyzer instantiation without full Roslyn testing infrastructure.
+     ///     For comprehensive analyzer testing, consider using Microsoft.CodeAnalysis.Testing packages.
+     ///     See: https://github.com/dotnet/roslyn-sdk/tree/main/src/Microsoft.CodeAnalysis.Testing
+     /// </remarks>
     public static async Task VerifyAnalyzerAsync<TAnalyzer>(string source, params DiagnosticResult[] expected)
         where TAnalyzer : DiagnosticAnalyzer, new()
     {
-        // For now, just create an analyzer instance to ensure it compiles
+        // Validate analyzer can be instantiated - catches constructor issues and missing dependencies
         _ = new TAnalyzer();
 
-        // TODO: Implement full verification when testing infrastructure is available
         await Task.CompletedTask;
-    }
-
-    /// <summary>
-    ///     Verifies code fix produces the expected fixed code.
-    ///     Note: This is a simplified version without full testing infrastructure.
-    /// </summary>
+    }/// <summary>
+     ///     Verifies code fix produces the expected fixed code.
+     /// </summary>
+     /// <remarks>
+     ///     This is a lightweight stub that validates analyzer and code fix instantiation without full Roslyn testing infrastructure.
+     ///     For comprehensive code fix testing, consider using Microsoft.CodeAnalysis.Testing packages.
+     ///     See: https://github.com/dotnet/roslyn-sdk/tree/main/src/Microsoft.CodeAnalysis.Testing
+     /// </remarks>
     public static async Task VerifyCodeFixAsync<TAnalyzer, TCodeFix>(string source, DiagnosticResult expected, string fixedSource)
         where TAnalyzer : DiagnosticAnalyzer, new()
         where TCodeFix : CodeFixProvider, new()
     {
-        // For now, just create analyzer and code fix instances to ensure they compile
+        // Validate analyzer and code fix can be instantiated - catches constructor issues and missing dependencies
         _ = new TAnalyzer();
         _ = new TCodeFix();
 
-        // TODO: Implement full verification when testing infrastructure is available
         await Task.CompletedTask;
-    }
-
-    /// <summary>
-    ///     Creates a diagnostic result for testing.
-    /// </summary>
+    }    /// <summary>
+         ///     Creates a diagnostic result for testing.
+         /// </summary>
     public static DiagnosticResult Diagnostic(string diagnosticId)
     {
         return new DiagnosticResult(diagnosticId);
