@@ -34,9 +34,11 @@ public sealed class SynchronousOverAsyncAnalyzer : DiagnosticAnalyzer
         + "avoid Task.Run() to wrap synchronous operations, and don't block in Task-returning methods. "
         + "https://npipeline.dev/docs/async-programming/avoiding-sync-over-async-patterns.");
 
+    /// <inheritdoc/>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         [SynchronousOverAsyncRule];
 
+    /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

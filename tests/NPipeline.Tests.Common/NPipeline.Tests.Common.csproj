@@ -7,6 +7,11 @@
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     </PropertyGroup>
 
+    <PropertyGroup>
+        <NoWarn>$(NoWarn);CS1591</NoWarn>
+        <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    </PropertyGroup>
+
     <ItemGroup>
         <ProjectReference Include="..\..\src\NPipeline\NPipeline.csproj"/>
     </ItemGroup>

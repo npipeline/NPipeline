@@ -36,9 +36,11 @@ public sealed class ResilientExecutionConfigurationAnalyzer : DiagnosticAnalyzer
         + "Each prerequisite is mandatory - skipping even one will silently disable restart: "
         + "https://npipeline.dev/docs/core-concepts/resilience/node-restart-quickstart.");
 
+    /// <inheritdoc/>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         ImmutableArray.Create(IncompleteResilientConfigurationRule);
 
+    /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

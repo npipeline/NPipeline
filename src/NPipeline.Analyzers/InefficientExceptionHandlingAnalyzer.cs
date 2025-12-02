@@ -30,8 +30,10 @@ public sealed class InefficientExceptionHandlingAnalyzer : DiagnosticAnalyzer
         + "Avoid empty catch blocks and re-throwing with 'throw;' which loses stack trace information. "
         + "https://npipeline.dev/docs/reliability/efficient-exception-handling.");
 
+    /// <inheritdoc/>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
+    /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

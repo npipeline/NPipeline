@@ -8,6 +8,11 @@
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     </PropertyGroup>
 
+    <PropertyGroup>
+        <NoWarn>$(NoWarn);CS1591</NoWarn>
+        <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    </PropertyGroup>
+
     <ItemGroup>
         <PackageReference Include="AwesomeAssertions" Version="9.3.0"/>
         <PackageReference Include="FluentAssertions" Version="8.8.0"/>

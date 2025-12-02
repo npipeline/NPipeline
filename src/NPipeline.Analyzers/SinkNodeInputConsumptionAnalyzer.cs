@@ -27,9 +27,11 @@ public sealed class SinkNodeInputConsumptionAnalyzer : DiagnosticAnalyzer
         true,
         "SinkNode implementations should consume all items from their input data pipe. Failing to consume input may result in data loss and unexpected behavior. Use await foreach to iterate through input items. https://npipeline.dev/docs/nodes/sink-nodes/best-practices.");
 
+    /// <inheritdoc/>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         [SinkNodeInputNotConsumedRule];
 
+    /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

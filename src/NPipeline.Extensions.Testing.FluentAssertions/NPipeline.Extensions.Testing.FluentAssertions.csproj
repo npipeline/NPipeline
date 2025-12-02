@@ -22,6 +22,10 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
+    <PropertyGroup>
+        <WarningsNotAsErrors>$(WarningsNotAsErrors);CS1591</WarningsNotAsErrors>
+    </PropertyGroup>
+
     <ItemGroup>
         <ProjectReference Include="..\NPipeline.Extensions.Testing\NPipeline.Extensions.Testing.csproj"/>
     </ItemGroup>

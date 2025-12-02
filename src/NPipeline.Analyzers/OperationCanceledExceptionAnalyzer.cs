@@ -36,9 +36,11 @@ public sealed class OperationCanceledExceptionAnalyzer : DiagnosticAnalyzer
         + "For broad catches, check exception type and re-throw if it's OperationCanceledException. "
         + "https://npipeline.dev/docs/core-concepts/cancellation/handling-cancellation.");
 
+    /// <inheritdoc/>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         [SwallowingOperationCanceledExceptionRule];
 
+    /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

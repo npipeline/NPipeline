@@ -12,6 +12,9 @@ namespace NPipeline.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class DependencyInjectionAnalyzer : DiagnosticAnalyzer
 {
+    /// <summary>
+    ///     Diagnostic identifier for the dependency injection anti-pattern warning.
+    /// </summary>
     public const string DependencyInjectionAntiPatternId = "NP9401";
 
     private static readonly DiagnosticDescriptor DependencyInjectionAntiPatternRule = new(

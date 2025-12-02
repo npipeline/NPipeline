@@ -23,6 +23,10 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
+    <PropertyGroup>
+        <WarningsNotAsErrors>$(WarningsNotAsErrors);CS1591</WarningsNotAsErrors>
+    </PropertyGroup>
+
     <ItemGroup>
         <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
             <_Parameter1>NPipeline.Tests</_Parameter1>

@@ -25,6 +25,10 @@
         <PackageIcon>icon.png</PackageIcon>
     </PropertyGroup>
 
+    <PropertyGroup>
+        <WarningsNotAsErrors>$(WarningsNotAsErrors);CS1591</WarningsNotAsErrors>
+    </PropertyGroup>
+
     <ItemGroup>
         <None Include="..\..\README.md" Pack="true" PackagePath="\"/>
         <None Include="..\..\icon.png" Pack="true" PackagePath="\"/>
@@ -34,7 +38,7 @@
         <!-- Include analyzers as a compile-time development dependency only
              PrivateAssets="All" - not included in NuGet package dependencies
              ReferenceOutputAssembly="false" - not referenced at runtime
-             This keeps the core dependency-free as per project design goals -->
+             This keeps the core dependency-free. -->
         <ProjectReference Include="../NPipeline.Analyzers/NPipeline.Analyzers.csproj"
                           PrivateAssets="All"
                           ReferenceOutputAssembly="false"/>

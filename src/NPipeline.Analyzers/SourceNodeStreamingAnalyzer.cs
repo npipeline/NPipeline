@@ -35,9 +35,11 @@ public sealed class SourceNodeStreamingAnalyzer : DiagnosticAnalyzer
         + "and avoid materializing collections in memory. "
         + "https://npipeline.dev/docs/performance/source-node-streaming-patterns.");
 
+    /// <inheritdoc/>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         [SourceNodeStreamingRule];
 
+    /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

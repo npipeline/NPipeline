@@ -36,9 +36,11 @@ public sealed class BlockingAsyncOperationAnalyzer : DiagnosticAnalyzer
         + "File.ReadAllTextAsync instead of File.ReadAllText, etc. "
         + "https://npipeline.dev/docs/async-programming/avoiding-blocking-patterns.");
 
+    /// <inheritdoc/>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         [BlockingAsyncOperationRule];
 
+    /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

@@ -34,9 +34,11 @@ public sealed class PipelineContextAccessAnalyzer : DiagnosticAnalyzer
         + "For dictionary access, use TryGetValue pattern or null-conditional operators with proper type checking. "
         + "https://npipeline.dev/docs/core-concepts/pipeline-context/safe-access-patterns.");
 
+    /// <inheritdoc/>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         [UnsafePipelineContextAccessRule];
 
+    /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

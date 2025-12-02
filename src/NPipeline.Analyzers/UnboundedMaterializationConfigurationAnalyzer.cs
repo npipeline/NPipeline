@@ -32,8 +32,10 @@ public sealed class UnboundedMaterializationConfigurationAnalyzer : DiagnosticAn
         + "Always set MaxMaterializedItems to bound memory usage and enable backpressure. "
         + "Recommended values: 100-10000 depending on memory constraints and item size.");
 
+    /// <inheritdoc/>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
+    /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

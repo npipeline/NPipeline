@@ -6,7 +6,8 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>disable</ImplicitUsings>
         <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
-        <NoWarn>$(NoWarn);CS8892;CA1848</NoWarn>
+        <NoWarn>$(NoWarn);CS8892;CA1848;CS1591</NoWarn>
+        <GenerateDocumentationFile>false</GenerateDocumentationFile>
     </PropertyGroup>
 
     <ItemGroup>

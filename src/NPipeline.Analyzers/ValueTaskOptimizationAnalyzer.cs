@@ -36,9 +36,11 @@ public sealed class ValueTaskOptimizationAnalyzer : DiagnosticAnalyzer
         + "and improves performance, especially in high-throughput scenarios. "
         + "https://npipeline.dev/docs/core-concepts/nodes/valuetask-transforms/.");
 
+    /// <inheritdoc/>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         [MissingValueTaskOptimizationRule];
 
+    /// <inheritdoc/>
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
