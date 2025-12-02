@@ -5,8 +5,16 @@ using NPipeline.Pipeline;
 
 namespace NPipeline.Extensions.Testing;
 
+/// <summary>
+/// A testing utility transform node that passes through input data with optional type conversion.
+/// This node is primarily used in testing scenarios where you need to simulate data transformation
+/// without actual processing logic, or to convert between compatible types in a pipeline.
+/// </summary>
+/// <typeparam name="TIn">The input type of the transform node.</typeparam>
+/// <typeparam name="TOut">The output type of the transform node.</typeparam>
 public class PassThroughTransformNode<TIn, TOut> : TransformNode<TIn, TOut>
 {
+    /// <inheritdoc/>
     public override Task<TOut> ExecuteAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
