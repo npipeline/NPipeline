@@ -8,27 +8,30 @@ sidebar_position: 3
 
 NPipeline supports multiple execution models to handle different requirements: sequential (the default) and parallel execution through extensions.
 
-## Core Design: Synchronous Setup + Asynchronous Execution
+## Core Design: Source Initialization + Asynchronous Execution
 
 NPipeline follows a clear separation of concerns:
 
-**Synchronous Phase:** Pipeline Initialization
-- All nodes' `ExecuteAsync` methods return synchronously
-- Source nodes immediately return `IDataPipe<T>` objects
-- Transform nodes return immediately with their execution strategies
-- No waiting for actual data flow
+**Synchronous Phase:** Source Node Initialization
 
-**Asynchronous Phase:** Data Flow
-- Data moves through pipes when nodes consume it
+- Source nodes' `Execute()` method returns `IDataPipe<T>` synchronously
+- The source immediately creates and returns the data pipe without waiting
+- No Task allocation for source execution
+
+**Asynchronous Phase:** Transform & Sink Execution
+
+- Transform nodes' `ExecuteAsync()` method returns `Task<TOut>` asynchronously
+- Sink nodes' `ExecuteAsync()` method returns `Task` asynchronously
+- Data flows through pipes when nodes consume it
 - Sinks iterate through pipes with `await foreach`
 - Transforms process items as they arrive
-- All async work happens during consumption, not setup
 
 This design provides:
-- ✅ **Clear execution boundaries:** Setup is fast; data flow is async
-- ✅ **Predictable performance:** No hidden delays during initialization
-- ✅ **Type safety:** Synchronous returns enable better variance
-- ✅ **Memory efficiency:** No unnecessary Task allocations
+
+- ✅ **Clear execution boundaries:** Source setup is fast; transforms and sinks handle async work
+- ✅ **Predictable performance:** No hidden delays during source initialization
+- ✅ **Type safety:** Synchronous source returns enable better variance and lazy evaluation
+- ✅ **Memory efficiency:** No unnecessary Task allocations for data production
 
 ## Sequential Execution (Default)
 

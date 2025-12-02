@@ -33,7 +33,7 @@ This makes nodes testable, reusable, and easy to understand.
 Data is only processed when explicitly consumed:
 
 ```csharp
-var pipe = await source.ExecuteAsync(context, cancellationToken);
+var pipe = await source.Execute(context, cancellationToken);
 // No processing happens here - pipe exists but empty
 
 var wrappedPipe = new TransformPipe(pipe, transform);

@@ -162,7 +162,7 @@ public sealed class ExecutionObserverTests
 
     private sealed class TestSource : ISourceNode<int>, IAsyncDisposable
     {
-        public IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             return new StreamingDataPipe<int>(Stream(cancellationToken));
 

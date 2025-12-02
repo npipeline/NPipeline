@@ -42,7 +42,7 @@ public class SensorDataSource : SourceNode<SensorData>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the generated sensor data.</returns>
-    public override IDataPipe<SensorData> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<SensorData> Execute(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("Generating sensor data...");
         Console.WriteLine($"Initialized {_sensorIds.Count} sensors: {string.Join(", ", _sensorIds)}");

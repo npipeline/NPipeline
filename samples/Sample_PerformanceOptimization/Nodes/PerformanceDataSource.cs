@@ -30,7 +30,7 @@ public class PerformanceDataSource : SourceNode<PerformanceDataItem>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the generated test items.</returns>
-    public override IDataPipe<PerformanceDataItem> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<PerformanceDataItem> Execute(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Generating {_itemCount} performance test data items...");
 

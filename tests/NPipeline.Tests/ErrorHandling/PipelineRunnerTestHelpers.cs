@@ -30,7 +30,7 @@ public static class PipelineRunnerTestHelpers
     {
         private int _currentAttempt;
 
-        public IDataPipe<object> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public IDataPipe<object> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             _currentAttempt++;
 

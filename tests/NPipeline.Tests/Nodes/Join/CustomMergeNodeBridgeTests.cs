@@ -33,7 +33,7 @@ public sealed class CustomMergeNodeBridgeTests
 
     private sealed class TestSourceNode1 : SourceNode<string>
     {
-        public override IDataPipe<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<string> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             var items = new[] { "X1", "X2" };
             return new StreamingDataPipe<string>(items.ToAsyncEnumerable(), "S1");
@@ -42,7 +42,7 @@ public sealed class CustomMergeNodeBridgeTests
 
     private sealed class TestSourceNode2 : SourceNode<string>
     {
-        public override IDataPipe<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<string> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             var items = new[] { "Y1", "Y2" };
             return new StreamingDataPipe<string>(items.ToAsyncEnumerable(), "S2");

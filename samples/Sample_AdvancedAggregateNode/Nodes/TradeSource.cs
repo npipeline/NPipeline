@@ -61,7 +61,7 @@ public class TradeSource : SourceNode<FinancialTrade>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token to stop trade generation.</param>
     /// <returns>A data pipe containing financial trades.</returns>
-    public override IDataPipe<FinancialTrade> ExecuteAsync(
+    public override IDataPipe<FinancialTrade> Execute(
         PipelineContext context,
         CancellationToken cancellationToken)
     {

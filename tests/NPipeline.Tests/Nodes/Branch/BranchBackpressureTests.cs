@@ -83,7 +83,7 @@ public sealed class BranchBackpressureTests(ITestOutputHelper output)
 
     private sealed class NumSource : SourceNode<int>
     {
-        public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             return new StreamingDataPipe<int>(Produce(cancellationToken), "nums");
 

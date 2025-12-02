@@ -26,7 +26,7 @@ public sealed class PipelineFactoryTests
     // Test Node Implementations
     private sealed class TestSourceNode : SourceNode<string>
     {
-        public override IDataPipe<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<string> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }

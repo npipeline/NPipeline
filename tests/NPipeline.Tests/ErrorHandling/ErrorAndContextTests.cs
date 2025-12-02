@@ -47,7 +47,7 @@ public sealed class ErrorAndContextTests
     // Test Nodes
     private sealed class FaultySourceNode : SourceNode<int>
     {
-        public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             var numbers = Enumerable.Range(1, 5).ToAsyncEnumerable();
             return new StreamingDataPipe<int>(numbers);

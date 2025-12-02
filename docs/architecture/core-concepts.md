@@ -84,7 +84,7 @@ public interface IDataPipe<T> : IAsyncEnumerable<T>
 
 ```csharp
 // Step 1: Source creates pipe (but doesn't read yet)
-var sourcePipe = await sourceNode.ExecuteAsync(context, cancellationToken);
+var sourcePipe = await sourceNode.Execute(context, cancellationToken);
 
 // Step 2: Transform wraps pipe (but doesn't process yet)
 var transformPipe = new TransformPipe(sourcePipe, transformNode);

@@ -28,7 +28,7 @@ public sealed class CircuitBreakerTests
 
     private sealed class MultiItemSource : SourceNode<int>
     {
-        public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             IDataPipe<int> pipe = new StreamingDataPipe<int>(Stream());
             return pipe;

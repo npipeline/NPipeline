@@ -55,7 +55,7 @@ public sealed class TimeWindowedJoinNodeTests
 
     private sealed class EventSource : SourceNode<Event>
     {
-        public override IDataPipe<Event> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<Event> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             var events = new[]
             {
@@ -70,7 +70,7 @@ public sealed class TimeWindowedJoinNodeTests
 
     private sealed class EventMetadataSource : SourceNode<EventMetadata>
     {
-        public override IDataPipe<EventMetadata> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<EventMetadata> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             var metadata = new[]
             {

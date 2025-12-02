@@ -17,7 +17,7 @@ public class ProductSource : SourceNode<Product>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the generated products.</returns>
-    public override IDataPipe<Product> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<Product> Execute(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("Generating product data...");
 

@@ -23,7 +23,7 @@ public class DatabaseSourceNode : ISourceNode<Order>
         _connectionString = connectionString;
     }
 
-    public async IAsyncEnumerable<Order> ExecuteAsync(
+    public IAsyncEnumerable<Order> Execute(
         PipelineContext context,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {

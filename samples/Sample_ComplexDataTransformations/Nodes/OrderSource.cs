@@ -17,7 +17,7 @@ public class OrderSource : SourceNode<Order>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the generated orders.</returns>
-    public override IDataPipe<Order> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<Order> Execute(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("Generating order data...");
 

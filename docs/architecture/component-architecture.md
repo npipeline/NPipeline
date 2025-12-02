@@ -200,7 +200,7 @@ NPipeline uses a **plan-based execution model** for optimal performance. During 
 **SourceNode Execution:**
 
 ```csharp
-public abstract IDataPipe<T> ExecuteAsync(
+public abstract IDataPipe<T> Execute(
     PipelineContext context,
     CancellationToken cancellationToken);
 ```

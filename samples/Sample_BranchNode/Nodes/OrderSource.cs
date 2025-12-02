@@ -58,7 +58,7 @@ public class OrderSource : SourceNode<OrderEvent>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token to stop order generation.</param>
     /// <returns>A data pipe containing order events.</returns>
-    public override IDataPipe<OrderEvent> ExecuteAsync(
+    public override IDataPipe<OrderEvent> Execute(
         PipelineContext context,
         CancellationToken cancellationToken)
     {

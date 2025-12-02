@@ -52,8 +52,8 @@ public sealed class SourceNodeStreamingAnalyzer : DiagnosticAnalyzer
         if (context.Node is not MethodDeclarationSyntax methodDeclaration)
             return;
 
-        // Check if this method is ExecuteAsync in a SourceNode implementation
-        var isSourceNodeExecuteAsync = IsSourceNodeExecuteAsyncMethod(methodDeclaration, context.SemanticModel);
+        // Check if this method is Execute in a SourceNode implementation
+        var isSourceNodeExecuteAsync = IsSourceNodeExecuteMethod(methodDeclaration, context.SemanticModel);
 
         if (!isSourceNodeExecuteAsync)
             return;
@@ -76,12 +76,12 @@ public sealed class SourceNodeStreamingAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    ///     Determines if a method is ExecuteAsync in a SourceNode implementation.
+    ///     Determines if a method is Execute in a SourceNode implementation.
     /// </summary>
-    private static bool IsSourceNodeExecuteAsyncMethod(MethodDeclarationSyntax method, SemanticModel semanticModel)
+    private static bool IsSourceNodeExecuteMethod(MethodDeclarationSyntax method, SemanticModel semanticModel)
     {
         // Check if method name is ExecuteAsync
-        if (method.Identifier.Text != "ExecuteAsync")
+        if (method.Identifier.Text != "Execute")
             return false;
 
         // Get containing class
@@ -110,7 +110,7 @@ public sealed class SourceNodeStreamingAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    ///     AST walker that detects non-streaming patterns in SourceNode ExecuteAsync methods.
+    ///     AST walker that detects non-streaming patterns in SourceNode Execute methods.
     /// </summary>
     private sealed class NonStreamingPatternWalker(SemanticModel semanticModel) : CSharpSyntaxWalker
     {

@@ -82,13 +82,13 @@ All nodes implement `INode`. Use specific base classes instead:
 ```csharp
 public abstract class SourceNode<T> : INode
 {
-    public abstract IDataPipe<T> ExecuteAsync(
+    public abstract IDataPipe<T> Execute(
         PipelineContext context,
         CancellationToken cancellationToken);
 }
 ```
 
-**Implement by:** Override `ExecuteAsync()` to return data synchronously.
+**Implement by:** Override `Execute()` to return data synchronously.
 
 **Example:**
 
@@ -97,7 +97,7 @@ public class CsvSource : SourceNode<Customer>
 {
     private readonly string _filePath;
 
-    public override IDataPipe<Customer> ExecuteAsync(
+    public override IDataPipe<Customer> Execute(
         PipelineContext context,
         CancellationToken cancellationToken)
     {
@@ -281,7 +281,7 @@ public interface IDataPipe<out T> : IAsyncEnumerable<T>
 **Usage:**
 
 ```csharp
-var dataPipe = sourceNode.ExecuteAsync(context, cancellationToken);
+var dataPipe = sourceNode.Execute(context, cancellationToken);
 await foreach (var item in dataPipe.WithCancellation(cancellationToken))
 {
     // Process item

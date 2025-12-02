@@ -18,7 +18,7 @@ public class TextFileSource : SourceNode<string>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>An <see cref="IDataPipe{TOut}" /> that produces the output data for downstream nodes.</returns>
-    public override IDataPipe<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<string> Execute(PipelineContext context, CancellationToken cancellationToken)
     {
         // Get file path from context parameters
         if (!context.Parameters.TryGetValue("FilePath", out var filePathObj))

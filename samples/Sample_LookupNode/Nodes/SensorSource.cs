@@ -23,7 +23,7 @@ public class SensorSource : SourceNode<SensorReading>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the generated sensor readings.</returns>
-    public override IDataPipe<SensorReading> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<SensorReading> Execute(PipelineContext context, CancellationToken cancellationToken)
     {
         // Get all available device IDs from the registry
         _deviceIds.AddRange(DeviceRegistry.GetAllDevices().Select(d => d.DeviceId));

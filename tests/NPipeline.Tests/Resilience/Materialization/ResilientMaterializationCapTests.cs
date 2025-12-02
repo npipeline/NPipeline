@@ -54,7 +54,7 @@ public sealed class ResilientMaterializationCapTests
 
     private sealed class StreamingSource : SourceNode<int>
     {
-        public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             return new StreamingDataPipe<int>(Stream(cancellationToken));
 

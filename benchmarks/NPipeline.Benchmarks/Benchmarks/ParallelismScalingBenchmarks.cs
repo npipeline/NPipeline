@@ -341,7 +341,7 @@ public class ParallelismScalingBenchmarks
 
     private sealed class DataGeneratorSource : SourceNode<int>
     {
-        public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)

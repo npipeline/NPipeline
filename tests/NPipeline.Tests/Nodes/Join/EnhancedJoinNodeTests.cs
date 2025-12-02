@@ -102,7 +102,7 @@ public sealed class EnhancedJoinNodeTests
 
     private sealed class UserSourceWithExtra : SourceNode<User>
     {
-        public override IDataPipe<User> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<User> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             var users = new[] { new User(1, "Alice"), new User(2, "Bob"), new User(3, "Charlie") };
             return new StreamingDataPipe<User>(users.ToAsyncEnumerable(), "UserStream");
@@ -111,7 +111,7 @@ public sealed class EnhancedJoinNodeTests
 
     private sealed class UserProfileSourceWithExtra : SourceNode<UserProfile>
     {
-        public override IDataPipe<UserProfile> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<UserProfile> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             var profiles = new[] { new UserProfile(2, "Bob's Profile"), new UserProfile(1, "Alice's Profile"), new UserProfile(4, "Extra Profile") };
             return new StreamingDataPipe<UserProfile>(profiles.ToAsyncEnumerable(), "ProfileStream");

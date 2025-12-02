@@ -58,7 +58,7 @@ public sealed class TransactionSource : SourceNode<Transaction>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<Transaction> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<Transaction> Execute(PipelineContext context, CancellationToken cancellationToken)
     {
         _logger.LogInformation("TransactionSource: Starting to generate transaction stream");
 

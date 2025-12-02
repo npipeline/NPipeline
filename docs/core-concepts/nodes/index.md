@@ -50,12 +50,12 @@ A source node is the starting point of a pipeline. It is responsible for generat
 ```csharp
 public interface ISourceNode<out TOut> : INode
 {
-    IDataPipe<TOut> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken);
+    IDataPipe<TOut> Execute(PipelineContext context, CancellationToken cancellationToken);
 }
 ```
 
 * **`TOut`**: The type of data that the source node produces (covariant).
-* **`ExecuteAsync`**: This method is called by the pipeline runner to start data production. It returns an `IDataPipe<TOut>` synchronously, which is a channel through which data flows to the next node.
+* **`Execute()`**: This method is called by the pipeline runner to start data production. It returns an `IDataPipe<TOut>` synchronously—no Task wrapper, no await needed.
 
 #### Key Design Pattern: Synchronous Pipe Creation + Asynchronous Iteration
 
@@ -63,7 +63,7 @@ NPipeline separates concerns into two distinct phases:
 
 **Phase 1 (Synchronous):** Pipe Creation
 
-* `ExecuteAsync()` creates and returns the pipe immediately (synchronously)
+* `Execute()` creates and returns the pipe immediately (synchronously)
 * No `await` needed when calling this method
 * The pipeline reference is established without blocking
 
@@ -81,16 +81,16 @@ var stream = File.OpenRead(path);           // Sync - open stream immediately
 var bytes = await stream.ReadAsync(...);    // Async - read from stream
 
 // NPipeline pattern:
-var pipe = source.ExecuteAsync(...);        // Sync - create pipe immediately  
+var pipe = source.Execute(...);        // Sync - create pipe immediately  
 var item = await pipe.FirstAsync();         // Async - read item from pipe
 ```
 
 **Why This Design?**
 
-* ✅ **Clearer Intent:** "ExecuteAsync" signals you're in the async execution system, but the pipe creation itself is fast and synchronous
+* ✅ **Clearer Intent:** `Execute()` (no "Async" suffix) signals that pipe creation is synchronous
 * ✅ **Type Safety:** Covariant `IDataPipe<T>` (not invariant `Task<IDataPipe<T>>`) enables better type compatibility
 * ✅ **Performance:** No unnecessary `Task` allocations for pipe creation
-* ✅ **Consistency:** Uniform pattern across all source nodes
+* ✅ **Consistency:** Uniform synchronous pattern across all source nodes
 
 #### Example
 

@@ -96,7 +96,7 @@ public sealed class BuiltInRulesTests
 
     private sealed class IntSource : ISourceNode<int>
     {
-        public IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             IDataPipe<int> pipe = new StreamingDataPipe<int>(Stream());
 

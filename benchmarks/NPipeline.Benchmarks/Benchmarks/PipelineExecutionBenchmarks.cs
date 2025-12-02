@@ -377,7 +377,7 @@ public class PipelineExecutionBenchmarks : IDisposable
 
     private sealed class GeneratorSource : SourceNode<IntItem>
     {
-        public override IDataPipe<IntItem> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<IntItem> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)
@@ -400,7 +400,7 @@ public class PipelineExecutionBenchmarks : IDisposable
 
     private sealed class GeneratorSource2 : SourceNode<LongItem>
     {
-        public override IDataPipe<LongItem> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<LongItem> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)
@@ -519,7 +519,7 @@ public class PipelineExecutionBenchmarks : IDisposable
 
     private sealed class IntGeneratorSource : SourceNode<int>
     {
-        public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)
@@ -542,7 +542,7 @@ public class PipelineExecutionBenchmarks : IDisposable
 
     private sealed class CancellableIntSource : SourceNode<int>
     {
-        public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)

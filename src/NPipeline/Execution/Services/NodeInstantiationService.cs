@@ -183,7 +183,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
 
         // Get the ExecuteAsync method
         var executeMethod = sourceInterface.GetMethod(
-            nameof(ISourceNode<int>.ExecuteAsync),
+            nameof(ISourceNode<int>.Execute),
             BindingFlags.Public | BindingFlags.Instance,
             null,
             [typeof(PipelineContext), typeof(CancellationToken)],

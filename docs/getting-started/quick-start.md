@@ -173,11 +173,11 @@ public override IDataPipe<string> ExecuteAsync(...)  // Notice: Not async!
 }
 ```
 
-The method is called `ExecuteAsync`, but it returns synchronously. This is by design, not a mistake! Here's why:
+The method is called `Execute`, not `ExecuteAsync`, because it returns synchronously—no await is involved!
 
 **Phase 1 (Synchronous):** The source creates a pipe immediately
 ```csharp
-var pipe = source.ExecuteAsync(context, cancellationToken);  // Returns instantly
+var pipe = source.Execute(context, cancellationToken);  // Returns instantly
 ```
 
 **Phase 2 (Asynchronous):** The sink consumes data asynchronously

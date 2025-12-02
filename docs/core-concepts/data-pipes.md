@@ -152,7 +152,7 @@ A key architectural insight of NPipeline is the separation of concerns between *
 **Synchronous Creation Phase:**
 ```csharp
 // Source creates and returns the pipe synchronously
-var pipe = source.ExecuteAsync(context, cancellationToken);  // Returns immediately
+var pipe = source.Execute(context, cancellationToken);  // Returns immediately
 ```
 
 - No `await` is needed
@@ -189,7 +189,7 @@ var buffer = new byte[1024];
 int bytesRead = await stream.ReadAsync(buffer, 0, 1024);
 
 // Similarly in NPipeline:
-var pipe = source.ExecuteAsync(...);      // Fast, synchronous
+var pipe = source.Execute(...);      // Fast, synchronous
 await foreach (var item in pipe) { ... }  // Asynchronous streaming
 ```
 

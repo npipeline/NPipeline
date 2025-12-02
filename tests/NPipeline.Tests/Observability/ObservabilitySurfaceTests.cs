@@ -110,7 +110,7 @@ public sealed class ObservabilitySurfaceTests
 
     private sealed class DummyNode : ISourceNode<object>
     {
-        public IDataPipe<object> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public IDataPipe<object> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             return new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<object>(new List<object> { 1, 2, 3 }, "dummy");
         }

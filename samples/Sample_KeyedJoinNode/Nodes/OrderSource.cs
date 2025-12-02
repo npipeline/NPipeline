@@ -33,7 +33,7 @@ public class OrderSource : SourceNode<Order>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<Order> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<Order> Execute(PipelineContext context, CancellationToken cancellationToken)
     {
         _logger?.LogInformation("OrderSource: Starting to generate {MaxOrders} orders", _maxOrders);
 

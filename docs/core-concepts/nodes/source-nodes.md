@@ -13,11 +13,11 @@ A source node is responsible for generating the initial data stream that enters 
 ```csharp
 public interface ISourceNode<out TOut> : INode
 {
-    IDataPipe<TOut> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken);
+    IDataPipe<TOut> Execute(PipelineContext context, CancellationToken cancellationToken);
 }
 ```
 
-The `ExecuteAsync` method returns the data pipe synchronously. The pipeline execution framework wraps this result in a `Task` internally when needed for asynchronous execution orchestration.
+The `Execute` method returns the data pipe synchronously. It does not return a `Task`, enabling efficient synchronous pipe creation.
 
 ## Implementation Example
 

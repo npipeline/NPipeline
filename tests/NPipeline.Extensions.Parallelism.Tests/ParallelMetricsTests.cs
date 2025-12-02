@@ -65,7 +65,7 @@ public class ParallelMetricsTests
 
     private sealed class FastSource : SourceNode<int>
     {
-        public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
         {
             var items = Enumerable.Range(0, 1000).ToAsyncEnumerable(); // 1000 items to provide pressure
             return new StreamingDataPipe<int>(items, "ints");

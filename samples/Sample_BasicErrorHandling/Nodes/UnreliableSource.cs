@@ -30,7 +30,7 @@ public class UnreliableSource : SourceNode<string>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the generated messages.</returns>
     /// <exception cref="InvalidOperationException">Thrown randomly to simulate source failures.</exception>
-    public override IDataPipe<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<string> Execute(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("UnreliableSource: Starting to generate messages");
 

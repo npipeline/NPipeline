@@ -24,7 +24,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
 
                    public class TestSourceNode : SourceNode<string>
                    {
-                       public override IDataPipe<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataPipe<string> Execute(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = new List<string>(); // Should trigger diagnostic
                            items.Add("test");
@@ -49,7 +49,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
 
                    public class TestSourceNode : SourceNode<int>
                    {
-                       public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = new int[10]; // Should trigger diagnostic
                            for (int i = 0; i < 10; i++)
@@ -79,7 +79,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
 
                    public class TestSourceNode : SourceNode<string>
                    {
-                       public override IDataPipe<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataPipe<string> Execute(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = new List<string> { "test1", "test2" };
                            return new StreamingDataPipe<string>(items.ToAsyncEnumerable()); // Should trigger diagnostic
@@ -104,7 +104,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
 
                    public class TestSourceNode : SourceNode<string>
                    {
-                       public override IDataPipe<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataPipe<string> Execute(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var lines = File.ReadAllLines("test.txt"); // Should trigger diagnostic
                            return new InMemoryDataPipe<string>(lines);
@@ -130,7 +130,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
 
                    public class TestSourceNode : SourceNode<int>
                    {
-                       public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = Enumerable.Range(1, 100).ToList(); // Should trigger diagnostic
                            return new InMemoryDataPipe<int>(items);
@@ -155,7 +155,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
 
                    public class TestSourceNode : SourceNode<int>
                    {
-                       public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = Enumerable.Range(1, 100).ToArray(); // Should trigger diagnostic
                            return new InMemoryDataPipe<int>(items);
@@ -178,7 +178,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
 
                    public class TestClass
                    {
-                       public IDataPipe<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+                       public IDataPipe<string> Execute(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = new List<string>(); // Should NOT trigger diagnostic (not a SourceNode)
                            return new InMemoryDataPipe<string>(items);
@@ -193,7 +193,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
     }
 
     [Fact]
-    public void ShouldNotAnalyzeNonExecuteAsyncMethods()
+    public void ShouldNotAnalyzeNonExecuteMethods()
     {
         var code = """
                    using System.Collections.Generic;
@@ -205,11 +205,11 @@ public sealed class SourceNodeStreamingAnalyzerTests
                    {
                        public IDataPipe<string> SomeOtherMethod(PipelineContext context, CancellationToken cancellationToken)
                        {
-                           var items = new List<string>(); // Should NOT trigger diagnostic (not ExecuteAsync)
+                           var items = new List<string>(); // Should NOT trigger diagnostic (not Execute)
                            return new InMemoryDataPipe<string>(items);
                        }
 
-                       public override IDataPipe<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataPipe<string> Execute(PipelineContext context, CancellationToken cancellationToken)
                        {
                            // Proper streaming implementation
                            return new StreamingDataPipe<string>(GetItemsAsync(cancellationToken));
@@ -226,7 +226,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         var hasDiagnostic = diagnostics.Any(d => d.Id == SourceNodeStreamingAnalyzer.SourceNodeStreamingId);
-        Assert.False(hasDiagnostic, "Analyzer should not analyze non-ExecuteAsync methods");
+        Assert.False(hasDiagnostic, "Analyzer should not analyze non-Execute methods");
     }
 
     [Fact]
@@ -239,7 +239,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
 
                    public class TestSourceNode : SourceNode<string>
                    {
-                       public override IDataPipe<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataPipe<string> Execute(PipelineContext context, CancellationToken cancellationToken)
                        {
                            // Proper streaming implementation - should NOT trigger diagnostic
                            return new StreamingDataPipe<string>(GetItemsAsync(cancellationToken));
@@ -271,7 +271,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
 
                    public class TestSourceNode : SourceNode<string>
                    {
-                       public override async Task<IDataPipe<string>> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataPipe<string> Execute(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var lines = await File.ReadAllLinesAsync("test.txt", cancellationToken); // Should NOT trigger diagnostic (async)
                            return new InMemoryDataPipe<string>(lines);

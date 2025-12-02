@@ -26,7 +26,7 @@ public interface IDataPipe<T> : IAsyncEnumerable<T>
 
 ```csharp
 // 1. Source produces a pipe
-var sourcePipe = await sourceNode.ExecuteAsync(context, cancellationToken);
+var sourcePipe = await sourceNode.Execute(context, cancellationToken);
 
 // 2. Transform consumes and wraps it
 var transformedPipe = new TransformPipe(sourcePipe, transformNode);
@@ -66,7 +66,7 @@ Step 3: Sink iterates through pipe
 
 ```csharp
 // Step 1: Source creates pipe (but doesn't read data yet)
-var pipe = await source.ExecuteAsync(context, cancellationToken);
+var pipe = await source.Execute(context, cancellationToken);
 
 // Step 2: Transform wraps pipe (but doesn't process yet)
 var wrappedPipe = new TransformPipe(pipe, transform);
@@ -121,7 +121,7 @@ await foreach (var result in pipeline.WithCancellation(cancellationToken))
 Each transform creates a new data pipe, allowing for clean composition:
 
 ```csharp
-var source = await sourceNode.ExecuteAsync(context, ct);      // IDataPipe<Order>
+var source = await sourceNode.Execute(context, ct);      // IDataPipe<Order>
 var validated = new TransformPipe(source, validator);          // IDataPipe<ValidatedOrder>
 var enriched = new TransformPipe(validated, enricher);         // IDataPipe<EnrichedOrder>
 var processed = new TransformPipe(enriched, processor);        // IDataPipe<ProcessedOrder>

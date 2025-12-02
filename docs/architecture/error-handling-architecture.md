@@ -13,7 +13,7 @@ NPipeline provides multiple strategies for handling errors that occur during pip
 By default, errors propagate up the pipeline and stop execution:
 
 ```csharp
-var sourcePipe = await source.ExecuteAsync(context, ct);      // Returns 100 items
+var sourcePipe = await source.Execute(context, ct);      // Returns 100 items
 var transformPipe = new TransformPipe(sourcePipe, transform); // Processing...
 
 // Error occurs on item #50

@@ -55,7 +55,7 @@ public class EnvironmentalSource : SourceNode<SensorReading>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A data pipe containing the sensor readings.</returns>
-    public override IDataPipe<SensorReading> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<SensorReading> Execute(PipelineContext context, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Starting Environmental Source with Ethernet sensors and internal clocks with drift compensation");
 

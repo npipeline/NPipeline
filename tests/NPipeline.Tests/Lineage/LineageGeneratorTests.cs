@@ -188,7 +188,7 @@ public sealed class LineageGeneratorTests
 
     private sealed class DummySource : ISourceNode<int>
     {
-        public IDataPipe<int> ExecuteAsync(
+        public IDataPipe<int> Execute(
             PipelineContext context,
             CancellationToken cancellationToken)
         {

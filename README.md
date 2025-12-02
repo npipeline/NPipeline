@@ -105,7 +105,7 @@ public record ProcessedOrder(int Id, string Customer, decimal Amount, decimal Ta
 // 2. Create pipeline nodes
 public class OrderSource : SourceNode<Order>
 {
-    public override Task<IDataPipe<Order>> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<Order> Execute(PipelineContext context, CancellationToken cancellationToken)
     {
         var orders = new[]
         {
@@ -114,7 +114,7 @@ public class OrderSource : SourceNode<Order>
             new Order(3, "Carol", 75m)
         };
 
-        return Task.FromResult<IDataPipe<Order>>(new StreamingDataPipe<Order>(orders.ToAsyncEnumerable()));
+        return new StreamingDataPipe<Order>(orders.ToAsyncEnumerable());
     }
 }
 

@@ -446,11 +446,11 @@ public override Task<Item> ExecuteAsync(Item item, PipelineContext context, Canc
 
 ```csharp
 // ❌ BAD - Only reads first item
-var result = await source.ExecuteAsync(context, CancellationToken.None);
+var result = await source.Execute(context, CancellationToken.None);
 var first = (await result.GetAsyncEnumerator().MoveNextAsync()).Current;
 
 // ✅ GOOD - Consumes all items
-var result = await source.ExecuteAsync(context, CancellationToken.None);
+var result = await source.Execute(context, CancellationToken.None);
 await foreach (var item in result)
 {
     // Process all items

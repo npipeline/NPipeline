@@ -39,7 +39,7 @@ public class InternationalMarketDataSource : SourceNode<MarketDataTick>
         }
     }
 
-    public override IDataPipe<MarketDataTick> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<MarketDataTick> Execute(PipelineContext context, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Starting International Market Data Source");
 
