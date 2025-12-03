@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using NPipeline.DataFlow.Branching;
@@ -109,9 +110,10 @@ internal sealed class MulticastDataPipe<T> : DataPipeBase<T>, IHasBranchMetrics
         {
             await _pumpTask.ConfigureAwait(false);
         }
-        catch
+        catch (Exception ex)
         {
-            /* ignored */
+            // Log for diagnostics but don't propagate during disposal
+            Debug.WriteLine($"[MulticastDataPipe] Pump task failed during disposal: {ex.Message}");
         }
 
         _cts.Dispose();
