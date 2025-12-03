@@ -23,7 +23,7 @@ NPipeline is a powerful and flexible .NET library for building high-performance,
 
 New to NPipeline? Get started with our quick introduction:
 
-- [Introduction to NPipeline](introduction/index.md) - What is NPipeline and why use it?
+- [Getting Started](getting-started/index.md) - What is NPipeline and why use it?
 - [Your First Pipeline](getting-started/quick-start.md) - Build a simple data pipeline in 5 minutes
 - [Basic Concepts](core-concepts/pipelinebuilder.md) - Understand the core building blocks
 
@@ -51,7 +51,7 @@ New to NPipeline? Get started with our quick introduction:
 ### Module 3: Testing (30 minutes)
 
 - [Unit Testing Pipelines](advanced-topics/testing-pipelines.md) - Testing your pipeline components
-- [Debugging Pipelines](introduction/troubleshooting.md) - Common issues and solutions
+- [Debugging Pipelines](reference/troubleshooting.md) - Common issues and solutions
 
 ### Module 4: Thread Safety (20 minutes)
 
@@ -115,7 +115,7 @@ New to NPipeline? Get started with our quick introduction:
 
 - [Connector Patterns](connectors/index.md) - Integrating with external systems
 - [Error Handling Architecture](architecture/error-handling-architecture.md) - Deep dive into error handling
-- [Security Considerations](introduction/index.md) - Securing your pipelines
+- [Security Considerations](architecture/index.md) - Securing your pipelines
 
 ### Module 3: Advanced Integration (120 minutes)
 
@@ -138,7 +138,7 @@ New to NPipeline? Get started with our quick introduction:
 
 Install NPipeline and build your first pipeline in 15 minutes.
 
-### [Introduction](./introduction/index.md)
+### [Why NPipeline?](./getting-started/why-npipeline.md)
 
 Understand the "why" behind NPipeline and what makes it powerful.
 
@@ -183,5 +183,5 @@ Error codes, API reference, FAQ, and troubleshooting.
 
 ## Need Help?
 
-- [FAQ](introduction/faq.md) - Common questions and answers
+- [FAQ](reference/faq.md) - Common questions and answers
 - [Issue Tracker](https://github.com/NPipeline/NPipeline/issues) - Report bugs or request features
