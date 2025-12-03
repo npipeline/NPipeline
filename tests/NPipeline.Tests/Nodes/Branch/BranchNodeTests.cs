@@ -1,5 +1,5 @@
-using System.Diagnostics;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using AwesomeAssertions;
 using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
@@ -9,12 +9,43 @@ using NPipeline.Pipeline;
 namespace NPipeline.Tests.Nodes.Branch;
 
 /// <summary>
-///     Comprehensive tests for BranchNode&lt;T&gt; covering basic functionality, 
+///     Comprehensive tests for BranchNode&lt;T&gt; covering basic functionality,
 ///     error handling, parallel execution, concurrent access, and edge cases.
 ///     Tests output handler execution, parallel processing, exception handling, and proper item pass-through.
 /// </summary>
 public sealed class BranchNodeTests
 {
+    #region Edge Cases
+
+    [Fact]
+    public async Task BranchNode_MultipleItems_PreservesItemsThroughBranches()
+    {
+        // Arrange
+        BranchNode<int> node = new();
+        List<int> captured = [];
+
+        node.AddOutput(async x =>
+        {
+            captured.Add(x);
+            await Task.Yield();
+        });
+
+        var ctx = PipelineContext.Default;
+
+        // Act
+        var result1 = await node.ExecuteAsync(1, ctx, CancellationToken.None);
+        var result2 = await node.ExecuteAsync(2, ctx, CancellationToken.None);
+        var result3 = await node.ExecuteAsync(3, ctx, CancellationToken.None);
+
+        // Assert
+        _ = result1.Should().Be(1);
+        _ = result2.Should().Be(2);
+        _ = result3.Should().Be(3);
+        _ = captured.Should().ContainInOrder(1, 2, 3);
+    }
+
+    #endregion
+
     #region Helper Classes
 
     private sealed class TestObject
@@ -312,6 +343,7 @@ public sealed class BranchNodeTests
     {
         // Arrange
         BranchNode<int> node = new();
+
         node.AddOutput(async x =>
         {
             await Task.Yield();
@@ -343,6 +375,7 @@ public sealed class BranchNodeTests
 
         var config = new PipelineContextConfiguration(
             PipelineErrorHandler: new ContinueErrorHandler(() => errorHandlerCalled = true));
+
         var ctx = new PipelineContext(config);
 
         // Act
@@ -368,6 +401,7 @@ public sealed class BranchNodeTests
 
         var config = new PipelineContextConfiguration(
             PipelineErrorHandler: new FailErrorHandler(() => errorHandlerCalled = true));
+
         var ctx = new PipelineContext(config);
 
         // Act & Assert
@@ -411,6 +445,7 @@ public sealed class BranchNodeTests
     {
         // Arrange
         BranchNode<string> node = new();
+
         node.AddOutput(async x =>
         {
             await Task.Yield();
@@ -440,9 +475,7 @@ public sealed class BranchNodeTests
         node.AddOutput(async dict =>
         {
             if (!dict.ContainsKey("modified"))
-            {
                 dict["modified"] = ++modifyCount;
-            }
 
             await Task.Yield();
         });
@@ -450,9 +483,7 @@ public sealed class BranchNodeTests
         node.AddOutput(async dict =>
         {
             if (!dict.ContainsKey("modified"))
-            {
                 dict["modified"] = ++modifyCount;
-            }
 
             await Task.Yield();
         });
@@ -610,37 +641,6 @@ public sealed class BranchNodeTests
         await node.DisposeAsync();
 
         Assert.True(true);
-    }
-
-    #endregion
-
-    #region Edge Cases
-
-    [Fact]
-    public async Task BranchNode_MultipleItems_PreservesItemsThroughBranches()
-    {
-        // Arrange
-        BranchNode<int> node = new();
-        List<int> captured = [];
-
-        node.AddOutput(async x =>
-        {
-            captured.Add(x);
-            await Task.Yield();
-        });
-
-        var ctx = PipelineContext.Default;
-
-        // Act
-        var result1 = await node.ExecuteAsync(1, ctx, CancellationToken.None);
-        var result2 = await node.ExecuteAsync(2, ctx, CancellationToken.None);
-        var result3 = await node.ExecuteAsync(3, ctx, CancellationToken.None);
-
-        // Assert
-        _ = result1.Should().Be(1);
-        _ = result2.Should().Be(2);
-        _ = result3.Should().Be(3);
-        _ = captured.Should().ContainInOrder(1, 2, 3);
     }
 
     #endregion

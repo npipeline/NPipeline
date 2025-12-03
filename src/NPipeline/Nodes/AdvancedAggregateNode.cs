@@ -31,10 +31,10 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
     private long _totalWindowsProcessed;
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="AdvancedAggregateNode{TIn, TKey, TAccumulate, TResult}" /> class.
+    ///     Initializes a new instance of <see cref="AdvancedAggregateNode{TIn, TKey, TAccumulate, TResult}" /> class.
     /// </summary>
     /// <param name="windowAssigner">The window assigner strategy to use.</param>
-    /// <param name="timestampExtractor">Optional timestamp extractor for the input type.</param>
+    /// <param name="timestampExtractor">Optional timestamp extractor for input type.</param>
     /// <param name="maxOutOfOrderness">Maximum time span for out-of-order items. Defaults to 5 minutes.</param>
     /// <param name="watermarkInterval">Interval for watermark updates. Defaults to 30 seconds.</param>
     protected AdvancedAggregateNode(
@@ -43,7 +43,8 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
         TimeSpan? maxOutOfOrderness = null,
         TimeSpan? watermarkInterval = null)
     {
-        _windowAssigner = windowAssigner ?? throw new ArgumentNullException(nameof(windowAssigner));
+        ArgumentNullException.ThrowIfNull(windowAssigner);
+        _windowAssigner = windowAssigner;
         _timestampExtractor = timestampExtractor;
         _maxOutOfOrderness = maxOutOfOrderness ?? TimeSpan.FromMinutes(5);
         _watermarkInterval = watermarkInterval ?? TimeSpan.FromSeconds(30);

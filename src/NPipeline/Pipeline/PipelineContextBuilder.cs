@@ -102,40 +102,43 @@ public sealed class PipelineContextBuilder
     }
 
     /// <summary>
-    ///     Sets the parameters dictionary for the pipeline context.
+    ///     Sets parameters dictionary for pipeline context.
     /// </summary>
-    /// <param name="parameters">The parameters to attach to the context.</param>
+    /// <param name="parameters">The parameters to attach to context.</param>
     /// <returns>This builder instance for method chaining.</returns>
     public PipelineContextBuilder WithParameters(Dictionary<string, object> parameters)
     {
-        _parameters = parameters ?? throw new ArgumentNullException(nameof(parameters));
+        ArgumentNullException.ThrowIfNull(parameters);
+        _parameters = parameters;
         return this;
     }
 
     /// <summary>
-    ///     Sets the items dictionary for sharing state between pipeline nodes.
+    ///     Sets items dictionary for sharing state between pipeline nodes.
     /// </summary>
-    /// <param name="items">The items dictionary to attach to the context.</param>
+    /// <param name="items">The items dictionary to attach to context.</param>
     /// <returns>This builder instance for method chaining.</returns>
     public PipelineContextBuilder WithItems(Dictionary<string, object> items)
     {
-        _items = items ?? throw new ArgumentNullException(nameof(items));
+        ArgumentNullException.ThrowIfNull(items);
+        _items = items;
         return this;
     }
 
     /// <summary>
-    ///     Sets the properties dictionary for storing extension-specific data.
+    ///     Sets properties dictionary for storing extension-specific data.
     /// </summary>
     /// <param name="properties">The properties to attach to the context.</param>
     /// <returns>This builder instance for method chaining.</returns>
     public PipelineContextBuilder WithProperties(Dictionary<string, object> properties)
     {
-        _properties = properties ?? throw new ArgumentNullException(nameof(properties));
+        ArgumentNullException.ThrowIfNull(properties);
+        _properties = properties;
         return this;
     }
 
     /// <summary>
-    ///     Sets the cancellation token for the pipeline execution.
+    ///     Sets cancellation token for pipeline execution.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token to monitor for pipeline cancellation.</param>
     /// <returns>This builder instance for method chaining.</returns>
@@ -146,16 +149,17 @@ public sealed class PipelineContextBuilder
     }
 
     /// <summary>
-    ///     Sets the logger factory and optional tracer for observability.
+    ///     Sets logger factory and optional tracer for observability.
     /// </summary>
-    /// <param name="loggerFactory">The logger factory for the pipeline.</param>
-    /// <param name="tracer">The tracer for the pipeline, or null to use default.</param>
+    /// <param name="loggerFactory">The logger factory for pipeline.</param>
+    /// <param name="tracer">The tracer for pipeline, or null to use default.</param>
     /// <returns>This builder instance for method chaining.</returns>
     public PipelineContextBuilder WithObservability(
         IPipelineLoggerFactory loggerFactory,
         IPipelineTracer? tracer = null)
     {
-        _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+        ArgumentNullException.ThrowIfNull(loggerFactory);
+        _loggerFactory = loggerFactory;
 
         if (tracer is not null)
             _tracer = tracer;
@@ -164,46 +168,50 @@ public sealed class PipelineContextBuilder
     }
 
     /// <summary>
-    ///     Sets the tracer for observability.
+    ///     Sets tracer for observability.
     /// </summary>
-    /// <param name="tracer">The tracer for the pipeline.</param>
+    /// <param name="tracer">The tracer for pipeline.</param>
     /// <returns>This builder instance for method chaining.</returns>
     public PipelineContextBuilder WithTracer(IPipelineTracer tracer)
     {
-        _tracer = tracer ?? throw new ArgumentNullException(nameof(tracer));
+        ArgumentNullException.ThrowIfNull(tracer);
+        _tracer = tracer;
         return this;
     }
 
     /// <summary>
-    ///     Sets the logger factory for observability.
+    ///     Sets logger factory for observability.
     /// </summary>
-    /// <param name="loggerFactory">The logger factory for the pipeline.</param>
+    /// <param name="loggerFactory">The logger factory for pipeline.</param>
     /// <returns>This builder instance for method chaining.</returns>
     public PipelineContextBuilder WithLoggerFactory(IPipelineLoggerFactory loggerFactory)
     {
-        _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+        ArgumentNullException.ThrowIfNull(loggerFactory);
+        _loggerFactory = loggerFactory;
         return this;
     }
 
     /// <summary>
-    ///     Sets the pipeline-level error handler.
+    ///     Sets pipeline-level error handler.
     /// </summary>
     /// <param name="errorHandler">The error handler for the pipeline.</param>
     /// <returns>This builder instance for method chaining.</returns>
     public PipelineContextBuilder WithErrorHandler(IPipelineErrorHandler errorHandler)
     {
-        _pipelineErrorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
+        ArgumentNullException.ThrowIfNull(errorHandler);
+        _pipelineErrorHandler = errorHandler;
         return this;
     }
 
     /// <summary>
-    ///     Sets the dead-letter sink for failed items.
+    ///     Sets dead-letter sink for failed items.
     /// </summary>
     /// <param name="deadLetterSink">The sink for items that have failed processing.</param>
     /// <returns>This builder instance for method chaining.</returns>
     public PipelineContextBuilder WithDeadLetterSink(IDeadLetterSink deadLetterSink)
     {
-        _deadLetterSink = deadLetterSink ?? throw new ArgumentNullException(nameof(deadLetterSink));
+        ArgumentNullException.ThrowIfNull(deadLetterSink);
+        _deadLetterSink = deadLetterSink;
         return this;
     }
 
@@ -233,7 +241,8 @@ public sealed class PipelineContextBuilder
     /// <returns>This builder instance for method chaining.</returns>
     public PipelineContextBuilder WithErrorHandlerFactory(IErrorHandlerFactory factory)
     {
-        _errorHandlerFactory = factory ?? throw new ArgumentNullException(nameof(factory));
+        ArgumentNullException.ThrowIfNull(factory);
+        _errorHandlerFactory = factory;
         return this;
     }
 
@@ -244,7 +253,8 @@ public sealed class PipelineContextBuilder
     /// <returns>This builder instance for method chaining.</returns>
     public PipelineContextBuilder WithLineageFactory(ILineageFactory factory)
     {
-        _lineageFactory = factory ?? throw new ArgumentNullException(nameof(factory));
+        ArgumentNullException.ThrowIfNull(factory);
+        _lineageFactory = factory;
         return this;
     }
 
@@ -255,7 +265,8 @@ public sealed class PipelineContextBuilder
     /// <returns>This builder instance for method chaining.</returns>
     public PipelineContextBuilder WithObservabilityFactory(IObservabilityFactory factory)
     {
-        _observabilityFactory = factory ?? throw new ArgumentNullException(nameof(factory));
+        ArgumentNullException.ThrowIfNull(factory);
+        _observabilityFactory = factory;
         return this;
     }
 
@@ -284,13 +295,14 @@ public sealed class PipelineContextBuilder
     }
 
     /// <summary>
-    ///     Sets the retry options for the pipeline.
+    ///     Sets retry options for the pipeline.
     /// </summary>
     /// <param name="retryOptions">The retry options to apply globally across the pipeline.</param>
     /// <returns>This builder instance for method chaining.</returns>
     public PipelineContextBuilder WithRetry(PipelineRetryOptions retryOptions)
     {
-        _retryOptions = retryOptions ?? throw new ArgumentNullException(nameof(retryOptions));
+        ArgumentNullException.ThrowIfNull(retryOptions);
+        _retryOptions = retryOptions;
         return this;
     }
 

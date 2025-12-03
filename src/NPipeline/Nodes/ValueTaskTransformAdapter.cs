@@ -21,7 +21,8 @@ internal sealed class ValueTaskTransformAdapter<TIn, TOut> : ITransformNode<TIn,
         IExecutionStrategy? executionStrategy = null,
         INodeErrorHandler? errorHandler = null)
     {
-        _producer = producer ?? throw new ArgumentNullException(nameof(producer));
+        ArgumentNullException.ThrowIfNull(producer);
+        _producer = producer;
         ExecutionStrategy = executionStrategy ?? new SequentialExecutionStrategy();
         ErrorHandler = errorHandler;
     }

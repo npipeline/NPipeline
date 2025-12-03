@@ -5,8 +5,6 @@ using NPipeline.Graph;
 
 namespace NPipeline.Pipeline;
 
-#pragma warning disable CA1510 // Use 'ArgumentNullException.ThrowIfNull' instead - Maintaining consistency with codebase style
-
 /// <summary>
 ///     Fluent configuration extension methods for pipeline nodes.
 ///     These extensions provide a convenient way to configure nodes immediately after adding them to the pipeline builder.
@@ -151,11 +149,8 @@ public static class NodeConfigurationExtensions
         PipelineBuilder builder,
         Type errorHandlerType)
     {
-        if (builder == null)
-            throw new ArgumentNullException(nameof(builder));
-
-        if (errorHandlerType == null)
-            throw new ArgumentNullException(nameof(errorHandlerType));
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(errorHandlerType);
 
         builder.WithErrorHandler(handle, errorHandlerType);
         return handle;
@@ -176,8 +171,7 @@ public static class NodeConfigurationExtensions
         PipelineBuilder builder)
         where TErrorHandler : INodeErrorHandler
     {
-        if (builder == null)
-            throw new ArgumentNullException(nameof(builder));
+        ArgumentNullException.ThrowIfNull(builder);
 
         builder.WithErrorHandler(handle, typeof(TErrorHandler));
         return handle;
@@ -197,8 +191,7 @@ public static class NodeConfigurationExtensions
         PipelineBuilder builder)
         where TErrorHandler : INodeErrorHandler
     {
-        if (builder == null)
-            throw new ArgumentNullException(nameof(builder));
+        ArgumentNullException.ThrowIfNull(builder);
 
         builder.WithErrorHandler(handle, typeof(TErrorHandler));
         return handle;
@@ -219,8 +212,7 @@ public static class NodeConfigurationExtensions
         PipelineBuilder builder)
         where TErrorHandler : INodeErrorHandler
     {
-        if (builder == null)
-            throw new ArgumentNullException(nameof(builder));
+        ArgumentNullException.ThrowIfNull(builder);
 
         builder.WithErrorHandler(handle, typeof(TErrorHandler));
         return handle;
@@ -241,11 +233,8 @@ public static class NodeConfigurationExtensions
         PipelineBuilder builder,
         IExecutionStrategy strategy)
     {
-        if (builder == null)
-            throw new ArgumentNullException(nameof(builder));
-
-        if (strategy == null)
-            throw new ArgumentNullException(nameof(strategy));
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(strategy);
 
         builder.WithExecutionStrategy(handle, strategy);
         return handle;
@@ -264,8 +253,7 @@ public static class NodeConfigurationExtensions
         this TransformNodeHandle<TIn, TOut> handle,
         PipelineBuilder builder)
     {
-        if (builder == null)
-            throw new ArgumentNullException(nameof(builder));
+        ArgumentNullException.ThrowIfNull(builder);
 
         builder.WithResilience(handle);
         return handle;

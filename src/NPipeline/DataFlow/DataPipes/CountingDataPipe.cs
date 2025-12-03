@@ -26,7 +26,8 @@ internal sealed class CountingDataPipe<T> : DataPipeBase<T>
     public CountingDataPipe(IDataPipe<T> inner, StatsCounter counter, PipelineContext? context = null)
         : base(inner)
     {
-        _counter = counter ?? throw new ArgumentNullException(nameof(counter));
+        ArgumentNullException.ThrowIfNull(counter);
+        _counter = counter;
         _context = context;
     }
 

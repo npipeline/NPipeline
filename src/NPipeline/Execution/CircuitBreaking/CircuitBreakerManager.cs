@@ -24,7 +24,8 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
     /// <param name="memoryOptions">The memory management options for cleanup.</param>
     public CircuitBreakerManager(IPipelineLogger logger, CircuitBreakerMemoryManagementOptions? memoryOptions = null)
     {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentNullException.ThrowIfNull(logger);
+        _logger = logger;
         _memoryOptions = (memoryOptions ?? CircuitBreakerMemoryManagementOptions.Default).Validate();
         _tracker = new CircuitBreakerTracker();
 
@@ -200,9 +201,7 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
                 var removedTracking = _tracker.RemoveTracking(nodeId);
 
                 if (!removedBreaker && removedTracking)
-                {
                     _logger.Log(LogLevel.Debug, "Removed stale tracking for circuit breaker node {NodeId}", nodeId);
-                }
             }
 
             if (removedCount == 0 && allowAggressiveEviction)
@@ -239,9 +238,7 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
             }
 
             if (removedCount > 0)
-            {
                 _logger.Log(LogLevel.Information, "Cleanup completed: removed {Count} circuit breaker(s)", removedCount);
-            }
 
             return removedCount;
         }

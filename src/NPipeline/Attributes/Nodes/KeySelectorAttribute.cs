@@ -10,15 +10,16 @@ public sealed class KeySelectorAttribute : Attribute
     /// <summary>
     ///     Initializes a new instance of the <see cref="KeySelectorAttribute" /> class.
     /// </summary>
-    /// <param name="targetType">The type of the data for which this key selector applies.</param>
-    /// <param name="keyPropertyNames">The names of the properties on the target type to be used as the composite join key.</param>
+    /// <param name="targetType">The type of data for which this key selector applies.</param>
+    /// <param name="keyPropertyNames">The names of properties on target type to be used as composite join key.</param>
     public KeySelectorAttribute(Type targetType, params string[] keyPropertyNames)
     {
-        TargetType = targetType ?? throw new ArgumentNullException(nameof(targetType));
+        ArgumentNullException.ThrowIfNull(targetType);
 
         if (keyPropertyNames is null || keyPropertyNames.Length == 0)
             throw new ArgumentException("At least one key property name must be provided.", nameof(keyPropertyNames));
 
+        TargetType = targetType;
         KeyPropertyNames = keyPropertyNames;
     }
 

@@ -36,11 +36,11 @@ public sealed class CircuitBreakerMemoryManagementOptionsTests
 
         // Act
         var options = new CircuitBreakerMemoryManagementOptions(
-            CleanupInterval: TimeSpan.FromMinutes(10),
-            InactivityThreshold: TimeSpan.FromHours(1),
-            EnableAutomaticCleanup: false,
-            MaxTrackedCircuitBreakers: 500,
-            CleanupTimeout: customTimeout);
+            TimeSpan.FromMinutes(10),
+            TimeSpan.FromHours(1),
+            false,
+            500,
+            customTimeout);
 
         // Assert
         options.EffectiveCleanupTimeout.Should().Be(customTimeout);
@@ -92,6 +92,7 @@ public sealed class CircuitBreakerMemoryManagementOptionsTests
 
         // Act & Assert
         var act = () => options.Validate();
+
         act.Should().Throw<ArgumentOutOfRangeException>()
             .WithParameterName("CleanupTimeout")
             .WithMessage("CleanupTimeout must be greater than zero*");

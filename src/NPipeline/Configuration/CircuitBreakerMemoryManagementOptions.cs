@@ -68,29 +68,19 @@ public sealed record CircuitBreakerMemoryManagementOptions(
         var cleanupTimeout = EffectiveCleanupTimeout;
 
         if (cleanupInterval <= TimeSpan.Zero)
-        {
             throw new ArgumentOutOfRangeException(nameof(CleanupInterval), "CleanupInterval must be greater than zero");
-        }
 
         if (inactivityThreshold <= TimeSpan.Zero)
-        {
             throw new ArgumentOutOfRangeException(nameof(InactivityThreshold), "InactivityThreshold must be greater than zero");
-        }
 
         if (cleanupTimeout <= TimeSpan.Zero)
-        {
             throw new ArgumentOutOfRangeException(nameof(CleanupTimeout), "CleanupTimeout must be greater than zero");
-        }
 
         if (MaxTrackedCircuitBreakers <= 0)
-        {
             throw new ArgumentOutOfRangeException(nameof(MaxTrackedCircuitBreakers), "MaxTrackedCircuitBreakers must be greater than zero");
-        }
 
         if (cleanupInterval > inactivityThreshold)
-        {
             throw new ArgumentException("CleanupInterval should not be greater than InactivityThreshold", nameof(CleanupInterval));
-        }
 
         return this;
     }

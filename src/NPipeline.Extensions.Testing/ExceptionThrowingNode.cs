@@ -17,7 +17,8 @@ public sealed class ExceptionThrowingNode<TIn> : TransformNode<TIn, TIn>
     /// <param name="exceptionToThrow">The exception to throw when the node is executed.</param>
     public ExceptionThrowingNode(Exception exceptionToThrow)
     {
-        _exceptionToThrow = exceptionToThrow ?? throw new ArgumentNullException(nameof(exceptionToThrow));
+        ArgumentNullException.ThrowIfNull(exceptionToThrow);
+        _exceptionToThrow = exceptionToThrow;
     }
 
     /// <inheritdoc />

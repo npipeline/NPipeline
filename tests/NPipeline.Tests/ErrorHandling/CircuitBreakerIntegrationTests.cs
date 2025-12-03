@@ -7,7 +7,6 @@ using NPipeline.Execution.Strategies;
 using NPipeline.Nodes;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
-using InMemoryDataPipe = NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>;
 
 namespace NPipeline.Tests.ErrorHandling;
 

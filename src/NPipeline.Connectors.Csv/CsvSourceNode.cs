@@ -28,9 +28,11 @@ public sealed class CsvSourceNode<T> : SourceNode<T>
         CsvConfiguration? configuration,
         Encoding? encoding)
     {
-        _uri = uri ?? throw new ArgumentNullException(nameof(uri));
+        ArgumentNullException.ThrowIfNull(uri);
+        _uri = uri;
 
         _csvConfiguration = configuration ?? new CsvConfiguration(CultureInfo.InvariantCulture);
+
         // Set DetectDelimiter on the underlying CsvHelper configuration
         _csvConfiguration.HelperConfiguration.DetectDelimiter = true;
 
@@ -47,7 +49,8 @@ public sealed class CsvSourceNode<T> : SourceNode<T>
         Encoding? encoding = null)
         : this(uri, configuration, encoding)
     {
-        _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
+        ArgumentNullException.ThrowIfNull(resolver);
+        _resolver = resolver;
     }
 
     /// <summary>
@@ -60,7 +63,8 @@ public sealed class CsvSourceNode<T> : SourceNode<T>
         Encoding? encoding = null)
         : this(uri, configuration, encoding)
     {
-        _provider = provider ?? throw new ArgumentNullException(nameof(provider));
+        ArgumentNullException.ThrowIfNull(provider);
+        _provider = provider;
     }
 
     /// <inheritdoc />

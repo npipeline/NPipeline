@@ -5,7 +5,7 @@ namespace NPipeline.Connectors.Exceptions;
 /// </summary>
 /// <remarks>
 ///     This exception is used to indicate that a requested operation cannot be performed because
-///     the storage provider lacks the necessary capability for the specified storage resource.
+///     a storage provider lacks the necessary capability for the specified storage resource.
 /// </remarks>
 /// <param name="uri">The storage URI for which the capability is not supported.</param>
 /// <param name="capability">The capability that is not supported.</param>

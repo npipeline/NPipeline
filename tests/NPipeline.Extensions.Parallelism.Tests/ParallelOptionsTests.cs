@@ -73,12 +73,12 @@ public class ParallelOptionsTests
 
         // Act
         var options = new ParallelOptions(
-            MaxDegreeOfParallelism: 4,
-            MaxQueueLength: 100,
-            QueuePolicy: BoundedQueuePolicy.DropNewest,
-            OutputBufferCapacity: 50,
-            PreserveOrdering: false,
-            MetricsInterval: customInterval);
+            4,
+            100,
+            BoundedQueuePolicy.DropNewest,
+            50,
+            false,
+            customInterval);
 
         // Assert
         options.EffectiveMetricsInterval.Should().Be(customInterval);

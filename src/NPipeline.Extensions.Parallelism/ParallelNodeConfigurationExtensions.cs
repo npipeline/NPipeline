@@ -22,7 +22,7 @@ namespace NPipeline.Extensions.Parallelism;
 public static class ParallelNodeConfigurationExtensions
 {
     /// <summary>
-    /// Default queue length for bounded parallel execution strategies.
+    ///     Default queue length for bounded parallel execution strategies.
     /// </summary>
     public const int DefaultQueueLength = 100;
 

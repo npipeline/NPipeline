@@ -112,6 +112,7 @@ public sealed class BranchNode<T> : TransformNode<T, T>
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     var branchException = new BranchHandlerException(context.CurrentNodeId, index, item, ex);
+
                     lock (syncLock)
                     {
                         exceptions.Add(branchException);
@@ -127,9 +128,7 @@ public sealed class BranchNode<T> : TransformNode<T, T>
         await Task.WhenAll(branchTasks).ConfigureAwait(false);
 
         if (exceptions.Count > 0)
-        {
             throw new AggregateException("One or more branch handlers failed.", exceptions);
-        }
     }
 
     private async Task BranchHandlerAsync(
@@ -231,6 +230,7 @@ public sealed class BranchNode<T> : TransformNode<T, T>
     private void LogBranchException(BranchHandlerException branchException, PipelineContext context, string? additionalMessage = null)
     {
         var logger = context.LoggerFactory.CreateLogger(typeof(BranchNode<T>).FullName ?? typeof(BranchNode<T>).Name);
+
         var message = additionalMessage is not null
             ? $"Exception in branch handler {branchException.BranchIndex} for node '{context.CurrentNodeId}'. {additionalMessage}"
             : $"Exception in branch handler {branchException.BranchIndex} for node '{context.CurrentNodeId}'.";
@@ -266,5 +266,5 @@ public enum BranchErrorHandlingMode
     ///     Log exceptions but continue processing without propagating them.
     ///     Use with caution as this can hide errors. Consider using <see cref="RouteToErrorHandler" /> instead.
     /// </summary>
-    LogAndContinue
+    LogAndContinue,
 }

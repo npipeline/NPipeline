@@ -11,7 +11,7 @@ namespace NPipeline.ErrorHandling;
 ///     <para>
 ///         This implementation provides a memory-bounded dead-letter queue that prevents unbounded memory growth
 ///         by enforcing a strict capacity limit. When the capacity is reached, the sink throws an
-///         <see cref="InvalidOperationException"/> to fail the pipeline immediately.
+///         <see cref="InvalidOperationException" /> to fail the pipeline immediately.
 ///     </para>
 ///     <para>
 ///         The default capacity of 1000 items was chosen based on typical production workloads where:
@@ -49,7 +49,7 @@ public class BoundedInMemoryDeadLetterSink : IDeadLetterSink
     ///     Initializes a new instance of the <see cref="BoundedInMemoryDeadLetterSink" /> class.
     /// </summary>
     /// <param name="capacity">
-    ///     The maximum number of items to store in the queue. 
+    ///     The maximum number of items to store in the queue.
     ///     Defaults to 1000, which provides a balance between memory usage and error retention capacity.
     ///     Must be greater than 0.
     /// </param>
@@ -57,9 +57,7 @@ public class BoundedInMemoryDeadLetterSink : IDeadLetterSink
     public BoundedInMemoryDeadLetterSink(int capacity = 1000)
     {
         if (capacity <= 0)
-        {
             throw new ArgumentOutOfRangeException(nameof(capacity), "Capacity must be greater than 0.");
-        }
 
         _capacity = capacity;
     }
@@ -75,7 +73,7 @@ public class BoundedInMemoryDeadLetterSink : IDeadLetterSink
 
     /// <inheritdoc />
     /// <exception cref="InvalidOperationException">
-    ///     Thrown when the dead-letter queue has reached its configured capacity, 
+    ///     Thrown when the dead-letter queue has reached its configured capacity,
     ///     indicating that too many items have failed processing.
     /// </exception>
     /// <remarks>

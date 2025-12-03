@@ -28,18 +28,6 @@ public sealed class ParallelNodeConfigurationExtensionsTests
 
     #endregion
 
-    #region Setup
-
-    private sealed class TestTransformNode : TransformNode<int, string>
-    {
-        public override Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(item.ToString());
-        }
-    }
-
-    #endregion
-
     #region DefaultQueueLength Tests
 
     [Fact]
@@ -50,6 +38,18 @@ public sealed class ParallelNodeConfigurationExtensionsTests
 
         // Assert
         defaultQueueLength.Should().Be(100);
+    }
+
+    #endregion
+
+    #region Setup
+
+    private sealed class TestTransformNode : TransformNode<int, string>
+    {
+        public override Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(item.ToString());
+        }
     }
 
     #endregion

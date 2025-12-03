@@ -15,7 +15,8 @@ public abstract class DataPipeBase<T> : IDataPipe<T>, IStreamingDataPipe
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="inner" /> is null.</exception>
     protected DataPipeBase(IDataPipe<T> inner)
     {
-        Inner = inner ?? throw new ArgumentNullException(nameof(inner));
+        ArgumentNullException.ThrowIfNull(inner);
+        Inner = inner;
     }
 
     /// <summary>

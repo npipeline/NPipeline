@@ -25,7 +25,7 @@ public sealed class CsvConfigurationTests
         // Act
         var config = new CsvConfiguration
         {
-            BufferSize = customBufferSize
+            BufferSize = customBufferSize,
         };
 
         // Assert
@@ -42,7 +42,7 @@ public sealed class CsvConfigurationTests
         // Act
         var config = new CsvConfiguration(cultureInfo)
         {
-            BufferSize = customBufferSize
+            BufferSize = customBufferSize,
         };
 
         // Assert

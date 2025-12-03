@@ -12,6 +12,34 @@ namespace NPipeline.Tests.Execution.RetryDelay;
 /// </summary>
 public sealed class RetryDelayStrategyTests
 {
+    #region Performance Tests
+
+    [Fact]
+    public async Task NoOpStrategy_GetDelayAsync_WithHighThroughput_ShouldHandleEfficiently()
+    {
+        // Arrange
+        var strategy = NoOpRetryDelayStrategy.Instance;
+        var stopwatch = Stopwatch.StartNew();
+
+        // Act
+        var tasks = new List<Task<TimeSpan>>();
+
+        for (var i = 0; i < 10000; i++)
+        {
+            tasks.Add(strategy.GetDelayAsync(i).AsTask());
+        }
+
+        var results = await Task.WhenAll(tasks);
+        stopwatch.Stop();
+
+        // Assert
+        results.Should().HaveCount(10000);
+        results.Should().AllBeEquivalentTo(TimeSpan.Zero);
+        stopwatch.ElapsedMilliseconds.Should().BeLessThan(1000);
+    }
+
+    #endregion
+
     #region NoOp Strategy Tests
 
     [Fact]
@@ -289,6 +317,7 @@ public sealed class RetryDelayStrategyTests
             TimeSpan.FromMilliseconds(100),
             2.0,
             TimeSpan.FromSeconds(10));
+
         var jitterStrategy = JitterStrategies.FullJitter();
         var random = new Random(42);
         var strategy = new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, random);
@@ -324,12 +353,14 @@ public sealed class RetryDelayStrategyTests
             TimeSpan.FromMilliseconds(100),
             2.0,
             TimeSpan.FromSeconds(5));
+
         var jitterStrategy = JitterStrategies.FullJitter();
         var random = new Random(42);
         var strategy = new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, random);
 
         // Act
         var delays = new List<TimeSpan>();
+
         for (var i = 0; i < 5; i++)
         {
             delays.Add(await strategy.GetDelayAsync(i));
@@ -352,12 +383,14 @@ public sealed class RetryDelayStrategyTests
             TimeSpan.FromMilliseconds(100),
             TimeSpan.FromMilliseconds(50),
             TimeSpan.FromSeconds(5));
+
         var jitterStrategy = JitterStrategies.EqualJitter();
         var random = new Random(42);
         var strategy = new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, random);
 
         // Act
         var delays = new List<TimeSpan>();
+
         for (var i = 0; i < 5; i++)
         {
             delays.Add(await strategy.GetDelayAsync(i));
@@ -379,12 +412,14 @@ public sealed class RetryDelayStrategyTests
             TimeSpan.FromMilliseconds(1),
             10.0,
             TimeSpan.FromMilliseconds(100));
+
         var jitterStrategy = JitterStrategies.FullJitter();
         var random = new Random(42);
         var strategy = new CompositeRetryDelayStrategy(backoffStrategy, jitterStrategy, random);
 
         // Act
         var delays = new List<TimeSpan>();
+
         for (var i = 0; i < 10; i++)
         {
             delays.Add(await strategy.GetDelayAsync(i));
@@ -406,6 +441,7 @@ public sealed class RetryDelayStrategyTests
     {
         // Arrange
         var factory = new DefaultRetryDelayStrategyFactory();
+
         var configuration = new RetryDelayStrategyConfiguration(
             BackoffStrategies.ExponentialBackoff(
                 TimeSpan.FromSeconds(1),
@@ -429,6 +465,7 @@ public sealed class RetryDelayStrategyTests
     {
         // Arrange
         var factory = new DefaultRetryDelayStrategyFactory();
+
         var configuration = new RetryDelayStrategyConfiguration(
             BackoffStrategies.LinearBackoff(
                 TimeSpan.FromSeconds(1),
@@ -452,6 +489,7 @@ public sealed class RetryDelayStrategyTests
     {
         // Arrange
         var factory = new DefaultRetryDelayStrategyFactory();
+
         var configuration = new RetryDelayStrategyConfiguration(
             BackoffStrategies.FixedDelay(TimeSpan.FromMilliseconds(200)),
             JitterStrategies.NoJitter());
@@ -472,6 +510,7 @@ public sealed class RetryDelayStrategyTests
     {
         // Arrange
         var factory = new DefaultRetryDelayStrategyFactory();
+
         var configuration = new RetryDelayStrategyConfiguration(
             BackoffStrategies.ExponentialBackoff(
                 TimeSpan.FromMilliseconds(100),
@@ -602,6 +641,7 @@ public sealed class RetryDelayStrategyTests
     {
         // Arrange
         var factory = new DefaultRetryDelayStrategyFactory();
+
         var configuration = new RetryDelayStrategyConfiguration(
             BackoffStrategies.ExponentialBackoff(
                 TimeSpan.FromMilliseconds(100),
@@ -631,6 +671,7 @@ public sealed class RetryDelayStrategyTests
     {
         // Arrange
         var factory = new DefaultRetryDelayStrategyFactory();
+
         var configuration = new RetryDelayStrategyConfiguration(
             BackoffStrategies.LinearBackoff(
                 TimeSpan.FromMilliseconds(100),
@@ -725,33 +766,6 @@ public sealed class RetryDelayStrategyTests
         decorrelatedJitterStrategy.Should().NotBeNull();
         equalJitterStrategy.Should().NotBeNull();
         noJitterStrategy.Should().NotBeNull();
-    }
-
-    #endregion
-
-    #region Performance Tests
-
-    [Fact]
-    public async Task NoOpStrategy_GetDelayAsync_WithHighThroughput_ShouldHandleEfficiently()
-    {
-        // Arrange
-        var strategy = NoOpRetryDelayStrategy.Instance;
-        var stopwatch = Stopwatch.StartNew();
-
-        // Act
-        var tasks = new List<Task<TimeSpan>>();
-        for (var i = 0; i < 10000; i++)
-        {
-            tasks.Add(strategy.GetDelayAsync(i).AsTask());
-        }
-
-        var results = await Task.WhenAll(tasks);
-        stopwatch.Stop();
-
-        // Assert
-        results.Should().HaveCount(10000);
-        results.Should().AllBeEquivalentTo(TimeSpan.Zero);
-        stopwatch.ElapsedMilliseconds.Should().BeLessThan(1000);
     }
 
     #endregion

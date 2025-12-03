@@ -30,13 +30,13 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
     private long _maxWaitingItems2;
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="TimeWindowedJoinNode{TKey, TIn1, TIn2, TOut}" /> class.
+    ///     Initializes a new instance of <see cref="TimeWindowedJoinNode{TKey, TIn1, TIn2, TOut}" /> class.
     /// </summary>
     /// <param name="windowAssigner">The window assigner strategy to use.</param>
-    /// <param name="timestampExtractor1">Optional timestamp extractor for the first input type.</param>
-    /// <param name="timestampExtractor2">Optional timestamp extractor for the second input type.</param>
+    /// <param name="timestampExtractor1">Optional timestamp extractor for first input type.</param>
+    /// <param name="timestampExtractor2">Optional timestamp extractor for second input type.</param>
     /// <param name="maxOutOfOrderness">
-    ///     The maximum allowed lateness for out-of-order events. Events arriving later than this relative to the current watermark may be
+    ///     The maximum allowed lateness for out-of-order events. Events arriving later than this relative to current watermark may be
     ///     treated as late.
     /// </param>
     /// <param name="watermarkInterval">The frequency at which watermarks are emitted to advance event time and trigger window cleanup.</param>
@@ -47,7 +47,8 @@ public abstract class TimeWindowedJoinNode<TKey, TIn1, TIn2, TOut> : BaseJoinNod
         TimeSpan? maxOutOfOrderness = null,
         TimeSpan? watermarkInterval = null)
     {
-        _windowAssigner = windowAssigner ?? throw new ArgumentNullException(nameof(windowAssigner));
+        ArgumentNullException.ThrowIfNull(windowAssigner);
+        _windowAssigner = windowAssigner;
         _timestampExtractor1 = timestampExtractor1;
         _timestampExtractor2 = timestampExtractor2;
         _maxOutOfOrderness = maxOutOfOrderness ?? TimeSpan.FromMinutes(5);

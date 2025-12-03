@@ -18,7 +18,8 @@ public sealed class MockNode<TIn, TOut> : TransformNode<TIn, TOut>
     /// <param name="transformLogic">The delegate that defines the transformation logic.</param>
     public MockNode(Func<TIn, PipelineContext, CancellationToken, Task<TOut>> transformLogic)
     {
-        _transformLogic = transformLogic ?? throw new ArgumentNullException(nameof(transformLogic));
+        ArgumentNullException.ThrowIfNull(transformLogic);
+        _transformLogic = transformLogic;
     }
 
     /// <inheritdoc />

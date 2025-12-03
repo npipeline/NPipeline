@@ -19,6 +19,50 @@ namespace NPipeline.Tests.Nodes.Branch;
 /// </summary>
 public sealed class BranchNodeIntegrationTests
 {
+    #region Capacity Tests
+
+    [Fact]
+    public async Task Branch_ShouldRecordConfiguredCapacityEvenIfUnboundedInternally()
+    {
+        var ctx = PipelineContext.Default;
+        var collect1 = new InMemorySinkNode<int>();
+        var collect2 = new InMemorySinkNode<int>();
+
+        ctx.Items[PipelineContextKeys.PreconfiguredNodes] = new Dictionary<string, INode>
+        {
+            { "s1", collect1 },
+            { "s2", collect2 },
+        };
+
+        var runner = PipelineRunner.Create();
+        await runner.RunAsync<CapacityBranchingPipeline>(ctx);
+
+        var metrics = ctx.GetBranchMetrics("t");
+        metrics.Should().NotBeNull();
+        metrics!.SubscriberCount.Should().Be(2);
+        metrics.PerSubscriberCapacity.Should().Be(32);
+        metrics.SubscribersCompleted.Should().Be(2);
+        metrics.Faulted.Should().Be(0);
+    }
+
+    #endregion
+
+    #region Backpressure Tests
+
+    [Fact]
+    public async Task SlowSubscriber_ShouldNotCauseDataLoss()
+    {
+        // Arrange
+        var ctx = PipelineContext.Default;
+        var runner = PipelineRunner.Create();
+
+        // Act
+        await runner.RunAsync<BackpressurePipeline>(ctx);
+
+        // Assert - Ensures pipeline runs without exception under multicast.
+    }
+
+    #endregion
 
     #region Basic Branching Tests
 
@@ -110,51 +154,6 @@ public sealed class BranchNodeIntegrationTests
 
         retrievedSink1!.Items.Should().BeEquivalentTo(sourceData);
         retrievedSink2!.Items.Should().BeEquivalentTo(sourceData);
-    }
-
-    #endregion
-
-    #region Capacity Tests
-
-    [Fact]
-    public async Task Branch_ShouldRecordConfiguredCapacityEvenIfUnboundedInternally()
-    {
-        var ctx = PipelineContext.Default;
-        var collect1 = new InMemorySinkNode<int>();
-        var collect2 = new InMemorySinkNode<int>();
-
-        ctx.Items[PipelineContextKeys.PreconfiguredNodes] = new Dictionary<string, INode>
-        {
-            { "s1", collect1 },
-            { "s2", collect2 },
-        };
-
-        var runner = PipelineRunner.Create();
-        await runner.RunAsync<CapacityBranchingPipeline>(ctx);
-
-        var metrics = ctx.GetBranchMetrics("t");
-        metrics.Should().NotBeNull();
-        metrics!.SubscriberCount.Should().Be(2);
-        metrics.PerSubscriberCapacity.Should().Be(32);
-        metrics.SubscribersCompleted.Should().Be(2);
-        metrics.Faulted.Should().Be(0);
-    }
-
-    #endregion
-
-    #region Backpressure Tests
-
-    [Fact]
-    public async Task SlowSubscriber_ShouldNotCauseDataLoss()
-    {
-        // Arrange
-        var ctx = PipelineContext.Default;
-        var runner = PipelineRunner.Create();
-
-        // Act
-        await runner.RunAsync<BackpressurePipeline>(ctx);
-
-        // Assert - Ensures pipeline runs without exception under multicast.
     }
 
     #endregion

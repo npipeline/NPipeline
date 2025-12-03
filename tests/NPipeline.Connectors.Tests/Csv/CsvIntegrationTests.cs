@@ -1,4 +1,3 @@
-using System.Globalization;
 using AwesomeAssertions;
 using NPipeline.Connectors.Csv;
 using NPipeline.DataFlow;
@@ -19,10 +18,11 @@ public sealed class CsvIntegrationTests
             var uri = StorageUri.FromFilePath(tempFile);
 
             // No headers for simple scalar round-trip
-            var cfg = new CsvConfiguration()
+            var cfg = new CsvConfiguration
             {
-                BufferSize = 1024
+                BufferSize = 1024,
             };
+
             cfg.HelperConfiguration.HasHeaderRecord = false;
 
             // Write: CsvSinkNode<int>
@@ -48,9 +48,7 @@ public sealed class CsvIntegrationTests
         finally
         {
             if (File.Exists(tempFile))
-            {
                 File.Delete(tempFile);
-            }
         }
     }
 }

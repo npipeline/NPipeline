@@ -38,6 +38,7 @@ public sealed class PipelineRunnerErrorTests
 
         _ = A.CallTo(() => _pipelineFactory.Create<TestPipelineDefinition>(A<PipelineContext>._))
             .Returns(new NPipeline.Pipeline.Pipeline(graph));
+
         _ = A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
         _ = A.CallTo(() => _executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
@@ -99,6 +100,7 @@ public sealed class PipelineRunnerErrorTests
 
         _ = A.CallTo(() => _pipelineFactory.Create<TestPipelineDefinition>(A<PipelineContext>._))
             .Returns(new NPipeline.Pipeline.Pipeline(graph));
+
         _ = A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
         _ = A.CallTo(() => _executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
@@ -160,6 +162,7 @@ public sealed class PipelineRunnerErrorTests
 
         _ = A.CallTo(() => _pipelineFactory.Create<TestPipelineDefinition>(A<PipelineContext>._))
             .Returns(new NPipeline.Pipeline.Pipeline(graph));
+
         _ = A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
         _ = A.CallTo(() => _executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
@@ -215,6 +218,7 @@ public sealed class PipelineRunnerErrorTests
 
         _ = A.CallTo(() => _pipelineFactory.Create<TestPipelineDefinition>(A<PipelineContext>._))
             .Returns(new NPipeline.Pipeline.Pipeline(graph));
+
         _ = A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
         _ = A.CallTo(() => _executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
@@ -273,11 +277,9 @@ public sealed class PipelineRunnerErrorTests
             _currentAttempt++;
 
             if (_currentAttempt <= failCount)
-            {
                 throw new InvalidOperationException($"Simulated failure on attempt {_currentAttempt}");
-            }
 
-            return new InMemoryDataPipe<object>([new()], "failing-output");
+            return new InMemoryDataPipe<object>([new object()], "failing-output");
         }
 
         public ValueTask DisposeAsync()

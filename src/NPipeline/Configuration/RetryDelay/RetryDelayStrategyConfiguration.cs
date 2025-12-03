@@ -37,7 +37,6 @@ public sealed record RetryDelayStrategyConfiguration(
     /// <exception cref="ArgumentNullException">Thrown when BackoffStrategy is null.</exception>
     public void Validate()
     {
-        if (BackoffStrategy is null)
-            throw new ArgumentNullException(nameof(BackoffStrategy), "BackoffStrategy cannot be null.");
+        ArgumentNullException.ThrowIfNull(BackoffStrategy);
     }
 }
