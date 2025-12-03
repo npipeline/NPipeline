@@ -28,7 +28,7 @@ namespace NPipeline.Pipeline;
 ///     </para>
 ///     <para>
 ///         <strong>Parallel Node Execution:</strong>
-///         When using parallel execution strategies (e.g., <see cref="NPipeline.Extensions.Parallelism.ParallelExecutionStrategy" />),
+///         When using parallel execution strategies (e.g. ParallelExecutionStrategy),
 ///         each worker thread processes independent data items through the pipeline. The context itself is not shared across threads—
 ///         only the node instances and their configuration are shared. State updates during parallel execution should use:
 ///         <list type="bullet">
@@ -88,11 +88,11 @@ public sealed class PipelineContext
     ///     <code>
     ///         // Simple - all defaults
     ///         var context = new PipelineContext();
-    /// 
+    ///
     ///         // With configuration (cancellation token)
     ///         var context = new PipelineContext(
     ///             PipelineContextConfiguration.WithCancellation(cancellationToken));
-    /// 
+    ///
     ///         // With complex configuration
     ///         var config = new PipelineContextConfiguration(
     ///             CancellationToken: cancellationToken,
