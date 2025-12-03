@@ -6,6 +6,8 @@ sidebar_position: 6
 
 # Error Handling Architecture
 
+**This page explains WHAT happens when errors occur in pipelines.** For HOW TO implement error handling and resilience, see [Error Handling](../core-concepts/resilience/error-handling.md) and [Resilience Overview](../core-concepts/resilience/index.md).
+
 NPipeline provides multiple strategies for handling errors that occur during pipeline execution, from early failure to graceful degradation.
 
 ## Error Propagation

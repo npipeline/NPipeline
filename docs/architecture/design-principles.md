@@ -6,6 +6,8 @@ sidebar_position: 10
 
 # Design Principles
 
+**This page explains WHY NPipeline is designed the way it is.** For HOW TO build pipelines using these principles, see [Core Concepts](../core-concepts/index.md).
+
 NPipeline is built on six core principles that guide its design and evolution:
 
 ## 1. Separation of Concerns

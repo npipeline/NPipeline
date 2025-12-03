@@ -6,6 +6,8 @@ sidebar_position: 2
 
 # Component Architecture
 
+**This page explains WHAT the components are and WHY they exist.** For HOW TO use them to build pipelines, see [Core Concepts](../core-concepts/index.md) and [PipelineBuilder](../core-concepts/pipelinebuilder.md).
+
 NPipeline consists of several key components that work together to define, build, and execute pipelines. Understanding their roles and interactions is essential to working effectively with the framework.
 
 ## Major Components Overview

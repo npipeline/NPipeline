@@ -6,6 +6,8 @@ sidebar_position: 8
 
 # Performance Characteristics
 
+**This page explains WHAT the performance characteristics are for different patterns.** For HOW TO optimize your pipeline, see [Advanced Topics](../advanced-topics/index.md).
+
 NPipeline is designed from the ground up for performance. Understanding its characteristics helps you build efficient pipelines.
 
 ## Memory Usage

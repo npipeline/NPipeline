@@ -6,7 +6,7 @@ sidebar_position: 13
 
 ## Optimization Principles: How NPipeline Achieves High Performance
 
-## Prerequisites
+**This page explains WHY NPipeline is fast.** For HOW TO optimize your specific pipelines, see [Advanced Topics](../advanced-topics/index.md) and [Performance Hygiene](../advanced-topics/performance-hygiene.md).
 
 Before understanding optimization principles, you should be familiar with:
 - [Core Concepts Overview](../core-concepts/index.md) - Basic NPipeline concepts and terminology

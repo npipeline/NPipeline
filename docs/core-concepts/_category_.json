@@ -1,6 +1,7 @@
 {
   "label": "Core Concepts",
   "position": 3,
+  "description": "Implementation guides and HOW TO documentation for building pipelines with NPipeline",
   "link": {
     "type": "doc",
     "id": "core-concepts/index"

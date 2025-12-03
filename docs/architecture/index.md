@@ -1,19 +1,24 @@
 ---
 title: Architecture Overview
-description: How NPipeline works internally.
+description: Deep dive into NPipeline's design, internals, and how it works.
 sidebar_position: 12
 ---
 
 # Architecture Overview
 
+**This section explains WHY NPipeline is designed the way it is and WHAT happens under the hood.** It covers design decisions, performance optimizations, and engineering principles that make NPipeline fast and reliable.
+
+> **Ready to build pipelines?** Start with [Core Concepts](../core-concepts/index.md) for practical HOW TO guides.
+
 ## Prerequisites
 
 Before understanding NPipeline architecture, you should be familiar with:
+
 - [Core Concepts Overview](../core-concepts/index.md) - Basic NPipeline concepts and terminology
 - [Nodes Overview](../core-concepts/nodes/index.md) - Understanding the fundamental building blocks
 
-This section explains **how NPipeline works internally** - design decisions, 
-performance optimizations, and engineering principles that make NPipeline fast 
+This section explains **how NPipeline works internally** - design decisions,
+performance optimizations, and engineering principles that make NPipeline fast
 and reliable.
 
 > **For implementation guides**, see [Core Concepts](../core-concepts/index.md).
@@ -22,30 +27,52 @@ and reliable.
 
 NPipeline's architecture is designed around several core principles: graph-based data flow, lazy evaluation, streaming-first design, and composability. This section breaks down each major architectural component to help you understand how system works internally.
 
-## Main Architecture Sections
+---
 
-### [Core Concepts](core-concepts.md)
+## 🤔 WHY: Design Philosophy & Principles
 
-Learn to fundamental architectural building blocks:
+These sections explain the design decisions behind NPipeline:
 
-* Graph-Based Architecture (DAGs)
-* Node Types (Source, Transform, Sink)
-* Streaming Data Model with `IAsyncEnumerable<T>`
+### [Design Principles](design-principles.md)
+
+Learn the core design philosophy:
+
+- Separation of Concerns - How NPipeline divides responsibilities
+- Lazy Evaluation - Why data is only processed when consumed
+- Streaming First - Why NPipeline treats all data as streams
+- Composability - How components work together
+- Testability - How design enables effective testing
+- Observability - How to understand what's happening internally
 
 ### [Optimization Principles](optimization-principles.md)
 
 Understand how NPipeline achieves exceptional performance:
 
-* Plan-based execution eliminating per-item decisions
-* Zero reflection during steady state
-* ICountable for right-sized allocations
-* ValueTask optimization (up to 90% GC reduction)
-* Streaming-first design with lazy evaluation
-* Memory layout and cache efficiency
+- Plan-based execution eliminating per-item decisions
+- Zero reflection during steady state
+- ICountable for right-sized allocations
+- ValueTask optimization (up to 90% GC reduction)
+- Streaming-first design with lazy evaluation
+- Memory layout and cache efficiency
+
+---
+
+## 📊 WHAT: Internal Architecture & Mechanisms
+
+These sections explain how NPipeline works internally:
+
+### [Core Concepts (Architecture)](core-concepts.md)
+
+Learn the fundamental architectural building blocks:
+
+- Graph-Based Architecture (DAGs)
+- Node Types (Source, Transform, Sink)
+- Streaming Data Model with `IAsyncEnumerable<T>`
 
 ### [Component Architecture](component-architecture.md)
 
-Explore of major system components and their roles:
+Explore the major system components and their roles:
+
 - Pipeline Definition (`IPipelineDefinition`)
 - Pipeline Builder
 - Pipeline Context
@@ -55,27 +82,23 @@ Explore of major system components and their roles:
 ### [Execution Flow](execution-flow.md)
 
 Understand how pipelines execute data:
+
 - Sequential Execution (default)
 - Parallel Execution patterns
 - Data flow through pipeline graph
 
 ### [Data Flow Details](data-flow.md)
 
-Deep dive into how data moves through system:
+Deep dive into how data moves through the system:
+
 - How Data Pipes Work
 - Lazy Evaluation principles
 - Memory efficiency patterns
 
-### [Dependency Injection Integration](dependency-injection.md)
-
-Learn how DI is integrated into NPipeline:
-- Automatic Node Resolution
-- Injecting Dependencies into Nodes
-- Service Provider Integration
-
 ### [Error Handling Architecture](error-handling-architecture.md)
 
 Understand error propagation and handling:
+
 - Error Propagation mechanisms
 - Error Containment strategies
 - Dead-Letter Handling for failed items
@@ -84,13 +107,23 @@ Understand error propagation and handling:
 ### [Cancellation Model](cancellation-model.md)
 
 Learn about graceful shutdown and cancellation:
+
 - Token Propagation through pipeline
 - Node cancellation responsibilities
 - Graceful termination patterns
 
+### [Dependency Injection Integration](dependency-injection.md)
+
+Learn how DI is integrated into NPipeline:
+
+- Automatic Node Resolution
+- Injecting Dependencies into Nodes
+- Service Provider Integration
+
 ### [Performance Characteristics](performance-characteristics.md)
 
 Understand performance implications:
+
 - Memory Usage patterns
 - Throughput characteristics
 - Scalability strategies (vertical and horizontal)
@@ -98,19 +131,12 @@ Understand performance implications:
 ### [Extension Points](extension-points.md)
 
 Discover how to extend NPipeline:
+
 - Custom Nodes
 - Custom Execution Strategies
 - Custom Context Data
 
-### [Design Principles](design-principles.md)
-
-Learn to core design philosophy:
-- Separation of Concerns
-- Lazy Evaluation
-- Streaming First
-- Composability
-- Testability
-- Observability
+---
 
 ## High-Level Architecture Diagram
 

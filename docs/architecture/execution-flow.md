@@ -6,6 +6,8 @@ sidebar_position: 3
 
 # Execution Flow
 
+**This page explains WHAT happens during pipeline execution.** For HOW TO configure execution strategies, see [Execution Strategies](../core-concepts/pipeline-execution/execution-strategies.md).
+
 NPipeline supports multiple execution models to handle different requirements: sequential (the default) and parallel execution through extensions.
 
 ## Core Design: Source Initialization + Asynchronous Execution
