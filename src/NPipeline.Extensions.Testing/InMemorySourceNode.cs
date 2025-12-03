@@ -42,18 +42,29 @@ public sealed class InMemorySourceNode<T> : SourceNode<T>
     ///     - Node-scoped: "NPipeline.Testing.SourceData::{context.CurrentNodeId}"
     ///     - Type-scoped: "NPipeline.Testing.SourceData::{typeof(T).FullName}"
     /// </summary>
+    /// <param name="context">The pipeline context to resolve items from.</param>
+    /// <param name="nodeId">The node ID for context resolution.</param>
     public InMemorySourceNode(PipelineContext context, string nodeId)
     {
         ArgumentNullException.ThrowIfNull(context);
         var items = ResolveFromContext(context, nodeId) ?? [];
         _items = items as ImmutableList<T> ?? items.ToImmutableList();
+        _useContext = false;
     }
 
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="InMemorySourceNode{T}" /> class that resolves items from PipelineContext.
+    ///     Context resolution order:
+    ///     - Node-scoped: "NPipeline.Testing.SourceData::{context.CurrentNodeId}"
+    ///     - Type-scoped: "NPipeline.Testing.SourceData::{typeof(T).FullName}"
+    /// </summary>
+    /// <param name="context">The pipeline context to resolve items from.</param>
     public InMemorySourceNode(PipelineContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
         var items = ResolveFromContext(context, null) ?? [];
         _items = items as ImmutableList<T> ?? items.ToImmutableList();
+        _useContext = false;
     }
 
     /// <inheritdoc />
@@ -69,17 +80,6 @@ public sealed class InMemorySourceNode<T> : SourceNode<T>
 
         return new InMemoryDataPipe<T>(items);
     }
-
-    // private static IReadOnlyList<T>? TryCoerce(object? value)
-    // {
-    //     return value switch
-    //     {
-    //         T[] arr => arr,
-    //         IReadOnlyList<T> ro => ro,
-    //         IEnumerable<T> seq => seq as List<T> ?? seq.ToList(),
-    //         _ => null,
-    //     };
-    // }
 
     /// <summary>
     ///     Resolves the data from the context.
