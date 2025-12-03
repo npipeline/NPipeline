@@ -108,7 +108,7 @@ NPipeline includes built-in Roslyn analyzers that provide compile-time validatio
 
 The analyzer framework is designed to be extensible, allowing community contributions of additional analyzers for NPipeline-specific patterns.
 
-**Learn more:** [Build-Time Resilience Analyzer Guide](../analyzers/resilience.md)
+**Learn more:** [Build-Time Resilience Analyzer Guide](../tooling/analyzers/resilience.md)
 
 ---
 

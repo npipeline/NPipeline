@@ -16,7 +16,7 @@ Node restart is a powerful resilience feature, but it requires **three mandatory
 
 If you've experienced mysterious pipeline failures where restart seemed enabled but didn't work, one of these requirements was missing.
 
-> **💡 Tip:** The NPipeline build-time analyzer automatically detects incomplete restart configurations at compile time. Enable [NP9002](../../analyzers/resilience.md) to catch these issues before deployment.
+> **💡 Tip:** The NPipeline build-time analyzer automatically detects incomplete restart configurations at compile time. Enable [NP9002](../../tooling/analyzers/resilience.md) to catch these issues before deployment.
 
 ---
 

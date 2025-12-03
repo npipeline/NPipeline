@@ -193,7 +193,7 @@ Use these approaches to verify pipeline optimization:
    - Throughput vs. latency trade-offs
    - Memory usage patterns
 
-For comprehensive performance best practices, see [Performance Hygiene](../advanced-topics/performance-hygiene.md) and [Performance Analyzers](../analyzers/performance.md).
+For comprehensive performance best practices, see [Performance Hygiene](../advanced-topics/performance-hygiene.md) and [Performance Analyzers](../tooling/analyzers/performance.md).
 
 ### What's the memory overhead of materialization?
 

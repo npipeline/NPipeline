@@ -535,7 +535,7 @@ await pipeline.ExecuteAsync(source, context);
 **Read More:**
 
 - **[Getting Started with Resilience](../core-concepts/resilience/getting-started.md)** - Complete quick-start and step-by-step configuration guide
-- [Build-Time Resilience Analyzer Guide](../analyzers/resilience.md)
+- [Build-Time Resilience Analyzer Guide](../tooling/analyzers/resilience.md)
 - [Error Handling Guide](../core-concepts/resilience/error-handling.md)
 - [Materialization & Buffering](../core-concepts/resilience/materialization.md)
 
@@ -642,7 +642,7 @@ public class GoodSourceNode : SourceNode<string>
 
 **Read More:**
 
-- [Build-Time Resilience Analyzer Guide](../analyzers/resilience.md)
+- [Build-Time Resilience Analyzer Guide](../tooling/analyzers/resilience.md)
 - [Source Node Best Practices](../core-concepts/nodes/source-nodes.md)
 - [Performance Optimization Guide](../advanced-topics/performance-hygiene.md)
 
@@ -766,6 +766,6 @@ public class GoodSinkNode : SinkNode<string>
 
 **Read More:**
 
-- [Build-Time Resilience Analyzer Guide](../analyzers/resilience.md)
+- [Build-Time Resilience Analyzer Guide](../tooling/analyzers/resilience.md)
 - [Dependency Injection Best Practices](../architecture/dependency-injection.md)
 - [Testing Pipeline Components](../extensions/testing/index.md)

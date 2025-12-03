@@ -63,7 +63,7 @@ If you intend to use `PipelineErrorDecision.RestartNode` to recover from failure
 
 You **must** configure all three of the following mandatory prerequisites. The guide provides detailed step-by-step instructions for each requirement.
 
-> **💡 Pro Tip:** The NPipeline build-time analyzer (NP9002) detects incomplete resilience configurations at compile-time, preventing these silent failures. See [Build-Time Resilience Analyzer](../../analyzers/resilience.md) for details.
+> **💡 Pro Tip:** The NPipeline build-time analyzer (NP9002) detects incomplete resilience configurations at compile-time, preventing these silent failures. See [Build-Time Resilience Analyzer](../../tooling/analyzers/resilience.md) for details.
 
 ### Mandatory Requirements Summary
 

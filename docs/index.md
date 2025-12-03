@@ -163,7 +163,7 @@ Dependency injection, parallelism, testing utilities, and more.
 
 Performance optimization, testing strategies, and expert patterns.
 
-### [Build-Time Analyzers](./analyzers/index.md)
+### [Build-Time Analyzers](./tooling/analyzers/index.md)
 
 Catch errors at compile-time with automated best practice enforcement.
 
