@@ -3,11 +3,23 @@ using System.Threading.Channels;
 
 namespace NPipeline.DataFlow;
 
+/// <summary>
+///     Extension methods for working with <see cref="IAsyncEnumerable{T}" /> sequences.
+/// </summary>
 public static class AsyncEnumerableExtensions
 {
 #if !NET10_0
+    /// <summary>
+    ///     Asynchronously creates a <see cref="List{T}" /> from an <see cref="IAsyncEnumerable{T}" /> sequence.
+    /// </summary>
+    /// <typeparam name="T">The element type of the source sequence.</typeparam>
+    /// <param name="source">The source asynchronous sequence to enumerate.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the sequence to complete.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a list with the elements from the source sequence.</returns>
     public static async Task<List<T>> ToListAsync<T>(this IAsyncEnumerable<T> source, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(source);
+
         var list = new List<T>();
 
         await foreach (var item in source.WithCancellation(cancellationToken))
