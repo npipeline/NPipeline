@@ -31,7 +31,7 @@ This gets flagged immediately at build time, during development.
 
 #### Solution: Complete Configuration
 
-**For detailed step-by-step configuration instructions, see the [Getting Started with Resilience](../core-concepts/resilience/getting-started.md) guide.**
+**For detailed step-by-step configuration instructions, see the [Getting Started with Resilience](../../core-concepts/resilience/getting-started.md) guide.**
 
 The three mandatory prerequisites are:
 

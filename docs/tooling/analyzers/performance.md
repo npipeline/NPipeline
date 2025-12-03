@@ -310,7 +310,7 @@ public async ValueTask<string> GetDataAsync(string id)
 }
 ```
 
-**Important:** ValueTask comes with critical constraints that you must understand to avoid subtle bugs. For complete implementation guidance, including dangerous constraints and real-world examples, see [**Synchronous Fast Paths and ValueTask Optimization**](../advanced-topics/synchronous-fast-paths.md)—the dedicated deep-dive guide that covers the complete pattern and critical safety considerations.
+**Important:** ValueTask comes with critical constraints that you must understand to avoid subtle bugs. For complete implementation guidance, including dangerous constraints and real-world examples, see [**Synchronous Fast Paths and ValueTask Optimization**](../../advanced-topics/synchronous-fast-paths.md)—the dedicated deep-dive guide that covers the complete pattern and critical safety considerations.
 
 ### NP9201: LINQ Operations in Hot Paths
 

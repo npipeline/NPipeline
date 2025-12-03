@@ -169,5 +169,5 @@ dotnet_diagnostic.NP9301.severity = warning
 
 ## See Also
 
-- [Error Handling Architecture](../architecture/error-handling-architecture.md)
-- [Performance Characteristics](../architecture/performance-characteristics.md)
+- [Error Handling Architecture](../../architecture/error-handling-architecture.md)
+- [Performance Characteristics](../../architecture/performance-characteristics.md)

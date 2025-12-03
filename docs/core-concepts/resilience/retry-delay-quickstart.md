@@ -186,5 +186,5 @@ public void Define(PipelineBuilder builder, PipelineContext context)
 
 - **[Error Handling](error-handling.md)**: Comprehensive error handling strategies that work with retry delays
 - **[Materialization & Buffering](materialization.md)**: Buffer requirements for retry functionality
-- **[Configuration Guide](configuration-guide.md)**: Step-by-step workflow for configuring resilience
+- **[Getting Started with Resilience](getting-started.md)**: Step-by-step workflow for configuring resilience
 - **[Troubleshooting](troubleshooting.md)**: Common issues and solutions for retry behavior problems

@@ -404,6 +404,6 @@ dotnet_diagnostic.NP9302.severity = error
 
 ## See Also
 
-- [Streaming vs Buffering](../core-concepts/streaming-vs-buffering.md)
-- [Data Pipes](../core-concepts/data-pipes.md)
-- [Performance Characteristics](../architecture/performance-characteristics.md)
+- [Streaming vs Buffering](../../core-concepts/streaming-vs-buffering.md)
+- [Data Pipes](../../core-concepts/data-pipes.md)
+- [Performance Characteristics](../../architecture/performance-characteristics.md)
