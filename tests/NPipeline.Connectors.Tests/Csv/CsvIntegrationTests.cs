@@ -1,6 +1,5 @@
 using System.Globalization;
 using AwesomeAssertions;
-using CsvHelper.Configuration;
 using NPipeline.Connectors.Csv;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
@@ -20,10 +19,11 @@ public sealed class CsvIntegrationTests
             var uri = StorageUri.FromFilePath(tempFile);
 
             // No headers for simple scalar round-trip
-            var cfg = new CsvConfiguration(CultureInfo.InvariantCulture)
+            var cfg = new CsvConfiguration()
             {
-                HasHeaderRecord = false,
+                BufferSize = 1024
             };
+            cfg.HelperConfiguration.HasHeaderRecord = false;
 
             // Write: CsvSinkNode<int>
             var resolver = StorageProviderFactory.CreateResolver().Resolver;
@@ -42,12 +42,15 @@ public sealed class CsvIntegrationTests
                 result.Add(i);
             }
 
+            // Assert
             result.Should().Equal(1, 2, 3, 4, 5);
         }
         finally
         {
             if (File.Exists(tempFile))
+            {
                 File.Delete(tempFile);
+            }
         }
     }
 }

@@ -40,6 +40,20 @@ public sealed class ParallelNodeConfigurationExtensionsTests
 
     #endregion
 
+    #region DefaultQueueLength Tests
+
+    [Fact]
+    public void DefaultQueueLength_ShouldBe100()
+    {
+        // Arrange & Act
+        var defaultQueueLength = ParallelNodeConfigurationExtensions.DefaultQueueLength;
+
+        // Assert
+        defaultQueueLength.Should().Be(100);
+    }
+
+    #endregion
+
     #region WithBlockingParallelism Tests
 
     [Fact]

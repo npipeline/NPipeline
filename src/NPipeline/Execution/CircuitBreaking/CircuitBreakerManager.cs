@@ -174,7 +174,7 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
     private int PerformCleanup(bool allowAggressiveEviction = false)
     {
         // Prevent concurrent cleanup operations
-        if (!Monitor.TryEnter(_cleanupLock, TimeSpan.FromSeconds(30)))
+        if (!Monitor.TryEnter(_cleanupLock, _memoryOptions.EffectiveCleanupTimeout))
         {
             _logger.Log(LogLevel.Warning, "Cleanup operation already in progress, skipping");
             return 0;
@@ -200,7 +200,9 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
                 var removedTracking = _tracker.RemoveTracking(nodeId);
 
                 if (!removedBreaker && removedTracking)
+                {
                     _logger.Log(LogLevel.Debug, "Removed stale tracking for circuit breaker node {NodeId}", nodeId);
+                }
             }
 
             if (removedCount == 0 && allowAggressiveEviction)
@@ -237,7 +239,9 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
             }
 
             if (removedCount > 0)
+            {
                 _logger.Log(LogLevel.Information, "Cleanup completed: removed {Count} circuit breaker(s)", removedCount);
+            }
 
             return removedCount;
         }

@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Text;
 using CsvHelper;
-using CsvHelper.Configuration;
 using NPipeline.Connectors.Abstractions;
 using NPipeline.Connectors.Exceptions;
 using NPipeline.DataFlow;
@@ -74,8 +73,8 @@ public sealed class CsvSinkNode<T> : SinkNode<T>
         }
 
         await using var stream = await provider.OpenWriteAsync(_uri, cancellationToken).ConfigureAwait(false);
-        await using var writer = new StreamWriter(stream, _encoding, 1024, false);
-        await using var csv = new CsvWriter(writer, _csvConfiguration);
+        await using var writer = new StreamWriter(stream, _encoding, _csvConfiguration.BufferSize, false);
+        await using var csv = new CsvWriter(writer, _csvConfiguration.HelperConfiguration);
 
         await foreach (var item in input.WithCancellation(cancellationToken))
         {

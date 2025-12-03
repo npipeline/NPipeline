@@ -112,6 +112,58 @@ public sealed class CircuitBreakerOpenException : PipelineException
 * **`HalfOpenMaxAttempts`**: Maximum number of operation attempts allowed in Half-Open state.
 * **`TrackOperationsInWindow`**: Whether to track operations in the rolling window for statistics.
 
+## Circuit Breaker Memory Management
+
+The [`CircuitBreakerMemoryManagementOptions`](../../../src/NPipeline/Configuration/CircuitBreakerMemoryManagementOptions.cs:12) class provides configuration for managing circuit breaker memory usage and automatic cleanup:
+
+```csharp
+var memoryOptions = new CircuitBreakerMemoryManagementOptions(
+    cleanupInterval: TimeSpan.FromMinutes(5),    // How often cleanup runs
+    inactivityThreshold: TimeSpan.FromMinutes(30),  // When circuit breakers become eligible for removal
+    enableAutomaticCleanup: true,                  // Whether cleanup is enabled
+    maxTrackedCircuitBreakers: 1000,            // Maximum circuit breakers to track
+    cleanupTimeout: TimeSpan.FromSeconds(30)         // Timeout for cleanup operations
+);
+```
+
+### Cleanup Timeout Configuration
+
+The [`CleanupTimeout`](../../../src/NPipeline/Configuration/CircuitBreakerMemoryManagementOptions.cs:11) property controls the timeout for circuit breaker cleanup operations:
+
+- **Default value**: 30 seconds
+- **Purpose**: Prevents deadlocks during cleanup operations by setting a maximum time limit
+- **Behavior**: If cleanup operations exceed this timeout, they are aborted to prevent system hangs
+
+When to adjust CleanupTimeout:
+- **Increase** (e.g., 60 seconds) for:
+  - Systems with very large numbers of circuit breakers (>1000)
+  - Environments with slow I/O or high contention
+  - Complex circuit breaker hierarchies with deep dependency chains
+- **Decrease** (e.g., 10-15 seconds) for:
+  - Real-time systems where quick recovery is critical
+  - Environments with limited circuit breaker counts
+  - Systems where cleanup failures should be detected quickly
+
+```csharp
+// Example: Extended timeout for systems with many circuit breakers
+var highVolumeOptions = new CircuitBreakerMemoryManagementOptions(
+    cleanupInterval: TimeSpan.FromMinutes(5),
+    inactivityThreshold: TimeSpan.FromMinutes(30),
+    enableAutomaticCleanup: true,
+    maxTrackedCircuitBreakers: 5000,  // High volume
+    cleanupTimeout: TimeSpan.FromMinutes(1) // Extended timeout for large cleanup operations
+);
+
+// Example: Quick timeout for real-time systems
+var realtimeOptions = new CircuitBreakerMemoryManagementOptions(
+    cleanupInterval: TimeSpan.FromMinutes(1),
+    inactivityThreshold: TimeSpan.FromMinutes(10),
+    enableAutomaticCleanup: true,
+    maxTrackedCircuitBreakers: 100,
+    cleanupTimeout: TimeSpan.FromSeconds(10) // Quick timeout for fast recovery
+);
+```
+
 ## Threshold Types
 
 ### ConsecutiveFailures (Default)

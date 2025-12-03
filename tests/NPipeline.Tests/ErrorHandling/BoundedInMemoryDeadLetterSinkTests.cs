@@ -33,13 +33,24 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     #region Constructor Tests
 
     [Fact]
-    public void Constructor_WithDefaultCapacity_SetsCapacityTo1000()
+    public async Task Constructor_WithDefaultCapacity_SetsCapacityTo1000()
     {
         // Act
         var sink = new BoundedInMemoryDeadLetterSink();
+        var context = PipelineContext.Default;
 
         // Assert
         sink.Items.Should().BeEmpty();
+
+        // Add 1000 items - should succeed
+        for (var i = 0; i < 1000; i++)
+        {
+            await sink.HandleAsync("node", $"item-{i}", new Exception(), context, CancellationToken.None);
+        }
+
+        // The 1001st item should throw
+        var act = async () => await sink.HandleAsync("node", "item-1000", new Exception(), context, CancellationToken.None);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*exceeded its capacity of 1000*");
     }
 
     [Fact]
@@ -53,13 +64,11 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     }
 
     [Fact]
-    public void Constructor_WithZeroCapacity_IsAllowed()
+    public void Constructor_WithZeroCapacity_ShouldThrow()
     {
-        // Act
-        var sink = new BoundedInMemoryDeadLetterSink(0);
-
-        // Assert
-        sink.Items.Should().BeEmpty();
+        // Arrange & Act & Assert
+        var act = () => new BoundedInMemoryDeadLetterSink(0);
+        act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
     #endregion
@@ -144,15 +153,11 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     [Fact]
     public async Task HandleAsync_ThrowsWithZeroCapacity()
     {
-        // Arrange
-        var sink = new BoundedInMemoryDeadLetterSink(0);
-        var context = PipelineContext.Default;
-
         // Act
-        var act = async () => await sink.HandleAsync("node", "item", new Exception(), context, CancellationToken.None);
+        var act = () => new BoundedInMemoryDeadLetterSink(0);
 
         // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
     [Fact]

@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 using CsvHelper;
-using CsvHelper.Configuration;
 using NPipeline.Connectors.Abstractions;
 using NPipeline.Connectors.Exceptions;
 using NPipeline.DataFlow;
@@ -31,10 +30,9 @@ public sealed class CsvSourceNode<T> : SourceNode<T>
     {
         _uri = uri ?? throw new ArgumentNullException(nameof(uri));
 
-        _csvConfiguration = configuration ?? new CsvConfiguration(CultureInfo.InvariantCulture)
-        {
-            DetectDelimiter = true,
-        };
+        _csvConfiguration = configuration ?? new CsvConfiguration(CultureInfo.InvariantCulture);
+        // Set DetectDelimiter on the underlying CsvHelper configuration
+        _csvConfiguration.HelperConfiguration.DetectDelimiter = true;
 
         _encoding = encoding ?? new UTF8Encoding(false);
     }
@@ -94,7 +92,7 @@ public sealed class CsvSourceNode<T> : SourceNode<T>
         // Open the stream per-enumeration so disposal is bound to consumer lifetime
         await using var stream = await provider.OpenReadAsync(uri, cancellationToken).ConfigureAwait(false);
         using var reader = new StreamReader(stream, encoding, true);
-        using var csv = new CsvReader(reader, cfg);
+        using var csv = new CsvReader(reader, cfg.HelperConfiguration);
 
         await foreach (var record in csv.GetRecordsAsync<T>(cancellationToken))
         {

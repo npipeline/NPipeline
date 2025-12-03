@@ -43,6 +43,48 @@ public class ParallelOptionsTests
     }
 
     [Fact]
+    public void MetricsInterval_ShouldDefaultToOneSecond()
+    {
+        // Arrange & Act
+        var options = new ParallelOptions();
+
+        // Assert
+        options.EffectiveMetricsInterval.Should().Be(TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public void MetricsInterval_ShouldUseCustomValue()
+    {
+        // Arrange
+        var customInterval = TimeSpan.FromMilliseconds(500);
+
+        // Act
+        var options = new ParallelOptions(MetricsInterval: customInterval);
+
+        // Assert
+        options.EffectiveMetricsInterval.Should().Be(customInterval);
+    }
+
+    [Fact]
+    public void MetricsInterval_ShouldUseCustomValueWithOtherParameters()
+    {
+        // Arrange
+        var customInterval = TimeSpan.FromSeconds(2);
+
+        // Act
+        var options = new ParallelOptions(
+            MaxDegreeOfParallelism: 4,
+            MaxQueueLength: 100,
+            QueuePolicy: BoundedQueuePolicy.DropNewest,
+            OutputBufferCapacity: 50,
+            PreserveOrdering: false,
+            MetricsInterval: customInterval);
+
+        // Assert
+        options.EffectiveMetricsInterval.Should().Be(customInterval);
+    }
+
+    [Fact]
     public async Task OutputBufferCapacity_ShouldPreventUnboundedBacklog()
     {
         // Fast transform, slow sink simulation: sink delay already encoded in transform delay; we inflate item count.

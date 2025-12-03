@@ -202,7 +202,35 @@ var options = new ParallelOptions
     MaxQueueLength = 1000,               // Bounded input queue for backpressure
     QueuePolicy = BoundedQueuePolicy.Block, // Behavior when queue is full
     OutputBufferCapacity = 500,           // Bounded output buffer
-    PreserveOrdering = true               // Whether to preserve input order
+    PreserveOrdering = true,              // Whether to preserve input order
+    MetricsInterval = TimeSpan.FromSeconds(1) // Interval for metrics emission
+};
+```
+
+### Metrics Configuration
+
+The [`MetricsInterval`](../../../src/NPipeline.Extensions.Parallelism/ParallelOptions.cs:45) property controls how frequently parallel execution metrics are emitted:
+
+- **Default value**: 1 second
+- **Purpose**: Determines the interval at which performance metrics (throughput, queue depth, worker utilization) are collected and reported
+- **When to adjust**: 
+  - Decrease for more granular monitoring in high-frequency trading or real-time analytics
+  - Increase to reduce monitoring overhead in batch processing scenarios
+  - Set to longer intervals when using custom metrics collection systems that batch data
+
+```csharp
+// Example: Fine-grained monitoring for real-time systems
+var realtimeOptions = new ParallelOptions
+{
+    MaxDegreeOfParallelism = 4,
+    MetricsInterval = TimeSpan.FromMilliseconds(500) // Emit metrics every 500ms
+};
+
+// Example: Reduced monitoring overhead for batch processing
+var batchOptions = new ParallelOptions
+{
+    MaxDegreeOfParallelism = 8,
+    MetricsInterval = TimeSpan.FromSeconds(10) // Emit metrics every 10 seconds
 };
 ```
 
@@ -213,6 +241,33 @@ When `MaxQueueLength` is specified, you can control the behavior when the queue 
 - **`BoundedQueuePolicy.Block`**: Wait until space becomes available (default)
 - **`BoundedQueuePolicy.DropNewest`**: Drop the incoming item
 - **`BoundedQueuePolicy.DropOldest`**: Remove the oldest item to make space
+
+### Default Queue Length
+
+The [`ParallelNodeConfigurationExtensions.DefaultQueueLength`](../../../src/NPipeline.Extensions.Parallelism/ParallelNodeConfigurationExtensions.cs:27) constant defines the default queue length for bounded parallel execution strategies:
+
+- **Default value**: 100 items
+- **Applied to**: Drop-oldest and drop-newest parallel strategies when no explicit queue length is provided
+- **Rationale**: This value balances memory usage with throughput, providing sufficient buffer for most workloads while preventing excessive memory consumption
+
+```csharp
+// Example: Using default queue length (100)
+var transform = builder.AddTransform<MyTransform, int, string>()
+    .WithDropOldestParallelism(builder, maxDegreeOfParallelism: 4);
+    // Uses DefaultQueueLength of 100 automatically
+
+// Example: Custom queue length for high-volume scenarios
+var highVolumeTransform = builder.AddTransform<MyTransform, int, string>()
+    .WithDropOldestParallelism(
+        builder, 
+        maxDegreeOfParallelism: 4,
+        maxQueueLength: 1000); // Override default with larger queue
+```
+
+When to adjust the default queue length:
+- **Increase** for high-throughput scenarios with bursty input patterns
+- **Decrease** for memory-constrained environments or when processing large items
+- **Keep default** for most typical workloads where balanced performance is desired
 
 ## Thread Safety in Parallel Execution
 

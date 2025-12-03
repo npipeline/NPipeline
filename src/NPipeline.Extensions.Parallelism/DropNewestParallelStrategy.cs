@@ -47,6 +47,7 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
 
         var effectiveDop = parallelOptions?.MaxDegreeOfParallelism ?? ConfiguredMaxDop ?? Environment.ProcessorCount;
         var boundedCapacity = parallelOptions?.MaxQueueLength ?? 1;
+        var metricsInterval = parallelOptions?.EffectiveMetricsInterval ?? TimeSpan.FromSeconds(1);
         var observer = context.ExecutionObserver;
 
         // Custom bounded queue with drop-newest policy
@@ -96,7 +97,7 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
                             (int)metrics.DroppedNewest, (int)metrics.DroppedOldest, (int)metrics.Enqueued));
                     }
 
-                    if (DateTimeOffset.UtcNow - lastMetricsEmit >= TimeSpan.FromSeconds(1))
+                    if (DateTimeOffset.UtcNow - lastMetricsEmit >= metricsInterval)
                     {
                         lastMetricsEmit = DateTimeOffset.UtcNow;
 

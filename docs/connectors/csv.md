@@ -245,6 +245,40 @@ Common configuration options include:
 - `HasHeaderRecord`: Specify whether the CSV file has a header row (default is `true`).
 - `Delimiter`: Change the field delimiter (e.g., to a tab `\t` or semicolon `;`).
 - `CultureInfo`: Specify the culture to use for parsing numbers and dates.
+- `BufferSize`: Controls the buffer size for the StreamWriter used in CSV operations (default is 1024).
+
+### Buffer Size Configuration
+
+The [`BufferSize`](../../../src/NPipeline.Connectors.Csv/CsvConfiguration.cs:16) property controls the internal buffer size for CSV I/O operations:
+
+- **Default value**: 1024 bytes
+- **Purpose**: Determines the size of the buffer used by StreamWriter when reading or writing CSV files
+- **Performance impact**: Larger buffers can improve I/O performance for large files but use more memory
+
+When to adjust BufferSize:
+- **Increase** (e.g., 4096, 8192) for:
+  - Processing very large CSV files
+  - High-throughput scenarios where I/O performance is critical
+  - Systems with abundant memory resources
+- **Decrease** (e.g., 512) for:
+  - Memory-constrained environments
+  - Processing many small CSV files concurrently
+  - Scenarios where memory usage must be tightly controlled
+
+```csharp
+// Example: Custom buffer size for large file processing
+var largeFileConfig = new CsvConfiguration()
+{
+    BufferSize = 8192, // 8KB buffer for better performance with large files
+    HelperConfiguration = {
+        Delimiter = ",",
+        HasHeaderRecord = true
+    }
+};
+
+var resolver = StorageProviderFactory.CreateResolver().Resolver;
+var source = new CsvSourceNode<User>(StorageUri.FromFilePath("large_dataset.csv"), resolver, largeFileConfig);
+```
 
 ### Example: Using a custom delimiter and no header
 

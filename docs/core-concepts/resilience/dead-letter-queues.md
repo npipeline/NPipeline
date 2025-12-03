@@ -38,6 +38,38 @@ public interface IDeadLetterSink
 * **`cancellationToken`**: A token to observe for cancellation requests.
 * **`HandleAsync`**: Called when an item needs to be sent to dead-letter queue. Receives the node ID, failed item, exception, pipeline context, and a cancellation token.
 
+## Built-in Dead Letter Sink Implementations
+
+### BoundedInMemoryDeadLetterSink
+
+NPipeline provides a built-in [`BoundedInMemoryDeadLetterSink`](../../../src/NPipeline/ErrorHandling/BoundedInMemoryDeadLetterSink.cs:42) implementation that stores failed items in a bounded in-memory queue:
+
+- **Default capacity**: 1000 items
+- **Memory usage**: Approximately 8-16MB for typical error objects at full capacity
+- **Behavior**: Throws `InvalidOperationException` when capacity is exceeded, failing the pipeline to prevent memory overflow
+- **Thread safety**: Uses locking to ensure accurate capacity tracking
+
+When to adjust the default capacity:
+- **Increase** (e.g., 2000-5000) for:
+  - High-volume data processing where errors are more frequent
+  - Systems with automated error recovery workflows
+  - Environments with abundant memory resources
+- **Decrease** (e.g., 100-500) for:
+  - Memory-constrained environments (containers, edge devices)
+  - Processing very large error objects
+  - Scenarios where rapid failure detection is preferred over error retention
+
+```csharp
+// Example: Using default capacity of 1000
+var defaultSink = new BoundedInMemoryDeadLetterSink();
+
+// Example: Custom capacity for high-volume scenarios
+var highVolumeSink = new BoundedInMemoryDeadLetterSink(5000);
+
+// Example: Reduced capacity for memory-constrained environments
+var constrainedSink = new BoundedInMemoryDeadLetterSink(100);
+```
+
 ## Implementing a Custom Dead Letter Sink
 
 ### File-based Dead Letter Sink
@@ -227,7 +259,7 @@ public class Program
         services.AddSingleton<INodeErrorHandler<ITransformNode<string, string>, string>>(provider =>
             new DeadLetterAwareErrorHandler(
                 provider.GetRequiredService<ILogger<DeadLetterAwareErrorHandler>>(),
-                provider.GetRequiredService<IDeadLetterSink>()));
+                provider.GetRequiredService<IDeadLetterSink>())));
 
         var serviceProvider = services.BuildServiceProvider();
 

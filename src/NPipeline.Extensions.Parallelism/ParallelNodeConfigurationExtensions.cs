@@ -22,6 +22,11 @@ namespace NPipeline.Extensions.Parallelism;
 public static class ParallelNodeConfigurationExtensions
 {
     /// <summary>
+    /// Default queue length for bounded parallel execution strategies.
+    /// </summary>
+    public const int DefaultQueueLength = 100;
+
+    /// <summary>
     ///     Configures blocking parallel execution for a transform node.
     /// </summary>
     /// <remarks>
@@ -91,7 +96,7 @@ public static class ParallelNodeConfigurationExtensions
 
         var options = new ParallelOptions(
             maxDegreeOfParallelism,
-            maxQueueLength ?? 100, // Default queue length for bounded policy
+            maxQueueLength ?? DefaultQueueLength, // Default queue length for bounded policy
             BoundedQueuePolicy.DropOldest,
             null,
             false);
@@ -131,7 +136,7 @@ public static class ParallelNodeConfigurationExtensions
 
         var options = new ParallelOptions(
             maxDegreeOfParallelism,
-            maxQueueLength ?? 100, // Default queue length for bounded policy
+            maxQueueLength ?? DefaultQueueLength, // Default queue length for bounded policy
             BoundedQueuePolicy.DropNewest,
             null,
             false);
