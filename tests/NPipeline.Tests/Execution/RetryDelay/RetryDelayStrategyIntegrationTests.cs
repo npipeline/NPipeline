@@ -8,9 +8,13 @@ using NPipeline.Execution.Strategies;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
-namespace NPipeline.Tests.Execution.Strategies;
+namespace NPipeline.Tests.Execution.RetryDelay;
 
-public sealed class ResilientExecutionStrategyRetryDelayTests
+/// <summary>
+///     Integration tests for retry delay strategies with the resilient execution strategy.
+///     Tests end-to-end behavior of retry delays within pipeline execution.
+/// </summary>
+public sealed class RetryDelayStrategyIntegrationTests
 {
     [Fact]
     public async Task ExecuteAsync_WithExponentialBackoff_ShouldUseCorrectDelays()

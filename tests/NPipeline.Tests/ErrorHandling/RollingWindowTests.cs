@@ -3,7 +3,7 @@ using System.Reflection;
 using AwesomeAssertions;
 using NPipeline.Execution.CircuitBreaking;
 
-namespace NPipeline.Tests.Execution.CircuitBreaking;
+namespace NPipeline.Tests.ErrorHandling;
 
 /// <summary>
 ///     Tests for RollingWindow functionality.
