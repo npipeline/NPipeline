@@ -1,22 +1,22 @@
 using System.Diagnostics;
+using AwesomeAssertions;
 using FakeItEasy;
-using FluentAssertions;
 using NPipeline.Configuration;
 using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Observability.Logging;
 
-namespace NPipeline.Tests.Execution.CircuitBreaking;
+namespace NPipeline.Tests.ErrorHandling;
 
 /// <summary>
-///     Tests for CircuitBreaker functionality.
-///     Validates state machine transitions, threshold types, and thread safety.
+///     Unit tests for CircuitBreaker functionality.
+///     Tests isolated component behavior with minimal dependencies using mocks.
 /// </summary>
-public sealed class CircuitBreakerTests : IDisposable
+public sealed class CircuitBreakerUnitTests : IDisposable
 {
     private readonly PipelineCircuitBreakerOptions _defaultOptions;
     private readonly IPipelineLogger _logger;
 
-    public CircuitBreakerTests()
+    public CircuitBreakerUnitTests()
     {
         _logger = A.Fake<IPipelineLogger>();
 
@@ -457,7 +457,7 @@ public sealed class CircuitBreakerTests : IDisposable
         // Record success that will transition to Closed
         var transitionResult = circuitBreaker.RecordSuccess(); // Should transition to Closed
 
-        // Verify the transition happened
+        // Verify that transition happened
         _ = transitionResult.StateChanged.Should().BeTrue();
 
         // Assert - Check stats after transition (window should be cleared)
@@ -467,7 +467,7 @@ public sealed class CircuitBreakerTests : IDisposable
         _ = statsAfterTransition.FailureCount.Should().Be(0);
         _ = statsAfterTransition.FailureRate.Should().Be(0.0);
 
-        // Verify the transition actually happened
+        // Verify that transition actually happened
         _ = transitionResult.StateChanged.Should().BeTrue();
         _ = transitionResult.NewState.Should().Be(CircuitBreakerState.Closed);
     }
