@@ -13,6 +13,42 @@ namespace NPipeline.Pipeline;
 /// <summary>
 ///     Provides a context for a single pipeline run, allowing for the passing of runtime configuration and state.
 /// </summary>
+/// <remarks>
+///     <para>
+///         <strong>Thread Safety:</strong>
+///     </para>
+///     <para>
+///         <see cref="PipelineContext" /> is designed for single-threaded execution within a pipeline run.
+///         The <see cref="Parameters" />, <see cref="Items" />, and <see cref="Properties" /> dictionaries
+///         are NOT thread-safe and should not be accessed concurrently from multiple threads.
+///     </para>
+///     <para>
+///         <strong>Single-Pipeline Execution (Default):</strong>
+///         All operations are inherently single-threaded. No synchronization needed.
+///     </para>
+///     <para>
+///         <strong>Parallel Node Execution:</strong>
+///         When using parallel execution strategies (e.g., <see cref="NPipeline.Extensions.Parallelism.ParallelExecutionStrategy" />),
+///         each worker thread processes independent data items through the pipeline. The context itself is not shared across threads—
+///         only the node instances and their configuration are shared. State updates during parallel execution should use:
+///         <list type="bullet">
+///             <item>
+///                 <description>
+///                     <see cref="IPipelineStateManager" /> for thread-safe, node-aware state management
+///                 </description>
+///             </item>
+///             <item>
+///                 <description>Node-level synchronization within custom node implementations</description>
+///             </item>
+///         </list>
+///     </para>
+///     <para>
+///         <strong>Why Not ConcurrentDictionary?</strong>
+///         Thread-safe dictionaries add overhead (locks, memory barriers, allocations) inappropriate for the common case
+///         (single-threaded execution). NPipeline follows the principle of paying only for what you use. For the rare cases
+///         requiring thread-safe shared state, use <see cref="IPipelineStateManager" /> instead.
+///     </para>
+/// </remarks>
 public sealed class PipelineContext
 {
     // Composite disposal registry for lifecycle-managed IAsyncDisposable resources
@@ -85,17 +121,49 @@ public sealed class PipelineContext
     /// <summary>
     ///     A dictionary to hold any runtime parameters for the pipeline.
     /// </summary>
+    /// <remarks>
+    ///     <strong>Thread Safety:</strong> NOT thread-safe. Typically populated during pipeline initialization
+    ///     and read during execution. Should not be modified concurrently.
+    /// </remarks>
     public Dictionary<string, object> Parameters { get; }
 
     /// <summary>
     ///     A dictionary for sharing state between pipeline nodes.
     /// </summary>
+    /// <remarks>
+    ///     <strong>Thread Safety:</strong> NOT thread-safe. Used for node-to-node communication and metrics storage.
+    ///     <para>
+    ///         In parallel execution scenarios, if multiple worker threads need to share state, consider:
+    ///         <list type="bullet">
+    ///             <item>
+    ///                 <description>Using <see cref="IPipelineStateManager" /> from the Properties dictionary</description>
+    ///             </item>
+    ///             <item>
+    ///                 <description>Implementing node-level synchronization in custom transforms</description>
+    ///             </item>
+    ///             <item>
+    ///                 <description>Using atomic operations for simple counters (with <see cref="System.Threading.Interlocked" />)</description>
+    ///             </item>
+    ///         </list>
+    ///     </para>
+    /// </remarks>
     public Dictionary<string, object> Items { get; }
 
     /// <summary>
     ///     A dictionary for storing properties that can be used by extensions and plugins.
     ///     This provides a way to extend the PipelineContext without modifying its core structure.
     /// </summary>
+    /// <remarks>
+    ///     <strong>Thread Safety:</strong> NOT thread-safe. Common uses include:
+    ///     <list type="bullet">
+    ///         <item>
+    ///             <description>Storing <see cref="IPipelineStateManager" /> for thread-safe state management</description>
+    ///         </item>
+    ///         <item>
+    ///             <description>Storing execution observers and configuration extensions</description>
+    ///         </item>
+    ///     </list>
+    /// </remarks>
     public Dictionary<string, object> Properties { get; }
 
     /// <summary>

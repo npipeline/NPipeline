@@ -16,6 +16,19 @@ Parallelism in NPipeline typically means processing multiple data items concurre
 
 This extension package provides the [`ParallelExecutionStrategy`](../../../src/NPipeline.Extensions.Parallelism/ParallelExecutionStrategy.cs) class and builder extensions to enable and manage parallel execution.
 
+### Important: Thread Safety
+
+When using parallel execution, it's critical to understand NPipeline's thread-safety model. Each worker thread processes **independent data items**—the `PipelineContext` itself is not shared across threads. However, if your nodes need to access shared state during parallel execution, you must use thread-safe mechanisms.
+
+**See [Thread Safety Guidelines](../core-concepts/thread-safety.md) for detailed guidance on:**
+
+- Safe patterns for accessing context during parallel execution
+- Using `IPipelineStateManager` for shared state
+- Node-level synchronization strategies
+- When and how to use atomic operations
+
+This is essential reading if your parallel nodes interact with shared state.
+
 ### Example: Parallel Transform
 
 Imagine you have a computationally intensive transformation that can be applied independently to each item. You can use parallel execution to process multiple items simultaneously.
@@ -201,6 +214,129 @@ When `MaxQueueLength` is specified, you can control the behavior when the queue 
 - **`BoundedQueuePolicy.DropNewest`**: Drop the incoming item
 - **`BoundedQueuePolicy.DropOldest`**: Remove the oldest item to make space
 
+## Thread Safety in Parallel Execution
+
+One of the most important aspects of parallel processing is understanding and managing thread safety correctly. NPipeline's parallel execution model is designed to be safe by default, but requires careful attention when accessing shared state.
+
+### Key Principles
+
+**Independent Item Processing:** Each worker thread processes a different data item. The core processing is inherently thread-safe because workers operate on independent data.
+
+```csharp
+// ✅ SAFE: Each thread processes different items independently
+public override async ValueTask<TOut> TransformAsync(
+    TIn input,                    // Each thread gets a different item
+    PipelineContext context,
+    CancellationToken ct)
+{
+    // Safe to process input without synchronization
+    return await ProcessItemAsync(input, ct);
+}
+```
+
+**Shared State is NOT Thread-Safe:** The `PipelineContext` dictionaries (Items, Parameters, Properties) are NOT thread-safe. If multiple worker threads need to access or modify shared state, you must use explicit synchronization.
+
+```csharp
+// ❌ UNSAFE: Multiple threads accessing context.Items without synchronization
+context.Items["counter"] = (int)context.Items.GetValueOrDefault("counter", 0) + 1;
+
+// ✅ SAFE: Use IPipelineStateManager for thread-safe shared state
+var stateManager = context.StateManager;
+if (stateManager != null)
+{
+    await stateManager.IncrementCounterAsync("counter", ct);
+}
+```
+
+### Three Approaches to Shared State
+
+See [Thread Safety Guidelines](../core-concepts/thread-safety.md) for comprehensive guidance, but here's a quick summary for parallel scenarios:
+
+#### 1. IPipelineStateManager (Recommended)
+
+For complex shared state that needs coordination across parallel workers:
+
+```csharp
+public override async ValueTask<TOut> TransformAsync(
+    TIn input,
+    PipelineContext context,
+    CancellationToken ct)
+{
+    var result = ProcessItem(input);
+    
+    // Thread-safe state update via state manager
+    var stateManager = context.StateManager;
+    if (stateManager != null)
+    {
+        await stateManager.RecordMetricAsync("items_processed", 1, ct);
+    }
+    
+    return result;
+}
+```
+
+#### 2. Node-Level Synchronization
+
+For simple synchronization within a single node:
+
+```csharp
+public class SynchronizedTransform : TransformNode<int, int>
+{
+    private readonly object _syncLock = new();
+    private int _total = 0;
+    
+    public override async ValueTask<int> TransformAsync(
+        int input,
+        PipelineContext context,
+        CancellationToken ct)
+    {
+        lock (_syncLock)
+        {
+            _total += input;
+        }
+        return input;
+    }
+}
+```
+
+#### 3. Atomic Operations for Simple Counters
+
+For single-value counters without additional logic:
+
+```csharp
+public class CountingTransform : TransformNode<int, int>
+{
+    private long _processedCount = 0;
+    
+    public override async ValueTask<int> TransformAsync(
+        int input,
+        PipelineContext context,
+        CancellationToken ct)
+    {
+        Interlocked.Increment(ref _processedCount);
+        return input;
+    }
+}
+```
+
+### ✅ Thread Safety DO's
+
+- ✅ Process independent data items in parallel (inherently safe)
+- ✅ Use `IPipelineStateManager` for shared state
+- ✅ Use `lock` for simple critical sections
+- ✅ Use `Interlocked` for atomic counter operations
+- ✅ Keep synchronization scopes small and fast
+
+### ❌ Thread Safety DON'Ts
+
+- ❌ Directly access or modify `context.Items` from multiple threads
+- ❌ Share mutable state between nodes without explicit synchronization
+- ❌ Assume dictionaries in `PipelineContext` are thread-safe
+- ❌ Hold locks across I/O operations (causes contention)
+- ❌ Create complex multi-step interlocked sequences (use locks instead)
+
+**For comprehensive guidance, see [Thread Safety Guidelines](../core-concepts/thread-safety.md).**
+
 ## Considerations for Parallelism
 
 - **Degree of Parallelism:** Carefully choose the `MaxDegreeOfParallelism`. Too high a value can lead to excessive resource consumption (CPU, memory, threads) and diminish returns due to context switching overhead. Too low a value might underutilize available resources.
@@ -225,6 +361,7 @@ By strategically applying parallelism, you can significantly boost the processin
 
 ## Next Steps
 
-- **[Dependency Injection](dependency-injection.md)**: Learn how to integrate NPipeline with dependency injection frameworks.
-- **[Testing Pipelines](testing/index.md)**: Understand how to effectively test your parallel pipelines.
+- **[Thread Safety Guidelines](../core-concepts/thread-safety.md)**: Comprehensive guide to thread safety and shared state management
+- **[Dependency Injection](dependency-injection.md)**: Learn how to integrate NPipeline with dependency injection frameworks
+- **[Testing Pipelines](testing/index.md)**: Understand how to effectively test your parallel pipelines
 

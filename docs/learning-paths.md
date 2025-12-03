@@ -27,15 +27,18 @@ Perfect for developers new to data pipelines. Learn the fundamentals:
 - [Sink Nodes](core-concepts/nodes/sink-nodes.md) - Outputting processed data
 
 ### Module 2: Error Handling (30 minutes)
+
 - [Error Handling Basics](core-concepts/resilience/error-handling-guide.md) - Understanding error handling in NPipeline
 - [Basic Retry Patterns](core-concepts/resilience/retry-configuration.md) - Implementing retry logic
 
 ### Module 3: Testing (30 minutes)
+
 - [Unit Testing Pipelines](advanced-topics/testing-pipelines.md) - Testing your pipeline components
 - [Debugging Pipelines](introduction/troubleshooting.md) - Common issues and solutions
 
-### Module 4: Putting It Together (45 minutes)
-Congratulations! You now have the fundamentals. Continue to the Intermediate Path to learn advanced patterns.
+### Module 4: Thread Safety (20 minutes)
+
+- [Thread Safety Guide](core-concepts/thread-safety.md) - Understanding concurrency and shared state management
 
 ## Intermediate Path (4-6 hours)
 
@@ -60,6 +63,7 @@ For developers comfortable with basics who want to build robust pipelines:
 - [Execution Strategies](core-concepts/pipeline-execution/execution-strategies.md) - Choosing the right execution strategy
 - [Performance Hygiene](advanced-topics/performance-hygiene.md) - Best practices for efficient pipelines
 - [Synchronous Fast Paths](advanced-topics/synchronous-fast-paths.md) - Optimizing for high throughput
+- [Thread Safety in Parallel Execution](core-concepts/thread-safety.md) - Handling concurrency correctly
 
 ### Module 4: Real-World Patterns (60 minutes)
 

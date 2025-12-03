@@ -6,6 +6,30 @@ namespace NPipeline.State;
 ///     Manages pipeline state persistence and snapshot operations.
 ///     This interface provides a strongly-typed abstraction for state management.
 /// </summary>
+/// <remarks>
+///     <para>
+///         <strong>Purpose:</strong>
+///         When used with <see cref="PipelineContext" />, this interface allows for thread-safe state management
+///         in scenarios requiring shared state across parallel execution or resilient restart capabilities.
+///     </para>
+///     <para>
+///         <strong>Thread Safety:</strong>
+///         Implementations of <see cref="IPipelineStateManager" /> should be thread-safe, as they may be accessed
+///         from multiple worker threads during parallel node execution. The implementation is responsible for
+///         synchronizing access to shared state.
+///     </para>
+///     <para>
+///         <strong>Usage Pattern:</strong>
+///         Register an implementation in <see cref="PipelineContext.Properties" /> under the key
+///         <c>"NPipeline.StateManager"</c> or use <see cref="PipelineContext.StateManager" /> property accessor
+///         for convenient access.
+///     </para>
+///     <para>
+///         <strong>Alternative to Context Dictionaries:</strong>
+///         Rather than directly accessing <see cref="PipelineContext.Items" /> or <see cref="PipelineContext.Parameters" />
+///         from multiple threads, use this interface to ensure thread-safe state management.
+///     </para>
+/// </remarks>
 public interface IPipelineStateManager
 {
     /// <summary>

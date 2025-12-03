@@ -11,6 +11,17 @@ namespace NPipeline.Configuration;
 ///     Configuration object for creating a <see cref="PipelineContext" />.
 ///     Groups all pipeline context parameters into a self-documenting record.
 /// </summary>
+/// <remarks>
+///     <para>
+///         <strong>Thread Safety:</strong>
+///         <see cref="PipelineContextConfiguration" /> is immutable (record type) and thread-safe.
+///         However, the dictionaries passed to it (Parameters, Items, Properties) should be considered
+///         as becoming owned by the context, and their thread-safety depends on the context's usage.
+///     </para>
+///     <para>
+///         See <see cref="PipelineContext" /> for detailed thread-safety requirements and recommendations.
+///     </para>
+/// </remarks>
 public sealed record PipelineContextConfiguration(
     Dictionary<string, object>? Parameters = null,
     IPipelineLoggerFactory? LoggerFactory = null,
