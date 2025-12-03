@@ -263,9 +263,11 @@ public sealed class PipelineContext
                 {
                     await disposable.DisposeAsync().ConfigureAwait(false); // CA2012 satisfied by awaiting inside background task
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Swallow disposal exceptions in late-registration path
+                    // Log but don't propagate - we're already past disposal
+                    LoggerFactory.CreateLogger("PipelineContext")
+                        .Log(LogLevel.Warning, "Late-registration disposal failed: {Message}", ex.Message);
                 }
             });
 
