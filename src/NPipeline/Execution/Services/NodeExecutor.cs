@@ -108,7 +108,11 @@ public sealed class NodeExecutor(
 
         transformed = countingService.Wrap(transformed, context);
         transformed = branchService.MaybeMulticast(transformed, graph, plan.NodeId, context);
-        context.RegisterForDisposal(transformed as IAsyncDisposable ?? input);
+        var disposable = transformed as IAsyncDisposable ?? input;
+
+        if (disposable is not null)
+            context.RegisterForDisposal(disposable);
+
         nodeOutputs[plan.NodeId] = transformed;
     }
 
@@ -177,7 +181,11 @@ public sealed class NodeExecutor(
 
         output = countingService.Wrap(output, context);
         output = branchService.MaybeMulticast(output, graph, plan.NodeId, context);
-        context.RegisterForDisposal(output as IAsyncDisposable ?? merged);
+        var disposable = output as IAsyncDisposable ?? merged;
+
+        if (disposable is not null)
+            context.RegisterForDisposal(disposable);
+
         nodeOutputs[plan.NodeId] = output;
     }
 
@@ -225,6 +233,16 @@ public sealed class NodeExecutor(
                     .MakeGenericMethod(nodeDef.OutputType);
 
                 output = (IDataPipe)adaptMethod.Invoke(null, [output, $"AggregateResult_{plan.NodeId}"])!;
+
+                // If still mismatched after adaptation, capture diagnostic information
+                if (output.GetDataType() != nodeDef.OutputType)
+                {
+                    var actualType = output.GetType();
+                    var ifaceList = string.Join(",", actualType.GetInterfaces().Select(i => i.FullName));
+
+                    throw new InvalidOperationException(
+                        $"Aggregate output type mismatch for node {plan.NodeId}. Expected {nodeDef.OutputType}, GetDataType={output.GetDataType()}, PipeType={actualType.FullName}, Ifaces={ifaceList}");
+                }
             }
         }
 

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using NPipeline.Connectors.Abstractions;
 
 namespace NPipeline.Connectors;
@@ -92,8 +93,9 @@ public sealed class StorageResolver : IStorageResolver
         {
             return provider.CanHandle(uri);
         }
-        catch
+        catch (Exception ex)
         {
+            Debug.WriteLine($"[StorageResolver] Provider {provider.GetType().Name} threw: {ex.Message}");
             return false;
         }
     }

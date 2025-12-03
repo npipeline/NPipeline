@@ -151,13 +151,14 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     }
 
     [Fact]
-    public async Task HandleAsync_ThrowsWithZeroCapacity()
+    public Task HandleAsync_ThrowsWithZeroCapacity()
     {
         // Act
         var act = () => new BoundedInMemoryDeadLetterSink(0);
 
         // Assert
         act.Should().Throw<ArgumentOutOfRangeException>();
+        return Task.CompletedTask;
     }
 
     [Fact]

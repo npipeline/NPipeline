@@ -88,11 +88,11 @@ public sealed class PipelineContext
     ///     <code>
     ///         // Simple - all defaults
     ///         var context = new PipelineContext();
-    ///
+    /// 
     ///         // With configuration (cancellation token)
     ///         var context = new PipelineContext(
     ///             PipelineContextConfiguration.WithCancellation(cancellationToken));
-    ///
+    /// 
     ///         // With complex configuration
     ///         var config = new PipelineContextConfiguration(
     ///             CancellationToken: cancellationToken,
