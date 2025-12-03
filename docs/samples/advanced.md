@@ -1,189 +1,18 @@
 ---
-title: Sample Applications
-description: Real-world examples demonstrating NPipeline concepts and patterns for different skill levels
-sidebar_position: 8
+title: Advanced Samples
+description: Production-grade NPipeline samples for advanced developers (Samples 11-23)
+sidebar_position: 4
 ---
 
-# Sample Applications
+# Advanced Samples (11-23)
 
-This guide provides practical examples of NPipeline implementations, organized by skill level and complexity. Each sample demonstrates specific concepts and patterns you can apply to your own pipelines.
-
-> **Location:** All samples are located in the `/samples/` directory of the repository. Each sample includes complete source code, configuration files, and a README with detailed explanations.
-
-## Basic Samples
-
-### Sample 01: Basic Pipeline
-
-**Concepts demonstrated:**
-
-- Basic source, transform, and sink nodes
-- Simple data flow between nodes
-- Pipeline definition and execution
-- Dependency injection integration
-
-**What it does:** A "Hello World" pipeline that demonstrates the fundamental NPipeline concepts with a source that generates data, a transform that processes it, and a sink that outputs the results.
-
-**Key takeaways:** How to structure a basic pipeline and connect nodes together. Start here if you're new to NPipeline.
+These samples demonstrate production-grade patterns, complex scenarios, and advanced techniques for building sophisticated data processing systems.
 
 ---
 
-### Sample 02: File Processing Pipeline
+## Foundational Advanced Concepts
 
-**Concepts demonstrated:**
-
-- File-based source and sink nodes
-- Stream processing for memory efficiency
-- Line-by-line text transformation
-- Atomic file writing operations
-
-**What it does:** Reads text files line by line, processes each line with configurable transformations (prefixes, line numbers, case conversion), and writes the results to output files using atomic operations.
-
-**Key takeaways:** Working with file-based data sources and sinks in NPipeline.
-
----
-
-### Sample 03: Basic Error Handling
-
-**Concepts demonstrated:**
-
-- Try-catch patterns in pipeline nodes
-- Basic retry logic with exponential backoff
-- Error logging and collection
-- Graceful degradation with fallback mechanisms
-- Error isolation to prevent cascading failures
-
-**What it does:** Implements a pipeline with comprehensive error handling, including retries with exponential backoff, fallback mechanisms, and error tracking. Shows how to build resilient pipelines that maintain service availability during failures.
-
-**Key takeaways:** Designing pipelines that gracefully handle failures and maintain data integrity. Builds on Sample 01 concepts and is essential for production systems.
-
----
-
-### Sample 04: Simple Data Transformation
-
-**Concepts demonstrated:**
-
-- CSV to object transformation
-- Data validation patterns
-- Filtering mechanisms
-- Data enrichment
-
-**What it does:** Reads CSV data, validates it according to business rules, filters based on age and location, and enriches it with additional information like country and age categories.
-
-**Key takeaways:** Implementing data validation, filtering, and enrichment patterns in data processing pipelines.
-
----
-
-### Sample 05: Parallel Processing
-
-**Concepts demonstrated:**
-
-- Parallel execution strategies
-- Resource management
-- Thread safety
-- Performance monitoring
-
-**What it does:** Demonstrates parallel processing capabilities for CPU-intensive workloads, showing how to configure and use parallel execution strategies for optimal resource utilization.
-
-**Key takeaways:** How to leverage parallelism while avoiding common pitfalls and managing resources effectively.
-
----
-
-## Intermediate Samples
-
-### Sample 06: Advanced Error Handling
-
-**Concepts demonstrated:**
-
-- Circuit breaker patterns
-- Dead letter queues
-- Advanced retry strategies
-- Error recovery mechanisms
-- Monitoring and alerting
-
-**What it does:** Implements production-grade resilience patterns including circuit breakers to prevent cascading failures, dead letter queues for failed items, and comprehensive error recovery mechanisms using Polly.
-
-**Key takeaways:** Building production-ready pipelines with comprehensive error handling. Extends Sample 03 with advanced patterns for mission-critical systems.
-
----
-
-### Sample 07: LookupNode
-
-**Concepts demonstrated:**
-
-- LookupNode for data enrichment patterns using external data sources
-- Key extraction and async lookup operations
-- Data combination patterns merging original data with lookup results
-- Error handling for missing or failed lookups
-- Real-world IoT sensor data enrichment scenario
-- Device metadata management and calibration validation
-- Risk assessment and alerting patterns
-
-**What it does:** Implements an IoT sensor data processing pipeline that demonstrates how to use LookupNode for enriching raw sensor readings with device metadata. The pipeline processes sensor data through multiple stages: metadata enrichment using LookupNode, calibration validation, risk assessment, and finally outputs to both regular and alerting sinks based on the calculated risk levels.
-
-**Key takeaways:** Building data enrichment pipelines that can efficiently combine streaming data with external reference data. Understanding how to implement async lookup patterns, handle missing data gracefully, and create branching pipelines for different output scenarios based on business rules.
-
----
-
-
-### Sample 08: CSV Connector
-
-**Concepts demonstrated:**
-
-- CSV source and sink nodes with `CsvSourceNode<T>` and `CsvSinkNode<T>`
-- StorageUri abstraction for file system access
-- Custom validation transform with business rule enforcement
-- Data transformation and enrichment patterns
-- Error handling for malformed data with configurable filtering
-- IPipelineDefinition pattern for reusable pipeline structures
-- Pipeline configuration through parameters
-- Node factory pattern for resolving constructor ambiguity
-
-**What it does:** Implements a comprehensive CSV data processing pipeline that reads customer data from CSV files, validates it against business rules (ID, email format, age range, etc.), transforms and enriches the data (name normalization, country expansion, email formatting), and writes the processed results to output CSV files. The sample demonstrates proper error handling with configurable filtering of invalid records.
-
-**Key takeaways:** Building robust CSV processing pipelines with validation, transformation, and error handling patterns using NPipeline's CSV connector components and the IPipelineDefinition pattern for creating reusable pipeline structures.
-
----
-
-### Sample 09: AggregateNode
-
-**Concepts demonstrated:**
-
-- `AggregateNode<TIn, TKey, TResult>` for time-based aggregations
-- Tumbling and sliding window strategies
-- Key-based aggregation by different dimensions
-- Event-time processing with watermarks
-- Real-time analytics dashboard patterns
-- Multi-dimensional aggregations with identical accumulator and result types
-
-**What it does:** Implements a real-time analytics dashboard that processes user interaction events (page views, clicks, purchases) and generates aggregated metrics using tumbling windows for event counting and sliding windows for value summation. The sample demonstrates filtering irrelevant events and displaying formatted metrics in a console dashboard.
-
-**Key takeaways:** Building real-time analytics systems with simple aggregations where accumulator and result types are identical. Understanding windowing patterns and key-based grouping for streaming analytics scenarios.
-
----
-
-### Sample 10: BranchNode
-
-**Concepts demonstrated:**
-
-- BranchNode for fanning out data to multiple downstream pathways
-- Parallel processing strategies with concurrent execution
-- Data duplication patterns where each item is sent to all connected nodes
-- Error isolation between branches to prevent cascading failures
-- Type preservation with different output types per branch
-- Real-world e-commerce scenario with inventory, analytics, and notifications
-- Multi-stream processing with independent business logic per branch
-
-**What it does:** Implements an e-commerce order processing pipeline that demonstrates how BranchNode can distribute order events to multiple parallel processing paths simultaneously. The pipeline processes orders through inventory management, business analytics, and customer notifications while maintaining the main order flow. Each branch operates independently with its own business logic, error handling, and output types.
-
-**Key takeaways:** Building complex data distribution patterns with BranchNode for parallel processing while maintaining error isolation and type safety. Understanding how to implement real-world scenarios requiring multiple concurrent processing paths for the same data.
-
----
-
-## Advanced Samples
-
-### Foundational Advanced Concepts
-
-#### Sample 11: Custom Node Implementation
+### Sample 11: Custom Node Implementation
 
 **Concepts demonstrated:**
 
@@ -198,7 +27,7 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ---
 
-#### Sample 12: Performance Optimization
+### Sample 12: Performance Optimization
 
 **Concepts demonstrated:**
 
@@ -213,9 +42,9 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ---
 
-### Data Processing Patterns
+## Data Processing Patterns
 
-#### Sample 13: Batching Node
+### Sample 13: Batching Node
 
 **Concepts demonstrated:**
 
@@ -233,7 +62,7 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 ---
 
-#### Sample 14: UnbatchingNode - Stream Conversion Patterns
+### Sample 14: UnbatchingNode - Stream Conversion Patterns
 
 **Concepts demonstrated:**
 
@@ -260,9 +89,9 @@ The pipeline flow demonstrates the complete unbatching pattern:
 
 ---
 
-### Stream Processing and Windowing
+## Stream Processing and Windowing
 
-#### Sample 15: Streaming Analytics
+### Sample 15: Streaming Analytics
 
 **Concepts demonstrated:**
 
@@ -277,7 +106,7 @@ The pipeline flow demonstrates the complete unbatching pattern:
 
 ---
 
-#### Sample 16: WindowingStrategies - Advanced Windowing Strategies
+### Sample 16: WindowingStrategies - Advanced Windowing Strategies
 
 **Concepts demonstrated:**
 
@@ -306,7 +135,7 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 ---
 
-#### Sample 17: AdvancedAggregateNode
+### Sample 17: AdvancedAggregateNode
 
 **Concepts demonstrated:**
 
@@ -323,9 +152,9 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 ---
 
-### Advanced Join Operations
+## Advanced Join Operations
 
-#### Sample 18: Keyed Join Node
+### Sample 18: Keyed Join Node
 
 **Concepts demonstrated:**
 
@@ -342,7 +171,7 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 ---
 
-#### Sample 19: Time Windowed Join Node
+### Sample 19: Time Windowed Join Node
 
 **Concepts demonstrated:**
 
@@ -359,7 +188,7 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 ---
 
-#### Sample 20: CustomMergeNode
+### Sample 20: CustomMergeNode
 
 **Concepts demonstrated:**
 
@@ -380,9 +209,9 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 ---
 
-### Event-Time Processing
+## Event-Time Processing
 
-#### Sample 21: WatermarkHandling - Advanced Event-Time Processing
+### Sample 21: WatermarkHandling - Advanced Event-Time Processing
 
 **Concepts demonstrated:**
 
@@ -404,9 +233,9 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 ---
 
-### Observability and Monitoring
+## Observability and Monitoring
 
-#### Sample 22: TapNode
+### Sample 22: TapNode
 
 **Concepts demonstrated:**
 
@@ -424,9 +253,9 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 ---
 
-### Complex End-to-End Scenarios
+## Complex End-to-End Scenarios
 
-#### Sample 23: Complex Data Transformations
+### Sample 23: Complex Data Transformations
 
 **Concepts demonstrated:**
 
@@ -439,41 +268,10 @@ The pipeline architecture demonstrates sophisticated windowing techniques:
 
 **Key takeaways:** Building complex data pipelines with joins, lookups, and lineage tracking for production systems. Integrates many concepts from earlier samples.
 
-## Getting Started with Samples
+---
 
-1. **Clone the repository** to access all sample code
-2. **Start with Basic Samples** if you're new to NPipeline
-   - Sample 01: Learn the fundamental pipeline concepts
-   - Sample 02: Understand file-based processing and streaming
-   - Sample 03: Master basic error handling patterns
-   - Sample 04: Learn data transformation, validation, and filtering
-   - Sample 05: Discover parallel processing techniques
-3. **Progress to Intermediate Samples** once you're comfortable with the basics
-   - Sample 06: Advanced error handling and resilience patterns
-   - Sample 07: LookupNode for data enrichment and external lookups
-   - Sample 08: CSV connector and data processing
-   - Sample 09: AggregateNode for real-time analytics and simple aggregations
-   - Sample 10: BranchNode for parallel data distribution and processing
-4. **Explore Advanced Samples** for production scenarios and optimization techniques
-   - Sample 11: Custom node development and implementation
-   - Sample 12: Performance optimization techniques
-   - Sample 13: Batching node for efficient batch processing
-   - Sample 14: UnbatchingNode for stream conversion patterns and hybrid batch/stream processing
-   - Sample 15: Streaming analytics and basic windowing
-   - Sample 16: WindowingStrategies for advanced windowing strategies and user behavior analytics
-   - Sample 17: AdvancedAggregateNode for complex state management and financial analytics
-   - Sample 18: Keyed join node for stream correlation
-   - Sample 19: Time windowed join node for temporal analysis
-   - Sample 20: CustomMergeNode for advanced stream merging and conflict resolution
-   - Sample 21: WatermarkHandling for advanced event-time processing and IoT sensor networks
-   - Sample 22: TapNode for non-intrusive monitoring and observability
-   - Sample 23: Complex data transformations and end-to-end scenarios
+## Next Steps
 
-Each sample includes:
-
-- Complete source code with comments explaining key concepts
-- Configuration files showing best practices
-- README with detailed explanations and setup instructions
-- Performance characteristics and tuning guidance
-
-## Related Documentation
+- Want to review intermediate patterns? → [Intermediate Samples (6-10)](./intermediate.md)
+- Looking for a specific topic? → [Samples by Topic](./by-topic.md)
+- Ready to build your own? Check [Core Concepts](../core-concepts/index.md) and [Advanced Topics](../advanced-topics/index.md)
