@@ -581,7 +581,7 @@ This architecture enables robust, configurable retry behavior for resilient data
 
 ## See Also
 
-- **[Advanced Retry Delay Strategies](../advanced-topics/retry-delay-advanced.md)**: Advanced patterns and scenarios for using retry delay strategies in production environments
+- **[Advanced Retry Delay Strategies](../core-concepts/resilience/retry-delay-advanced.md)**: Advanced patterns and scenarios for using retry delay strategies in production environments
 - **[Retry Configuration](../core-concepts/resilience/retry-configuration.md)**: Basic retry configuration options and built-in strategies
 - **[Resilience Overview](../core-concepts/resilience/index.md)**: Comprehensive guide to building fault-tolerant pipelines
 - **[Component Architecture](component-architecture.md)**: Overview of major NPipeline system components and their interactions

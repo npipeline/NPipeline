@@ -665,13 +665,13 @@ public class ProductionDeadLetterErrorHandler : INodeErrorHandler<ITransformNode
 
 ## Configuration Guidance
 
-For comprehensive setup guidance that integrates dead-letter queues with other resilience features, see the [Configuration Guide](../resilience/configuration-guide.md) in the resilience section.
+For comprehensive setup guidance that integrates dead-letter queues with other resilience features, see the [Error Handling Guide](../resilience/error-handling.md) in the resilience section.
 
 ## See Also
 
 * **[Resilience Overview](../resilience/index.md)**: Comprehensive guide to building fault-tolerant pipelines
-* **[Configuration Guide](../resilience/configuration-guide.md)**: Practical implementation guidance with code examples
-* **[Dependency Chains](../resilience/dependency-chains.md)**: Understanding critical prerequisite relationships for resilience features
+* **[Error Handling Guide](../resilience/error-handling.md)**: Practical implementation guidance with code examples
+* **[Getting Started with Resilience](../resilience/getting-started.md)**: Understanding critical prerequisites and foundational concepts for resilience features
 * **[Troubleshooting](../resilience/troubleshooting.md)**: Diagnose and resolve common resilience issues
 
 ## Related Topics

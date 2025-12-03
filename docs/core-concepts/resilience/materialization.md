@@ -431,7 +431,7 @@ public class MonitoredPipelineDefinition : IPipelineDefinition
 ## Next Steps
 
 - **[Getting Started with Resilience](./getting-started.md)**: Complete quick-start and step-by-step configuration guide
-- **[Dependency Chains](dependency-chains.md)**: Understand the critical prerequisite relationships
-- **[Configuration Guide](configuration-guide.md)**: Get practical implementation guidance
+- **[Getting Started with Resilience](getting-started.md)**: Understand the critical prerequisite relationships
+- **[Error Handling Guide](error-handling.md)**: Get practical implementation guidance
 - **[Troubleshooting](troubleshooting.md)**: Learn to diagnose and resolve materialization issues
 

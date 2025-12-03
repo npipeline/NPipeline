@@ -1,7 +1,7 @@
 ---
 title: Advanced Retry Delay Strategies
 description: Learn advanced patterns and scenarios for using retry delay strategies in NPipeline, including dynamic configuration, adaptive strategies, testing approaches, and performance optimization.
-sidebar_position: 3
+sidebar_position: 8
 ---
 
 # Advanced Retry Delay Strategies
@@ -842,15 +842,15 @@ public class StrategyComparer
 
 ## See Also
 
-- **[Retry Delay Architecture](../architecture/retry-delay-architecture.md)**: Deep dive into the architectural components and design patterns of NPipeline's retry delay system
-- **[Retry Configuration](../core-concepts/resilience/retry-configuration.md)**: Basic retry configuration options and built-in strategies
-- **[Resilience Overview](../core-concepts/resilience/index.md)**: Comprehensive guide to building fault-tolerant pipelines
-- **[Execution with Resilience](../core-concepts/resilience/execution-with-resilience.md)**: How to integrate retry strategies with resilient execution
-- **[Testing Pipelines](testing-pipelines.md)**: Comprehensive testing strategies for pipeline components including retry behavior
+- **[Retry Delay Architecture](../../architecture/retry-delay-architecture.md)**: Deep dive into the architectural components and design patterns of NPipeline's retry delay system
+- **[Retry Configuration](retries.md)**: Basic retry configuration options and built-in strategies
+- **[Resilience Overview](index.md)**: Comprehensive guide to building fault-tolerant pipelines
+- **[Error Handling Guide](error-handling.md)**: How to integrate retry strategies with error handling
+- **[Testing Pipelines](../../extensions/testing/advanced-testing.md)**: Comprehensive testing strategies for pipeline components including retry behavior
 
 ## Related Topics
 
-- **[Error Handling Guide](../core-concepts/resilience/error-handling-guide.md)**: Comprehensive error handling strategies that work with retry delays
-- **[Circuit Breaker Configuration](../core-concepts/resilience/circuit-breaker-configuration.md)**: Combining circuit breakers with retry delays for enhanced resilience
-- **[Performance Hygiene](performance-hygiene.md)**: Best practices for building high-performance, low-allocation data pipelines
-- **[Troubleshooting](../core-concepts/resilience/troubleshooting.md)**: Common issues and solutions for retry behavior problems
+- **[Error Handling Guide](error-handling.md)**: Comprehensive error handling strategies that work with retry delays
+- **[Circuit Breaker Configuration](circuit-breakers.md)**: Combining circuit breakers with retry delays for enhanced resilience
+- **[Performance Hygiene](../../advanced-topics/performance-hygiene.md)**: Best practices for building high-performance, low-allocation data pipelines
+- **[Troubleshooting](troubleshooting.md)**: Common issues and solutions for retry behavior problems

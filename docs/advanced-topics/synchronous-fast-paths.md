@@ -1,7 +1,7 @@
 ---
 title: Synchronous Fast Paths and ValueTask Optimization
 description: Deep-dive guide on optimizing transformer nodes for high-throughput scenarios using ValueTask to eliminate GC pressure.
-sidebar_position: 2
+sidebar_position: 3
 ---
 
 # Synchronous Fast Paths and ValueTask Optimization

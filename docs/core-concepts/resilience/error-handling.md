@@ -1060,16 +1060,16 @@ The [`PipelineContext`](../../../src/NPipeline/PipelineContext.cs) can be invalu
 
 ## :warning: Dependency Chain Requirements
 
-For resilience features like `PipelineErrorDecision.RestartNode` to work properly, you must understand the dependency chain between components. See [Dependency Chains](dependency-chains.md) in the resilience section for detailed prerequisites.
+For resilience features like `PipelineErrorDecision.RestartNode` to work properly, you must understand the dependency chain between components. See [Getting Started with Resilience](getting-started.md) in the resilience section for detailed prerequisites.
 
 ## See Also
 
 - [Retry Configuration](retry-configuration.md) - Detailed retry policy configuration
 - [Circuit Breakers](circuit-breakers.md) - Circuit breaker patterns and settings
 - [Getting Started with Resilience](getting-started.md) - Quick guide to node restart functionality and common retry patterns
-- [Execution with Resilience](execution-with-resilience.md) - Adding resilience to execution strategies
-- [Dependency Chains](dependency-chains.md) - Critical prerequisite relationships for resilience features
-- [Configuration Guide](configuration-guide.md) - Comprehensive configuration options
+- [Getting Started with Resilience](getting-started.md) - Critical prerequisite relationships and foundational concepts
+- [Retries](retries.md) - Retry configuration and strategies
+- [Circuit Breakers](circuit-breakers.md) - Circuit breaker configuration options
 - [Troubleshooting](troubleshooting.md) - Common error handling issues and solutions
 - [Error Codes Reference](../../reference/error-codes.md) - Complete error code reference
 - [Execution Strategies](../pipeline-execution/execution-strategies.md) - How error handling integrates with execution
@@ -1077,7 +1077,7 @@ For resilience features like `PipelineErrorDecision.RestartNode` to work properl
 
 ## Next Steps
 
-- [Execution with Resilience](execution-with-resilience.md) - Learn how to wrap execution strategies with error handling
+- [Execution Strategies](../pipeline-execution/execution-strategies.md) - Learn how to use error handling with execution strategies
 - [Retry Configuration](retry-configuration.md) - Configure detailed retry policies
 - [Circuit Breakers](circuit-breakers.md) - Implement circuit breaker patterns
 - [Testing Resilient Pipelines](../../extensions/testing/advanced-testing.md) - Test your error handling strategies

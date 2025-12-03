@@ -52,7 +52,7 @@ NPipeline's resilience framework is built around several interconnected componen
 
 | Component | Role | Critical Dependency |
 |-----------|------|---------------------|
-| **[ResilientExecutionStrategy](execution-with-resilience.md)** | Wrapper that enables recovery capabilities for nodes | Prerequisite for all resilience features |
+| **[Error Handling](error-handling.md)** | Determines how to respond to failures and enables recovery | Prerequisite for all resilience features |
 | **[Materialization & Buffering](materialization.md)** | Buffers input items to enable replay during restarts | Required for `PipelineErrorDecision.RestartNode` |
 | **[Error Handling](error-handling.md)** | Determines how to respond to different types of failures | Provides decision logic for recovery actions |
 | **[Retry Options](retries.md)** | Configures retry limits and materialization caps | Controls resilience behavior boundaries |

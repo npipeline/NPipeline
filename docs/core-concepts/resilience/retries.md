@@ -426,7 +426,7 @@ public void Define(PipelineBuilder builder, PipelineContext context)
 }
 ```
 
-For more advanced retry delay patterns and scenarios, see the [Advanced Retry Delay Strategies](../../advanced-topics/retry-delay-advanced.md) guide.
+For more advanced retry delay patterns and scenarios, see the [Advanced Retry Delay Strategies](retry-delay-advanced.md) guide.
 
 ## Retry Delay API Reference
 
@@ -1125,7 +1125,7 @@ public class RetryMetricsCollector
 
 * **[Resilience Overview](../resilience/index.md)**: Comprehensive guide to building fault-tolerant pipelines
 * **[Materialization and Buffering](../resilience/materialization-and-buffering.md)**: Understanding buffer requirements for resilience
-* **[Configuration Guide](../resilience/configuration-guide.md)**: Practical implementation guidance with code examples
+* **[Error Handling Guide](../resilience/error-handling.md)**: Comprehensive error handling patterns and practical implementation guidance
 * **[Troubleshooting](../resilience/troubleshooting.md)**: Diagnose and resolve common resilience issues
 
 ## Related Topics

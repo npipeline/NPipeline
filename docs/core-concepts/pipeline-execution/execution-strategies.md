@@ -14,7 +14,7 @@ Before understanding execution strategies, you should be familiar with:
 - [PipelineBuilder](../pipelinebuilder.md) - How to apply execution strategies to nodes
 
 > :information_source: **Documentation Scope**
-> This guide covers **all execution strategies** - sequential, parallel, and resilient. If you need to add **resilience capabilities** (error handling, retries, node restart) to a strategy, see [Resilient Execution Strategy](../resilience/execution-with-resilience.md).
+> This guide covers **all execution strategies** - sequential, parallel, and resilient. If you need to add **resilience capabilities** (error handling, retries, node restart) to a strategy, see [Error Handling](../resilience/error-handling.md).
 
 Execution strategies define how a node processes its input stream and produces its output. They are crucial for controlling parallelism, managing backpressure, and implementing resilience patterns within your NPipeline. By default, nodes execute sequentially, but you can configure them to run in parallel or with built-in fault tolerance.
 
@@ -425,7 +425,7 @@ In this example, the `flakyProcessor` node will attempt to process items in para
 For any of the above strategies, you can wrap them with resilient execution 
 to add error handling, retries, and circuit breaker capabilities.
 
-**See:** [Execution with Resilience](../resilience/execution-with-resilience.md) 
+**See:** [Error Handling](../resilience/error-handling.md)
 for comprehensive guide on wrapping strategies with resilient execution.
 
 ## Comprehensive Documentation
@@ -435,9 +435,9 @@ For detailed information about resilience patterns, materialization requirements
 ## See Also
 
 * **[Resilience Overview](../resilience/index.md)**: Comprehensive guide to building fault-tolerant pipelines
-* **[Resilient Execution Strategy](../resilience/execution-with-resilience.md)**: In-depth coverage of ResilientExecutionStrategy
+* **[Error Handling](../resilience/error-handling.md)**: In-depth coverage of error handling and resilient execution patterns
 * **[Materialization & Buffering](../resilience/materialization.md)**: Understanding buffer requirements for resilience
-* **[Dependency Chains](../resilience/dependency-chains.md)**: Critical prerequisite relationships for resilience features
+* **[Getting Started with Resilience](../resilience/getting-started.md)**: Critical prerequisites and foundational concepts for resilience features
 * **[Parallelism Extension](../../extensions/parallelism.md)**: Advanced parallel execution strategies
 * **[Error Handling](../resilience/error-handling.md)**: Comprehensive error handling patterns
 * **[Architecture: Execution Flow](../../architecture/execution-flow.md)**: Deep dive into how execution strategies work internally
@@ -445,7 +445,7 @@ For detailed information about resilience patterns, materialization requirements
 
 ## Next Steps
 
-* **[Resilient Execution Strategy](../resilience/execution-with-resilience.md)**: Learn how to add error handling, retries, and circuit breaker capabilities to any strategy
+* **[Error Handling](../resilience/error-handling.md)**: Learn how to add error handling, retries, and circuit breaker capabilities to any strategy
 * **[Error Handling](../resilience/error-handling.md)**: Dive deeper into how NPipeline handles errors, retries, and dead-letter queues
 * **[Parallelism Extension](../../extensions/parallelism.md)**: Explore advanced parallel execution patterns
 * **[Architecture: Execution Flow](../../architecture/execution-flow.md)**: Understand how pipelines execute data at a deeper level

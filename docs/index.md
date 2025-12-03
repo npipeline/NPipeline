@@ -77,10 +77,10 @@ New to NPipeline? Get started with our quick introduction:
 
 ### Module 2: Resilience Patterns (90 minutes)
 
-- [Execution with Resilience](core-concepts/resilience/execution-with-resilience.md) - Building fault-tolerant pipelines
+- [Getting Started with Resilience](core-concepts/resilience/getting-started.md) - Quick start for resilience features
+- [Error Handling](core-concepts/resilience/error-handling.md) - Comprehensive error handling and recovery strategies
 - [Materialization & Buffering](core-concepts/resilience/materialization.md) - Understanding replay functionality
 - [Circuit Breakers](core-concepts/resilience/circuit-breakers.md) - Preventing cascading failures
-- [Dependency Chains](core-concepts/resilience/dependency-chains.md) - Critical prerequisite relationships
 
 ### Module 3: Performance Optimization (60 minutes)
 
@@ -91,7 +91,7 @@ New to NPipeline? Get started with our quick introduction:
 
 ### Module 4: Real-World Patterns (60 minutes)
 
-- [Configuration Guide](core-concepts/resilience/configuration-guide.md) - Step-by-step configuration
+- [Retries & Delays](core-concepts/resilience/retries.md) - Configuring retry strategies
 - [Troubleshooting](core-concepts/resilience/troubleshooting.md) - Diagnosing common issues
 
 </details>

@@ -762,7 +762,7 @@ public class ResilienceHealthCheck : IHealthCheck
 
 ## Next Steps
 
-- **[Configuration Guide](configuration-guide.md)**: Review proper configuration patterns
-- **[Dependency Chains](dependency-chains.md)**: Understand critical prerequisite relationships
+- **[Error Handling Guide](error-handling.md)**: Review proper configuration patterns
+- **[Getting Started with Resilience](getting-started.md)**: Understand critical prerequisite relationships
 - **[Error Codes Reference](../../reference/error-codes.md)**: Look up specific NPipeline error codes (NP01xx-NP05xx)
 

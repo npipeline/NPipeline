@@ -1,7 +1,7 @@
 ---
 title: Performance Hygiene
 description: Best practices for building high-performance, low-allocation data pipelines with NPipeline.
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 # Performance Hygiene

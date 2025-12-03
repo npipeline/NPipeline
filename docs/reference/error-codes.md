@@ -536,7 +536,7 @@ await pipeline.ExecuteAsync(source, context);
 
 - **[Getting Started with Resilience](../core-concepts/resilience/getting-started.md)** - Complete quick-start and step-by-step configuration guide
 - [Build-Time Resilience Analyzer Guide](../analyzers/resilience.md)
-- [Resilient Execution Strategy](../core-concepts/resilience/execution-with-resilience.md)
+- [Error Handling Guide](../core-concepts/resilience/error-handling.md)
 - [Materialization & Buffering](../core-concepts/resilience/materialization.md)
 
 ---
