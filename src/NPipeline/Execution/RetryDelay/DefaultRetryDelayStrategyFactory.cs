@@ -109,41 +109,4 @@ public sealed class DefaultRetryDelayStrategyFactory(Random? random = null) : IR
     {
         return JitterStrategies.NoJitter();
     }
-
-    // Legacy methods for backward compatibility - marked as obsolete
-    [Obsolete("Use CreateStrategy(RetryDelayStrategyConfiguration) instead")]
-    public IRetryDelayStrategy CreateExponentialBackoff(
-        object configuration,
-        JitterStrategy? jitterStrategy = null)
-    {
-        throw new NotSupportedException("This method is obsolete. Use the new delegate-based API instead.");
-    }
-
-    [Obsolete("Use CreateStrategy(RetryDelayStrategyConfiguration) instead")]
-    public IRetryDelayStrategy CreateLinearBackoff(
-        object configuration,
-        JitterStrategy? jitterStrategy = null)
-    {
-        throw new NotSupportedException("This method is obsolete. Use the new delegate-based API instead.");
-    }
-
-    [Obsolete("Use CreateStrategy(RetryDelayStrategyConfiguration) instead")]
-    public IRetryDelayStrategy CreateFixedDelay(
-        object configuration,
-        JitterStrategy? jitterStrategy = null)
-    {
-        throw new NotSupportedException("This method is obsolete. Use the new delegate-based API instead.");
-    }
-
-    [Obsolete("Configuration classes are no longer supported")]
-    public BackoffStrategy CreateBackoffStrategy(object configuration)
-    {
-        throw new NotSupportedException("Configuration classes are no longer supported. Use BackoffStrategies static methods directly.");
-    }
-
-    [Obsolete("Configuration classes are no longer supported")]
-    public JitterStrategy CreateJitterStrategy(object configuration)
-    {
-        throw new NotSupportedException("Configuration classes are no longer supported. Use JitterStrategies static methods directly.");
-    }
 }
