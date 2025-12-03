@@ -48,11 +48,11 @@ Missing even one of these prerequisites will **silently disable restart**, causi
 3. **Set realistic MaxNodeRestartAttempts** - Usually 2-3 attempts is sufficient
 4. **Configure MaxMaterializedItems appropriately** - Balance memory usage with retry capability
 
-**Critical Warning:** Never set `MaxMaterializedItems` to `null` (unbounded). This silently disables restart functionality and can cause OutOfMemoryException. See the [Getting Started with Resilience](../core-concepts/resilience/getting-started.md) guide for detailed explanation of why unbounded buffers break resilience guarantees.
+**Critical Warning:** Never set `MaxMaterializedItems` to `null` (unbounded). This silently disables restart functionality and can cause OutOfMemoryException. See the [Getting Started with Resilience](../../core-concepts/resilience/getting-started.md) guide for detailed explanation of why unbounded buffers break resilience guarantees.
 
 ## See Also
 
-- **[Getting Started with Resilience](../core-concepts/resilience/getting-started.md)** - Complete step-by-step configuration guide
+- **[Getting Started with Resilience](../../core-concepts/resilience/getting-started.md)** - Complete step-by-step configuration guide
 - [Resilience Configuration Guide](../core-concepts/resilience/error-handling.md)
 - [Error Handling Architecture](../../architecture/error-handling-architecture.md)
 - [Cancellation Model](../../architecture/cancellation-model.md)
