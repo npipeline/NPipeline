@@ -189,6 +189,6 @@ public class SafeParallelTransform : TransformNode<DataItem, ProcessedItem>
 
 ## See Also
 
-- [Parallel Execution](./extensions/parallelism.md)
-- [State Management](./advanced-topics/state-management.md)
-- [Error Handling](./error-handling.md)
+- [Parallel Execution](../extensions/parallelism.md)
+- [State Management](../advanced-topics/state-management.md)
+- [Error Handling](../core-concepts/error-handling.md)
