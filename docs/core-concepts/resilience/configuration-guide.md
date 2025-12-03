@@ -8,7 +8,7 @@ sidebar_position: 5
 
 This guide provides a structured workflow for configuring resilience in NPipeline. For comprehensive code examples with real-world scenarios, see [Common Configuration Patterns](execution-with-resilience.md#common-configuration-patterns).
 
-**For detailed step-by-step instructions on configuring node restart functionality, see the [Node Restart Quick Start Checklist](./node-restart-quickstart.md).**
+**For detailed step-by-step instructions on configuring node restart functionality, see the [Getting Started with Resilience](./getting-started.md) guide.**
 
 ## Configuration Workflow
 
@@ -52,7 +52,7 @@ var context = PipelineContext.WithRetry(options);
 | High-volume streaming | 1 | 2 | 5000-10000 |
 | Critical business logic | 3-5 | 5 | 2000-5000 |
 
-**⚠️ Critical Warning**: Setting `MaxMaterializedItems` to `null` (unbounded) silently disables node restart functionality. For detailed explanation of why unbounded buffers break resilience guarantees, see the [Node Restart Quick Start Checklist](./node-restart-quickstart.md#why-unbounded-memory-buffers-break-resilience-guarantees).
+**⚠️ Critical Warning**: Setting `MaxMaterializedItems` to `null` (unbounded) silently disables node restart functionality. For detailed explanation of why unbounded buffers break resilience guarantees, see the [Getting Started with Resilience](./getting-started.md) guide.
 
 ### Step 3: Configure Circuit Breaker (Optional)
 
@@ -76,7 +76,7 @@ builder.ConfigureCircuitBreakerMemoryManagement(opts =>
 );
 ```
 
-See [Circuit Breaker Advanced Configuration](circuit-breaker-advanced-configuration.md) for detailed guidance on threshold types and memory management.
+See [Circuit Breakers](circuit-breakers.md) for detailed guidance on threshold types and memory management.
 
 ### Step 4: Configure Error Handling
 
@@ -131,7 +131,7 @@ For avoiding configuration errors, see [Common Configuration Mistakes to Avoid](
 
 ## Next Steps
 
-- **[Node Restart Quick Start Checklist](./node-restart-quickstart.md)**: Complete step-by-step configuration guide for node restart functionality
+- **[Getting Started with Resilience](./getting-started.md)**: Complete quick-start and step-by-step configuration guide
 - [Resilient Execution Strategy](execution-with-resilience.md) - Learn how ResilientExecutionStrategy works
 - [Materialization and Buffering](materialization-and-buffering.md) - Understand memory management
 - [Troubleshooting](troubleshooting.md) - Diagnose configuration issues

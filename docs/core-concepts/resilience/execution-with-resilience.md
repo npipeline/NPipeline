@@ -95,7 +95,7 @@ The materialization process is controlled by the `MaxMaterializedItems` paramete
 - **When `MaxMaterializedItems` is null** (default): Unbounded materialization - all items are buffered
 - **When `MaxMaterializedItems` has a value**: Limited materialization - only the specified number of items are buffered
 
-**⚠️ Critical Warning**: Setting `MaxMaterializedItems` to `null` (unbounded) silently disables node restart functionality. For detailed explanation of why unbounded buffers break resilience guarantees, see the [Node Restart Quick Start Checklist](./node-restart-quickstart.md#why-unbounded-memory-buffers-break-resilience-guarantees).
+**⚠️ Critical Warning**: Setting `MaxMaterializedItems` to `null` (unbounded) silently disables node restart functionality. For detailed explanation of why unbounded buffers break resilience guarantees, see the [Getting Started with Resilience](./getting-started.md) guide.
 
 ## Configuration Examples
 
@@ -218,7 +218,7 @@ var pipeline = builder.Build();
 
 Always apply `ResilientExecutionStrategy` to nodes that require any form of resilience.
 
-**For complete configuration requirements for node restart functionality, see the [Node Restart Quick Start Checklist](./node-restart-quickstart.md).**
+**For complete configuration requirements for node restart functionality, see the [Getting Started with Resilience](./getting-started.md) guide.**
 
 ## Performance Considerations
 
@@ -650,7 +650,7 @@ public class GoodErrorHandler : IPipelineErrorHandler
 
 ## Next Steps
 
-- **[Node Restart Quick Start Checklist](./node-restart-quickstart.md)**: Complete step-by-step configuration guide for node restart functionality
+- **[Getting Started with Resilience](./getting-started.md)**: Complete quick-start and step-by-step configuration guide
 - **[Configuration Guide](configuration-guide.md)**: Get step-by-step configuration guidance
 - **[Materialization and Buffering](materialization-and-buffering.md)**: Learn how buffering enables replay functionality
 - **[Dependency Chains](dependency-chains.md)**: Understand the critical prerequisite relationships

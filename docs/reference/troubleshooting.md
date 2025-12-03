@@ -590,7 +590,7 @@ services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Deb
 
 3. **Check [FAQ](./faq.md)** - Common questions answered
 
-4. **Review [Error Handling](../core-concepts/resilience/error-handling-guide.md)** - Error-specific guidance
+4. **Review [Error Handling](../core-concepts/resilience/error-handling.md)** - Error-specific guidance
 
 5. **Look up error codes** - See [Error Codes Reference](./error-codes.md) for NP error codes (e.g., `[NP0101]`)
 
@@ -599,5 +599,5 @@ services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Deb
 ## Next Steps
 
 * **[FAQ](./faq.md)**: Common questions and answers
-* **[Error Handling](../core-concepts/resilience/error-handling-guide.md)**: Comprehensive error handling guide
+* **[Error Handling](../core-concepts/resilience/error-handling.md)**: Comprehensive error handling guide
 * **[Error Codes Reference](./error-codes.md)**: Look up error codes and solutions

@@ -158,7 +158,7 @@ No, `ResilientExecutionStrategy` is specifically for **node-level restarts**, no
   2. `MaxNodeRestartAttempts > 0` in retry options
   3. `MaxMaterializedItems` set to a positive number (not null)
 
-For detailed configuration requirements, see [Node Restart - Quick Start Checklist](../core-concepts/resilience/node-restart-quickstart.md).
+For detailed configuration requirements, see [Getting Started with Resilience](../core-concepts/resilience/getting-started.md).
 
 ## Performance
 
@@ -217,7 +217,7 @@ var options = new PipelineRetryOptions(
 );
 ```
 
-For detailed memory calculations and configuration examples, see [Materialization and Buffering](../core-concepts/resilience/materialization-and-buffering.md).
+For detailed memory calculations and configuration examples, see [Materialization & Buffering](../core-concepts/resilience/materialization.md).
 
 ## Troubleshooting
 
@@ -260,7 +260,7 @@ Node restarts require **three mandatory components**. If any are missing, restar
 - [ ] MaxMaterializedItems is set to positive number
 - [ ] Error handler returns PipelineErrorDecision.RestartNode
 
-For the complete checklist and troubleshooting guide, see [Node Restart - Quick Start Checklist](../core-concepts/resilience/node-restart-quickstart.md).
+For the complete checklist and troubleshooting guide, see [Getting Started with Resilience](../core-concepts/resilience/getting-started.md).
 
 ### My parallel pipeline is slower than sequential
 
@@ -390,7 +390,7 @@ var policy = Policy
 await policy.ExecuteAsync(async () => await CallServiceAsync());
 ```
 
-See [Configuring Retries](../core-concepts/resilience/error-handling-guide.md#configuring-retries) for detailed examples and best practices.
+See [Configuring Retries](../core-concepts/resilience/error-handling.md#configuring-retries) for detailed examples and best practices.
 
 ## Error Codes Reference
 

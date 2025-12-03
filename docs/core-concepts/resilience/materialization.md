@@ -49,7 +49,7 @@ This parameter is critical because it determines:
 2. **Memory usage** for the buffer
 3. **Whether restart functionality works at all** for streaming inputs
 
-**⚠️ Critical Warning**: Setting `MaxMaterializedItems` to `null` (unbounded) silently disables node restart functionality. For detailed explanation of why unbounded buffers break resilience guarantees, see the [Node Restart Quick Start Checklist](./node-restart-quickstart.md#why-unbounded-memory-buffers-break-resilience-guarantees).
+**⚠️ Critical Warning**: Setting `MaxMaterializedItems` to `null` (unbounded) silently disables node restart functionality. For detailed explanation of why unbounded buffers break resilience guarantees, see the [Getting Started with Resilience](./getting-started.md) guide.
 
 ## CappedReplayableDataPipe Implementation
 
@@ -108,7 +108,7 @@ var unboundedOptions = new PipelineRetryOptions(
 - Potential memory exhaustion with large datasets
 - OutOfMemoryException risk in production
 - Not suitable for long-running pipelines with high throughput
-- **Silently disables restart functionality** - see [Node Restart Quick Start Checklist](./node-restart-quickstart.md) for details
+- **Silently disables restart functionality** - see [Getting Started with Resilience](./getting-started.md) for details
 
 ### Bounded Materialization
 
@@ -430,7 +430,7 @@ public class MonitoredPipelineDefinition : IPipelineDefinition
 
 ## Next Steps
 
-- **[Node Restart Quick Start Checklist](./node-restart-quickstart.md)**: Complete step-by-step configuration guide for node restart functionality
+- **[Getting Started with Resilience](./getting-started.md)**: Complete quick-start and step-by-step configuration guide
 - **[Dependency Chains](dependency-chains.md)**: Understand the critical prerequisite relationships
 - **[Configuration Guide](configuration-guide.md)**: Get practical implementation guidance
 - **[Troubleshooting](troubleshooting.md)**: Learn to diagnose and resolve materialization issues

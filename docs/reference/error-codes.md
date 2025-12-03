@@ -502,7 +502,7 @@ var pipeline = builder
 
 **Solution - Complete Configuration Checklist:**
 
-**For detailed step-by-step configuration instructions, see the [Node Restart Quick Start Checklist](../core-concepts/resilience/node-restart-quickstart.md).**
+**For detailed step-by-step configuration instructions, see the [Getting Started with Resilience](../core-concepts/resilience/getting-started.md) guide.**
 
 ```csharp
 // ✅ SOLUTION: All three prerequisites configured
@@ -530,14 +530,14 @@ var pipeline = builder.Build();
 await pipeline.ExecuteAsync(source, context);
 ```
 
-**Critical Warning:** Never set `MaxMaterializedItems` to `null` (unbounded). This silently disables restart functionality and can cause OutOfMemoryException. See the [Node Restart Quick Start Checklist](../core-concepts/resilience/node-restart-quickstart.md) for detailed explanation of why unbounded buffers break resilience guarantees.
+**Critical Warning:** Never set `MaxMaterializedItems` to `null` (unbounded). This silently disables restart functionality and can cause OutOfMemoryException. See the [Getting Started with Resilience](../core-concepts/resilience/getting-started.md) guide for detailed explanation of why unbounded buffers break resilience guarantees.
 
 **Read More:**
 
-- **[Node Restart Quick Start Checklist](../core-concepts/resilience/node-restart-quickstart.md)** - Complete step-by-step configuration guide
+- **[Getting Started with Resilience](../core-concepts/resilience/getting-started.md)** - Complete quick-start and step-by-step configuration guide
 - [Build-Time Resilience Analyzer Guide](../analyzers/resilience.md)
 - [Resilient Execution Strategy](../core-concepts/resilience/execution-with-resilience.md)
-- [Materialization and Buffering](../core-concepts/resilience/materialization-and-buffering.md)
+- [Materialization & Buffering](../core-concepts/resilience/materialization.md)
 
 ---
 

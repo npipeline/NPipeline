@@ -1065,8 +1065,8 @@ For resilience features like `PipelineErrorDecision.RestartNode` to work properl
 ## See Also
 
 - [Retry Configuration](retry-configuration.md) - Detailed retry policy configuration
-- [Circuit Breaker Configuration](circuit-breaker-configuration.md) - Circuit breaker patterns and settings
-- [Node Restart Quickstart](node-restart-quickstart.md) - Quick guide to node restart functionality
+- [Circuit Breakers](circuit-breakers.md) - Circuit breaker patterns and settings
+- [Getting Started with Resilience](getting-started.md) - Quick guide to node restart functionality and common retry patterns
 - [Execution with Resilience](execution-with-resilience.md) - Adding resilience to execution strategies
 - [Dependency Chains](dependency-chains.md) - Critical prerequisite relationships for resilience features
 - [Configuration Guide](configuration-guide.md) - Comprehensive configuration options
@@ -1079,5 +1079,5 @@ For resilience features like `PipelineErrorDecision.RestartNode` to work properl
 
 - [Execution with Resilience](execution-with-resilience.md) - Learn how to wrap execution strategies with error handling
 - [Retry Configuration](retry-configuration.md) - Configure detailed retry policies
-- [Circuit Breaker Configuration](circuit-breaker-configuration.md) - Implement circuit breaker patterns
+- [Circuit Breakers](circuit-breakers.md) - Implement circuit breaker patterns
 - [Testing Resilient Pipelines](../../extensions/testing/advanced-testing.md) - Test your error handling strategies

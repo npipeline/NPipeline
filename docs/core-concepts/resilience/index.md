@@ -9,11 +9,11 @@ sidebar_position: 1
 Resilience in NPipeline refers to the ability of your data pipelines to detect, handle, and recover from failures without complete system breakdown.
 This section provides a comprehensive guide to building robust, fault-tolerant pipelines.
 
-## ⚡ Quick Start: Node Restart
+## ⚡ Quick Start
 
-**If you want to enable node restarts, [start here: Node Restart Quick Start Checklist](./node-restart-quickstart.md)**
+**If you want to enable node restarts and common retry patterns, [start here: Getting Started with Resilience](./getting-started.md)**
 
-Node restart requires three mandatory configuration steps. Missing any one causes silent failures. The quickstart guide is the single canonical source of truth for configuring all three prerequisites correctly.
+Resilience configuration requires understanding three mandatory prerequisites for node restarts. Missing any one causes silent failures. The getting-started guide is the single canonical source of truth for configuring all three prerequisites correctly, plus common retry patterns.
 
 ---
 
@@ -53,15 +53,15 @@ NPipeline's resilience framework is built around several interconnected componen
 | Component | Role | Critical Dependency |
 |-----------|------|---------------------|
 | **[ResilientExecutionStrategy](execution-with-resilience.md)** | Wrapper that enables recovery capabilities for nodes | Prerequisite for all resilience features |
-| **[Materialization & Buffering](materialization-and-buffering.md)** | Buffers input items to enable replay during restarts | Required for `PipelineErrorDecision.RestartNode` |
-| **[Error Handling](error-handling-guide.md)** | Determines how to respond to different types of failures | Provides decision logic for recovery actions |
-| **[Retry Options](retry-configuration.md)** | Configures retry limits and materialization caps | Controls resilience behavior boundaries |
+| **[Materialization & Buffering](materialization.md)** | Buffers input items to enable replay during restarts | Required for `PipelineErrorDecision.RestartNode` |
+| **[Error Handling](error-handling.md)** | Determines how to respond to different types of failures | Provides decision logic for recovery actions |
+| **[Retry Options](retries.md)** | Configures retry limits and materialization caps | Controls resilience behavior boundaries |
 
 ## ⚠️ Critical Prerequisites for Node Restart (RestartNode)
 
-If you intend to use `PipelineErrorDecision.RestartNode` to recover from failures, **[read the Node Restart Quick Start Checklist](./node-restart-quickstart.md)** first.
+If you intend to use `PipelineErrorDecision.RestartNode` to recover from failures, **[read the Getting Started with Resilience guide](./getting-started.md)** first.
 
-You **must** configure all three of the following mandatory prerequisites. The quickstart guide provides detailed step-by-step instructions for each requirement.
+You **must** configure all three of the following mandatory prerequisites. The guide provides detailed step-by-step instructions for each requirement.
 
 > **💡 Pro Tip:** The NPipeline build-time analyzer (NP9002) detects incomplete resilience configurations at compile-time, preventing these silent failures. See [Build-Time Resilience Analyzer](../../analyzers/resilience.md) for details.
 
@@ -70,18 +70,18 @@ You **must** configure all three of the following mandatory prerequisites. The q
 - **Requirement 1: ResilientExecutionStrategy**
   - The node must be wrapped with `ResilientExecutionStrategy`
   - Without this: Restart decisions are ignored; node cannot recover
-  - **See detailed instructions:** [Node Restart Quick Start Checklist](./node-restart-quickstart.md#step-1-apply-resilientexecutionstrategy)
+  - **See detailed instructions:** [Getting Started with Resilience](./getting-started.md)
 
 - **Requirement 2: MaxNodeRestartAttempts Configuration**
   - Set `MaxNodeRestartAttempts > 0` in `PipelineRetryOptions`
   - This enables the restart capability
-  - **See detailed instructions:** [Node Restart Quick Start Checklist](./node-restart-quickstart.md#step-2-configure-maximum-restart-attempts)
+  - **See detailed instructions:** [Getting Started with Resilience](./getting-started.md)
 
 - **Requirement 3: MaxMaterializedItems Configuration**
   - Set `MaxMaterializedItems > 0` in `PipelineRetryOptions` (for streaming inputs)
   - This enables the input stream to be buffered/materialized for replay
   - **Critical:** Without this, even if RestartNode is requested, the pipeline will fall back to `FailPipeline`
-  - **See detailed instructions:** [Node Restart Quick Start Checklist](./node-restart-quickstart.md#step-3-enable-input-materialization--critical)
+  - **See detailed instructions:** [Getting Started with Resilience](./getting-started.md)
 
 ### What Happens If You Miss These
 
@@ -108,7 +108,7 @@ var options = new PipelineRetryOptions(
 // → Entire pipeline halts (unexpected failure!)
 ```
 
-**For complete configuration examples and detailed explanations, see the [Node Restart Quick Start Checklist](./node-restart-quickstart.md).**
+**For complete configuration examples and detailed explanations, see the [Getting Started with Resilience](./getting-started.md) guide.**
 
 ## The Dependency Chain
 
@@ -218,7 +218,7 @@ For recovering from node-level failures:
 - Apply `ResilientExecutionStrategy`
 - Configure `PipelineErrorDecision.RestartNode`
 - Set `MaxMaterializedItems` to enable replay (for streaming inputs)
-- **See detailed configuration:** [Node Restart Quick Start Checklist](./node-restart-quickstart.md)
+- **See detailed configuration:** [Getting Started with Resilience](./getting-started.md)
 
 ### Scenario 3: Memory-Constrained Environment
 
@@ -231,11 +231,10 @@ For systems with limited memory:
 
 ## Next Steps
 
-- **[Node Restart Quick Start Checklist](./node-restart-quickstart.md)**: Complete step-by-step guide for configuring node restarts
-- **[Retry Delay Quickstart](retry-delay-quickstart.md)**: Get started quickly with common retry patterns and recommended configurations
-- **[Resilient Execution Strategy](execution-with-resilience.md)**: Learn how to wrap execution strategies with error handling
-- **[Materialization and Buffering](materialization-and-buffering.md)**: Understand how buffering enables replay functionality
-- **[Dependency Chains](dependency-chains.md)**: Explore the critical prerequisite relationships in detail
-- **[Configuration Guide](configuration-guide.md)**: Get practical implementation guidance with code examples
-- **[Circuit Breaker Advanced Configuration](circuit-breaker-advanced-configuration.md)**: Learn when to tune circuit breaker memory cleanup and how defaults behave
-- **[Troubleshooting](troubleshooting.md)**: Diagnose and resolve common resilience issues
+- **[Getting Started with Resilience](./getting-started.md)**: Quick-start guides for node restarts and retry delays with common patterns
+- **[Error Handling](./error-handling.md)**: Learn how to handle errors at node and pipeline levels
+- **[Retries](./retries.md)**: Configure retry behavior for items and node restarts
+- **[Circuit Breakers](./circuit-breakers.md)**: Prevent cascading failures with circuit breaker patterns
+- **[Materialization & Buffering](./materialization.md)**: Understand how buffering enables replay functionality
+- **[Dead-Letter Queues](./dead-letter-queues.md)**: Implement dead-letter queues for problematic items
+- **[Troubleshooting](./troubleshooting.md)**: Diagnose and resolve common resilience issues

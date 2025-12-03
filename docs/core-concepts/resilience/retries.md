@@ -1132,7 +1132,7 @@ public class RetryMetricsCollector
 
 * **[Node-level Error Handling](error-handling-guide.md)**: Learn about handling errors for individual items.
 * **[Pipeline-level Error Handling](error-handling-guide.md)**: Learn about handling errors that affect entire node streams.
-* **[Circuit Breaker Configuration](circuit-breaker-configuration.md)**: Configure circuit breaker patterns.
+* **[Circuit Breakers](circuit-breakers.md)**: Configure circuit breaker patterns.
 * **[Dead-Letter Queues](dead-letter-queues.md)**: Implement dead-letter queues for problematic items.
 * **[Error Handling Overview](error-handling-guide.md)**: Return to the error handling overview.
 

@@ -112,7 +112,7 @@ var options = new PipelineRetryOptions(
 );
 ```
 
-**⚠️ Critical Warning**: Setting `MaxMaterializedItems` to `null` (unbounded) silently disables node restart functionality. For detailed explanation of why unbounded buffers break resilience guarantees, see the [Node Restart Quick Start Checklist](./node-restart-quickstart.md#why-unbounded-memory-buffers-break-resilience-guarantees).
+**⚠️ Critical Warning**: Setting `MaxMaterializedItems` to `null` (unbounded) silently disables node restart functionality. For detailed explanation of why unbounded buffers break resilience guarantees, see the [Getting Started with Resilience](./getting-started.md) guide.
 
 ### 3. Error Handler Must Return Correct Decision
 
@@ -472,7 +472,7 @@ public class FullResiliencePipeline : IPipelineDefinition
 
 ## Next Steps
 
-- **[Node Restart Quick Start Checklist](./node-restart-quickstart.md)**: Complete step-by-step configuration guide for node restart functionality
+- **[Getting Started with Resilience](./getting-started.md)**: Complete quick-start and step-by-step configuration guide
 - **[Configuration Guide](configuration-guide.md)**: Get practical implementation guidance with complete examples
 - **[Troubleshooting](troubleshooting.md)**: Learn to diagnose and resolve dependency issues
 

@@ -214,17 +214,17 @@ functionality and features like enhanced parallelism, simplifying testing workfl
     - **[Error Handling](docs/core-concepts/pipeline-execution/error-handling.md)** - Managing errors
     - **[Node Error Handling](docs/core-concepts/pipeline-execution/node-error-handling.md)** - Node-level error management
     - **[Pipeline Error Handling](docs/core-concepts/pipeline-execution/pipeline-error-handling.md)** - Pipeline-level error management
-    - **[Retry Configuration](docs/core-concepts/pipeline-execution/retry-configuration.md)** - Setting up retries
-    - **[Circuit Breaker Configuration](docs/core-concepts/pipeline-execution/circuit-breaker-configuration.md)** - Preventing cascading failures
+    - **[Retries](docs/core-concepts/resilience/retries.md)** - Setting up retries
+    - **[Circuit Breakers](docs/core-concepts/resilience/circuit-breakers.md)** - Preventing cascading failures
     - **[Dead Letter Queues](docs/core-concepts/pipeline-execution/dead-letter-queues.md)** - Handling failed items
     - **[IPipelineRunner](docs/core-concepts/pipeline-execution/ipipelinerunner.md)** - Running pipelines
 - **[Resilience](docs/core-concepts/resilience/index.md)** - Building fault-tolerant pipelines
-    - **[Node Restart Quickstart](docs/core-concepts/resilience/node-restart-quickstart.md)** - Getting started with resilient execution
+    - **[Getting Started with Resilience](docs/core-concepts/resilience/getting-started.md)** - Quick-start for node restarts and retry patterns
     - **[Resilient Execution Strategy](docs/core-concepts/resilience/resilient-execution-strategy.md)** - Enhanced resilience patterns
     - **[Configuration Guide](docs/core-concepts/resilience/configuration-guide.md)** - Resilience configuration
     - **[Dependency Chains](docs/core-concepts/resilience/dependency-chains.md)** - Managing node dependencies
-    - **[Materialization and Buffering](docs/core-concepts/resilience/materialization-and-buffering.md)** - Data persistence strategies
-    - **[Circuit Breaker Enhanced Configuration](docs/core-concepts/resilience/circuit-breaker-advanced-configuration.md)** - Enhanced breaker setup
+    - **[Materialization & Buffering](docs/core-concepts/resilience/materialization.md)** - Data persistence strategies
+    - **[Circuit Breakers](docs/core-concepts/resilience/circuit-breakers.md)** - Advanced configuration and memory management
     - **[Troubleshooting](docs/core-concepts/resilience/troubleshooting.md)** - Common resilience issues
 
 ### Specialized Node Types

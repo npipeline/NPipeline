@@ -436,17 +436,17 @@ For detailed information about resilience patterns, materialization requirements
 
 * **[Resilience Overview](../resilience/index.md)**: Comprehensive guide to building fault-tolerant pipelines
 * **[Resilient Execution Strategy](../resilience/execution-with-resilience.md)**: In-depth coverage of ResilientExecutionStrategy
-* **[Materialization and Buffering](../resilience/materialization-and-buffering.md)**: Understanding buffer requirements for resilience
+* **[Materialization & Buffering](../resilience/materialization.md)**: Understanding buffer requirements for resilience
 * **[Dependency Chains](../resilience/dependency-chains.md)**: Critical prerequisite relationships for resilience features
 * **[Parallelism Extension](../../extensions/parallelism.md)**: Advanced parallel execution strategies
-* **[Error Handling Guide](../resilience/error-handling-guide.md)**: Comprehensive error handling patterns
+* **[Error Handling](../resilience/error-handling.md)**: Comprehensive error handling patterns
 * **[Architecture: Execution Flow](../../architecture/execution-flow.md)**: Deep dive into how execution strategies work internally
 * **[Performance Characteristics](../../architecture/performance-characteristics.md)**: Understanding performance implications of different strategies
 
 ## Next Steps
 
 * **[Resilient Execution Strategy](../resilience/execution-with-resilience.md)**: Learn how to add error handling, retries, and circuit breaker capabilities to any strategy
-* **[Error Handling Guide](../resilience/error-handling-guide.md)**: Dive deeper into how NPipeline handles errors, retries, and dead-letter queues
+* **[Error Handling](../resilience/error-handling.md)**: Dive deeper into how NPipeline handles errors, retries, and dead-letter queues
 * **[Parallelism Extension](../../extensions/parallelism.md)**: Explore advanced parallel execution patterns
 * **[Architecture: Execution Flow](../../architecture/execution-flow.md)**: Understand how pipelines execute data at a deeper level
 

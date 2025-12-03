@@ -83,9 +83,9 @@ Pipeline execution involves several key aspects:
 
 * **[`IPipelineRunner`](ipipelinerunner.md)**: The primary interface for running pipelines.
 * **[Execution Strategies](execution-strategies.md)**: Different strategies for executing your pipeline (Sequential vs. Resilient).
-* **[Error Handling](../resilience/error-handling-guide.md)**: Comprehensive error handling mechanisms at both node and pipeline levels.
-* **[Retry Configuration](../resilience/retry-configuration.md)**: Configure how your pipeline should respond to transient failures.
-* **[Circuit Breaker Configuration](../resilience/circuit-breaker-configuration.md)**: Prevent cascading failures with circuit breaker patterns.
+* **[Error Handling](../resilience/error-handling.md)**: Comprehensive error handling mechanisms at both node and pipeline levels.
+* **[Retries](../resilience/retries.md)**: Configure how your pipeline should respond to transient failures.
+* **[Circuit Breakers](../resilience/circuit-breakers.md)**: Prevent cascading failures with circuit breaker patterns.
 * **[Dead-Letter Queues](../resilience/dead-letter-queues.md)**: Handle and store items that cannot be processed.
 
 ## Next Steps
@@ -93,4 +93,4 @@ Pipeline execution involves several key aspects:
 * **[Pipeline Context](../pipeline-context.md)** - Learn how to pass state and configuration to your pipeline
 * **[Architecture: Execution Flow](../../architecture/execution-flow.md)** - Deep dive into sequential and parallel execution
 * **[Architecture: Cancellation Model](../../architecture/cancellation-model.md)** - Understand cancellation propagation
-* **[Error Handling](../resilience/error-handling-guide.md)** - Learn about error handling strategies
+* **[Error Handling](../resilience/error-handling.md)** - Learn about error handling strategies
