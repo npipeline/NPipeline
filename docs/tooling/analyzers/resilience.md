@@ -52,7 +52,7 @@ Missing even one of these prerequisites will **silently disable restart**, causi
 
 ## See Also
 
-- **[Node Restart Quick Start Checklist](../core-concepts/resilience/node-restart-quickstart.md)** - Complete step-by-step configuration guide
+- **[Getting Started with Resilience](../core-concepts/resilience/getting-started.md)** - Complete step-by-step configuration guide
 - [Resilience Configuration Guide](../core-concepts/resilience/error-handling.md)
-- [Error Handling Architecture](../architecture/error-handling-architecture.md)
-- [Cancellation Model](../architecture/cancellation-model.md)
+- [Error Handling Architecture](../../architecture/error-handling-architecture.md)
+- [Cancellation Model](../../architecture/cancellation-model.md)

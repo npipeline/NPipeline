@@ -472,5 +472,5 @@ Identify bottlenecks before optimizing.
 
 - **[Common Patterns](common-patterns.md)**: See these practices in action with practical examples
 - **[Testing Pipelines](../extensions/testing/index.md)**: Learn how to test your pipelines effectively
-- **[Error Handling](resilience/error-handling-guide.md)**: Implement robust error handling in your pipelines
+- **[Error Handling](resilience/error-handling.md)**: Implement robust error handling in your pipelines
 

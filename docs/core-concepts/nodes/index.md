@@ -311,7 +311,7 @@ public static class Program
 
 - [PipelineBuilder](../pipelinebuilder.md) - Learn how to connect nodes together
 - [Pipeline Execution](../pipeline-execution/index.md) - Understand how nodes are executed
-- [Error Handling](../resilience/error-handling-guide.md) - Handle errors within nodes
+- [Error Handling](../resilience/error-handling.md) - Handle errors within nodes
 - [Architecture: Core Concepts](../../architecture/core-concepts.md) - Deep dive into node architecture
 
 ## Next Steps

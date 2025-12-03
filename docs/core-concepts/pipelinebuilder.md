@@ -186,7 +186,7 @@ public static class Program
 - [Nodes Overview](./nodes/index.md) - Understanding the node types you'll be connecting
 - [Pipeline Execution](./pipeline-execution/index.md) - Learn how built pipelines are executed
 - [Execution Strategies](./pipeline-execution/execution-strategies.md) - Control how nodes process data
-- [Error Handling Guide](./resilience/error-handling-guide.md) - Add resilience to your pipelines
+- [Error Handling Guide](./resilience/error-handling.md) - Add resilience to your pipelines
 - [Pipeline Context](./pipeline-context.md) - Understanding shared state across nodes
 - [Dependency Injection](../extensions/dependency-injection.md) - Using DI with PipelineBuilder
 
@@ -194,5 +194,5 @@ public static class Program
 
 - [Pipeline Context](./pipeline-context.md) - Learn about the final component that carries state across your pipeline
 - [Execution Strategies](./pipeline-execution/execution-strategies.md) - Control how nodes process data
-- [Error Handling Guide](./resilience/error-handling-guide.md) - Add resilience to your pipelines
+- [Error Handling Guide](./resilience/error-handling.md) - Add resilience to your pipelines
 - [Dependency Injection](../extensions/dependency-injection.md) - Using DI with PipelineBuilder

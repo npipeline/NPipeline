@@ -112,4 +112,4 @@ Tap nodes are powerful tools for adding non-intrusive monitoring and side-channe
 ## Next Steps
 
 * **[Branch Nodes](branch.md)**: Learn about fan-out patterns for duplicating streams to multiple processing paths.
-* **[Advanced Error Handling Patterns](../resilience/error-handling-guide.md#advanced-patterns)**: Learn more about handling errors in complex pipeline structures.
+* **[Advanced Error Handling Patterns](../resilience/error-handling.md#advanced-patterns)**: Learn more about handling errors in complex pipeline structures.

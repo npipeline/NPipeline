@@ -967,7 +967,7 @@ public class ProductionRetryHandler : INodeErrorHandler<ITransformNode<string, s
 ```
 
 > :warning: Materialization Requirements
-When configuring retries with `MaxMaterializedItems`, it's important to understand how buffering enables replay functionality. Materialization is critical because it creates a snapshot of input items that can be replayed if a node fails and needs to restart, preventing data loss and ensuring processing continuity. See [Materialization and Buffering](../resilience/materialization-and-buffering.md) in the resilience section for detailed guidance.
+When configuring retries with `MaxMaterializedItems`, it's important to understand how buffering enables replay functionality. Materialization is critical because it creates a snapshot of input items that can be replayed if a node fails and needs to restart, preventing data loss and ensuring processing continuity. See [Materialization and Buffering](materialization.md) in the resilience section for detailed guidance.
 
 ## Troubleshooting Retry Strategies
 
@@ -1124,15 +1124,15 @@ public class RetryMetricsCollector
 ## See Also
 
 * **[Resilience Overview](../resilience/index.md)**: Comprehensive guide to building fault-tolerant pipelines
-* **[Materialization and Buffering](../resilience/materialization-and-buffering.md)**: Understanding buffer requirements for resilience
-* **[Error Handling Guide](../resilience/error-handling.md)**: Comprehensive error handling patterns and practical implementation guidance
-* **[Troubleshooting](../resilience/troubleshooting.md)**: Diagnose and resolve common resilience issues
+* **[Materialization and Buffering](materialization.md)**: Understanding buffer requirements for resilience
+* **[Error Handling Guide](error-handling.md)**: Comprehensive error handling patterns and practical implementation guidance
+* **[Troubleshooting](troubleshooting.md)**: Diagnose and resolve common resilience issues
 
 ## Related Topics
 
-* **[Node-level Error Handling](error-handling-guide.md)**: Learn about handling errors for individual items.
-* **[Pipeline-level Error Handling](error-handling-guide.md)**: Learn about handling errors that affect entire node streams.
+* **[Node-level Error Handling](error-handling.md)**: Learn about handling errors for individual items.
+* **[Pipeline-level Error Handling](error-handling.md)**: Learn about handling errors that affect entire node streams.
 * **[Circuit Breakers](circuit-breakers.md)**: Configure circuit breaker patterns.
 * **[Dead-Letter Queues](dead-letter-queues.md)**: Implement dead-letter queues for problematic items.
-* **[Error Handling Overview](error-handling-guide.md)**: Return to the error handling overview.
+* **[Error Handling Overview](error-handling.md)**: Return to the error handling overview.
 

@@ -444,5 +444,5 @@ In this example, `MyConfig` is stored in `PipelineContext` using a key ("MyConfi
 ## Related Topics
 
 *   **[Streaming vs. Buffering](streaming-vs-buffering.md)**: Understand how NPipeline handles data flow and memory management.
-*   **[Error Handling](resilience/error-handling-guide.md)**: Learn about NPipeline's error handling mechanisms.
+*   **[Error Handling](resilience/error-handling.md)**: Learn about NPipeline's error handling mechanisms.
 

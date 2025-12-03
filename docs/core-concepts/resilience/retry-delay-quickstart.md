@@ -179,7 +179,7 @@ public void Define(PipelineBuilder builder, PipelineContext context)
 
 - **[Retries](retries.md)**: Comprehensive retry configuration options and built-in strategies
 - **[Resilience Overview](index.md)**: Understanding resilience concepts in NPipeline
-- **[Execution with Resilience](execution-with-resilience.md)**: How retry strategies integrate with resilient execution
+- **[Retry Delay Advanced](retry-delay-advanced.md)**: How retry strategies integrate with resilient execution
 - **[Circuit Breakers](circuit-breakers.md)**: Combining circuit breakers with retry delays
 
 ## Related Topics

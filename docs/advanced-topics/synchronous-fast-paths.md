@@ -387,7 +387,7 @@ public Task<string> GetValueAsync()
 - [Optimization Principles](../architecture/optimization-principles.md) - Understanding why ValueTask improves performance
 - [Sample: High-Performance Transforms](../../samples/Sample_HighPerformanceTransform/) - Complete working example
 - [Execution Strategies](../core-concepts/pipeline-execution/execution-strategies.md) - How ValueTask integrates with execution strategies
-- [Error Handling Guide](../core-concepts/resilience/error-handling-guide.md) - Error handling with ValueTask patterns
+- [Error Handling Guide](../core-concepts/resilience/error-handling.md) - Error handling with ValueTask patterns
 
 ## Next Steps
 

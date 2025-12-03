@@ -203,5 +203,5 @@ When a branch handler fails, the `BranchHandlerException` provides context about
 ## Next Steps
 
 * **[Tap Nodes](tap.md)**: Learn about non-intrusive monitoring and side-channel processing.
-* **[Advanced Error Handling Patterns](../resilience/error-handling-guide.md#advanced-patterns)**: Learn more about handling errors in complex pipeline structures.
+* **[Advanced Error Handling Patterns](../resilience/error-handling.md#advanced-patterns)**: Learn more about handling errors in complex pipeline structures.
 
