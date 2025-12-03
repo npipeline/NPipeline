@@ -9,7 +9,7 @@ slug: /extensions/testing
 
 NPipeline provides comprehensive testing support through dedicated extensions that make it easy to write unit and integration tests for your pipelines. These testing utilities help you verify the behavior of your pipelines, mock external dependencies, and ensure data flows correctly through your transformations.
 
-> **Need to test complex scenarios?** See [Advanced Testing](../../advanced-topics/testing-pipelines.md) for strategies with dependencies, mocking, error handling, and integration tests.
+> **Need to test complex scenarios?** See [Advanced Testing](./advanced-testing.md) for strategies with dependencies, mocking, error handling, and integration tests.
 
 > **This guide** covers: **Installation, packages, basic patterns, and simple unit testing**  
 > **Advanced Testing** covers: **Mocking services, dependency injection, error handling, and complex scenarios**

@@ -525,5 +525,5 @@ dotnet_diagnostic.NP9401.severity = error
 ## See Also
 
 - [Dependency Injection Guide](../extensions/dependency-injection.md)
-- [Testing Pipelines](../advanced-topics/testing-pipelines.md)
+- [Testing Pipelines](../extensions/testing/advanced-testing.md)
 - [SOLID Principles](../architecture/design-principles.md)

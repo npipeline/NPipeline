@@ -173,7 +173,7 @@ public void Define(PipelineBuilder builder, PipelineContext context)
 - **[Advanced Retry Delay Strategies](../../advanced-topics/retry-delay-advanced.md)**: Complex scenarios and production patterns
 - **[Retry Delay Architecture](../../architecture/retry-delay-architecture.md)**: Deep dive into architectural components
 - **[Error Handling Guide](error-handling-guide.md)**: How retry integrates with error handling
-- **[Testing Pipelines](../../advanced-topics/testing-pipelines.md)**: How to test retry behavior effectively
+- **[Testing Pipelines](../../extensions/testing/advanced-testing.md)**: How to test retry behavior effectively
 
 ## See Also
 

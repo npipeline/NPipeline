@@ -259,5 +259,5 @@ public class ResilientTransform : ITransformNode<T, T>
 ## Next Steps
 
 - **[Design Principles](design-principles.md)** - Understand guiding principles for extensions
-- **[Advanced Topics - Testing Pipelines](../advanced-topics/testing-pipelines.md)** - Test your custom nodes
+- **[Advanced Testing Pipelines](../extensions/testing/advanced-testing.md)** - Test your custom nodes
 

@@ -1080,4 +1080,4 @@ For resilience features like `PipelineErrorDecision.RestartNode` to work properl
 - [Execution with Resilience](execution-with-resilience.md) - Learn how to wrap execution strategies with error handling
 - [Retry Configuration](retry-configuration.md) - Configure detailed retry policies
 - [Circuit Breaker Configuration](circuit-breaker-configuration.md) - Implement circuit breaker patterns
-- [Testing Resilient Pipelines](../../advanced-topics/testing-pipelines.md) - Test your error handling strategies
+- [Testing Resilient Pipelines](../../extensions/testing/advanced-testing.md) - Test your error handling strategies

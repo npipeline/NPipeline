@@ -50,7 +50,7 @@ New to NPipeline? Get started with our quick introduction:
 
 ### Module 3: Testing (30 minutes)
 
-- [Unit Testing Pipelines](advanced-topics/testing-pipelines.md) - Testing your pipeline components
+- [Unit Testing Pipelines](extensions/testing/index.md) - Testing your pipeline components
 - [Debugging Pipelines](reference/troubleshooting.md) - Common issues and solutions
 
 ### Module 4: Thread Safety (20 minutes)
@@ -126,7 +126,7 @@ New to NPipeline? Get started with our quick introduction:
 ### Module 4: Mastery Project (120 minutes)
 
 - [Performance Benchmarking](advanced-topics/performance-hygiene.md) - Measuring and optimizing performance
-- [Testing Strategies](advanced-topics/testing-pipelines.md) - Advanced testing techniques
+- [Testing Strategies](extensions/testing/advanced-testing.md) - Advanced testing techniques
 
 </details>
 
