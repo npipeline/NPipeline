@@ -151,7 +151,7 @@ await foreach (var item in pipe.WithCancellation(ct))
 
 ```csharp
 // Loads everything into memory!
-var allItems = await pipe.ToListAsync(ct); // ❌ Bad for large datasets
+var allItems = await pipe.ToListAsync(ct); // :x: Bad for large datasets
 foreach (var item in allItems)
 {
     // Process...

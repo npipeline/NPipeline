@@ -20,7 +20,7 @@ sidebar_position: 4
 1. **Sinks not configured**
 
 ```csharp
-// ❌ BAD - Source and transform but no sink
+// :x: BAD - Source and transform but no sink
 class MyPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
@@ -32,7 +32,7 @@ class MyPipeline : IPipelineDefinition
     }
 }
 
-// ✅ GOOD - Complete pipeline with sink
+// :heavy_check_mark: GOOD - Complete pipeline with sink
 class MyPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
@@ -41,7 +41,7 @@ class MyPipeline : IPipelineDefinition
         var transform = builder.AddTransform<MyTransform, MyData, ProcessedData>();
         var sink = builder.AddSink<MySink, ProcessedData>();
         builder.Connect(source, transform);
-        builder.Connect(transform, sink); // ✅ Sink connected
+        builder.Connect(transform, sink); // :heavy_check_mark: Sink connected
     }
 }
 ```
@@ -62,7 +62,7 @@ public override IDataPipe<T> ExecuteAsync(PipelineContext context, CancellationT
             // Add logging to verify data is being yielded
             await foreach (var item in GetSourceData(ct))
             {
-                Console.WriteLine($"Yielding: {item}"); // ✅ Verify data
+                Console.WriteLine($"Yielding: {item}"); // :heavy_check_mark: Verify data
                 yield return item;
             }
         }
@@ -77,21 +77,21 @@ public override IDataPipe<T> ExecuteAsync(PipelineContext context, CancellationT
 Ensure transform yields data for each input:
 
 ```csharp
-// ❌ BAD - Might not yield for all items
+// :x: BAD - Might not yield for all items
 public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     if (item.IsSpecial)
         return Task.FromResult(item);
-    // Returns null implicitly for others ❌
+    // Returns null implicitly for others :x:
 }
 
-// ✅ GOOD - Explicit for all paths
+// :heavy_check_mark: GOOD - Explicit for all paths
 public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     if (item.IsSpecial)
         return Task.FromResult(Transform(item));
     else
-        return Task.FromResult(item); // ✅ Always return
+        return Task.FromResult(item); // :heavy_check_mark: Always return
 }
 ```
 
@@ -104,13 +104,13 @@ public override Task<Item> ExecuteAsync(Item item, PipelineContext context, Canc
 **Solution - Assembly Scanning (Automatic Discovery):**
 
 ```csharp
-// ❌ WRONG - No assembly specified
+// :x: WRONG - No assembly specified
 services.AddNPipeline();
 
-// ✅ CORRECT - Include your assembly
+// :heavy_check_mark: CORRECT - Include your assembly
 services.AddNPipeline(Assembly.GetExecutingAssembly());
 
-// ✅ CORRECT - Include multiple assemblies if nodes are in different projects
+// :heavy_check_mark: CORRECT - Include multiple assemblies if nodes are in different projects
 services.AddNPipeline(
     Assembly.GetExecutingAssembly(),
     typeof(ExternalNode).Assembly
@@ -122,7 +122,7 @@ services.AddNPipeline(
 If you prefer not to use reflection or have a specific set of nodes, use the fluent API:
 
 ```csharp
-// ✅ CORRECT - Explicit registration without reflection
+// :heavy_check_mark: CORRECT - Explicit registration without reflection
 services.AddNPipeline(builder => builder
     .AddNode<MySourceNode>()
     .AddNode<MyTransformNode>()
@@ -140,14 +140,14 @@ services.AddNPipeline(builder => builder
 **Solution:** Verify type compatibility:
 
 ```csharp
-// ❌ BAD - Type mismatch
+// :x: BAD - Type mismatch
 var source = builder.AddSource<SourceNode<int>, int>();
-var transform = builder.AddTransform<TransformNode<string, int>, string, int>(); // ❌ Expects string
+var transform = builder.AddTransform<TransformNode<string, int>, string, int>(); // :x: Expects string
 builder.Connect(source, transform); // Type mismatch!
 
-// ✅ GOOD - Matching types
+// :heavy_check_mark: GOOD - Matching types
 var source = builder.AddSource<SourceNode<int>, int>();
-var transform = builder.AddTransform<TransformNode<int, int>, int, int>(); // ✅ Expects int
+var transform = builder.AddTransform<TransformNode<int, int>, int, int>(); // :heavy_check_mark: Expects int
 builder.Connect(source, transform);
 ```
 
@@ -182,17 +182,17 @@ public override async Task<Item> ExecuteAsync(Item item, PipelineContext context
 2. **Check for blocking operations:**
 
 ```csharp
-// ❌ BAD - Blocking I/O
+// :x: BAD - Blocking I/O
 public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
-    var data = database.GetData(item.Id); // ❌ Synchronous blocking
+    var data = database.GetData(item.Id); // :x: Synchronous blocking
     return Task.FromResult(Transform(data));
 }
 
-// ✅ GOOD - Async I/O
+// :heavy_check_mark: GOOD - Async I/O
 public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
-    var data = await database.GetDataAsync(item.Id, cancellationToken); // ✅ Async
+    var data = await database.GetDataAsync(item.Id, cancellationToken); // :heavy_check_mark: Async
     return Task.FromResult(Transform(data));
 }
 ```
@@ -215,18 +215,18 @@ builder.WithParallelOptions(new ParallelOptions { MaxDegreeOfParallelism = Envir
 1. **Loading all data into memory:**
 
 ```csharp
-// ❌ BAD - Loads all records at once
+// :x: BAD - Loads all records at once
 async IAsyncEnumerable<Item> ReadAsync()
 {
-    var allRecords = database.GetAllRecords().ToList(); // ❌ Everything in memory!
+    var allRecords = database.GetAllRecords().ToList(); // :x: Everything in memory!
     foreach (var record in allRecords)
         yield return record;
 }
 
-// ✅ GOOD - Streams from database
+// :heavy_check_mark: GOOD - Streams from database
 async IAsyncEnumerable<Item> ReadAsync()
 {
-    var reader = database.GetRecords(); // ✅ Lazy enumerable
+    var reader = database.GetRecords(); // :heavy_check_mark: Lazy enumerable
     await foreach (var record in reader)
         yield return record;
 }
@@ -235,7 +235,7 @@ async IAsyncEnumerable<Item> ReadAsync()
 2. **Not disposing resources:**
 
 ```csharp
-// ❌ BAD - Connections not disposed
+// :x: BAD - Connections not disposed
 public override async Task ExecuteAsync(IDataPipe<Item> input, PipelineContext context, CancellationToken cancellationToken)
 {
     var connection = new SqlConnection(_connString);
@@ -244,7 +244,7 @@ public override async Task ExecuteAsync(IDataPipe<Item> input, PipelineContext c
     // Missing dispose!
 }
 
-// ✅ GOOD - Properly disposed
+// :heavy_check_mark: GOOD - Properly disposed
 public override async Task ExecuteAsync(IDataPipe<Item> input, PipelineContext context, CancellationToken cancellationToken)
 {
     using var connection = new SqlConnection(_connString);
@@ -257,24 +257,24 @@ public override async Task ExecuteAsync(IDataPipe<Item> input, PipelineContext c
 3. **Accumulating state in context:**
 
 ```csharp
-// ❌ BAD - Context grows unbounded
+// :x: BAD - Context grows unbounded
 public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     if (!context.Items.ContainsKey("cache"))
         context.Items["cache"] = new Dictionary<int, Item>();
 
     var cache = context.Items["cache"] as Dictionary<int, Item>;
-    cache[item.Id] = item; // ❌ Cache grows forever!
+    cache[item.Id] = item; // :x: Cache grows forever!
     return Task.FromResult(item);
 }
 
-// ✅ GOOD - Limited cache or external state
+// :heavy_check_mark: GOOD - Limited cache or external state
 public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     // Use bounded cache or external storage
     _cache.AddOrUpdate(item.Id, item,
         (_, old) => item,
-        TimeSpan.FromMinutes(5)); // ✅ Bounded by time
+        TimeSpan.FromMinutes(5)); // :heavy_check_mark: Bounded by time
     return Task.FromResult(item);
 }
 ```
@@ -290,17 +290,17 @@ public override Task<Item> ExecuteAsync(Item item, PipelineContext context, Canc
 **Solution:**
 
 ```csharp
-// ❌ BAD - Silent failures
+// :x: BAD - Silent failures
 try
 {
     return await ProcessAsync(item);
 }
 catch (Exception ex)
 {
-    // ❌ Swallowed silently
+    // :x: Swallowed silently
 }
 
-// ✅ GOOD - Logged and re-thrown
+// :heavy_check_mark: GOOD - Logged and re-thrown
 try
 {
     return await ProcessAsync(item);
@@ -308,7 +308,7 @@ try
 catch (Exception ex)
 {
     logger.LogError(ex, "Processing failed for item");
-    throw; // ✅ Re-throw or handle explicitly
+    throw; // :heavy_check_mark: Re-throw or handle explicitly
 }
 ```
 
@@ -323,22 +323,22 @@ catch (Exception ex)
 **Solution:**
 
 ```csharp
-// ❌ BAD - Ignores cancellation
+// :x: BAD - Ignores cancellation
 public override async Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     for (int i = 0; i < 1000000; i++)
     {
-        await Task.Delay(10); // ❌ No cancellation check
+        await Task.Delay(10); // :x: No cancellation check
     }
     return item;
 }
 
-// ✅ GOOD - Checks cancellation
+// :heavy_check_mark: GOOD - Checks cancellation
 public override async Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     for (int i = 0; i < 1000000; i++)
     {
-        cancellationToken.ThrowIfCancellationRequested(); // ✅ Check token
+        cancellationToken.ThrowIfCancellationRequested(); // :heavy_check_mark: Check token
         await Task.Delay(10, cancellationToken);
     }
     return item;
@@ -365,7 +365,7 @@ private async Task<T> ExecuteWithRetryAsync<T>(
         {
             return await operation(cancellationToken);
         }
-        catch (IOException) when (retryCount < maxRetries) // ✅ Retry on transient
+        catch (IOException) when (retryCount < maxRetries) // :heavy_check_mark: Retry on transient
         {
             retryCount++;
             var delay = TimeSpan.FromSeconds(Math.Pow(2, retryCount - 1));
@@ -422,21 +422,21 @@ public async Task TransformHandlesNullValues()
 1. **Transform filtering unintentionally:**
 
 ```csharp
-// ❌ BAD - Implicit filtering
+// :x: BAD - Implicit filtering
 public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     if (item.IsValid)
         return Task.FromResult(Transform(item));
-    // ❌ Null returned for invalid items
+    // :x: Null returned for invalid items
 }
 
-// ✅ GOOD - Explicit handling
+// :heavy_check_mark: GOOD - Explicit handling
 public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     if (!item.IsValid)
     {
         logger.LogWarning($"Invalid item skipped: {item.Id}");
-        throw new ValidationException(); // ✅ Fail fast or log
+        throw new ValidationException(); // :heavy_check_mark: Fail fast or log
     }
     return Task.FromResult(Transform(item));
 }
@@ -445,11 +445,11 @@ public override Task<Item> ExecuteAsync(Item item, PipelineContext context, Canc
 2. **Async enumerable not fully consumed:**
 
 ```csharp
-// ❌ BAD - Only reads first item
+// :x: BAD - Only reads first item
 var result = await source.Execute(context, CancellationToken.None);
 var first = (await result.GetAsyncEnumerator().MoveNextAsync()).Current;
 
-// ✅ GOOD - Consumes all items
+// :heavy_check_mark: GOOD - Consumes all items
 var result = await source.Execute(context, CancellationToken.None);
 await foreach (var item in result)
 {
@@ -496,7 +496,7 @@ public class MyTransform : TransformNode<Item, Item>
 
     public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
     {
-        var timeout = _options.Value.Timeout; // ✅ Use injected settings
+        var timeout = _options.Value.Timeout; // :heavy_check_mark: Use injected settings
         return Task.FromResult(item);
     }
 }
@@ -528,7 +528,7 @@ public async Task PipelineProcessesData()
 
     // Verify sink received data
     var results = await sink.Completion;
-    Assert.Equal(3, results.Count); // ✅ Verify processing occurred
+    Assert.Equal(3, results.Count); // :heavy_check_mark: Verify processing occurred
 }
 ```
 

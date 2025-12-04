@@ -29,7 +29,7 @@ NPipeline's architecture is designed around several core principles: graph-based
 
 ---
 
-## 🤔 WHY: Design Philosophy & Principles
+## WHY: Design Philosophy & Principles
 
 These sections explain the design decisions behind NPipeline:
 
@@ -57,7 +57,7 @@ Understand how NPipeline achieves exceptional performance:
 
 ---
 
-## 📊 WHAT: Internal Architecture & Mechanisms
+## WHAT: Internal Architecture & Mechanisms
 
 These sections explain how NPipeline works internally:
 

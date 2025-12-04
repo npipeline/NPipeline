@@ -36,35 +36,35 @@ Blocking operations in async code:
 #### Problematic Patterns
 
 ```csharp
-// ❌ PROBLEM: Blocking on Task.Result
+// :x: PROBLEM: Blocking on Task.Result
 public async Task<string> ProcessDataAsync()
 {
     var task = SomeOperationAsync();
     return task.Result; // NP9101: Blocks until task completes
 }
 
-// ❌ PROBLEM: Blocking on Task.Wait()
+// :x: PROBLEM: Blocking on Task.Wait()
 public async Task ProcessDataAsync()
 {
     var task = SomeOperationAsync();
     task.Wait(); // NP9101: Blocks until task completes
 }
 
-// ❌ PROBLEM: Using GetAwaiter().GetResult()
+// :x: PROBLEM: Using GetAwaiter().GetResult()
 public async Task<string> ProcessDataAsync()
 {
     var task = SomeOperationAsync();
     return task.GetAwaiter().GetResult(); // NP9101: Synchronous blocking
 }
 
-// ❌ PROBLEM: Synchronous I/O in async method
+// :x: PROBLEM: Synchronous I/O in async method
 public async Task ProcessFileAsync()
 {
     var content = File.ReadAllText("file.txt"); // NP9101: Synchronous I/O
     await ProcessAsync(content);
 }
 
-// ❌ PROBLEM: Thread.Sleep instead of Task.Delay
+// :x: PROBLEM: Thread.Sleep instead of Task.Delay
 public async Task WaitAsync()
 {
     Thread.Sleep(1000); // NP9101: Blocks the thread
@@ -75,21 +75,21 @@ public async Task WaitAsync()
 #### Solution: Use await
 
 ```csharp
-// ✅ CORRECT: Use await
+// :heavy_check_mark: CORRECT: Use await
 public async Task<string> ProcessDataAsync()
 {
     var task = SomeOperationAsync();
     return await task; // Properly awaits without blocking
 }
 
-// ✅ CORRECT: Use async I/O
+// :heavy_check_mark: CORRECT: Use async I/O
 public async Task ProcessFileAsync()
 {
     var content = await File.ReadAllTextAsync("file.txt"); // Async I/O
     await ProcessAsync(content);
 }
 
-// ✅ CORRECT: Use Task.Delay
+// :heavy_check_mark: CORRECT: Use Task.Delay
 public async Task WaitAsync()
 {
     await Task.Delay(1000); // Non-blocking delay
@@ -108,7 +108,7 @@ This analyzer detects when `OperationCanceledException` is caught but not re-thr
 #### Problematic Pattern
 
 ```csharp
-// ❌ PROBLEM: Swallowing OperationCanceledException
+// :x: PROBLEM: Swallowing OperationCanceledException
 public async Task ProcessAsync(CancellationToken cancellationToken)
 {
     try
@@ -126,7 +126,7 @@ public async Task ProcessAsync(CancellationToken cancellationToken)
 #### Solution: Re-throw Cancellation
 
 ```csharp
-// ✅ CORRECT: Re-throw cancellation exception
+// :heavy_check_mark: CORRECT: Re-throw cancellation exception
 public async Task ProcessAsync(CancellationToken cancellationToken)
 {
     try
@@ -144,7 +144,7 @@ public async Task ProcessAsync(CancellationToken cancellationToken)
     }
 }
 
-// ✅ ALTERNATIVE: Handle other exceptions only
+// :heavy_check_mark: ALTERNATIVE: Handle other exceptions only
 public async Task ProcessAsync(CancellationToken cancellationToken)
 {
     try
@@ -169,20 +169,20 @@ This analyzer detects "sync-over-async" patterns like unawaited async method cal
 #### Problematic Sync-Over-Async Patterns
 
 ```csharp
-// ❌ PROBLEM: Fire-and-forget async call (unawaited)
+// :x: PROBLEM: Fire-and-forget async call (unawaited)
 public async Task ProcessDataAsync()
 {
     SomeOperationAsync(); // NP9103: Async method not awaited
     DoSomethingElse();
 }
 
-// ❌ PROBLEM: Async method called from sync method
+// :x: PROBLEM: Async method called from sync method
 public void ProcessData()
 {
     var result = SomeOperationAsync(); // NP9103: Async method not awaited
 }
 
-// ❌ PROBLEM: Task.Run wrapping sync work
+// :x: PROBLEM: Task.Run wrapping sync work
 public async Task ProcessDataAsync()
 {
     var result = await Task.Run(() => 
@@ -195,20 +195,20 @@ public async Task ProcessDataAsync()
 #### Solution: Always Await
 
 ```csharp
-// ✅ CORRECT: Await the async call
+// :heavy_check_mark: CORRECT: Await the async call
 public async Task ProcessDataAsync()
 {
     await SomeOperationAsync(); // Properly awaited
     DoSomethingElse();
 }
 
-// ✅ CORRECT: Make calling method async
+// :heavy_check_mark: CORRECT: Make calling method async
 public async Task ProcessDataAsync()
 {
     var result = await SomeOperationAsync(); // Properly awaited
 }
 
-// ✅ CORRECT: Call sync methods directly
+// :heavy_check_mark: CORRECT: Call sync methods directly
 public async Task ProcessDataAsync()
 {
     var result = SomeSynchronousOperation(); // Direct call, no Task.Run
@@ -227,7 +227,7 @@ This analyzer detects when a cancellation token is not checked or respected in l
 #### Problematic Cancellation Patterns
 
 ```csharp
-// ❌ PROBLEM: Not checking cancellation token in loop
+// :x: PROBLEM: Not checking cancellation token in loop
 public async Task ProcessItemsAsync(IEnumerable<Item> items, CancellationToken cancellationToken)
 {
     foreach (var item in items)
@@ -241,7 +241,7 @@ public async Task ProcessItemsAsync(IEnumerable<Item> items, CancellationToken c
 #### Solution: Check and Respect Cancellation
 
 ```csharp
-// ✅ CORRECT: Check cancellation token before processing
+// :heavy_check_mark: CORRECT: Check cancellation token before processing
 public async Task ProcessItemsAsync(IEnumerable<Item> items, CancellationToken cancellationToken)
 {
     foreach (var item in items)
@@ -251,7 +251,7 @@ public async Task ProcessItemsAsync(IEnumerable<Item> items, CancellationToken c
     }
 }
 
-// ✅ CORRECT: Pass token to async operations
+// :heavy_check_mark: CORRECT: Pass token to async operations
 public async Task ProcessItemsAsync(IEnumerable<Item> items, CancellationToken cancellationToken)
 {
     await foreach (var item in GetItemsAsync(cancellationToken))
@@ -281,7 +281,7 @@ This analyzer detects cases where a method frequently completes synchronously bu
 #### Problem
 
 ```csharp
-// ❌ PROBLEM: Allocates heap object even for synchronous completions
+// :x: PROBLEM: Allocates heap object even for synchronous completions
 public async Task<string> GetDataAsync(string id)
 {
     var cached = _cache.Get(id);
@@ -297,7 +297,7 @@ public async Task<string> GetDataAsync(string id)
 #### Solution: Use ValueTask
 
 ```csharp
-// ✅ CORRECT: No allocation for synchronous returns
+// :heavy_check_mark: CORRECT: No allocation for synchronous returns
 public async ValueTask<string> GetDataAsync(string id)
 {
     var cached = _cache.Get(id);
@@ -332,7 +332,7 @@ LINQ in hot paths causes:
 #### Problematic Patterns
 
 ```csharp
-// ❌ PROBLEM: LINQ in ExecuteAsync method
+// :x: PROBLEM: LINQ in ExecuteAsync method
 public class BadTransform : ITransformNode<Input, Output>
 {
     protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
@@ -346,7 +346,7 @@ public class BadTransform : ITransformNode<Input, Output>
     }
 }
 
-// ❌ PROBLEM: LINQ in loop
+// :x: PROBLEM: LINQ in loop
 foreach (var batch in batches)
 {
     // NP9201: LINQ inside loop creates pressure
@@ -354,14 +354,14 @@ foreach (var batch in batches)
     await SendBatchAsync(processed);
 }
 
-// ❌ PROBLEM: Materializing LINQ results
+// :x: PROBLEM: Materializing LINQ results
 var items = sourceData.Where(x => x.IsValid).Select(x => x.Transform()).ToArray(); // NP9201: Immediate materialization
 ```
 
 #### Solution: Use Imperative Alternatives
 
 ```csharp
-// ✅ CORRECT: Use imperative processing
+// :heavy_check_mark: CORRECT: Use imperative processing
 public class GoodTransform : ITransformNode<Input, Output>
 {
     protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
@@ -387,7 +387,7 @@ public class GoodTransform : ITransformNode<Input, Output>
     }
 }
 
-// ✅ CORRECT: Process items directly in loop
+// :heavy_check_mark: CORRECT: Process items directly in loop
 foreach (var batch in batches)
 {
     var processed = new List<Item>();
@@ -431,7 +431,7 @@ Inefficient string operations cause:
 #### Problematic Patterns
 
 ```csharp
-// ❌ PROBLEM: String concatenation in loop
+// :x: PROBLEM: String concatenation in loop
 public class BadTransform : ITransformNode<Input, Output>
 {
     protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
@@ -445,20 +445,20 @@ public class BadTransform : ITransformNode<Input, Output>
     }
 }
 
-// ❌ PROBLEM: Inefficient string formatting
+// :x: PROBLEM: Inefficient string formatting
 protected override async Task<string> ProcessAsync(Data data, CancellationToken cancellationToken)
 {
     return string.Format("{0}-{1}-{2}", data.Id, data.Name, data.Value); // NP9202: Inefficient formatting
 }
 
-// ❌ PROBLEM: String operations in LINQ
+// :x: PROBLEM: String operations in LINQ
 var results = items.Select(x => x.Name.ToUpper().Substring(0, 5).Trim()); // NP9202: Multiple allocations per item
 ```
 
 #### Solution: Use Efficient String Operations
 
 ```csharp
-// ✅ CORRECT: Use StringBuilder for concatenation
+// :heavy_check_mark: CORRECT: Use StringBuilder for concatenation
 public class GoodTransform : ITransformNode<Input, Output>
 {
     protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
@@ -472,13 +472,13 @@ public class GoodTransform : ITransformNode<Input, Output>
     }
 }
 
-// ✅ CORRECT: Use string interpolation
+// :heavy_check_mark: CORRECT: Use string interpolation
 protected override async Task<string> ProcessAsync(Data data, CancellationToken cancellationToken)
 {
     return $"{data.Id}-{data.Name}-{data.Value}"; // Efficient formatting
 }
 
-// ✅ CORRECT: Use span-based operations
+// :heavy_check_mark: CORRECT: Use span-based operations
 protected override async Task<string> ProcessAsync(string input, CancellationToken cancellationToken)
 {
     return input.AsSpan().Slice(0, Math.Min(5, input.Length)).Trim().ToString(); // Zero-allocation where possible
@@ -515,7 +515,7 @@ Anonymous object allocations cause:
 #### Problematic Patterns
 
 ```csharp
-// ❌ PROBLEM: Anonymous objects in ExecuteAsync
+// :x: PROBLEM: Anonymous objects in ExecuteAsync
 protected override async Task ExecuteAsync(IDataPipe<Output> output, PipelineContext context, CancellationToken cancellationToken)
 {
     foreach (var item in inputItems)
@@ -526,7 +526,7 @@ protected override async Task ExecuteAsync(IDataPipe<Output> output, PipelineCon
     }
 }
 
-// ❌ PROBLEM: Anonymous objects in LINQ
+// :x: PROBLEM: Anonymous objects in LINQ
 var processed = items.Select(x => new // NP9203: Anonymous object in LINQ
 {
     Id = x.Id,
@@ -534,7 +534,7 @@ var processed = items.Select(x => new // NP9203: Anonymous object in LINQ
     Timestamp = DateTime.UtcNow
 }).ToList();
 
-// ❌ PROBLEM: Anonymous objects in loops
+// :x: PROBLEM: Anonymous objects in loops
 foreach (var item in largeCollection)
 {
     // NP9203: Anonymous object allocation per iteration
@@ -546,7 +546,7 @@ foreach (var item in largeCollection)
 #### Solution: Use Named Types or Value Types
 
 ```csharp
-// ✅ CORRECT: Define named type for results
+// :heavy_check_mark: CORRECT: Define named type for results
 public record ProcessedItem(int Id, string Name, double Value);
 
 protected override async Task ExecuteAsync(IDataPipe<Output> output, PipelineContext context, CancellationToken cancellationToken)
@@ -558,7 +558,7 @@ protected override async Task ExecuteAsync(IDataPipe<Output> output, PipelineCon
     }
 }
 
-// ✅ CORRECT: Use named type in LINQ
+// :heavy_check_mark: CORRECT: Use named type in LINQ
 public record ProcessedData(int Id, double ProcessedValue, DateTime Timestamp);
 
 var processed = items.Select(x => new ProcessedData(
@@ -566,7 +566,7 @@ var processed = items.Select(x => new ProcessedData(
     x.Value * 2,
     DateTime.UtcNow)).ToList();
 
-// ✅ CORRECT: Use struct for value-type data
+// :heavy_check_mark: CORRECT: Use struct for value-type data
 public readonly struct ProcessedItem
 {
     public readonly int Id;

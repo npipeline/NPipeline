@@ -34,7 +34,7 @@ Non-streaming patterns in SourceNode implementations cause:
 #### Problematic Patterns
 
 ```csharp
-// ❌ PROBLEM: Materializing all data in memory
+// :x: PROBLEM: Materializing all data in memory
 public class BadSourceNode : SourceNode<string>
 {
     protected override async Task ExecuteAsync(IDataPipe<string> output, PipelineContext context, CancellationToken cancellationToken)
@@ -58,7 +58,7 @@ public class BadSourceNode : SourceNode<string>
     }
 }
 
-// ❌ PROBLEM: Using ToAsyncEnumerable on materialized collection
+// :x: PROBLEM: Using ToAsyncEnumerable on materialized collection
 public class AnotherBadSourceNode : SourceNode<int>
 {
     protected override async Task ExecuteAsync(IDataPipe<int> output, PipelineContext context, CancellationToken cancellationToken)
@@ -80,7 +80,7 @@ public class AnotherBadSourceNode : SourceNode<int>
 For SourceNode implementations, use async IAsyncEnumerable with yield return for proper streaming:
 
 ```csharp
-// ✅ CORRECT: Using IAsyncEnumerable with yield return
+// :heavy_check_mark: CORRECT: Using IAsyncEnumerable with yield return
 public class GoodSourceNode : SourceNode<string>
 {
     protected override async Task ExecuteAsync(IDataPipe<string> output, PipelineContext context, CancellationToken cancellationToken)
@@ -106,7 +106,7 @@ public class GoodSourceNode : SourceNode<string>
     }
 }
 
-// ✅ CORRECT: Streaming from database
+// :heavy_check_mark: CORRECT: Streaming from database
 public class DatabaseSourceNode : SourceNode<DataRecord>
 {
     private readonly IDbConnection _connection;
@@ -136,7 +136,7 @@ public class DatabaseSourceNode : SourceNode<DataRecord>
     }
 }
 
-// ✅ CORRECT: Generating data stream without materialization
+// :heavy_check_mark: CORRECT: Generating data stream without materialization
 public class NumberGeneratorSourceNode : SourceNode<int>
 {
     private readonly int _start;
@@ -170,7 +170,7 @@ public class NumberGeneratorSourceNode : SourceNode<int>
 ##### Streaming with Transformation
 
 ```csharp
-// ✅ GOOD: Streaming with transformation
+// :heavy_check_mark: GOOD: Streaming with transformation
 public class TransformingSourceNode : SourceNode<ProcessedData>
 {
     protected override async Task ExecuteAsync(IDataPipe<ProcessedData> output, PipelineContext context, CancellationToken cancellationToken)
@@ -208,7 +208,7 @@ public class TransformingSourceNode : SourceNode<ProcessedData>
 ##### Streaming with Filtering
 
 ```csharp
-// ✅ GOOD: Streaming with filtering
+// :heavy_check_mark: GOOD: Streaming with filtering
 public class FilteringSourceNode : SourceNode<FilteredData>
 {
     private readonly Func<DataItem, bool> _filter;
@@ -289,7 +289,7 @@ SinkNode is the terminal component in a pipeline that processes all data flowing
 #### Solution: Always Consume Input
 
 ```csharp
-// ✅ CORRECT: Process all items from input
+// :heavy_check_mark: CORRECT: Process all items from input
 public class MySinkNode : SinkNode<string>
 {
     public override async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
@@ -303,7 +303,7 @@ public class MySinkNode : SinkNode<string>
     }
 }
 
-// ✅ CORRECT: Use DataPipe operations
+// :heavy_check_mark: CORRECT: Use DataPipe operations
 public class CountingSinkNode : SinkNode<string>
 {
     public override async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
@@ -314,7 +314,7 @@ public class CountingSinkNode : SinkNode<string>
     }
 }
 
-// ✅ CORRECT: Handle empty input gracefully
+// :heavy_check_mark: CORRECT: Handle empty input gracefully
 public class RobustSinkNode : SinkNode<string>
 {
     public override async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
@@ -333,7 +333,7 @@ public class RobustSinkNode : SinkNode<string>
     }
 }
 
-// ✅ CORRECT: Conditional processing with default input consumption
+// :heavy_check_mark: CORRECT: Conditional processing with default input consumption
 public class ConditionalSinkNode : SinkNode<string>
 {
     private readonly bool _shouldProcess;

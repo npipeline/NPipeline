@@ -21,7 +21,7 @@ Each node should have a single, well-defined responsibility. This makes nodes:
 - More reusable across pipelines
 - Simpler to test
 
-### ✅ Good Example
+### :heavy_check_mark: Good Example
 
 ```csharp
 // Focused transform that only validates prices
@@ -46,7 +46,7 @@ public sealed class TaxCalculator : TransformNode<Product, Product>
 }
 ```
 
-### ❌ Avoid: God Nodes
+### :x: Avoid: God Nodes
 
 ```csharp
 // BAD: Node doing validation, tax calculation, formatting, and logging
@@ -75,7 +75,7 @@ public sealed class MegaTransform : TransformNode<Product, Product>
 
 Use dependency injection to manage external dependencies like services, loggers, and configuration.
 
-### ✅ Good Example
+### :heavy_check_mark: Good Example
 
 ```csharp
 public sealed class EnrichedTransform : TransformNode<Customer, EnrichedCustomer>
@@ -109,7 +109,7 @@ services.AddLogging();
 
 Don't let errors propagate silently. Handle them explicitly or route them appropriately.
 
-### ✅ Good Example
+### :heavy_check_mark: Good Example
 
 ```csharp
 public sealed class ResilientTransform : TransformNode<Order, ProcessedOrder>
@@ -153,7 +153,7 @@ public sealed class ResilientTransform : TransformNode<Order, ProcessedOrder>
 
 Process data as it flows; don't load entire datasets into memory.
 
-### ✅ Good Example
+### :heavy_check_mark: Good Example
 
 ```csharp
 public sealed class StreamingSourceNode : SourceNode<Customer>
@@ -189,7 +189,7 @@ public sealed class StreamingSourceNode : SourceNode<Customer>
 }
 ```
 
-### ❌ Avoid: Loading All Data Into Memory
+### :x: Avoid: Loading All Data Into Memory
 
 ```csharp
 // BAD: Loading all data before streaming
@@ -215,7 +215,7 @@ public sealed class BadSourceNode : SourceNode<Customer>
 
 Design nodes that are easy to unit test using NPipeline's testing utilities.
 
-### ✅ Good Example
+### :heavy_check_mark: Good Example
 
 ```csharp
 public sealed class DiscountCalculator : TransformNode<Order, Order>
@@ -258,7 +258,7 @@ public class DiscountCalculatorTests
 
 Choose the right execution strategy (sequential, parallel, batched) for each node based on its nature.
 
-### ✅ Good Example
+### :heavy_check_mark: Good Example
 
 ```csharp
 // CPU-bound work - good candidate for parallelism
@@ -284,7 +284,7 @@ var pipeline = new PipelineBuilder()
 
 For synchronous transforms in hot paths, override `ExecuteValueTaskAsync` to eliminate Task allocation overhead.
 
-### ✅ Synchronous Transform Optimization
+### :heavy_check_mark: Synchronous Transform Optimization
 
 ```csharp
 // Synchronous transform optimized with ValueTask
@@ -319,7 +319,7 @@ See [Synchronous Fast Paths](../advanced-topics/synchronous-fast-paths.md) for d
 
 Instrument your pipelines with logging at appropriate levels.
 
-### ✅ Good Example
+### :heavy_check_mark: Good Example
 
 ```csharp
 public sealed class MonitoredTransform : TransformNode<Order, ProcessedOrder>
@@ -360,7 +360,7 @@ public sealed class MonitoredTransform : TransformNode<Order, ProcessedOrder>
 
 Anticipate failures and design recovery mechanisms.
 
-### ✅ Good Example
+### :heavy_check_mark: Good Example
 
 ```csharp
 public sealed class ResilientSink : SinkNode<Data>
@@ -406,7 +406,7 @@ public sealed class ResilientSink : SinkNode<Data>
 
 Clearly document the purpose, inputs, and outputs of your pipelines and nodes.
 
-### ✅ Good Example
+### :heavy_check_mark: Good Example
 
 ```csharp
 /// <summary>
@@ -444,13 +444,13 @@ Identify bottlenecks before optimizing.
 
 ### Performance Optimization Checklist
 
-- ✅ Use profiling tools to identify actual bottlenecks
-- ✅ Measure before and after optimizations
-- ✅ Consider memory usage, not just speed
-- ✅ Evaluate parallelism trade-offs
-- ✅ Use appropriate batch sizes for I/O operations
-- ✅ Minimize allocations in hot paths
-- ✅ Cache expensive computations appropriately
+- :heavy_check_mark: Use profiling tools to identify actual bottlenecks
+- :heavy_check_mark: Measure before and after optimizations
+- :heavy_check_mark: Consider memory usage, not just speed
+- :heavy_check_mark: Evaluate parallelism trade-offs
+- :heavy_check_mark: Use appropriate batch sizes for I/O operations
+- :heavy_check_mark: Minimize allocations in hot paths
+- :heavy_check_mark: Cache expensive computations appropriately
 
 ## Summary of Best Practices
 

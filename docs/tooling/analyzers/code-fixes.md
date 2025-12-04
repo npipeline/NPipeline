@@ -28,7 +28,7 @@ This code fix automatically adds appropriate `MaxMaterializedItems` values to `P
 ##### Before Fix
 
 ```csharp
-// ❌ Missing MaxMaterializedItems parameter
+// :x: Missing MaxMaterializedItems parameter
 var retryOptions = new PipelineRetryOptions(
     maxRetryCount: 3,
     baseDelay: TimeSpan.FromSeconds(1),
@@ -38,7 +38,7 @@ var retryOptions = new PipelineRetryOptions(
 ##### After Fix
 
 ```csharp
-// ✅ Fixed with reasonable default
+// :heavy_check_mark: Fixed with reasonable default
 var retryOptions = new PipelineRetryOptions(
     maxRetryCount: 3,
     baseDelay: TimeSpan.FromSeconds(1),
@@ -66,7 +66,7 @@ This code fix suggests appropriate parallelism values based on workload type and
 ##### Before Fix
 
 ```csharp
-// ❌ Excessive parallelism for CPU-bound work
+// :x: Excessive parallelism for CPU-bound work
 builder.AddTransform<CpuTransform, Input, Output>("transform")
     .WithParallelism(Environment.ProcessorCount * 4);
 ```
@@ -74,7 +74,7 @@ builder.AddTransform<CpuTransform, Input, Output>("transform")
 ##### After Fix
 
 ```csharp
-// ✅ Fixed with appropriate parallelism
+// :heavy_check_mark: Fixed with appropriate parallelism
 builder.AddTransform<CpuTransform, Input, Output>("transform")
     .WithParallelism(Environment.ProcessorCount);
 ```
@@ -97,7 +97,7 @@ This code fix aligns batch sizes with appropriate timeout values based on proces
 ##### Before Fix
 
 ```csharp
-// ❌ Large batch with short timeout
+// :x: Large batch with short timeout
 var batchingOptions = new BatchingOptions(
     batchSize: 1000,
     timeout: TimeSpan.FromMilliseconds(100));
@@ -106,7 +106,7 @@ var batchingOptions = new BatchingOptions(
 ##### After Fix
 
 ```csharp
-// ✅ Fixed with proportional timeout
+// :heavy_check_mark: Fixed with proportional timeout
 var batchingOptions = new BatchingOptions(
     batchSize: 1000,
     timeout: TimeSpan.FromSeconds(5));
@@ -130,7 +130,7 @@ This code fix suggests appropriate timeout values based on operation type and ch
 ##### Before Fix
 
 ```csharp
-// ❌ Zero timeout for I/O operations
+// :x: Zero timeout for I/O operations
 builder.AddTransform<DatabaseTransform, Input, Output>("transform")
     .WithTimeout(TimeSpan.Zero);
 ```
@@ -138,7 +138,7 @@ builder.AddTransform<DatabaseTransform, Input, Output>("transform")
 ##### After Fix
 
 ```csharp
-// ✅ Fixed with appropriate timeout
+// :heavy_check_mark: Fixed with appropriate timeout
 builder.AddTransform<DatabaseTransform, Input, Output>("transform")
     .WithTimeout(TimeSpan.FromSeconds(30));
 ```
@@ -161,14 +161,14 @@ This code fix automatically converts blocking operations in async methods to pro
 ##### Before Fix
 
 ```csharp
-// ❌ PROBLEM: Blocking on Task.Result
+// :x: PROBLEM: Blocking on Task.Result
 public async Task<string> ProcessDataAsync()
 {
     var task = SomeOperationAsync();
     return task.Result; // NP9101: Blocks until task completes
 }
 
-// ❌ PROBLEM: Synchronous I/O in async method
+// :x: PROBLEM: Synchronous I/O in async method
 public async Task ProcessFileAsync()
 {
     var content = File.ReadAllText("file.txt"); // NP9101: Synchronous I/O
@@ -179,14 +179,14 @@ public async Task ProcessFileAsync()
 ##### After Fix
 
 ```csharp
-// ✅ CORRECT: Use await
+// :heavy_check_mark: CORRECT: Use await
 public async Task<string> ProcessDataAsync()
 {
     var task = SomeOperationAsync();
     return await task; // Properly awaits without blocking
 }
 
-// ✅ CORRECT: Use async I/O
+// :heavy_check_mark: CORRECT: Use async I/O
 public async Task ProcessFileAsync()
 {
     var content = await File.ReadAllTextAsync("file.txt"); // Async I/O
@@ -203,7 +203,7 @@ This code fix ensures that OperationCanceledException is properly re-thrown or h
 ##### Before Fix
 
 ```csharp
-// ❌ PROBLEM: Swallowing OperationCanceledException
+// :x: PROBLEM: Swallowing OperationCanceledException
 public async Task ProcessAsync(CancellationToken cancellationToken)
 {
     try
@@ -221,7 +221,7 @@ public async Task ProcessAsync(CancellationToken cancellationToken)
 ##### After Fix
 
 ```csharp
-// ✅ CORRECT: Re-throw cancellation exception
+// :heavy_check_mark: CORRECT: Re-throw cancellation exception
 public async Task ProcessAsync(CancellationToken cancellationToken)
 {
     try
@@ -249,7 +249,7 @@ This code fix converts fire-and-forget async calls to properly awaited async ope
 ##### Before Fix
 
 ```csharp
-// ❌ PROBLEM: Fire-and-forget async call (unawaited)
+// :x: PROBLEM: Fire-and-forget async call (unawaited)
 public async Task ProcessDataAsync()
 {
     SomeOperationAsync(); // NP9103: Async method not awaited
@@ -260,7 +260,7 @@ public async Task ProcessDataAsync()
 ##### After Fix
 
 ```csharp
-// ✅ CORRECT: Await the async call
+// :heavy_check_mark: CORRECT: Await the async call
 public async Task ProcessDataAsync()
 {
     await SomeOperationAsync(); // Properly awaited
@@ -277,7 +277,7 @@ This code fix adds proper cancellation token checking and propagation in long-ru
 ##### Before Fix
 
 ```csharp
-// ❌ PROBLEM: Not checking cancellation token in loop
+// :x: PROBLEM: Not checking cancellation token in loop
 public async Task ProcessItemsAsync(IEnumerable<Item> items, CancellationToken cancellationToken)
 {
     foreach (var item in items)
@@ -291,7 +291,7 @@ public async Task ProcessItemsAsync(IEnumerable<Item> items, CancellationToken c
 ##### After Fix
 
 ```csharp
-// ✅ CORRECT: Check cancellation token before processing
+// :heavy_check_mark: CORRECT: Check cancellation token before processing
 public async Task ProcessItemsAsync(IEnumerable<Item> items, CancellationToken cancellationToken)
 {
     foreach (var item in items)
@@ -311,7 +311,7 @@ This code fix converts LINQ operations in performance-critical code to imperativ
 ##### Before Fix
 
 ```csharp
-// ❌ PROBLEM: LINQ in ExecuteAsync method
+// :x: PROBLEM: LINQ in ExecuteAsync method
 public class BadTransform : ITransformNode<Input, Output>
 {
     protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
@@ -327,7 +327,7 @@ public class BadTransform : ITransformNode<Input, Output>
 ##### After Fix
 
 ```csharp
-// ✅ CORRECT: Use imperative processing
+// :heavy_check_mark: CORRECT: Use imperative processing
 public class GoodTransform : ITransformNode<Input, Output>
 {
     protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
@@ -355,7 +355,7 @@ This code fix replaces inefficient string operations with high-performance alter
 ##### Before Fix
 
 ```csharp
-// ❌ PROBLEM: String concatenation in loop
+// :x: PROBLEM: String concatenation in loop
 public class BadTransform : ITransformNode<Input, Output>
 {
     protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
@@ -373,7 +373,7 @@ public class BadTransform : ITransformNode<Input, Output>
 ##### After Fix
 
 ```csharp
-// ✅ CORRECT: Use StringBuilder for concatenation
+// :heavy_check_mark: CORRECT: Use StringBuilder for concatenation
 public class GoodTransform : ITransformNode<Input, Output>
 {
     protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
@@ -397,7 +397,7 @@ This code fix creates named types to replace anonymous object allocations in per
 ##### Before Fix
 
 ```csharp
-// ❌ PROBLEM: Anonymous objects in ExecuteAsync
+// :x: PROBLEM: Anonymous objects in ExecuteAsync
 protected override async Task ExecuteAsync(IDataPipe<Output> output, PipelineContext context, CancellationToken cancellationToken)
 {
     foreach (var item in inputItems)
@@ -412,7 +412,7 @@ protected override async Task ExecuteAsync(IDataPipe<Output> output, PipelineCon
 ##### After Fix
 
 ```csharp
-// ✅ CORRECT: Define named type for results
+// :heavy_check_mark: CORRECT: Define named type for results
 public record ProcessedItem(int Id, string Name, double Value);
 
 protected override async Task ExecuteAsync(IDataPipe<Output> output, PipelineContext context, CancellationToken cancellationToken)
@@ -434,7 +434,7 @@ This code fix converts Task return types to ValueTask for methods that frequentl
 ##### Before Fix
 
 ```csharp
-// ❌ PROBLEM: Allocates heap object even for synchronous completions
+// :x: PROBLEM: Allocates heap object even for synchronous completions
 public async Task<string> GetDataAsync(string id)
 {
     var cached = _cache.Get(id);
@@ -450,7 +450,7 @@ public async Task<string> GetDataAsync(string id)
 ##### After Fix
 
 ```csharp
-// ✅ CORRECT: No allocation for synchronous returns
+// :heavy_check_mark: CORRECT: No allocation for synchronous returns
 public async ValueTask<string> GetDataAsync(string id)
 {
     var cached = _cache.Get(id);
@@ -472,7 +472,7 @@ This code fix converts non-streaming SourceNode implementations to proper stream
 ##### Before Fix
 
 ```csharp
-// ❌ PROBLEM: Non-streaming implementation
+// :x: PROBLEM: Non-streaming implementation
 public class BadSourceNode : ISourceNode<Output>
 {
     protected override async Task ExecuteAsync(IDataPipe<Output> output, PipelineContext context, CancellationToken cancellationToken)
@@ -489,7 +489,7 @@ public class BadSourceNode : ISourceNode<Output>
 ##### After Fix
 
 ```csharp
-// ✅ CORRECT: Streaming implementation
+// :heavy_check_mark: CORRECT: Streaming implementation
 public class GoodSourceNode : ISourceNode<Output>
 {
     protected override async Task ExecuteAsync(IDataPipe<Output> output, PipelineContext context, CancellationToken cancellationToken)
@@ -520,7 +520,7 @@ This code fix converts inefficient exception handling patterns to specific excep
 ##### Before Fix
 
 ```csharp
-// ❌ PROBLEM: Catching Exception instead of specific exceptions
+// :x: PROBLEM: Catching Exception instead of specific exceptions
 public async Task ProcessAsync(Input input, CancellationToken cancellationToken)
 {
     try
@@ -538,7 +538,7 @@ public async Task ProcessAsync(Input input, CancellationToken cancellationToken)
 ##### After Fix
 
 ```csharp
-// ✅ CORRECT: Catch specific exceptions
+// :heavy_check_mark: CORRECT: Catch specific exceptions
 public async Task ProcessAsync(Input input, CancellationToken cancellationToken)
 {
     try
@@ -567,7 +567,7 @@ This code fix adds proper input consumption patterns to SinkNode implementations
 ##### Before Fix
 
 ```csharp
-// ❌ PROBLEM: Not consuming input
+// :x: PROBLEM: Not consuming input
 public class BadSinkNode : ISinkNode<Input>
 {
     protected override async Task ExecuteAsync(IDataPipe<Input> input, PipelineContext context, CancellationToken cancellationToken)
@@ -581,7 +581,7 @@ public class BadSinkNode : ISinkNode<Input>
 ##### After Fix
 
 ```csharp
-// ✅ CORRECT: Consume all input
+// :heavy_check_mark: CORRECT: Consume all input
 public class GoodSinkNode : ISinkNode<Input>
 {
     protected override async Task ExecuteAsync(IDataPipe<Input> input, PipelineContext context, CancellationToken cancellationToken)
@@ -603,7 +603,7 @@ This code fix adds null-safe patterns and proper error handling for PipelineCont
 ##### Before Fix
 
 ```csharp
-// ❌ PROBLEM: Unsafe context access
+// :x: PROBLEM: Unsafe context access
 public class BadTransform : ITransformNode<Input, Output>
 {
     protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
@@ -619,7 +619,7 @@ public class BadTransform : ITransformNode<Input, Output>
 ##### After Fix
 
 ```csharp
-// ✅ CORRECT: Safe context access
+// :heavy_check_mark: CORRECT: Safe context access
 public class GoodTransform : ITransformNode<Input, Output>
 {
     protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
@@ -642,7 +642,7 @@ This code fix converts direct dependency instantiation to proper constructor inj
 ##### Before Fix
 
 ```csharp
-// ❌ PROBLEM: Direct dependency instantiation
+// :x: PROBLEM: Direct dependency instantiation
 public class BadTransform : ITransformNode<Input, Output>
 {
     protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
@@ -658,7 +658,7 @@ public class BadTransform : ITransformNode<Input, Output>
 ##### After Fix
 
 ```csharp
-// ✅ CORRECT: Constructor injection
+// :heavy_check_mark: CORRECT: Constructor injection
 public class GoodTransform : ITransformNode<Input, Output>
 {
     private readonly IDataProcessor _processor;
@@ -685,7 +685,7 @@ This code fix adds missing resilience configuration prerequisites to error handl
 ##### Before Fix
 
 ```csharp
-// ❌ PROBLEM: Incomplete resilience configuration
+// :x: PROBLEM: Incomplete resilience configuration
 public class MyErrorHandler : IPipelineErrorHandler
 {
     public async Task<PipelineErrorDecision> HandleNodeFailureAsync(
@@ -706,7 +706,7 @@ public class MyErrorHandler : IPipelineErrorHandler
 ##### After Fix
 
 ```csharp
-// ✅ CORRECT: Complete resilience configuration
+// :heavy_check_mark: CORRECT: Complete resilience configuration
 [ResilientExecution(
     MaxRetryCount = 3,
     BaseDelay = TimeSpan.FromSeconds(1),

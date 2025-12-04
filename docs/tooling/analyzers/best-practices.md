@@ -19,7 +19,7 @@ This analyzer detects unsafe access patterns to nullable properties on PipelineC
 #### Problematic Patterns
 
 ```csharp
-// ❌ PROBLEM: Direct access to potentially null property
+// :x: PROBLEM: Direct access to potentially null property
 public async Task HandleErrorAsync(PipelineContext context, Exception error)
 {
     // NP9303: PipelineErrorHandler might be null
@@ -27,14 +27,14 @@ public async Task HandleErrorAsync(PipelineContext context, Exception error)
         "nodeId", error, context, cancellationToken);
 }
 
-// ❌ PROBLEM: Direct dictionary access without existence check
+// :x: PROBLEM: Direct dictionary access without existence check
 public string GetParameter(PipelineContext context, string key)
 {
     // NP9303: Dictionary might not contain key, and Parameters might be null
     return context.Parameters[key].ToString();
 }
 
-// ❌ PROBLEM: Unsafe cast
+// :x: PROBLEM: Unsafe cast
 public void ProcessConfig(PipelineContext context)
 {
     // NP9303: Configuration might be null or wrong type
@@ -46,7 +46,7 @@ public void ProcessConfig(PipelineContext context)
 #### Solution: Use Safe Access Patterns
 
 ```csharp
-// ✅ CORRECT: Use null-conditional operator
+// :heavy_check_mark: CORRECT: Use null-conditional operator
 public async Task HandleErrorAsync(PipelineContext context, Exception error, CancellationToken cancellationToken)
 {
     // Safe access - operation only occurs if PipelineErrorHandler is not null
@@ -54,7 +54,7 @@ public async Task HandleErrorAsync(PipelineContext context, Exception error, Can
         "nodeId", error, context, cancellationToken);
 }
 
-// ✅ CORRECT: Explicit null check with comment
+// :heavy_check_mark: CORRECT: Explicit null check with comment
 public async Task HandleErrorAsync(PipelineContext context, Exception error, CancellationToken cancellationToken)
 {
     if (context.PipelineErrorHandler == null)
@@ -66,14 +66,14 @@ public async Task HandleErrorAsync(PipelineContext context, Exception error, Can
         "nodeId", error, context, cancellationToken);
 }
 
-// ✅ CORRECT: Use TryGetValue pattern for dictionary access
+// :heavy_check_mark: CORRECT: Use TryGetValue pattern for dictionary access
 public bool TryGetParameter(PipelineContext context, string key, out object value)
 {
     value = null;
     return context.Parameters?.TryGetValue(key, out value) == true;
 }
 
-// ✅ CORRECT: Use pattern matching for type-safe access
+// :heavy_check_mark: CORRECT: Use pattern matching for type-safe access
 public void ProcessConfig(PipelineContext context)
 {
     if (context.Configuration is MyConfig config)
@@ -82,7 +82,7 @@ public void ProcessConfig(PipelineContext context)
     }
 }
 
-// ✅ CORRECT: Use pattern matching with property access
+// :heavy_check_mark: CORRECT: Use pattern matching with property access
 public string GetValue(PipelineContext context)
 {
     if (context.PipelineErrorHandler is { } handler)
@@ -129,7 +129,7 @@ This analyzer detects dependency injection anti-patterns in node implementations
 When node implementations directly instantiate their dependencies or use service locator patterns, they create tight coupling that makes the code difficult to test, maintain, and configure. This violates the Dependency Inversion Principle and makes it challenging to swap implementations or mock dependencies for testing.
 
 ```csharp
-// ❌ PROBLEM: Direct service instantiation
+// :x: PROBLEM: Direct service instantiation
 public class BadTransformNode : TransformNode<string, string>
 {
     private readonly BadService _badService = new BadService(); // NP9401: Direct instantiation
@@ -140,7 +140,7 @@ public class BadTransformNode : TransformNode<string, string>
     }
 }
 
-// ❌ PROBLEM: Static singleton assignment
+// :x: PROBLEM: Static singleton assignment
 public class BadSourceNode : SourceNode<int>
 {
     private static BadService _service; // Static field
@@ -151,7 +151,7 @@ public class BadSourceNode : SourceNode<int>
     }
 }
 
-// ❌ PROBLEM: Service locator pattern
+// :x: PROBLEM: Service locator pattern
 public class BadSinkNode : SinkNode<string>
 {
     private readonly IServiceProvider _serviceProvider;
@@ -177,7 +177,7 @@ public class BadSinkNode : SinkNode<string>
 ##### Direct Service Instantiation
 
 ```csharp
-// ❌ PROBLEM: Direct instantiation with 'new'
+// :x: PROBLEM: Direct instantiation with 'new'
 public class TransformNodeWithDirectInstantiation : TransformNode<string, string>
 {
     private readonly EmailService _emailService = new EmailService(); // NP9401
@@ -195,7 +195,7 @@ public class TransformNodeWithDirectInstantiation : TransformNode<string, string
 ##### Static Singleton Field Assignments
 
 ```csharp
-// ❌ PROBLEM: Static singleton pattern
+// :x: PROBLEM: Static singleton pattern
 public class NodeWithStaticSingleton : TransformNode<int, int>
 {
     private static DataService _dataService; // Static field
@@ -211,7 +211,7 @@ public class NodeWithStaticSingleton : TransformNode<int, int>
     }
 }
 
-// ❌ PROBLEM: Static property assignment
+// :x: PROBLEM: Static property assignment
 public class NodeWithStaticProperty : TransformNode<string, bool>
 {
     public static CacheService Cache { get; private set; }
@@ -231,7 +231,7 @@ public class NodeWithStaticProperty : TransformNode<string, bool>
 ##### Service Locator Pattern Usage
 
 ```csharp
-// ❌ PROBLEM: Service locator with GetService
+// :x: PROBLEM: Service locator with GetService
 public class NodeWithServiceLocator : TransformNode<string, string>
 {
     private readonly IServiceProvider _provider;
@@ -249,7 +249,7 @@ public class NodeWithServiceLocator : TransformNode<string, string>
     }
 }
 
-// ❌ PROBLEM: Service locator with GetRequiredService
+// :x: PROBLEM: Service locator with GetRequiredService
 public class NodeWithRequiredServiceLocator : TransformNode<double, double>
 {
     private readonly IServiceProvider _provider;
@@ -272,7 +272,7 @@ public class NodeWithRequiredServiceLocator : TransformNode<double, double>
 The recommended approach is to use constructor injection, which makes dependencies explicit, improves testability, and follows the Dependency Inversion Principle.
 
 ```csharp
-// ✅ CORRECT: Constructor injection
+// :heavy_check_mark: CORRECT: Constructor injection
 public class GoodTransformNode : TransformNode<string, string>
 {
     private readonly BadService _badService;
@@ -288,7 +288,7 @@ public class GoodTransformNode : TransformNode<string, string>
     }
 }
 
-// ✅ CORRECT: Multiple dependencies via constructor
+// :heavy_check_mark: CORRECT: Multiple dependencies via constructor
 public class GoodSinkNode : SinkNode<string>
 {
     private readonly IEmailService _emailService;
@@ -322,7 +322,7 @@ public class GoodSinkNode : SinkNode<string>
 ##### Dependency Injection with Factory Pattern
 
 ```csharp
-// ✅ GOOD: Using factory for complex dependencies
+// :heavy_check_mark: GOOD: Using factory for complex dependencies
 public class NodeWithFactory : TransformNode<string, string>
 {
     private readonly IServiceFactory _serviceFactory;
@@ -343,7 +343,7 @@ public class NodeWithFactory : TransformNode<string, string>
 ##### Optional Dependencies
 
 ```csharp
-// ✅ GOOD: Optional dependencies with null checks
+// :heavy_check_mark: GOOD: Optional dependencies with null checks
 public class NodeWithOptionalDependency : TransformNode<string, string>
 {
     private readonly ICacheService _cacheService;
@@ -413,7 +413,7 @@ services.AddSingleton<IBadService, MockBadService>();
 Constructor injection helps follow SOLID principles by depending on abstractions rather than concretions:
 
 ```csharp
-// ✅ GOOD: Depends on abstraction
+// :heavy_check_mark: GOOD: Depends on abstraction
 public class GoodNode : TransformNode<string, string>
 {
     private readonly IDataProcessor _processor; // Interface, not concrete class
@@ -429,7 +429,7 @@ public class GoodNode : TransformNode<string, string>
     }
 }
 
-// ❌ BAD: Depends on concrete implementation
+// :x: BAD: Depends on concrete implementation
 public class BadNode : TransformNode<string, string>
 {
     private readonly SpecificDataProcessor _processor = new SpecificDataProcessor(); // Concrete class

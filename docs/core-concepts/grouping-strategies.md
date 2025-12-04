@@ -158,7 +158,7 @@ var aggregateNode = builder
 
 ## Consequences of Choosing Wrong
 
-### ❌ Using Batching When You Need Aggregation
+### :x: Using Batching When You Need Aggregation
 
 **Scenario:** You use batching to group events into hourly buckets.
 
@@ -176,7 +176,7 @@ var badNode = builder
 - Late events might join the *next* batch, corrupting its results
 - A developer's nightmare: pipeline runs fine, but analytics are wrong
 
-### ❌ Using Aggregation When You Need Batching
+### :x: Using Aggregation When You Need Batching
 
 **Scenario:** You use aggregation for bulk database inserts.
 

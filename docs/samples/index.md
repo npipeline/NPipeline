@@ -91,11 +91,11 @@ Production-grade scenarios:
 
 Every sample comes with:
 
-- ✅ Complete source code with comments explaining key concepts
-- ✅ Configuration files showing best practices
-- ✅ README with detailed explanations and setup instructions
-- ✅ Performance characteristics and tuning guidance
-- ✅ Real-world scenario context and business logic
+- :heavy_check_mark: Complete source code with comments explaining key concepts
+- :heavy_check_mark: Configuration files showing best practices
+- :heavy_check_mark: README with detailed explanations and setup instructions
+- :heavy_check_mark: Performance characteristics and tuning guidance
+- :heavy_check_mark: Real-world scenario context and business logic
 
 ## Related Documentation
 

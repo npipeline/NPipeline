@@ -182,14 +182,14 @@ In a realistic high-volume ETL pipeline:
 
 ### When to Use `ValueTask` for Transforms
 
-✅ **Use `ValueTask` when:**
+:heavy_check_mark: **Use `ValueTask` when:**
 
 - The transform can complete synchronously in common case
 - You have a cache, in-memory lookup, or fast path
 - The synchronous case is likely to happen frequently
 - You're optimizing for throughput in high-volume scenarios
 
-❌ **Use `Task` when:**
+:x: **Use `Task` when:**
 
 - The transform is almost always asynchronous (database queries, network calls every time)
 - You want simpler code and performance benefit is marginal

@@ -17,7 +17,7 @@ Before using retry delay strategies, you should be familiar with:
 
 This quickstart guide helps you get started with retry delay strategies in NPipeline. Retry delays are essential for building resilient pipelines that can recover from transient failures without overwhelming downstream services.
 
-## 🚀 Quick Start: Common Retry Patterns
+## Quick Start: Common Retry Patterns
 
 ### Web API Calls (Most Common)
 

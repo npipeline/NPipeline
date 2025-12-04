@@ -279,7 +279,7 @@ public readonly struct Event
     public int Value { get; }
 }
 
-// ❌ LESS OPTIMAL: Reference types, scattered memory
+// :x: LESS OPTIMAL: Reference types, scattered memory
 public class Event
 {
     public long Timestamp { get; set; }

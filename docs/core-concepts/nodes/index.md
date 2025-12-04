@@ -87,10 +87,10 @@ var item = await pipe.FirstAsync();         // Async - read item from pipe
 
 **Why This Design?**
 
-* ✅ **Clearer Intent:** `Execute()` (no "Async" suffix) signals that pipe creation is synchronous
-* ✅ **Type Safety:** Covariant `IDataPipe<T>` (not invariant `Task<IDataPipe<T>>`) enables better type compatibility
-* ✅ **Performance:** No unnecessary `Task` allocations for pipe creation
-* ✅ **Consistency:** Uniform synchronous pattern across all source nodes
+* :heavy_check_mark: **Clearer Intent:** `Execute()` (no "Async" suffix) signals that pipe creation is synchronous
+* :heavy_check_mark: **Type Safety:** Covariant `IDataPipe<T>` (not invariant `Task<IDataPipe<T>>`) enables better type compatibility
+* :heavy_check_mark: **Performance:** No unnecessary `Task` allocations for pipe creation
+* :heavy_check_mark: **Consistency:** Uniform synchronous pattern across all source nodes
 
 #### Example
 

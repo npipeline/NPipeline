@@ -45,7 +45,7 @@ Without these analyzers, developers could:
 ### Problematic Code: Silent Failures at Runtime
 
 ```csharp
-// ❌ Looks correct but will fail silently at runtime
+// :x: Looks correct but will fail silently at runtime
 public class MyErrorHandler : IPipelineErrorHandler
 {
     public async Task<PipelineErrorDecision> HandleNodeFailureAsync(

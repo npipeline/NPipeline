@@ -13,7 +13,7 @@ slug: /core-concepts
 
 NPipeline is designed with a few key concepts at its heart. Understanding these will help you build powerful and efficient data pipelines.
 
-## 🚀 Critical Architecture Decision: Grouping Strategies
+## Critical Architecture Decision: Grouping Strategies
 
 **Before implementing any grouping logic, read this section carefully.** Choosing the wrong approach can lead to subtle data corruption bugs or unnecessary complexity.
 
@@ -34,7 +34,7 @@ This document explains:
 
 ---
 
-## 📚 Core Building Blocks
+## Core Building Blocks
 
 | Concept | Description |
 | :--- | :--- |
@@ -47,7 +47,7 @@ This document explains:
 
 ---
 
-## 🔧 HOW TO: Build & Configure Pipelines
+## HOW TO: Build & Configure Pipelines
 
 These guides show you HOW TO implement pipelines with practical, working examples:
 
@@ -57,7 +57,7 @@ These guides show you HOW TO implement pipelines with practical, working example
 - **[Common Patterns](common-patterns.md)** - Practical recipes for solving real-world scenarios
 - **[Best Practices](best-practices.md)** - Design principles and recommendations for robust pipelines
 
-## 🎯 HOW TO: Optimize Performance
+## HOW TO: Optimize Performance
 
 These guides help you optimize your pipelines for production:
 

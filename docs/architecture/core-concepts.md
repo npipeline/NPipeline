@@ -99,11 +99,11 @@ await foreach (var item in transformPipe.WithCancellation(cancellationToken))
 
 ## Benefits of This Design
 
-✅ **Memory Efficient** - Only active items in memory
-✅ **Responsive** - Processing starts immediately
-✅ **Cancellable** - Can stop at any time
-✅ **Type Safe** - Compile-time validation of node connections
-✅ **Testable** - Each node can be tested in isolation
+:heavy_check_mark: **Memory Efficient** - Only active items in memory
+:heavy_check_mark: **Responsive** - Processing starts immediately
+:heavy_check_mark: **Cancellable** - Can stop at any time
+:heavy_check_mark: **Type Safe** - Compile-time validation of node connections
+:heavy_check_mark: **Testable** - Each node can be tested in isolation
 
 ## Next Steps
 

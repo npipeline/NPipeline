@@ -30,10 +30,10 @@ NPipeline follows a clear separation of concerns:
 
 This design provides:
 
-- ✅ **Clear execution boundaries:** Source setup is fast; transforms and sinks handle async work
-- ✅ **Predictable performance:** No hidden delays during source initialization
-- ✅ **Type safety:** Synchronous source returns enable better variance and lazy evaluation
-- ✅ **Memory efficiency:** No unnecessary Task allocations for data production
+- :heavy_check_mark: **Clear execution boundaries:** Source setup is fast; transforms and sinks handle async work
+- :heavy_check_mark: **Predictable performance:** No hidden delays during source initialization
+- :heavy_check_mark: **Type safety:** Synchronous source returns enable better variance and lazy evaluation
+- :heavy_check_mark: **Memory efficiency:** No unnecessary Task allocations for data production
 
 ## Sequential Execution (Default)
 

@@ -10,19 +10,19 @@ This guide provides quick-start checklists and patterns for the two most common 
 
 ## Node Restart - Quick Start Checklist
 
-**⚠️ BEFORE YOU USE `PipelineErrorDecision.RestartNode`, READ THIS.**
+**:warning: BEFORE YOU USE `PipelineErrorDecision.RestartNode`, READ THIS.**
 
 Node restart is a powerful resilience feature, but it requires **three mandatory prerequisites**. Missing even one silently disables the feature.
 
 If you've experienced mysterious pipeline failures where restart seemed enabled but didn't work, one of these requirements was missing.
 
-> **💡 Tip:** The NPipeline build-time analyzer automatically detects incomplete restart configurations at compile time. Enable [NP9002](../../tooling/analyzers/resilience.md) to catch these issues before deployment.
+> **:bulb: Tip:** The NPipeline build-time analyzer automatically detects incomplete restart configurations at compile time. Enable [NP9002](../../tooling/analyzers/resilience.md) to catch these issues before deployment.
 
 ---
 
 ### The Three-Step Mandatory Checklist
 
-#### ✅ STEP 1: Apply ResilientExecutionStrategy
+#### :heavy_check_mark: STEP 1: Apply ResilientExecutionStrategy
 
 Your node must be wrapped with `ResilientExecutionStrategy`. This enables the restart capability at the node level.
 
@@ -45,7 +45,7 @@ var nodeHandle = builder
 
 ---
 
-#### ✅ STEP 2: Configure Maximum Restart Attempts
+#### :heavy_check_mark: STEP 2: Configure Maximum Restart Attempts
 
 Set `MaxNodeRestartAttempts > 0` in `PipelineRetryOptions`. This tells the pipeline how many times to attempt restarting a failed node.
 
@@ -75,13 +75,13 @@ var context = PipelineContext.WithRetry(options);
 
 ---
 
-#### ✅ STEP 3: Enable Input Materialization (⚠️ CRITICAL)
+#### :heavy_check_mark: STEP 3: Enable Input Materialization (:warning: CRITICAL)
 
 Set `MaxMaterializedItems` to a **non-null, positive number** on the input to the node you want to be restartable. This is the replay buffer.
 
 **What it does:** Buffers items from the input source so the node can be replayed from a known state if it fails.
 
-**⚠️ CRITICAL ISSUE:** If `MaxMaterializedItems` is `null` (unbounded), the system silently falls back to `FailPipeline`, even if you've configured restart logic. Your entire pipeline crashes instead of just restarting the node.
+**:warning: CRITICAL ISSUE:** If `MaxMaterializedItems` is `null` (unbounded), the system silently falls back to `FailPipeline`, even if you've configured restart logic. Your entire pipeline crashes instead of just restarting the node.
 
 **How to configure:**
 
@@ -118,12 +118,12 @@ var options = new PipelineRetryOptions(
 
 ---
 
-#### ⚠️ CRITICAL WARNING: Unbounded Materialization
+#### :warning: CRITICAL WARNING: Unbounded Materialization
 
 **Never set `MaxMaterializedItems` to `null`:**
 
 ```csharp
-// ❌ WRONG - This disables restart silently!
+// :x: WRONG - This disables restart silently!
 var options = new PipelineRetryOptions(
     MaxItemRetries: 3,
     MaxNodeRestartAttempts: 2,
@@ -214,7 +214,7 @@ definition.Define(builder, context);
 
 Retry delays are essential for building resilient pipelines that can recover from transient failures without overwhelming downstream services.
 
-### 🚀 Quick Start: Common Retry Patterns
+### Quick Start: Common Retry Patterns
 
 #### Web API Calls (Most Common)
 

@@ -28,13 +28,13 @@ Unbounded materialization configuration causes:
 #### Problematic Configuration
 
 ```csharp
-// ❌ PROBLEM: MaxMaterializedItems not specified (defaults to null)
+// :x: PROBLEM: MaxMaterializedItems not specified (defaults to null)
 var retryOptions = new PipelineRetryOptions(
     maxRetryCount: 3,
     baseDelay: TimeSpan.FromSeconds(1),
     maxDelay: TimeSpan.FromMinutes(1));
 
-// ❌ PROBLEM: MaxMaterializedItems explicitly set to null
+// :x: PROBLEM: MaxMaterializedItems explicitly set to null
 var retryOptions = new PipelineRetryOptions(
     maxRetryCount: 3,
     baseDelay: TimeSpan.FromSeconds(1),
@@ -45,14 +45,14 @@ var retryOptions = new PipelineRetryOptions(
 #### Solution: Set MaxMaterializedItems
 
 ```csharp
-// ✅ CORRECT: Set reasonable MaxMaterializedItems
+// :heavy_check_mark: CORRECT: Set reasonable MaxMaterializedItems
 var retryOptions = new PipelineRetryOptions(
     maxRetryCount: 3,
     baseDelay: TimeSpan.FromSeconds(1),
     maxDelay: TimeSpan.FromMinutes(1),
     maxMaterializedItems: 1000); // Bounded memory usage
 
-// ✅ CORRECT: Use named parameters for clarity
+// :heavy_check_mark: CORRECT: Use named parameters for clarity
 var retryOptions = new PipelineRetryOptions
 {
     MaxRetryCount = 3,
@@ -92,16 +92,16 @@ Inappropriate parallelism configuration causes:
 #### Problematic Configuration
 
 ```csharp
-// ❌ PROBLEM: High parallelism for CPU-bound workloads
+// :x: PROBLEM: High parallelism for CPU-bound workloads
 builder.AddTransform<CpuIntensiveTransform, Input, Output>("transform")
     .WithParallelism(Environment.ProcessorCount * 4); // NP9502: Excessive parallelism
 
-// ❌ PROBLEM: PreserveOrdering with high parallelism
+// :x: PROBLEM: PreserveOrdering with high parallelism
 var parallelOptions = new ParallelOptions(
     maxDegreeOfParallelism: 16,
     preserveOrdering: true); // NP9502: Ordering overhead with high parallelism
 
-// ❌ PROBLEM: Single-threaded for CPU-bound work
+// :x: PROBLEM: Single-threaded for CPU-bound work
 builder.AddTransform<CpuTransform, Input, Output>("transform")
     .WithParallelism(1); // NP9502: Underutilizing CPU resources
 ```
@@ -109,15 +109,15 @@ builder.AddTransform<CpuTransform, Input, Output>("transform")
 #### Solution: Match Parallelism to Workload
 
 ```csharp
-// ✅ CORRECT: Appropriate parallelism for CPU-bound workloads
+// :heavy_check_mark: CORRECT: Appropriate parallelism for CPU-bound workloads
 builder.AddTransform<CpuIntensiveTransform, Input, Output>("transform")
     .WithParallelism(Environment.ProcessorCount); // Match CPU cores
 
-// ✅ CORRECT: Moderate parallelism for I/O-bound workloads
+// :heavy_check_mark: CORRECT: Moderate parallelism for I/O-bound workloads
 builder.AddTransform<DatabaseTransform, Input, Output>("transform")
     .WithParallelism(Environment.ProcessorCount * 2); // I/O can handle more
 
-// ✅ CORRECT: Disable PreserveOrdering with high parallelism
+// :heavy_check_mark: CORRECT: Disable PreserveOrdering with high parallelism
 var parallelOptions = new ParallelOptions(
     maxDegreeOfParallelism: 16,
     preserveOrdering: false); // Better performance
@@ -152,17 +152,17 @@ Batching configuration mismatches cause:
 #### Problematic Configuration
 
 ```csharp
-// ❌ PROBLEM: Large batch size with short timeout
+// :x: PROBLEM: Large batch size with short timeout
 var batchingOptions = new BatchingOptions(
     batchSize: 1000,
     timeout: TimeSpan.FromMilliseconds(100)); // NP9503: Batch won't fill
 
-// ❌ PROBLEM: Small batch size with long timeout
+// :x: PROBLEM: Small batch size with long timeout
 var batchingOptions = new BatchingOptions(
     batchSize: 5,
     timeout: TimeSpan.FromMinutes(1)); // NP9503: Unnecessary latency
 
-// ❌ PROBLEM: Medium batch with disproportionate timeout
+// :x: PROBLEM: Medium batch with disproportionate timeout
 var batchingStrategy = new BatchingStrategy(
     batchSize: 50,
     maxWaitTime: TimeSpan.FromMilliseconds(10)); // NP9503: Too short for batch size
@@ -171,17 +171,17 @@ var batchingStrategy = new BatchingStrategy(
 #### Solution: Align Batch Size and Timeout
 
 ```csharp
-// ✅ CORRECT: Balanced batching configuration
+// :heavy_check_mark: CORRECT: Balanced batching configuration
 var batchingOptions = new BatchingOptions(
     batchSize: 100,
     timeout: TimeSpan.FromSeconds(1)); // Reasonable fill time
 
-// ✅ CORRECT: Fast batching for small items
+// :heavy_check_mark: CORRECT: Fast batching for small items
 var batchingOptions = new BatchingOptions(
     batchSize: 10,
     timeout: TimeSpan.FromMilliseconds(100)); // Quick turnover
 
-// ✅ CORRECT: Large batch with proportional timeout
+// :heavy_check_mark: CORRECT: Large batch with proportional timeout
 var batchingStrategy = new BatchingStrategy(
     batchSize: 1000,
     maxWaitTime: TimeSpan.FromSeconds(5)); // Sufficient time to fill
@@ -216,19 +216,19 @@ Inappropriate timeout configurations cause:
 #### Problematic Configuration
 
 ```csharp
-// ❌ PROBLEM: Zero timeout for I/O operations
+// :x: PROBLEM: Zero timeout for I/O operations
 var resilientStrategy = new ResilientExecutionStrategy(
     timeout: TimeSpan.Zero); // NP9504: Immediate failures
 
-// ❌ PROBLEM: Very short timeout for I/O operations
+// :x: PROBLEM: Very short timeout for I/O operations
 builder.AddTransform<DatabaseTransform, Input, Output>("transform")
     .WithTimeout(TimeSpan.FromMilliseconds(10)); // NP9504: Too short for database
 
-// ❌ PROBLEM: Excessive timeout for CPU operations
+// :x: PROBLEM: Excessive timeout for CPU operations
 builder.AddTransform<CpuTransform, Input, Output>("transform")
     .WithTimeout(TimeSpan.FromHours(1)); // NP9504: Resource leak risk
 
-// ❌ PROBLEM: Very long retry timeout
+// :x: PROBLEM: Very long retry timeout
 var retryOptions = new PipelineRetryOptions(
     maxRetryCount: 3,
     baseDelay: TimeSpan.FromSeconds(1),
@@ -238,15 +238,15 @@ var retryOptions = new PipelineRetryOptions(
 #### Solution: Set Appropriate Timeouts
 
 ```csharp
-// ✅ CORRECT: Reasonable timeout for I/O operations
+// :heavy_check_mark: CORRECT: Reasonable timeout for I/O operations
 builder.AddTransform<DatabaseTransform, Input, Output>("transform")
     .WithTimeout(TimeSpan.FromSeconds(30)); // Sufficient for database operations
 
-// ✅ CORRECT: Appropriate timeout for CPU operations
+// :heavy_check_mark: CORRECT: Appropriate timeout for CPU operations
 builder.AddTransform<CpuTransform, Input, Output>("transform")
     .WithTimeout(TimeSpan.FromMinutes(2)); // Reasonable for CPU work
 
-// ✅ CORRECT: Balanced retry timeout
+// :heavy_check_mark: CORRECT: Balanced retry timeout
 var retryOptions = new PipelineRetryOptions(
     maxRetryCount: 3,
     baseDelay: TimeSpan.FromSeconds(1),

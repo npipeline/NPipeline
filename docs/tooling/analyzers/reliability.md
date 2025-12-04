@@ -28,7 +28,7 @@ Inefficient exception handling causes:
 #### Problematic Patterns
 
 ```csharp
-// ❌ PROBLEM: Catching Exception instead of specific exceptions
+// :x: PROBLEM: Catching Exception instead of specific exceptions
 public async Task ProcessAsync(Input input, CancellationToken cancellationToken)
 {
     try
@@ -42,7 +42,7 @@ public async Task ProcessAsync(Input input, CancellationToken cancellationToken)
     }
 }
 
-// ❌ PROBLEM: Using exceptions for control flow
+// :x: PROBLEM: Using exceptions for control flow
 public Item GetItem(string id)
 {
     if (!_cache.TryGetValue(id, out var item))
@@ -52,7 +52,7 @@ public Item GetItem(string id)
     return item;
 }
 
-// ❌ PROBLEM: Exception handling in hot paths
+// :x: PROBLEM: Exception handling in hot paths
 public async Task ProcessBatchAsync(IEnumerable<Item> items, CancellationToken cancellationToken)
 {
     foreach (var item in items)
@@ -72,7 +72,7 @@ public async Task ProcessBatchAsync(IEnumerable<Item> items, CancellationToken c
 #### Solution: Use Specific Exception Handling and Alternative Patterns
 
 ```csharp
-// ✅ CORRECT: Catch specific exceptions
+// :heavy_check_mark: CORRECT: Catch specific exceptions
 public async Task ProcessAsync(Input input, CancellationToken cancellationToken)
 {
     try
@@ -91,7 +91,7 @@ public async Task ProcessAsync(Input input, CancellationToken cancellationToken)
     }
 }
 
-// ✅ CORRECT: Use result pattern instead of exceptions for control flow
+// :heavy_check_mark: CORRECT: Use result pattern instead of exceptions for control flow
 public Result<Item> TryGetItem(string id)
 {
     if (!_cache.TryGetValue(id, out var item))
@@ -101,7 +101,7 @@ public Result<Item> TryGetItem(string id)
     return Result<Item>.Success(item);
 }
 
-// ✅ CORRECT: Filter invalid items before processing
+// :heavy_check_mark: CORRECT: Filter invalid items before processing
 public async Task ProcessBatchAsync(IEnumerable<Item> items, CancellationToken cancellationToken)
 {
     var validItems = new List<Item>();

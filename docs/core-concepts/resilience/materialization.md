@@ -49,7 +49,7 @@ This parameter is critical because it determines:
 2. **Memory usage** for the buffer
 3. **Whether restart functionality works at all** for streaming inputs
 
-**⚠️ Critical Warning**: Setting `MaxMaterializedItems` to `null` (unbounded) silently disables node restart functionality. For detailed explanation of why unbounded buffers break resilience guarantees, see the [Getting Started with Resilience](./getting-started.md) guide.
+**:warning: Critical Warning**: Setting `MaxMaterializedItems` to `null` (unbounded) silently disables node restart functionality. For detailed explanation of why unbounded buffers break resilience guarantees, see the [Getting Started with Resilience](./getting-started.md) guide.
 
 ## CappedReplayableDataPipe Implementation
 

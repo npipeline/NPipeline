@@ -9,7 +9,7 @@ sidebar_position: 1
 Resilience in NPipeline refers to the ability of your data pipelines to detect, handle, and recover from failures without complete system breakdown.
 This section provides a comprehensive guide to building robust, fault-tolerant pipelines.
 
-## ⚡ Quick Start
+## Quick Start
 
 **If you want to enable node restarts and common retry patterns, [start here: Getting Started with Resilience](./getting-started.md)**
 
@@ -57,13 +57,13 @@ NPipeline's resilience framework is built around several interconnected componen
 | **[Error Handling](error-handling.md)** | Determines how to respond to different types of failures | Provides decision logic for recovery actions |
 | **[Retry Options](retries.md)** | Configures retry limits and materialization caps | Controls resilience behavior boundaries |
 
-## ⚠️ Critical Prerequisites for Node Restart (RestartNode)
+## :warning: Critical Prerequisites for Node Restart (RestartNode)
 
 If you intend to use `PipelineErrorDecision.RestartNode` to recover from failures, **[read the Getting Started with Resilience guide](./getting-started.md)** first.
 
 You **must** configure all three of the following mandatory prerequisites. The guide provides detailed step-by-step instructions for each requirement.
 
-> **💡 Pro Tip:** The NPipeline build-time analyzer (NP9002) detects incomplete resilience configurations at compile-time, preventing these silent failures. See [Build-Time Resilience Analyzer](../../tooling/analyzers/resilience.md) for details.
+> :bulb: **Pro Tip:** The NPipeline build-time analyzer (NP9002) detects incomplete resilience configurations at compile-time, preventing these silent failures. See [Build-Time Resilience Analyzer](../../tooling/analyzers/resilience.md) for details.
 
 ### Mandatory Requirements Summary
 
@@ -94,7 +94,7 @@ You **must** configure all three of the following mandatory prerequisites. The g
 **Example of Silent Failure:**
 
 ```csharp
-// ❌ WRONG: Missing materialization
+// :x: WRONG: Missing materialization
 var options = new PipelineRetryOptions(
     MaxItemRetries: 3,
     MaxNodeRestartAttempts: 2,
