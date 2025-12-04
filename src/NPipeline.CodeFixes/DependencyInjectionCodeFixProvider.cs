@@ -55,21 +55,21 @@ public sealed class DependencyInjectionCodeFixProvider : CodeFixProvider
     /// <summary>
     ///     Registers code fixes for object creation expressions.
     /// </summary>
-    private static Task RegisterObjectCreationFixes(
+    private static async Task RegisterObjectCreationFixes(
         CodeFixContext context,
         ObjectCreationExpressionSyntax objectCreation,
         Diagnostic diagnostic)
     {
-        var semanticModel = context.Document.GetSemanticModelAsync(context.CancellationToken).Result;
+        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken);
         var typeInfo = semanticModel.GetTypeInfo(objectCreation);
         var typeSymbol = typeInfo.Type;
 
         if (typeSymbol == null)
-            return Task.CompletedTask;
+            return;
 
         // Check if this is a service instantiation
         if (!IsService(typeSymbol))
-            return Task.CompletedTask;
+            return;
 
         // Register code fix to replace with constructor injection
         context.RegisterCodeFix(
@@ -78,8 +78,6 @@ public sealed class DependencyInjectionCodeFixProvider : CodeFixProvider
                 ct => ReplaceWithConstructorInjectionAsync(context.Document, objectCreation, ct),
                 nameof(DependencyInjectionCodeFixProvider) + "_ReplaceWithConstructorInjection"),
             diagnostic);
-
-        return Task.CompletedTask;
     }
 
     /// <summary>

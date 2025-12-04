@@ -64,13 +64,13 @@ public sealed class CancellationTokenRespectCodeFixProvider : CodeFixProvider
     /// <summary>
     ///     Registers code fixes for method-level issues.
     /// </summary>
-    private static Task RegisterMethodFixes(
+    private static async Task RegisterMethodFixes(
         CodeFixContext context,
         MethodDeclarationSyntax methodDeclaration,
         Diagnostic diagnostic)
     {
         // Check if method needs CancellationToken parameter
-        var semanticModel = context.Document.GetSemanticModelAsync(context.CancellationToken).Result;
+        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken);
 
         var hasCancellationTokenParam = methodDeclaration.ParameterList.Parameters
             .Any(p => semanticModel.GetTypeInfo(p.Type!).Type?.Name == "CancellationToken");
@@ -84,8 +84,6 @@ public sealed class CancellationTokenRespectCodeFixProvider : CodeFixProvider
                     nameof(CancellationTokenRespectCodeFixProvider) + ".AddCancellationTokenParameter"),
                 diagnostic);
         }
-
-        return Task.CompletedTask;
     }
 
     /// <summary>
