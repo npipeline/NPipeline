@@ -181,7 +181,7 @@ public sealed class ContextPropagationTests
 
     private sealed class SimpleRedirectSource : SourceNode<int>
     {
-        public override IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             return new StreamingDataPipe<int>(new[] { 1, 42, 3 }.ToAsyncEnumerable());
         }

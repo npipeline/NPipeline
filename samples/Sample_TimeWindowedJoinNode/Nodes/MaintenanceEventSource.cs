@@ -54,7 +54,7 @@ public class MaintenanceEventSource : SourceNode<MaintenanceEvent>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<MaintenanceEvent> Execute(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<MaintenanceEvent> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         if (_logger != null)
             _startingGeneration(_logger, _maxEvents, null);

@@ -68,7 +68,7 @@ public class UserEventSource : SourceNode<UserEvent>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the user events.</returns>
-    public override IDataPipe<UserEvent> Execute(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<UserEvent> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Generating {_eventCount} user events from {_userCount} users with {_interval.TotalMilliseconds}ms intervals");
 

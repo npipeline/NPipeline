@@ -263,7 +263,7 @@ public sealed class BranchNodeTests
     }
 
     [Fact]
-    public async Task BranchNode_ManyHandlers_AllExecute()
+    public async Task BranchNode_ManyHandlers_AllInitialize()
     {
         // Arrange
         BranchNode<int> node = new();
@@ -300,7 +300,7 @@ public sealed class BranchNodeTests
     #region Error Handling Tests
 
     [Fact]
-    public async Task BranchNode_ExceptionInOneHandler_WithLogAndContinueMode_OtherHandlersStillExecute()
+    public async Task BranchNode_ExceptionInOneHandler_WithLogAndContinueMode_OtherHandlersStillInitialize()
     {
         // Arrange
         BranchNode<int> node = new() { ErrorHandlingMode = BranchErrorHandlingMode.LogAndContinue };

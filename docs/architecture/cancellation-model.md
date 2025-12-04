@@ -15,7 +15,7 @@ Cancellation tokens flow from the top-level execution down to every node:
 ```text
 PipelineRunner.ExecuteAsync(cancellationToken)
         ↓
-    Source.ExecuteAsync(cancellationToken)
+    Source.Initialize(cancellationToken)
         ↓
     Transform.ProcessAsync(item, cancellationToken)
         ↓
@@ -56,9 +56,14 @@ Check token before reading each batch:
 ```csharp
 public class FileSourceNode : ISourceNode<string>
 {
-    public async IAsyncEnumerable<string> ExecuteAsync(
+    public IDataPipe<string> Initialize(
         PipelineContext context,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
+    {
+        return new StreamingDataPipe<string>(ReadLines(cancellationToken));
+    }
+    
+    private async IAsyncEnumerable<string> ReadLines([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         using var file = File.OpenRead("data.txt");
         using var reader = new StreamReader(file);

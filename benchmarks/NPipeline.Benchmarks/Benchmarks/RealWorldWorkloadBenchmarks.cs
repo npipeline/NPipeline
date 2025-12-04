@@ -182,7 +182,7 @@ public class RealWorldWorkloadBenchmarks
     // Pipeline components for CSV processing
     private sealed class CsvDataSource : SourceNode<CsvRecord>
     {
-        public override IDataPipe<CsvRecord> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<CsvRecord> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("recordCount", out var v)
                 ? Convert.ToInt32(v)
@@ -251,7 +251,7 @@ public class RealWorldWorkloadBenchmarks
     // Pipeline components for JSON processing
     private sealed class JsonDataSource : SourceNode<JsonRecord>
     {
-        public override IDataPipe<JsonRecord> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<JsonRecord> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("recordCount", out var v)
                 ? Convert.ToInt32(v)
@@ -327,7 +327,7 @@ public class RealWorldWorkloadBenchmarks
     // Pipeline components for mixed processing
     private sealed class MixedDataSource : SourceNode<object>
     {
-        public override IDataPipe<object> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<object> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("recordCount", out var v)
                 ? Convert.ToInt32(v)

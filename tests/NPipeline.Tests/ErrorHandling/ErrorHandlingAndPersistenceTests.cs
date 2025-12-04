@@ -42,7 +42,7 @@ public sealed class ErrorHandlingAndPersistenceTests
                 context,
                 () =>
                 {
-                    _ = node.Execute(context, context.CancellationToken);
+                    _ = node.Initialize(context, context.CancellationToken);
                     return Task.CompletedTask;
                 },
                 context.CancellationToken));
@@ -73,7 +73,7 @@ public sealed class ErrorHandlingAndPersistenceTests
     {
         public int Attempts { get; private set; }
 
-        public IDataPipe<object> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public IDataPipe<object> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             Attempts++;
             throw new InvalidOperationException("fail");

@@ -35,7 +35,7 @@ using NPipeline.Pipeline;
 // Re-using nodes from Quick Start
 public sealed class HelloWorldSource : ISourceNode<string>
 {
-    public IDataPipe<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         static IAsyncEnumerable<string> Stream()
         {

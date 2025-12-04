@@ -88,7 +88,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
             await ValueTask.CompletedTask;
         }
 
-        public override IDataPipe<string> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             var items = new[] { "test1", "test2" };
             return new InMemoryDataPipe<string>(items);
@@ -155,7 +155,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
             DisposeCount++;
         }
 
-        public override IDataPipe<string> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             var items = new[] { "test1", "test2" };
             return new InMemoryDataPipe<string>(items);

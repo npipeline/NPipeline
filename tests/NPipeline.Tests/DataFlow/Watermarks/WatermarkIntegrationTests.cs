@@ -66,7 +66,7 @@ public sealed class WatermarkIntegrationTests
 
     private sealed class SensorSource : SourceNode<SensorReading>
     {
-        public override IDataPipe<SensorReading> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<SensorReading> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             var readings = new[]
             {

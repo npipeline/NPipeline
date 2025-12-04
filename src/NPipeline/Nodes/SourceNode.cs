@@ -14,7 +14,7 @@ namespace NPipeline.Nodes;
 ///         the data as an <see cref="IDataPipe{T}" /> for downstream processing.
 ///     </para>
 ///     <para>
-///         You only need to implement <see cref="Execute" />, which should return an <see cref="IDataPipe{TOut}" />
+///         You only need to implement <see cref="Initialize" />, which should return an <see cref="IDataPipe{TOut}" />
 ///         containing all the items to process. The framework handles stream lifecycle and cleanup.
 ///     </para>
 /// </remarks>
@@ -32,7 +32,7 @@ namespace NPipeline.Nodes;
 ///         _end = end;
 ///     }
 /// 
-///     public override IDataPipe&lt;int&gt; Execute(
+///     public override IDataPipe&lt;int&gt; Initialize(
 ///         PipelineContext context,
 ///         CancellationToken cancellationToken)
 ///     {
@@ -49,7 +49,7 @@ namespace NPipeline.Nodes;
 /// 
 ///     public TextFileSource(string filePath) => _filePath = filePath;
 /// 
-///     public override IDataPipe&lt;string&gt; Execute(
+///     public override IDataPipe&lt;string&gt; Initialize(
 ///         PipelineContext context,
 ///         CancellationToken cancellationToken)
 ///     {
@@ -72,7 +72,7 @@ public abstract class SourceNode<TOut> : ISourceNode<TOut>, INodeTypeMetadata
     public Type OutputType => typeof(TOut);
 
     /// <inheritdoc />
-    public abstract IDataPipe<TOut> Execute(PipelineContext context, CancellationToken cancellationToken);
+    public abstract IDataPipe<TOut> Initialize(PipelineContext context, CancellationToken cancellationToken);
 
     /// <summary>
     ///     Asynchronously disposes of the node. This can be overridden by derived classes to release resources.

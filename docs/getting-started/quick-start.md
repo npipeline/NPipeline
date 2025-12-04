@@ -55,6 +55,7 @@ public sealed class HelloWorldSource : SourceNode<string>
         CancellationToken cancellationToken = default)
     {
         Console.WriteLine("Source: Producing 'Hello World!'");
+
         static IAsyncEnumerable<string> Stream()
         {
             return GenerateMessage();
@@ -177,7 +178,7 @@ The method is called `Execute`, not `ExecuteAsync`, because it returns synchrono
 
 **Phase 1 (Synchronous):** The source creates a pipe immediately
 ```csharp
-var pipe = source.Execute(context, cancellationToken);  // Returns instantly
+var pipe = source.Initialize(context, cancellationToken);  // Returns instantly
 ```
 
 **Phase 2 (Asynchronous):** The sink consumes data asynchronously

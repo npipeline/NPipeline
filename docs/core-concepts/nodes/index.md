@@ -50,12 +50,12 @@ A source node is the starting point of a pipeline. It is responsible for generat
 ```csharp
 public interface ISourceNode<out TOut> : INode
 {
-    IDataPipe<TOut> Execute(PipelineContext context, CancellationToken cancellationToken);
+    IDataPipe<TOut> Initialize(PipelineContext context, CancellationToken cancellationToken);
 }
 ```
 
 * **`TOut`**: The type of data that the source node produces (covariant).
-* **`Execute()`**: This method is called by the pipeline runner to start data production. It returns an `IDataPipe<TOut>` synchronously—no Task wrapper, no await needed.
+* **`Initialize()`**: This method is called by the pipeline runner to start data production. It returns an `IDataPipe<TOut>` synchronously—no Task wrapper, no await needed.
 
 #### Key Design Pattern: Synchronous Pipe Creation + Asynchronous Iteration
 
@@ -63,7 +63,7 @@ NPipeline separates concerns into two distinct phases:
 
 **Phase 1 (Synchronous):** Pipe Creation
 
-* `Execute()` creates and returns the pipe immediately (synchronously)
+* `Initialize()` creates and returns the pipe immediately (synchronously)
 * No `await` needed when calling this method
 * The pipeline reference is established without blocking
 
@@ -81,13 +81,13 @@ var stream = File.OpenRead(path);           // Sync - open stream immediately
 var bytes = await stream.ReadAsync(...);    // Async - read from stream
 
 // NPipeline pattern:
-var pipe = source.Execute(...);        // Sync - create pipe immediately  
+var pipe = source.Initialize(...);        // Sync - create pipe immediately  
 var item = await pipe.FirstAsync();         // Async - read item from pipe
 ```
 
 **Why This Design?**
 
-* :heavy_check_mark: **Clearer Intent:** `Execute()` (no "Async" suffix) signals that pipe creation is synchronous
+* :heavy_check_mark: **Clearer Intent:** `Initialize()` (no "Async" suffix) signals that pipe creation is synchronous
 * :heavy_check_mark: **Type Safety:** Covariant `IDataPipe<T>` (not invariant `Task<IDataPipe<T>>`) enables better type compatibility
 * :heavy_check_mark: **Performance:** No unnecessary `Task` allocations for pipe creation
 * :heavy_check_mark: **Consistency:** Uniform synchronous pattern across all source nodes
@@ -104,7 +104,7 @@ Here is an example of a simple source node that produces a sequence of numbers:
 /// </summary>
 public sealed class NumberSource : SourceNode<int>
 {
-    public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         // Create and return the data pipe immediately (synchronous operation)
         // The actual data streaming happens asynchronously when downstream nodes enumerate

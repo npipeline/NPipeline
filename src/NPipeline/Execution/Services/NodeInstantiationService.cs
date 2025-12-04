@@ -181,14 +181,14 @@ public sealed class NodeInstantiationService : INodeInstantiationService
                 $"Source node '{def.Id}' does not implement {sourceInterface.Name}.");
         }
 
-        // Get the ExecuteAsync method
+        // Get the Initialize method
         var executeMethod = sourceInterface.GetMethod(
-            nameof(ISourceNode<int>.Execute),
+            nameof(ISourceNode<int>.Initialize),
             BindingFlags.Public | BindingFlags.Instance,
             null,
             [typeof(PipelineContext), typeof(CancellationToken)],
             null) ?? throw new InvalidOperationException(
-            $"Could not find ExecuteAsync method on {sourceInterface.Name}.");
+            $"Could not find Initialize method on {sourceInterface.Name}.");
 
         // Build a delegate that calls the method and upcasts the result
         var ctxParam = Expression.Parameter(typeof(PipelineContext), "ctx");

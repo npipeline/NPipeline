@@ -233,7 +233,7 @@ public class MemoryEfficiencyBenchmarks
 
     private sealed class DataGeneratorSource : SourceNode<ComplexDataItem>
     {
-        public override IDataPipe<ComplexDataItem> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<ComplexDataItem> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)

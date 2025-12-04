@@ -53,7 +53,7 @@ public class EventSource : SourceNode<AnalyticsEvent>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token to stop event generation.</param>
     /// <returns>A data pipe containing analytics events.</returns>
-    public override IDataPipe<AnalyticsEvent> Execute(
+    public override IDataPipe<AnalyticsEvent> Initialize(
         PipelineContext context,
         CancellationToken cancellationToken)
     {

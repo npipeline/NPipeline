@@ -272,7 +272,7 @@ public sealed class PipelineRunnerErrorTests
     {
         private int _currentAttempt;
 
-        public IDataPipe<object> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public IDataPipe<object> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             _currentAttempt++;
 

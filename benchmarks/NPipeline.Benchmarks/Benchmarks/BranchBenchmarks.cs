@@ -74,7 +74,7 @@ public class BranchBenchmarks
 
     private sealed class GenSource : SourceNode<int>
     {
-        public override IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)

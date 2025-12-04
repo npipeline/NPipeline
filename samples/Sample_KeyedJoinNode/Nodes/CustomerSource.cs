@@ -30,7 +30,7 @@ public class CustomerSource : SourceNode<Customer>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<Customer> Execute(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<Customer> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         _logger?.LogInformation("CustomerSource: Starting to generate customers");
 

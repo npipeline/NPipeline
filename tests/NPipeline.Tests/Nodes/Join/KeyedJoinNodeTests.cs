@@ -76,7 +76,7 @@ public sealed class KeyedJoinNodeTests
 
     private sealed class UserSource : SourceNode<User>
     {
-        public override IDataPipe<User> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<User> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             var users = new[] { new User(1, "Alice"), new User(2, "Bob") };
             return new StreamingDataPipe<User>(users.ToAsyncEnumerable(), "UserStream");
@@ -85,7 +85,7 @@ public sealed class KeyedJoinNodeTests
 
     private sealed class UserProfileSource : SourceNode<UserProfile>
     {
-        public override IDataPipe<UserProfile> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<UserProfile> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             var profiles = new[] { new UserProfile(2, "Bob's Profile"), new UserProfile(1, "Alice's Profile") };
             return new StreamingDataPipe<UserProfile>(profiles.ToAsyncEnumerable(), "ProfileStream");
@@ -141,7 +141,7 @@ public sealed class KeyedJoinNodeTests
     // Test Node Implementations for Composite Key
     private sealed class EmployeeSource : SourceNode<Employee>
     {
-        public override IDataPipe<Employee> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<Employee> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             var employees = new[]
             {
@@ -156,7 +156,7 @@ public sealed class KeyedJoinNodeTests
 
     private sealed class PayStubSource : SourceNode<PayStub>
     {
-        public override IDataPipe<PayStub> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<PayStub> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             var payStubs = new[]
             {

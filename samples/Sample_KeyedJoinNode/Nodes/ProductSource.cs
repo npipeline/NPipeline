@@ -30,7 +30,7 @@ public class ProductSource : SourceNode<Product>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<Product> Execute(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<Product> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         _logger?.LogInformation("ProductSource: Starting to generate products");
 

@@ -39,7 +39,7 @@ public class SensorSource : SourceNode<SensorReading>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the sensor readings.</returns>
-    public override IDataPipe<SensorReading> Execute(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<SensorReading> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Generating {_readingCount} sensor readings from {_deviceCount} devices with {_interval.TotalMilliseconds}ms intervals");
 

@@ -275,7 +275,7 @@ public class GCPressureBenchmarks
 
     private sealed class DataGeneratorSource : SourceNode<GCPressureTestItem>
     {
-        public override IDataPipe<GCPressureTestItem> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<GCPressureTestItem> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)

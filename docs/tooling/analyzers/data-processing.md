@@ -16,7 +16,7 @@ Data processing analyzers protect the integrity of data flow through your pipeli
 
 This analyzer detects non-streaming patterns in SourceNode implementations that can lead to memory issues and poor performance. The analyzer identifies the following problematic patterns:
 
-1. **List and Array allocation and population** in ExecuteAsync methods
+1. **List and Array allocation and population** in Initialize methods
 2. **.ToAsyncEnumerable()** calls on materialized collections
 3. **Synchronous I/O operations** like File.ReadAllText, File.WriteAllBytes, etc.
 4. **.ToList() and .ToArray()** calls that materialize collections in memory
@@ -37,8 +37,10 @@ Non-streaming patterns in SourceNode implementations cause:
 // :x: PROBLEM: Materializing all data in memory
 public class BadSourceNode : SourceNode<string>
 {
-    protected override async Task ExecuteAsync(IDataPipe<string> output, PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
+        var output = new DataPipe<string>();
+        
         // NP9205: Allocating List<T> and populating it
         var items = new List<string>();
         
@@ -53,54 +55,57 @@ public class BadSourceNode : SourceNode<string>
         // NP9205: Materializing collection with ToList()
         foreach (var item in items.ToList())
         {
-            await output.ProduceAsync(item, cancellationToken);
+            output.Produce(item);
         }
+        
+        return output;
     }
 }
 
 // :x: PROBLEM: Using ToAsyncEnumerable on materialized collection
 public class AnotherBadSourceNode : SourceNode<int>
 {
-    protected override async Task ExecuteAsync(IDataPipe<int> output, PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
+        var output = new DataPipe<int>();
+        
         // NP9205: Creating array and then converting to async enumerable
         var numbers = Enumerable.Range(0, 1000000).ToArray(); // NP9205: Array allocation
         
         // NP9205: Using ToAsyncEnumerable on materialized collection
-        await foreach (var number in numbers.ToAsyncEnumerable())
+        foreach (var number in numbers.ToAsyncEnumerable())
         {
-            await output.ProduceAsync(number, cancellationToken);
+            output.Produce(number);
         }
+        
+        return output;
     }
 }
 ```
 
 #### Solution: Use Streaming Patterns
 
-For SourceNode implementations, use async IAsyncEnumerable with yield return for proper streaming:
+For SourceNode implementations, use IAsyncEnumerable with yield return for proper streaming:
 
 ```csharp
 // :heavy_check_mark: CORRECT: Using IAsyncEnumerable with yield return
 public class GoodSourceNode : SourceNode<string>
 {
-    protected override async Task ExecuteAsync(IDataPipe<string> output, PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
-        // Stream data line by line without materializing in memory
-        await foreach (var line in ReadLinesAsync("large-file.txt", cancellationToken))
-        {
-            await output.ProduceAsync(line, cancellationToken);
-        }
+        return new StreamingDataPipe<string>(ReadLines("large-file.txt", cancellationToken));
     }
     
     // Helper method that yields lines one at a time
-    private async IAsyncEnumerable<string> ReadLinesAsync(string filePath, [EnumeratorCancellation] CancellationToken cancellationToken)
+    private async IAsyncEnumerable<string> ReadLines(string filePath, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         using var reader = new StreamReader(
             new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true));
         
         string? line;
-        while ((line = await reader.ReadLineAsync(cancellationToken)) != null)
+        while ((line = await reader.ReadLineAsync()) != null)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             yield return line; // Stream one line at a time
         }
     }
@@ -116,7 +121,12 @@ public class DatabaseSourceNode : SourceNode<DataRecord>
         _connection = connection;
     }
     
-    protected override async Task ExecuteAsync(IDataPipe<DataRecord> output, PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<DataRecord> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    {
+        return new StreamingDataPipe<DataRecord>(ReadRecords(cancellationToken));
+    }
+    
+    private async IAsyncEnumerable<DataRecord> ReadRecords([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using var command = _connection.CreateCommand();
         command.CommandText = "SELECT Id, Name FROM DataRecords";
@@ -125,13 +135,12 @@ public class DatabaseSourceNode : SourceNode<DataRecord>
         
         while (await reader.ReadAsync(cancellationToken))
         {
-            var record = new DataRecord
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return new DataRecord
             {
                 Id = reader.GetInt32(0),
                 Name = reader.GetString(1)
             };
-            
-            await output.ProduceAsync(record, cancellationToken);
         }
     }
 }
@@ -148,12 +157,17 @@ public class NumberGeneratorSourceNode : SourceNode<int>
         _count = count;
     }
     
-    protected override async Task ExecuteAsync(IDataPipe<int> output, PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    {
+        return new StreamingDataPipe<int>(GenerateNumbers(cancellationToken));
+    }
+    
+    private async IAsyncEnumerable<int> GenerateNumbers([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         for (int i = 0; i < _count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            await output.ProduceAsync(_start + i, cancellationToken);
+            yield return _start + i;
             
             // Optional: Add small delay to prevent overwhelming downstream nodes
             if (i % 1000 == 0)
@@ -173,13 +187,18 @@ public class NumberGeneratorSourceNode : SourceNode<int>
 // :heavy_check_mark: GOOD: Streaming with transformation
 public class TransformingSourceNode : SourceNode<ProcessedData>
 {
-    protected override async Task ExecuteAsync(IDataPipe<ProcessedData> output, PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<ProcessedData> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    {
+        return new StreamingDataPipe<ProcessedData>(TransformItems(cancellationToken));
+    }
+    
+    private async IAsyncEnumerable<ProcessedData> TransformItems([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await foreach (var rawItem in GetRawItemsAsync(cancellationToken))
         {
             // Transform item without materializing the entire collection
             var processedItem = ProcessItem(rawItem);
-            await output.ProduceAsync(processedItem, cancellationToken);
+            yield return processedItem;
         }
     }
     
@@ -218,15 +237,19 @@ public class FilteringSourceNode : SourceNode<FilteredData>
         _filter = filter;
     }
     
-    protected override async Task ExecuteAsync(IDataPipe<FilteredData> output, PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<FilteredData> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    {
+        return new StreamingDataPipe<FilteredData>(FilterItems(cancellationToken));
+    }
+    
+    private async IAsyncEnumerable<FilteredData> FilterItems([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await foreach (var item in GetAllItemsAsync(cancellationToken))
         {
             // Filter items without materializing the entire collection
             if (_filter(item))
             {
-                var filteredItem = new FilteredData(item);
-                await output.ProduceAsync(filteredItem, cancellationToken);
+                yield return new FilteredData(item);
             }
         }
     }

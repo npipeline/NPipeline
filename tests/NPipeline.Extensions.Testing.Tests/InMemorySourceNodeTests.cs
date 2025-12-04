@@ -67,7 +67,7 @@ public class InMemorySourceNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = node.Execute(context, CancellationToken.None);
+        var result = node.Initialize(context, CancellationToken.None);
 
         // Assert
         result.Should().NotBeNull();
@@ -94,7 +94,7 @@ public class InMemorySourceNodeTests
         var node = new InMemorySourceNode<int>();
 
         // Act
-        var result = node.Execute(context, CancellationToken.None);
+        var result = node.Initialize(context, CancellationToken.None);
 
         // Assert
         result.Should().NotBeNull();
@@ -121,7 +121,7 @@ public class InMemorySourceNodeTests
         var node = new InMemorySourceNode<int>();
 
         // Act
-        var result = node.Execute(context, CancellationToken.None);
+        var result = node.Initialize(context, CancellationToken.None);
 
         // Assert
         result.Should().NotBeNull();
@@ -151,7 +151,7 @@ public class InMemorySourceNodeTests
         var node = new InMemorySourceNode<int>();
 
         // Act
-        var result = node.Execute(context, CancellationToken.None);
+        var result = node.Initialize(context, CancellationToken.None);
 
         // Assert
         result.Should().NotBeNull();
@@ -176,7 +176,7 @@ public class InMemorySourceNodeTests
         var node = new InMemorySourceNode<int>();
 
         // Act & Assert
-        var exception = Assert.Throws<InvalidOperationException>(() => node.Execute(context, CancellationToken.None));
+        var exception = Assert.Throws<InvalidOperationException>(() => node.Initialize(context, CancellationToken.None));
 
         exception.Message.Should().Contain("No source data configured");
         exception.Message.Should().Contain("testNode");

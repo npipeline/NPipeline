@@ -25,7 +25,7 @@ public sealed class ResilienceIdempotencyTests
 
     private sealed class Src : SourceNode<int>
     {
-        public override IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             return new InMemoryDataPipe<int>(new[] { 1 }.ToList(), "s");
         }

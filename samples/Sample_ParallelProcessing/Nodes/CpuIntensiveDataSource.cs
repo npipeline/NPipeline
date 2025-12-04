@@ -17,7 +17,7 @@ public class CpuIntensiveDataSource : SourceNode<CpuIntensiveWorkItem>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the generated work items.</returns>
-    public override IDataPipe<CpuIntensiveWorkItem> Execute(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<CpuIntensiveWorkItem> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("Generating CPU-intensive work items...");
 

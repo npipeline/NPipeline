@@ -597,6 +597,42 @@ public readonly struct ProcessedItem
 
 This analyzer detects non-streaming patterns in SourceNode implementations that can lead to memory issues and poor performance. See the [Data Processing Analyzers](./data-processing.md) section for detailed information about this analyzer.
 
+#### Problematic Patterns
+
+```csharp
+// :x: PROBLEM: Non-streaming implementation
+public class BadSourceNode : ISourceNode<Output>
+{
+    public override IDataPipe<Output> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    {
+        var items = LoadAllItems(); // Loads everything into memory
+        return new StreamingDataPipe<Output>(items.ToAsyncEnumerable());
+    }
+}
+```
+
+#### Solution: Use Streaming Patterns
+
+```csharp
+// :heavy_check_mark: CORRECT: Streaming implementation
+public class GoodSourceNode : ISourceNode<Output>
+{
+    public override IDataPipe<Output> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    {
+        return new StreamingDataPipe<Output>(GetItemsAsync(cancellationToken));
+    }
+    
+    private async IAsyncEnumerable<Output> GetItemsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        // Stream items one at a time
+        await foreach (var item in _dataSource.GetItemsAsync(cancellationToken))
+        {
+            yield return ProcessItem(item);
+        }
+    }
+}
+```
+
 ## Best Practices for Performance
 
 1. **Always use await** - Never block on async code with .Result, .Wait(), or .GetResult()

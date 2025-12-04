@@ -45,7 +45,7 @@ public class NyseMarketDataSource : SourceNode<MarketDataTick>
     /// <param name="context">The pipeline context</param>
     /// <param name="cancellationToken">The cancellation token</param>
     /// <returns>A data pipe containing the market data</returns>
-    public override IDataPipe<MarketDataTick> Execute(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<MarketDataTick> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Starting NYSE Market Data Source");
 

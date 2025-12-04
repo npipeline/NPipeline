@@ -172,7 +172,7 @@ public sealed class ResilientMemoryUsageTests
 
     private sealed class LargeStreamSource : SourceNode<int>
     {
-        public override IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             return new StreamingDataPipe<int>(Stream(cancellationToken));
 
@@ -191,7 +191,7 @@ public sealed class ResilientMemoryUsageTests
 
     private sealed class MediumStreamSource : SourceNode<int>
     {
-        public override IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             return new StreamingDataPipe<int>(Stream(cancellationToken));
 
@@ -210,7 +210,7 @@ public sealed class ResilientMemoryUsageTests
 
     private sealed class SmallStreamSource : SourceNode<int>
     {
-        public override IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             return new StreamingDataPipe<int>(Stream(cancellationToken));
 

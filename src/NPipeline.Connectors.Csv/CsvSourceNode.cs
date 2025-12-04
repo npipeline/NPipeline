@@ -68,7 +68,7 @@ public sealed class CsvSourceNode<T> : SourceNode<T>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<T> Execute(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         var provider = _provider ?? StorageProviderFactory.GetProviderOrThrow(
             _resolver ?? throw new InvalidOperationException("No storage resolver configured for CsvSourceNode."),

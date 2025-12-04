@@ -324,7 +324,7 @@ public class LatencyMeasurementBenchmarks
 
     private sealed class TimestampedDataSource : SourceNode<LatencyMeasuredItem>
     {
-        public override IDataPipe<LatencyMeasuredItem> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<LatencyMeasuredItem> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)

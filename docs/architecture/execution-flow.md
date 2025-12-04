@@ -16,7 +16,7 @@ NPipeline follows a clear separation of concerns:
 
 **Synchronous Phase:** Source Node Initialization
 
-- Source nodes' `Execute()` method returns `IDataPipe<T>` synchronously
+- Source nodes' `Initialize()` method returns `IDataPipe<T>` synchronously
 - The source immediately creates and returns the data pipe without waiting
 - No Task allocation for source execution
 

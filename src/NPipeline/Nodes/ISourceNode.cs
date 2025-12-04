@@ -10,10 +10,10 @@ namespace NPipeline.Nodes;
 public interface ISourceNode<out TOut> : INode
 {
     /// <summary>
-    ///     Executes the source node.
+    ///     Creates a data pipe for the source node.
     /// </summary>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>An <see cref="IDataPipe{TOut}" /> that produces the output data for downstream nodes.</returns>
-    IDataPipe<TOut> Execute(PipelineContext context, CancellationToken cancellationToken);
+    IDataPipe<TOut> Initialize(PipelineContext context, CancellationToken cancellationToken);
 }

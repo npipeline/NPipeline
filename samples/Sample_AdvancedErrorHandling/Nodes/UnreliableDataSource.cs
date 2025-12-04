@@ -19,7 +19,7 @@ public class UnreliableDataSource : SourceNode<SourceData>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the generated data.</returns>
-    public override IDataPipe<SourceData> Execute(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<SourceData> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("Generating data with intermittent failures...");
 

@@ -51,7 +51,7 @@ class MyPipeline : IPipelineDefinition
 Verify your source node returns data:
 
 ```csharp
-public override IDataPipe<T> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
 {
     static IAsyncEnumerable<T> GetDataAsync(CancellationToken ct)
     {
@@ -446,11 +446,11 @@ public override Task<Item> ExecuteAsync(Item item, PipelineContext context, Canc
 
 ```csharp
 // :x: BAD - Only reads first item
-var result = await source.Execute(context, CancellationToken.None);
+var result = source.Initialize(context, CancellationToken.None);
 var first = (await result.GetAsyncEnumerator().MoveNextAsync()).Current;
 
 // :heavy_check_mark: GOOD - Consumes all items
-var result = await source.Execute(context, CancellationToken.None);
+var result = source.Initialize(context, CancellationToken.None);
 await foreach (var item in result)
 {
     // Process all items

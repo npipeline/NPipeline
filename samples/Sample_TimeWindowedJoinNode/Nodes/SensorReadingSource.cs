@@ -54,7 +54,7 @@ public class SensorReadingSource : SourceNode<SensorReading>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<SensorReading> Execute(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<SensorReading> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         if (_logger != null)
             _startingGeneration(_logger, _deviceIds.Length, null);

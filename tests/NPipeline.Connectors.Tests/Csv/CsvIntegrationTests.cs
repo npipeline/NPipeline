@@ -33,7 +33,7 @@ public sealed class CsvIntegrationTests
 
             // Read: CsvSourceNode<int>
             var src = new CsvSourceNode<int>(uri, resolver, cfg);
-            var outPipe = src.Execute(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<int>();
 

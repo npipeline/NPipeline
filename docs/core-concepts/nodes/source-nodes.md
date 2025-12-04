@@ -13,11 +13,11 @@ A source node is responsible for generating the initial data stream that enters 
 ```csharp
 public interface ISourceNode<out TOut> : INode
 {
-    IDataPipe<TOut> Execute(PipelineContext context, CancellationToken cancellationToken);
+    IDataPipe<TOut> Initialize(PipelineContext context, CancellationToken cancellationToken);
 }
 ```
 
-The `Execute` method returns the data pipe synchronously. It does not return a `Task`, enabling efficient synchronous pipe creation.
+The `Initialize` method returns the data pipe synchronously. It does not return a `Task`, enabling efficient synchronous pipe creation.
 
 ## Implementation Example
 
@@ -41,7 +41,7 @@ public sealed class NumberSource : ISourceNode<int>
         _count = count;
     }
 
-    public IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         static IAsyncEnumerable<int> Stream(int start, int count, CancellationToken ct)
         {
@@ -66,7 +66,7 @@ public sealed class NumberSource : ISourceNode<int>
 
 ### Data Pipe Output
 
-The `ExecuteAsync` method returns an `IDataPipe<TOut>` directly (synchronously). The `IDataPipe<T>` abstraction allows NPipeline to support different streaming models (buffered, streaming, etc.) while maintaining a consistent interface.
+The `Initialize` method returns an `IDataPipe<TOut>` directly (synchronously). The `IDataPipe<T>` abstraction allows NPipeline to support different streaming models (buffered, streaming, etc.) while maintaining a consistent interface.
 
 ### Cancellation Support
 
@@ -90,7 +90,7 @@ public sealed class FileReaderSource : ISourceNode<string>
         _filePath = filePath;
     }
 
-    public IDataPipe<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         static IAsyncEnumerable<string> Stream(string path, CancellationToken ct)
         {
@@ -124,7 +124,7 @@ public sealed class DatabaseSource : ISourceNode<CustomerRecord>
         _connectionString = connectionString;
     }
 
-    public IDataPipe<CustomerRecord> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public IDataPipe<CustomerRecord> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         return new StreamingDataPipe<CustomerRecord>(FetchRecordsAsync(cancellationToken));
     }

@@ -326,7 +326,7 @@ builder.WithRetryOptions(options =>
 
 ### NP9302: SinkNode Input Not Consumed
 
-**Message:** `[NP9302] SinkNode '{0}' overrides ExecuteAsync but doesn't consume input parameter. Sink nodes should process all items from input data pipe.`**
+**Message:** `[NP9302] SinkNode '{0}' overrides ExecuteAsync but doesn't consume input parameter. Sink nodes should process all items from input data pipe.`
 
 **Category:** Node Execution Error
 
@@ -553,7 +553,7 @@ await pipeline.ExecuteAsync(source, context);
 
 **Cause:** Your SourceNode implementation contains patterns that can lead to memory issues and poor performance when processing large datasets. The analyzer detects these problematic patterns:
 
-1. **`List<T>` or `Array` allocation and population** in ExecuteAsync methods
+1. **`List<T>` or `Array` allocation and population** in Initialize methods
 2. **.ToAsyncEnumerable()** calls on materialized collections
 3. **Synchronous I/O operations** like File.ReadAllText, File.WriteAllBytes, etc.
 4. **.ToList() and .ToArray()** calls that materialize collections in memory
@@ -571,7 +571,7 @@ These patterns can cause:
 // :x: PROBLEM: Materializing all data in memory
 public class BadSourceNode : SourceNode<string>
 {
-    protected override async Task ExecuteAsync(IDataPipe<string> output, PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         // NP9205: Allocating List<T> and populating it
         var items = new List<string>();
@@ -587,8 +587,10 @@ public class BadSourceNode : SourceNode<string>
         // NP9205: Materializing collection with ToList()
         foreach (var item in items.ToList())
         {
-            await output.ProduceAsync(item, cancellationToken);
+            // This pattern is no longer valid with Initialize method
         }
+        
+        return new StreamingDataPipe<string>(items.ToAsyncEnumerable());
     }
 }
 ```
@@ -599,13 +601,10 @@ public class BadSourceNode : SourceNode<string>
 // :heavy_check_mark: CORRECT: Using IAsyncEnumerable with yield return
 public class GoodSourceNode : SourceNode<string>
 {
-    protected override async Task ExecuteAsync(IDataPipe<string> output, PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         // Stream data line by line without materializing in memory
-        await foreach (var line in ReadLinesAsync("large-file.txt", cancellationToken))
-        {
-            await output.ProduceAsync(line, cancellationToken);
-        }
+        return new StreamingDataPipe<string>(ReadLinesAsync("large-file.txt", cancellationToken));
     }
     
     // Helper method that yields lines one at a time

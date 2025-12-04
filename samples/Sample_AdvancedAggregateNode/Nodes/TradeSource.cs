@@ -61,7 +61,7 @@ public class TradeSource : SourceNode<FinancialTrade>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token to stop trade generation.</param>
     /// <returns>A data pipe containing financial trades.</returns>
-    public override IDataPipe<FinancialTrade> Execute(
+    public override IDataPipe<FinancialTrade> Initialize(
         PipelineContext context,
         CancellationToken cancellationToken)
     {
@@ -202,8 +202,12 @@ public class TradeSource : SourceNode<FinancialTrade>
             case FinancialConstants.Equity:
                 properties["sector"] = _random.Next(0, 6) switch
                 {
-                    0 => "Technology", 1 => "Healthcare", 2 => "Finance",
-                    3 => "Consumer", 4 => "Energy", _ => "Industrial",
+                    0 => "Technology",
+                    1 => "Healthcare",
+                    2 => "Finance",
+                    3 => "Consumer",
+                    4 => "Energy",
+                    _ => "Industrial",
                 };
 
                 properties["market_cap"] = _random.Next(0, 3) switch { 0 => "Large", 1 => "Mid", 2 => "Small", _ => "Large" };

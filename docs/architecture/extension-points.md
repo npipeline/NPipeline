@@ -23,25 +23,31 @@ public class DatabaseSourceNode : ISourceNode<Order>
         _connectionString = connectionString;
     }
 
-    public IAsyncEnumerable<Order> Execute(
+    public IDataPipe<Order> Initialize(
         PipelineContext context,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
     {
-        using var connection = new SqlConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-        
-        using var command = new SqlCommand("SELECT * FROM Orders", connection);
-        using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        
-        while (await reader.ReadAsync(cancellationToken))
+        async IAsyncEnumerable<Order> StreamOrders(
+            [EnumeratorCancellation] CancellationToken ct)
         {
-            yield return new Order
+            using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync(ct);
+            
+            using var command = new SqlCommand("SELECT * FROM Orders", connection);
+            using var reader = await command.ExecuteReaderAsync(ct);
+            
+            while (await reader.ReadAsync(ct))
             {
-                Id = reader.GetInt32(0),
-                Amount = reader.GetDecimal(1),
-                // ...
-            };
+                yield return new Order
+                {
+                    Id = reader.GetInt32(0),
+                    Amount = reader.GetDecimal(1),
+                    // ...
+                };
+            }
         }
+
+        return new StreamingDataPipe<Order>(StreamOrders(cancellationToken), "DatabaseSource");
     }
 }
 ```

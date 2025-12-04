@@ -98,7 +98,7 @@ public sealed class DependencyInjectionAnalyzerTests
                            _service = new BadService(); // Should trigger diagnostic - Static singleton assignment
                        }
 
-                       public override IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
                        {
                            throw new NotImplementedException();
                        }

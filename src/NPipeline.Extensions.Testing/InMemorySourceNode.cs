@@ -68,7 +68,7 @@ public sealed class InMemorySourceNode<T> : SourceNode<T>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<T> Execute(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         if (!_useContext)
             return new InMemoryDataPipe<T>(_items!);

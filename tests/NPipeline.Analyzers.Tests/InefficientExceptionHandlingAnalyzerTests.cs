@@ -530,13 +530,13 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task Execute(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task Initialize(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
                                return await ProcessAsync(input);
                            }
-                           // NP9301: Exception handling in Execute method
+                           // NP9301: Exception handling in Initialize method
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Processing failed");
@@ -549,7 +549,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in Execute method");
+        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in Initialize method");
     }
 
     [Fact]

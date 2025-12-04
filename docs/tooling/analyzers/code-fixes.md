@@ -475,13 +475,10 @@ This code fix converts non-streaming SourceNode implementations to proper stream
 // :x: PROBLEM: Non-streaming implementation
 public class BadSourceNode : ISourceNode<Output>
 {
-    protected override async Task ExecuteAsync(IDataPipe<Output> output, PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<Output> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
-        var items = await LoadAllItemsAsync(); // Loads everything into memory
-        foreach (var item in items)
-        {
-            await output.ProduceAsync(item, cancellationToken);
-        }
+        var items = LoadAllItems(); // Loads everything into memory
+        return new StreamingDataPipe<Output>(items.ToAsyncEnumerable());
     }
 }
 ```
@@ -492,12 +489,9 @@ public class BadSourceNode : ISourceNode<Output>
 // :heavy_check_mark: CORRECT: Streaming implementation
 public class GoodSourceNode : ISourceNode<Output>
 {
-    protected override async Task ExecuteAsync(IDataPipe<Output> output, PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<Output> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
-        await foreach (var item in GetItemsAsync(cancellationToken))
-        {
-            await output.ProduceAsync(item, cancellationToken);
-        }
+        return new StreamingDataPipe<Output>(GetItemsAsync(cancellationToken));
     }
     
     private async IAsyncEnumerable<Output> GetItemsAsync([EnumeratorCancellation] CancellationToken cancellationToken)

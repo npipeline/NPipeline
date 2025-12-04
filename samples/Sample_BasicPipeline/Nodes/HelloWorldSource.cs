@@ -18,7 +18,7 @@ public class HelloWorldSource : SourceNode<string>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the generated messages.</returns>
-    public override IDataPipe<string> Execute(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("Generating Hello World messages");
 

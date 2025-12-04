@@ -215,7 +215,7 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
     // Test Node Implementations
     private sealed class TestSourceNode : SourceNode<string>
     {
-        public override IDataPipe<string> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
@@ -249,7 +249,7 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
 
     private sealed class AutoSourceNode : SourceNode<int>
     {
-        public override IDataPipe<int> Execute(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
         {
             return new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1]);
         }

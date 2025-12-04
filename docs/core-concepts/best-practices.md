@@ -158,7 +158,7 @@ Process data as it flows; don't load entire datasets into memory.
 ```csharp
 public sealed class StreamingSourceNode : SourceNode<Customer>
 {
-    public override IDataPipe<Customer> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<Customer> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         static IAsyncEnumerable<Customer> GetCustomersAsync(string connectionString, CancellationToken ct)
         {
@@ -195,7 +195,7 @@ public sealed class StreamingSourceNode : SourceNode<Customer>
 // BAD: Loading all data before streaming
 public sealed class BadSourceNode : SourceNode<Customer>
 {
-    public override IDataPipe<Customer> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<Customer> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         // This loads ALL customers into memory at once!
         var allCustomers = new List<Customer>();

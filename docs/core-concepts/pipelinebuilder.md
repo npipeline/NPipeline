@@ -47,7 +47,7 @@ using NPipeline.Pipeline;
 /// </summary>
 public sealed class HelloWorldSource : SourceNode<string>
 {
-    public override IDataPipe<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         // Create streaming data pipe immediately (synchronous operation)
         return new StreamingDataPipe<string>(GenerateMessages());

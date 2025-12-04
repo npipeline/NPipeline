@@ -105,7 +105,7 @@ public record ProcessedOrder(int Id, string Customer, decimal Amount, decimal Ta
 // 2. Create pipeline nodes
 public class OrderSource : SourceNode<Order>
 {
-    public override IDataPipe<Order> Execute(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataPipe<Order> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         var orders = new[]
         {
