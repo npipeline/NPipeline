@@ -81,7 +81,14 @@ namespace NPipeline.Nodes;
 /// </example>
 public abstract class SinkNode<TIn> : ISinkNode<TIn>, INodeTypeMetadata
 {
+    /// <summary>
+    ///     Gets the input type of the sink node.
+    /// </summary>
     public Type InputType => typeof(TIn);
+
+    /// <summary>
+    ///     Gets the output type of the sink node, which is always null as sink nodes produce no output.
+    /// </summary>
     public Type? OutputType => null;
 
     /// <inheritdoc />

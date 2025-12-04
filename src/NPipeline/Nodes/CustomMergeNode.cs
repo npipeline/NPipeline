@@ -83,12 +83,22 @@ public abstract class CustomMergeNode<TIn> : ICustomMergeNode<TIn>, ICustomMerge
     /// </remarks>
     public abstract Task<IDataPipe<TIn>> MergeAsync(IEnumerable<IDataPipe> pipes, CancellationToken cancellationToken);
 
+    /// <summary>
+    ///     Asynchronously disposes of the node resources.
+    /// </summary>
+    /// <returns>A <see cref="ValueTask" /> representing the asynchronous dispose operation.</returns>
     public virtual ValueTask DisposeAsync()
     {
         GC.SuppressFinalize(this);
         return ValueTask.CompletedTask;
     }
 
+    /// <summary>
+    ///     Merges multiple input pipes without type information by delegating to the typed implementation.
+    /// </summary>
+    /// <param name="pipes">The input data pipes to merge.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A data pipe containing the merged output stream.</returns>
     public async Task<IDataPipe> MergeAsyncUntyped(IEnumerable<IDataPipe> pipes, CancellationToken cancellationToken)
     {
         return await MergeAsync(pipes, cancellationToken).ConfigureAwait(false);
@@ -96,6 +106,13 @@ public abstract class CustomMergeNode<TIn> : ICustomMergeNode<TIn>, ICustomMerge
 
     // Metadata (used for sink scenario only; transformations would have both in/out but this base
     // class is typically combined with a sink or transform base that already supplies metadata).
+    /// <summary>
+    ///     Gets the input type of the merge node.
+    /// </summary>
     public Type InputType => typeof(TIn);
+
+    /// <summary>
+    ///     Gets the output type of the merge node. Returns null for merge endpoints.
+    /// </summary>
     public Type? OutputType => null; // For sinks / merge endpoints
 }

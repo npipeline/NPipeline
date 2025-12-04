@@ -23,7 +23,15 @@ namespace NPipeline.DataFlow;
 /// </remarks>
 public interface IDataPipe : IAsyncDisposable
 {
+    /// <summary>
+    ///     Gets the name of the data stream represented by this pipe.
+    /// </summary>
     string StreamName { get; }
+
+    /// <summary>
+    ///     Gets the data type of items carried by this pipe.
+    /// </summary>
+    /// <returns>The <see cref="Type" /> of data items in this pipe.</returns>
     Type GetDataType();
 
     /// <summary>

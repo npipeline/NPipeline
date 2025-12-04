@@ -73,16 +73,29 @@ public sealed class NodeExecutionException : PipelineException
 /// </summary>
 public sealed class PipelineExecutionException : PipelineException
 {
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="PipelineExecutionException" /> class.
+    /// </summary>
     public PipelineExecutionException() : base("Pipeline execution failed.")
     {
         ErrorCode = "PIPELINE_EXECUTION_ERROR";
     }
 
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="PipelineExecutionException" /> class with a specified error message.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
     public PipelineExecutionException(string message) : base($"Pipeline execution failed: {message}")
     {
         ErrorCode = "PIPELINE_EXECUTION_ERROR";
     }
 
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="PipelineExecutionException" /> class with a specified error message
+    ///     and a reference to the inner exception that is the cause of this exception.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
+    /// <param name="innerException">The exception that is the cause of the current exception.</param>
     public PipelineExecutionException(string message, Exception innerException) : base($"Pipeline execution failed: {message}", innerException)
     {
         ErrorCode = "PIPELINE_EXECUTION_ERROR";
@@ -100,16 +113,29 @@ public sealed class PipelineExecutionException : PipelineException
 /// </summary>
 public sealed class CircuitBreakerTrippedException : PipelineException
 {
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="CircuitBreakerTrippedException" /> class.
+    /// </summary>
     public CircuitBreakerTrippedException() : base("Circuit breaker tripped.")
     {
         ErrorCode = "CIRCUIT_BREAKER_TRIPPED";
     }
 
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="CircuitBreakerTrippedException" /> class with a specified error message.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
     public CircuitBreakerTrippedException(string message) : base(message)
     {
         ErrorCode = "CIRCUIT_BREAKER_TRIPPED";
     }
 
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="CircuitBreakerTrippedException" /> class with a specified error message
+    ///     and a reference to the inner exception that is the cause of this exception.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
+    /// <param name="innerException">The exception that is the cause of the current exception.</param>
     public CircuitBreakerTrippedException(string message, Exception innerException) : base(message, innerException)
     {
         ErrorCode = "CIRCUIT_BREAKER_TRIPPED";
@@ -161,18 +187,31 @@ public sealed class CircuitBreakerTrippedException : PipelineException
 /// </summary>
 public sealed class RetryExhaustedException : PipelineException
 {
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="RetryExhaustedException" /> class.
+    /// </summary>
     public RetryExhaustedException() : base("Retry attempts exhausted.")
     {
         ErrorCode = "RETRY_EXHAUSTED";
         NodeId = string.Empty;
     }
 
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="RetryExhaustedException" /> class with a specified error message.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
     public RetryExhaustedException(string message) : base(message)
     {
         ErrorCode = "RETRY_EXHAUSTED";
         NodeId = string.Empty;
     }
 
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="RetryExhaustedException" /> class with a specified error message
+    ///     and a reference to the inner exception that is the cause of this exception.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
+    /// <param name="innerException">The exception that is the cause of the current exception.</param>
     public RetryExhaustedException(string message, Exception innerException) : base(message, innerException)
     {
         ErrorCode = "RETRY_EXHAUSTED";
@@ -215,16 +254,29 @@ public sealed class RetryExhaustedException : PipelineException
 /// </summary>
 public sealed class CircuitBreakerOpenException : PipelineException
 {
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="CircuitBreakerOpenException" /> class.
+    /// </summary>
     public CircuitBreakerOpenException() : base("Circuit breaker is open and blocking execution.")
     {
         ErrorCode = "CIRCUIT_BREAKER_OPEN";
     }
 
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="CircuitBreakerOpenException" /> class with a specified error message.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
     public CircuitBreakerOpenException(string message) : base(message)
     {
         ErrorCode = "CIRCUIT_BREAKER_OPEN";
     }
 
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="CircuitBreakerOpenException" /> class with a specified error message
+    ///     and a reference to the inner exception that is the cause of this exception.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
+    /// <param name="innerException">The exception that is the cause of the current exception.</param>
     public CircuitBreakerOpenException(string message, Exception innerException) : base(message, innerException)
     {
         ErrorCode = "CIRCUIT_BREAKER_OPEN";
@@ -242,11 +294,21 @@ public sealed class CircuitBreakerOpenException : PipelineException
 /// </summary>
 public sealed class NodeRestartException : PipelineException
 {
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="NodeRestartException" /> class with a specified error message.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
     public NodeRestartException(string message) : base(message)
     {
         ErrorCode = "NODE_RESTART";
     }
 
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="NodeRestartException" /> class with a specified error message
+    ///     and a reference to the inner exception that is the cause of this exception.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
+    /// <param name="innerException">The exception that is the cause of the current exception.</param>
     public NodeRestartException(string message, Exception innerException) : base(message, innerException)
     {
         ErrorCode = "NODE_RESTART";
@@ -280,11 +342,21 @@ public sealed class NodeRestartException : PipelineException
 /// </summary>
 public sealed class MaxNodeRestartAttemptsExceededException : PipelineException
 {
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="MaxNodeRestartAttemptsExceededException" /> class with a specified error message.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
     public MaxNodeRestartAttemptsExceededException(string message) : base(message)
     {
         ErrorCode = "MAX_NODE_RESTART_ATTEMPTS_EXCEEDED";
     }
 
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="MaxNodeRestartAttemptsExceededException" /> class with a specified error message
+    ///     and a reference to the inner exception that is the cause of this exception.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
+    /// <param name="innerException">The exception that is the cause of the current exception.</param>
     public MaxNodeRestartAttemptsExceededException(string message, Exception innerException) : base(message, innerException)
     {
         ErrorCode = "MAX_NODE_RESTART_ATTEMPTS_EXCEEDED";

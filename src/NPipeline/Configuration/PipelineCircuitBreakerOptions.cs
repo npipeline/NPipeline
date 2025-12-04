@@ -25,10 +25,23 @@ public sealed record PipelineCircuitBreakerOptions(
     int HalfOpenMaxAttempts = 5,
     bool TrackOperationsInWindow = true)
 {
+    /// <summary>
+    ///     Gets a disabled circuit breaker configuration that effectively disables the circuit breaker functionality.
+    /// </summary>
     public static PipelineCircuitBreakerOptions Disabled { get; } = new(int.MaxValue, TimeSpan.Zero, TimeSpan.Zero, false, TrackOperationsInWindow: false);
+
+    /// <summary>
+    ///     Gets the default circuit breaker configuration with sensible default values.
+    /// </summary>
     public static PipelineCircuitBreakerOptions Default { get; } = new(5, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(5));
 
 
+    /// <summary>
+    ///     Validates the circuit breaker configuration and throws exceptions for invalid settings.
+    /// </summary>
+    /// <returns>The validated configuration instance.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when any configuration parameter is out of valid range.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when configuration settings are incompatible.</exception>
     public PipelineCircuitBreakerOptions Validate()
     {
         if (!Enabled)

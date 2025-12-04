@@ -50,16 +50,41 @@ public interface IObservabilitySurface
 public readonly struct NodeObservationScope(string nodeId, string nodeType, DateTimeOffset startTime, IPipelineActivity activity)
     : IEquatable<NodeObservationScope>
 {
+    /// <summary>
+    ///     Gets the unique identifier of the node being observed.
+    /// </summary>
     public string NodeId { get; } = nodeId;
+
+    /// <summary>
+    ///     Gets the type name of the node being observed.
+    /// </summary>
     public string NodeType { get; } = nodeType;
+
+    /// <summary>
+    ///     Gets the timestamp when the node execution started.
+    /// </summary>
     public DateTimeOffset StartTime { get; } = startTime;
+
+    /// <summary>
+    ///     Gets the pipeline activity associated with this node observation.
+    /// </summary>
     public IPipelineActivity Activity { get; } = activity;
 
+    /// <summary>
+    ///     Determines whether the specified object is equal to the current <see cref="NodeObservationScope" />.
+    /// </summary>
+    /// <param name="obj">The object to compare with the current <see cref="NodeObservationScope" />.</param>
+    /// <returns>true if the specified object is equal to the current <see cref="NodeObservationScope" />; otherwise, false.</returns>
     public override bool Equals(object? obj)
     {
         return obj is NodeObservationScope other && Equals(other);
     }
 
+    /// <summary>
+    ///     Determines whether the specified <see cref="NodeObservationScope" /> is equal to the current <see cref="NodeObservationScope" />.
+    /// </summary>
+    /// <param name="other">The <see cref="NodeObservationScope" /> to compare with the current <see cref="NodeObservationScope" />.</param>
+    /// <returns>true if the specified <see cref="NodeObservationScope" /> is equal to the current <see cref="NodeObservationScope" />; otherwise, false.</returns>
     public bool Equals(NodeObservationScope other)
     {
         return NodeId == other.NodeId &&
@@ -68,16 +93,32 @@ public readonly struct NodeObservationScope(string nodeId, string nodeType, Date
                Equals(Activity, other.Activity);
     }
 
+    /// <summary>
+    ///     Returns the hash code for the current <see cref="NodeObservationScope" />.
+    /// </summary>
+    /// <returns>A hash code for the current <see cref="NodeObservationScope" />.</returns>
     public override int GetHashCode()
     {
         return HashCode.Combine(NodeId, NodeType, StartTime, Activity);
     }
 
+    /// <summary>
+    ///     Determines whether two <see cref="NodeObservationScope" /> instances are equal.
+    /// </summary>
+    /// <param name="left">The first <see cref="NodeObservationScope" /> to compare.</param>
+    /// <param name="right">The second <see cref="NodeObservationScope" /> to compare.</param>
+    /// <returns>true if the instances are equal; otherwise, false.</returns>
     public static bool operator ==(NodeObservationScope left, NodeObservationScope right)
     {
         return left.Equals(right);
     }
 
+    /// <summary>
+    ///     Determines whether two <see cref="NodeObservationScope" /> instances are not equal.
+    /// </summary>
+    /// <param name="left">The first <see cref="NodeObservationScope" /> to compare.</param>
+    /// <param name="right">The second <see cref="NodeObservationScope" /> to compare.</param>
+    /// <returns>true if the instances are not equal; otherwise, false.</returns>
     public static bool operator !=(NodeObservationScope left, NodeObservationScope right)
     {
         return !left.Equals(right);

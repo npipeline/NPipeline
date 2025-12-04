@@ -11,18 +11,11 @@ namespace NPipeline.Nodes;
 /// </summary>
 /// <typeparam name="TIn">The input item type.</typeparam>
 /// <typeparam name="TOut">The output item type.</typeparam>
-public abstract class TransformNode<TIn, TOut> : ITransformNode<TIn, TOut>, INodeTypeMetadata, IValueTaskTransform<TIn, TOut>
+/// <param name="executionStrategy">An optional execution strategy. Defaults to sequential.</param>
+public abstract class TransformNode<TIn, TOut>(IExecutionStrategy? executionStrategy = null)
+    : ITransformNode<TIn, TOut>, INodeTypeMetadata, IValueTaskTransform<TIn, TOut>
 {
     private INodeErrorHandler? _errorHandler;
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="TransformNode{TIn,TOut}" /> class.
-    /// </summary>
-    /// <param name="executionStrategy">An optional execution strategy. Defaults to sequential.</param>
-    protected TransformNode(IExecutionStrategy? executionStrategy = null)
-    {
-        ExecutionStrategy = executionStrategy ?? new SequentialExecutionStrategy();
-    }
 
     /// <summary>
     ///     Gets the strongly-typed error handler for this node.
@@ -34,11 +27,18 @@ public abstract class TransformNode<TIn, TOut> : ITransformNode<TIn, TOut>, INod
     /// </summary>
     protected INodeErrorHandler<ITransformNode<TIn, TOut>, TIn>? TypedErrorHandler { get; private set; }
 
+    /// <summary>
+    ///     Gets the input type of the transform node.
+    /// </summary>
     public Type InputType => typeof(TIn);
+
+    /// <summary>
+    ///     Gets the output type of the transform node.
+    /// </summary>
     public Type OutputType => typeof(TOut);
 
     /// <inheritdoc />
-    public IExecutionStrategy ExecutionStrategy { get; set; }
+    public IExecutionStrategy ExecutionStrategy { get; set; } = executionStrategy ?? new SequentialExecutionStrategy();
 
     /// <inheritdoc />
     public INodeErrorHandler? ErrorHandler

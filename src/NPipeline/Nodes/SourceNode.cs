@@ -61,7 +61,14 @@ namespace NPipeline.Nodes;
 /// </example>
 public abstract class SourceNode<TOut> : ISourceNode<TOut>, INodeTypeMetadata
 {
+    /// <summary>
+    ///     Gets the input type of the source node, which is always null as source nodes have no input.
+    /// </summary>
     public Type? InputType => null;
+
+    /// <summary>
+    ///     Gets the output type of the source node.
+    /// </summary>
     public Type OutputType => typeof(TOut);
 
     /// <inheritdoc />

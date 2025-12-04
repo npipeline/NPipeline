@@ -77,6 +77,9 @@ public abstract class WatermarkGenerator<T>
     public abstract Watermark GetCurrentWatermark();
 }
 
+/// <summary>
+///     Factory methods for creating watermark generators.
+/// </summary>
 public static class WatermarkGenerators
 {
     /// <summary>
@@ -165,8 +168,17 @@ public sealed class PeriodicWatermarkGenerator<T>(TimeSpan interval, TimeSpan ma
     }
 }
 
+/// <summary>
+///     Internal helper class for safe time arithmetic operations in watermark calculations.
+/// </summary>
 internal static class WatermarkTimeHelper
 {
+    /// <summary>
+    ///     Safely subtracts a TimeSpan from a DateTimeOffset, preventing underflow to DateTimeOffset.MinValue.
+    /// </summary>
+    /// <param name="ts">The base timestamp to subtract from.</param>
+    /// <param name="delta">The TimeSpan to subtract.</param>
+    /// <returns>The result of the subtraction, or DateTimeOffset.MinValue if subtraction would cause underflow.</returns>
     public static DateTimeOffset SafeSubtract(DateTimeOffset ts, TimeSpan delta)
     {
         if (ts == DateTimeOffset.MinValue)

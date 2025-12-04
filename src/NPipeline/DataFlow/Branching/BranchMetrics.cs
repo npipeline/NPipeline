@@ -24,6 +24,7 @@ public sealed class BranchMetrics
     /// <summary>1 if any backlog was observed on any subscriber channel (approximation placeholder until precise counts implemented).</summary>
     public int ApproxBacklogObserved => _anyBacklogObserved;
 
+    /// <summary>Gets the maximum aggregate backlog observed across all subscribers.</summary>
     public int MaxAggregateBacklog => _maxAggregateBacklog;
 
     /// <summary>Per-subscriber high-water backlog counts (index corresponds to subscriber ordinal). Empty when not yet initialized.</summary>
@@ -101,8 +102,17 @@ public sealed class BranchMetrics
     }
 }
 
+/// <summary>
+///     Extension methods for accessing branch metrics from pipeline context.
+/// </summary>
 public static class BranchMetricsContextExtensions
 {
+    /// <summary>
+    ///     Retrieves the branch metrics for a specific node from the pipeline context.
+    /// </summary>
+    /// <param name="context">The pipeline context containing the metrics.</param>
+    /// <param name="nodeId">The ID of the node to retrieve metrics for.</param>
+    /// <returns>The branch metrics for the specified node, or null if not found.</returns>
     public static BranchMetrics? GetBranchMetrics(this PipelineContext context, string nodeId)
     {
         if (context.Items.TryGetValue(ExecutionAnnotationKeys.BranchMetricsForNode(nodeId), out var m) && m is BranchMetrics fm)

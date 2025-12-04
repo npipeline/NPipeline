@@ -14,6 +14,12 @@ namespace NPipeline.Pipeline;
 /// </summary>
 public sealed partial class PipelineBuilder
 {
+    /// <summary>
+    ///     Builds the pipeline with the configured nodes, edges, and settings.
+    /// </summary>
+    /// <returns>A configured Pipeline instance ready for execution.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when no nodes have been added to the pipeline.</exception>
+    /// <exception cref="PipelineValidationException">Thrown when graph validation fails and validation mode is set to Error.</exception>
     public Pipeline Build()
     {
         if (NodeState.Nodes.Count == 0)
@@ -64,6 +70,12 @@ public sealed partial class PipelineBuilder
         return new Pipeline(graph) { BuilderDisposables = BuilderDisposables }; // Pipeline will adopt disposables
     }
 
+    /// <summary>
+    ///     Attempts to build the pipeline with validation, returning success status and validation result.
+    /// </summary>
+    /// <param name="pipeline">When this method returns, contains the built Pipeline if successful; otherwise, null.</param>
+    /// <param name="validationResult">When this method returns, contains the validation result.</param>
+    /// <returns>true if the pipeline was built successfully; false if validation failed.</returns>
     public bool TryBuild(out Pipeline? pipeline, out PipelineValidationResult validationResult)
     {
         pipeline = null;
@@ -117,6 +129,7 @@ public sealed partial class PipelineBuilder
     ///     Helper method to extract and consolidate configuration building logic.
     ///     This centralizes the creation of all configuration objects used by the pipeline graph.
     /// </summary>
+    /// <returns>A tuple containing the error handling, lineage, and execution configurations.</returns>
     private (
         ErrorHandlingConfiguration ErrorHandlingConfig,
         LineageConfiguration LineageConfig,

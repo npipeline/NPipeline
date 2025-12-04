@@ -9,6 +9,9 @@ public sealed class NullPipelineTracer : IPipelineTracer
     {
     }
 
+    /// <summary>
+    ///     Gets the singleton instance of the null pipeline tracer.
+    /// </summary>
     public static NullPipelineTracer Instance { get; } = new();
 
     /// <inheritdoc />

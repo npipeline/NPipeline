@@ -12,6 +12,9 @@ public sealed class StreamingDataPipe<T>(IAsyncEnumerable<T> stream, string stre
     private readonly IAsyncEnumerable<T> _stream = stream ?? throw new ArgumentNullException(nameof(stream));
     private bool _disposed;
 
+    /// <summary>
+    ///     Gets the name of the stream for identification purposes.
+    /// </summary>
     public string StreamName { get; } = streamName;
 
     /// <summary>
@@ -41,6 +44,10 @@ public sealed class StreamingDataPipe<T>(IAsyncEnumerable<T> stream, string stre
         }
     }
 
+    /// <summary>
+    ///     Gets the data type of the items in this data pipe.
+    /// </summary>
+    /// <returns>The type of data items in the pipe.</returns>
     public Type GetDataType()
     {
         return typeof(T);
@@ -58,6 +65,11 @@ public sealed class StreamingDataPipe<T>(IAsyncEnumerable<T> stream, string stre
         _disposed = true;
     }
 
+    /// <summary>
+    ///     Returns an async enumerable that supports cancellation.
+    /// </summary>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>An async enumerable with cancellation support.</returns>
     public async IAsyncEnumerable<T> WithCancellation([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

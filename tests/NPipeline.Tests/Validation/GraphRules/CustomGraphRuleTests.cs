@@ -3,7 +3,6 @@ using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Execution.Strategies;
 using NPipeline.Extensions.Testing;
-using NPipeline.Graph;
 using NPipeline.Graph.Validation;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;

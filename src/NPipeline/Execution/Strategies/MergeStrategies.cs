@@ -45,7 +45,16 @@ public static class MergeStrategies
         }
     }
 
-    // New bounded variant for performance control
+    /// <summary>
+    ///     Merges multiple asynchronous streams into a single stream by interleaving their items with optional capacity limits.
+    ///     Items are yielded as they become available from any of the source streams.
+    ///     This is ideal for responsive, real-time processing with memory constraints.
+    /// </summary>
+    /// <typeparam name="T">The type of data in the streams.</typeparam>
+    /// <param name="dataPipes">The data pipes to merge.</param>
+    /// <param name="capacity">Optional capacity limit for the internal channel. If null, uses unbounded channel.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A single merged asynchronous stream.</returns>
     public static async IAsyncEnumerable<T> InterleaveBounded<T>(
         IEnumerable<IDataPipe> dataPipes,
         int? capacity = null,

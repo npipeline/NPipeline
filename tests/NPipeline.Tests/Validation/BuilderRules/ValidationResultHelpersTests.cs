@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using AwesomeAssertions;
-using NPipeline.Graph;
 using NPipeline.Graph.Validation;
 
 namespace NPipeline.Tests.Validation.BuilderRules;

@@ -23,6 +23,10 @@ public sealed class InMemoryDataPipe<T>(IReadOnlyList<T> items, string streamNam
         return ToAsyncEnumerableTyped(cancellationToken).GetAsyncEnumerator(cancellationToken);
     }
 
+    /// <summary>
+    ///     Gets the data type of items carried by this pipe.
+    /// </summary>
+    /// <returns>The <see cref="Type" /> of data items in this pipe.</returns>
     public Type GetDataType()
     {
         return typeof(T);

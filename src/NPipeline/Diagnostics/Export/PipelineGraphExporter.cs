@@ -3,6 +3,9 @@ using NPipeline.Graph;
 
 namespace NPipeline.Diagnostics.Export;
 
+/// <summary>
+///     Provides export functionality for pipeline graphs to various formats for visualization and debugging.
+/// </summary>
 public static class PipelineGraphExporter
 {
     /// <summary>
