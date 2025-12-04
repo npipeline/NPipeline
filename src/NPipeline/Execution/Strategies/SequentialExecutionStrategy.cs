@@ -16,6 +16,7 @@ namespace NPipeline.Execution.Strategies;
 /// </summary>
 public sealed class SequentialExecutionStrategy : IExecutionStrategy
 {
+    /// <inheritdoc />
     public Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(
         IDataPipe<TIn> input,
         ITransformNode<TIn, TOut> node,
@@ -42,17 +43,17 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                 if (context.Items.TryGetValue(PipelineContextKeys.NodeRetryOptions(nodeId), out var specific) && specific is PipelineRetryOptions pr)
                     effectiveRetries = pr;
 
-                bool produced;
-                TOut output;
-                Exception? originalException = null;
+                var produced = false;
+                TOut? output = default;
+                Exception? originalException;
+                var shouldSkipToNextItem = false;
 
-                while (true)
+                while (!shouldSkipToNextItem)
                 {
                     try
                     {
-                        var work = valueTaskTransform is not null
-                            ? valueTaskTransform.ExecuteValueTaskAsync(item, context, ct)
-                            : new ValueTask<TOut>(node.ExecuteAsync(item, context, ct));
+                        var work = valueTaskTransform?.ExecuteValueTaskAsync(item, context, ct)
+                                   ?? new ValueTask<TOut>(node.ExecuteAsync(item, context, ct));
 
                         output = await work.ConfigureAwait(false);
                         produced = true;
@@ -64,14 +65,15 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                         itemActivity.RecordException(ex);
 
                         if (node.ErrorHandler is not INodeErrorHandler<ITransformNode<TIn, TOut>, TIn> typedHandler)
-
+                        {
                             // No handler or wrong type, rethrow the original exception
                             throw;
+                        }
 
                         var decision = await typedHandler.HandleAsync(node, item, ex, context, ct);
 
                         // Handle the error decision using pattern matching
-                        var shouldContinue = decision switch
+                        var (producedValue, shouldGotoAfterItem) = decision switch
                         {
                             NodeErrorDecision.Skip => HandleSkip(),
                             NodeErrorDecision.DeadLetter => await HandleRedirect(context, nodeId, item, ex, ct),
@@ -80,13 +82,11 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                             _ => throw new InvalidOperationException($"Error handling failed for node {nodeId}", ex),
                         };
 
-                        if (shouldContinue.ShouldGotoAfterItem)
+                        if (shouldGotoAfterItem)
                         {
-                            produced = shouldContinue.Produced;
-                            goto afterItem;
+                            produced = producedValue;
+                            shouldSkipToNextItem = true;
                         }
-
-                        continue;
 
                         // Local functions for handling each decision type
                         static (bool Produced, bool ShouldGotoAfterItem) HandleSkip()
@@ -119,8 +119,6 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
 
                 if (produced)
                     yield return output!;
-
-                afterItem: ; // Empty statement for the goto label
             }
         }
     }
