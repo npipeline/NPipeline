@@ -1,67 +1,7 @@
 using System.Collections.Immutable;
 using NPipeline.Nodes;
 
-namespace NPipeline.Graph;
-
-/// <summary>
-///     Severity level for a validation issue.
-/// </summary>
-public enum ValidationSeverity
-{
-    Error,
-    Warning,
-}
-
-/// <summary>
-///     A single validation issue (error or warning) with optional category and detail.
-/// </summary>
-public sealed record ValidationIssue(ValidationSeverity Severity, string Message, string Category)
-{
-    public override string ToString()
-    {
-        return $"[{Severity}] {Category}: {Message}";
-    }
-}
-
-/// <summary>
-///     Represents the result of pipeline graph validation (categorized + severities).
-/// </summary>
-public sealed record PipelineValidationResult(ImmutableList<ValidationIssue> Issues)
-{
-    public static PipelineValidationResult Success { get; } = new(ImmutableList<ValidationIssue>.Empty);
-    public bool IsValid => Issues.All(i => i.Severity != ValidationSeverity.Error);
-    public ImmutableList<string> Errors => Issues.Where(i => i.Severity == ValidationSeverity.Error).Select(i => i.Message).ToImmutableList();
-    public ImmutableList<string> Warnings => Issues.Where(i => i.Severity == ValidationSeverity.Warning).Select(i => i.Message).ToImmutableList();
-}
-
-/// <summary>
-///     Exception thrown when pipeline validation fails.
-/// </summary>
-public sealed class PipelineValidationException : Exception
-{
-    public PipelineValidationException() : base("Pipeline validation failed.")
-    {
-        Result = PipelineValidationResult.Success;
-    }
-
-    public PipelineValidationException(string message) : base($"Pipeline validation failed: {message}")
-    {
-        Result = PipelineValidationResult.Success;
-    }
-
-    public PipelineValidationException(string message, Exception inner) : base($"Pipeline validation failed: {message}", inner)
-    {
-        Result = PipelineValidationResult.Success;
-    }
-
-    public PipelineValidationException(PipelineValidationResult result)
-        : base($"Pipeline validation failed: {string.Join("; ", result.Errors)}")
-    {
-        Result = result;
-    }
-
-    public PipelineValidationResult Result { get; }
-}
+namespace NPipeline.Graph.Validation;
 
 /// <summary>
 ///     Validates structural correctness and sanity constraints of a <see cref="PipelineGraph" /> using modular rules.
@@ -88,6 +28,12 @@ public static class PipelineGraphValidator
         new TypeCompatibilityRule(),
     ];
 
+    /// <summary>
+    ///     Validates a pipeline graph using core validation rules and any additional rules provided.
+    /// </summary>
+    /// <param name="graph">The pipeline graph to validate.</param>
+    /// <param name="extraRules">Optional additional validation rules to apply.</param>
+    /// <returns>A <see cref="PipelineValidationResult" /> containing all validation issues found.</returns>
     public static PipelineValidationResult Validate(PipelineGraph graph, IEnumerable<IGraphRule>? extraRules = null)
     {
         var issues = ImmutableList.CreateBuilder<ValidationIssue>();

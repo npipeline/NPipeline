@@ -1,4 +1,4 @@
-namespace NPipeline.Graph;
+namespace NPipeline.Graph.Validation;
 
 public interface IGraphRule
 {

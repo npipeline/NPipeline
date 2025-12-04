@@ -3,6 +3,7 @@ using NPipeline.DataFlow;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution.Strategies;
 using NPipeline.Graph;
+using NPipeline.Graph.Validation;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using Xunit.Abstractions;

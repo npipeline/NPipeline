@@ -12,6 +12,7 @@ using NPipeline.Execution.Lineage;
 using NPipeline.Execution.Lineage.Strategies;
 using NPipeline.Execution.Strategies;
 using NPipeline.Graph;
+using NPipeline.Graph.Validation;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Visualization;

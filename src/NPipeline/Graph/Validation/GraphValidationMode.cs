@@ -1,6 +1,6 @@
 using NPipeline.Pipeline;
 
-namespace NPipeline.Graph;
+namespace NPipeline.Graph.Validation;
 
 /// <summary>
 ///     Controls how pipeline graph validation is applied during <see cref="PipelineBuilder.Build" />.

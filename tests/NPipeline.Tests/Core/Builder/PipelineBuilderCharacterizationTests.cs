@@ -9,6 +9,7 @@ using NPipeline.Execution;
 using NPipeline.Execution.Annotations;
 using NPipeline.Extensions.Testing;
 using NPipeline.Graph;
+using NPipeline.Graph.Validation;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 

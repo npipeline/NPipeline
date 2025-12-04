@@ -4,6 +4,7 @@ using System.Diagnostics;
 using NPipeline.Configuration;
 using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
+using NPipeline.Graph.Validation;
 using NPipeline.Pipeline.Internals;
 
 namespace NPipeline.Pipeline;

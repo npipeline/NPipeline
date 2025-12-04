@@ -2,6 +2,7 @@ using System.Reflection;
 using NPipeline.Configuration;
 using NPipeline.Execution.Lineage;
 using NPipeline.Graph;
+using NPipeline.Graph.Validation;
 using NPipeline.Nodes;
 using NPipeline.Pipeline.Internals;
 

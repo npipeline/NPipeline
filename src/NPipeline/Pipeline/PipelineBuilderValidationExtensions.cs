@@ -2,6 +2,7 @@ using System.Collections.Frozen;
 using System.Collections.Immutable;
 using NPipeline.Diagnostics.Export;
 using NPipeline.Graph;
+using NPipeline.Graph.Validation;
 
 namespace NPipeline.Pipeline;
 
