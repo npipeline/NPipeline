@@ -50,7 +50,7 @@ If you need **shared mutable state** during parallel execution, **DO NOT** acces
 ```csharp
 // During context setup
 var stateManager = new MyThreadSafeStateManager();
-context.Properties["NPipeline.StateManager"] = stateManager;
+context.Properties[PipelineContextKeys.StateManager] = stateManager;
 
 // In your transform node
 public override async ValueTask<TOut> TransformAsync(TIn input, PipelineContext context, CancellationToken ct)

@@ -67,6 +67,15 @@ public static class PipelineContextKeys
     /// <remarks>Stores the pipeline-level lineage sink instance for tracking overall pipeline lineage.</remarks>
     public const string PipelineLineageSink = "lineage.pipeline.sink";
 
+    // ===== STATE =====
+    /// <summary>State manager instance (value: IPipelineStateManager)</summary>
+    /// <remarks>Provides access to the pipeline state manager for tracking and managing pipeline state.</remarks>
+    public const string StateManager = "NPipeline.StateManager";
+
+    /// <summary>Stateful registry instance (value: IStatefulRegistry)</summary>
+    /// <remarks>Registry for stateful components and their state management requirements.</remarks>
+    public const string StatefulRegistry = "NPipeline.State.StatefulRegistry";
+
     // ===== PER-NODE OPTIONS & METRICS =====
     /// <summary>Per-node retry options - format: "retry::{nodeId}" (value: PipelineRetryOptions)</summary>
     /// <remarks>Allows configuring retry behavior on a per-node basis, overriding global settings.</remarks>

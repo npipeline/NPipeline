@@ -61,7 +61,7 @@ public sealed class ErrorHandlingAndPersistenceTests
             .Build();
 
         var sm = new SnapshotStateManager();
-        ctx.Properties["NPipeline.StateManager"] = sm;
+        ctx.Properties[PipelineContextKeys.StateManager] = sm;
         var completed = new NodeExecutionCompleted("n1", "Dummy", TimeSpan.FromMilliseconds(5), true, null);
         persistence.TryPersistAfterNode(ctx, completed);
 

@@ -223,7 +223,7 @@ public sealed class PipelineRunner(
             }
 
             if (context.Properties.TryGetValue(ExecutionAnnotationKeys.GlobalPropertyPrefix + "NPipeline.StateManager", out var sm))
-                context.Properties["NPipeline.StateManager"] = sm; // alias without Global prefix for state package
+                context.Properties[PipelineContextKeys.StateManager] = sm; // alias without Global prefix for state package
 
             // Wire a globally provided execution observer if present
             if (context.Properties.TryGetValue(ExecutionAnnotationKeys.ExecutionObserverProperty, out var eo))
@@ -244,7 +244,7 @@ public sealed class PipelineRunner(
 
             // Surface stateful node registry (similar to state manager) and register instantiated nodes
             if (context.Properties.TryGetValue("NPipeline.Global.NPipeline.State.StatefulRegistry", out var regObj))
-                context.Properties["NPipeline.State.StatefulRegistry"] = regObj; // alias without Global prefix for state package
+                context.Properties[PipelineContextKeys.StatefulRegistry] = regObj; // alias without Global prefix for state package
 
             // Register stateful nodes before any potential snapshot attempts
             executionCoordinator.RegisterStatefulNodes(nodeInstances, context);

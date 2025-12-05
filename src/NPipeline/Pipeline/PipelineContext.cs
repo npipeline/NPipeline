@@ -238,14 +238,14 @@ public sealed class PipelineContext
     /// <summary>
     ///     Gets the state manager for this pipeline run, if available.
     /// </summary>
-    public IPipelineStateManager? StateManager => Properties.TryGetValue("NPipeline.StateManager", out var sm) && sm is IPipelineStateManager manager
+    public IPipelineStateManager? StateManager => Properties.TryGetValue(PipelineContextKeys.StateManager, out var sm) && sm is IPipelineStateManager manager
         ? manager
         : null;
 
     /// <summary>
     ///     Gets the stateful registry for this pipeline run, if available.
     /// </summary>
-    public IStatefulRegistry? StatefulRegistry => Properties.TryGetValue("NPipeline.State.StatefulRegistry", out var reg) && reg is IStatefulRegistry registry
+    public IStatefulRegistry? StatefulRegistry => Properties.TryGetValue(PipelineContextKeys.StatefulRegistry, out var reg) && reg is IStatefulRegistry registry
         ? registry
         : null;
 
