@@ -108,10 +108,8 @@ public sealed class NodeExecutor(
 
         transformed = countingService.Wrap(transformed, context);
         transformed = branchService.MaybeMulticast(transformed, graph, plan.NodeId, context);
-        var disposable = transformed as IAsyncDisposable ?? input;
-
-        if (disposable is not null)
-            context.RegisterForDisposal(disposable);
+        var disposable = transformed as IAsyncDisposable;
+        context.RegisterForDisposal(disposable);
 
         nodeOutputs[plan.NodeId] = transformed;
     }
@@ -181,10 +179,8 @@ public sealed class NodeExecutor(
 
         output = countingService.Wrap(output, context);
         output = branchService.MaybeMulticast(output, graph, plan.NodeId, context);
-        var disposable = output as IAsyncDisposable ?? merged;
-
-        if (disposable is not null)
-            context.RegisterForDisposal(disposable);
+        var disposable = output as IAsyncDisposable;
+        context.RegisterForDisposal(disposable);
 
         nodeOutputs[plan.NodeId] = output;
     }
