@@ -59,10 +59,13 @@ public sealed class StreamingDataPipe<T>(IAsyncEnumerable<T> stream, string stre
     /// <returns>A <see cref="ValueTask" /> that represents the asynchronous dispose operation.</returns>
     public async ValueTask DisposeAsync()
     {
-        if (_stream is IAsyncDisposable disposable)
-            await disposable.DisposeAsync().ConfigureAwait(false);
+        if (_disposed)
+            return;
 
         _disposed = true;
+
+        if (_stream is IAsyncDisposable disposable)
+            await disposable.DisposeAsync().ConfigureAwait(false);
     }
 
     /// <summary>
