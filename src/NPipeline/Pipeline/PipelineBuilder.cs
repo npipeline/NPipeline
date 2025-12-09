@@ -20,7 +20,7 @@ namespace NPipeline.Pipeline;
 public sealed partial class PipelineBuilder
 {
     // Track disposables created during builder configuration so they can be transferred to the PipelineContext at execution time.
-    private readonly List<IAsyncDisposable> _builderDisposables = new();
+    private readonly List<IAsyncDisposable> _builderDisposables = [];
     private readonly List<IGraphRule> _customValidationRules = [];
 
     // State objects encapsulating related fields by concern
@@ -110,6 +110,16 @@ public sealed partial class PipelineBuilder
     /// </summary>
     /// <param name="name">Optional node name. If not provided, an auto-generated name will be used.</param>
     public TransformNodeHandle<TIn, TOut> AddTransform<TNode, TIn, TOut>(string? name = null) where TNode : ITransformNode<TIn, TOut>
+    {
+        name ??= GenerateUniqueNodeName(typeof(TNode).Name);
+        return RegisterNode(name, NodeKind.Transform, typeof(TNode), typeof(TIn), typeof(TOut), static (id, def) => new TransformNodeHandle<TIn, TOut>(id));
+    }
+
+    /// <summary>
+    ///     Adds a stream transform node to the pipeline.
+    /// </summary>
+    /// <param name="name">Optional node name. If not provided, an auto-generated name will be used.</param>
+    public TransformNodeHandle<TIn, TOut> AddStreamTransform<TNode, TIn, TOut>(string? name = null) where TNode : IStreamTransformNode<TIn, TOut>
     {
         name ??= GenerateUniqueNodeName(typeof(TNode).Name);
         return RegisterNode(name, NodeKind.Transform, typeof(TNode), typeof(TIn), typeof(TOut), static (id, def) => new TransformNodeHandle<TIn, TOut>(id));

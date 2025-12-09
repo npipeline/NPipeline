@@ -115,6 +115,8 @@ dotnet add package NPipeline.Analyzers
 | **NP9203** | Performance | Anonymous object allocation in hot paths | Use named types or value types |
 | **NP9204** | Performance | Missing ValueTask optimization | Use ValueTask for sync-heavy paths |
 | **NP9205** | Performance | Non-streaming patterns in SourceNode | Use IAsyncEnumerable with yield |
+| **NP9210** | Data Flow | ITransformNode returning IAsyncEnumerable | Use IStreamTransformNode instead |
+| **NP9211** | Data Flow | IStreamTransformNode with non-stream strategy | Use IStreamExecutionStrategy |
 | **NP9301** | Reliability | Inefficient exception handling patterns | Use specific exception handling |
 | **NP9302** | Data Processing | SinkNode input not consumed | Iterate the input pipe |
 | **NP9303** | Best Practice | Unsafe PipelineContext access | Use null-safe patterns |
@@ -155,6 +157,8 @@ dotnet_diagnostic.NP9201.severity = error
 dotnet_diagnostic.NP9202.severity = error
 dotnet_diagnostic.NP9203.severity = error
 dotnet_diagnostic.NP9205.severity = error
+dotnet_diagnostic.NP9210.severity = info
+dotnet_diagnostic.NP9211.severity = warning
 dotnet_diagnostic.NP9301.severity = error
 dotnet_diagnostic.NP9302.severity = error
 dotnet_diagnostic.NP9303.severity = error

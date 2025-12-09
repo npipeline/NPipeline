@@ -647,6 +647,192 @@ public class GoodSourceNode : SourceNode<string>
 
 ---
 
+### NP9210: StreamTransformNodeSuggestionAnalyzer
+
+**Message:** `[NP9210] Class '{0}' implements ITransformNode but ExecuteAsync returns IAsyncEnumerable&lt;{1}&gt;. Consider implementing IStreamTransformNode&lt;{2}, {1}&gt; instead for better interface segregation.`
+
+**Category:** Design
+
+**Severity:** Info
+
+**Cause:** Your class implements ITransformNode but its generic output argument (`TOut`) is `IAsyncEnumerable<T>`, meaning `ExecuteAsync` effectively returns `Task<IAsyncEnumerable<T>>`. This indicates that the node is performing stream-based transformations, which is better represented by the IStreamTransformNode interface.
+
+This pattern can lead to:
+- Unclear intent about whether the node processes items individually or as streams
+- Missed opportunities for stream-specific optimizations
+- Interface segregation principle violation
+
+**Example of Problem Code:**
+
+```csharp
+// :x: PROBLEM: Using ITransformNode with streaming return type
+public class DataProcessor : ITransformNode<string, IAsyncEnumerable<int>>
+{
+    public Task<IAsyncEnumerable<int>> ExecuteAsync(
+        string item,
+        PipelineContext context, 
+        CancellationToken cancellationToken)
+    {
+        // Each call processes a single item but returns an async stream,
+        // which violates the one-in/one-out ITransformNode contract
+        return Task.FromResult(ProcessAsStream(item));
+    }
+    
+    private IAsyncEnumerable<int> ProcessAsStream(string input)
+    {
+        // Process input and yield multiple results
+        foreach (var number in input.Split(','))
+        {
+            yield return int.Parse(number);
+        }
+    }
+}
+```
+
+**Solution - Use IStreamTransformNode:**
+
+```csharp
+// :heavy_check_mark: SOLUTION: Using IStreamTransformNode for stream processing
+public class DataProcessor : IStreamTransformNode<string, int>
+{
+    public IAsyncEnumerable<int> ExecuteAsync(
+        IAsyncEnumerable<string> items, 
+        PipelineContext context, 
+        CancellationToken cancellationToken)
+    {
+        // This method signature clearly indicates stream processing
+        return ProcessItemsAsync(items, cancellationToken);
+    }
+    
+    private async IAsyncEnumerable<int> ProcessItemsAsync(
+        IAsyncEnumerable<string> inputs, 
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await foreach (var input in inputs.WithCancellation(cancellationToken))
+        {
+            foreach (var number in input.Split(','))
+            {
+                yield return int.Parse(number);
+            }
+        }
+    }
+}
+```
+
+**Benefits of IStreamTransformNode:**
+
+1. **Clear Intent**: The interface explicitly indicates stream-based transformation
+2. **Better Performance**: Enables stream-specific optimizations in execution strategies
+3. **Type Safety**: Prevents confusion between item-based and stream-based processing
+4. **Interface Segregation**: Follows the interface segregation principle by providing a specialized interface
+
+**Code Fix:**
+
+A code fix is available that will automatically convert your ITransformNode implementation to IStreamTransformNode:
+- Updates the base interface from ITransformNode<TIn, TOut> to IStreamTransformNode<TIn, TOut>
+- Changes the ExecuteAsync signature to accept IAsyncEnumerable<TIn> instead of TIn
+- Updates the return type to IAsyncEnumerable<TOut> (no Task wrapper)
+- Adds the necessary using statement for System.Collections.Generic if not present
+
+---
+
+### NP9211: StreamTransformNodeExecutionStrategyAnalyzer
+
+**Message:** `[NP9211] IStreamTransformNode '{0}' uses an execution strategy that doesn't implement IStreamExecutionStrategy. Consider using a strategy that implements both IExecutionStrategy and IStreamExecutionStrategy for optimal performance.`
+
+**Category:** Design
+
+**Severity:** Warning
+
+**Cause:** Your IStreamTransformNode implementation is using an execution strategy that doesn't implement IStreamExecutionStrategy. This can result in suboptimal performance as the strategy cannot take advantage of stream-specific optimizations.
+
+This mismatch can lead to:
+- Reduced performance due to lack of stream-specific optimizations
+- Unnecessary materialization of streams
+- Missed opportunities for batch processing
+
+**Example of Problem Code:**
+
+```csharp
+// :x: PROBLEM: Using non-stream execution strategy with IStreamTransformNode
+public class StreamProcessor : IStreamTransformNode<string, int>
+{
+    public IAsyncEnumerable<int> ExecuteAsync(
+        IAsyncEnumerable<string> items, 
+        PipelineContext context, 
+        CancellationToken cancellationToken)
+    {
+        return ProcessItemsAsync(items, cancellationToken);
+    }
+    
+    // This property uses a non-stream execution strategy
+    public IExecutionStrategy ExecutionStrategy { get; } = new SequentialExecutionStrategy();
+    
+    private async IAsyncEnumerable<int> ProcessItemsAsync(
+        IAsyncEnumerable<string> inputs, 
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await foreach (var input in inputs.WithCancellation(cancellationToken))
+        {
+            yield return int.Parse(input);
+        }
+    }
+}
+```
+
+**Solution - Use Stream-Optimized Execution Strategy:**
+
+```csharp
+// :heavy_check_mark: SOLUTION: Using stream execution strategy with IStreamTransformNode
+public class StreamProcessor : IStreamTransformNode<string, int>
+{
+    public IAsyncEnumerable<int> ExecuteAsync(
+        IAsyncEnumerable<string> items, 
+        PipelineContext context, 
+        CancellationToken cancellationToken)
+    {
+        return ProcessItemsAsync(items, cancellationToken);
+    }
+    
+    // This property uses a stream-optimized execution strategy
+    public IExecutionStrategy ExecutionStrategy { get; } = new BatchingExecutionStrategy(100, TimeSpan.FromSeconds(1));
+    
+    private async IAsyncEnumerable<int> ProcessItemsAsync(
+        IAsyncEnumerable<string> inputs, 
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await foreach (var input in inputs.WithCancellation(cancellationToken))
+        {
+            yield return int.Parse(input);
+        }
+    }
+}
+```
+
+**Available Stream-Optimized Execution Strategies:**
+
+| Strategy | Description | When to Use |
+|---------|-------------|-------------|
+| `BatchingExecutionStrategy` | Batches items for processing | When you want to process items in batches for better throughput |
+| `UnbatchingExecutionStrategy` | Unbatches items for individual processing | When downstream nodes need individual items but you receive batches |
+
+**Code Fixes:**
+
+Two code fixes are available:
+
+1. **Replace with BatchingExecutionStrategy**: Creates a new BatchingExecutionStrategy with default parameters (batch size: 100, time window: 1 second)
+
+2. **Replace with UnbatchingExecutionStrategy**: Creates a new UnbatchingExecutionStrategy with no parameters
+
+**Benefits of Stream-Optimized Execution Strategies:**
+
+1. **Better Performance**: Strategies can take advantage of stream-specific optimizations
+2. **Reduced Memory Usage**: Avoids unnecessary materialization of streams
+3. **Improved Throughput**: Can process items in batches when appropriate
+4. **Consistent Design**: Aligns the node type with the appropriate execution strategy type
+
+---
+
 ### NP9401: Missing Dependency Injection
 
 **Message:** `[NP9401] Avoid dependency injection anti-patterns in node implementations. Use constructor injection instead.`
@@ -680,7 +866,7 @@ public class BadTransformNode : TransformNode<string, string>
 
 public class BadSourceNode : SourceNode<int>
 {
-    private static BadService _service; // Static field
+    private static BadService _service;
 
     public BadSourceNode()
     {

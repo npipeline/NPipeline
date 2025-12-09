@@ -41,7 +41,7 @@ public sealed partial class PipelineBuilder
         if (!NodeState.Nodes.TryGetValue(handle.Id, out var nodeDef))
             throw new InvalidOperationException(ErrorMessages.NodeNotFoundInBuilder(handle.Id, "WithExecutionStrategy"));
 
-        if (!typeof(ITransformNode).IsAssignableFrom(nodeDef.NodeType))
+        if (!typeof(ITransformNode).IsAssignableFrom(nodeDef.NodeType) && !typeof(IStreamTransformNode).IsAssignableFrom(nodeDef.NodeType))
             throw new InvalidOperationException(ErrorMessages.ExecutionStrategyCannotBeSetForNonTransformNode(nodeDef.Name, nodeDef.Kind.ToString()));
 
         NodeState.Nodes[handle.Id] = nodeDef with { ExecutionStrategy = strategy };

@@ -1,3 +1,7 @@
+using System.Runtime.CompilerServices;
+using NPipeline.DataFlow;
+using NPipeline.ErrorHandling;
+using NPipeline.Execution;
 using NPipeline.Execution.Strategies;
 using NPipeline.Pipeline;
 
@@ -8,25 +12,60 @@ namespace NPipeline.Nodes;
 ///     This node works in conjunction with the <see cref="BatchingExecutionStrategy" />.
 /// </summary>
 /// <typeparam name="T">The type of items to batch.</typeparam>
-public sealed class BatchingNode<T> : TransformNode<T, IReadOnlyCollection<T>>
+public sealed class BatchingNode<T>(int batchSize, TimeSpan timespan) : IStreamTransformNode<T, IReadOnlyCollection<T>>
 {
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="BatchingNode{T}" /> class.
-    /// </summary>
-    /// <param name="batchSize">The maximum number of items in a batch.</param>
-    /// <param name="timespan">The maximum time to wait before emitting a batch.</param>
-    public BatchingNode(int batchSize, TimeSpan timespan)
-        : base(new BatchingExecutionStrategy(batchSize, timespan))
+    private INodeErrorHandler? _errorHandler;
+
+    /// <inheritdoc />
+    public IExecutionStrategy ExecutionStrategy { get; set; } = new BatchingExecutionStrategy(batchSize, timespan);
+
+    /// <inheritdoc />
+    public INodeErrorHandler? ErrorHandler
     {
+        get => _errorHandler;
+        set
+        {
+            if (value is not null and not INodeErrorHandler<IStreamTransformNode<T, IReadOnlyCollection<T>>, T>)
+            {
+                throw new ArgumentException(
+                    $"The provided error handler is not of the expected type INodeErrorHandler<IStreamTransformNode<T, IReadOnlyCollection<T>>, T> for node {GetType().Name}.",
+                    nameof(value));
+            }
+
+            _errorHandler = value;
+        }
     }
 
     /// <summary>
-    ///     This method is not supported for the <see cref="BatchingNode{T}" />, as batching is handled by the execution strategy.
+    ///     Transforms an input stream of items into batches of items asynchronously.
     /// </summary>
-    public override Task<IReadOnlyCollection<T>> ExecuteAsync(T item, PipelineContext context, CancellationToken cancellationToken)
+    /// <param name="items">The input stream of items to batch.</param>
+    /// <param name="context">The pipeline context.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The output stream of batched items.</returns>
+    public async IAsyncEnumerable<IReadOnlyCollection<T>> ExecuteAsync(
+        IAsyncEnumerable<T> items,
+        PipelineContext context,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        // This method will not be called by the BatchingExecutionStrategy, which operates on the entire stream.
-        throw new NotSupportedException(
-            $"The {nameof(BatchingNode<T>)} does not support item-by-item transformation. It relies on the {nameof(BatchingExecutionStrategy)} to process the stream.");
+        // Get the batching parameters from the execution strategy
+        if (ExecutionStrategy is not BatchingExecutionStrategy batchingStrategy)
+            throw new InvalidOperationException($"The {nameof(BatchingNode<T>)} requires a {nameof(BatchingExecutionStrategy)} to be configured.");
+
+        // Delegate to the BatchAsync extension method for the actual batching logic
+        await foreach (var batch in items.BatchAsync(batchingStrategy.BatchSize, batchingStrategy.Timespan, cancellationToken))
+        {
+            yield return batch;
+        }
+    }
+
+    /// <summary>
+    ///     Asynchronously disposes of the node.
+    /// </summary>
+    /// <returns>A <see cref="ValueTask" /> that represents the asynchronous dispose operation.</returns>
+    public ValueTask DisposeAsync()
+    {
+        GC.SuppressFinalize(this);
+        return ValueTask.CompletedTask;
     }
 }

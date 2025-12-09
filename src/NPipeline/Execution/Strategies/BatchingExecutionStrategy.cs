@@ -54,11 +54,8 @@ namespace NPipeline.Execution.Strategies;
 /// }
 /// </code>
 /// </example>
-public sealed class BatchingExecutionStrategy : IExecutionStrategy
+public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecutionStrategy
 {
-    private readonly int _batchSize;
-    private readonly TimeSpan _timespan;
-
     /// <summary>
     ///     Initializes a new instance of the <see cref="BatchingExecutionStrategy" /> class.
     /// </summary>
@@ -70,13 +67,23 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy
         if (batchSize <= 0)
             throw new ArgumentOutOfRangeException(nameof(batchSize), "Batch size must be greater than zero.");
 
-        _batchSize = batchSize;
-        _timespan = timespan;
+        BatchSize = batchSize;
+        Timespan = timespan;
     }
+
+    /// <summary>
+    ///     Gets the maximum number of items in a batch.
+    /// </summary>
+    public int BatchSize { get; }
+
+    /// <summary>
+    ///     Gets the maximum time to wait before emitting a batch, even if not full.
+    /// </summary>
+    public TimeSpan Timespan { get; }
 
     /// <inheritdoc />
     /// <remarks>
-    ///     This strategy transforms the stream from individual items to collections. The output type
+    ///     This strategy transforms stream from individual items to collections. The output type
     ///     must be <see cref="IReadOnlyCollection{T}" /> where T is the input item type, or an
     ///     <see cref="InvalidOperationException" /> will be thrown.
     /// </remarks>
@@ -86,7 +93,7 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy
         PipelineContext context,
         CancellationToken cancellationToken)
     {
-        // This strategy changes the shape of the data from TIn to IReadOnlyCollection<TIn>.
+        // This strategy changes the shape of data from TIn to IReadOnlyCollection<TIn>.
         // The node using this strategy is expected to be an ITransformNode<TIn, IReadOnlyCollection<TIn>>.
         if (typeof(TOut) != typeof(IReadOnlyCollection<TIn>))
         {
@@ -94,7 +101,34 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy
                 $"The {nameof(BatchingExecutionStrategy)} can only be used with nodes that output a collection. Expected output type: {typeof(IReadOnlyCollection<TIn>).Name}, but found {typeof(TOut).Name}.");
         }
 
-        var batchedStream = input.BatchAsync(_batchSize, _timespan, cancellationToken);
+        var batchedStream = input.BatchAsync(BatchSize, Timespan, cancellationToken);
+
+        // The type system is a bit tricky here. We know TOut is IReadOnlyCollection<TIn>,
+        // but we need to cast it to satisfy the compiler.
+        var outputPipe = new StreamingDataPipe<TOut>((IAsyncEnumerable<TOut>)batchedStream);
+
+        // Use Task.FromResult for already-completed synchronous result
+        return Task.FromResult<IDataPipe<TOut>>(outputPipe);
+    }
+
+    /// <summary>
+    ///     Executes the batching strategy for stream transform nodes.
+    /// </summary>
+    public Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(
+        IDataPipe<TIn> input,
+        IStreamTransformNode<TIn, TOut> node,
+        PipelineContext context,
+        CancellationToken cancellationToken)
+    {
+        // This strategy changes the shape of data from TIn to IReadOnlyCollection<TIn>.
+        // The node using this strategy is expected to be an IStreamTransformNode<TIn, IReadOnlyCollection<TIn>>.
+        if (typeof(TOut) != typeof(IReadOnlyCollection<TIn>))
+        {
+            throw new InvalidOperationException(
+                $"The {nameof(BatchingExecutionStrategy)} can only be used with nodes that output a collection. Expected output type: {typeof(IReadOnlyCollection<TIn>).Name}, but found {typeof(TOut).Name}.");
+        }
+
+        var batchedStream = input.BatchAsync(BatchSize, Timespan, cancellationToken);
 
         // The type system is a bit tricky here. We know TOut is IReadOnlyCollection<TIn>,
         // but we need to cast it to satisfy the compiler.

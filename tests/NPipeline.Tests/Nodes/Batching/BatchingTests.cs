@@ -1,9 +1,6 @@
 using System.Diagnostics;
 using System.Threading.Channels;
 using AwesomeAssertions;
-using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
-using NPipeline.Execution.Strategies;
 using NPipeline.Nodes;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
@@ -26,12 +23,16 @@ public sealed class BatchingTests(ITestOutputHelper output)
 
         // Arrange
         var source = Enumerable.Range(0, 25).ToAsyncEnumerable();
-        var pipe = new StreamingDataPipe<int>(source);
         var batchingNode = new BatchingNode<int>(10, TimeSpan.FromSeconds(5));
+        var context = PipelineContext.Default;
 
         // Act
-        var resultPipe = await batchingNode.ExecuteWithStrategyAsync(pipe, PipelineContext.Default, CancellationToken.None);
-        var results = await resultPipe.ToListAsync();
+        var results = new List<IReadOnlyCollection<int>>();
+
+        await foreach (var batch in batchingNode.ExecuteAsync(source, context, CancellationToken.None))
+        {
+            results.Add(batch);
+        }
 
         // Assert
         // Expect 3 batches: 10,10,5 with large window not forcing early flush
@@ -57,13 +58,16 @@ public sealed class BatchingTests(ITestOutputHelper output)
             new() { 4, 5, 6, 7, 8, 9 },
         }.ToAsyncEnumerable();
 
-        var pipe = new StreamingDataPipe<IEnumerable<int>>(source);
         var unbatchingNode = new UnbatchingNode<int>();
-        unbatchingNode.ExecutionStrategy = new UnbatchingExecutionStrategy();
+        var context = PipelineContext.Default;
 
         // Act
-        var resultPipe = await unbatchingNode.ExecuteWithStrategyAsync(pipe, PipelineContext.Default, CancellationToken.None);
-        var results = await resultPipe.ToListAsync();
+        var results = new List<int>();
+
+        await foreach (var item in unbatchingNode.ExecuteAsync(source, context, CancellationToken.None))
+        {
+            results.Add(item);
+        }
 
         // Assert
         results.Should().HaveCount(9);
@@ -101,12 +105,16 @@ public sealed class BatchingTests(ITestOutputHelper output)
 
         // Arrange
         var source = Enumerable.Range(0, 100).ToAsyncEnumerable();
-        var pipe = new StreamingDataPipe<int>(source);
         var batchingNode = new BatchingNode<int>(10, TimeSpan.FromSeconds(10));
+        var context = PipelineContext.Default;
 
         // Act
-        var resultPipe = await batchingNode.ExecuteWithStrategyAsync(pipe, PipelineContext.Default, CancellationToken.None);
-        var results = await resultPipe.ToListAsync();
+        var results = new List<IReadOnlyCollection<int>>();
+
+        await foreach (var batch in batchingNode.ExecuteAsync(source, context, CancellationToken.None))
+        {
+            results.Add(batch);
+        }
 
         // Assert
         results.Should().HaveCount(10);
@@ -120,12 +128,16 @@ public sealed class BatchingTests(ITestOutputHelper output)
 
         // Arrange
         var source = Enumerable.Range(0, 95).ToAsyncEnumerable();
-        var pipe = new StreamingDataPipe<int>(source);
         var batchingNode = new BatchingNode<int>(10, TimeSpan.FromSeconds(10));
+        var context = PipelineContext.Default;
 
         // Act
-        var resultPipe = await batchingNode.ExecuteWithStrategyAsync(pipe, PipelineContext.Default, CancellationToken.None);
-        var results = await resultPipe.ToListAsync();
+        var results = new List<IReadOnlyCollection<int>>();
+
+        await foreach (var batch in batchingNode.ExecuteAsync(source, context, CancellationToken.None))
+        {
+            results.Add(batch);
+        }
 
         // Assert
         results.Should().HaveCount(10);
@@ -152,13 +164,19 @@ public sealed class BatchingTests(ITestOutputHelper output)
             channel.Writer.Complete();
         });
 
-        var pipe = new StreamingDataPipe<int>(channel.Reader.ReadAllAsync());
+        var source = channel.Reader.ReadAllAsync();
         var batchingNode = new BatchingNode<int>(10, TimeSpan.FromMilliseconds(50));
+        var context = PipelineContext.Default;
 
         // Act
         var stopwatch = Stopwatch.StartNew();
-        var resultPipe = await batchingNode.ExecuteWithStrategyAsync(pipe, PipelineContext.Default, CancellationToken.None);
-        var results = await resultPipe.ToListAsync();
+        var results = new List<IReadOnlyCollection<int>>();
+
+        await foreach (var batch in batchingNode.ExecuteAsync(source, context, CancellationToken.None))
+        {
+            results.Add(batch);
+        }
+
         stopwatch.Stop();
 
         // Assert
@@ -174,12 +192,16 @@ public sealed class BatchingTests(ITestOutputHelper output)
 
         // Arrange
         var source = Array.Empty<int>().ToAsyncEnumerable();
-        var pipe = new StreamingDataPipe<int>(source);
         var batchingNode = new BatchingNode<int>(10, TimeSpan.FromSeconds(10));
+        var context = PipelineContext.Default;
 
         // Act
-        var resultPipe = await batchingNode.ExecuteWithStrategyAsync(pipe, PipelineContext.Default, CancellationToken.None);
-        var results = await resultPipe.ToListAsync();
+        var results = new List<IReadOnlyCollection<int>>();
+
+        await foreach (var batch in batchingNode.ExecuteAsync(source, context, CancellationToken.None))
+        {
+            results.Add(batch);
+        }
 
         // Assert
         results.Should().BeEmpty();

@@ -36,30 +36,45 @@ public sealed class UnbatchingNodeTests
     }
 
     [Fact]
-    public async Task UnbatchingNode_DirectExecution_Throws()
+    public async Task UnbatchingNode_DirectExecution_Works()
     {
         // Arrange
         UnbatchingNode<int> node = new();
         var context = PipelineContext.Default;
-        int[] batchItem = [1, 2, 3];
+        var batches = new List<int[]> { new[] { 1, 2, 3 }, new[] { 4, 5, 6 } }.ToAsyncEnumerable();
 
-        // Act & Assert - calling ExecuteAsync directly should throw
-        // because UnbatchingNode is a marker that should not be executed directly
-        _ = await node.Invoking(n => n.ExecuteAsync(batchItem, context, CancellationToken.None))
-            .Should().ThrowAsync<NotSupportedException>();
+        // Act - calling ExecuteAsync with stream of batches should work
+        var results = new List<int>();
+
+        await foreach (var item in node.ExecuteAsync(batches, context, CancellationToken.None))
+        {
+            results.Add(item);
+        }
+
+        // Assert
+        results.Should().HaveCount(6);
+        results.Should().BeEquivalentTo(new[] { 1, 2, 3, 4, 5, 6 });
     }
 
     [Fact]
-    public async Task UnbatchingNode_DirectExecution_WithStrings_Throws()
+    public async Task UnbatchingNode_DirectExecution_WithStrings_Works()
     {
         // Arrange
         UnbatchingNode<string> node = new();
         var context = PipelineContext.Default;
-        string[] batchItem = ["a", "b", "c"];
+        var batches = new List<string[]> { new[] { "a", "b", "c" }, new[] { "d", "e" } }.ToAsyncEnumerable();
 
-        // Act & Assert
-        _ = await node.Invoking(n => n.ExecuteAsync(batchItem, context, CancellationToken.None))
-            .Should().ThrowAsync<NotSupportedException>();
+        // Act
+        var results = new List<string>();
+
+        await foreach (var item in node.ExecuteAsync(batches, context, CancellationToken.None))
+        {
+            results.Add(item);
+        }
+
+        // Assert
+        results.Should().HaveCount(5);
+        results.Should().BeEquivalentTo("a", "b", "c", "d", "e");
     }
 
     [Fact]

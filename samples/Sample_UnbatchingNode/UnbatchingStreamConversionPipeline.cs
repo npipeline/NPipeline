@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using NPipeline.Execution.Strategies;
-using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using Sample_UnbatchingNode.Nodes;
 
@@ -126,11 +125,7 @@ public class UnbatchingStreamConversionPipeline : IPipelineDefinition
         var marketDataSource = builder.AddSource<MarketDataSource, MarketDataEvent>("market-data-source");
 
         // Add the batching node that collects individual events into batches for analytics
-        var batching = builder.AddTransform<BatchingNode<MarketDataEvent>, MarketDataEvent, IReadOnlyCollection<MarketDataEvent>>(
-            "batching-node");
-
-        // Configure the batching node with the specified parameters
-        builder.AddPreconfiguredNodeInstance(batching.Id, new BatchingNode<MarketDataEvent>(_batchSize, _batchTimeout));
+        var batching = builder.AddBatcher<MarketDataEvent>("batching-node", _batchSize, _batchTimeout);
 
         // Add the batch analytics transform that processes batches efficiently
         var batchAnalytics = builder.AddTransform<BatchAnalyticsTransform, IReadOnlyCollection<MarketDataEvent>, BatchAnalyticsWrapper>(
@@ -142,8 +137,7 @@ public class UnbatchingStreamConversionPipeline : IPipelineDefinition
 
         // Add the unbatching node that converts batched events back to individual market data events (UNBATCHING)
         // This is the key component that demonstrates unbatching functionality
-        var unbatching = builder.AddTransform<UnbatchingNode<MarketDataEvent>, IEnumerable<MarketDataEvent>, MarketDataEvent>(
-            "unbatching-node");
+        var unbatching = builder.AddUnbatcher<MarketDataEvent>("unbatching-node");
 
         // Configure the UnbatchingExecutionStrategy for the UnbatchingNode
         builder.WithExecutionStrategy(unbatching, new UnbatchingExecutionStrategy());

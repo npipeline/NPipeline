@@ -10,25 +10,23 @@ Batching nodes represent a deliberate operational shift in how NPipeline process
 
 Batching is used when downstream operations need collecting a specified number of input items or items over a certain time period before processing them as a group. This is not an optimization but often a **necessity** for certain workloads: **bulk database inserts, transactional boundaries, and API calls that accept multiple records** require this grouping approach.
 
-> **Architectural Pattern Shared with Aggregation:** Like [aggregation nodes](aggregation.md), batching represents a shift from NPipeline's item-level streaming model to higher-level data grouping. Both require you to step outside the default item-by-item pattern. The key difference: **batching groups by count/time** for operational efficiency, while **aggregation groups by key and event time** for data correctness. See [Aggregation Nodes](aggregation.md) for patterns that handle temporal ordering of events.
+> **Architectural Pattern Shared with Aggregation:** Like [aggregation nodes](aggregation.md), batching represents a shift from NPipeline's item-level streaming model to higher-level data grouping. Both require you to step outside of the default item-by-item pattern. The key difference: **batching groups by count/time** for operational efficiency, while **aggregation groups by key and event time** for data correctness. See [Aggregation Nodes](aggregation.md) for patterns that handle temporal ordering of events.
 
-NPipeline provides the [`BatchingNode<T>`](src/NPipeline/Nodes/Batching/BatchingNode.cs) transform node and related extensions to simplify batching operations.
+NPipeline provides the [`BatchingNode<T>`](src/NPipeline/Nodes/BatchingNode.cs) transform node and related extensions to simplify batching operations.
 
-## [`BatchingNode<T>`](src/NPipeline/Nodes/Batching/BatchingNode.cs)
+## [`BatchingNode<T>`](src/NPipeline/Nodes/BatchingNode.cs)
 
-The [`BatchingNode<T>`](src/NPipeline/Nodes/Batching/BatchingNode.cs) is a transform that takes individual items of type `T` and outputs `IReadOnlyCollection<T>`, representing a batch of items.
+The [`BatchingNode<T>`](src/NPipeline/Nodes/BatchingNode.cs) is a stream transform that takes individual items of type `T` and outputs `IReadOnlyCollection<T>`, representing a batch of items.
 
-### How It Works: A Practical Operational Choice
+### How It Works: Stream-Based Processing
 
-The `BatchingNode<T>` relies on the [`BatchingExecutionStrategy`](src/NPipeline/Execution/Strategies/BatchingExecutionStrategy.cs) to handle batching logic. The `ExecuteAsync` method throws a `NotSupportedException` when called directly—this signals that batching requires special handling: control shifts from processing individual items to the execution strategy's management of collected batches.
-
-The batching strategy collects items until either the configured batch size is reached or a timeout expires, then emits the collected batch as `IReadOnlyCollection<T>`.
+The `BatchingNode<T>` implements [`IStreamTransformNode<T, IReadOnlyCollection<T>>`](src/NPipeline/Nodes/IStreamTransformNode.cs) and uses [`BatchingExecutionStrategy`](src/NPipeline/Execution/Strategies/BatchingExecutionStrategy.cs) to handle batching logic. The `ExecuteAsync` method operates on entire input streams, collecting items until either the configured batch size is reached or a timeout expires, then emits the collected batch as `IReadOnlyCollection<T>`.
 
 ### Configuration
 
 When you configure batching, you define explicit trade-offs:
 
-* **Batch Size:** Maximum items per batch. Larger sizes increase throughput but increase latency and memory usage—items wait in the accumulator before processing.
+* **Batch Size:** Maximum items per batch. Larger sizes increase throughput but increase latency and memory usage—items wait in accumulator before processing.
 * **Batch Timeout:** Maximum time to wait before emitting a partial batch. Shorter timeouts reduce latency; longer timeouts allow more accumulation and better efficiency.
 
 ### Example: Basic Batching
@@ -98,7 +96,7 @@ public sealed class BatchingPipelineDefinition : IPipelineDefinition
     {
         // Add nodes to pipeline with descriptive names
         var sourceHandle = builder.AddSource<IntSource, int>("int_source");
-        var batchHandle = builder.AddTransform<BatchingNode<int>, int, IReadOnlyCollection<int>>("batch_node");
+        var batchHandle = builder.AddBatcher<int>("batch_node", batchSize: 3, batchTimeout: TimeSpan.FromSeconds(5));
         var sinkHandle = builder.AddSink<BatchConsumerSink, IReadOnlyCollection<int>>("batch_sink");
 
         // Connect nodes to define data flow
@@ -138,11 +136,11 @@ Sink: Consumed batch of 1 items: [7]
 Batching pipeline finished.
 ```
 
-Notice that the last batch contains only 1 item because the source finished producing, and the timeout (or end of pipeline) triggered the emission of the partial batch.
+Notice that the last batch contains only 1 item because the source finished producing, and the timeout (or end of pipeline) triggered emission of a partial batch.
 
 ## [`BatchingPipelineBuilderExtensions`](src/NPipeline/Pipeline/BatchingPipelineBuilderExtensions.cs)
 
-The [`BatchingPipelineBuilderExtensions`](src/NPipeline/Pipeline/BatchingPipelineBuilderExtensions.cs) provide a convenient fluent API for adding batching functionality to your pipeline. The `Batch()` extension method simplifies the creation and configuration of [`BatchingNode<T>`](src/NPipeline/Nodes/Batching/BatchingNode.cs).
+The [`BatchingPipelineBuilderExtensions`](src/NPipeline/Pipeline/BatchingPipelineBuilderExtensions.cs) provide a convenient fluent API for adding batching functionality to your pipeline. The `AddBatcher` extension method simplifies the creation and configuration of [`BatchingNode<T>`](src/NPipeline/Nodes/BatchingNode.cs).
 
 ```csharp
 using NPipeline;
@@ -162,8 +160,9 @@ public sealed class BatchExtensionPipelineDefinition : IPipelineDefinition
         // Add batching with explicit configuration
         // Batch size: 10 items maximum per batch
         // Timeout: 5 seconds maximum wait before emitting partial batch
-        var batchHandle = builder.AddBatch<int>(
-            batchSize: 10, 
+        var batchHandle = builder.AddBatcher<int>(
+            name: "batch",
+            batchSize: 10,
             batchTimeout: TimeSpan.FromSeconds(5)
         );
         
@@ -203,6 +202,9 @@ public sealed class MySource : SourceNode<int>
 /// </summary>
 public sealed class MyBatchProcessingSink : SinkNode<IReadOnlyCollection<int>>
 {
+    /// <summary>
+    /// Processes each batch as it arrives from batching node.
+    /// </summary>
     public async Task ExecuteAsync(
         IDataPipe<IReadOnlyCollection<int>> input, 
         PipelineContext context, 
@@ -231,7 +233,7 @@ public sealed class MyBatchProcessingSink : SinkNode<IReadOnlyCollection<int>>
 
 Batching represents a deliberate choice to group items together. Understand these practical trade-offs:
 
-* **Latency vs. Throughput:** Batching increases throughput by deferring item emission, which necessarily increases latency. Individual items wait in the accumulator before processing.
+* **Latency vs. Throughput:** Batching increases throughput by deferring item emission, which necessarily increases latency. Individual items wait in accumulator before processing.
 
 * **State Management:** Unlike streaming, batching requires higher-level state management (the accumulated batch). If an error occurs within a batch, the entire batch's context is affected—you cannot isolate errors to single items.
 
@@ -247,4 +249,5 @@ Use batching when operational necessity (database efficiency, transactional boun
 
 * **[Join Nodes](join.md)**: Learn how to merge data from multiple input streams.
 * **[Lookup Nodes](lookup.md)**: Discover how to enrich data by querying external sources.
+* **[Stream Transform Nodes](transform-nodes.md)**: Learn about the new stream-based transformation interface.
 

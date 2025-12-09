@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using Sample_BatchingNode.Nodes;
 
@@ -95,13 +94,9 @@ public class BatchingPipeline : IPipelineDefinition
 
         // Add the batching node that collects individual readings into batches
         // This is the key component that demonstrates BatchingNode functionality
-        var batching = builder.AddTransform<BatchingNode<SensorReading>, SensorReading, IReadOnlyCollection<SensorReading>>(
-            "batching-node");
+        var batching = builder.AddBatcher<SensorReading>("batching-node", _batchSize, _batchTimeout);
 
-        // Configure the batching node with the specified parameters
-        builder.AddPreconfiguredNodeInstance(batching.Id, new BatchingNode<SensorReading>(_batchSize, _batchTimeout));
-
-        // Add the batch processing transform that processes batches efficiently
+        // Add batch processing transform that processes batches efficiently
         var batchProcessing = builder.AddTransform<BatchProcessingTransform, IReadOnlyCollection<SensorReading>, BatchProcessingResult>(
             "batch-processing-transform");
 

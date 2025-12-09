@@ -17,6 +17,111 @@ public interface ITransformNode<TIn, TOut> : INode
 }
 ```
 
+## Stream Transform Nodes (`IStreamTransformNode<TIn, TOut>`)
+
+Stream transform nodes operate on entire streams of data rather than individual items. They are designed for scenarios where you need to transform the stream itself - such as batching, unbatching, windowing, or other operations that change the cardinality or timing of data flow.
+
+### When to Use Stream Transforms
+
+Use `IStreamTransformNode` when your node needs to:
+
+* **Change stream cardinality** - Convert one item to many, many to one, or many to many
+* **Process data in groups** - Apply operations to batches or windows of data
+* **Introduce timing elements** - Add temporal constraints to data flow
+* **Optimize for specific patterns** - Implement batching, buffering, or stream-aware algorithms
+
+### Interface Definition
+
+```csharp
+public interface IStreamTransformNode<TIn, TOut> : INode
+{
+    IExecutionStrategy ExecutionStrategy { get; set; }
+    INodeErrorHandler? ErrorHandler { get; set; }
+
+    IAsyncEnumerable<TOut> ExecuteAsync(
+        IAsyncEnumerable<TIn> items,
+        PipelineContext context,
+        CancellationToken cancellationToken);
+}
+```
+
+## Choosing Between Transform Types
+
+| Aspect | ITransformNode | IStreamTransformNode |
+|--------|----------------|-------------------|
+| **Processing Model** | One item at a time | Entire stream at once |
+| **Return Type** | `Task<TOut>` | `IAsyncEnumerable<TOut>` |
+| **Use Cases** | Simple transformations, enrichment, validation | Batching, unbatching, windowing, filtering |
+| **Memory Pattern** | Low memory footprint | Higher memory for stream processing |
+| **Performance** | Low per-item overhead | Optimized for stream operations |
+
+*Table 1: Comparison of transform node types and their appropriate use cases.*
+
+## Implementation Example
+
+### Batching Transform (Stream-based)
+
+```csharp
+using NPipeline;
+using NPipeline.Nodes;
+using NPipeline.Pipeline;
+
+/// <summary>
+/// Groups individual items into batches for efficient processing.
+/// Demonstrates IStreamTransformNode for stream-based transformations.
+/// </summary>
+public sealed class BatchingTransform<T> : IStreamTransformNode<T, IReadOnlyCollection<T>>
+{
+    private readonly int _batchSize;
+    private readonly TimeSpan _timeout;
+
+    public BatchingTransform(int batchSize, TimeSpan timeout)
+    {
+        _batchSize = batchSize;
+        _timeout = timeout;
+    }
+
+    public IExecutionStrategy ExecutionStrategy { get; set; } = new BatchingExecutionStrategy();
+    public INodeErrorHandler? ErrorHandler { get; set; }
+
+    public IAsyncEnumerable<IReadOnlyCollection<T>> ExecuteAsync(
+        IAsyncEnumerable<T> items,
+        PipelineContext context,
+        CancellationToken cancellationToken)
+    {
+        // Use BatchAsync extension method for efficient batching
+        return items.BatchAsync(_batchSize, _timeout, cancellationToken);
+    }
+}
+```
+
+### Unbatching Transform (Stream-based)
+
+```csharp
+using NPipeline;
+using NPipeline.Nodes;
+using NPipeline.Pipeline;
+
+/// <summary>
+/// Flattens a stream of batches back to individual items.
+/// Demonstrates reverse operation to batching transform.
+/// </summary>
+public sealed class UnbatchingTransform<T> : IStreamTransformNode<IEnumerable<T>, T>
+{
+    public IExecutionStrategy ExecutionStrategy { get; set; } = new UnbatchingExecutionStrategy();
+    public INodeErrorHandler? ErrorHandler { get; set; }
+
+    public IAsyncEnumerable<T> ExecuteAsync(
+        IAsyncEnumerable<IEnumerable<T>> batches,
+        PipelineContext context,
+        CancellationToken cancellationToken)
+    {
+        // Use FlattenAsync extension method for efficient unbatching
+        return batches.FlattenAsync(cancellationToken);
+    }
+}
+```
+
 ## Implementation Example
 
 A transform that squares each incoming number:

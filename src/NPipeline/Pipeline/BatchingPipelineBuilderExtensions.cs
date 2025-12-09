@@ -19,7 +19,7 @@ public static class BatchingPipelineBuilderExtensions
         int batchSize,
         TimeSpan timespan)
     {
-        var handle = builder.AddTransform<BatchingNode<T>, T, IReadOnlyCollection<T>>(name);
+        var handle = builder.AddStreamTransform<BatchingNode<T>, T, IReadOnlyCollection<T>>(name);
         var node = new BatchingNode<T>(batchSize, timespan);
         builder.RegisterBuilderDisposable(node);
         builder.AddPreconfiguredNodeInstance(handle.Id, node);
@@ -33,7 +33,7 @@ public static class BatchingPipelineBuilderExtensions
         this PipelineBuilder builder,
         string name)
     {
-        var handle = builder.AddTransform<UnbatchingNode<T>, IEnumerable<T>, T>(name);
+        var handle = builder.AddStreamTransform<UnbatchingNode<T>, IEnumerable<T>, T>(name);
         var node = new UnbatchingNode<T>();
         builder.RegisterBuilderDisposable(node);
         builder.AddPreconfiguredNodeInstance(handle.Id, node);
