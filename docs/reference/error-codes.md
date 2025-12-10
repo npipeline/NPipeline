@@ -729,9 +729,9 @@ public class DataProcessor : IStreamTransformNode<string, int>
 **Code Fix:**
 
 A code fix is available that will automatically convert your ITransformNode implementation to IStreamTransformNode:
-- Updates the base interface from ITransformNode<TIn, TOut> to IStreamTransformNode<TIn, TOut>
-- Changes the ExecuteAsync signature to accept IAsyncEnumerable<TIn> instead of TIn
-- Updates the return type to IAsyncEnumerable<TOut> (no Task wrapper)
+- Updates the base interface from `ITransformNode<TIn, TOut>` to `IStreamTransformNode<TIn, TOut>`
+- Changes the ExecuteAsync signature to accept `IAsyncEnumerable<TIn>` instead of TIn
+- Updates the return type to `IAsyncEnumerable<TOut>` (no Task wrapper)
 - Adds the necessary using statement for System.Collections.Generic if not present
 
 ---

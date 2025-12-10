@@ -16,14 +16,17 @@ namespace NPipeline.CodeFixes;
 [Shared]
 public class StreamTransformNodeExecutionStrategyCodeFixProvider : CodeFixProvider
 {
+    /// <inheritdoc />
     public sealed override ImmutableArray<string> FixableDiagnosticIds =>
         ["NP9211"];
 
+    /// <inheritdoc />
     public sealed override FixAllProvider GetFixAllProvider()
     {
         return WellKnownFixAllProviders.BatchFixer;
     }
 
+    /// <inheritdoc />
     public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
         var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
