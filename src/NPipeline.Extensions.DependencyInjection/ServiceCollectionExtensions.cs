@@ -98,11 +98,10 @@ public static class ServiceCollectionExtensions
         // Core execution/observability/persistence services required by the primary PipelineRunner ctor.
         // Without these registrations the container falls back to the parameterless ctor which injects DefaultNodeFactory
         // causing MissingMethodException for nodes with DI-only constructors (ConcurrentQueue<>, etc.).
-        services.TryAddScoped<ICountingService, CountingService>();
         services.TryAddScoped<IMergeStrategySelector, MergeStrategySelector>();
         services.TryAddScoped<IPipeMergeService>(sp => new PipeMergeService(sp.GetRequiredService<IMergeStrategySelector>()));
         services.TryAddScoped<ILineageService, LineageService>();
-        services.TryAddScoped<IBranchService, BranchService>();
+        services.TryAddScoped<DataPipeWrapperService>();
         services.TryAddScoped<INodeExecutor, NodeExecutor>();
         services.TryAddScoped<IExecutionAnnotationsService, ExecutionAnnotationsService>();
         services.TryAddScoped<ITopologyService, TopologyService>();

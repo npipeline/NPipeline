@@ -99,9 +99,8 @@ public sealed class PipelineRunnerBuilder
         var executionCoordinator = _executionCoordinator ?? new PipelineExecutionCoordinator(
             new NodeExecutor(
                 new LineageService(),
-                new CountingService(),
                 new PipeMergeService(new MergeStrategySelector()),
-                new BranchService()),
+                new DataPipeWrapperService()),
             new TopologyService(),
             new NodeInstantiationService());
 

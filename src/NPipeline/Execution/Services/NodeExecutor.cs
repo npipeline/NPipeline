@@ -16,9 +16,8 @@ namespace NPipeline.Execution.Services;
 /// </summary>
 public sealed class NodeExecutor(
     ILineageService lineageService,
-    ICountingService countingService,
     IPipeMergeService pipeMergeService,
-    IBranchService branchService)
+    DataPipeWrapperService dataPipeWrapperService)
     : INodeExecutor
 {
     /// <summary>
@@ -63,8 +62,8 @@ public sealed class NodeExecutor(
         if (graph.Lineage.ItemLevelLineageEnabled)
             output = lineageService.WrapSourceStream(output, plan.NodeId, graph.Lineage.LineageOptions);
 
-        output = countingService.Wrap(output, context);
-        output = branchService.MaybeMulticast(output, graph, plan.NodeId, context);
+        var counter = GetOrCreateCounter(context);
+        output = dataPipeWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
         context.RegisterForDisposal(output);
         nodeOutputs[plan.NodeId] = output;
     }
@@ -106,8 +105,8 @@ public sealed class NodeExecutor(
                 : await transformTask.ConfigureAwait(false);
         }
 
-        transformed = countingService.Wrap(transformed, context);
-        transformed = branchService.MaybeMulticast(transformed, graph, plan.NodeId, context);
+        var counter = GetOrCreateCounter(context);
+        transformed = dataPipeWrapperService.WrapWithCountingAndBranching(transformed, counter, context, graph, plan.NodeId);
         var disposable = transformed as IAsyncDisposable;
         context.RegisterForDisposal(disposable);
 
@@ -177,8 +176,8 @@ public sealed class NodeExecutor(
             }
         }
 
-        output = countingService.Wrap(output, context);
-        output = branchService.MaybeMulticast(output, graph, plan.NodeId, context);
+        var counter = GetOrCreateCounter(context);
+        output = dataPipeWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
         var disposable = output as IAsyncDisposable;
         context.RegisterForDisposal(disposable);
 
@@ -242,8 +241,8 @@ public sealed class NodeExecutor(
             }
         }
 
-        output = countingService.Wrap(output, context);
-        output = branchService.MaybeMulticast(output, graph, plan.NodeId, context);
+        var counter = GetOrCreateCounter(context);
+        output = dataPipeWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
         context.RegisterForDisposal(output as IAsyncDisposable ?? input);
         nodeOutputs[plan.NodeId] = output;
     }
@@ -315,9 +314,9 @@ public sealed class NodeExecutor(
         {
             await foreach (var item in source.WithCancellation(ct))
 
-                // Consistent null handling: always yield a value for null items
-                // For reference types and nullable value types, yield null
-                // For non-nullable value types, yield default
+            // Consistent null handling: always yield a value for null items
+            // For reference types and nullable value types, yield null
+            // For non-nullable value types, yield default
             {
                 if (item is null)
                     yield return default!;
@@ -363,9 +362,9 @@ public sealed class NodeExecutor(
         {
             await foreach (var obj in untyped.ToAsyncEnumerable(ct).WithCancellation(ct))
 
-                // Consistent null handling: always yield a value for null items
-                // For reference types and nullable value types, yield null
-                // For non-nullable value types, yield default
+            // Consistent null handling: always yield a value for null items
+            // For reference types and nullable value types, yield null
+            // For non-nullable value types, yield default
             {
                 if (obj is null)
                     yield return default!;
@@ -380,5 +379,16 @@ public sealed class NodeExecutor(
         }
 
         return new StreamingDataPipe<TOut>(Cast(), streamName);
+    }
+
+    private static StatsCounter GetOrCreateCounter(PipelineContext context)
+    {
+        if (!context.Items.TryGetValue(PipelineContextKeys.TotalProcessedItems, out var statsObj) || statsObj is not StatsCounter counter)
+        {
+            counter = new StatsCounter();
+            context.Items[PipelineContextKeys.TotalProcessedItems] = counter;
+        }
+
+        return counter;
     }
 }
