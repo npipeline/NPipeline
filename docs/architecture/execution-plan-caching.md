@@ -424,7 +424,7 @@ Cache effectiveness depends on pipeline reuse:
 
 **Cache Lookup (per pipeline run with cache):**
 
-- Cost: <1μs (hash table lookup)
+- Cost: &lt;1μs (hash table lookup)
 - GC allocations: None
 - CPU time: Negligible
 
