@@ -1,3 +1,4 @@
+using NPipeline.Execution.Caching;
 using NPipeline.Execution.Factories;
 using NPipeline.Execution.Services;
 using NPipeline.Observability;
@@ -11,6 +12,7 @@ namespace NPipeline.Execution;
 public sealed class PipelineRunnerBuilder
 {
     private IPipelineExecutionCoordinator? _executionCoordinator;
+    private IPipelineExecutionPlanCache? _executionPlanCache;
     private IPipelineInfrastructureService? _infrastructureService;
     private INodeFactory? _nodeFactory;
     private IObservabilitySurface? _observabilitySurface;
@@ -62,6 +64,31 @@ public sealed class PipelineRunnerBuilder
     }
 
     /// <summary>
+    ///     Sets the execution plan cache. Use <see cref="NullPipelineExecutionPlanCache.Instance" /> to disable caching.
+    /// </summary>
+    /// <param name="executionPlanCache">The cache implementation to use, or null to use the default in-memory cache.</param>
+    /// <returns>This builder instance for method chaining.</returns>
+    public PipelineRunnerBuilder WithExecutionPlanCache(IPipelineExecutionPlanCache? executionPlanCache)
+    {
+        _executionPlanCache = executionPlanCache;
+        return this;
+    }
+
+    /// <summary>
+    ///     Disables execution plan caching by setting the cache to a null implementation.
+    /// </summary>
+    /// <returns>This builder instance for method chaining.</returns>
+    /// <remarks>
+    ///     When caching is disabled, execution plans will be rebuilt on every pipeline run.
+    ///     This may be useful for testing or when node behavior changes frequently.
+    /// </remarks>
+    public PipelineRunnerBuilder WithoutExecutionPlanCache()
+    {
+        _executionPlanCache = NullPipelineExecutionPlanCache.Instance;
+        return this;
+    }
+
+    /// <summary>
     ///     Builds the <see cref="PipelineRunner" /> instance.
     /// </summary>
     public PipelineRunner Build()
@@ -89,6 +116,7 @@ public sealed class PipelineRunnerBuilder
             nodeFactory,
             executionCoordinator,
             infrastructureService,
-            observabilitySurface);
+            observabilitySurface,
+            _executionPlanCache);
     }
 }

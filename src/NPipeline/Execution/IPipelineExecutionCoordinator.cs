@@ -1,4 +1,5 @@
 using NPipeline.DataFlow;
+using NPipeline.Execution.Caching;
 using NPipeline.Execution.Plans;
 using NPipeline.Graph;
 using NPipeline.Nodes;
@@ -35,6 +36,21 @@ public interface IPipelineExecutionCoordinator
     /// <param name="nodeInstances">Instantiated nodes keyed by node id.</param>
     /// <returns>Dictionary of execution plans keyed by node id.</returns>
     Dictionary<string, NodeExecutionPlan> BuildPlans(PipelineGraph graph, IReadOnlyDictionary<string, INode> nodeInstances);
+
+    /// <summary>
+    ///     Builds per-run execution plans binding generic strategies to non-generic delegates,
+    ///     using the provided cache to retrieve or store compiled plans.
+    /// </summary>
+    /// <param name="pipelineDefinitionType">The type of the pipeline definition for cache keying.</param>
+    /// <param name="graph">The pipeline graph.</param>
+    /// <param name="nodeInstances">Instantiated nodes keyed by node id.</param>
+    /// <param name="cache">The cache to use for storing and retrieving execution plans.</param>
+    /// <returns>Dictionary of execution plans keyed by node id.</returns>
+    Dictionary<string, NodeExecutionPlan> BuildPlansWithCache(
+        Type pipelineDefinitionType,
+        PipelineGraph graph,
+        IReadOnlyDictionary<string, INode> nodeInstances,
+        IPipelineExecutionPlanCache cache);
 
     /// <summary>
     ///     Performs topological sort of nodes based on graph dependencies.

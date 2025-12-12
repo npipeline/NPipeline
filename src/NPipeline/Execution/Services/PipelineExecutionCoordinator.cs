@@ -1,4 +1,5 @@
 using NPipeline.DataFlow;
+using NPipeline.Execution.Caching;
 using NPipeline.Execution.Plans;
 using NPipeline.Graph;
 using NPipeline.Nodes;
@@ -31,6 +32,29 @@ public sealed class PipelineExecutionCoordinator(
     public Dictionary<string, NodeExecutionPlan> BuildPlans(PipelineGraph graph, IReadOnlyDictionary<string, INode> nodeInstances)
     {
         return nodeInstantiationService.BuildPlans(graph, nodeInstances);
+    }
+
+    /// <inheritdoc />
+    public Dictionary<string, NodeExecutionPlan> BuildPlansWithCache(
+        Type pipelineDefinitionType,
+        PipelineGraph graph,
+        IReadOnlyDictionary<string, INode> nodeInstances,
+        IPipelineExecutionPlanCache cache)
+    {
+        ArgumentNullException.ThrowIfNull(pipelineDefinitionType);
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(nodeInstances);
+        ArgumentNullException.ThrowIfNull(cache);
+
+        // Try to get cached plans first
+        if (cache.TryGetCachedPlans(pipelineDefinitionType, graph, out var cachedPlans) && cachedPlans is not null)
+            return cachedPlans;
+
+        // Cache miss - build plans and cache them
+        var plans = nodeInstantiationService.BuildPlans(graph, nodeInstances);
+        cache.CachePlans(pipelineDefinitionType, graph, plans);
+
+        return plans;
     }
 
     /// <inheritdoc />

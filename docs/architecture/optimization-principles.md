@@ -322,6 +322,69 @@ ICountable for Right-Sizing
 
 ---
 
+## 6. Execution Plan Caching
+
+**The Principle:** Pre-compile expression trees once, cache them indefinitely.
+
+NPipeline compiles execution plans (expression trees) when a pipeline first runs. These plans are expensive to build (~300-500μs per pipeline) but can be cached and reused:
+
+**What Gets Cached:**
+
+- Pre-compiled delegates for transform execution
+- Expression trees for type conversions
+- Execution routing for joins and aggregates
+
+**Result:**
+
+- **First run:** Pay compilation cost (~1.9ms for small pipeline)
+- **Subsequent runs:** Use cached plans (~0.4-0.5ms for small pipeline)
+- **Improvement:** 75% reduction in execution time after warm-up
+
+**When Caching Applies:**
+
+- Same pipeline definition runs multiple times ✓ (typical case)
+- Pipeline definition changes between runs ✗ (automatic cache miss)
+- Preconfigured nodes with state ✗ (caching disabled for safety)
+
+**Impact:** 250-450μs saved per run for pipelines with caching enabled.
+
+See [Execution Plan Caching](./execution-plan-caching.md) for detailed architecture.
+
+---
+
+## Combined Impact of All Optimizations
+
+These six principles work together to create exceptional performance:
+
+```plaintext
+Plan-Based Execution
+  ↓ Compile once, execute many times
+  ├→ Zero per-item decision overhead
+  └→ Plan Caching amplifies this (75% reduction on warm-up)
+
+Zero Reflection at Runtime
+  ↓ Direct method dispatch
+  ├→ Inlinable and optimizable by JIT
+  └→ Reduces memory allocations
+
+ValueTask Optimization
+  ↓ Eliminates allocations in fast paths
+  ├→ Reduces GC pressure
+  └→ Smaller GC working set = better cache locality
+
+Streaming + Lazy Evaluation
+  ↓ Process incrementally
+  ├→ Predictable memory usage
+  └→ Minimal GC pauses
+
+ICountable for Right-Sizing
+  ↓ Allocate exactly what's needed
+  ├→ Fewer reallocations
+  └→ Better memory cache behavior
+```
+
+---
+
 ## Measurable Results
 
 The combination of these principles produces observable performance characteristics:
@@ -342,25 +405,26 @@ The combination of these principles produces observable performance characterist
 
 These optimizations provide most benefit in:
 
-* **High-throughput scenarios:** Millions of items per second
-* **Multi-tenant systems:** GC pauses directly impact other tenants
-* **Real-time processing:** Latency spikes from GC pauses are unacceptable
-* **Long-running processes:** Accumulated allocation pressure matters
-* **Latency-sensitive workloads:** Predictable performance critical
+- **High-throughput scenarios:** Millions of items per second
+- **Multi-tenant systems:** GC pauses directly impact other tenants
+- **Real-time processing:** Latency spikes from GC pauses are unacceptable
+- **Long-running processes:** Accumulated allocation pressure matters
+- **Latency-sensitive workloads:** Predictable performance critical
 
 ### When Optimization Matters Less
 
 These optimizations have minimal impact if:
 
-* **Throughput is low:** (< 1000 items/sec) - bottleneck is elsewhere
-* **Items are large:** (> 100KB) - allocation cost is tiny vs. processing cost
-* **Processing is CPU-bound:** GC pressure is secondary concern
-* **Latency spikes are acceptable:** SLAs allow for GC pauses
+- **Throughput is low:** (< 1000 items/sec) - bottleneck is elsewhere
+- **Items are large:** (> 100KB) - allocation cost is tiny vs. processing cost
+- **Processing is CPU-bound:** GC pressure is secondary concern
+- **Latency spikes are acceptable:** SLAs allow for GC pauses
 
 ---
 
 ## See Also
 
+- [Execution Plan Caching](./execution-plan-caching.md) - How plan caching eliminates compilation overhead
 - [Performance Hygiene](../advanced-topics/performance-hygiene.md) - Best practices for writing performant NPipeline code
 - [Synchronous Fast Paths](../advanced-topics/synchronous-fast-paths.md) - Master ValueTask patterns in your transform nodes
 - [Component Architecture](./component-architecture.md) - Understand how these principles are implemented in codebase
@@ -370,7 +434,9 @@ These optimizations have minimal impact if:
 
 ## Next Steps
 
-* **[Performance Hygiene](../advanced-topics/performance-hygiene.md):** Best practices for writing performant NPipeline code
-* **[Synchronous Fast Paths](../advanced-topics/synchronous-fast-paths.md):** Master ValueTask patterns in your transform nodes
-* **[Component Architecture](./component-architecture.md):** Understand how these principles are implemented in codebase
-* **[Performance Characteristics](./performance-characteristics.md):** Understanding performance implications of different approaches
+- **[Execution Plan Caching](./execution-plan-caching.md):** Deep dive into how compiled plans are cached
+- **[Performance Hygiene](../advanced-topics/performance-hygiene.md):** Best practices for writing performant NPipeline code
+- **[Synchronous Fast Paths](../advanced-topics/synchronous-fast-paths.md):** Master ValueTask patterns in your transform nodes
+- **[Component Architecture](./component-architecture.md):** Understand how these principles are implemented in codebase
+- **[Performance Characteristics](./performance-characteristics.md):** Understanding performance implications of different approaches
+

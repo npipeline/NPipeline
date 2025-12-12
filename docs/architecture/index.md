@@ -95,6 +95,16 @@ Deep dive into how data moves through the system:
 - Lazy Evaluation principles
 - Memory efficiency patterns
 
+### [Execution Plan Caching](execution-plan-caching.md)
+
+Learn how NPipeline caches compiled execution plans:
+
+- Why Plan Caching Matters (300-500μs per run overhead)
+- How the Caching System Works
+- When Caching is Applied & When It's Disabled
+- Performance Impact (75% reduction for subsequent runs)
+- Custom Cache Implementations (Redis, Distributed, etc.)
+
 ### [Error Handling Architecture](error-handling-architecture.md)
 
 Understand error propagation and handling:

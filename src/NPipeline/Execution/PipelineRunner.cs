@@ -3,6 +3,7 @@ using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution.Annotations;
+using NPipeline.Execution.Caching;
 using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Graph;
 using NPipeline.Lineage;
@@ -33,8 +34,11 @@ public sealed class PipelineRunner(
     INodeFactory nodeFactory,
     IPipelineExecutionCoordinator executionCoordinator,
     IPipelineInfrastructureService infrastructureService,
-    IObservabilitySurface observabilitySurface) : IPipelineRunner
+    IObservabilitySurface observabilitySurface,
+    IPipelineExecutionPlanCache? executionPlanCache = null) : IPipelineRunner
 {
+    private readonly IPipelineExecutionPlanCache _executionPlanCache = executionPlanCache ?? new InMemoryPipelineExecutionPlanCache();
+
     /// <inheritdoc />
     public async Task RunAsync<TDefinition>(PipelineContext context) where TDefinition : IPipelineDefinition, new()
     {
@@ -240,7 +244,10 @@ public sealed class PipelineRunner(
 
             // Build per-run execution plans (currently leveraged for source & transform nodes)
             // This enables reflection-free steady state execution for better performance
-            var executionPlans = executionCoordinator.BuildPlans(graph, nodeInstances);
+            // Use caching to avoid expensive expression compilation on subsequent runs
+            var executionPlans = ShouldUseCache(graph)
+                ? executionCoordinator.BuildPlansWithCache(typeof(TDefinition), graph, nodeInstances, _executionPlanCache)
+                : executionCoordinator.BuildPlans(graph, nodeInstances);
 
             // Surface stateful node registry (similar to state manager) and register instantiated nodes
             if (context.Properties.TryGetValue("NPipeline.Global.NPipeline.State.StatefulRegistry", out var regObj))
@@ -476,5 +483,27 @@ public sealed class PipelineRunner(
         }
 
         return null;
+    }
+
+    /// <summary>
+    ///     Determines whether execution plan caching should be used for the given pipeline graph.
+    /// </summary>
+    /// <remarks>
+    ///     Caching is disabled when:
+    ///     - The graph has preconfigured node instances (they may have runtime state)
+    ///     - The cache is explicitly set to NullPipelineExecutionPlanCache
+    ///     This ensures cache safety while maximizing performance for typical scenarios.
+    /// </remarks>
+    private bool ShouldUseCache(PipelineGraph graph)
+    {
+        // Don't cache if using NullCache (explicitly disabled)
+        if (_executionPlanCache is NullPipelineExecutionPlanCache)
+            return false;
+
+        // Don't cache if graph has preconfigured instances (may have runtime state)
+        if (graph.PreconfiguredNodeInstances.Count > 0)
+            return false;
+
+        return true;
     }
 }
