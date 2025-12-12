@@ -239,6 +239,94 @@ For complete implementation guidance, including critical constraints and real-wo
 
 ---
 
+### 3. Cached Context Access (Per-Item Optimization)
+
+**The Principle:** Cache frequently-accessed execution context to eliminate per-item dictionary lookups.
+
+**The Problem - Context Access Overhead:**
+
+During high-throughput node execution (1M+ items/sec), accessing execution context properties multiple times per item adds up:
+
+```csharp
+// Before optimization: dictionary lookups for every item
+foreach (var item in items)
+{
+    var retryOptions = context.Items.TryGetValue("retry::nodeId", ...); // ← Lookup 1
+    var tracingEnabled = context.Tracer is not NullTracer;              // ← Lookup 2
+    var loggingEnabled = context.LoggerFactory is not NullFactory;      // ← Lookup 3
+    // ... process item
+}
+```
+
+With millions of items, these repeated lookups become a measurable bottleneck (150-250μs overhead per 1K items).
+
+**NPipeline Solution - CachedNodeExecutionContext:**
+
+Capture execution context state once at node scope, then reuse for all items:
+
+```csharp
+// After optimization: capture once, reuse for all items
+var cached = CachedNodeExecutionContext.Create(context, nodeId);
+
+foreach (var item in items)
+{
+    // Use cached values - no dictionary lookups
+    if (cached.TracingEnabled)
+    {
+        // ... trace
+    }
+    var maxRetries = cached.RetryOptions.MaxItemRetries; // ← Already cached
+    // ... process item
+}
+```
+
+**How It Works:**
+
+`CachedNodeExecutionContext` is a readonly struct that captures:
+- **NodeId** - Identifier of the executing node
+- **RetryOptions** - Pre-resolved retry configuration (with precedence: node-specific → global → context)
+- **TracingEnabled** - Whether tracing is active (checked once)
+- **LoggingEnabled** - Whether logging is active (checked once)
+- **CancellationToken** - Cancellation token for this execution
+
+**Why This Matters:**
+
+* **Eliminates per-item dictionary lookups** - Direct field access instead of `context.Items.TryGetValue()`
+* **Zero allocation overhead** - Readonly struct is stack-allocated
+* **Transparent to users** - Automatically used by execution strategies
+* **Thread-safe** - Each worker thread has its own cached instance
+
+**Immutability Guarantee:**
+
+The cached context assumes that execution state remains immutable during node execution. NPipeline enforces this automatically:
+- In DEBUG builds: `PipelineContextImmutabilityGuard` validates that context state hasn't changed
+- In RELEASE builds: Zero overhead (validation compiled out)
+
+If mutations are detected in DEBUG builds, a descriptive exception is thrown:
+```
+Context immutability violation detected for node 'myNode': 
+Retry options were modified during node execution.
+```
+
+**Performance Impact:**
+
+* ~150-250μs reduction per 1K items in typical pipelines
+* Improvement scales with:
+  - Number of items (more items = more savings)
+  - Item processing cost (overhead is more noticeable with fast transforms)
+  - Retry configuration usage (more lookups = more savings)
+
+**When This Helps Most:**
+
+- High-throughput scenarios (100K+ items/sec)
+- Frequent retry option lookups
+- Parallel execution strategies
+- Nodes with low per-item processing cost
+
+For best practices on working with cached contexts and avoiding mutations, see [Performance Hygiene: Context Immutability](../advanced-topics/performance-hygiene.md#avoid-context-mutations-during-node-execution).
+
+---
+
 ### 6. Graph-Based Execution for Dependency Clarity
 
 **The Principle:** Make execution flow explicit and optimizable.

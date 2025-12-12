@@ -135,7 +135,53 @@ public override Task<TOut> ExecuteAsync(
 }
 ```
 
-### 4. Pipeline Runner
+### 4. Cached Node Execution Context
+
+**Purpose:** Performance optimization - reduces per-item context access overhead
+
+```csharp
+public readonly struct CachedNodeExecutionContext
+{
+    public string NodeId { get; }
+    public PipelineRetryOptions RetryOptions { get; }
+    public bool TracingEnabled { get; }
+    public bool LoggingEnabled { get; }
+    public CancellationToken CancellationToken { get; }
+    
+    public static CachedNodeExecutionContext Create(
+        PipelineContext context, 
+        string nodeId);
+    
+    public static CachedNodeExecutionContext CreateWithRetryOptions(
+        PipelineContext context,
+        string nodeId,
+        PipelineRetryOptions preResolvedRetryOptions);
+}
+```
+
+**Why This Exists:**
+
+During high-throughput node execution, accessing the same context properties repeatedly for each item creates dictionary lookup overhead. `CachedNodeExecutionContext` captures frequently-accessed values once at node scope, then reuses them for all items.
+
+**How It Works:**
+
+1. **At node execution start:** Creation methods capture current context state
+2. **During item processing:** Nodes use cached values instead of context lookups
+3. **Immutability validation:** `PipelineContextImmutabilityGuard` (DEBUG-only) validates that context hasn't changed
+
+**Transparent to Users:**
+
+Execution strategies automatically use `CachedNodeExecutionContext`. Pipeline authors don't need to interact with it directly.
+
+**Performance Benefit:**
+
+~150-250μs overhead reduction per 1K items in typical pipelines.
+
+For complete details, see [Optimization Principles: Cached Context Access](./optimization-principles.md#3-cached-context-access-per-item-optimization).
+
+---
+
+### 5. Pipeline Runner
 
 **Purpose:** Executes compiled pipelines
 

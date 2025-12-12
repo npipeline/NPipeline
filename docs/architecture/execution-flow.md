@@ -195,6 +195,67 @@ This approach:
 | **Parallel** | High | Medium-High | Medium | CPU-bound, high throughput |
 | **Hybrid** | Medium-High | Medium | Medium | Mixed workloads |
 
+## Context Immutability During Execution
+
+**Important for Performance-Critical Applications:**
+
+When using `CachedNodeExecutionContext` (which all execution strategies do automatically), the framework assumes that certain context state remains immutable during node execution.
+
+### What Must Remain Immutable
+
+During the execution of a single node (from start to completion of all items), these context properties must not change:
+
+- **Retry Options** - Changes to `context.Items[PipelineContextKeys.NodeRetryOptions(...)]` or global retry options
+- **Tracer Instance** - Replacing `context.Tracer`
+- **Logger Factory Instance** - Replacing `context.LoggerFactory`
+- **Cancellation Token** - Replacing `context.CancellationToken`
+
+### Why This Matters
+
+The framework caches these values at the start of node execution to avoid dictionary lookups for every item. Mutations during execution break this assumption and can cause:
+
+- Inconsistent behavior (some items use old values, others use new values)
+- Unpredictable retry behavior (items may be retried differently)
+- Tracing/logging inconsistencies
+
+### When You Can Safely Modify Context
+
+You can modify context state **between node executions**, such as:
+
+```csharp
+// ✅ Safe: Modify context before node execution starts
+context.Items[PipelineContextKeys.NodeRetryOptions(nodeId)] = newRetryOptions;
+var result = await nodeExecutor.ExecuteAsync(node, item, context);
+
+// ❌ Don't: Modify context during node execution
+public async Task<TOut> ExecuteAsync(TIn item, PipelineContext context, CancellationToken ct)
+{
+    // Don't do this - it may be cached and ignored!
+    context.Items[PipelineContextKeys.NodeRetryOptions(this.NodeId)] = newRetryOptions;
+    // ... rest of node execution
+}
+```
+
+### DEBUG Validation
+
+In DEBUG builds, NPipeline automatically detects context mutations and throws a clear exception:
+
+```
+InvalidOperationException: Context immutability violation detected for node 'myNode': 
+Retry options were modified during node execution. When using CachedNodeExecutionContext, 
+context state must remain immutable during node execution.
+```
+
+This validation is **compiled out in RELEASE builds** (zero overhead).
+
+### Best Practices
+
+1. **Configure context before execution** - Set all retry options, tracers, and loggers before starting pipeline execution
+2. **Don't modify tracer/logger during execution** - These should be configured upfront
+3. **Trust the caching** - The framework optimizes context access automatically; don't bypass it
+
+For more guidance, see [Performance Hygiene: Avoid Context Mutations](../advanced-topics/performance-hygiene.md#avoid-context-mutations-during-node-execution).
+
 ## Next Steps
 
 - **[Data Flow Details](data-flow.md)** - Understand how data pipes and lazy evaluation work

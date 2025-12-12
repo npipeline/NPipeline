@@ -251,3 +251,98 @@ public class MyTransformBenchmarks
     }
 }
 ```
+
+## 4. Avoid Context Mutations During Node Execution
+
+### The Context Immutability Guarantee
+
+NPipeline uses `CachedNodeExecutionContext` to optimize per-item context access by caching execution state (retry options, tracing configuration, etc.) at the start of node execution. This provides significant performance benefits, but it requires that context state remains **immutable during node execution**.
+
+### What You Must Not Do
+
+❌ **Don't modify retry options during node execution:**
+
+```csharp
+public async Task<TOut> ExecuteAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
+{
+    // ❌ WRONG: Context state is cached at node start; this modification may be ignored
+    context.Items[PipelineContextKeys.NodeRetryOptions(context.CurrentNodeId)] = newRetryOptions;
+    
+    // Proceed with transform
+    var result = TransformItem(item);
+    return await Task.FromResult(result);
+}
+```
+
+❌ **Don't replace tracer or logger factory during node execution:**
+
+```csharp
+public async Task<TOut> ExecuteAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
+{
+    // ❌ WRONG: Tracer is cached at node start
+    context.Tracer = new MyCustomTracer();
+    
+    // Rest of execution will use old tracer instance
+    return await ProcessAsync(item);
+}
+```
+
+### What You Should Do Instead
+
+✅ **Configure context before node execution starts:**
+
+```csharp
+// Configure everything upfront
+var context = new PipelineContext();
+context.Items[PipelineContextKeys.GlobalRetryOptions] = new PipelineRetryOptions(3, 2, 5);
+context.LoggerFactory = new MyLoggerFactory();
+context.Tracer = new MyTracer();
+
+// Now start the pipeline - all configuration is fixed for the duration
+var runner = new PipelineRunner();
+await runner.RunAsync<MyPipeline>(context);
+```
+
+✅ **Modify context between pipeline runs if needed:**
+
+```csharp
+// Pipeline 1 with configuration A
+await runner.RunAsync<MyPipeline>(contextA);
+
+// Modify context for next run
+contextB.Items[PipelineContextKeys.GlobalRetryOptions] = newOptions;
+
+// Pipeline 2 with configuration B
+await runner.RunAsync<MyPipeline>(contextB);
+```
+
+### Why This Matters
+
+When context is cached at node scope (which execution strategies do automatically), mutations during execution can cause:
+
+- **Inconsistent behavior** - Some items processed with old config, others with new config
+- **Unexpected retry behavior** - Items may retry with different policies mid-execution
+- **Tracing/logging gaps** - Tracer/logger changes don't apply to all items uniformly
+
+### DEBUG Validation
+
+In DEBUG builds, NPipeline detects mutations and throws a clear exception:
+
+```
+InvalidOperationException: 
+  Context immutability violation detected for node 'myNode': 
+  Retry options were modified during node execution. 
+  When using CachedNodeExecutionContext, context state must remain 
+  immutable during node execution.
+```
+
+In RELEASE builds, this validation is **compiled out entirely** (zero overhead).
+
+### Best Practices Summary
+
+1. **Set all context configuration before starting pipeline execution**
+2. **Treat context as read-only during node execution**
+3. **Use separate context instances if you need different configurations**
+4. **Trust the automatic caching** - It's optimizing your pipeline for you
+
+For architectural context, see [Execution Flow: Context Immutability During Execution](../architecture/execution-flow.md#context-immutability-during-execution).

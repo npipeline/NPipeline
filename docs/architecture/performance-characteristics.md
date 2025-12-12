@@ -64,6 +64,17 @@ Item 3:                         [Read]→[Trans]→[Write]
 Throughput: 1 item / 10ms = 100 items/second
 ```
 
+**Performance Optimizations:**
+
+NPipeline automatically applies several optimizations to maximize sequential throughput:
+
+- **Context Caching:** Execution state (retry options, tracer, logger) is cached at node scope to eliminate per-item dictionary lookups
+  - **Impact:** ~150-250μs reduction per 1K items in typical pipelines
+  - **Transparent:** No configuration needed; automatically applied by execution strategies
+- **ValueTask Fast Path:** Synchronous transforms avoid Task allocation overhead
+  - **Impact:** Up to 90% reduction in GC pressure for cache-hit scenarios
+- **Lazy Evaluation:** Items are processed on-demand as consumed, minimizing memory footprint
+
 ### Parallel Processing
 
 Using `ParallelismExtension`:
