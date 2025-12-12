@@ -71,39 +71,53 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
     }
 
     /// <summary>
-    ///     Executes a transform node on an item with retry logic and error handling.
+    ///     Executes a transform node on an item with retry logic and error handling using a cached execution context.
     /// </summary>
     /// <typeparam name="TIn">The type of input data.</typeparam>
     /// <typeparam name="TOut">The type of output data.</typeparam>
     /// <param name="item">The item to process.</param>
     /// <param name="node">The transform node to execute.</param>
     /// <param name="context">The pipeline execution context.</param>
-    /// <param name="nodeId">The identifier of the node.</param>
-    /// <param name="effectiveRetries">The effective retry options to use.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <param name="cached">The cached execution context with pre-resolved configuration.</param>
     /// <param name="metrics">Optional metrics for tracking execution.</param>
     /// <param name="observer">Optional observer for execution events.</param>
     /// <returns>A task representing the asynchronous operation with the processed item, or null if skipped.</returns>
-    protected static async Task<TOut?> ExecuteWithRetryAsync<TIn, TOut>(TIn item, ITransformNode<TIn, TOut> node, PipelineContext context, string nodeId,
-        PipelineRetryOptions effectiveRetries, CancellationToken cancellationToken, ParallelExecutionMetrics? metrics = null,
+    /// <remarks>
+    ///     This overload accepts a pre-created <see cref="CachedNodeExecutionContext" /> to avoid
+    ///     per-item dictionary lookups and allocations, improving performance for high-throughput scenarios.
+    /// </remarks>
+    protected static async Task<TOut?> ExecuteWithRetryAsync<TIn, TOut>(
+        TIn item,
+        ITransformNode<TIn, TOut> node,
+        PipelineContext context,
+        CachedNodeExecutionContext cached,
+        ParallelExecutionMetrics? metrics = null,
         IExecutionObserver? observer = null)
     {
-        var logger = context.LoggerFactory.CreateLogger(nameof(ParallelExecutionStrategyBase));
-        using var itemActivity = context.Tracer.StartActivity("Item.Transform");
+        var logger = cached.LoggingEnabled
+            ? context.LoggerFactory.CreateLogger(nameof(ParallelExecutionStrategyBase))
+            : null;
+
+        using var itemActivity = cached.TracingEnabled
+            ? context.Tracer.StartActivity("Item.Transform")
+            : null;
+
         var attempt = 0;
 
         while (true)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            cached.CancellationToken.ThrowIfCancellationRequested();
 
             try
             {
-                return await ExecuteNodeAsync(node, item, context, cancellationToken).ConfigureAwait(false);
+                return await ExecuteNodeAsync(node, item, context, cached.CancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 itemActivity?.RecordException(ex);
-                LogNodeFailure(logger, nodeId, attempt + 1, ex);
+
+                if (logger is not null)
+                    LogNodeFailure(logger, cached.NodeId, attempt + 1, ex);
 
                 if (node.ErrorHandler is null)
                     throw;
@@ -111,7 +125,7 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
                 if (node.ErrorHandler is not INodeErrorHandler<ITransformNode<TIn, TOut>, TIn> typedHandler)
                     throw;
 
-                var decision = await HandleNodeErrorAsync(node, nodeId, item, ex, context, typedHandler, cancellationToken).ConfigureAwait(false);
+                var decision = await HandleNodeErrorAsync(node, cached.NodeId, item, ex, context, typedHandler, cached.CancellationToken).ConfigureAwait(false);
 
                 switch (decision)
                 {
@@ -122,11 +136,11 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
                     case NodeErrorDecision.Retry:
                         attempt++;
 
-                        if (attempt > effectiveRetries.MaxItemRetries)
+                        if (attempt > cached.RetryOptions.MaxItemRetries)
                             throw;
 
                         itemActivity?.SetTag("retry.attempt", attempt.ToString());
-                        PublishRetryInstrumentation(metrics, observer, nodeId, attempt, ex);
+                        PublishRetryInstrumentation(metrics, observer, cached.NodeId, attempt, ex);
                         continue;
                     case NodeErrorDecision.Fail:
                     default:

@@ -314,9 +314,9 @@ public sealed class NodeExecutor(
         {
             await foreach (var item in source.WithCancellation(ct))
 
-            // Consistent null handling: always yield a value for null items
-            // For reference types and nullable value types, yield null
-            // For non-nullable value types, yield default
+                // Consistent null handling: always yield a value for null items
+                // For reference types and nullable value types, yield null
+                // For non-nullable value types, yield default
             {
                 if (item is null)
                     yield return default!;
@@ -362,9 +362,9 @@ public sealed class NodeExecutor(
         {
             await foreach (var obj in untyped.ToAsyncEnumerable(ct).WithCancellation(ct))
 
-            // Consistent null handling: always yield a value for null items
-            // For reference types and nullable value types, yield null
-            // For non-nullable value types, yield default
+                // Consistent null handling: always yield a value for null items
+                // For reference types and nullable value types, yield null
+                // For non-nullable value types, yield default
             {
                 if (obj is null)
                     yield return default!;

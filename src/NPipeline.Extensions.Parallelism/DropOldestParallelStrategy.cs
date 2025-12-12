@@ -37,6 +37,7 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
         var nodeId = context.CurrentNodeId;
         var currentActivity = context.Tracer.CurrentActivity;
         var effectiveRetries = GetRetryOptions(nodeId, context);
+        var cachedContext = CachedNodeExecutionContext.CreateWithRetryOptions(context, nodeId, effectiveRetries);
         var logger = context.LoggerFactory.CreateLogger(nameof(DropOldestParallelStrategy));
         logger.Log(LogLevel.Debug, "Node {NodeId}, Final MaxRetries: {MaxRetries}", nodeId, effectiveRetries.MaxItemRetries);
 
@@ -170,7 +171,7 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
             {
                 await foreach (var next in reader.ReadAllAsync(cancellationToken))
                 {
-                    var result = await ExecuteWithRetryAsync(next, node, context, nodeId, effectiveRetries, cancellationToken, metrics, observer);
+                    var result = await ExecuteWithRetryAsync(next, node, context, cachedContext, metrics, observer);
 
                     if (result is not null)
                     {

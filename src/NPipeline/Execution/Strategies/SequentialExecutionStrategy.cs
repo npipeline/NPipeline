@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.ErrorHandling;
@@ -26,6 +25,12 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
         var nodeId = context.CurrentNodeId; // capture id for this node once
         var valueTaskTransform = node as IValueTaskTransform<TIn, TOut>;
 
+        // Create cached execution context once per node (optimization: reduces per-item dictionary lookups)
+        var cached = CachedNodeExecutionContext.Create(context, nodeId);
+
+        // Create immutability guard (DEBUG-only validation, zero overhead in RELEASE)
+        var immutabilityGuard = PipelineContextImmutabilityGuard.Create(context, cached);
+
         // Use Task.FromResult for already-completed synchronous result
         return Task.FromResult<IDataPipe<TOut>>(new StreamingDataPipe<TOut>(Iterate(cancellationToken)));
 
@@ -35,13 +40,14 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
 
             await foreach (var item in input.WithCancellation(ct))
             {
-                using var itemActivity = tracer.StartActivity("Item.Transform");
-                using var _ = context.ScopedNode(nodeId);
-                var attempt = 0;
-                var effectiveRetries = context.RetryOptions;
+                // Use cached values to avoid per-item dictionary lookups and allocations
+                using var itemActivity = cached.TracingEnabled
+                    ? tracer.StartActivity("Item.Transform")
+                    : null;
 
-                if (context.Items.TryGetValue(PipelineContextKeys.NodeRetryOptions(nodeId), out var specific) && specific is PipelineRetryOptions pr)
-                    effectiveRetries = pr;
+                using var _ = context.ScopedNode(cached.NodeId);
+                var attempt = 0;
+                var effectiveRetries = cached.RetryOptions;
 
                 var produced = false;
                 TOut? output = default;
@@ -62,7 +68,7 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                     catch (Exception ex)
                     {
                         originalException = ex;
-                        itemActivity.RecordException(ex);
+                        itemActivity?.RecordException(ex);
 
                         if (node.ErrorHandler is not INodeErrorHandler<ITransformNode<TIn, TOut>, TIn> typedHandler)
                         {
@@ -104,14 +110,14 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                         }
 
                         (bool Produced, bool ShouldGotoAfterItem) HandleRetry(
-                            ref int att, int maxRetries, IPipelineActivity activity)
+                            ref int att, int maxRetries, IPipelineActivity? activity)
                         {
                             att++;
 
                             if (att > maxRetries)
                                 throw new InvalidOperationException($"An item failed to process after {att} attempts.", originalException!);
 
-                            activity.SetTag("retry.attempt", att.ToString());
+                            activity?.SetTag("retry.attempt", att.ToString());
                             return (false, false);
                         }
                     }
@@ -120,6 +126,9 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                 if (produced)
                     yield return output!;
             }
+
+            // Validate context immutability after processing all items (DEBUG-only, zero overhead in RELEASE)
+            immutabilityGuard.Validate(context);
         }
     }
 }

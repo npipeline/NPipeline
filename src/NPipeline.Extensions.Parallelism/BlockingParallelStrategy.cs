@@ -3,6 +3,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks.Dataflow;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
+using NPipeline.Execution;
 using NPipeline.Nodes;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
@@ -80,9 +81,12 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
             context.Items[PipelineContextKeys.ParallelMetrics(nodeId)] = blockMetrics;
         }
 
+        // Create cached execution context once for all items (performance optimization)
+        var cachedContext = CachedNodeExecutionContext.CreateWithRetryOptions(context, nodeId, effectiveRetries);
+
         var transformBlock = new TransformBlock<TIn, (bool hasValue, TOut value)>(async item =>
             {
-                var result = await ExecuteWithRetryAsync(item, node, context, nodeId, effectiveRetries, cancellationToken, blockMetrics, observer);
+                var result = await ExecuteWithRetryAsync(item, node, context, cachedContext, blockMetrics, observer);
 
                 return result is null
                     ? (false, default!)
