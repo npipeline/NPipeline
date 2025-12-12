@@ -1,4 +1,5 @@
 using NPipeline.ErrorHandling;
+using NPipeline.Execution.Strategies;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 
@@ -50,9 +51,8 @@ public sealed class DefaultNodeFactory(IErrorHandlerFactory? errorHandlerFactory
     {
         if (instance is ITransformNode transformNode)
         {
-            // Apply execution strategy if specified.
-            if (nodeDefinition.ExecutionStrategy is not null)
-                transformNode.ExecutionStrategy = nodeDefinition.ExecutionStrategy;
+            // Apply execution strategy if specified, falling back to SequentialExecutionStrategy.
+            transformNode.ExecutionStrategy = nodeDefinition.ExecutionStrategy ?? new SequentialExecutionStrategy();
 
             // Apply error handler if specified.
             if (nodeDefinition.ErrorHandlerType is not null)
