@@ -130,6 +130,16 @@ Learn how DI is integrated into NPipeline:
 - Injecting Dependencies into Nodes
 - Service Provider Integration
 
+### [Node Instantiation](node-instantiation.md)
+
+Understand how nodes are created and optimized:
+
+- Compiled Factory Pattern for 3-5x faster instantiation
+- Node Constructor Patterns (Parameterless, Mixed, DI-only)
+- Factory Selection and Trade-offs
+- Analyzer Support (NP9505) with automatic code fixes
+- Performance Characteristics
+
 ### [Performance Characteristics](performance-characteristics.md)
 
 Understand performance implications:

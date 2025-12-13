@@ -171,6 +171,7 @@ else
 
 ## Next Steps
 
+- **[Node Instantiation](node-instantiation.md)** - Understand node creation patterns and performance optimization
 - **[Error Handling Architecture](error-handling-architecture.md)** - Learn how DI works with error handlers
 - **[Extension Points](extension-points.md)** - Create custom nodes with DI support
 

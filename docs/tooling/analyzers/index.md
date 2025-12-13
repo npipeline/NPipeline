@@ -167,6 +167,7 @@ dotnet_diagnostic.NP9501.severity = error
 dotnet_diagnostic.NP9502.severity = warning
 dotnet_diagnostic.NP9503.severity = warning
 dotnet_diagnostic.NP9504.severity = warning
+dotnet_diagnostic.NP9505.severity = warning
 ```
 
 ## See Also

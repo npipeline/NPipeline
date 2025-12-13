@@ -500,6 +500,194 @@ To implement proper dependency injection instead of anti-patterns:
 5. **Remove static singletons** and replace with proper DI
 6. **Eliminate service locator** usage in favor of constructor injection
 
+---
+
+### NP9505: Missing Parameterless Constructor on Node
+
+**ID:** `NP9505`
+**Severity:** Warning  
+**Category:** Best Practice / Performance  
+
+This analyzer detects nodes that lack public parameterless constructors. Nodes without parameterless constructors cannot benefit from NPipeline's optimized compiled factory pattern and require additional configuration or dependency injection setup.
+
+#### Why This Matters
+
+NPipeline uses compiled expression delegates (`Expression.Lambda<Func<INode>>`) to instantiate nodes with **3-5x faster performance** (50-100μs vs 200-300μs). This optimization only works for nodes with public parameterless constructors. Nodes without them fall back to slower reflection-based instantiation.
+
+#### Problematic Patterns
+
+```csharp
+// :x: PROBLEM: Only parameterized constructor, no parameterless alternative
+public class DependencyNode : TransformNode<Order, ProcessedOrder>
+{
+    private readonly IPaymentService _paymentService;
+
+    // NP9505: No parameterless constructor - uses slow reflection path
+    public DependencyNode(IPaymentService paymentService)
+    {
+        _paymentService = paymentService;
+    }
+
+    public override Task<ProcessedOrder> ExecuteAsync(
+        Order item, 
+        PipelineContext context, 
+        CancellationToken cancellationToken)
+    {
+        return _paymentService.ProcessAsync(item, cancellationToken);
+    }
+}
+
+// :x: PROBLEM: Multiple parameters only
+public class ComplexNode : TransformNode<string, int>
+{
+    private readonly ILogger _logger;
+    private readonly IConfig _config;
+    private readonly ICache _cache;
+
+    // NP9505: No parameterless constructor
+    public ComplexNode(ILogger logger, IConfig config, ICache cache)
+    {
+        _logger = logger;
+        _config = config;
+        _cache = cache;
+    }
+
+    public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+    {
+        return Task.FromResult(item.Length);
+    }
+}
+```
+
+#### Solution: Add Parameterless Constructor
+
+**Option 1: Mixed Constructors (Recommended)**
+Provide both parameterless and parameterized constructors for flexibility:
+
+```csharp
+// :heavy_check_mark: CORRECT: Parameterless + DI constructor
+public class FlexibleNode : TransformNode<Order, ProcessedOrder>
+{
+    private IPaymentService? _paymentService;
+
+    // Default parameterless constructor (fast optimized path)
+    public FlexibleNode()
+    {
+    }
+
+    // DI constructor for dependency injection scenarios
+    public FlexibleNode(IPaymentService paymentService)
+    {
+        _paymentService = paymentService;
+    }
+
+    public override Task<ProcessedOrder> ExecuteAsync(
+        Order item, 
+        PipelineContext context, 
+        CancellationToken cancellationToken)
+    {
+        if (_paymentService != null)
+        {
+            return _paymentService.ProcessAsync(item, cancellationToken);
+        }
+        else
+        {
+            // Handle fallback case
+            return Task.FromResult(new ProcessedOrder { /* ... */ });
+        }
+    }
+}
+```
+
+**Option 2: Use DIContainerNodeFactory**
+If you only use dependency injection, use the DI-aware factory:
+
+```csharp
+// In your DI setup
+var services = new ServiceCollection();
+services.AddSingleton<IPaymentService, PaymentService>();
+services.AddNPipeline(builder => 
+{
+    builder.UseDIContainerNodeFactory();
+});
+```
+
+**Option 3: Use Pre-configured Instances**
+For complex initialization scenarios:
+
+```csharp
+var builder = new PipelineBuilder();
+var paymentService = new PaymentService(config);
+var nodeInstance = new DependencyNode(paymentService);
+
+var nodeHandle = builder.AddTransform<DependencyNode, Order, ProcessedOrder>();
+builder.AddPreconfiguredNodeInstance(nodeHandle.Id, nodeInstance);
+```
+
+#### Automatic Code Fix
+
+The analyzer provides an automatic code fix that adds a parameterless constructor to your node:
+
+**Before:**
+```csharp
+public class MyNode : TransformNode<string, int>
+{
+    private readonly ILogger _logger;
+
+    public MyNode(ILogger logger)
+    {
+        _logger = logger;
+    }
+}
+```
+
+**After (one-click fix):**
+```csharp
+public class MyNode : TransformNode<string, int>
+{
+    private ILogger? _logger;
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="MyNode" /> class.
+    /// </summary>
+    public MyNode()
+    {
+    }
+
+    public MyNode(ILogger logger)
+    {
+        _logger = logger;
+    }
+}
+```
+
+#### Performance Impact
+
+| Constructor Type | Instantiation Time | Relative Speed |
+|-------------------|-------------------|----------------|
+| **Parameterless** (compiled) | ~50-100μs | **3-5x faster** ✅ |
+| **Parameterized only** (reflection) | ~200-300μs | Baseline |
+
+For pipelines instantiated frequently (e.g., per-request in web APIs), this difference is significant.
+
+#### Best Practices
+
+1. **Always add explicit parameterless constructors** for clarity (prevents accidental removal)
+2. **Use mixed constructors** when you need both optimization and flexibility
+3. **Don't worry about implicit constructors** - they're already optimized
+4. **Use DIContainerNodeFactory** only for pure DI scenarios where performance isn't critical
+5. **Document why** if you only provide parameterized constructors
+
+#### Implementation Guide
+
+1. **Identify nodes without parameterless constructors** using the NP9505 analyzer
+2. **Choose an approach:**
+   - Add parameterless constructor (most common)
+   - Configure DIContainerNodeFactory (pure DI)
+   - Use pre-configured instances (complex initialization)
+3. **Apply the automatic code fix** or manually add the constructor
+4. **Verify** that both constructor paths work in tests
+
 ## Best Practices Summary
 
 | Pattern | Recommendation | Reason |

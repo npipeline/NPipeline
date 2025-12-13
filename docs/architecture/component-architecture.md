@@ -312,6 +312,7 @@ graph TD
 
 ## Next Steps
 
+- **[Node Instantiation](node-instantiation.md)** - Understand node creation patterns and performance
 - **[Execution Flow](execution-flow.md)** - Understand sequential and parallel execution
 - **[Dependency Injection Integration](dependency-injection.md)** - Learn about DI integration
 

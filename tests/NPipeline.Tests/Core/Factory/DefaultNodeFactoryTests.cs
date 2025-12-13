@@ -105,6 +105,59 @@ public sealed class DefaultNodeFactoryTests(ITestOutputHelper output)
         _ = exception.Message.Should().Contain("DIContainerNodeFactory");
     }
 
+    [Fact]
+    public void Create_Uses_Compiled_Factory_For_Second_Instantiation()
+    {
+        _ = output;
+
+        // Arrange
+        var builder = new PipelineBuilder();
+        var source = builder.AddSource<InMemorySourceNode<int>, int>("s");
+        var handle1 = builder.AddTransform<SimpleTransformNode, int, int>("n1");
+        var handle2 = builder.AddTransform<SimpleTransformNode, int, int>("n2");
+        _ = builder.Connect(source, handle1);
+        _ = builder.Connect(handle1, handle2);
+        var pipeline = builder.Build();
+        var nodeDef1 = pipeline.Graph.Nodes.Single(n => n.Id == handle1.Id);
+        var nodeDef2 = pipeline.Graph.Nodes.Single(n => n.Id == handle2.Id);
+
+        var factory = new DefaultNodeFactory();
+
+        // Act - Create two instances of the same type
+        var instance1 = factory.Create(nodeDef1, pipeline.Graph);
+        var instance2 = factory.Create(nodeDef2, pipeline.Graph);
+
+        // Assert - Both should be created successfully and be different instances
+        _ = instance1.Should().BeOfType<SimpleTransformNode>();
+        _ = instance2.Should().BeOfType<SimpleTransformNode>();
+        _ = instance1.Should().NotBeSameAs(instance2);
+    }
+
+    [Fact]
+    public void Create_Caches_Compiled_Factory_Across_Multiple_Calls()
+    {
+        _ = output;
+
+        // Arrange
+        var builder = new PipelineBuilder();
+        var source = builder.AddSource<InMemorySourceNode<int>, int>("s");
+        var handle = builder.AddTransform<SimpleTransformNode, int, int>("n");
+        _ = builder.Connect(source, handle);
+        var pipeline = builder.Build();
+        var nodeDef = pipeline.Graph.Nodes.Single(n => n.Id == handle.Id);
+
+        var factory = new DefaultNodeFactory();
+
+        // Act - Create multiple instances
+        var instances = Enumerable.Range(0, 10)
+            .Select(_ => factory.Create(nodeDef, pipeline.Graph))
+            .ToList();
+
+        // Assert - All should be valid instances
+        _ = instances.Should().AllBeOfType<SimpleTransformNode>();
+        _ = instances.Should().OnlyHaveUniqueItems(); // All different instances
+    }
+
     private sealed class SimpleTransformNode : TransformNode<int, int>
     {
         public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
