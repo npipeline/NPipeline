@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Execution.Plans;
+using NPipeline.Execution.Pooling;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -18,10 +19,22 @@ public sealed class NodeInstantiationService : INodeInstantiationService
     /// <inheritdoc />
     public Dictionary<string, INode> InstantiateNodes(PipelineGraph graph, INodeFactory nodeFactory)
     {
-        return graph.Nodes.ToDictionary(
-            def => def.Id,
-            def => nodeFactory.Create(def, graph)
-        );
+        var nodeInstances = PipelineObjectPool.RentNodeDictionary(graph.Nodes.Count);
+
+        try
+        {
+            foreach (var def in graph.Nodes)
+            {
+                nodeInstances.Add(def.Id, nodeFactory.Create(def, graph));
+            }
+
+            return nodeInstances;
+        }
+        catch
+        {
+            PipelineObjectPool.Return(nodeInstances);
+            throw;
+        }
     }
 
     /// <inheritdoc />

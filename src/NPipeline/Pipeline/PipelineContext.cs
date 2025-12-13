@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
+using NPipeline.Execution.Pooling;
 using NPipeline.Lineage;
 using NPipeline.Observability;
 using NPipeline.Observability.Logging;
@@ -51,6 +52,11 @@ namespace NPipeline.Pipeline;
 /// </remarks>
 public sealed class PipelineContext
 {
+    private readonly bool _ownsItemsDictionary;
+    private readonly bool _ownsParametersDictionary;
+
+    private readonly bool _ownsPropertiesDictionary;
+
     // Composite disposal registry for lifecycle-managed IAsyncDisposable resources (lazy initialized)
     private List<IAsyncDisposable>? _disposables;
     private bool _disposed;
@@ -104,9 +110,30 @@ public sealed class PipelineContext
     {
         config ??= PipelineContextConfiguration.Default;
 
-        Parameters = config.Parameters ?? new Dictionary<string, object>();
-        Items = config.Items ?? new Dictionary<string, object>();
-        Properties = config.Properties ?? new Dictionary<string, object>();
+        if (config.Parameters is not null)
+            Parameters = config.Parameters;
+        else
+        {
+            Parameters = PipelineObjectPool.RentStringObjectDictionary();
+            _ownsParametersDictionary = true;
+        }
+
+        if (config.Items is not null)
+            Items = config.Items;
+        else
+        {
+            Items = PipelineObjectPool.RentStringObjectDictionary();
+            _ownsItemsDictionary = true;
+        }
+
+        if (config.Properties is not null)
+            Properties = config.Properties;
+        else
+        {
+            Properties = PipelineObjectPool.RentStringObjectDictionary();
+            _ownsPropertiesDictionary = true;
+        }
+
         CancellationToken = config.CancellationToken;
         LoggerFactory = config.LoggerFactory ?? NullPipelineLoggerFactory.Instance;
         Tracer = config.Tracer ?? NullPipelineTracer.Instance;
@@ -289,26 +316,27 @@ public sealed class PipelineContext
 
         _disposed = true;
 
-        // Fast path: if no disposables were ever registered, skip disposal entirely
-        if (_disposables is null)
-            return;
-
         List<Exception>? errors = null;
 
-        foreach (var d in _disposables)
+        if (_disposables is not null)
         {
-            try
+            foreach (var d in _disposables)
             {
-                await d.DisposeAsync().ConfigureAwait(false);
+                try
+                {
+                    await d.DisposeAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    errors ??= new List<Exception>();
+                    errors.Add(ex);
+                }
             }
-            catch (Exception ex)
-            {
-                errors ??= new List<Exception>();
-                errors.Add(ex);
-            }
+
+            _disposables.Clear();
         }
 
-        _disposables.Clear();
+        ReturnPooledDictionaries();
 
         if (errors is { Count: > 0 })
             throw new AggregateException("One or more errors occurred disposing pipeline context resources.", errors);
@@ -333,6 +361,27 @@ public sealed class PipelineContext
     public IDisposable ScopedNode(string nodeId)
     {
         return new NodeScope(this, nodeId);
+    }
+
+    private void ReturnPooledDictionaries()
+    {
+        if (_ownsParametersDictionary)
+        {
+            Parameters.Clear();
+            PipelineObjectPool.Return(Parameters);
+        }
+
+        if (_ownsItemsDictionary)
+        {
+            Items.Clear();
+            PipelineObjectPool.Return(Items);
+        }
+
+        if (_ownsPropertiesDictionary)
+        {
+            Properties.Clear();
+            PipelineObjectPool.Return(Properties);
+        }
     }
 
     private sealed class NodeScope : IDisposable

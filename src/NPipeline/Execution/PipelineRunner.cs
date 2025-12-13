@@ -1,10 +1,10 @@
 using System.Collections.Immutable;
-using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution.Annotations;
 using NPipeline.Execution.Caching;
 using NPipeline.Execution.CircuitBreaking;
+using NPipeline.Execution.Pooling;
 using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
@@ -79,7 +79,7 @@ public sealed class PipelineRunner(
     /// </example>
     public async Task RunAsync<TDefinition>(CancellationToken cancellationToken = default) where TDefinition : IPipelineDefinition, new()
     {
-        var context = new PipelineContextBuilder()
+        await using var context = new PipelineContextBuilder()
             .WithCancellation(cancellationToken)
             .Build();
 
@@ -127,14 +127,15 @@ public sealed class PipelineRunner(
         if (!context.Items.TryGetValue(PipelineContextKeys.TotalProcessedItems, out var statsObj) || statsObj is not StatsCounter)
             context.Items[PipelineContextKeys.TotalProcessedItems] = new StatsCounter();
 
-        // Initialize nodeOutputs dictionary once
-        var nodeOutputs = new Dictionary<string, IDataPipe?>();
-        var nodeInstances = new Dictionary<string, INode>();
+        // Rent pooled dictionaries for node outputs and instances
+        var nodeOutputs = PipelineObjectPool.RentNodeOutputDictionary();
+        Dictionary<string, INode>? nodeInstances = null;
 
         try
         {
             var pipeline = pipelineFactory.Create<TDefinition>(context);
             graph = pipeline.Graph;
+            nodeOutputs.EnsureCapacity(graph.Nodes.Count);
 
             if (graph.ExecutionOptions.Visualizer is not null)
                 await graph.ExecutionOptions.Visualizer.VisualizeAsync(graph, cancellationToken).ConfigureAwait(false);
@@ -409,15 +410,24 @@ public sealed class PipelineRunner(
                     await kvp.Value.DisposeAsync().ConfigureAwait(false);
             }
 
-            // Dispose all node instances unless DI owns their lifetime
-            var diOwnsNodes = context.Items.TryGetValue(PipelineContextKeys.DiOwnedNodes, out var owned) && owned is bool b && b;
+            nodeOutputs.Clear();
+            PipelineObjectPool.Return(nodeOutputs);
 
-            if (!diOwnsNodes)
+            // Dispose all node instances unless DI owns their lifetime
+            if (nodeInstances is not null)
             {
-                foreach (var node in nodeInstances.Values)
+                var diOwnsNodes = context.Items.TryGetValue(PipelineContextKeys.DiOwnedNodes, out var owned) && owned is bool b && b;
+
+                if (!diOwnsNodes)
                 {
-                    await node.DisposeAsync().ConfigureAwait(false);
+                    foreach (var node in nodeInstances.Values)
+                    {
+                        await node.DisposeAsync().ConfigureAwait(false);
+                    }
                 }
+
+                nodeInstances.Clear();
+                PipelineObjectPool.Return(nodeInstances);
             }
         }
     }

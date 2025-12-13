@@ -4,8 +4,6 @@ description: Best practices for building high-performance, low-allocation data p
 sidebar_position: 2
 ---
 
-# Performance Hygiene
-
 NPipeline is designed for high performance, but building an efficient pipeline requires careful consideration of how you write your nodes and structure your data flow. "Performance hygiene" refers to the practice of writing code that is mindful of memory allocations, CPU usage, and data transfer overhead.
 
 > :information_source: For specific optimization patterns and techniques, see [Synchronous Fast Paths](synchronous-fast-paths.md).
@@ -99,6 +97,41 @@ public async Task ProcessStreamInline(Stream stream, Func<ReadOnlyMemory<byte>, 
     }
 }
 ```
+
+### Use `PipelineObjectPool` for Framework Collections
+
+NPipeline now pools all of the hot-path dictionaries that back graph execution and `PipelineContext`. You can rely on `PipelineObjectPool` to rent these collections instead of allocating new instances for every run:
+
+```csharp
+var nodeOutputs = PipelineObjectPool.RentNodeOutputDictionary(graph.Nodes.Count);
+
+try
+{
+    // Execute nodes using the shared dictionary...
+}
+finally
+{
+    foreach (var (_, pipe) in nodeOutputs)
+    {
+        await pipe?.DisposeAsync();
+    }
+
+    nodeOutputs.Clear();
+    PipelineObjectPool.Return(nodeOutputs);
+}
+```
+
+When you build contexts manually, allow `PipelineContext` to rent pooled dictionaries by not supplying `Parameters`, `Items`, or `Properties` explicitly. Always dispose the context you create so the dictionaries are returned to the pool:
+
+```csharp
+await using var context = new PipelineContextBuilder()
+    .WithCancellation(cancellationToken)
+    .Build();
+
+await runner.RunAsync<MyPipeline>(context, cancellationToken);
+```
+
+Supplying custom dictionaries is still supported—`PipelineContext` detects ownership and will skip pool returns for caller-managed instances. This lets you decide which allocations are worth pooling while still benefiting from the framework defaults.
 
 ## 2. Be Mindful of `async` and `await`
 
@@ -328,7 +361,7 @@ When context is cached at node scope (which execution strategies do automaticall
 
 In DEBUG builds, NPipeline detects mutations and throws a clear exception:
 
-```
+```text
 InvalidOperationException: 
   Context immutability violation detected for node 'myNode': 
   Retry options were modified during node execution. 
