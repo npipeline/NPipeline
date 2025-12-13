@@ -51,8 +51,8 @@ namespace NPipeline.Pipeline;
 /// </remarks>
 public sealed class PipelineContext
 {
-    // Composite disposal registry for lifecycle-managed IAsyncDisposable resources
-    private readonly List<IAsyncDisposable> _disposables = new();
+    // Composite disposal registry for lifecycle-managed IAsyncDisposable resources (lazy initialized)
+    private List<IAsyncDisposable>? _disposables;
     private bool _disposed;
     private IExecutionObserver _executionObserver = NullExecutionObserver.Instance;
 
@@ -274,6 +274,8 @@ public sealed class PipelineContext
             return;
         }
 
+        // Lazy initialize the disposables list only when needed
+        _disposables ??= new List<IAsyncDisposable>(8);
         _disposables.Add(disposable);
     }
 
@@ -286,6 +288,11 @@ public sealed class PipelineContext
             return;
 
         _disposed = true;
+
+        // Fast path: if no disposables were ever registered, skip disposal entirely
+        if (_disposables is null)
+            return;
+
         List<Exception>? errors = null;
 
         foreach (var d in _disposables)

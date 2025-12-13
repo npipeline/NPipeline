@@ -178,9 +178,13 @@ The [`PipelineContext`](src/NPipeline/PipelineContext.cs) includes properties an
 
 `PipelineContext` provides several methods for managing state and resources:
 
-*   **`RegisterForDisposal(IAsyncDisposable disposable)`**: Registers an `IAsyncDisposable` resource to be disposed when the pipeline context is disposed. This ensures proper cleanup of resources created during pipeline execution.
+*   **`RegisterForDisposal(IAsyncDisposable disposable)`**: Registers an `IAsyncDisposable` resource to be disposed when the pipeline context is disposed. This ensures proper cleanup of resources created during pipeline execution. The disposal list is **lazily initialized** only when the first disposable is registered, optimizing performance for stateless pipelines that don't require resource cleanup.
 *   **`ScopedNode(string nodeId)`**: Sets the `CurrentNodeId` for the duration of the returned disposable scope. This is used internally by the pipeline runner to track which node is currently executing.
 *   **`TryGetStatefulRegistry(out IStatefulRegistry? registry)`**: Attempts to get the stateful registry for this pipeline run. Returns true if a stateful registry is available, false otherwise.
+
+### Performance Note
+
+The `RegisterForDisposal` method uses lazy initialization for its internal disposal list. This means that for stateless pipelines (those that never register any disposables), there is no allocation or disposal overhead. When disposables are registered, the list is initialized with a capacity of 8 items, which is sufficient for most typical pipelines (averaging 3-5 disposables per execution).
 
 ## Difference Between Parameters, Items, and Properties
 

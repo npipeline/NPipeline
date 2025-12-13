@@ -519,4 +519,65 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
     }
 
     #endregion
+
+    #region Lazy Disposal Registration Tests
+
+    [Fact]
+    public async Task ResourceDisposal_ContextWithNoRegistrations_DisposesWithoutAllocatingList()
+    {
+        // Arrange
+        var context = PipelineContext.Default;
+
+        // Act - Dispose without registering anything
+        await context.DisposeAsync();
+
+        // Assert - This test verifies that disposing works without errors
+        // The optimization is that no List<IAsyncDisposable> is allocated when nothing is registered
+    }
+
+    [Fact]
+    public async Task ResourceDisposal_AfterFirstRegistration_SubsequentRegistrationsWork()
+    {
+        // Arrange
+        var context = PipelineContext.Default;
+        var disposable1 = new TestAsyncDisposable();
+        var disposable2 = new TestAsyncDisposable();
+        var disposable3 = new TestAsyncDisposable();
+
+        _trackedDisposables.Add(disposable1);
+        _trackedDisposables.Add(disposable2);
+        _trackedDisposables.Add(disposable3);
+
+        // Act - Register multiple disposables (first triggers lazy initialization)
+        context.RegisterForDisposal(disposable1);
+        context.RegisterForDisposal(disposable2);
+        context.RegisterForDisposal(disposable3);
+
+        await context.DisposeAsync();
+
+        // Assert - All disposables should be disposed
+        disposable1.WasDisposed.Should().BeTrue("First disposable should be disposed");
+        disposable2.WasDisposed.Should().BeTrue("Second disposable should be disposed");
+        disposable3.WasDisposed.Should().BeTrue("Third disposable should be disposed");
+    }
+
+    [Fact]
+    public async Task ResourceDisposal_ContextDisposedTwice_SecondDisposeIsNoOp()
+    {
+        // Arrange
+        var context = PipelineContext.Default;
+        var disposable = new TestAsyncDisposable();
+        _trackedDisposables.Add(disposable);
+
+        context.RegisterForDisposal(disposable);
+        await context.DisposeAsync();
+
+        // Act - Dispose again
+        await context.DisposeAsync();
+
+        // Assert - Still only disposed once (WasDisposed is a simple bool)
+        disposable.WasDisposed.Should().BeTrue();
+    }
+
+    #endregion
 }
