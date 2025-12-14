@@ -1,6 +1,11 @@
 // ReSharper disable ClassNeverInstantiated.Local
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using NPipeline.DataFlow;
@@ -35,7 +40,7 @@ public class GCPressureBenchmarks
         _ctx.Parameters["allocationFactor"] = AllocationFactor;
     }
 
-    // ------------------------------------------------------------------------ 
+    // ------------------------------------------------------------------------
     // 1) Sustained load with different allocation patterns
     // ------------------------------------------------------------------------
 
@@ -60,7 +65,7 @@ public class GCPressureBenchmarks
         await _runner.RunAsync<SustainedLoadPipeline>(_ctx);
     }
 
-    // ------------------------------------------------------------------------ 
+    // ------------------------------------------------------------------------
     // 2) Memory pressure with different object lifetimes
     // ------------------------------------------------------------------------
 
@@ -82,7 +87,7 @@ public class GCPressureBenchmarks
         await _runner.RunAsync<LongLivedObjectsPipeline>(_ctx);
     }
 
-    // ------------------------------------------------------------------------ 
+    // ------------------------------------------------------------------------
     // 3) GC pressure with parallelism
     // ------------------------------------------------------------------------
 
@@ -98,7 +103,7 @@ public class GCPressureBenchmarks
         await _runner.RunAsync<ParallelGCPipeline>(_ctx);
     }
 
-    // ------------------------------------------------------------------------ 
+    // ------------------------------------------------------------------------
     // 4) Large object allocation patterns
     // ------------------------------------------------------------------------
 
@@ -114,7 +119,7 @@ public class GCPressureBenchmarks
         await _runner.RunAsync<ManySmallObjectsPipeline>(_ctx);
     }
 
-    // ------------------------------------------------------------------------ 
+    // ------------------------------------------------------------------------
     // 5) GC behavior with batching
     // ------------------------------------------------------------------------
 
@@ -130,7 +135,7 @@ public class GCPressureBenchmarks
         await _runner.RunAsync<StreamingGCPipeline>(_ctx);
     }
 
-    // ------------------------------------------------------------------------ 
+    // ------------------------------------------------------------------------
     // Pipeline definitions
     // ------------------------------------------------------------------------
 
@@ -269,7 +274,7 @@ public class GCPressureBenchmarks
         }
     }
 
-    // ------------------------------------------------------------------------ 
+    // ------------------------------------------------------------------------
     // Node implementations
     // ------------------------------------------------------------------------
 
