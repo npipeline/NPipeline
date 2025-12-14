@@ -1,14 +1,13 @@
 // ReSharper disable ClassNeverInstantiated.Local
 
 using System.Reflection;
-using AwesomeAssertions;
+using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
-using NPipeline.Lineage;
 using NPipeline.Nodes;
-using NPipeline.Observability;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Tests.ErrorHandling;
@@ -34,11 +33,8 @@ public sealed class ErrorHandlerResolutionTests
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
-        var context = new PipelineContextBuilder()
-            .WithErrorHandlerFactory(new DefaultErrorHandlerFactory())
-            .WithLineageFactory(new DefaultLineageFactory())
-            .WithObservabilityFactory(new DefaultObservabilityFactory())
-            .Build();
+        var context = new PipelineContext(
+            PipelineContextConfiguration.Default with { ErrorHandlerFactory = new DefaultErrorHandlerFactory() });
 
         // Set up test data with one item that will fail
         context.SetSourceData(["ok", "fail", "ok2"]);
@@ -70,11 +66,8 @@ public sealed class ErrorHandlerResolutionTests
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
-        var context = new PipelineContextBuilder()
-            .WithErrorHandlerFactory(new DefaultErrorHandlerFactory())
-            .WithLineageFactory(new DefaultLineageFactory())
-            .WithObservabilityFactory(new DefaultObservabilityFactory())
-            .Build();
+        var context = new PipelineContext(
+            PipelineContextConfiguration.Default with { ErrorHandlerFactory = new DefaultErrorHandlerFactory() });
 
         // Set up test data with one item that will fail
         context.SetSourceData(["fail-me"]);
@@ -108,11 +101,8 @@ public sealed class ErrorHandlerResolutionTests
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
-        var context = new PipelineContextBuilder()
-            .WithErrorHandlerFactory(new DefaultErrorHandlerFactory())
-            .WithLineageFactory(new DefaultLineageFactory())
-            .WithObservabilityFactory(new DefaultObservabilityFactory())
-            .Build();
+        var context = new PipelineContext(
+            PipelineContextConfiguration.Default with { ErrorHandlerFactory = new DefaultErrorHandlerFactory() });
 
         // Set up test data with one item that will fail
         context.SetSourceData(["ok", "fail", "ok2"]);
@@ -140,11 +130,8 @@ public sealed class ErrorHandlerResolutionTests
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
-        var context = new PipelineContextBuilder()
-            .WithErrorHandlerFactory(new DefaultErrorHandlerFactory())
-            .WithLineageFactory(new DefaultLineageFactory())
-            .WithObservabilityFactory(new DefaultObservabilityFactory())
-            .Build();
+        var context = new PipelineContext(
+            PipelineContextConfiguration.Default with { ErrorHandlerFactory = new DefaultErrorHandlerFactory() });
 
         // Set up test data with one item that will cause pipeline to fail
         context.SetSourceData(["fail-pipeline"]);
@@ -176,11 +163,8 @@ public sealed class ErrorHandlerResolutionTests
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
-        var context = new PipelineContextBuilder()
-            .WithErrorHandlerFactory(new DefaultErrorHandlerFactory())
-            .WithLineageFactory(new DefaultLineageFactory())
-            .WithObservabilityFactory(new DefaultObservabilityFactory())
-            .Build();
+        var context = new PipelineContext(
+            PipelineContextConfiguration.Default with { ErrorHandlerFactory = new DefaultErrorHandlerFactory() });
 
         // Set up test data with one item that will fail
         context.SetSourceData(["no-handler"]);
@@ -205,11 +189,8 @@ public sealed class ErrorHandlerResolutionTests
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
-        var context = new PipelineContextBuilder()
-            .WithErrorHandlerFactory(new DefaultErrorHandlerFactory())
-            .WithLineageFactory(new DefaultLineageFactory())
-            .WithObservabilityFactory(new DefaultObservabilityFactory())
-            .Build();
+        var context = new PipelineContext(
+            PipelineContextConfiguration.Default with { ErrorHandlerFactory = new DefaultErrorHandlerFactory() });
 
         // Set up test data with one item that will fail
         context.SetSourceData(["missing-global"]);
@@ -241,11 +222,8 @@ public sealed class ErrorHandlerResolutionTests
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
-        var context = new PipelineContextBuilder()
-            .WithErrorHandlerFactory(new DefaultErrorHandlerFactory())
-            .WithLineageFactory(new DefaultLineageFactory())
-            .WithObservabilityFactory(new DefaultObservabilityFactory())
-            .Build();
+        var context = new PipelineContext(
+            PipelineContextConfiguration.Default with { ErrorHandlerFactory = new DefaultErrorHandlerFactory() });
 
         // Set up test data with multiple items, one will fail
         context.SetSourceData(["item1", "fail-item", "item2", "item3"]);
@@ -274,11 +252,8 @@ public sealed class ErrorHandlerResolutionTests
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
-        var context = new PipelineContextBuilder()
-            .WithErrorHandlerFactory(new DefaultErrorHandlerFactory())
-            .WithLineageFactory(new DefaultLineageFactory())
-            .WithObservabilityFactory(new DefaultObservabilityFactory())
-            .Build();
+        var context = new PipelineContext(
+            PipelineContextConfiguration.Default with { ErrorHandlerFactory = new DefaultErrorHandlerFactory() });
 
         // Set up test data with an item that will cause pipeline failure
         context.SetSourceData(["fail-pipeline-item"]);

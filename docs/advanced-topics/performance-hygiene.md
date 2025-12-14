@@ -124,9 +124,7 @@ finally
 When you build contexts manually, allow `PipelineContext` to rent pooled dictionaries by not supplying `Parameters`, `Items`, or `Properties` explicitly. Always dispose the context you create so the dictionaries are returned to the pool:
 
 ```csharp
-await using var context = new PipelineContextBuilder()
-    .WithCancellation(cancellationToken)
-    .Build();
+await using var context = new PipelineContext(PipelineContextConfiguration.WithCancellation(cancellationToken));
 
 await runner.RunAsync<MyPipeline>(context, cancellationToken);
 ```

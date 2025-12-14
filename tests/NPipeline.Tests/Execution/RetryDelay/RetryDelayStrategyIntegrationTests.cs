@@ -307,10 +307,12 @@ public sealed class RetryDelayStrategyIntegrationTests
     {
         var retryOptions = new PipelineRetryOptions(maxRetries, 5, 10, null, delayConfig);
 
-        return new PipelineContextBuilder()
-            .WithErrorHandler(new TestErrorHandler(PipelineErrorDecision.RestartNode))
-            .WithRetry(retryOptions)
-            .Build();
+        return new PipelineContext(
+            PipelineContextConfiguration.Default with
+            {
+                PipelineErrorHandler = new TestErrorHandler(PipelineErrorDecision.RestartNode),
+                RetryOptions = retryOptions,
+            });
     }
 
     private sealed class TestTransformNode : TransformNode<int, string>

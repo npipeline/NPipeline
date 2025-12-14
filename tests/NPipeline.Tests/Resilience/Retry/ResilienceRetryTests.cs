@@ -1,12 +1,11 @@
 using System.Reflection;
-using AwesomeAssertions;
+using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
-using NPipeline.Lineage;
 using NPipeline.Nodes;
-using NPipeline.Observability;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Tests.Resilience.Retry;
@@ -24,11 +23,8 @@ public sealed class ResilienceRetryTests
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
-        var ctx = new PipelineContextBuilder()
-            .WithErrorHandlerFactory(new DefaultErrorHandlerFactory())
-            .WithLineageFactory(new DefaultLineageFactory())
-            .WithObservabilityFactory(new DefaultObservabilityFactory())
-            .Build();
+        var ctx = new PipelineContext(
+            PipelineContextConfiguration.Default with { ErrorHandlerFactory = new DefaultErrorHandlerFactory() });
 
         // Provide a single item source
         ctx.SetSourceData([42]);

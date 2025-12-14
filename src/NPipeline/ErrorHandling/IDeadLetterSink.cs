@@ -83,9 +83,8 @@ namespace NPipeline.ErrorHandling;
 /// 
 /// // Use in pipeline
 /// var deadLetterSink = new FilesDeadLetterSink("/tmp/dead-letters");
-/// var context = new PipelineContextBuilder()
-///     .WithDeadLetterSink(deadLetterSink)
-///     .Build();
+/// var context = new PipelineContext(
+///     PipelineContextConfiguration.Default with { DeadLetterSink = deadLetterSink });
 /// </code>
 /// </example>
 public interface IDeadLetterSink

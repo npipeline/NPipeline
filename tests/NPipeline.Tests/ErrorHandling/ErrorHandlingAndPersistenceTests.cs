@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
@@ -56,9 +57,8 @@ public sealed class ErrorHandlingAndPersistenceTests
     {
         var persistence = PersistenceService.Instance;
 
-        var ctx = new PipelineContextBuilder()
-            .WithParameters(new Dictionary<string, object>())
-            .Build();
+        var ctx = new PipelineContext(
+            PipelineContextConfiguration.WithParameters(new Dictionary<string, object>()));
 
         var sm = new SnapshotStateManager();
         ctx.Properties[PipelineContextKeys.StateManager] = sm;

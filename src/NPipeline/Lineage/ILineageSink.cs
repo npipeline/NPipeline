@@ -49,9 +49,8 @@ namespace NPipeline.Lineage;
 /// 
 /// // Use in pipeline
 /// var lineageSink = new JsonLineageSink("/var/log/pipeline-lineage.jsonl");
-/// var context = new PipelineContextBuilder()
-///     .WithLineageSink(lineageSink)
-///     .Build();
+/// var context = new PipelineContext(
+///     PipelineContextConfiguration.Default with { LineageFactory = new DefaultLineageFactory(null, lineageSink) });
 /// </code>
 /// </example>
 public interface ILineageSink

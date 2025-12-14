@@ -418,9 +418,8 @@ public class CircuitBreakerIntegrationTests
         PipelineCircuitBreakerOptions? options = null,
         CircuitBreakerMemoryManagementOptions? memoryOptions = null)
     {
-        var context = new PipelineContextBuilder()
-            .WithErrorHandler(new TestErrorHandler(PipelineErrorDecision.RestartNode))
-            .Build();
+        var context = new PipelineContext(
+            PipelineContextConfiguration.Default with { PipelineErrorHandler = new TestErrorHandler(PipelineErrorDecision.RestartNode) });
 
         context.Items[PipelineContextKeys.CircuitBreakerOptions] = (options ?? new PipelineCircuitBreakerOptions(
             3,
@@ -435,9 +434,8 @@ public class CircuitBreakerIntegrationTests
 
     private static PipelineContext CreatePipelineContextWithoutCircuitBreaker()
     {
-        return new PipelineContextBuilder()
-            .WithErrorHandler(new TestErrorHandler(PipelineErrorDecision.RestartNode))
-            .Build();
+        return new PipelineContext(
+            PipelineContextConfiguration.Default with { PipelineErrorHandler = new TestErrorHandler(PipelineErrorDecision.RestartNode) });
     }
 
     #endregion

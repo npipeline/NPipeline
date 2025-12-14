@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
@@ -25,11 +26,8 @@ public sealed class ErrorHandlingTests(ITestOutputHelper output)
         var runner = provider.GetRequiredService<IPipelineRunner>();
         var diHandlerFactory = new DiHandlerFactory(provider);
 
-        var context = new PipelineContextBuilder()
-            .WithErrorHandlerFactory(diHandlerFactory)
-            .WithLineageFactory(diHandlerFactory)
-            .WithObservabilityFactory(diHandlerFactory)
-            .Build();
+        var context = new PipelineContext(
+            PipelineContextConfiguration.Default with { ErrorHandlerFactory = diHandlerFactory });
 
         // Set source data on context
         var sourceData = new List<string> { "item1", "fail", "item2" };

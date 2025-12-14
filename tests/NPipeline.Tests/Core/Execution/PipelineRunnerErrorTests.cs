@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using AwesomeAssertions;
 using FakeItEasy;
+using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
@@ -132,9 +133,8 @@ public sealed class PipelineRunnerErrorTests
             .WithObservabilitySurface(_observabilitySurface)
             .Build();
 
-        var context = new PipelineContextBuilder()
-            .WithCancellation(cts.Token)
-            .Build();
+        var context = new PipelineContext(
+            PipelineContextConfiguration.WithCancellation(cts.Token));
 
         // Act & Assert
         _ = await Assert.ThrowsAsync<OperationCanceledException>(() =>

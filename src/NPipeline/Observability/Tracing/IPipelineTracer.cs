@@ -31,9 +31,8 @@ namespace NPipeline.Observability.Tracing;
 /// }
 /// 
 /// // Use in pipeline context
-/// var context = new PipelineContextBuilder()
-///     .WithTracer(new ConsoleTracer())
-///     .Build();
+/// var context = new PipelineContext(
+///     PipelineContextConfiguration.WithObservability(tracer: new ConsoleTracer()));
 /// </code>
 /// </example>
 public interface IPipelineTracer

@@ -5,9 +5,7 @@ using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
-using NPipeline.Lineage;
 using NPipeline.Nodes;
-using NPipeline.Observability;
 using NPipeline.Pipeline;
 using NPipeline.Tests.Common;
 
@@ -26,11 +24,8 @@ public class ParallelRetryTests
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
-        var ctx = new PipelineContextBuilder()
-            .WithErrorHandlerFactory(new DefaultErrorHandlerFactory())
-            .WithLineageFactory(new DefaultLineageFactory())
-            .WithObservabilityFactory(new DefaultObservabilityFactory())
-            .Build();
+        var ctx = new PipelineContext(
+            PipelineContextConfiguration.Default with { ErrorHandlerFactory = new DefaultErrorHandlerFactory() });
 
         // Set source data on the context
         ctx.SetSourceData([1]);
@@ -38,7 +33,7 @@ public class ParallelRetryTests
         // Act & Assert
         var act = async () => await runner.RunAsync<ParallelRetryPipeline>(ctx);
 
-        await act.Should().ThrowAsync<NodeExecutionException>()
+        _ = await act.Should().ThrowAsync<NodeExecutionException>()
             .WithInnerException(typeof(InvalidOperationException));
     }
 
@@ -52,11 +47,8 @@ public class ParallelRetryTests
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
-        var ctx = new PipelineContextBuilder()
-            .WithErrorHandlerFactory(new DefaultErrorHandlerFactory())
-            .WithLineageFactory(new DefaultLineageFactory())
-            .WithObservabilityFactory(new DefaultObservabilityFactory())
-            .Build();
+        var ctx = new PipelineContext(
+            PipelineContextConfiguration.Default with { ErrorHandlerFactory = new DefaultErrorHandlerFactory() });
 
         // Set source data on the context
         ctx.SetSourceData([1]);
@@ -64,7 +56,7 @@ public class ParallelRetryTests
         // Act & Assert
         var act = async () => await runner.RunAsync<OverrideParallelRetryPipeline>(ctx);
 
-        await act.Should().ThrowAsync<NodeExecutionException>()
+        _ = await act.Should().ThrowAsync<NodeExecutionException>()
             .WithInnerException(typeof(InvalidOperationException));
     }
 
@@ -94,7 +86,7 @@ public class ParallelRetryTests
             var t = builder.AddTransform<FlakyParallelTransform, int, int>("pt");
             var k = builder.AddInMemorySink<int>("pk");
 
-            builder.WithExecutionStrategy(t, new ParallelExecutionStrategy(2))
+            _ = builder.WithExecutionStrategy(t, new ParallelExecutionStrategy(2))
                 .WithErrorHandler(t, typeof(RetryAllHandler))
                 .WithRetryOptions(o => o.With(1)) // allow only 1 retry => attempt > 1 should throw
                 .Connect(s, t).Connect(t, k);

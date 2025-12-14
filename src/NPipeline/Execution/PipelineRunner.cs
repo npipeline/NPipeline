@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
+using NPipeline.Configuration;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution.Annotations;
@@ -10,7 +12,9 @@ using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Observability.Logging;
+using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
+using NPipeline.State;
 
 namespace NPipeline.Execution;
 
@@ -79,9 +83,8 @@ public sealed class PipelineRunner(
     /// </example>
     public async Task RunAsync<TDefinition>(CancellationToken cancellationToken = default) where TDefinition : IPipelineDefinition, new()
     {
-        await using var context = new PipelineContextBuilder()
-            .WithCancellation(cancellationToken)
-            .Build();
+        await using var context = new PipelineContext(
+            PipelineContextConfiguration.WithCancellation(cancellationToken));
 
         await RunAsync<TDefinition>(context, cancellationToken).ConfigureAwait(false);
     }

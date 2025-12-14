@@ -166,9 +166,7 @@ await serviceProvider.RunPipelineAsync<MyPipelineDefinition>(parameters, cancell
 using var scope = serviceProvider.CreateScope();
 var runner = scope.ServiceProvider.GetRequiredService<IPipelineRunner>();
 
-var context = new PipelineContextBuilder()
-    .WithCancellation(cancellationToken)
-    .Build();
+var context = new PipelineContext(PipelineContextConfiguration.WithCancellation(cancellationToken));
 await runner.RunAsync<MyPipelineDefinition>(context);
 ```
 

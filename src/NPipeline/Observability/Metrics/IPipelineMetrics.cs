@@ -19,7 +19,7 @@ namespace NPipeline.Observability.Metrics;
 /// <example>
 ///     <code>
 /// // Access metrics after pipeline execution
-/// var context = new PipelineContextBuilder().Build();
+/// var context = new PipelineContext();
 /// await runner.RunAsync&lt;MyPipeline&gt;(context);
 /// 
 /// if (context.Metrics is IPipelineMetrics metrics)

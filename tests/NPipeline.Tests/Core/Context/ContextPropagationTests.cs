@@ -3,6 +3,7 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.ErrorHandling;
@@ -31,11 +32,8 @@ public sealed class ContextPropagationTests
         var serviceProvider = services.BuildServiceProvider();
         var diHandlerFactory = new DiHandlerFactory(serviceProvider);
 
-        var context = new PipelineContextBuilder()
-            .WithErrorHandlerFactory(diHandlerFactory)
-            .WithLineageFactory(diHandlerFactory)
-            .WithObservabilityFactory(diHandlerFactory)
-            .Build();
+        var context = new PipelineContext(
+            PipelineContextConfiguration.Default with { ErrorHandlerFactory = diHandlerFactory });
 
         var runner = serviceProvider.GetRequiredService<IPipelineRunner>();
         await runner.RunAsync<CurrentNodePipeline>(context);
@@ -53,11 +51,8 @@ public sealed class ContextPropagationTests
         var serviceProvider = services.BuildServiceProvider();
         var diHandlerFactory = new DiHandlerFactory(serviceProvider);
 
-        var context = new PipelineContextBuilder()
-            .WithErrorHandlerFactory(diHandlerFactory)
-            .WithLineageFactory(diHandlerFactory)
-            .WithObservabilityFactory(diHandlerFactory)
-            .Build();
+        var context = new PipelineContext(
+            PipelineContextConfiguration.Default with { ErrorHandlerFactory = diHandlerFactory });
 
         var runner = serviceProvider.GetRequiredService<IPipelineRunner>();
         await runner.RunAsync<PipelineWithHandler>(context);
@@ -76,11 +71,8 @@ public sealed class ContextPropagationTests
         var serviceProvider = services.BuildServiceProvider();
         var diHandlerFactory = new DiHandlerFactory(serviceProvider);
 
-        var context = new PipelineContextBuilder()
-            .WithErrorHandlerFactory(diHandlerFactory)
-            .WithLineageFactory(diHandlerFactory)
-            .WithObservabilityFactory(diHandlerFactory)
-            .Build();
+        var context = new PipelineContext(
+            PipelineContextConfiguration.Default with { ErrorHandlerFactory = diHandlerFactory });
 
         var runner = serviceProvider.GetRequiredService<IPipelineRunner>();
         await runner.RunAsync<RedirectPipeline>(context);

@@ -13,7 +13,7 @@ public sealed class SequentialExecutionStrategyValueTaskTests
         await using var input = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>(new[] { 1, 2, 3 }, "input");
         var transform = new ValueTaskFriendlyTransform();
         var strategy = new SequentialExecutionStrategy();
-        var context = new PipelineContextBuilder().Build();
+        var context = new PipelineContext();
 
         await using var output = await strategy.ExecuteAsync(input, transform, context, CancellationToken.None);
 

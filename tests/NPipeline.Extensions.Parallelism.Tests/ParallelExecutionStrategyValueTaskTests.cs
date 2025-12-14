@@ -1,7 +1,7 @@
 using AwesomeAssertions;
-using NPipeline.DataFlow.DataPipes;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Tests.Common;
 
 namespace NPipeline.Extensions.Parallelism.Tests;
 
@@ -13,7 +13,7 @@ public sealed class ParallelExecutionStrategyValueTaskTests
         await using InMemoryDataPipe<int> input = new([1, 2, 3], "input");
         ValueTaskFriendlyTransform transform = new();
         ParallelExecutionStrategy strategy = new(1);
-        var context = new PipelineContextBuilder().Build();
+        var context = new PipelineContext();
         List<int> results = [];
 
         using (context.ScopedNode("transform"))
@@ -37,7 +37,7 @@ public sealed class ParallelExecutionStrategyValueTaskTests
         await using InMemoryDataPipe<int> input = new([10, 20, 30], "input");
         ValueTaskFriendlyTransform transform = new();
         DropOldestParallelStrategy strategy = new(1);
-        var context = new PipelineContextBuilder().Build();
+        var context = new PipelineContext();
         List<int> results = [];
 
         using (context.ScopedNode("transform"))
@@ -69,7 +69,7 @@ public sealed class ParallelExecutionStrategyValueTaskTests
         await using InMemoryDataPipe<int> input = new([7, 8, 9], "input");
         ValueTaskFriendlyTransform transform = new();
         DropNewestParallelStrategy strategy = new(1);
-        var context = new PipelineContextBuilder().Build();
+        var context = new PipelineContext();
         List<int> results = [];
 
         using (context.ScopedNode("transform"))

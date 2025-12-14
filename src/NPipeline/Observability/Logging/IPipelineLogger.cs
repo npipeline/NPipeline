@@ -35,9 +35,8 @@ namespace NPipeline.Observability.Logging;
 /// }
 /// 
 /// // Use in pipeline context
-/// var context = new PipelineContextBuilder()
-///     .WithLogger(new ConsoleLogger())
-///     .Build();
+/// var context = new PipelineContext(
+///     PipelineContextConfiguration.WithLogging(new ConsoleLogger()));
 /// </code>
 /// </example>
 public interface IPipelineLogger

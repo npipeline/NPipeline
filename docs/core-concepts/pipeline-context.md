@@ -98,16 +98,18 @@ await runner.RunAsync<MyPipeline>(context);
 
 ### With Multiple Configurations
 
-For complex scenarios, use the `PipelineContextBuilder` with fluent API:
+For complex scenarios, use the `PipelineContextConfiguration` factory methods:
 
 ```csharp
-var context = new PipelineContextBuilder()
-    .WithCancellation(cancellationToken)
-    .WithRetry(new PipelineRetryOptions(maxItemRetries: 3))
-    .WithParameters(new Dictionary<string, object> { { "userId", 123 } })
-    .WithErrorHandlerFactory(myCustomErrorHandlerFactory)
-    .WithObservability(loggerFactory: myLoggerFactory, tracer: myTracer)
-    .Build();
+var config = PipelineContextConfiguration.Create(
+    cancellationToken: cancellationToken,
+    retryOptions: new PipelineRetryOptions(maxItemRetries: 3),
+    parameters: new Dictionary<string, object> { { "userId", 123 } },
+    errorHandlerFactory: myCustomErrorHandlerFactory,
+    loggerFactory: myLoggerFactory,
+    tracer: myTracer);
+
+var context = new PipelineContext(config);
 
 await runner.RunAsync<MyPipeline>(context);
 ```
@@ -120,8 +122,8 @@ You have several options depending on your needs:
 |--------|-----------|
 | `new PipelineContext()` | Simple context with all defaults |
 | `new PipelineContext(PipelineContextConfiguration.WithCancellation(token))` | For cancellation token only |
-| `new PipelineContext(config)` | When you have a `PipelineContextConfiguration` object |
-| `new PipelineContextBuilder().Build()` | Complex multi-step configuration |
+| `new PipelineContext(new PipelineContextConfiguration(...))` | When you need to supply multiple constructor arguments |
+| `new PipelineContext(PipelineContextConfiguration.Default with { RetryOptions = custom })` | Compose advanced configs via record `with` expressions |
 | `PipelineContext.Default` | Simple read-only default context (rarely used) |
 
 ## Accessing `PipelineContext`

@@ -134,11 +134,10 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
                     case NodeErrorDecision.DeadLetter:
                         return default;
                     case NodeErrorDecision.Retry:
-                        attempt++;
-
-                        if (attempt > cached.RetryOptions.MaxItemRetries)
+                        if (attempt >= cached.RetryOptions.MaxItemRetries)
                             throw;
 
+                        attempt++;
                         itemActivity?.SetTag("retry.attempt", attempt.ToString());
                         PublishRetryInstrumentation(metrics, observer, cached.NodeId, attempt, ex);
                         continue;

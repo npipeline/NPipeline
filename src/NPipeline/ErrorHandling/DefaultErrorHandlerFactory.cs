@@ -7,7 +7,7 @@ namespace NPipeline.ErrorHandling;
 ///     Default implementation of <see cref="IErrorHandlerFactory" /> that creates error handlers and dead-letter sinks
 ///     using reflection with proper error handling and logging.
 /// </summary>
-internal sealed class DefaultErrorHandlerFactory : IErrorHandlerFactory
+public sealed class DefaultErrorHandlerFactory : IErrorHandlerFactory
 {
     private readonly IPipelineLogger _logger;
 
