@@ -109,8 +109,7 @@ public sealed class PipelineBuilderCharacterizationTests
 
         b.EnableItemLevelLineage(o =>
         {
-            o.SampleEvery = 1;
-            o.MaterializationCap = 10; // ensure cap path still supported
+            o = o.With(sampleEvery: 1, materializationCap: 10); // ensure cap path still supported
         });
 
         var p = b.Build();
@@ -130,9 +129,8 @@ public sealed class PipelineBuilderCharacterizationTests
 
         b.EnableItemLevelLineage(o =>
         {
-            o.SampleEvery = 1;
-            o.MaterializationCap = 1; // force overflow path for one-to-many mapping logic
-            o.OverflowPolicy = LineageOverflowPolicy.Strict;
+            o = o.With(sampleEvery: 1, materializationCap: 1,
+                overflowPolicy: LineageOverflowPolicy.Strict); // force overflow path for one-to-many mapping logic
         });
 
         // Current behavior: Build does not execute transformation, so overflow cannot occur here. Expect no throw.
@@ -152,9 +150,7 @@ public sealed class PipelineBuilderCharacterizationTests
 
         b.EnableItemLevelLineage(o =>
         {
-            o.SampleEvery = 1;
-            o.MaterializationCap = 1; // force potential overflow later
-            o.OverflowPolicy = LineageOverflowPolicy.WarnContinue;
+            o = o.With(sampleEvery: 1, materializationCap: 1, overflowPolicy: LineageOverflowPolicy.WarnContinue); // force potential overflow later
         });
 
         var p = b.Build();

@@ -51,15 +51,20 @@ public sealed class LineageMappingStrategiesTests
         int? materializationCap = null,
         LineageOverflowPolicy overflowPolicy = LineageOverflowPolicy.Degrade)
     {
-        return new LineageOptions
-        {
-            Strict = strict,
-            WarnOnMismatch = warnOnMismatch,
-            MaxHopRecordsPerItem = maxHopRecords ?? 100,
-            MaterializationCap = materializationCap,
-            OverflowPolicy = overflowPolicy,
-            CaptureAncestryMapping = true,
-        };
+        return new LineageOptions(
+            strict, // Strict
+            warnOnMismatch, // WarnOnMismatch
+            null, // OnMismatch
+            materializationCap, // MaterializationCap
+            overflowPolicy, // OverflowPolicy
+            true, // CaptureHopTimestamps
+            true, // CaptureDecisions
+            true, // CaptureObservedCardinality
+            true, // CaptureAncestryMapping
+            100, // SampleEvery
+            true, // DeterministicSampling
+            true, // RedactData
+            maxHopRecords ?? 100); // MaxHopRecordsPerItem
     }
 
     #endregion
@@ -627,13 +632,20 @@ public sealed class LineageMappingStrategiesTests
         var outputData = CreateDataStream("a", "b", "c");
         List<LineageMismatchContext> mismatchContexts = [];
 
-        var options = new LineageOptions
-        {
-            Strict = false,
-            WarnOnMismatch = false,
-            MaxHopRecordsPerItem = 100,
-            OnMismatch = mismatchContexts.Add,
-        };
+        var options = new LineageOptions(
+            false, // Strict
+            false, // WarnOnMismatch
+            mismatchContexts.Add, // OnMismatch
+            null, // MaterializationCap
+            LineageOverflowPolicy.Degrade, // OverflowPolicy
+            true, // CaptureHopTimestamps
+            true, // CaptureDecisions
+            true, // CaptureObservedCardinality
+            false, // CaptureAncestryMapping
+            100, // SampleEvery
+            true, // DeterministicSampling
+            true, // RedactData
+            100); // MaxHopRecordsPerItem
 
         ILineageMappingStrategy<int, string> strategy = MaterializingStrategy<int, string>.Instance;
 

@@ -40,8 +40,8 @@ public sealed class PipelineContextPoolingTests
 
         var config = new PipelineContextConfiguration(
             parameters,
-            Items: items,
-            Properties: properties);
+            items,
+            properties);
 
         var context = new PipelineContext(config);
 

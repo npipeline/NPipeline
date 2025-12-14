@@ -87,7 +87,7 @@ public sealed class PipelineContextBuilder
     ///     <code>
     ///         // Quick: Just build with defaults
     ///         var context = new PipelineContextBuilder().Build();
-    /// 
+    ///
     ///         // Flexible: Customize as needed
     ///         var context = new PipelineContextBuilder()
     ///             .WithCancellation(cancellationToken)
@@ -314,8 +314,8 @@ public sealed class PipelineContextBuilder
     {
         var config = new PipelineContextConfiguration(
             _parameters,
-            Items: _items,
-            Properties: _properties,
+            _items,
+            _properties,
             CancellationToken: _cancellationToken,
             LoggerFactory: _loggerFactory,
             Tracer: _tracer,

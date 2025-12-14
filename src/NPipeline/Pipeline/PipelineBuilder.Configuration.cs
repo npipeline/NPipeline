@@ -198,7 +198,7 @@ public sealed partial class PipelineBuilder
         _config = _config with
         {
             ItemLevelLineageEnabled = true,
-            LineageOptions = _config.LineageOptions ?? new LineageOptions { SampleEvery = 1, RedactData = false },
+            LineageOptions = _config.LineageOptions ?? new LineageOptions(SampleEvery: 1, RedactData: false),
         };
 
         return this;
@@ -211,7 +211,7 @@ public sealed partial class PipelineBuilder
     /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder EnableItemLevelLineage(Action<LineageOptions> configure)
     {
-        var opts = _config.LineageOptions ?? new LineageOptions();
+        var opts = _config.LineageOptions ?? LineageOptions.Default;
         configure(opts);
         _config = _config with { ItemLevelLineageEnabled = true, LineageOptions = opts };
         return this;
