@@ -34,18 +34,27 @@ The `PipelineContext` constructor accepts several optional parameters to customi
 ```csharp
 public PipelineContext(
     Dictionary<string, object>? parameters = null,
-    IPipelineLoggerFactory? loggerFactory = null,
-    IPipelineTracer? tracer = null,
+    Dictionary<string, object>? items = null,
+    Dictionary<string, object>? properties = null,
+    PipelineRetryOptions? retryOptions = null,
+    IErrorHandlerFactory? errorHandlerFactory = null,
     IPipelineErrorHandler? pipelineErrorHandler = null,
     IDeadLetterSink? deadLetterSink = null,
-    Dictionary<string, object>? items = null,
-    IErrorHandlerFactory? errorHandlerFactory = null,
-    ILineageFactory? lineageFactory = null,
+    IPipelineLoggerFactory? loggerFactory = null,
+    IPipelineTracer? tracer = null,
     IObservabilityFactory? observabilityFactory = null,
-    PipelineRetryOptions? retryOptions = null,
-    Dictionary<string, object>? properties = null,
+    ILineageFactory? lineageFactory = null,
     CancellationToken cancellationToken = default)
 ```
+
+The parameters are organized into logical groups:
+
+1. **Runtime Data Dictionaries**: `Parameters`, `Items`, `Properties`
+2. **Resilience Options**: `RetryOptions`
+3. **Error Handling Components**: `ErrorHandlerFactory`, `PipelineErrorHandler`, `DeadLetterSink`
+4. **Observability Components**: `LoggerFactory`, `Tracer`, `ObservabilityFactory`
+5. **Lineage Components**: `LineageFactory`
+6. **Cancellation Token**: `CancellationToken`
 
 ## Creating a `PipelineContext`
 

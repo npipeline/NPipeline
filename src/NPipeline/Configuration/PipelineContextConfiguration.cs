@@ -24,16 +24,16 @@ namespace NPipeline.Configuration;
 /// </remarks>
 public sealed record PipelineContextConfiguration(
     Dictionary<string, object>? Parameters = null,
-    IPipelineLoggerFactory? LoggerFactory = null,
-    IPipelineTracer? Tracer = null,
+    Dictionary<string, object>? Items = null,
+    Dictionary<string, object>? Properties = null,
+    PipelineRetryOptions? RetryOptions = null,
+    IErrorHandlerFactory? ErrorHandlerFactory = null,
     IPipelineErrorHandler? PipelineErrorHandler = null,
     IDeadLetterSink? DeadLetterSink = null,
-    Dictionary<string, object>? Items = null,
-    IErrorHandlerFactory? ErrorHandlerFactory = null,
-    ILineageFactory? LineageFactory = null,
+    IPipelineLoggerFactory? LoggerFactory = null,
+    IPipelineTracer? Tracer = null,
     IObservabilityFactory? ObservabilityFactory = null,
-    PipelineRetryOptions? RetryOptions = null,
-    Dictionary<string, object>? Properties = null,
+    ILineageFactory? LineageFactory = null,
     CancellationToken CancellationToken = default)
 {
     /// <summary>
