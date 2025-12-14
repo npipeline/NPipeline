@@ -167,14 +167,14 @@ This simple example illustrates the fundamental flow of data through an NPipelin
 You may have noticed something interesting about our source node:
 
 ```csharp
-public override IDataPipe<string> ExecuteAsync(...)  // Notice: Not async!
+public override IDataPipe<string> InitializeAsync(...)  // Notice: Not async!
 {
     // Returns a pipe synchronously - no await here
     return new StreamingDataPipe<string>(Stream());
 }
 ```
 
-The method is called `Execute`, not `ExecuteAsync`, because it returns synchronously—no await is involved!
+The method is called `Initialize`, not `InitializeAsync`, because it returns synchronously — no await is involved!
 
 **Phase 1 (Synchronous):** The source creates a pipe immediately
 ```csharp
