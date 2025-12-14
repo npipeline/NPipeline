@@ -86,7 +86,6 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
         }
     }
 
-
     /// <summary>
     ///     Extracts the key from an input item for grouping.
     /// </summary>
@@ -95,13 +94,13 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
     public abstract TKey GetKey(TIn item);
 
     /// <summary>
-    ///     Creates the initial accumulator value for a new group.
+    ///     Creates an initial accumulator value for a new group.
     /// </summary>
     /// <returns>The initial accumulator value.</returns>
     public abstract TAccumulate CreateAccumulator();
 
     /// <summary>
-    ///     Accumulates an input item into the accumulator.
+    ///     Accumulates an input item into an accumulator.
     /// </summary>
     /// <param name="accumulator">The current accumulator value.</param>
     /// <param name="item">The input item to accumulate.</param>
@@ -109,11 +108,29 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
     public abstract TAccumulate Accumulate(TAccumulate accumulator, TIn item);
 
     /// <summary>
-    ///     Produces the final result from the accumulator.
+    ///     Produces the final result from an accumulator.
     /// </summary>
     /// <param name="accumulator">The final accumulator value.</param>
     /// <returns>The aggregation result.</returns>
     public abstract TResult GetResult(TAccumulate accumulator);
+
+    /// <summary>
+    ///     Gets metrics about the node's operation.
+    /// </summary>
+    /// <returns>A tuple containing metrics about windows processed, closed, and maximum concurrency.</returns>
+    public (long TotalWindowsProcessed, long TotalWindowsClosed, long MaxConcurrentWindows) GetMetrics()
+    {
+        return (Interlocked.Read(ref _totalWindowsProcessed), Interlocked.Read(ref _totalWindowsClosed), Interlocked.Read(ref _maxConcurrentWindows));
+    }
+
+    /// <summary>
+    ///     Gets the current number of active windows being tracked.
+    /// </summary>
+    /// <returns>The current number of active windows.</returns>
+    public int GetActiveWindowCount()
+    {
+        return _accumulators.Count;
+    }
 
     private async IAsyncEnumerable<TResult> AggregateStreamAsync(IAsyncEnumerable<StreamItem<TIn>> inputStream,
         [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -139,7 +156,7 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
                             isNewWindow = true;
                             return Accumulate(CreateAccumulator(), item);
                         },
-                        (_, current) => Accumulate(current, item));
+                        (_, Current) => Accumulate(Current, item));
 
                     if (isNewWindow)
                     {
@@ -148,7 +165,7 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
                         var maxCount = Interlocked.Read(ref _maxConcurrentWindows);
 
                         if (currentCount > maxCount)
-                            Interlocked.Exchange(ref _maxConcurrentWindows, currentCount);
+                            _ = Interlocked.Exchange(ref _maxConcurrentWindows, currentCount);
                     }
                 }
             }
@@ -165,7 +182,7 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
                 {
                     if (_accumulators.TryRemove(windowKey, out var accumulator))
                     {
-                        Interlocked.Increment(ref _totalWindowsClosed);
+                        _ = Interlocked.Increment(ref _totalWindowsClosed);
                         yield return GetResult(accumulator);
                     }
                 }
@@ -177,24 +194,6 @@ public abstract class AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult> : I
         {
             yield return GetResult(kvp.Value);
         }
-    }
-
-    /// <summary>
-    ///     Gets metrics about the node's operation.
-    /// </summary>
-    /// <returns>A tuple containing metrics about windows processed, closed, and maximum concurrency.</returns>
-    public (long TotalWindowsProcessed, long TotalWindowsClosed, long MaxConcurrentWindows) GetMetrics()
-    {
-        return (Interlocked.Read(ref _totalWindowsProcessed), Interlocked.Read(ref _totalWindowsClosed), Interlocked.Read(ref _maxConcurrentWindows));
-    }
-
-    /// <summary>
-    ///     Gets the current number of active windows being tracked.
-    /// </summary>
-    /// <returns>The current number of active windows.</returns>
-    public int GetActiveWindowCount()
-    {
-        return _accumulators.Count;
     }
 
     private async IAsyncEnumerable<TIn> ConvertToTypedAsyncEnumerable(IAsyncEnumerable<object?> asyncEnumerable)

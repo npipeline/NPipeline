@@ -213,6 +213,14 @@ public sealed class ErrorHandlingService : IErrorHandlingService
                 throw;
 
             lastException = ex;
+
+            // Check if there's a RetryExhaustedException in the context after each retry attempt
+            if (context.Items.TryGetValue(PipelineContextKeys.LastRetryExhaustedException, out var retryExObj) &&
+                retryExObj is RetryExhaustedException contextRetryEx)
+            {
+                // Use the RetryExhaustedException from the context as the inner exception
+                throw new NodeExecutionException(nodeDefinition.Id, contextRetryEx.Message, contextRetryEx);
+            }
         }
 
         // Retry attempts
@@ -223,7 +231,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
                 break;
 
             // Call error handler to decide whether to retry
-            var errorDecision = await HandleNodeErrorAsync(nodeDefinition, node, lastException!, context, cancellationToken).ConfigureAwait(false);
+            var errorDecision = await HandleNodeErrorAsync(nodeDefinition, node, lastException!, context, cancellationToken);
 
             if (errorDecision != NodeErrorDecision.Retry)
             {
@@ -288,16 +296,16 @@ public sealed class ErrorHandlingService : IErrorHandlingService
                 if (context.Items.TryGetValue(PipelineContextKeys.LastRetryExhaustedException, out var retryExObj) &&
                     retryExObj is RetryExhaustedException contextRetryEx)
                 {
-                    // Use the RetryExhaustedException from context as the inner exception
+                    // Use the RetryExhaustedException from the context as the inner exception
                     throw new NodeExecutionException(nodeDefinition.Id, contextRetryEx.Message, contextRetryEx);
                 }
             }
         }
 
         // At this point lastException must be non-null (first attempt captured it and subsequent attempts only reassign on failure).
-        var failureException = lastException!; // Documented invariant: failures have occurred so lastException is set.
+        var failureException = lastException; // Documented invariant: failures have occurred so lastException is set.
 
-        // If the failure was caused by cancellation, preserve the original OperationCanceledException
+        // If failure was caused by cancellation, preserve the original OperationCanceledException
         // instead of wrapping it in a NodeExecutionException. This ensures cancellation propagates
         // correctly to callers and observers (e.g., OpenTelemetry tests expect OperationCanceledException).
         if (failureException is OperationCanceledException)
@@ -346,11 +354,13 @@ public sealed class ErrorHandlingService : IErrorHandlingService
     private static PipelineRetryOptions GetEffectiveRetryOptions(NodeDefinition nodeDefinition, PipelineContext context)
     {
         // Check for node-specific retry options
-        if (context.Items.TryGetValue($"retry::{nodeDefinition.Id}", out var specific) && specific is PipelineRetryOptions specificOptions)
+        if (context.Items.TryGetValue($"retry::{nodeDefinition.Id}", out var specific) &&
+            specific is PipelineRetryOptions specificOptions)
             return specificOptions;
 
         // Fall back to global retry options
-        if (context.Items.TryGetValue(PipelineContextKeys.GlobalRetryOptions, out var global) && global is PipelineRetryOptions globalOptions)
+        if (context.Items.TryGetValue(PipelineContextKeys.GlobalRetryOptions, out var global) &&
+            global is PipelineRetryOptions globalOptions)
             return globalOptions;
 
         // Default retry options
@@ -420,7 +430,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
                 return NodeErrorDecision.Fail;
 
             var invokeResult = handleAsyncMethod.Invoke(
-                errorHandler!,
+                errorHandler,
                 [node, null, exception, context, cancellationToken]);
 
             if (invokeResult is Task<NodeErrorDecision> task)

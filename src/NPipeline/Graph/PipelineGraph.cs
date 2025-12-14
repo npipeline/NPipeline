@@ -123,6 +123,15 @@ public sealed class PipelineGraphBuilder
     }
 
     /// <summary>
+    ///     Creates a new PipelineGraphBuilder with default values.
+    /// </summary>
+    /// <returns>A new PipelineGraphBuilder instance.</returns>
+    public static PipelineGraphBuilder Create()
+    {
+        return new PipelineGraphBuilder();
+    }
+
+    /// <summary>
     ///     Sets the nodes for the pipeline graph.
     /// </summary>
     /// <param name="nodes">The collection of node definitions.</param>
@@ -140,7 +149,7 @@ public sealed class PipelineGraphBuilder
     /// <returns>The builder instance for method chaining.</returns>
     public PipelineGraphBuilder WithNodes(IEnumerable<NodeDefinition> nodes)
     {
-        _nodes = nodes.ToImmutableList();
+        _nodes = ImmutableList.CreateRange(nodes);
         return this;
     }
 
@@ -162,7 +171,7 @@ public sealed class PipelineGraphBuilder
     /// <returns>The builder instance for method chaining.</returns>
     public PipelineGraphBuilder WithEdges(IEnumerable<Edge> edges)
     {
-        _edges = edges.ToImmutableList();
+        _edges = ImmutableList.CreateRange(edges);
         return this;
     }
 
@@ -490,14 +499,5 @@ public sealed class PipelineGraphBuilder
                 Visualizer = _visualizer,
             },
         };
-    }
-
-    /// <summary>
-    ///     Creates a new PipelineGraphBuilder with default values.
-    /// </summary>
-    /// <returns>A new PipelineGraphBuilder instance.</returns>
-    public static PipelineGraphBuilder Create()
-    {
-        return new PipelineGraphBuilder();
     }
 }

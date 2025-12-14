@@ -159,6 +159,9 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
 
                     if (count > cap)
                         break; // enforcement done by pipe; break early once exceeded triggers exception.
+
+                    // Reset enumerator by creating a new replay pipe over the same underlying source buffer.
+                    // Since CappedReplayableDataPipe stores buffered items internally, we can reuse it directly (subsequent enumeration will replay buffer).
                 }
 
                 // Reset enumerator by creating a new replay pipe over the same underlying source buffer.
@@ -169,7 +172,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         }
 
         // The streamFactory is a function that can be called to regenerate the source stream.
-        // This is necessary for the RestartNode decision.
+        // This is necessary for RestartNode decision.
         Task<IDataPipe<TOut>> StreamFactory()
         {
             return innerStrategy.ExecuteAsync(input, node, context, cancellationToken);

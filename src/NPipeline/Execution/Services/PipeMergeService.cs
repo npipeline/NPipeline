@@ -30,9 +30,11 @@ public sealed class PipeMergeService(IMergeStrategySelector strategySelector) : 
             async IAsyncEnumerable<object?> Hetero([EnumeratorCancellation] CancellationToken ct = default)
             {
                 foreach (var pipe in inputPipes)
-                await foreach (var item in pipe.ToAsyncEnumerable(ct).WithCancellation(ct))
                 {
-                    yield return item; // allow nulls (object?)
+                    await foreach (var item in pipe.ToAsyncEnumerable(ct).WithCancellation(ct))
+                    {
+                        yield return item; // allow nulls (object?)
+                    }
                 }
             }
 

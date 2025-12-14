@@ -38,15 +38,15 @@ public sealed class NodeExecutor(
         return plan.Kind switch
         {
             NodeKind.Source when plan.ExecuteSource is not null =>
-                ExecuteSourcePlanAsync(plan, graph, context, nodeOutputs, nodeDef),
+                ExecuteSourcePlanAsync(plan, graph, context, nodeOutputs),
             NodeKind.Transform when plan.ExecuteTransform is not null =>
                 ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
             NodeKind.Join when plan.ExecuteJoin is not null =>
                 ExecuteJoinPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
             NodeKind.Aggregate when plan.ExecuteAggregate is not null =>
-                ExecuteAggregatePlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
+                ExecuteAggregatePlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef),
             NodeKind.Sink when plan.ExecuteSink is not null =>
-                ExecuteSinkPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
+                ExecuteSinkPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef),
             _ => throw new NotSupportedException(ErrorMessages.NodeKindNotSupported(plan.Kind.ToString())),
         };
     }
@@ -54,8 +54,7 @@ public sealed class NodeExecutor(
     private async Task ExecuteSourcePlanAsync(NodeExecutionPlan plan,
         PipelineGraph graph,
         PipelineContext context,
-        IDictionary<string, IDataPipe?> nodeOutputs,
-        NodeDefinition nodeDef)
+        IDictionary<string, IDataPipe?> nodeOutputs)
     {
         var output = await plan.ExecuteSource!(context, context.CancellationToken);
 
@@ -191,8 +190,7 @@ public sealed class NodeExecutor(
         IDictionary<string, IDataPipe?> nodeOutputs,
         IReadOnlyDictionary<string, INode> nodeInstances,
         IReadOnlyDictionary<string, NodeDefinition> nodeDefinitionMap,
-        NodeDefinition nodeDef,
-        INode instance)
+        NodeDefinition nodeDef)
     {
         var input = await GetNodeInputAsync(plan.NodeId, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken);
         IDataPipe output;
@@ -254,8 +252,7 @@ public sealed class NodeExecutor(
         IDictionary<string, IDataPipe?> nodeOutputs,
         IReadOnlyDictionary<string, INode> nodeInstances,
         IReadOnlyDictionary<string, NodeDefinition> nodeDefinitionMap,
-        NodeDefinition nodeDef,
-        INode instance)
+        NodeDefinition nodeDef)
     {
         var input = await GetNodeInputAsync(plan.NodeId, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken);
         var effectiveInput = input;
@@ -284,10 +281,10 @@ public sealed class NodeExecutor(
 
         var inputPipes = inputEdges.Select(edge =>
         {
-            if (!nodeOutputs.TryGetValue(edge.SourceNodeId, out var inputData) || inputData is null)
-                throw new InvalidOperationException(ErrorMessages.OutputNotFoundForSourceNode(edge.SourceNodeId) + $" when processing node '{nodeId}'.");
+            if (nodeOutputs.TryGetValue(edge.SourceNodeId, out var inputData) && inputData is not null)
+                return inputData;
 
-            return inputData;
+            throw new InvalidOperationException(ErrorMessages.OutputNotFoundForSourceNode(edge.SourceNodeId) + $" when processing node '{nodeId}'.");
         }).ToList();
 
         if (inputPipes.Count == 1)
@@ -296,43 +293,6 @@ public sealed class NodeExecutor(
         var nodeDef = nodeDefinitions[nodeId];
         var targetNode = nodeInstances[nodeId];
         return await pipeMergeService.MergeAsync(nodeDef, targetNode, inputPipes, cancellationToken);
-    }
-
-    private static IDataPipe CreateTypedJoinPipe(NodeDefinition def, IAsyncEnumerable<object?> source, string streamName)
-    {
-        var outType = def.OutputType ?? typeof(object);
-
-        var method =
-            typeof(NodeExecutor).GetMethod(nameof(CreateTypedJoinPipeGeneric), BindingFlags.NonPublic | BindingFlags.Static)!.MakeGenericMethod(outType);
-
-        return (IDataPipe)method.Invoke(null, [source, streamName])!;
-    }
-
-    private static StreamingDataPipe<TOut> CreateTypedJoinPipeGeneric<TOut>(IAsyncEnumerable<object?> source, string streamName)
-    {
-        async IAsyncEnumerable<TOut> CastStream([EnumeratorCancellation] CancellationToken ct = default)
-        {
-            await foreach (var item in source.WithCancellation(ct))
-
-                // Consistent null handling: always yield a value for null items
-                // For reference types and nullable value types, yield null
-                // For non-nullable value types, yield default
-            {
-                if (item is null)
-                    yield return default!;
-                else
-                {
-                    if (item is TOut typed)
-                        yield return typed;
-                    else
-
-                        // Attempt direct cast (will throw immediately, surfacing misconfiguration early)
-                        yield return (TOut)item;
-                }
-            }
-        }
-
-        return new StreamingDataPipe<TOut>(CastStream(), streamName);
     }
 
     private static StreamingDataPipe<TOut> AdaptJoinOutput<TOut>(IDataPipe untyped, string streamName)
@@ -348,10 +308,9 @@ public sealed class NodeExecutor(
             {
                 await foreach (var obj in typedExisting.ToAsyncEnumerable(ct).WithCancellation(ct))
                 {
-                    if (obj is TOut t)
-                        yield return t;
-                    else
-                        yield return (TOut)obj!;
+                    yield return obj is TOut t
+                        ? t
+                        : (TOut)obj!;
                 }
             }
 
@@ -366,15 +325,11 @@ public sealed class NodeExecutor(
                 // For reference types and nullable value types, yield null
                 // For non-nullable value types, yield default
             {
-                if (obj is null)
-                    yield return default!;
-                else
-                {
-                    if (obj is TOut t)
-                        yield return t;
-                    else
-                        yield return (TOut)obj!;
-                }
+                yield return obj is null
+                    ? default!
+                    : obj is TOut t
+                        ? t
+                        : (TOut)obj!;
             }
         }
 
@@ -390,5 +345,26 @@ public sealed class NodeExecutor(
         }
 
         return counter;
+    }
+
+    private static StreamingDataPipe<TOut> CreateTypedJoinPipeGeneric<TOut>(IAsyncEnumerable<object?> input, string streamName)
+    {
+        async IAsyncEnumerable<TOut> Cast([EnumeratorCancellation] CancellationToken ct = default)
+        {
+            await foreach (var obj in input.WithCancellation(ct))
+
+                // Consistent null handling: always yield a value for null items
+                // For reference types and nullable value types, yield null
+                // For non-nullable value types, yield default
+            {
+                yield return obj is null
+                    ? default!
+                    : obj is TOut t
+                        ? t
+                        : (TOut)obj!;
+            }
+        }
+
+        return new StreamingDataPipe<TOut>(Cast(), streamName);
     }
 }

@@ -372,9 +372,12 @@ public sealed class NodeInstantiationService : INodeInstantiationService
             if (result is IAsyncEnumerable<object?> asyncEnum)
                 return new StreamingDataPipe<object?>(asyncEnum, $"AggregateResult_{def.Id}");
 
-            var list = result is not null
-                ? new List<object?>(new[] { result })
-                : new List<object?>();
+            List<object?> list;
+
+            if (result is not null)
+                list = [result];
+            else
+                list = [];
 
             return new StreamingDataPipe<object?>(list.ToAsyncEnumerable(), $"AggregateResult_{def.Id}");
         };

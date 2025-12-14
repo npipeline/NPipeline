@@ -17,11 +17,10 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
     private bool _disposed;
     private int _halfOpenAttempts;
     private int _halfOpenSuccesses;
-
     private CircuitBreakerState _state = CircuitBreakerState.Closed;
 
     /// <summary>
-    ///     Initializes a new instance of the CircuitBreaker class.
+    ///     Initializes a new instance of CircuitBreaker class.
     /// </summary>
     /// <param name="options">The circuit breaker configuration options.</param>
     /// <param name="logger">The logger for diagnostic information.</param>
@@ -40,7 +39,7 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
     }
 
     /// <summary>
-    ///     Gets current state of the circuit breaker.
+    ///     Gets current state of circuit breaker.
     /// </summary>
     public CircuitBreakerState State
     {
@@ -54,12 +53,12 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
     }
 
     /// <summary>
-    ///     Gets the circuit breaker configuration options.
+    ///     Gets circuit breaker configuration options.
     /// </summary>
     public PipelineCircuitBreakerOptions Options { get; }
 
     /// <summary>
-    ///     Gets the current statistics from the circuit breaker.
+    ///     Gets current statistics from circuit breaker.
     /// </summary>
     /// <returns>The current window statistics.</returns>
     public WindowStatistics GetStatistics()
@@ -68,7 +67,7 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
     }
 
     /// <summary>
-    ///     Determines whether an operation can be executed based on the current state.
+    ///     Determines whether an operation can be executed based on current state.
     /// </summary>
     /// <returns>True if operation is allowed, false otherwise.</returns>
     public bool CanExecute()
@@ -88,9 +87,9 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
     }
 
     /// <summary>
-    ///     Records a successful operation and updates the circuit breaker state accordingly.
+    ///     Records a successful operation and updates circuit breaker state accordingly.
     /// </summary>
-    /// <returns>The result of the operation recording including any state changes.</returns>
+    /// <returns>The result of operation recording including any state changes.</returns>
     public CircuitBreakerExecutionResult RecordSuccess()
     {
         lock (_gate)
@@ -112,9 +111,9 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
     }
 
     /// <summary>
-    ///     Records a failed operation and updates the circuit breaker state accordingly.
+    ///     Records a failed operation and updates circuit breaker state accordingly.
     /// </summary>
-    /// <returns>The result of the operation recording including any state changes.</returns>
+    /// <returns>The result of operation recording including any state changes.</returns>
     public CircuitBreakerExecutionResult RecordFailure()
     {
         lock (_gate)
@@ -135,7 +134,7 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
     }
 
     /// <summary>
-    ///     Releases all resources used by the CircuitBreaker.
+    ///     Releases all resources used by CircuitBreaker.
     /// </summary>
     public void Dispose()
     {
@@ -164,11 +163,13 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
         _halfOpenSuccesses++;
         _halfOpenAttempts++;
 
-        if (_halfOpenSuccesses >= Options.HalfOpenSuccessThreshold)
-            return TransitionToClosed("Recovery confirmed");
+        if (_halfOpenSuccesses < Options.HalfOpenSuccessThreshold)
+        {
+            return new CircuitBreakerExecutionResult(true, false, _state,
+                $"Success recorded in Half-Open state ({_halfOpenSuccesses}/{Options.HalfOpenSuccessThreshold})");
+        }
 
-        return new CircuitBreakerExecutionResult(true, false, _state,
-            $"Success recorded in Half-Open state ({_halfOpenSuccesses}/{Options.HalfOpenSuccessThreshold})");
+        return TransitionToClosed("Recovery confirmed");
     }
 
     private bool ShouldTripBreaker()
@@ -192,8 +193,8 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
         _halfOpenSuccesses = 0;
 
         // Start recovery timer
-        if (_recoveryTimer != null && Options.OpenDuration > TimeSpan.Zero)
-            _ = _recoveryTimer.Change(Options.OpenDuration, Timeout.InfiniteTimeSpan);
+        if (_recoveryTimer is not null && Options.OpenDuration > TimeSpan.Zero)
+            _recoveryTimer.Change(Options.OpenDuration, Timeout.InfiniteTimeSpan);
 
         _logger.Log(LogLevel.Warning, "Circuit breaker transitioned from {PreviousState} to Open: {Reason}", previousState, reason);
 
@@ -223,7 +224,7 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
         _halfOpenAttempts = 0;
         _halfOpenSuccesses = 0;
 
-        // Clear the rolling window when transitioning to Closed
+        // Clear rolling window when transitioning to Closed
         _rollingWindow?.Clear();
 
         // Stop recovery timer if it's running
