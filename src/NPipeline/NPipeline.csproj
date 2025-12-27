@@ -39,7 +39,7 @@
              PrivateAssets="All" - not included in NuGet package dependencies
              ReferenceOutputAssembly="false" - not referenced at runtime
              This keeps the core dependency-free. -->
-        <ProjectReference Include="../NPipeline.Analyzers/NPipeline.Analyzers.csproj"
+        <ProjectReference Include="../NPipeline.Roslyn.Analyzers/NPipeline.Roslyn.Analyzers.csproj"
                           PrivateAssets="All"
                           ReferenceOutputAssembly="false"/>
     </ItemGroup>

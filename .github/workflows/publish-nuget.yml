@@ -55,17 +55,11 @@ jobs:
     - name: Build solution
       run: dotnet build --no-restore --configuration Release -p:Version=${{ steps.version.outputs.version }}
       
-    - name: Build Analyzers.Package project
-      run: dotnet build src/NPipeline.Analyzers.Package/NPipeline.Analyzers.Package.csproj --configuration Release -p:Version=${{ steps.version.outputs.version }}
-      
     - name: Run tests
       run: dotnet test --no-build --configuration Release --verbosity normal
       
     - name: Pack NuGet packages
       run: dotnet pack --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
-      
-    - name: Pack Analyzers package
-      run: dotnet pack src/NPipeline.Analyzers.Package/NPipeline.Analyzers.Package.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
       
     - name: Get NuGet API key via trusted publishing (OIDC)
       uses: NuGet/login@v1

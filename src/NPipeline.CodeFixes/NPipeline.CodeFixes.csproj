@@ -28,7 +28,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\NPipeline.Analyzers\NPipeline.Analyzers.csproj"/>
+        <ProjectReference Include="..\NPipeline.Roslyn.Analyzers\NPipeline.Roslyn.Analyzers.csproj"/>
     </ItemGroup>
 
 </Project>

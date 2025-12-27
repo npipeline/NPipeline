@@ -32,7 +32,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="../../src/NPipeline.Analyzers/NPipeline.Analyzers.csproj"/>
+        <ProjectReference Include="../../src/NPipeline.Roslyn.Analyzers/NPipeline.Roslyn.Analyzers.csproj"/>
         <ProjectReference Include="../../src/NPipeline/NPipeline.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.CodeFixes\NPipeline.CodeFixes.csproj"/>
     </ItemGroup>

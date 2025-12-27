@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 #
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline", "src\NPipeline\NPipeline.csproj", "{539C401F-7C7A-4C81-8495-76750EF66984}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Analyzers", "src\NPipeline.Analyzers\NPipeline.Analyzers.csproj", "{E7F8B9C1-2D3E-4F5A-8B1C-9D4E5F6A7B8C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Roslyn.Analyzers", "src\NPipeline.Roslyn.Analyzers\NPipeline.Roslyn.Analyzers.csproj", "{E7F8B9C1-2D3E-4F5A-8B1C-9D4E5F6A7B8C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Tests", "tests\NPipeline.Tests\NPipeline.Tests.csproj", "{C539C2BB-5FF5-45B1-9D16-C8E0F2FBDD41}"
 EndProject

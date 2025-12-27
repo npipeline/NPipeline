@@ -36,13 +36,13 @@
 
     <!-- Project references for analyzer and code fixes -->
     <ItemGroup>
-        <ProjectReference Include="..\NPipeline.Analyzers\NPipeline.Analyzers.csproj" PrivateAssets="all"/>
+        <ProjectReference Include="..\NPipeline.Roslyn.Analyzers\NPipeline.Roslyn.Analyzers.csproj" PrivateAssets="all"/>
         <ProjectReference Include="..\NPipeline.CodeFixes\NPipeline.CodeFixes.csproj" PrivateAssets="all"/>
     </ItemGroup>
 
     <!-- Include analyzer and code fix DLLs in the package -->
     <ItemGroup>
-        <None Include="..\NPipeline.Analyzers\bin\Release\netstandard2.0\NPipeline.Analyzers.dll">
+        <None Include="..\NPipeline.Roslyn.Analyzers\bin\Release\netstandard2.0\NPipeline.Roslyn.Analyzers.dll">
             <Pack>true</Pack>
             <PackagePath>analyzers\dotnet\cs</PackagePath>
         </None>
@@ -58,7 +58,7 @@
 
     <!-- Ensure referenced projects are built before packing -->
     <Target Name="BuildReferencedProjects" BeforeTargets="Pack">
-        <MSBuild Projects="..\NPipeline.Analyzers\NPipeline.Analyzers.csproj" Targets="Build" Properties="Configuration=Release"/>
+        <MSBuild Projects="..\NPipeline.Roslyn.Analyzers\NPipeline.Roslyn.Analyzers.csproj" Targets="Build" Properties="Configuration=Release"/>
         <MSBuild Projects="..\NPipeline.CodeFixes\NPipeline.CodeFixes.csproj" Targets="Build" Properties="Configuration=Release"/>
     </Target>
 
