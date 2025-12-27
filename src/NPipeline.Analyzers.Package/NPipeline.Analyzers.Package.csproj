@@ -34,6 +34,12 @@
         <WarningsNotAsErrors>$(WarningsNotAsErrors);CS1591</WarningsNotAsErrors>
     </PropertyGroup>
 
+    <!-- Project references for analyzer and code fixes -->
+    <ItemGroup>
+        <ProjectReference Include="..\NPipeline.Analyzers\NPipeline.Analyzers.csproj" PrivateAssets="all"/>
+        <ProjectReference Include="..\NPipeline.CodeFixes\NPipeline.CodeFixes.csproj" PrivateAssets="all"/>
+    </ItemGroup>
+
     <!-- Include analyzer and code fix DLLs in the package -->
     <ItemGroup>
         <None Include="..\NPipeline.Analyzers\bin\Release\netstandard2.0\NPipeline.Analyzers.dll">
