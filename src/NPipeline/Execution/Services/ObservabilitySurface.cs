@@ -1,0 +1,128 @@
+using NPipeline.DataFlow.Branching;
+using NPipeline.Execution.Annotations;
+using NPipeline.Graph;
+using NPipeline.Nodes;
+using NPipeline.Observability;
+using NPipeline.Observability.Logging;
+using NPipeline.Observability.Tracing;
+using NPipeline.Pipeline;
+
+namespace NPipeline.Execution.Services;
+
+/// <summary>
+///     Default implementation of <see cref="IObservabilitySurface" /> centralizing logging, tracing and observer events.
+/// </summary>
+public sealed class ObservabilitySurface : IObservabilitySurface
+{
+    /// <summary>
+    ///     Begins a pipeline run and returns the created activity.
+    /// </summary>
+    /// <typeparam name="TDefinition">The type of pipeline definition.</typeparam>
+    /// <param name="context">The pipeline context.</param>
+    /// <returns>The created pipeline activity.</returns>
+    public IPipelineActivity BeginPipeline<TDefinition>(PipelineContext context) where TDefinition : IPipelineDefinition, new()
+    {
+        var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
+        var activity = context.Tracer.StartActivity($"Pipeline.Run: {typeof(TDefinition).Name}");
+        logger.Log(LogLevel.Information, "Starting pipeline run for {PipelineName}", typeof(TDefinition).Name);
+        return activity;
+    }
+
+    /// <summary>
+    ///     Records successful pipeline completion (branch metrics, final log) and disposes nothing (caller disposes activity scope).
+    /// </summary>
+    /// <typeparam name="TDefinition">The type of pipeline definition.</typeparam>
+    /// <param name="context">The pipeline context.</param>
+    /// <param name="graph">The pipeline graph.</param>
+    /// <param name="pipelineActivity">The pipeline activity.</param>
+    public void CompletePipeline<TDefinition>(PipelineContext context, PipelineGraph graph, IPipelineActivity pipelineActivity)
+        where TDefinition : IPipelineDefinition, new()
+    {
+        // Emit branch metrics as tracing tags
+        foreach (var kv in context.Items.Where(kv => kv.Key.StartsWith(ExecutionAnnotationKeys.BranchMetricsPrefix, StringComparison.Ordinal)))
+        {
+            if (kv.Value is BranchMetrics fm)
+            {
+                pipelineActivity.SetTag($"{kv.Key}.subscribers", fm.SubscriberCount);
+                pipelineActivity.SetTag($"{kv.Key}.capacity", fm.PerSubscriberCapacity ?? -1);
+                pipelineActivity.SetTag($"{kv.Key}.maxAggregateBacklog", fm.MaxAggregateBacklog);
+                pipelineActivity.SetTag($"{kv.Key}.completed", fm.SubscribersCompleted);
+                pipelineActivity.SetTag($"{kv.Key}.faulted", fm.Faulted);
+            }
+        }
+
+        var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
+        logger.Log(LogLevel.Information, "Finished pipeline run for {PipelineName}", typeof(TDefinition).Name);
+    }
+
+    /// <summary>
+    ///     Records a pipeline failure (logs + activity exception).
+    /// </summary>
+    /// <typeparam name="TDefinition">The type of pipeline definition.</typeparam>
+    /// <param name="context">The pipeline context.</param>
+    /// <param name="ex">The exception that caused the failure.</param>
+    /// <param name="pipelineActivity">The pipeline activity.</param>
+    public void FailPipeline<TDefinition>(PipelineContext context, Exception ex, IPipelineActivity pipelineActivity)
+        where TDefinition : IPipelineDefinition, new()
+    {
+        var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
+        logger.Log(LogLevel.Error, ex, "Pipeline run for {PipelineName} failed", typeof(TDefinition).Name);
+        pipelineActivity.RecordException(ex);
+    }
+
+    /// <summary>
+    ///     Starts node execution, returning a scope with timing and activity.
+    /// </summary>
+    /// <param name="context">The pipeline context.</param>
+    /// <param name="nodeDef">The node definition.</param>
+    /// <param name="nodeInstance">The node instance.</param>
+    /// <returns>A node observation scope containing timing and activity information.</returns>
+    public NodeObservationScope BeginNode(PipelineContext context, NodeDefinition nodeDef, INode nodeInstance)
+    {
+        var tracer = context.Tracer;
+        var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
+        var activity = tracer.StartActivity($"Node.Execute: {nodeDef.Id}");
+        activity.SetTag("node.id", nodeDef.Id);
+        activity.SetTag("node.type", nodeInstance.GetType().Name);
+        logger.Log(LogLevel.Information, "Executing node {NodeId} of type {NodeType}", nodeDef.Id, nodeInstance.GetType().Name);
+
+        var observer = context.ExecutionObserver;
+
+        var startTs = DateTimeOffset.UtcNow;
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeDef.Id, nodeInstance.GetType().Name, startTs));
+        return new NodeObservationScope(nodeDef.Id, nodeInstance.GetType().Name, startTs, activity);
+    }
+
+    /// <summary>
+    ///     Records node success and returns the NodeExecutionCompleted event for downstream persistence.
+    /// </summary>
+    /// <param name="context">The pipeline context.</param>
+    /// <param name="scope">The node observation scope.</param>
+    /// <returns>A NodeExecutionCompleted event with success information.</returns>
+    public NodeExecutionCompleted CompleteNodeSuccess(PipelineContext context, NodeObservationScope scope)
+    {
+        var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
+        logger.Log(LogLevel.Information, "Finished executing node {NodeId}", scope.NodeId);
+        var duration = DateTimeOffset.UtcNow - scope.StartTime;
+        var completed = new NodeExecutionCompleted(scope.NodeId, scope.NodeType, duration, true, null);
+
+        context.ExecutionObserver.OnNodeCompleted(completed);
+        return completed;
+    }
+
+    /// <summary>
+    ///     Records node failure and returns the NodeExecutionCompleted event for downstream persistence.
+    /// </summary>
+    /// <param name="context">The pipeline context.</param>
+    /// <param name="scope">The node observation scope.</param>
+    /// <param name="ex">The exception that caused the failure.</param>
+    /// <returns>A NodeExecutionCompleted event with failure information.</returns>
+    public NodeExecutionCompleted CompleteNodeFailure(PipelineContext context, NodeObservationScope scope, Exception ex)
+    {
+        scope.Activity.RecordException(ex);
+        var duration = DateTimeOffset.UtcNow - scope.StartTime;
+        var failed = new NodeExecutionCompleted(scope.NodeId, scope.NodeType, duration, false, ex);
+        context.ExecutionObserver.OnNodeCompleted(failed);
+        return failed;
+    }
+}

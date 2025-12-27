@@ -1,0 +1,65 @@
+Welcome to the NPipeline File Processing Sample
+This file contains various types of content for processing
+123456789
+Mixed content with numbers 42 and text
+UPPERCASE LINE
+lowercase line
+MiXeD CaSe LiNe
+Line with special characters: !@#$%^&*()
+Line with punctuation: Hello, world! How are you today?
+Line with quotes: "This is a quoted string" and 'single quotes'
+Line with tabs	and	multiple	tab	characters
+Line with   multiple   spaces
+Line with trailing spaces   
+   Line with leading spaces
+Line with both leading and trailing spaces   
+Empty line above this one
+
+Line with URL: https://github.com/NPipeline/NPipeline
+Line with email: user@example.com
+Line with JSON: {"key": "value", "number": 123}
+Line with XML: <element attribute="value">Content</element>
+Line with CSV: Name,Age,City - John,30,New York
+Line with date: 2023-12-25
+Line with time: 14:30:45
+Line with datetime: 2023-12-25T14:30:45Z
+Line with UUID: 550e8400-e29b-41d4-a716-446655440000
+Line with hexadecimal: 0xDEADBEEF
+Line with binary: 0b10101010
+Line with scientific notation: 1.23e-4
+Line with currency: $1,234.56
+Line with percentage: 75.5%
+Line with phone number: +1 (555) 123-4567
+Line with IP address: 192.168.1.1
+Line with file path: /usr/local/bin/application.exe
+Line with Windows path: C:\Program Files\Application\app.exe
+Line with regex pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+Line with SQL: SELECT * FROM users WHERE active = 1;
+Line with HTML: <p>This is a <strong>paragraph</strong> with <em>formatting</em>.</p>
+Line with CSS: .class-name { color: #ff0000; font-size: 14px; }
+Line with JavaScript: function greet(name) { return `Hello, ${name}!`; }
+Line with C# code: public string GetName() => "NPipeline";
+Line with Python: def calculate_sum(a, b): return a + b
+Line with mathematical expression: (a + b) * (c - d) / 2.0
+Line with Greek letters: α β γ δ ε ζ η θ ι κ λ μ ν ξ ο π ρ σ τ υ φ χ ψ ω
+Line with emojis: 🚀 📊 💻 🔄 📁 📝 ✅
+Line with accented characters: café, naïve, résumé, piñata, jalapeño
+Line with Unicode symbols: ★ ☆ ♠ ♣ ♥ ♦ © ® ™
+Very long line that demonstrates how the pipeline handles lines with substantial content that might wrap in the console but should be processed as a single line unit without any splitting or truncation during the transformation process
+Line with tab-separated values: ID	Name	Age	Department
+1	John Doe	35	Engineering
+2	Jane Smith	28	Marketing
+3	Bob Johnson	42	Sales
+Line with JSON array: [1, 2, 3, {"name": "item", "value": 42}]
+Line with YAML: key: value\n  nested:\n    subkey: subvalue
+Line with environment variable: PATH=/usr/local/bin:/usr/bin:/bin
+Line with command line: npm install --save-dev @types/node
+Line with Docker command: docker run -it --rm ubuntu:latest bash
+Line with Git command: git commit -m "Initial commit"
+Line with database connection: Server=localhost;Database=NPipeline;Trusted_Connection=true;
+Line with API endpoint: GET /api/v1/pipelines/{id}/status
+Line with log entry: [2023-12-25 14:30:45] INFO: Pipeline started successfully
+Line with error message: ERROR: Failed to connect to database after 3 attempts
+Line with warning: WARN: Configuration file not found, using defaults
+Line with debug info: DEBUG: Processing batch of 1000 records
+Final line of the sample file for demonstrating file processing capabilities

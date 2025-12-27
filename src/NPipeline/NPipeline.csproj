@@ -1,0 +1,54 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+        <!-- NuGet Packaging Metadata -->
+        <PackageId>NPipeline</PackageId>
+        <Description>High-performance, streaming data pipelines for .NET</Description>
+        <Authors>NPipeline contributors</Authors>
+        <PackageTags>data;pipeline;stream;etl;lineage</PackageTags>
+        <RepositoryUrl>https://github.com/NPipeline/NPipeline.git</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/NPipeline/NPipeline</PackageProjectUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+        <Deterministic>true</Deterministic>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>icon.png</PackageIcon>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <WarningsNotAsErrors>$(WarningsNotAsErrors);CS1591</WarningsNotAsErrors>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="..\..\README.md" Pack="true" PackagePath="\"/>
+        <None Include="..\..\icon.png" Pack="true" PackagePath="\"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Include analyzers as a compile-time development dependency only
+             PrivateAssets="All" - not included in NuGet package dependencies
+             ReferenceOutputAssembly="false" - not referenced at runtime
+             This keeps the core dependency-free. -->
+        <ProjectReference Include="../NPipeline.Analyzers/NPipeline.Analyzers.csproj"
+                          PrivateAssets="All"
+                          ReferenceOutputAssembly="false"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="NPipeline.Tests"/>
+        <InternalsVisibleTo Include="NPipeline.Extensions.Nodes.Tests"/>
+        <InternalsVisibleTo Include="NPipeline.Extensions.Parallelism.Tests"/>
+        <InternalsVisibleTo Include="NPipeline.Extensions.Parallelism"/>
+    </ItemGroup>
+
+</Project>

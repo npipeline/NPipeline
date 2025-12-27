@@ -1,0 +1,10 @@
+<Project>
+    <!--
+    This file is reserved for future common MSBuild targets that may be needed across all projects.
+    Currently empty, but can be used for:
+    - Custom build targets
+    - Pack metadata injection
+    - Shared post-build operations
+    - Common validation steps
+    -->
+</Project>

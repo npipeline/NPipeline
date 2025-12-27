@@ -1,0 +1,215 @@
+# Sample 11: CSV Connector
+
+This sample demonstrates comprehensive CSV data processing using NPipeline's CSV connector components. It shows how to read data from a source CSV file,
+validate it, transform it, and then write it to a target CSV file.
+
+## Overview
+
+The CSV Connector sample implements a complete data processing pipeline that:
+
+1. **Reads** customer data from a CSV file using `CsvSourceNode<T>`
+2. **Validates** each customer record using a custom `ValidationTransform`
+3. **Transforms** and enriches the data using a custom `DataTransform`
+4. **Writes** the processed data to a new CSV file using `CsvSinkNode<T>`
+
+## Key Concepts Demonstrated
+
+### CSV Connector Components
+
+- **CsvSourceNode<T>**: Reads CSV data and deserializes it to strongly-typed objects
+- **CsvSinkNode<T>**: Serializes objects to CSV format and writes to files
+- **StorageUri**: Abstracts file system access for consistent storage handling
+
+### Data Validation
+
+- Custom validation logic for business rules
+- Configurable filtering of invalid records
+- Comprehensive error reporting and logging
+
+### Data Transformation
+
+- Data normalization (name formatting, country codes)
+- Data enrichment (calculated fields, derived properties)
+- Flexible transformation pipeline
+
+### Error Handling
+
+- Graceful handling of malformed CSV data
+- Pipeline-level error capture and reporting
+- Configurable error handling strategies
+
+## Project Structure
+
+```
+Sample_CsvConnector/
+├── Data/
+│   ├── customers.csv              # Sample input data with valid and invalid records
+│   └── processed_customers.csv    # Generated output file (created by pipeline)
+├── Nodes/
+│   ├── ValidationTransform.cs     # Custom validation transform node
+│   └── DataTransform.cs           # Custom data transformation node
+├── Customer.cs                    # Customer data model
+├── CsvConnectorPipeline.cs       # Main pipeline definition
+├── Program.cs                     # Entry point and execution logic
+├── Sample_CsvConnector.csproj  # Project configuration
+└── README.md                      # This documentation
+```
+
+## Running the Sample
+
+### Prerequisites
+
+- .NET 8.0, 9.0, or 10.0 SDK
+- The NPipeline solution built
+
+### Execution
+
+1. Navigate to the sample directory:
+   ```bash
+   cd samples/Sample_CsvConnector
+   ```
+
+2. Build and run the sample:
+   ```bash
+   dotnet run
+   ```
+
+### Expected Output
+
+The pipeline will:
+
+1. Read 13 customer records from `Data/customers.csv`
+2. Validate each record (filtering out invalid ones)
+3. Transform the valid records (normalize names, countries, etc.)
+4. Write the processed records to `Data/processed_customers.csv`
+
+You should see output similar to:
+
+```
+=== NPipeline Sample: CSV Connector ===
+
+Registered NPipeline services and scanned assemblies for nodes.
+
+Pipeline Description:
+[Detailed pipeline description...]
+
+Pipeline Parameters:
+  Source Path: Data/customers.csv
+  Target Path: Data/processed_customers.csv
+
+Starting pipeline execution...
+
+Pipeline execution completed successfully!
+
+Output file created: Data/processed_customers.csv
+File size: 1024 bytes
+Created: 2023-11-22 10:30:45
+
+Sample output (first 5 lines):
+  Id,FirstName,LastName,Email,Age,RegistrationDate,Country
+  1,John,Doe,john.doe@example.com,28,2023-01-15,United States
+  2,Jane,Smith,jane.smith@example.com,34,2023-02-20,Canada
+  3,Bob,Johnson,bob.johnson@example.com,45,2023-03-10,United Kingdom
+  4,Alice,Williams,alice.williams@example.com,29,2023-04-05,Australia
+```
+
+## Sample Data
+
+### Input Data (customers.csv)
+
+The sample input contains 13 records including:
+
+- **Valid records**: Complete customer data with proper formatting
+- **Invalid records**: Missing fields, invalid emails, out-of-range ages, etc.
+
+### Output Data (processed_customers.csv)
+
+The output contains only valid records with:
+
+- **Normalized names**: Proper capitalization (John Doe instead of john doe)
+- **Normalized countries**: Full country names (United States instead of USA)
+- **Lowercase emails**: Consistent email formatting
+- **Filtered invalid records**: Only valid customer data is included
+
+## Configuration
+
+### Pipeline Parameters
+
+The pipeline accepts the following parameters:
+
+| Parameter    | Description                 | Default Value                  |
+|--------------|-----------------------------|--------------------------------|
+| `SourcePath` | Path to the input CSV file  | `Data/customers.csv`           |
+| `TargetPath` | Path to the output CSV file | `Data/processed_customers.csv` |
+
+### Validation Rules
+
+The `ValidationTransform` enforces these rules:
+
+- **ID**: Must be greater than 0
+- **Name**: First and last name are required
+- **Email**: Required and must match email format regex
+- **Age**: Must be between 0 and 150
+- **Registration Date**: Required and cannot be in the future
+- **Country**: Required and non-empty
+
+### Transformation Rules
+
+The `DataTransform` applies these transformations:
+
+- **Name Formatting**: Capitalizes first letter, lowercases the rest
+- **Email Normalization**: Converts to lowercase
+- **Country Normalization**: Expands abbreviations to full names
+- **Data Trimming**: Removes whitespace from all string fields
+
+## Extending the Sample
+
+### Adding New Validation Rules
+
+Extend the `ValidationTransform.TransformAsync` method to add custom validation logic:
+
+```csharp
+// Example: Add phone number validation
+if (!string.IsNullOrWhiteSpace(input.PhoneNumber) &&
+    !PhoneNumberRegex.IsMatch(input.PhoneNumber))
+{
+    errors.Add($"Invalid phone number format: {input.PhoneNumber}");
+}
+```
+
+### Adding New Transformations
+
+Extend the `DataTransform.TransformAsync` method to add custom transformations:
+
+```csharp
+// Example: Add geographic region calculation
+transformedCustomer.Region = GetGeographicRegion(transformedCustomer.Country);
+```
+
+### Supporting Different CSV Formats
+
+Modify the `Customer` class and update the CSV configuration in the pipeline to support different column names, delimiters, or data formats.
+
+## Best Practices Demonstrated
+
+1. **Separation of Concerns**: Each node has a single responsibility
+2. **Type Safety**: Strongly-typed data models prevent runtime errors
+3. **Error Handling**: Comprehensive validation and graceful error handling
+4. **Configurability**: Pipeline behavior can be configured through parameters
+5. **Testability**: All components are easily testable in isolation
+6. **Logging**: Appropriate logging for monitoring and debugging
+7. **Resource Management**: Proper disposal of file handles and streams
+
+## Dependencies
+
+This sample uses the following NPipeline packages:
+
+- `NPipeline`: Core pipeline framework
+- `NPipeline.Connectors.Csv`: CSV source and sink nodes
+- `NPipeline.Connectors`: Storage abstractions
+- `NPipeline.Extensions.DependencyInjection`: DI container integration
+
+External dependencies:
+
+- `CsvHelper`: CSV parsing and serialization library
+- `Microsoft.Extensions.Hosting`: Host application framework

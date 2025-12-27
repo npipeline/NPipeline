@@ -1,0 +1,62 @@
+version: 2
+
+updates:
+  # .NET / NuGet packages
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "02:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "npipeline/maintainers"
+    labels:
+      - "dependencies"
+      - "nuget"
+    commit-message:
+      prefix: "chore: "
+      prefix-development: "chore(dev): "
+      include: "scope"
+    # Auto-merge patch and minor updates for production packages
+    # Disabled for now until branch protection enabled
+    # allow:
+    #   - dependency-type: "production"
+    #     update-types:
+    #       - "patch"
+    #       - "minor"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "npipeline/maintainers"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore: "
+      include: "scope"
+
+  # npm packages (for documentation)
+  - package-ecosystem: "npm"
+    directory: "/docs"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "npipeline/maintainers"
+    labels:
+      - "dependencies"
+      - "npm"
+      - "documentation"
+    commit-message:
+      prefix: "chore(docs): "
+      include: "scope"

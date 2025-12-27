@@ -1,0 +1,8 @@
+{
+  "label": "Extensions",
+  "position": 5,
+  "link": {
+    "type": "doc",
+    "id": "extensions/index"
+  }
+}
