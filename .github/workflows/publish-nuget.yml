@@ -52,6 +52,9 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
       
+    - name: Restore Analyzers.Package dependencies
+      run: dotnet restore src/NPipeline.Analyzers.Package/NPipeline.Analyzers.Package.csproj
+      
     - name: Build solution
       run: dotnet build --no-restore --configuration Release -p:Version=${{ steps.version.outputs.version }}
       
