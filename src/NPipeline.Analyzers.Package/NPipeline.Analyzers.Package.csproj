@@ -46,7 +46,7 @@
     </ItemGroup>
 
     <!-- Get analyzer assemblies from referenced projects -->
-    <Target Name="IncludeAnalyzersInPackage" DependsOnTarget="ResolveReferences">
+    <Target Name="IncludeAnalyzersInPackage" DependsOnTargets="ResolveReferences">
         <ItemGroup>
             <!-- Include analyzer DLL -->
             <TfmSpecificPackageFile Include="..\NPipeline.Roslyn.Analyzers\bin\$(Configuration)\netstandard2.0\NPipeline.Roslyn.Analyzers.dll">
