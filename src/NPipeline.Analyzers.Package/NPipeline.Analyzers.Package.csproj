@@ -48,29 +48,20 @@
         </None>
     </ItemGroup>
 
-    <!-- Include analyzer and code fix DLLs in the package via dependency assembly resolution -->
-    <ItemGroup>
-        <None Include="@(ReferenceCopyLocalPaths)" Condition="'%(ReferenceCopyLocalPaths.Filename)' == 'NPipeline.Roslyn.Analyzers'">
-            <Pack>true</Pack>
-            <PackagePath>analyzers\dotnet\cs</PackagePath>
-        </None>
-        <None Include="@(ReferenceCopyLocalPaths)" Condition="'%(ReferenceCopyLocalPaths.Filename)' == 'NPipeline.CodeFixes'">
-            <Pack>true</Pack>
-            <PackagePath>analyzers\dotnet\cs</PackagePath>
-        </None>
-    </ItemGroup>
-
-    <!-- Create a placeholder assembly to ensure package has content -->
-    <Target Name="CreateAnalyzerPackageContent" BeforeTargets="Pack">
+    <!-- Stage analyzer assemblies for packing -->
+    <Target Name="StageAnalyzerContent" BeforeTargets="Pack">
+        <!-- Create the analyzer content directory structure -->
         <ItemGroup>
-            <AnalyzerAssembly Include="..\NPipeline.Roslyn.Analyzers\bin\$(Configuration)\netstandard2.0\NPipeline.Roslyn.Analyzers.dll"/>
-            <AnalyzerAssembly Include="..\NPipeline.Roslyn.Analyzers\bin\$(Configuration)\netstandard2.0\NPipeline.Roslyn.Analyzers.pdb"/>
-            <AnalyzerAssembly Include="..\NPipeline.CodeFixes\bin\$(Configuration)\netstandard2.0\NPipeline.CodeFixes.dll"/>
-            <AnalyzerAssembly Include="..\NPipeline.CodeFixes\bin\$(Configuration)\netstandard2.0\NPipeline.CodeFixes.pdb"/>
+            <AnalyzerSourceFiles Include="..\NPipeline.Roslyn.Analyzers\bin\$(Configuration)\netstandard2.0\NPipeline.Roslyn.Analyzers.dll"/>
+            <AnalyzerSourceFiles Include="..\NPipeline.Roslyn.Analyzers\bin\$(Configuration)\netstandard2.0\NPipeline.Roslyn.Analyzers.pdb"/>
+            <AnalyzerSourceFiles Include="..\NPipeline.CodeFixes\bin\$(Configuration)\netstandard2.0\NPipeline.CodeFixes.dll"/>
+            <AnalyzerSourceFiles Include="..\NPipeline.CodeFixes\bin\$(Configuration)\netstandard2.0\NPipeline.CodeFixes.pdb"/>
         </ItemGroup>
         
-        <Copy SourceFiles="@(AnalyzerAssembly)" DestinationFolder="$(IntermediateOutputPath)analyzers\dotnet\cs" SkipUnchangedFiles="true"/>
+        <!-- Copy analyzer files to intermediate output path -->
+        <Copy SourceFiles="@(AnalyzerSourceFiles)" DestinationFolder="$(IntermediateOutputPath)analyzers\dotnet\cs" SkipUnchangedFiles="true" ContinueOnError="true"/>
         
+        <!-- Add copied files to package -->
         <ItemGroup>
             <None Include="$(IntermediateOutputPath)analyzers\dotnet\cs\*">
                 <Pack>true</Pack>
