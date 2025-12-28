@@ -40,11 +40,19 @@
         <ProjectReference Include="..\NPipeline.CodeFixes\NPipeline.CodeFixes.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
     </ItemGroup>
 
-    <!-- Include README and analyzer DLLs in package -->
+    <!-- Include README in package -->
     <ItemGroup>
         <None Include="README.md" Pack="true" PackagePath="\" />
-        <None Include="..\NPipeline.Roslyn.Analyzers\bin\$(Configuration)\netstandard2.0\NPipeline.Roslyn.Analyzers.dll" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
-        <None Include="..\NPipeline.CodeFixes\bin\$(Configuration)\netstandard2.0\NPipeline.CodeFixes.dll" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
     </ItemGroup>
+
+    <!-- Add analyzer DLLs to package during build -->
+    <Target Name="AddAnalyzersToPackage" BeforeTargets="GenerateNuspec" DependsOnTargets="ResolveProjectReferences">
+        <ItemGroup>
+            <None Include="$(MSBuildThisFileDirectory)..\NPipeline.Roslyn.Analyzers\bin\$(Configuration)\netstandard2.0\NPipeline.Roslyn.Analyzers.dll" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
+            <None Include="$(MSBuildThisFileDirectory)..\NPipeline.CodeFixes\bin\$(Configuration)\netstandard2.0\NPipeline.CodeFixes.dll" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
+        </ItemGroup>
+        <Message Importance="high" Text="Adding analyzer files to package" />
+        <Message Importance="high" Text="Analyzer path: $(MSBuildThisFileDirectory)..\NPipeline.Roslyn.Analyzers\bin\$(Configuration)\netstandard2.0\" />
+    </Target>
 
 </Project>
