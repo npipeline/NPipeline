@@ -52,7 +52,7 @@ jobs:
         dotnet pack src/NPipeline.Extensions.Testing/NPipeline.Extensions.Testing.csproj --no-build --configuration Release --output ./artifacts/packages
         dotnet pack src/NPipeline.Extensions.Testing.AwesomeAssertions/NPipeline.Extensions.Testing.AwesomeAssertions.csproj --no-build --configuration Release --output ./artifacts/packages
         dotnet pack src/NPipeline.Extensions.Testing.FluentAssertions/NPipeline.Extensions.Testing.FluentAssertions.csproj --no-build --configuration Release --output ./artifacts/packages
-        dotnet pack src/NPipeline.Analyzers.Package/NPipeline.Analyzers.Package.csproj --no-build --configuration Release --output ./artifacts/packages
+        dotnet pack src/NPipeline.Analyzers.Package/NPipeline.Analyzers.Package.csproj --configuration Release --output ./artifacts/packages
       
     - name: Upload packages as artifacts
       uses: actions/upload-artifact@v6
