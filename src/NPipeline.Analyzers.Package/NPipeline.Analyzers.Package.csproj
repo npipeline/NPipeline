@@ -42,32 +42,26 @@
 
     <!-- Include README in package -->
     <ItemGroup>
-        <None Include="README.md">
-            <Pack>true</Pack>
-            <PackagePath>\</PackagePath>
-        </None>
+        <None Include="README.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 
-    <!-- Stage analyzer assemblies for packing -->
-    <Target Name="StageAnalyzerContent" BeforeTargets="Pack">
-        <!-- Create the analyzer content directory structure -->
+    <!-- Get analyzer assemblies from referenced projects -->
+    <Target Name="IncludeAnalyzersInPackage" DependsOnTarget="ResolveReferences">
         <ItemGroup>
-            <AnalyzerSourceFiles Include="..\NPipeline.Roslyn.Analyzers\bin\$(Configuration)\netstandard2.0\NPipeline.Roslyn.Analyzers.dll"/>
-            <AnalyzerSourceFiles Include="..\NPipeline.Roslyn.Analyzers\bin\$(Configuration)\netstandard2.0\NPipeline.Roslyn.Analyzers.pdb"/>
-            <AnalyzerSourceFiles Include="..\NPipeline.CodeFixes\bin\$(Configuration)\netstandard2.0\NPipeline.CodeFixes.dll"/>
-            <AnalyzerSourceFiles Include="..\NPipeline.CodeFixes\bin\$(Configuration)\netstandard2.0\NPipeline.CodeFixes.pdb"/>
-        </ItemGroup>
-        
-        <!-- Copy analyzer files to intermediate output path -->
-        <Copy SourceFiles="@(AnalyzerSourceFiles)" DestinationFolder="$(IntermediateOutputPath)analyzers\dotnet\cs" SkipUnchangedFiles="true" ContinueOnError="true"/>
-        
-        <!-- Add copied files to package -->
-        <ItemGroup>
-            <None Include="$(IntermediateOutputPath)analyzers\dotnet\cs\*">
-                <Pack>true</Pack>
+            <!-- Include analyzer DLL -->
+            <TfmSpecificPackageFile Include="..\NPipeline.Roslyn.Analyzers\bin\$(Configuration)\netstandard2.0\NPipeline.Roslyn.Analyzers.dll">
                 <PackagePath>analyzers\dotnet\cs</PackagePath>
-            </None>
+            </TfmSpecificPackageFile>
+            <!-- Include code fixes DLL -->
+            <TfmSpecificPackageFile Include="..\NPipeline.CodeFixes\bin\$(Configuration)\netstandard2.0\NPipeline.CodeFixes.dll">
+                <PackagePath>analyzers\dotnet\cs</PackagePath>
+            </TfmSpecificPackageFile>
         </ItemGroup>
     </Target>
+
+    <!-- Ensure the target runs during pack -->
+    <PropertyGroup>
+        <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);IncludeAnalyzersInPackage</TargetsForTfmSpecificContentInPackage>
+    </PropertyGroup>
 
 </Project>
