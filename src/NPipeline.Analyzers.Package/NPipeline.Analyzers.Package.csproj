@@ -45,14 +45,23 @@
         <None Include="README.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 
-    <!-- Add analyzer DLLs to package during build -->
-    <Target Name="AddAnalyzersToPackage" BeforeTargets="GenerateNuspec" DependsOnTargets="ResolveProjectReferences">
+    <!-- Custom target to include analyzer assemblies in the package -->
+    <Target Name="IncludeAnalyzersInPackage">
         <ItemGroup>
-            <None Include="$(MSBuildThisFileDirectory)..\NPipeline.Roslyn.Analyzers\bin\$(Configuration)\netstandard2.0\NPipeline.Roslyn.Analyzers.dll" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
-            <None Include="$(MSBuildThisFileDirectory)..\NPipeline.CodeFixes\bin\$(Configuration)\netstandard2.0\NPipeline.CodeFixes.dll" Pack="true" PackagePath="analyzers\dotnet\cs" Visible="false" />
+            <TfmSpecificPackageFile Include="..\NPipeline.Roslyn.Analyzers\bin\$(Configuration)\netstandard2.0\NPipeline.Roslyn.Analyzers.dll">
+                <PackagePath>analyzers/dotnet/cs</PackagePath>
+            </TfmSpecificPackageFile>
+            <TfmSpecificPackageFile Include="..\NPipeline.CodeFixes\bin\$(Configuration)\netstandard2.0\NPipeline.CodeFixes.dll">
+                <PackagePath>analyzers/dotnet/cs</PackagePath>
+            </TfmSpecificPackageFile>
         </ItemGroup>
-        <Message Importance="high" Text="Adding analyzer files to package" />
-        <Message Importance="high" Text="Analyzer path: $(MSBuildThisFileDirectory)..\NPipeline.Roslyn.Analyzers\bin\$(Configuration)\netstandard2.0\" />
     </Target>
+
+    <!-- Hook into the pack process -->
+    <PropertyGroup>
+        <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);IncludeAnalyzersInPackage</TargetsForTfmSpecificContentInPackage>
+        <!-- Disable the no content error since we're adding files via target -->
+        <NoWarn>$(NoWarn);NU5128</NoWarn>
+    </PropertyGroup>
 
 </Project>
