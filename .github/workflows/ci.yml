@@ -1,18 +1,15 @@
-name: CI
+name: CI Build
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 env:
   DOTNET_VERSION: '10.0.x'
-  # NOTE: When main becomes protected, uncomment the following to enforce PR-only workflow:
-  # REQUIRE_PR_FOR_MAIN: true
 
 jobs:
-  build-and-test:
+  build-test:
     name: Build and Test
     runs-on: ubuntu-latest
     
@@ -35,17 +32,35 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-nuget-
           
+    - name: Generate CI version
+      id: version
+      run: |
+        # Generate date in YYYYMMDD format
+        DATE=$(date +%Y%m%d)
+        # Use GitHub run number for build number
+        BUILD_NUMBER=${{ github.run_number }}
+        # Create pre-release version
+        VERSION="1.0.0-ci.${DATE}.${BUILD_NUMBER}"
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "Generated version: ${VERSION}"
+        
     - name: Restore dependencies
       run: dotnet restore
       
     - name: Build solution
-      run: dotnet build --no-restore --configuration Release
+      run: dotnet build --no-restore --configuration Release -p:Version=${{ steps.version.outputs.version }}
       
     - name: Run tests
-      run: dotnet test --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage"
+      run: dotnet test --no-build --configuration Release --verbosity normal
       
-    - name: Upload coverage reports
-      uses: codecov/codecov-action@v5
-      with:
-        files: '**/coverage.cobertura.xml'
-        fail_ci_if_error: false
+    - name: Pack NuGet packages
+      run: |
+        dotnet pack src/NPipeline/NPipeline.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
+        dotnet pack src/NPipeline.Connectors/NPipeline.Connectors.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
+        dotnet pack src/NPipeline.Connectors.Csv/NPipeline.Connectors.Csv.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
+        dotnet pack src/NPipeline.Extensions.DependencyInjection/NPipeline.Extensions.DependencyInjection.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
+        dotnet pack src/NPipeline.Extensions.Parallelism/NPipeline.Extensions.Parallelism.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
+        dotnet pack src/NPipeline.Extensions.Testing/NPipeline.Extensions.Testing.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
+        dotnet pack src/NPipeline.Extensions.Testing.AwesomeAssertions/NPipeline.Extensions.Testing.AwesomeAssertions.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
+        dotnet pack src/NPipeline.Extensions.Testing.FluentAssertions/NPipeline.Extensions.Testing.FluentAssertions.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
+        dotnet pack src/NPipeline.Analyzers.Package/NPipeline.Analyzers.Package.csproj --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
