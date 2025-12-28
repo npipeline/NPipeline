@@ -72,6 +72,7 @@ jobs:
       
     - name: Publish packages to NuGet using Trusted Publishing
       uses: NuGet/login@v1
+      id: nuget_login
       with:
         user: npipeline
     
@@ -80,8 +81,8 @@ jobs:
         find ./artifacts/packages -name "*.nupkg" -not -name "*.symbols.nupkg" | while read pkg; do
           echo "Publishing: $pkg"
           dotnet nuget push "$pkg" \
+            --api-key ${{ steps.nuget_login.outputs.token }} \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate \
-            --no-symbols \
-            --interactive
+            --no-symbols
         done
