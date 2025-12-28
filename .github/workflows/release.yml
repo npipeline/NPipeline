@@ -169,6 +169,7 @@ jobs:
         find ./artifacts/packages -name "*.nupkg" -not -name "*.symbols.nupkg" | while read pkg; do
           echo "Publishing: $pkg"
           dotnet nuget push "$pkg" \
+            --api-key ${{ steps.nuget_login.outputs.NUGET_API_KEY }} \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate \
             --no-symbols
@@ -179,6 +180,7 @@ jobs:
         find ./artifacts/packages -name "*.snupkg" | while read pkg; do
           echo "Publishing symbols: $pkg"
           dotnet nuget push "$pkg" \
+            --api-key ${{ steps.nuget_login.outputs.NUGET_API_KEY }} \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate
         done
