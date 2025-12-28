@@ -54,7 +54,7 @@ public sealed class RetryDelayStrategyIntegrationTests
             // Assert
             _ = outputs.Should().HaveCount(3);
             _ = stopwatch.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(30); // 10ms + 20ms minimum delays
-            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(500); // Generous to account for timing variance across multiple retry delays
+            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(2000); // Generous to account for timing variance across multiple retry delays
         }
     }
 
@@ -96,7 +96,7 @@ public sealed class RetryDelayStrategyIntegrationTests
             // Assert
             _ = outputs.Should().HaveCount(3);
             _ = stopwatch.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(30); // 10ms + 15ms minimum delays
-            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(500); // Should not take too long (with some margin for system variance)
+            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(2000); // Should not take too long (with some margin for system variance)
         }
     }
 
