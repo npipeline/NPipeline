@@ -70,17 +70,18 @@ jobs:
         dotnet pack src/NPipeline.Extensions.Testing.FluentAssertions/NPipeline.Extensions.Testing.FluentAssertions.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
         dotnet pack src/NPipeline.Analyzers.Package/NPipeline.Analyzers.Package.csproj --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
       
-    - name: Publish packages to NuGet
+    - name: Publish packages to NuGet using Trusted Publishing
       uses: NuGet/login@v1
       with:
         user: npipeline
     
-    - name: Push packages to NuGet
+    - name: Push NuGet packages
       run: |
         find ./artifacts/packages -name "*.nupkg" -not -name "*.symbols.nupkg" | while read pkg; do
           echo "Publishing: $pkg"
           dotnet nuget push "$pkg" \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate \
-            --no-symbols
+            --no-symbols \
+            --interactive
         done
