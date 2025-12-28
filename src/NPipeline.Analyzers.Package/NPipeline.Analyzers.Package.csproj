@@ -24,7 +24,8 @@
 
         <!-- Analyzer Configuration -->
         <DevelopmentDependency>true</DevelopmentDependency>
-        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <!-- Allow build output in package to satisfy content requirement -->
+        <IncludeSymbols>false</IncludeSymbols>
         <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
         <!-- Suppress release tracking requirement as this is an internal analyzer -->
         <NoWarn>$(NoWarn);RS2008</NoWarn>
