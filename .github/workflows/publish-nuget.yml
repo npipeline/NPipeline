@@ -16,7 +16,7 @@ jobs:
       id-token: write  # Required for OIDC token generation (trusted publishing)
     
     environment:
-      name: nuget-ci
+      name: nuget-release
     
     steps:
     - name: Checkout code

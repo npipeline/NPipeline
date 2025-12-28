@@ -82,7 +82,13 @@ public class CircuitBreakerIntegrationTests
         circuitBreaker.CanExecute().Should().BeFalse();
 
         // Act - Wait for recovery timeout
-        await Task.Delay(150);
+        var maxRetries = 10;
+        var retryCount = 0;
+        while (retryCount < maxRetries && circuitBreaker.State != CircuitBreakerState.HalfOpen)
+        {
+            await Task.Delay(50);
+            retryCount++;
+        }
 
         // Should now be in half-open state
         circuitBreaker.State.Should().Be(CircuitBreakerState.HalfOpen);
