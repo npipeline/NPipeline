@@ -70,12 +70,12 @@ jobs:
         dotnet pack src/NPipeline.Extensions.Testing.FluentAssertions/NPipeline.Extensions.Testing.FluentAssertions.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
         dotnet pack src/NPipeline.Analyzers.Package/NPipeline.Analyzers.Package.csproj --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
       
-    - name: Get NuGet API key via trusted publishing (OIDC)
+    - name: Publish packages to NuGet
       uses: NuGet/login@v1
       with:
         user: npipeline
-        
-    - name: Publish packages to NuGet
+    
+    - name: Push packages to NuGet
       run: |
         find ./artifacts/packages -name "*.nupkg" -not -name "*.symbols.nupkg" | while read pkg; do
           echo "Publishing: $pkg"
