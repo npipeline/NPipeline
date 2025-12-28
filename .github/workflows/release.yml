@@ -164,28 +164,11 @@ jobs:
       with:
         user: npipeline  # Replace with your NuGet.org username or organization name
         
-    - name: Debug NuGet token
-      shell: bash
-      run: |
-        echo "=== NuGet Token Diagnostic Info ==="
-        echo "Login step outcome: ${{ steps.nuget_login.outcome }}"
-        echo "Login step conclusion: ${{ steps.nuget_login.conclusion }}"
-        TOKEN="${{ steps.nuget_login.outputs.token }}"
-        echo "Token value: $TOKEN"
-        echo "Token length: ${#TOKEN}"
-        if [ -z "$TOKEN" ]; then
-          echo "Is token empty: true"
-        else
-          echo "Is token empty: false"
-        fi
-        echo "======================================"
-        
     - name: Publish packages to NuGet
       run: |
         find ./artifacts/packages -name "*.nupkg" -not -name "*.symbols.nupkg" | while read pkg; do
           echo "Publishing: $pkg"
           dotnet nuget push "$pkg" \
-            --api-key ${{ steps.nuget_login.outputs.token }} \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate \
             --no-symbols
@@ -196,7 +179,6 @@ jobs:
         find ./artifacts/packages -name "*.snupkg" | while read pkg; do
           echo "Publishing symbols: $pkg"
           dotnet nuget push "$pkg" \
-            --api-key ${{ steps.nuget_login.outputs.token }} \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate
         done
