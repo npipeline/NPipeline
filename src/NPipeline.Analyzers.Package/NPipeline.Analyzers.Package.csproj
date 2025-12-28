@@ -40,26 +40,43 @@
         <ProjectReference Include="..\NPipeline.CodeFixes\NPipeline.CodeFixes.csproj" PrivateAssets="all"/>
     </ItemGroup>
 
-    <!-- Include analyzer and code fix DLLs in the package -->
+    <!-- Include README in package -->
     <ItemGroup>
-        <None Include="..\NPipeline.Roslyn.Analyzers\bin\Release\netstandard2.0\NPipeline.Roslyn.Analyzers.dll">
-            <Pack>true</Pack>
-            <PackagePath>analyzers\dotnet\cs</PackagePath>
-        </None>
-        <None Include="..\NPipeline.CodeFixes\bin\Release\netstandard2.0\NPipeline.CodeFixes.dll">
-            <Pack>true</Pack>
-            <PackagePath>analyzers\dotnet\cs</PackagePath>
-        </None>
         <None Include="README.md">
             <Pack>true</Pack>
             <PackagePath>\</PackagePath>
         </None>
     </ItemGroup>
 
-    <!-- Ensure referenced projects are built before packing -->
-    <Target Name="BuildReferencedProjects" BeforeTargets="Pack">
-        <MSBuild Projects="..\NPipeline.Roslyn.Analyzers\NPipeline.Roslyn.Analyzers.csproj" Targets="Build" Properties="Configuration=Release"/>
-        <MSBuild Projects="..\NPipeline.CodeFixes\NPipeline.CodeFixes.csproj" Targets="Build" Properties="Configuration=Release"/>
+    <!-- Include analyzer and code fix DLLs in the package via dependency assembly resolution -->
+    <ItemGroup>
+        <None Include="@(ReferenceCopyLocalPaths)" Condition="'%(ReferenceCopyLocalPaths.Filename)' == 'NPipeline.Roslyn.Analyzers'">
+            <Pack>true</Pack>
+            <PackagePath>analyzers\dotnet\cs</PackagePath>
+        </None>
+        <None Include="@(ReferenceCopyLocalPaths)" Condition="'%(ReferenceCopyLocalPaths.Filename)' == 'NPipeline.CodeFixes'">
+            <Pack>true</Pack>
+            <PackagePath>analyzers\dotnet\cs</PackagePath>
+        </None>
+    </ItemGroup>
+
+    <!-- Create a placeholder assembly to ensure package has content -->
+    <Target Name="CreateAnalyzerPackageContent" BeforeTargets="Pack">
+        <ItemGroup>
+            <AnalyzerAssembly Include="..\NPipeline.Roslyn.Analyzers\bin\$(Configuration)\netstandard2.0\NPipeline.Roslyn.Analyzers.dll"/>
+            <AnalyzerAssembly Include="..\NPipeline.Roslyn.Analyzers\bin\$(Configuration)\netstandard2.0\NPipeline.Roslyn.Analyzers.pdb"/>
+            <AnalyzerAssembly Include="..\NPipeline.CodeFixes\bin\$(Configuration)\netstandard2.0\NPipeline.CodeFixes.dll"/>
+            <AnalyzerAssembly Include="..\NPipeline.CodeFixes\bin\$(Configuration)\netstandard2.0\NPipeline.CodeFixes.pdb"/>
+        </ItemGroup>
+        
+        <Copy SourceFiles="@(AnalyzerAssembly)" DestinationFolder="$(IntermediateOutputPath)analyzers\dotnet\cs" SkipUnchangedFiles="true"/>
+        
+        <ItemGroup>
+            <None Include="$(IntermediateOutputPath)analyzers\dotnet\cs\*">
+                <Pack>true</Pack>
+                <PackagePath>analyzers\dotnet\cs</PackagePath>
+            </None>
+        </ItemGroup>
     </Target>
 
 </Project>
