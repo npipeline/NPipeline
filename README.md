@@ -181,128 +181,15 @@ functionality and features like enhanced parallelism, simplifying testing workfl
 
 ... and more to come.
 
-## Documentation
-
-### Getting Started
-
-- **[Introduction](docs/introduction/index.md)** - What is NPipeline and when to use it
-- **[Why NPipeline](docs/introduction/why-npipeline.md)** - Key benefits and features
-- **[Installation](docs/getting-started/installation.md)** - Set up NPipeline in your project
-- **[Quick Start](docs/getting-started/quick-start.md)** - Build a complete pipeline step-by-step
-
-### Core Concepts
-
-- **[Core Concepts Overview](docs/core-concepts/index.md)** - Fundamental NPipeline concepts
-- **[Defining Pipelines](docs/core-concepts/defining-pipelines.md)** - Fluent PipelineBuilder and class-based IPipelineDefinition approaches
-- **[Nodes](docs/core-concepts/nodes/index.md)** - Source, Transform, and Sink nodes
-    - **[Source Nodes](docs/core-concepts/nodes/source-nodes.md)** - Creating data sources
-    - **[Transform Nodes](docs/core-concepts/nodes/transform-nodes.md)** - Processing data
-    - **[Sink Nodes](docs/core-concepts/nodes/sink-nodes.md)** - Consuming data
-- **[Data Pipes](docs/core-concepts/data-pipes.md)** - Understanding data flow between nodes
-- **[Pipeline Context](docs/core-concepts/pipeline-context.md)** - Logging, cancellation, and shared state
-- **[IPipeline](docs/core-concepts/ipipeline.md)** - The executable instance of a pipeline
-- **[INode](docs/core-concepts/inode.md)** - The fundamental unit of work in a pipeline
-- **[Pipeline Validation](docs/core-concepts/pipeline-validation.md)** - Ensuring pipeline correctness
-- **[Grouping Strategies](docs/core-concepts/grouping-strategies.md)** - Organizing data in pipelines
-- **[Streaming vs Buffering](docs/core-concepts/streaming-vs-buffering.md)** - Memory and performance considerations
-
-### Pipeline Execution & Resilience
-
-- **[Execution Strategies](docs/core-concepts/pipeline-execution/execution-strategies.md)** - Sequential, parallel, and batch processing
-- **[Pipeline Execution](docs/core-concepts/pipeline-execution/index.md)** - Complete execution guide
-    - **[Error Handling](docs/core-concepts/pipeline-execution/error-handling.md)** - Managing errors
-    - **[Node Error Handling](docs/core-concepts/pipeline-execution/node-error-handling.md)** - Node-level error management
-    - **[Pipeline Error Handling](docs/core-concepts/pipeline-execution/pipeline-error-handling.md)** - Pipeline-level error management
-    - **[Retries](docs/core-concepts/resilience/retries.md)** - Setting up retries
-    - **[Circuit Breakers](docs/core-concepts/resilience/circuit-breakers.md)** - Preventing cascading failures
-    - **[Dead Letter Queues](docs/core-concepts/pipeline-execution/dead-letter-queues.md)** - Handling failed items
-    - **[IPipelineRunner](docs/core-concepts/pipeline-execution/ipipelinerunner.md)** - Running pipelines
-- **[Resilience](docs/core-concepts/resilience/index.md)** - Building fault-tolerant pipelines
-    - **[Getting Started with Resilience](docs/core-concepts/resilience/getting-started.md)** - Quick-start for node restarts and retry patterns
-    - **[Resilient Execution Strategy](docs/core-concepts/resilience/resilient-execution-strategy.md)** - Enhanced resilience patterns
-    - **[Configuration Guide](docs/core-concepts/resilience/configuration-guide.md)** - Resilience configuration
-    - **[Dependency Chains](docs/core-concepts/resilience/dependency-chains.md)** - Managing node dependencies
-    - **[Materialization & Buffering](docs/core-concepts/resilience/materialization.md)** - Data persistence strategies
-    - **[Circuit Breakers](docs/core-concepts/resilience/circuit-breakers.md)** - Advanced configuration and memory management
-    - **[Troubleshooting](docs/core-concepts/resilience/troubleshooting.md)** - Common resilience issues
-
-### Specialized Node Types
-
-- **[Specialized Node Types Overview](docs/core-concepts/nodes/index.md)** - Specialized node types for specific use cases
-- **[Aggregation](docs/core-concepts/nodes/aggregation.md)** - Combining multiple items
-- **[Batching](docs/core-concepts/nodes/batching.md)** - Processing data in batches
-- **[Branch](docs/core-concepts/nodes/branch.md)** - Splitting data flows
-- **[Join](docs/core-concepts/nodes/join.md)** - Combining data from multiple sources
-- **[Time-Windowed Join](docs/core-concepts/nodes/time-windowed-join.md)** - Joining with time constraints
-- **[Lookup](docs/core-concepts/nodes/lookup.md)** - Enriching data with lookups
-- **[Tap](docs/core-concepts/nodes/tap.md)** - Non-intrusive monitoring and side-channel processing
-- **[ValueTask Transforms](docs/core-concepts/nodes/valuetask-transforms.md)** - High-performance transformations
-
-### Best Practices & Patterns
-
-- **[Best Practices](docs/core-concepts/best-practices.md)** - Recommended approaches and guidelines
-- **[Common Patterns](docs/core-concepts/common-patterns.md)** - Practical implementation patterns
-
-### Extensions
-
-- **[Extensions Overview](docs/extensions/index.md)** - Available extensions
-- **[Dependency Injection](docs/extensions/dependency-injection.md)** - Integration with Microsoft DI container
-- **[Parallelism](docs/extensions/parallelism.md)** - High-performance parallel processing
-- **[Testing](docs/extensions/testing/index.md)** - Testing utilities and best practices
-    - **[FluentAssertions Integration](docs/extensions/testing/fluent-assertions.md)** - Using FluentAssertions
-    - **[AwesomeAssertions Integration](docs/extensions/testing/awesome-assertions.md)** - Using AwesomeAssertions
-
-### Analyzers
-
-- **[Analyzers Overview](docs/analyzers/index.md)** - Roslyn analyzers for code quality
-- **[Best Practices Analyzer](docs/analyzers/best-practices.md)** - Code quality guidelines
-- **[Data Processing Analyzer](docs/analyzers/data-processing.md)** - Data handling best practices
-- **[Performance Analyzer](docs/analyzers/performance.md)** - Performance optimization guidance
-- **[Resilience Analyzer](docs/analyzers/resilience.md)** - Resilience pattern detection
-
-### Connectors
-
-- **[Connectors Overview](docs/connectors/index.md)** - Pre-built components for external systems
-- **[CSV Connector](docs/connectors/csv.md)** - Read from/write to CSV files
-- **[Storage Provider](docs/connectors/storage-provider.md)** - Building custom storage connectors
-
-### Additional Topics
-
-- **[Performance Hygiene](docs/advanced-topics/performance-hygiene.md)** - Optimization and benchmarking
-- **[Synchronous Fast Paths](docs/advanced-topics/synchronous-fast-paths.md)** - Zero-allocation patterns
-- **[Testing Pipelines](docs/advanced-topics/testing-pipelines.md)** - Best practices for testing your pipelines
-
-### Architecture & Design
-
-- **[Architecture Overview](docs/architecture/index.md)** - Understanding NPipeline's design
-- **[Component Architecture](docs/architecture/component-architecture.md)** - Core components
-- **[Design Principles](docs/architecture/design-principles.md)** - Guiding principles
-- **[Architectural Foundations](docs/architecture/architectural-foundations.md)** - Fundamental architectural concepts
-- **[Data Flow](docs/architecture/data-flow.md)** - How data moves through the system
-- **[Execution Flow](docs/architecture/execution-flow.md)** - How pipelines execute
-- **[Error Handling Architecture](docs/architecture/error-handling-architecture.md)** - Error handling design
-- **[Cancellation Model](docs/architecture/cancellation-model.md)** - Cancellation implementation
-- **[Dependency Injection](docs/architecture/dependency-injection.md)** - DI patterns
-- **[Extension Points](docs/architecture/extension-points.md)** - Extensibility mechanisms
-- **[Optimization Principles](docs/architecture/optimization-principles.md)** - Performance optimization
-- **[Performance Characteristics](docs/architecture/performance-characteristics.md)** - Performance metrics
-
-### Reference & Support
-
-- **[API Reference](docs/introduction/api-reference.md)** - Complete API documentation
-- **[FAQ](docs/introduction/faq.md)** - Frequently asked questions
-- **[Troubleshooting](docs/introduction/troubleshooting.md)** - Common issues and solutions
-- **[Error Codes](docs/reference/error-codes.md)** - Error code reference
-
 ## What's Next?
 
-1. **Start Simple** - Follow the [Quick Start](docs/getting-started/quick-start.md) tutorial
-2. **Learn the Core** - Explore the [Core Concepts](docs/core-concepts/index.md)
-3. **Scale Up** - Explore [parallel processing](docs/extensions/parallelism.md) for better performance
+1. **[Installation](docs/getting-started/installation.md)** - Set up NPipeline in your project
+2. **[Quick Start](docs/getting-started/quick-start.md)** - Build a complete pipeline step-by-step
+3. **[Core Concepts](docs/core-concepts/index.md)** - Learn the fundamentals of NPipeline
 
 ## Transparency: AI-Assisted Development
 
-This project leverages modern AI and LLM tools to enhance productivity in documentation, code comments, samples and test generation. We believe transparency about development practices is important.
+This project leverages modern AI and LLM tools to enhance productivity in test generation, documentation, XML code comments and sample generation. We believe transparency about development practices is important.
 
 All AI-generated content is carefully reviewed for accuracy, quality, and alignment with project standards before being included. The core library logic, architecture decisions, and critical functionality remain carefully designed and reviewed. Our goal is to use AI as a productivity multiplier while maintaining the high standards of a production-ready library.
 

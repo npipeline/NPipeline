@@ -180,37 +180,6 @@ public async IAsyncEnumerable<Output> ProcessAsync(
 }
 ```
 
-## Diagnostic Observers
-
-Observe pipeline execution for diagnostics:
-
-```csharp
-public class DiagnosticObserver : IPipelineDiagnosticObserver
-{
-    private readonly ILogger<DiagnosticObserver> _logger;
-
-    public DiagnosticObserver(ILogger<DiagnosticObserver> logger)
-    {
-        _logger = logger;
-    }
-
-    public void OnNodeStarted(string nodeName)
-    {
-        _logger.LogInformation("Node started: {node}", nodeName);
-    }
-
-    public void OnNodeCompleted(string nodeName, int itemsProcessed)
-    {
-        _logger.LogInformation("Node completed: {node}, items: {count}", nodeName, itemsProcessed);
-    }
-
-    public void OnNodeError(string nodeName, Exception ex)
-    {
-        _logger.LogError(ex, "Node error: {node}", nodeName);
-    }
-}
-```
-
 ## Composite Patterns
 
 Combine extensions for complex behaviors:

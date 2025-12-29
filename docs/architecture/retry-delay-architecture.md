@@ -36,9 +36,9 @@ graph TD
     end
     
     subgraph "Backoff Strategy Implementation"
-        E[BackoffStrategy<br>Delegate Type] --> F[BackoffStrategies.ExponentialBackoff()]
-        E --> G[BackoffStrategies.LinearBackoff()]
-        E --> H[BackoffStrategies.FixedDelay()]
+        E[BackoffStrategy<br>Delegate Type] --> F[Exponential Backoff]
+        E --> G[Linear Backoff]
+        E --> H[Fixed Delay]
     end
     
     B --> I[Validates parameters<br>Creates immutable config]
@@ -87,10 +87,10 @@ graph TD
     end
     
     subgraph "Jitter Strategy Implementation"
-        F[JitterStrategy<br>Delegate Type] --> G[JitterStrategies.FullJitter()]
-        F --> H[JitterStrategies.EqualJitter()]
-        F --> I[JitterStrategies.DecorrelatedJitter()]
-        F --> J[JitterStrategies.NoJitter()]
+        F[JitterStrategy<br>Delegate Type] --> G[Full Jitter]
+        F --> H[Equal Jitter]
+        F --> I[Decorrelated Jitter]
+        F --> J[No Jitter]
     end
     
     subgraph "Jitter Application"
