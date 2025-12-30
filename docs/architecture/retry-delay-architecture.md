@@ -45,8 +45,8 @@ graph TD
     C --> I
     D --> I
     
-    F --> J[Calculates: baseDelay × multiplier^attempt<br>Capped at maxDelay]
-    G --> K[Calculates: baseDelay + (increment × attempt)<br>Capped at maxDelay]
+    F --> J[Calculates: baseDelay x multiplier^attempt<br>Capped at maxDelay]
+    G --> K[Calculates: baseDelay + (increment x attempt)<br>Capped at maxDelay]
     H --> L[Returns: constant delay for all attempts]
     
     style A fill:#e1f5fe
@@ -95,9 +95,9 @@ graph TD
     
     subgraph "Jitter Application"
         K[Base Delay from Backoff] --> L{Jitter Strategy}
-        L -->|Full Jitter|M[random(0, baseDelay)]
-        L -->|Equal Jitter|N[baseDelay/2 + random(0, baseDelay/2)]
-        L -->|Decorrelated Jitter|O[random(baseDelay, min(maxDelay, previousDelay × multiplier))]
+        L -->|Full Jitter|M["random(0, baseDelay)"]
+        L -->|Equal Jitter|N["baseDelay/2 + random(0, baseDelay/2)"]
+        L -->|Decorrelated Jitter|O["random(baseDelay, min(maxDelay, previousDelay x multiplier))"]
         L -->|No Jitter|P[Return baseDelay unchanged]
     end
     
