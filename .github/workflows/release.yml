@@ -152,7 +152,7 @@ jobs:
 
   deploy-docs:
     name: Deploy Documentation
-    needs: create-release
+    needs: build-and-pack
     runs-on: ubuntu-latest
 
     steps:
@@ -179,11 +179,6 @@ jobs:
 
       - name: Build solution
         run: dotnet build --no-restore --configuration Release
-
-      - name: Generate XML Documentation
-        run: |
-          # Ensure all XML docs are generated
-          dotnet build --no-restore --configuration Release --verbosity minimal
 
       - name: Checkout npipeline.dev repo
         uses: actions/checkout@v6
