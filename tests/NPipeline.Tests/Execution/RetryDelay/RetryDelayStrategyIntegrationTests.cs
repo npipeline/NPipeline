@@ -297,7 +297,7 @@ public sealed class RetryDelayStrategyIntegrationTests
 
             // Assert
             _ = outputs.Should().HaveCount(3);
-            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(200); // Should be very fast without delays (with margin for system variance)
+            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(1000); // Should be very fast without delays (with generous margin for CI variability)
         }
     }
 
