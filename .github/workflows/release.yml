@@ -150,3 +150,66 @@ jobs:
           draft: false
           prerelease: ${{ contains(github.ref, '-') }}
 
+  deploy-docs:
+    name: Deploy Documentation
+    needs: create-release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # Needed for source link
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build solution
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Generate XML Documentation
+        run: |
+          # Ensure all XML docs are generated
+          dotnet build --no-restore --configuration Release --verbosity minimal
+
+      - name: Checkout npipeline.dev repo
+        uses: actions/checkout@v6
+        with:
+          repository: npipeline/npipeline.dev
+          token: ${{ secrets.NPIPELINE_DEV_TOKEN }}
+          path: ./npipeline-dev
+
+      - name: Deploy to npipeline.dev
+        run: |
+          # Copy docs content to target repo /docs directory
+          mkdir -p ./npipeline-dev/docs
+          rm -rf ./npipeline-dev/docs/*
+          cp -r ./docs/* ./npipeline-dev/docs/
+
+          # Configure git
+          cd ./npipeline-dev
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Commit and push
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "docs: update documentation from NPipeline release ${{ github.ref }}"
+            git push origin main
+          fi
+
