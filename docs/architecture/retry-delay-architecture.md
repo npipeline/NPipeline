@@ -45,9 +45,9 @@ graph TD
     C --> I
     D --> I
     
-    F --> J[Calculates: baseDelay x multiplier^attempt<br>Capped at maxDelay]
-    G --> K[Calculates: baseDelay + (increment x attempt)<br>Capped at maxDelay]
-    H --> L[Returns: constant delay for all attempts]
+    F --> J["Calculates: baseDelay x multiplier^attempt<br>Capped at maxDelay"]
+    G --> K["Calculates: baseDelay + (increment x attempt)<br>Capped at maxDelay"]
+    H --> L["Returns: constant delay for all attempts"]
     
     style A fill:#e1f5fe
     style E fill:#e1f5fe
