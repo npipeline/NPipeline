@@ -10,7 +10,6 @@
 
         <!-- Package Configuration -->
         <PackageId>NPipeline.Analyzers</PackageId>
-        <PackageVersion>0.1.0</PackageVersion>
         <Title>NPipeline Analyzers</Title>
         <Description>NPipeline analyzers and code fixes for detecting and resolving common pipeline configuration issues</Description>
         <PackageTags>analyzers;roslyn;npipeline;codefixes;diagnostics</PackageTags>
