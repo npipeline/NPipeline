@@ -37,7 +37,7 @@
 
     <!-- Project references for analyzer and code fixes -->
     <ItemGroup>
-        <ProjectReference Include="..\NPipeline.Roslyn.Analyzers\NPipeline.Roslyn.Analyzers.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\NPipeline.Analyzers\NPipeline.Analyzers.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
         <ProjectReference Include="..\NPipeline.CodeFixes\NPipeline.CodeFixes.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
     </ItemGroup>
 
@@ -49,7 +49,7 @@
     <!-- Custom target to include analyzer assemblies in the package -->
     <Target Name="IncludeAnalyzersInPackage">
         <ItemGroup>
-            <TfmSpecificPackageFile Include="..\NPipeline.Roslyn.Analyzers\bin\$(Configuration)\netstandard2.0\NPipeline.Roslyn.Analyzers.dll">
+            <TfmSpecificPackageFile Include="..\NPipeline.Analyzers\bin\$(Configuration)\netstandard2.0\NPipeline.Analyzers.dll">
                 <PackagePath>analyzers/dotnet/cs</PackagePath>
             </TfmSpecificPackageFile>
             <TfmSpecificPackageFile Include="..\NPipeline.CodeFixes\bin\$(Configuration)\netstandard2.0\NPipeline.CodeFixes.dll">
