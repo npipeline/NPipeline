@@ -1,5 +1,5 @@
+using NPipeline.Extensions.Nodes.Core;
 using NPipeline.Graph;
-using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Extensions.Nodes;
@@ -20,7 +20,7 @@ public static class PipelineBuilderExtensions
     public static TransformNodeHandle<T, T> AddValidationNode<T, TValidationNode>(
         this PipelineBuilder builder,
         string? name = null)
-        where TValidationNode : Core.ValidationNode<T>, new()
+        where TValidationNode : ValidationNode<T>, new()
     {
         ArgumentNullException.ThrowIfNull(builder);
         var nodeName = name ?? typeof(TValidationNode).Name;
@@ -39,8 +39,7 @@ public static class PipelineBuilderExtensions
         string? name = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
-        var nodeName = name ?? typeof(Core.FilteringNode<T>).Name;
-        return builder.AddTransform<Core.FilteringNode<T>, T, T>(nodeName);
+        var nodeName = name ?? typeof(FilteringNode<T>).Name;
+        return builder.AddTransform<FilteringNode<T>, T, T>(nodeName);
     }
 }
-

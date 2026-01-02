@@ -7,20 +7,13 @@ namespace NPipeline.Extensions.Nodes.Tests.Core;
 
 public sealed class FilteringNodeTests
 {
-    private sealed class TestData
-    {
-        public string Name { get; set; } = string.Empty;
-        public int Age { get; set; }
-        public bool IsActive { get; set; }
-    }
-
     [Fact]
     public async Task ExecuteAsync_WithPassingPredicate_ShouldReturnItem()
     {
         // Arrange
         var node = new FilteringNode<TestData>();
         node.Where(x => x.Age >= 18, x => $"Age {x.Age} is below minimum");
-        
+
         var data = new TestData { Age = 25 };
         var context = PipelineContext.Default;
 
@@ -37,7 +30,7 @@ public sealed class FilteringNodeTests
         // Arrange
         var node = new FilteringNode<TestData>();
         node.Where(x => x.Age >= 18, x => $"Age {x.Age} is below minimum");
-        
+
         var data = new TestData { Age = 15 };
         var context = PipelineContext.Default;
 
@@ -53,10 +46,11 @@ public sealed class FilteringNodeTests
     {
         // Arrange
         var node = new FilteringNode<TestData>();
+
         node.Where(x => x.Age >= 18)
             .Where(x => !string.IsNullOrEmpty(x.Name))
             .Where(x => x.IsActive);
-        
+
         var data = new TestData { Age = 25, Name = "Alice", IsActive = true };
         var context = PipelineContext.Default;
 
@@ -72,9 +66,10 @@ public sealed class FilteringNodeTests
     {
         // Arrange
         var node = new FilteringNode<TestData>();
+
         node.Where(x => x.Age >= 18, _ => "Age check failed")
             .Where(x => !string.IsNullOrEmpty(x.Name), _ => "Name check failed");
-        
+
         var data = new TestData { Age = 15, Name = "Alice" };
         var context = PipelineContext.Default;
 
@@ -106,7 +101,7 @@ public sealed class FilteringNodeTests
         // Arrange
         var node = new FilteringNode<TestData>();
         node.Where(x => x.Age >= 18);
-        
+
         var data = new TestData { Age = 15 };
         var context = PipelineContext.Default;
 
@@ -123,7 +118,7 @@ public sealed class FilteringNodeTests
         // Arrange
         var node = new FilteringNode<TestData>();
         node.Where(x => x.Age >= 18);
-        
+
         var data = new TestData { Age = 25 };
         var context = PipelineContext.Default;
         var cts = new CancellationTokenSource();
@@ -142,8 +137,8 @@ public sealed class FilteringNodeTests
 
         // Act
         var result = node.Where(x => x.Age >= 18)
-                         .Where(x => !string.IsNullOrEmpty(x.Name))
-                         .Where(x => x.IsActive);
+            .Where(x => !string.IsNullOrEmpty(x.Name))
+            .Where(x => x.IsActive);
 
         // Assert
         result.Should().BeSameAs(node);
@@ -167,9 +162,10 @@ public sealed class FilteringNodeTests
     {
         // Arrange
         var node = new FilteringNode<TestData>();
-        node.Where(x => x.Age >= 18 && x.Age <= 65, 
-                   x => $"Age {x.Age} is outside working range 18-65");
-        
+
+        node.Where(x => x.Age >= 18 && x.Age <= 65,
+            x => $"Age {x.Age} is outside working range 18-65");
+
         var youngData = new TestData { Age = 15 };
         var validData = new TestData { Age = 30 };
         var oldData = new TestData { Age = 70 };
@@ -184,5 +180,12 @@ public sealed class FilteringNodeTests
 
         await Assert.ThrowsAsync<FilteringException>(async () =>
             await node.ExecuteAsync(oldData, context, CancellationToken.None));
+    }
+
+    private sealed class TestData
+    {
+        public string Name { get; set; } = string.Empty;
+        public int Age { get; set; }
+        public bool IsActive { get; set; }
     }
 }

@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
+using NPipeline.Extensions.Nodes.Core.Exceptions;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Extensions.Nodes.Core.Exceptions;
 
 namespace NPipeline.Extensions.Nodes.Core;
 
@@ -9,7 +9,7 @@ namespace NPipeline.Extensions.Nodes.Core;
 ///     Base class for property-level validation on items of type <typeparamref name="T" />.
 ///     Derived classes register validation rules via strongly-typed expressions.
 ///     Compiled getters provide fast property access with no reflection in hot paths.
-///     On validation failure, throws <see cref="ValidationException"/>;
+///     On validation failure, throws <see cref="ValidationException" />;
 ///     error handling is controlled by the node's error handler.
 /// </summary>
 public abstract class ValidationNode<T> : TransformNode<T, T>
@@ -56,14 +56,18 @@ public abstract class ValidationNode<T> : TransformNode<T, T>
         Func<TProp, string>? messageFactory = null)
     {
         ArgumentNullException.ThrowIfNull(selectors);
+
         foreach (var sel in selectors)
+        {
             Register(sel, predicate, ruleName, messageFactory);
+        }
+
         return this;
     }
 
     /// <summary>
     ///     Executes all validation rules on the item asynchronously.
-    ///     Throws <see cref="ValidationException"/> if any rule fails.
+    ///     Throws <see cref="ValidationException" /> if any rule fails.
     /// </summary>
     public override Task<T> ExecuteAsync(
         T item,
@@ -86,11 +90,11 @@ public abstract class ValidationNode<T> : TransformNode<T, T>
 
     private sealed class Rule<TItem, TProp> : IRule<TItem>
     {
-        private readonly string _propertyPath;
         private readonly Func<TItem, TProp> _getter;
-        private readonly Func<TProp, bool> _predicate;
-        private readonly string _ruleName;
         private readonly Func<TProp, string>? _messageFactory;
+        private readonly Func<TProp, bool> _predicate;
+        private readonly string _propertyPath;
+        private readonly string _ruleName;
 
         public Rule(
             string propertyPath,
@@ -109,11 +113,14 @@ public abstract class ValidationNode<T> : TransformNode<T, T>
         public void Validate(TItem item, PipelineContext context)
         {
             var value = _getter(item);
+
             if (!_predicate(value))
             {
                 var customMessage = _messageFactory?.Invoke(value);
-                var message = customMessage ?? 
-                    $"Validation rule '{_ruleName}' failed for property '{_propertyPath}' with value '{value}'";
+
+                var message = customMessage ??
+                              $"Validation rule '{_ruleName}' failed for property '{_propertyPath}' with value '{value}'";
+
                 throw new ValidationException(_propertyPath, _ruleName, value, message);
             }
         }

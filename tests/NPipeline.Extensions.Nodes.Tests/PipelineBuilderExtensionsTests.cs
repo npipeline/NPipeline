@@ -1,15 +1,12 @@
 using AwesomeAssertions;
 using NPipeline.Extensions.Nodes.Core;
+using NPipeline.Graph;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Extensions.Nodes.Tests;
 
 public sealed class PipelineBuilderExtensionsTests
 {
-    private sealed class TestValidationNode : ValidationNode<string>
-    {
-    }
-
     [Fact]
     public void AddValidationNode_ShouldRegisterNode()
     {
@@ -131,7 +128,11 @@ public sealed class PipelineBuilderExtensionsTests
         var filteringHandle = builder.AddFilteringNode<string>();
 
         // Assert
-        validationHandle.Should().BeOfType<Graph.TransformNodeHandle<string, string>>();
-        filteringHandle.Should().BeOfType<Graph.TransformNodeHandle<string, string>>();
+        validationHandle.Should().BeOfType<TransformNodeHandle<string, string>>();
+        filteringHandle.Should().BeOfType<TransformNodeHandle<string, string>>();
+    }
+
+    private sealed class TestValidationNode : ValidationNode<string>
+    {
     }
 }

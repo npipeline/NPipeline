@@ -1,4 +1,3 @@
-using System.Linq.Expressions;
 using AwesomeAssertions;
 using NPipeline.Extensions.Nodes.Core;
 using NPipeline.Extensions.Nodes.Core.Exceptions;
@@ -8,24 +7,13 @@ namespace NPipeline.Extensions.Nodes.Tests.Core;
 
 public sealed class ValidationNodeTests
 {
-    private sealed class TestValidationNode : ValidationNode<TestData>
-    {
-    }
-
-    private sealed class TestData
-    {
-        public string Name { get; set; } = string.Empty;
-        public int Age { get; set; }
-        public string Email { get; set; } = string.Empty;
-    }
-
     [Fact]
     public async Task ExecuteAsync_WithValidData_ShouldReturnItem()
     {
         // Arrange
         var node = new TestValidationNode();
         node.Register(x => x.Name, name => !string.IsNullOrEmpty(name), "NotEmpty");
-        
+
         var data = new TestData { Name = "Alice" };
         var context = PipelineContext.Default;
 
@@ -43,7 +31,7 @@ public sealed class ValidationNodeTests
         // Arrange
         var node = new TestValidationNode();
         node.Register(x => x.Name, name => !string.IsNullOrEmpty(name), "NotEmpty");
-        
+
         var data = new TestData { Name = "" };
         var context = PipelineContext.Default;
 
@@ -61,12 +49,13 @@ public sealed class ValidationNodeTests
     {
         // Arrange
         var node = new TestValidationNode();
+
         node.Register(
-            x => x.Age, 
-            age => age >= 18, 
+            x => x.Age,
+            age => age >= 18,
             "MinAge",
             value => $"Age must be at least 18, got {value}");
-        
+
         var data = new TestData { Age = 15 };
         var context = PipelineContext.Default;
 
@@ -85,7 +74,7 @@ public sealed class ValidationNodeTests
         var node = new TestValidationNode();
         node.Register(x => x.Name, name => !string.IsNullOrEmpty(name), "NotEmpty");
         node.Register(x => x.Age, age => age >= 0, "NonNegative");
-        
+
         var data = new TestData { Name = "Alice", Age = 25 };
         var context = PipelineContext.Default;
 
@@ -103,7 +92,7 @@ public sealed class ValidationNodeTests
         var node = new TestValidationNode();
         node.Register(x => x.Name, name => !string.IsNullOrEmpty(name), "NotEmpty");
         node.Register(x => x.Age, age => age >= 0, "NonNegative");
-        
+
         var data = new TestData { Name = "", Age = 25 };
         var context = PipelineContext.Default;
 
@@ -119,11 +108,12 @@ public sealed class ValidationNodeTests
     {
         // Arrange
         var node = new TestValidationNode();
+
         node.RegisterMany(
             [x => x.Name, x => x.Email],
             str => !string.IsNullOrEmpty(str),
             "NotEmpty");
-        
+
         var data = new TestData { Name = "Alice", Email = "alice@test.com" };
         var context = PipelineContext.Default;
 
@@ -139,11 +129,12 @@ public sealed class ValidationNodeTests
     {
         // Arrange
         var node = new TestValidationNode();
+
         node.RegisterMany<string>(
             [x => x.Name, x => x.Email],
             str => !string.IsNullOrEmpty(str),
             "NotEmpty");
-        
+
         var data = new TestData { Name = "Alice", Email = "" };
         var context = PipelineContext.Default;
 
@@ -176,7 +167,7 @@ public sealed class ValidationNodeTests
         // Arrange
         var node = new TestValidationNode();
         node.Register(x => x.Name, name => !string.IsNullOrEmpty(name), "NotEmpty");
-        
+
         var data = new TestData { Name = "Test" };
         var context = PipelineContext.Default;
         var cts = new CancellationTokenSource();
@@ -195,7 +186,7 @@ public sealed class ValidationNodeTests
 
         // Act
         var result = node.Register(x => x.Name, name => !string.IsNullOrEmpty(name), "NotEmpty")
-                         .Register(x => x.Age, age => age >= 0, "NonNegative");
+            .Register(x => x.Age, age => age >= 0, "NonNegative");
 
         // Assert
         result.Should().BeSameAs(node);
@@ -215,5 +206,16 @@ public sealed class ValidationNodeTests
 
         // Assert
         result.Should().BeSameAs(node);
+    }
+
+    private sealed class TestValidationNode : ValidationNode<TestData>
+    {
+    }
+
+    private sealed class TestData
+    {
+        public string Name { get; set; } = string.Empty;
+        public int Age { get; set; }
+        public string Email { get; set; } = string.Empty;
     }
 }

@@ -1,14 +1,14 @@
 using NPipeline.ErrorHandling;
+using NPipeline.Extensions.Nodes.Core.Exceptions;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Extensions.Nodes.Core.Exceptions;
 
 namespace NPipeline.Extensions.Nodes.Core.ErrorHandlers;
 
 /// <summary>
 ///     Default error handler for validation nodes.
-///     Translates <see cref="ValidationException"/> to the configured <see cref="NodeErrorDecision"/>.
-///     Other exception types result in <see cref="NodeErrorDecision.Fail"/>.
+///     Translates <see cref="ValidationException" /> to the configured <see cref="NodeErrorDecision" />.
+///     Other exception types result in <see cref="NodeErrorDecision.Fail" />.
 /// </summary>
 public sealed class DefaultValidationErrorHandler<T> : INodeErrorHandler<ITransformNode<T, T>, T>
 {
@@ -36,14 +36,15 @@ public sealed class DefaultValidationErrorHandler<T> : INodeErrorHandler<ITransf
         var decision = error is ValidationException validationEx
             ? _onValidationFailure
             : NodeErrorDecision.Fail;
+
         return Task.FromResult(decision);
     }
 }
 
 /// <summary>
 ///     Default error handler for filtering nodes.
-///     Translates <see cref="FilteringException"/> to the configured <see cref="NodeErrorDecision"/>.
-///     Other exception types result in <see cref="NodeErrorDecision.Fail"/>.
+///     Translates <see cref="FilteringException" /> to the configured <see cref="NodeErrorDecision" />.
+///     Other exception types result in <see cref="NodeErrorDecision.Fail" />.
 /// </summary>
 public sealed class DefaultFilteringErrorHandler<T> : INodeErrorHandler<ITransformNode<T, T>, T>
 {
@@ -71,14 +72,15 @@ public sealed class DefaultFilteringErrorHandler<T> : INodeErrorHandler<ITransfo
         var decision = error is FilteringException filteringEx
             ? _onFilteredOut
             : NodeErrorDecision.Fail;
+
         return Task.FromResult(decision);
     }
 }
 
 /// <summary>
 ///     Default error handler for type conversion nodes.
-///     Translates <see cref="TypeConversionException"/> to the configured <see cref="NodeErrorDecision"/>.
-///     Other exception types result in <see cref="NodeErrorDecision.Fail"/>.
+///     Translates <see cref="TypeConversionException" /> to the configured <see cref="NodeErrorDecision" />.
+///     Other exception types result in <see cref="NodeErrorDecision.Fail" />.
 /// </summary>
 public sealed class DefaultTypeConversionErrorHandler<TIn, TOut> : INodeErrorHandler<ITransformNode<TIn, TOut>, TIn>
 {
@@ -106,6 +108,7 @@ public sealed class DefaultTypeConversionErrorHandler<TIn, TOut> : INodeErrorHan
         var decision = error is TypeConversionException
             ? _onConversionFailure
             : NodeErrorDecision.Fail;
+
         return Task.FromResult(decision);
     }
 }

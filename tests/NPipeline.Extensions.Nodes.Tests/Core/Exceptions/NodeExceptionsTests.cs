@@ -22,7 +22,7 @@ public sealed class NodeExceptionsTests
     public void ValidationException_WithNullMessage_ShouldGenerateDefaultMessage()
     {
         // Arrange & Act
-        var ex = new ValidationException("Age", "Range", 150, message: null!);
+        var ex = new ValidationException("Age", "Range", 150, null!);
 
         // Assert
         // When message is null, default message is generated
@@ -60,7 +60,7 @@ public sealed class NodeExceptionsTests
     public void FilteringException_WithNullReason_ShouldGenerateDefaultMessage()
     {
         // Arrange & Act
-        var ex = new FilteringException(reason: null!);
+        var ex = new FilteringException(null!);
 
         // Assert
         ex.Message.Should().NotBeNullOrWhiteSpace();
@@ -71,9 +71,9 @@ public sealed class NodeExceptionsTests
     {
         // Arrange & Act
         var ex = new TypeConversionException(
-            typeof(string), 
-            typeof(int), 
-            "abc", 
+            typeof(string),
+            typeof(int),
+            "abc",
             "Cannot convert string to int");
 
         // Assert
@@ -87,7 +87,7 @@ public sealed class NodeExceptionsTests
     public void TypeConversionException_WithNullMessage_ShouldGenerateDefaultMessage()
     {
         // Arrange & Act
-        var ex = new TypeConversionException(typeof(string), typeof(double), "xyz", message: null!);
+        var ex = new TypeConversionException(typeof(string), typeof(double), "xyz", null!);
 
         // Assert
         ex.SourceType.Should().BeSameAs(typeof(string));
@@ -101,9 +101,9 @@ public sealed class NodeExceptionsTests
     {
         // Arrange & Act
         var ex = new TypeConversionException(
-            typeof(DateTime), 
-            typeof(DateOnly), 
-            DateTime.Now, 
+            typeof(DateTime),
+            typeof(DateOnly),
+            DateTime.Now,
             "Invalid date conversion");
 
         // Assert

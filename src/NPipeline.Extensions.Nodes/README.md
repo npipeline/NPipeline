@@ -1,10 +1,12 @@
 # NPipeline.Extensions.Nodes
 
-A high-performance, dependency-free extension library for [NPipeline](https://github.com/NPipeline/NPipeline) that provides ready-made, granular nodes for common data processing tasks.
+A high-performance, dependency-free extension library for [NPipeline](https://github.com/NPipeline/NPipeline) that provides ready-made, granular nodes for
+common data processing tasks.
 
 ## Overview
 
-NPipeline.Extensions.Nodes provides composable, single-responsibility nodes that users can combine to build complex data processing pipelines. The library focuses on:
+NPipeline.Extensions.Nodes provides composable, single-responsibility nodes that users can combine to build complex data processing pipelines. The library
+focuses on:
 
 - **Granularity**: Each node performs one well-defined operation
 - **Performance**: Zero-allocation hot paths with compiled expressions and ValueTask support
@@ -32,49 +34,49 @@ The foundation includes core infrastructure for building extension nodes:
 #### Base Classes
 
 - **`PropertyTransformationNode<T>`**: Base class for in-place property mutations
-  - Compiled property accessors (zero reflection in hot paths)
-  - Fluent API for registering transformations
-  - Supports nested property access
-  - Method chaining support
+    - Compiled property accessors (zero reflection in hot paths)
+    - Fluent API for registering transformations
+    - Supports nested property access
+    - Method chaining support
 
 - **`ValidationNode<T>`**: Base class for property-level validation
-  - Compiled property getters for performance
-  - Rich error context (property path, rule name, value)
-  - Exception-based validation integration
-  - Support for custom error messages
+    - Compiled property getters for performance
+    - Rich error context (property path, rule name, value)
+    - Exception-based validation integration
+    - Support for custom error messages
 
 - **`FilteringNode<T>`**: Generic filtering with predicates
-  - One or more filtering predicates
-  - Exception-based signalling for error handling
-  - Optional custom rejection reasons
-  - Zero allocations on success path
+    - One or more filtering predicates
+    - Exception-based signalling for error handling
+    - Optional custom rejection reasons
+    - Zero allocations on success path
 
 #### Utilities
 
 - **`PropertyAccessor`**: Compiles expression-based property accessors
-  - Type-safe getter and setter delegates
-  - Supports nested member access (e.g., `x => x.Address.Street`)
-  - Validates settability at configuration time
-  - No reflection in execution path
+    - Type-safe getter and setter delegates
+    - Supports nested member access (e.g., `x => x.Address.Street`)
+    - Validates settability at configuration time
+    - No reflection in execution path
 
 #### Error Handling
 
 - **`ValidationException`**: Thrown when validation fails
-  - Property path, rule name, and value included
-  - Integrated with error handlers
+    - Property path, rule name, and value included
+    - Integrated with error handlers
 
 - **`FilteringException`**: Thrown when filtering rejects an item
-  - Contains rejection reason
-  - Integrated with error handlers
+    - Contains rejection reason
+    - Integrated with error handlers
 
 - **`TypeConversionException`**: Thrown when type conversion fails
-  - Source and target types, value included
-  - Integrated with error handlers
+    - Source and target types, value included
+    - Integrated with error handlers
 
 - **Default Error Handlers**:
-  - `DefaultValidationErrorHandler<T>`: Configurable handling for validation failures
-  - `DefaultFilteringErrorHandler<T>`: Configurable handling for filtered items
-  - `DefaultTypeConversionErrorHandler<TIn, TOut>`: Configurable handling for conversion failures
+    - `DefaultValidationErrorHandler<T>`: Configurable handling for validation failures
+    - `DefaultFilteringErrorHandler<T>`: Configurable handling for filtered items
+    - `DefaultTypeConversionErrorHandler<TIn, TOut>`: Configurable handling for conversion failures
 
 ## Quick Start
 
@@ -98,8 +100,8 @@ public sealed class CustomerValidator : ValidationNode<Customer>
 
     private static bool IsValidEmail(string email)
     {
-        return !string.IsNullOrWhiteSpace(email) && 
-               email.Contains("@") && 
+        return !string.IsNullOrWhiteSpace(email) &&
+               email.Contains("@") &&
                email.Contains(".");
     }
 }
@@ -178,6 +180,7 @@ var accessor = PropertyAccessor.Create(selector);
 ### Thread Safety
 
 All nodes are stateless and thread-safe by design:
+
 - Predicates and transformations are pure functions
 - No shared mutable state
 - Safe for concurrent execution across multiple threads
@@ -185,6 +188,7 @@ All nodes are stateless and thread-safe by design:
 ## Next Phases
 
 ### Phase 2: Core Cleansing & Validation Nodes
+
 - String cleansing nodes (trim, case, special characters, etc.)
 - Numeric cleansing nodes (clamping, rounding, etc.)
 - DateTime cleansing nodes (timezone, normalization, etc.)
@@ -192,17 +196,20 @@ All nodes are stateless and thread-safe by design:
 - Expanded validation nodes
 
 ### Phase 3: Advanced Filtering & Transformation
+
 - Aggregation nodes
 - Type conversion nodes
 - Mapping nodes
 - Conditional nodes
 
 ### Phase 4: Data Enrichment
+
 - Lookup enrichment nodes
 - Default value nodes
 - Caching nodes
 
 ### Phase 5: Specialized Nodes
+
 - Text processing (normalization, extraction, templates)
 - Temporal operations (business days, timezone handling)
 - Data quality (profiling, anomaly detection)
@@ -243,6 +250,7 @@ node.ErrorHandler = new DefaultValidationErrorHandler<Customer>(
 ## Contributing
 
 Contributions are welcome! Please ensure:
+
 - Unit tests for all new code
 - XML documentation for public APIs
 - Follow existing code style and patterns

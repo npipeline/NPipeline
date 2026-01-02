@@ -25,9 +25,11 @@ public static class PropertyAccessor
         var body = RemoveUnary(selector.Body);
 
         if (body is not MemberExpression memberExpression)
+        {
             throw new ArgumentException(
                 $"Selector must be a simple member access expression. Received: {selector}",
                 nameof(selector));
+        }
 
         var memberName = GetMemberPath(memberExpression);
 
@@ -42,16 +44,20 @@ public static class PropertyAccessor
         if (replacedMember.Member is PropertyInfo pi)
         {
             if (!pi.CanWrite || pi.SetMethod is null)
+            {
                 throw new ArgumentException(
                     $"Member '{memberName}' is a property but does not have a public setter.",
                     nameof(selector));
+            }
         }
         else if (replacedMember.Member is FieldInfo fi)
         {
             if (fi.IsInitOnly)
+            {
                 throw new ArgumentException(
                     $"Member '{memberName}' is a field but is readonly (init-only).",
                     nameof(selector));
+            }
         }
         else
         {
@@ -64,6 +70,7 @@ public static class PropertyAccessor
         var assign = Expression.Assign(replacedMember, valueParam);
 
         Action<T, TProp> setter;
+
         try
         {
             setter = Expression.Lambda<Action<T, TProp>>(assign, targetParam, valueParam).Compile();
@@ -91,6 +98,7 @@ public static class PropertyAccessor
         // Build a dotted path A.B.C from nested MemberExpressions
         var segments = new Stack<string>();
         Expression? current = memberExpression;
+
         while (current is MemberExpression me)
         {
             segments.Push(me.Member.Name);

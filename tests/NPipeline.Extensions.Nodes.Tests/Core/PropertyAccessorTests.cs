@@ -5,20 +5,6 @@ namespace NPipeline.Extensions.Nodes.Tests.Core;
 
 public sealed class PropertyAccessorTests
 {
-    private sealed class TestData
-    {
-        public string Name { get; set; } = string.Empty;
-        public int Age { get; set; }
-        public Address? Address { get; set; }
-        public string ReadOnlyProperty => "readonly";
-    }
-
-    private sealed class Address
-    {
-        public string City { get; set; } = string.Empty;
-        public string Street { get; set; } = string.Empty;
-    }
-
     [Fact]
     public void Create_WithSimpleProperty_ShouldCompileGetterAndSetter()
     {
@@ -89,9 +75,9 @@ public sealed class PropertyAccessorTests
     public void Create_WithReadOnlyProperty_ShouldThrowArgumentException()
     {
         // Act & Assert
-        var ex = Assert.Throws<ArgumentException>(() => 
+        var ex = Assert.Throws<ArgumentException>(() =>
             PropertyAccessor.Create<TestData, string>(x => x.ReadOnlyProperty));
-        
+
         ex.Message.Should().Contain("does not have a public setter");
     }
 
@@ -99,7 +85,7 @@ public sealed class PropertyAccessorTests
     public void Create_WithNullSelector_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => 
+        Assert.Throws<ArgumentNullException>(() =>
             PropertyAccessor.Create<TestData, string>(null!));
     }
 
@@ -118,5 +104,19 @@ public sealed class PropertyAccessorTests
         // Assert
         data1.Name.Should().Be("Charlie");
         data2.Name.Should().Be("David");
+    }
+
+    private sealed class TestData
+    {
+        public string Name { get; set; } = string.Empty;
+        public int Age { get; set; }
+        public Address? Address { get; set; }
+        public string ReadOnlyProperty => "readonly";
+    }
+
+    private sealed class Address
+    {
+        public string City { get; set; } = string.Empty;
+        public string Street { get; set; } = string.Empty;
     }
 }

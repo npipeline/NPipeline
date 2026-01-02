@@ -1,5 +1,3 @@
-using NPipeline.ErrorHandling;
-
 namespace NPipeline.Extensions.Nodes.Core.Exceptions;
 
 /// <summary>
@@ -9,22 +7,7 @@ namespace NPipeline.Extensions.Nodes.Core.Exceptions;
 public sealed class ValidationException : Exception
 {
     /// <summary>
-    ///     Gets the path to the property that failed validation (e.g., "Customer.Email").
-    /// </summary>
-    public string PropertyPath { get; }
-
-    /// <summary>
-    ///     Gets the name of the validation rule that failed.
-    /// </summary>
-    public string RuleName { get; }
-
-    /// <summary>
-    ///     Gets the actual value that failed validation.
-    /// </summary>
-    public object? Value { get; }
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="ValidationException"/> class.
+    ///     Initializes a new instance of the <see cref="ValidationException" /> class.
     /// </summary>
     /// <param name="propertyPath">The path to the property that failed validation.</param>
     /// <param name="ruleName">The name of the validation rule that failed.</param>
@@ -39,7 +22,7 @@ public sealed class ValidationException : Exception
     }
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="ValidationException"/> class with inner exception.
+    ///     Initializes a new instance of the <see cref="ValidationException" /> class with inner exception.
     /// </summary>
     public ValidationException(string propertyPath, string ruleName, object? value, string message, Exception innerException)
         : base(message, innerException)
@@ -48,6 +31,21 @@ public sealed class ValidationException : Exception
         RuleName = ruleName;
         Value = value;
     }
+
+    /// <summary>
+    ///     Gets the path to the property that failed validation (e.g., "Customer.Email").
+    /// </summary>
+    public string PropertyPath { get; }
+
+    /// <summary>
+    ///     Gets the name of the validation rule that failed.
+    /// </summary>
+    public string RuleName { get; }
+
+    /// <summary>
+    ///     Gets the actual value that failed validation.
+    /// </summary>
+    public object? Value { get; }
 }
 
 /// <summary>
@@ -57,12 +55,7 @@ public sealed class ValidationException : Exception
 public sealed class FilteringException : Exception
 {
     /// <summary>
-    ///     Gets the reason why the item was filtered out.
-    /// </summary>
-    public string Reason { get; }
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="FilteringException"/> class.
+    ///     Initializes a new instance of the <see cref="FilteringException" /> class.
     /// </summary>
     /// <param name="reason">The reason why the item was filtered out.</param>
     public FilteringException(string reason)
@@ -72,13 +65,18 @@ public sealed class FilteringException : Exception
     }
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="FilteringException"/> class with inner exception.
+    ///     Initializes a new instance of the <see cref="FilteringException" /> class with inner exception.
     /// </summary>
     public FilteringException(string reason, Exception innerException)
         : base(reason, innerException)
     {
         Reason = reason;
     }
+
+    /// <summary>
+    ///     Gets the reason why the item was filtered out.
+    /// </summary>
+    public string Reason { get; }
 }
 
 /// <summary>
@@ -88,22 +86,7 @@ public sealed class FilteringException : Exception
 public sealed class TypeConversionException : Exception
 {
     /// <summary>
-    ///     Gets the source type that was being converted from.
-    /// </summary>
-    public Type SourceType { get; }
-
-    /// <summary>
-    ///     Gets the target type that conversion was attempted to.
-    /// </summary>
-    public Type TargetType { get; }
-
-    /// <summary>
-    ///     Gets the value that failed conversion.
-    /// </summary>
-    public object? Value { get; }
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="TypeConversionException"/> class.
+    ///     Initializes a new instance of the <see cref="TypeConversionException" /> class.
     /// </summary>
     /// <param name="sourceType">The source type being converted from.</param>
     /// <param name="targetType">The target type being converted to.</param>
@@ -118,7 +101,7 @@ public sealed class TypeConversionException : Exception
     }
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="TypeConversionException"/> class with inner exception.
+    ///     Initializes a new instance of the <see cref="TypeConversionException" /> class with inner exception.
     /// </summary>
     public TypeConversionException(Type sourceType, Type targetType, object? value, string message, Exception innerException)
         : base(message, innerException)
@@ -127,4 +110,19 @@ public sealed class TypeConversionException : Exception
         TargetType = targetType;
         Value = value;
     }
+
+    /// <summary>
+    ///     Gets the source type that was being converted from.
+    /// </summary>
+    public Type SourceType { get; }
+
+    /// <summary>
+    ///     Gets the target type that conversion was attempted to.
+    /// </summary>
+    public Type TargetType { get; }
+
+    /// <summary>
+    ///     Gets the value that failed conversion.
+    /// </summary>
+    public object? Value { get; }
 }

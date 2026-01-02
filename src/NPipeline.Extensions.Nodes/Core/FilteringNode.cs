@@ -1,25 +1,26 @@
+using NPipeline.Execution;
+using NPipeline.Extensions.Nodes.Core.Exceptions;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.Extensions.Nodes.Core.Exceptions;
 
 namespace NPipeline.Extensions.Nodes.Core;
 
 /// <summary>
 ///     A generic filtering node that filters items using one or more predicates.
 ///     <para>
-///     If all predicates pass, the item is forwarded downstream unchanged.
-///     If any predicate fails, a <see cref="FilteringException"/> is thrown.
-///     The node's error handler decides whether to Skip, Redirect (to dead letter), or Fail the pipeline.
+///         If all predicates pass, the item is forwarded downstream unchanged.
+///         If any predicate fails, a <see cref="FilteringException" /> is thrown.
+///         The node's error handler decides whether to Skip, Redirect (to dead letter), or Fail the pipeline.
 ///     </para>
 /// </summary>
 /// <remarks>
 ///     <para>
-///     Filtering uses exception signalling to integrate cleanly with the existing error-handling/redirect flow
-///     used by execution strategies.
+///         Filtering uses exception signalling to integrate cleanly with the existing error-handling/redirect flow
+///         used by execution strategies.
 ///     </para>
 ///     <para>
-///     No allocations on success path other than delegate invocation.
-///     Failure path throws FilteringException with optional reason.
+///         No allocations on success path other than delegate invocation.
+///         Failure path throws FilteringException with optional reason.
 ///     </para>
 /// </remarks>
 public sealed class FilteringNode<T> : TransformNode<T, T>
@@ -29,7 +30,7 @@ public sealed class FilteringNode<T> : TransformNode<T, T>
     /// <summary>
     ///     Initializes a new instance with optional execution strategy.
     /// </summary>
-    public FilteringNode(Execution.IExecutionStrategy? executionStrategy = null)
+    public FilteringNode(IExecutionStrategy? executionStrategy = null)
     {
         if (executionStrategy != null)
             ExecutionStrategy = executionStrategy;
@@ -44,7 +45,7 @@ public sealed class FilteringNode<T> : TransformNode<T, T>
     public FilteringNode(
         Func<T, bool> predicate,
         Func<T, string>? reason = null,
-        Execution.IExecutionStrategy? executionStrategy = null) 
+        IExecutionStrategy? executionStrategy = null)
         : this(executionStrategy)
     {
         Where(predicate, reason);
@@ -66,7 +67,7 @@ public sealed class FilteringNode<T> : TransformNode<T, T>
 
     /// <summary>
     ///     Executes filtering on the item.
-    ///     Throws <see cref="FilteringException"/> if any predicate fails.
+    ///     Throws <see cref="FilteringException" /> if any predicate fails.
     /// </summary>
     public override Task<T> ExecuteAsync(T item, PipelineContext context, CancellationToken cancellationToken)
     {
@@ -77,12 +78,14 @@ public sealed class FilteringNode<T> : TransformNode<T, T>
         foreach (var rule in _rules)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
             if (!rule.Predicate(item))
             {
                 // Throw to delegate decision to the configured node-level handler (Skip/Redirect/Fail)
                 var message = rule.Reason is not null
                     ? rule.Reason(item)
                     : "Item did not meet filter criteria.";
+
                 throw new FilteringException(message);
             }
         }

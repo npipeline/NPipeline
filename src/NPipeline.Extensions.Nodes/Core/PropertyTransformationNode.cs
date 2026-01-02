@@ -11,14 +11,14 @@ namespace NPipeline.Extensions.Nodes.Core;
 /// </summary>
 /// <remarks>
 ///     <para>
-///     Only settable properties or non-readonly fields are supported. Registration throws if the member is not settable.
+///         Only settable properties or non-readonly fields are supported. Registration throws if the member is not settable.
 ///     </para>
 ///     <para>
-///     Transformations are value-level (Func&lt;TProp, TProp&gt;). If you need context-aware logic, lift it into the lambda.
+///         Transformations are value-level (Func&lt;TProp, TProp&gt;). If you need context-aware logic, lift it into the lambda.
 ///     </para>
 ///     <para>
-///     Mutates the existing instance by design. If your items are immutable, consider a variant that reconstructs
-///     a new instance using a copy-with approach (future enhancement).
+///         Mutates the existing instance by design. If your items are immutable, consider a variant that reconstructs
+///         a new instance using a copy-with approach (future enhancement).
 ///     </para>
 /// </remarks>
 public abstract class PropertyTransformationNode<T> : TransformNode<T, T>
@@ -56,8 +56,12 @@ public abstract class PropertyTransformationNode<T> : TransformNode<T, T>
         Func<TProp, TProp> transform)
     {
         ArgumentNullException.ThrowIfNull(selectors);
+
         foreach (var sel in selectors)
+        {
             Register(sel, transform);
+        }
+
         return this;
     }
 
@@ -93,6 +97,7 @@ public abstract class PropertyTransformationNode<T> : TransformNode<T, T>
         {
             var current = accessor.Getter(item);
             var updated = transform(current);
+
             // Always assign to ensure semantic changes not captured by Equals
             // (e.g., DateTime.Kind) are applied.
             // EqualityComparer<DateTime> compares by ticks and ignores Kind,
