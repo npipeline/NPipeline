@@ -9,8 +9,8 @@
 
         <!-- NuGet Packaging Metadata -->
         <PackageId>NPipeline.Extensions.Nodes</PackageId>
-        <Description></Description>
-        <PackageTags>npipeline;extensions</PackageTags>
+        <Description>High-performance, dependency-free extension library providing ready-made data processing nodes for NPipeline. Includes cleansing, validation, filtering, type conversion, and enrichment nodes for strings, numbers, dates, and collections.</Description>
+        <PackageTags>npipeline;extensions;data-processing;validation;cleansing;etl;pipeline;streaming</PackageTags>
         <Authors>NPipeline contributors</Authors>
         <RepositoryUrl>https://github.com/NPipeline/NPipeline.git</RepositoryUrl>
         <PackageProjectUrl>https://github.com/NPipeline/NPipeline</PackageProjectUrl>
@@ -21,10 +21,6 @@
         <PackageIcon>icon.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
-
-    <ItemGroup>
-        <ProjectReference Include="..\NPipeline\NPipeline.csproj"/>
-    </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\NPipeline\NPipeline.csproj"/>

@@ -1,5 +1,8 @@
+using System;
 using NPipeline.Extensions.Nodes.Core;
+using NPipeline.Extensions.Nodes.Core.ErrorHandlers;
 using NPipeline.Graph;
+using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Extensions.Nodes;
@@ -10,35 +13,111 @@ namespace NPipeline.Extensions.Nodes;
 public static class PipelineBuilderExtensions
 {
     /// <summary>
+    ///     Adds a string cleansing node to the pipeline for cleaning and normalizing string values.
+    /// </summary>
+    public static TransformNodeHandle<T, T> AddStringCleansing<T>(
+        this PipelineBuilder builder,
+        string? name = null)
+    {
+        return AddConfiguredNode<StringCleansingNode<T>, T, T>(builder, name, configure: null);
+    }
+
+    /// <summary>
+    ///     Adds a string cleansing node configured with the supplied delegate.
+    /// </summary>
+    public static TransformNodeHandle<T, T> AddStringCleansing<T>(
+        this PipelineBuilder builder,
+        Action<StringCleansingNode<T>> configure,
+        string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        return AddConfiguredNode<StringCleansingNode<T>, T, T>(builder, name, configure);
+    }
+
+    /// <summary>
     ///     Adds a numeric cleansing node to the pipeline for cleaning and normalizing numeric values.
     /// </summary>
-    /// <typeparam name="T">The item type.</typeparam>
-    /// <param name="builder">The pipeline builder.</param>
-    /// <param name="name">Optional node name for debugging.</param>
-    /// <returns>A handle to the registered node for chaining.</returns>
     public static TransformNodeHandle<T, T> AddNumericCleansing<T>(
         this PipelineBuilder builder,
         string? name = null)
     {
-        ArgumentNullException.ThrowIfNull(builder);
-        var nodeName = name ?? typeof(NumericCleansingNode<T>).Name;
-        return builder.AddTransform<NumericCleansingNode<T>, T, T>(nodeName);
+        return AddConfiguredNode<NumericCleansingNode<T>, T, T>(builder, name, configure: null);
+    }
+
+    /// <summary>
+    ///     Adds a numeric cleansing node configured with the supplied delegate.
+    /// </summary>
+    public static TransformNodeHandle<T, T> AddNumericCleansing<T>(
+        this PipelineBuilder builder,
+        Action<NumericCleansingNode<T>> configure,
+        string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        return AddConfiguredNode<NumericCleansingNode<T>, T, T>(builder, name, configure);
+    }
+
+    /// <summary>
+    ///     Adds a collection cleansing node to the pipeline for cleaning and normalizing collections.
+    /// </summary>
+    public static TransformNodeHandle<T, T> AddCollectionCleansing<T>(
+        this PipelineBuilder builder,
+        string? name = null)
+    {
+        return AddConfiguredNode<CollectionCleansingNode<T>, T, T>(builder, name, configure: null);
+    }
+
+    /// <summary>
+    ///     Adds a collection cleansing node configured with the supplied delegate.
+    /// </summary>
+    public static TransformNodeHandle<T, T> AddCollectionCleansing<T>(
+        this PipelineBuilder builder,
+        Action<CollectionCleansingNode<T>> configure,
+        string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        return AddConfiguredNode<CollectionCleansingNode<T>, T, T>(builder, name, configure);
     }
 
     /// <summary>
     ///     Adds a datetime cleansing node to the pipeline for cleaning and normalizing date/time values.
     /// </summary>
-    /// <typeparam name="T">The item type.</typeparam>
-    /// <param name="builder">The pipeline builder.</param>
-    /// <param name="name">Optional node name for debugging.</param>
-    /// <returns>A handle to the registered node for chaining.</returns>
     public static TransformNodeHandle<T, T> AddDateTimeCleansing<T>(
         this PipelineBuilder builder,
         string? name = null)
     {
-        ArgumentNullException.ThrowIfNull(builder);
-        var nodeName = name ?? typeof(DateTimeCleansingNode<T>).Name;
-        return builder.AddTransform<DateTimeCleansingNode<T>, T, T>(nodeName);
+        return AddConfiguredNode<DateTimeCleansingNode<T>, T, T>(builder, name, configure: null);
+    }
+
+    /// <summary>
+    ///     Adds a datetime cleansing node configured with the supplied delegate.
+    /// </summary>
+    public static TransformNodeHandle<T, T> AddDateTimeCleansing<T>(
+        this PipelineBuilder builder,
+        Action<DateTimeCleansingNode<T>> configure,
+        string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        return AddConfiguredNode<DateTimeCleansingNode<T>, T, T>(builder, name, configure);
+    }
+
+    /// <summary>
+    ///     Adds a string validation node to the pipeline and applies the default validation error handler.
+    /// </summary>
+    public static TransformNodeHandle<T, T> AddStringValidation<T>(
+        this PipelineBuilder builder,
+        Action<StringValidationNode<T>> configure,
+        string? name = null,
+        bool applyDefaultErrorHandler = true)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        var handle = AddConfiguredNode<StringValidationNode<T>, T, T>(builder, name, configure);
+
+        if (applyDefaultErrorHandler)
+        {
+            builder.WithErrorHandler(handle, typeof(DefaultValidationErrorHandler<T>));
+        }
+
+        return handle;
     }
 
     /// <summary>
@@ -47,14 +126,41 @@ public static class PipelineBuilderExtensions
     /// <typeparam name="T">The item type.</typeparam>
     /// <param name="builder">The pipeline builder.</param>
     /// <param name="name">Optional node name for debugging.</param>
+    /// <param name="applyDefaultErrorHandler">When true, wires up the default validation error handler.</param>
     /// <returns>A handle to the registered node for chaining.</returns>
     public static TransformNodeHandle<T, T> AddNumericValidation<T>(
         this PipelineBuilder builder,
-        string? name = null)
+        string? name = null,
+        bool applyDefaultErrorHandler = true)
     {
-        ArgumentNullException.ThrowIfNull(builder);
-        var nodeName = name ?? typeof(NumericValidationNode<T>).Name;
-        return builder.AddTransform<NumericValidationNode<T>, T, T>(nodeName);
+        var handle = AddConfiguredNode<NumericValidationNode<T>, T, T>(builder, name, configure: null);
+
+        if (applyDefaultErrorHandler)
+        {
+            builder.WithErrorHandler(handle, typeof(DefaultValidationErrorHandler<T>));
+        }
+
+        return handle;
+    }
+
+    /// <summary>
+    ///     Adds a numeric validation node with explicit configuration.
+    /// </summary>
+    public static TransformNodeHandle<T, T> AddNumericValidation<T>(
+        this PipelineBuilder builder,
+        Action<NumericValidationNode<T>> configure,
+        string? name = null,
+        bool applyDefaultErrorHandler = true)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        var handle = AddConfiguredNode<NumericValidationNode<T>, T, T>(builder, name, configure);
+
+        if (applyDefaultErrorHandler)
+        {
+            builder.WithErrorHandler(handle, typeof(DefaultValidationErrorHandler<T>));
+        }
+
+        return handle;
     }
 
     /// <summary>
@@ -63,32 +169,111 @@ public static class PipelineBuilderExtensions
     /// <typeparam name="T">The item type.</typeparam>
     /// <param name="builder">The pipeline builder.</param>
     /// <param name="name">Optional node name for debugging.</param>
+    /// <param name="applyDefaultErrorHandler">When true, wires up the default validation error handler.</param>
     /// <returns>A handle to the registered node for chaining.</returns>
     public static TransformNodeHandle<T, T> AddDateTimeValidation<T>(
         this PipelineBuilder builder,
-        string? name = null)
+        string? name = null,
+        bool applyDefaultErrorHandler = true)
     {
-        ArgumentNullException.ThrowIfNull(builder);
-        var nodeName = name ?? typeof(DateTimeValidationNode<T>).Name;
-        return builder.AddTransform<DateTimeValidationNode<T>, T, T>(nodeName);
+        var handle = AddConfiguredNode<DateTimeValidationNode<T>, T, T>(builder, name, configure: null);
+
+        if (applyDefaultErrorHandler)
+        {
+            builder.WithErrorHandler(handle, typeof(DefaultValidationErrorHandler<T>));
+        }
+
+        return handle;
     }
 
     /// <summary>
-    ///     Adds a validation node to the pipeline.
+    ///     Adds a datetime validation node with explicit configuration.
+    /// </summary>
+    public static TransformNodeHandle<T, T> AddDateTimeValidation<T>(
+        this PipelineBuilder builder,
+        Action<DateTimeValidationNode<T>> configure,
+        string? name = null,
+        bool applyDefaultErrorHandler = true)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        var handle = AddConfiguredNode<DateTimeValidationNode<T>, T, T>(builder, name, configure);
+
+        if (applyDefaultErrorHandler)
+        {
+            builder.WithErrorHandler(handle, typeof(DefaultValidationErrorHandler<T>));
+        }
+
+        return handle;
+    }
+
+    /// <summary>
+    ///     Adds a generic validation node to the pipeline.
     /// </summary>
     /// <typeparam name="T">The item type.</typeparam>
     /// <typeparam name="TValidationNode">The specific validation node type.</typeparam>
     /// <param name="builder">The pipeline builder.</param>
     /// <param name="name">Optional node name for debugging.</param>
+    /// <param name="configure">Optional configuration delegate.</param>
+    /// <param name="applyDefaultErrorHandler">When true, wires up the default validation error handler.</param>
     /// <returns>A handle to the registered node for chaining.</returns>
     public static TransformNodeHandle<T, T> AddValidationNode<T, TValidationNode>(
         this PipelineBuilder builder,
-        string? name = null)
+        string? name = null,
+        Action<TValidationNode>? configure = null,
+        bool applyDefaultErrorHandler = true)
         where TValidationNode : ValidationNode<T>, new()
     {
-        ArgumentNullException.ThrowIfNull(builder);
-        var nodeName = name ?? typeof(TValidationNode).Name;
-        return builder.AddTransform<TValidationNode, T, T>(nodeName);
+        var handle = AddConfiguredNode<TValidationNode, T, T>(builder, name, configure);
+
+        if (applyDefaultErrorHandler)
+        {
+            builder.WithErrorHandler(handle, typeof(DefaultValidationErrorHandler<T>));
+        }
+
+        return handle;
+    }
+
+    /// <summary>
+    ///     Adds a collection validation node to the pipeline.
+    /// </summary>
+    /// <typeparam name="T">The item type.</typeparam>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="name">Optional node name for debugging.</param>
+    /// <param name="applyDefaultErrorHandler">When true, wires up the default validation error handler.</param>
+    /// <returns>A handle to the registered node for chaining.</returns>
+    public static TransformNodeHandle<T, T> AddCollectionValidation<T>(
+        this PipelineBuilder builder,
+        string? name = null,
+        bool applyDefaultErrorHandler = true)
+    {
+        var handle = AddConfiguredNode<CollectionValidationNode<T>, T, T>(builder, name, configure: null);
+
+        if (applyDefaultErrorHandler)
+        {
+            builder.WithErrorHandler(handle, typeof(DefaultValidationErrorHandler<T>));
+        }
+
+        return handle;
+    }
+
+    /// <summary>
+    ///     Adds a collection validation node with explicit configuration.
+    /// </summary>
+    public static TransformNodeHandle<T, T> AddCollectionValidation<T>(
+        this PipelineBuilder builder,
+        Action<CollectionValidationNode<T>> configure,
+        string? name = null,
+        bool applyDefaultErrorHandler = true)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        var handle = AddConfiguredNode<CollectionValidationNode<T>, T, T>(builder, name, configure);
+
+        if (applyDefaultErrorHandler)
+        {
+            builder.WithErrorHandler(handle, typeof(DefaultValidationErrorHandler<T>));
+        }
+
+        return handle;
     }
 
     /// <summary>
@@ -97,31 +282,87 @@ public static class PipelineBuilderExtensions
     /// <typeparam name="T">The item type.</typeparam>
     /// <param name="builder">The pipeline builder.</param>
     /// <param name="name">Optional node name for debugging.</param>
+    /// <param name="applyDefaultErrorHandler">When true, wires up the default filtering error handler.</param>
     /// <returns>A handle to the registered node for chaining.</returns>
     public static TransformNodeHandle<T, T> AddFilteringNode<T>(
         this PipelineBuilder builder,
-        string? name = null)
+        string? name = null,
+        bool applyDefaultErrorHandler = true)
     {
         ArgumentNullException.ThrowIfNull(builder);
         var nodeName = name ?? typeof(FilteringNode<T>).Name;
-        return builder.AddTransform<FilteringNode<T>, T, T>(nodeName);
+        var handle = builder.AddTransform<FilteringNode<T>, T, T>(nodeName);
+
+        if (applyDefaultErrorHandler)
+        {
+            builder.WithErrorHandler(handle, typeof(DefaultFilteringErrorHandler<T>));
+        }
+
+        return handle;
     }
 
     /// <summary>
-    ///     Adds a type conversion node to the pipeline.
+    ///     Adds a filtering node with explicit configuration.
     /// </summary>
-    /// <typeparam name="TIn">The input type.</typeparam>
-    /// <typeparam name="TOut">The output type.</typeparam>
-    /// <param name="builder">The pipeline builder.</param>
-    /// <param name="name">Optional node name for debugging.</param>
-    /// <returns>A handle to the registered node for chaining.</returns>
-    public static TransformNodeHandle<TIn, TOut> AddTypeConversion<TIn, TOut>(
+    public static TransformNodeHandle<T, T> AddFilteringNode<T>(
         this PipelineBuilder builder,
-        string? name = null)
+        Action<FilteringNode<T>> configure,
+        string? name = null,
+        bool applyDefaultErrorHandler = true)
     {
         ArgumentNullException.ThrowIfNull(builder);
-        var nodeName = name ?? typeof(TypeConversionNode<TIn, TOut>).Name;
-        return builder.AddTransform<TypeConversionNode<TIn, TOut>, TIn, TOut>(nodeName);
+        ArgumentNullException.ThrowIfNull(configure);
+
+        var nodeName = name ?? typeof(FilteringNode<T>).Name;
+        var handle = builder.AddTransform<FilteringNode<T>, T, T>(nodeName);
+
+        var node = new FilteringNode<T>();
+        configure(node);
+        builder.AddPreconfiguredNodeInstance(handle.Id, node);
+
+        if (applyDefaultErrorHandler)
+        {
+            builder.WithErrorHandler(handle, typeof(DefaultFilteringErrorHandler<T>));
+        }
+
+        return handle;
+    }
+
+    /// <summary>
+    ///     Adds a type conversion node configured with the provided conversion delegate.
+    /// </summary>
+    public static TransformNodeHandle<TIn, TOut> AddTypeConversion<TIn, TOut>(
+        this PipelineBuilder builder,
+        string? name = null,
+        bool applyDefaultErrorHandler = true)
+    {
+        return AddTypeConversionInternal<TIn, TOut>(builder, configure: null, name, applyDefaultErrorHandler);
+    }
+
+    /// <summary>
+    ///     Adds a type conversion node configured with the provided conversion delegate.
+    /// </summary>
+    public static TransformNodeHandle<TIn, TOut> AddTypeConversion<TIn, TOut>(
+        this PipelineBuilder builder,
+        Action<TypeConversionNode<TIn, TOut>> configure,
+        string? name = null,
+        bool applyDefaultErrorHandler = true)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        return AddTypeConversionInternal<TIn, TOut>(builder, configure, name, applyDefaultErrorHandler);
+    }
+
+    /// <summary>
+    ///     Adds a type conversion node configured with the provided conversion delegate.
+    /// </summary>
+    public static TransformNodeHandle<TIn, TOut> AddTypeConversion<TIn, TOut>(
+        this PipelineBuilder builder,
+        Func<TIn, TOut> converter,
+        string? name = null,
+        bool applyDefaultErrorHandler = true)
+    {
+        ArgumentNullException.ThrowIfNull(converter);
+        return AddTypeConversion<TIn, TOut>(builder, node => node.WithConverter(converter), name, applyDefaultErrorHandler);
     }
 
     /// <summary>
@@ -129,14 +370,52 @@ public static class PipelineBuilderExtensions
     /// </summary>
     /// <typeparam name="T">The item type.</typeparam>
     /// <param name="builder">The pipeline builder.</param>
+    /// <param name="configure">Configuration delegate for setting property values.</param>
     /// <param name="name">Optional node name for debugging.</param>
     /// <returns>A handle to the registered node for chaining.</returns>
     public static TransformNodeHandle<T, T> AddEnrichment<T>(
         this PipelineBuilder builder,
+        Action<EnrichmentNode<T>> configure,
         string? name = null)
     {
+        ArgumentNullException.ThrowIfNull(configure);
+        return AddConfiguredNode<EnrichmentNode<T>, T, T>(builder, name, configure);
+    }
+
+    private static TransformNodeHandle<TIn, TOut> AddTypeConversionInternal<TIn, TOut>(
+        PipelineBuilder builder,
+        Action<TypeConversionNode<TIn, TOut>>? configure,
+        string? name,
+        bool applyDefaultErrorHandler)
+    {
+        var handle = AddConfiguredNode<TypeConversionNode<TIn, TOut>, TIn, TOut>(builder, name, configure);
+
+        if (applyDefaultErrorHandler)
+        {
+            builder.WithErrorHandler(handle, typeof(DefaultTypeConversionErrorHandler<TIn, TOut>));
+        }
+
+        return handle;
+    }
+
+    private static TransformNodeHandle<TIn, TOut> AddConfiguredNode<TNode, TIn, TOut>(
+        PipelineBuilder builder,
+        string? name,
+        Action<TNode>? configure)
+        where TNode : class, ITransformNode<TIn, TOut>, new()
+    {
         ArgumentNullException.ThrowIfNull(builder);
-        var nodeName = name ?? typeof(EnrichmentNode<T>).Name;
-        return builder.AddTransform<EnrichmentNode<T>, T, T>(nodeName);
+
+        var nodeName = name ?? typeof(TNode).Name;
+        var handle = builder.AddTransform<TNode, TIn, TOut>(nodeName);
+
+        if (configure != null)
+        {
+            var node = new TNode();
+            configure(node);
+            builder.AddPreconfiguredNodeInstance(handle.Id, node);
+        }
+
+        return handle;
     }
 }

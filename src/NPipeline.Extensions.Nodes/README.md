@@ -34,121 +34,136 @@ The foundation includes core infrastructure for building extension nodes:
 #### Base Classes
 
 - **`PropertyTransformationNode<T>`**: Base class for in-place property mutations
-    - Compiled property accessors (zero reflection in hot paths)
-    - Fluent API for registering transformations
-    - Supports nested property access
-    - Method chaining support
+  - Compiled property accessors (zero reflection in hot paths)
+  - Fluent API for registering transformations
+  - Supports nested property access
+  - Method chaining support
 
 - **`ValidationNode<T>`**: Base class for property-level validation
-    - Compiled property getters for performance
-    - Rich error context (property path, rule name, value)
-    - Exception-based validation integration
-    - Support for custom error messages
+  - Compiled property getters for performance
+  - Rich error context (property path, rule name, value)
+  - Exception-based validation integration
+  - Support for custom error messages
 
 - **`FilteringNode<T>`**: Generic filtering with predicates
-    - One or more filtering predicates
-    - Exception-based signalling for error handling
-    - Optional custom rejection reasons
-    - Zero allocations on success path
+  - One or more filtering predicates
+  - Exception-based signalling for error handling
+  - Optional custom rejection reasons
+  - Zero allocations on success path
 
 #### Utilities
 
 - **`PropertyAccessor`**: Compiles expression-based property accessors
-    - Type-safe getter and setter delegates
-    - Supports nested member access (e.g., `x => x.Address.Street`)
-    - Validates settability at configuration time
-    - No reflection in execution path
+  - Type-safe getter and setter delegates
+  - Supports nested member access (e.g., `x => x.Address.Street`)
+  - Validates settability at configuration time
+  - No reflection in execution path
 
 #### Error Handling
 
 - **`ValidationException`**: Thrown when validation fails
-    - Property path, rule name, and value included
-    - Integrated with error handlers
+  - Property path, rule name, and value included
+  - Integrated with error handlers
 
 - **`FilteringException`**: Thrown when filtering rejects an item
-    - Contains rejection reason
-    - Integrated with error handlers
+  - Contains rejection reason
+  - Integrated with error handlers
 
 - **`TypeConversionException`**: Thrown when type conversion fails
-    - Source and target types, value included
-    - Integrated with error handlers
+  - Source and target types, value included
+  - Integrated with error handlers
 
 - **Default Error Handlers**:
-    - `DefaultValidationErrorHandler<T>`: Configurable handling for validation failures
-    - `DefaultFilteringErrorHandler<T>`: Configurable handling for filtered items
-    - `DefaultTypeConversionErrorHandler<TIn, TOut>`: Configurable handling for conversion failures
+  - `DefaultValidationErrorHandler<T>`: Configurable handling for validation failures
+  - `DefaultFilteringErrorHandler<T>`: Configurable handling for filtered items
+  - `DefaultTypeConversionErrorHandler<TIn, TOut>`: Configurable handling for conversion failures
 
 ## Quick Start
 
-### Basic Validation Node
+### Using Builder Extension Methods (Recommended)
 
-Create a custom validation node by extending `ValidationNode<T>`:
+The simplest way to use nodes is through the fluent builder extension API:
+
+```csharp
+using NPipeline;
+using NPipeline.Extensions.Nodes;
+
+var builder = new PipelineBuilder();
+
+// String cleansing with configuration
+builder.AddStringCleansing<Customer>(n => n
+    .Trim(x => x.Name)
+    .ToLowerCase(x => x.Email));
+
+// Numeric validation with automatic error handling
+builder.AddNumericValidation<Order>(n => n
+    .IsPositive(x => x.Quantity)
+    .IsInRange(x => x.Discount, 0, 100));
+
+// Collection cleansing
+builder.AddCollectionCleansing<User>(n => n
+    .RemoveNulls(x => x.Tags)
+    .RemoveDuplicates(x => x.Roles));
+
+// Filtering with predicates
+builder.AddFilteringNode<Customer>(n => n
+    .Where(x => x.Age >= 18)
+    .Where(x => !string.IsNullOrEmpty(x.Email)));
+
+// Type conversion with custom converter
+builder.AddTypeConversion<string, int>(s => int.Parse(s));
+
+// Enrichment with default values
+builder.AddEnrichment<Order>(n => n
+    .DefaultIfNull(x => x.OrderDate, DateTime.UtcNow)
+    .Compute(x => x.Total, order => order.Quantity * order.UnitPrice));
+
+var pipeline = builder.Build();
+```
+
+### Creating Custom Validation Nodes
+
+For domain-specific validation, extend `ValidationNode<T>`:
 
 ```csharp
 using NPipeline.Extensions.Nodes.Core;
-using System.Linq.Expressions;
 
 public sealed class CustomerValidator : ValidationNode<Customer>
 {
-    public CustomerValidator(IExecutionStrategy? strategy = null) : base(strategy)
+    public CustomerValidator()
     {
-        // Register validation rules
-        Register(c => c.Email, IsValidEmail, "IsEmail");
+        Register(c => c.Email, IsValidEmail, "ValidEmail");
         Register(c => c.Age, age => age >= 18 && age <= 120, "ValidAge");
         Register(c => c.Name, name => !string.IsNullOrWhiteSpace(name), "NotEmpty");
     }
 
     private static bool IsValidEmail(string email)
-    {
-        return !string.IsNullOrWhiteSpace(email) &&
-               email.Contains("@") &&
-               email.Contains(".");
-    }
+        => !string.IsNullOrWhiteSpace(email) && email.Contains('@');
 }
 
-// Usage in pipeline
-var handle = builder.AddTransform(
-    new CustomerValidator(),
-    onFailure: NodeErrorDecision.Skip);
+// Use with builder
+builder.AddValidationNode<Customer, CustomerValidator>("customer-validation");
 ```
 
-### Basic Transformation Node
+### Creating Custom Transformation Nodes
 
-Create a custom transformation node by extending `PropertyTransformationNode<T>`:
+For domain-specific transformations, extend `PropertyTransformationNode<T>`:
 
 ```csharp
 using NPipeline.Extensions.Nodes.Core;
 
-public sealed class CustomerCleaner : PropertyTransformationNode<Customer>
+public sealed class CustomerNormalizer : PropertyTransformationNode<Customer>
 {
-    public CustomerCleaner(IExecutionStrategy? strategy = null) : base(strategy)
+    public CustomerNormalizer()
     {
-        // Register property transformations
         Register(c => c.Name, name => name?.Trim().ToUpperInvariant());
         Register(c => c.Email, email => email?.Trim().ToLowerInvariant());
+        Register(c => c.Phone, phone => phone?.Replace("-", "").Replace(" ", ""));
     }
 }
 
-// Usage in pipeline
-var handle = builder.AddTransform(new CustomerCleaner());
-```
-
-### Using Filtering Node
-
-```csharp
-using NPipeline.Extensions.Nodes.Core;
-
-var filterNode = new FilteringNode<Customer>(
-    customer => customer.Age >= 18,
-    reason: c => $"Customer {c.Id} is too young (age {c.Age})",
-    executionStrategy: new SequentialExecutionStrategy()
-);
-
-filterNode.ErrorHandler = new DefaultFilteringErrorHandler<Customer>(
-    onFilteredOut: NodeErrorDecision.Skip
-);
-
-var handle = builder.AddTransform(filterNode, "AdultFilter");
+// Use with builder
+builder.AddTransform(new CustomerNormalizer(), "normalize-customer");
 ```
 
 ## Architecture Highlights
@@ -185,35 +200,50 @@ All nodes are stateless and thread-safe by design:
 - No shared mutable state
 - Safe for concurrent execution across multiple threads
 
-## Next Phases
+## Current Features (Phase 1 Complete)
 
-### Phase 2: Core Cleansing & Validation Nodes
+### ✅ Cleansing Nodes
+- **StringCleansingNode**: Trim, case conversion, special character removal
+- **NumericCleansingNode**: Clamping, rounding, scaling, absolute values
+- **DateTimeCleansingNode**: Timezone conversion, date/time normalization
+- **CollectionCleansingNode**: Remove nulls, remove duplicates, filtering
 
-- String cleansing nodes (trim, case, special characters, etc.)
-- Numeric cleansing nodes (clamping, rounding, etc.)
-- DateTime cleansing nodes (timezone, normalization, etc.)
-- Collection cleansing nodes
-- Expanded validation nodes
+### ✅ Validation Nodes
+- **StringValidationNode**: Length, pattern, email, URL validation
+- **NumericValidationNode**: Range, positive/negative, comparison checks
+- **DateTimeValidationNode**: Past/future, range, day-of-week validation
+- **CollectionValidationNode**: Count, empty/non-empty checks
 
-### Phase 3: Advanced Filtering & Transformation
+### ✅ Data Processing Nodes
+- **FilteringNode**: Predicate-based filtering with custom rejection reasons
+- **TypeConversionNode**: Type conversions with factory methods (string↔int, string↔DateTime, etc.)
+- **EnrichmentNode**: Lookup enrichment, computed properties, default values
 
-- Aggregation nodes
-- Type conversion nodes
-- Mapping nodes
-- Conditional nodes
+### ✅ Infrastructure
+- Compiled property accessors (zero reflection)
+- Automatic error handler wiring
+- Configuration-first fluent builder API
+- Comprehensive XML documentation
 
-### Phase 4: Data Enrichment
+## Planned Features
 
-- Lookup enrichment nodes
-- Default value nodes
-- Caching nodes
+### Phase 2: Advanced Data Quality
 
-### Phase 5: Specialized Nodes
+- Anomaly detection nodes
+- Data profiling nodes
+- Statistical validation
 
-- Text processing (normalization, extraction, templates)
-- Temporal operations (business days, timezone handling)
-- Data quality (profiling, anomaly detection)
+### Phase 3: Specialized Transformations
+
+- Text processing (templates, extraction, normalization)
+- Temporal operations (business days, scheduling)
 - Format conversion (JSON, XML, Base64, Hex)
+
+### Phase 4: Enterprise Features
+
+- Caching nodes with multiple strategies
+- Batch processing optimization
+- Distributed pipeline coordination
 
 ## Performance Characteristics
 
@@ -224,20 +254,6 @@ All Phase 1 nodes are designed for zero or minimal allocations:
 - **FilteringNode**: O(n) in number of predicates, O(1) per predicate check
 
 Success paths produce zero allocations (using ValueTask).
-
-## Error Handling
-
-Nodes integrate with NPipeline's error handling infrastructure:
-
-```csharp
-// Configure node error handler
-node.ErrorHandler = new DefaultValidationErrorHandler<Customer>(
-    onFailure: NodeErrorDecision.Skip  // Skip invalid items
-);
-
-// Items that fail validation are passed to the error handler
-// which decides: Skip, DeadLetter (redirect to sink), or Fail
-```
 
 ## Best Practices
 
