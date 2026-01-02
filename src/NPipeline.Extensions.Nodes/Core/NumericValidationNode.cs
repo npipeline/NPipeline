@@ -87,7 +87,7 @@ public sealed class NumericValidationNode<T> : ValidationNode<T>
     }
 
     /// <summary>
-    ///     Validates that an integer is zero or positive.
+    ///     Validates that an integer is zero or positive (non-negative).
     /// </summary>
     public NumericValidationNode<T> IsZeroOrPositive(Expression<Func<T, int>> selector, string? errorMessage = null)
     {
@@ -99,7 +99,13 @@ public sealed class NumericValidationNode<T> : ValidationNode<T>
     }
 
     /// <summary>
-    ///     Validates that a double is zero or positive.
+    ///     Validates that an integer is not negative. Alias for IsZeroOrPositive.
+    /// </summary>
+    public NumericValidationNode<T> IsNotNegative(Expression<Func<T, int>> selector, string? errorMessage = null)
+        => IsZeroOrPositive(selector, errorMessage);
+
+    /// <summary>
+    ///     Validates that a double is zero or positive (non-negative).
     /// </summary>
     public NumericValidationNode<T> IsZeroOrPositive(Expression<Func<T, double>> selector, string? errorMessage = null)
     {
@@ -111,7 +117,13 @@ public sealed class NumericValidationNode<T> : ValidationNode<T>
     }
 
     /// <summary>
-    ///     Validates that a decimal is zero or positive.
+    ///     Validates that a double is not negative. Alias for IsZeroOrPositive.
+    /// </summary>
+    public NumericValidationNode<T> IsNotNegative(Expression<Func<T, double>> selector, string? errorMessage = null)
+        => IsZeroOrPositive(selector, errorMessage);
+
+    /// <summary>
+    ///     Validates that a decimal is zero or positive (non-negative).
     /// </summary>
     public NumericValidationNode<T> IsZeroOrPositive(Expression<Func<T, decimal>> selector, string? errorMessage = null)
     {
@@ -121,6 +133,12 @@ public sealed class NumericValidationNode<T> : ValidationNode<T>
         Register(selector, value => value >= 0, ruleName, _ => message);
         return this;
     }
+
+    /// <summary>
+    ///     Validates that a decimal is not negative. Alias for IsZeroOrPositive.
+    /// </summary>
+    public NumericValidationNode<T> IsNotNegative(Expression<Func<T, decimal>> selector, string? errorMessage = null)
+        => IsZeroOrPositive(selector, errorMessage);
 
     /// <summary>
     ///     Validates that an integer is not zero.
@@ -349,4 +367,80 @@ public sealed class NumericValidationNode<T> : ValidationNode<T>
         Register(selector, value => value < maxValue, ruleName, _ => message);
         return this;
     }
+
+    #region Nullable Validations
+
+    /// <summary>
+    ///     Validates that a nullable integer is not null.
+    /// </summary>
+    public NumericValidationNode<T> IsNotNull(Expression<Func<T, int?>> selector, string? errorMessage = null)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+        var ruleName = "IsNotNull";
+        var message = errorMessage ?? "Value must not be null";
+        Register(selector, value => value.HasValue, ruleName, _ => message);
+        return this;
+    }
+
+    /// <summary>
+    ///     Validates that a nullable double is not null.
+    /// </summary>
+    public NumericValidationNode<T> IsNotNull(Expression<Func<T, double?>> selector, string? errorMessage = null)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+        var ruleName = "IsNotNull";
+        var message = errorMessage ?? "Value must not be null";
+        Register(selector, value => value.HasValue, ruleName, _ => message);
+        return this;
+    }
+
+    /// <summary>
+    ///     Validates that a nullable decimal is not null.
+    /// </summary>
+    public NumericValidationNode<T> IsNotNull(Expression<Func<T, decimal?>> selector, string? errorMessage = null)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+        var ruleName = "IsNotNull";
+        var message = errorMessage ?? "Value must not be null";
+        Register(selector, value => value.HasValue, ruleName, _ => message);
+        return this;
+    }
+
+    /// <summary>
+    ///     Validates that a nullable integer is positive (if not null).
+    /// </summary>
+    public NumericValidationNode<T> IsPositive(Expression<Func<T, int?>> selector, string? errorMessage = null)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+        var ruleName = "IsPositive";
+        var message = errorMessage ?? "Value must be positive";
+        Register(selector, value => !value.HasValue || value.Value > 0, ruleName, _ => message);
+        return this;
+    }
+
+    /// <summary>
+    ///     Validates that a nullable double is positive (if not null).
+    /// </summary>
+    public NumericValidationNode<T> IsPositive(Expression<Func<T, double?>> selector, string? errorMessage = null)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+        var ruleName = "IsPositive";
+        var message = errorMessage ?? "Value must be positive";
+        Register(selector, value => !value.HasValue || value.Value > 0, ruleName, _ => message);
+        return this;
+    }
+
+    /// <summary>
+    ///     Validates that a nullable decimal is positive (if not null).
+    /// </summary>
+    public NumericValidationNode<T> IsPositive(Expression<Func<T, decimal?>> selector, string? errorMessage = null)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+        var ruleName = "IsPositive";
+        var message = errorMessage ?? "Value must be positive";
+        Register(selector, value => !value.HasValue || value.Value > 0, ruleName, _ => message);
+        return this;
+    }
+
+    #endregion
 }

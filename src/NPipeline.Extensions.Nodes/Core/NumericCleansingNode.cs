@@ -43,48 +43,102 @@ public sealed class NumericCleansingNode<T> : PropertyTransformationNode<T>
     }
 
     /// <summary>
-    ///     Rounds a double to the specified number of decimal places.
+    ///     Clamps a nullable numeric property to a range [min, max]. Returns null if the value is null.
     /// </summary>
-    public NumericCleansingNode<T> RoundDouble(
+    public NumericCleansingNode<T> Clamp<TNumeric>(
+        Expression<Func<T, TNumeric?>> selector,
+        TNumeric min,
+        TNumeric max)
+        where TNumeric : struct, IComparable<TNumeric>
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        if (min.CompareTo(max) > 0)
+            throw new ArgumentException("Minimum value cannot be greater than maximum value.", nameof(min));
+
+        Register(selector, value =>
+        {
+            if (!value.HasValue)
+                return null;
+
+            var val = value.Value;
+            if (val.CompareTo(min) < 0)
+                return min;
+
+            if (val.CompareTo(max) > 0)
+                return max;
+
+            return val;
+        });
+
+        return this;
+    }
+
+    /// <summary>
+    ///     Ensures a numeric property is at least the specified minimum value.
+    /// </summary>
+    public NumericCleansingNode<T> Min<TNumeric>(
+        Expression<Func<T, TNumeric>> selector,
+        TNumeric minValue)
+        where TNumeric : IComparable<TNumeric>
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        Register(selector, value => value.CompareTo(minValue) < 0 ? minValue : value);
+        return this;
+    }
+
+    /// <summary>
+    ///     Ensures a numeric property is at most the specified maximum value.
+    /// </summary>
+    public NumericCleansingNode<T> Max<TNumeric>(
+        Expression<Func<T, TNumeric>> selector,
+        TNumeric maxValue)
+        where TNumeric : IComparable<TNumeric>
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        Register(selector, value => value.CompareTo(maxValue) > 0 ? maxValue : value);
+        return this;
+    }
+
+    /// <summary>
+    ///     Rounds a double property to the specified number of decimal places.
+    /// </summary>
+    public NumericCleansingNode<T> Round(
         Expression<Func<T, double>> selector,
-        int digits)
+        int digits = 2)
     {
         ArgumentNullException.ThrowIfNull(selector);
-
-        if (digits < 0)
-            throw new ArgumentException("Digits cannot be negative.", nameof(digits));
+        ArgumentOutOfRangeException.ThrowIfNegative(digits);
 
         Register(selector, value => Math.Round(value, digits));
         return this;
     }
 
     /// <summary>
-    ///     Rounds a decimal to the specified number of decimal places.
+    ///     Rounds a decimal property to the specified number of decimal places.
     /// </summary>
-    public NumericCleansingNode<T> RoundDecimal(
+    public NumericCleansingNode<T> Round(
         Expression<Func<T, decimal>> selector,
-        int digits)
+        int digits = 2)
     {
         ArgumentNullException.ThrowIfNull(selector);
-
-        if (digits < 0)
-            throw new ArgumentException("Digits cannot be negative.", nameof(digits));
+        ArgumentOutOfRangeException.ThrowIfNegative(digits);
 
         Register(selector, value => Math.Round(value, digits));
         return this;
     }
 
     /// <summary>
-    ///     Rounds a nullable double to the specified number of decimal places.
+    ///     Rounds a nullable double property to the specified number of decimal places.
     /// </summary>
-    public NumericCleansingNode<T> RoundDouble(
+    public NumericCleansingNode<T> Round(
         Expression<Func<T, double?>> selector,
-        int digits)
+        int digits = 2)
     {
         ArgumentNullException.ThrowIfNull(selector);
-
-        if (digits < 0)
-            throw new ArgumentException("Digits cannot be negative.", nameof(digits));
+        ArgumentOutOfRangeException.ThrowIfNegative(digits);
 
         Register(selector, value => value.HasValue
             ? Math.Round(value.Value, digits)
@@ -94,16 +148,14 @@ public sealed class NumericCleansingNode<T> : PropertyTransformationNode<T>
     }
 
     /// <summary>
-    ///     Rounds a nullable decimal to the specified number of decimal places.
+    ///     Rounds a nullable decimal property to the specified number of decimal places.
     /// </summary>
-    public NumericCleansingNode<T> RoundDecimal(
+    public NumericCleansingNode<T> Round(
         Expression<Func<T, decimal?>> selector,
-        int digits)
+        int digits = 2)
     {
         ArgumentNullException.ThrowIfNull(selector);
-
-        if (digits < 0)
-            throw new ArgumentException("Digits cannot be negative.", nameof(digits));
+        ArgumentOutOfRangeException.ThrowIfNegative(digits);
 
         Register(selector, value => value.HasValue
             ? Math.Round(value.Value, digits)
@@ -115,7 +167,7 @@ public sealed class NumericCleansingNode<T> : PropertyTransformationNode<T>
     /// <summary>
     ///     Rounds a double down to the nearest integer.
     /// </summary>
-    public NumericCleansingNode<T> FloorDouble(Expression<Func<T, double>> selector)
+    public NumericCleansingNode<T> Floor(Expression<Func<T, double>> selector)
     {
         ArgumentNullException.ThrowIfNull(selector);
         Register(selector, value => Math.Floor(value));
@@ -125,7 +177,7 @@ public sealed class NumericCleansingNode<T> : PropertyTransformationNode<T>
     /// <summary>
     ///     Rounds a double up to the nearest integer.
     /// </summary>
-    public NumericCleansingNode<T> CeilingDouble(Expression<Func<T, double>> selector)
+    public NumericCleansingNode<T> Ceiling(Expression<Func<T, double>> selector)
     {
         ArgumentNullException.ThrowIfNull(selector);
         Register(selector, value => Math.Ceiling(value));
@@ -159,7 +211,7 @@ public sealed class NumericCleansingNode<T> : PropertyTransformationNode<T>
     /// <summary>
     ///     Gets the absolute value of a double property.
     /// </summary>
-    public NumericCleansingNode<T> AbsoluteValueDouble(Expression<Func<T, double>> selector)
+    public NumericCleansingNode<T> AbsoluteValue(Expression<Func<T, double>> selector)
     {
         ArgumentNullException.ThrowIfNull(selector);
         Register(selector, value => Math.Abs(value));
@@ -169,7 +221,7 @@ public sealed class NumericCleansingNode<T> : PropertyTransformationNode<T>
     /// <summary>
     ///     Gets the absolute value of a decimal property.
     /// </summary>
-    public NumericCleansingNode<T> AbsoluteValueDecimal(Expression<Func<T, decimal>> selector)
+    public NumericCleansingNode<T> AbsoluteValue(Expression<Func<T, decimal>> selector)
     {
         ArgumentNullException.ThrowIfNull(selector);
         Register(selector, value => Math.Abs(value));
@@ -193,7 +245,7 @@ public sealed class NumericCleansingNode<T> : PropertyTransformationNode<T>
     /// <summary>
     ///     Sets value to zero if it is negative (double).
     /// </summary>
-    public NumericCleansingNode<T> ToZeroIfNegativeDouble(Expression<Func<T, double>> selector)
+    public NumericCleansingNode<T> ToZeroIfNegative(Expression<Func<T, double>> selector)
     {
         ArgumentNullException.ThrowIfNull(selector);
 
@@ -207,7 +259,7 @@ public sealed class NumericCleansingNode<T> : PropertyTransformationNode<T>
     /// <summary>
     ///     Sets value to zero if it is negative (decimal).
     /// </summary>
-    public NumericCleansingNode<T> ToZeroIfNegativeDecimal(Expression<Func<T, decimal>> selector)
+    public NumericCleansingNode<T> ToZeroIfNegative(Expression<Func<T, decimal>> selector)
     {
         ArgumentNullException.ThrowIfNull(selector);
 
@@ -233,7 +285,7 @@ public sealed class NumericCleansingNode<T> : PropertyTransformationNode<T>
     /// <summary>
     ///     Scales a decimal value by multiplying by a factor.
     /// </summary>
-    public NumericCleansingNode<T> ScaleDecimal(
+    public NumericCleansingNode<T> Scale(
         Expression<Func<T, decimal>> selector,
         decimal factor)
     {

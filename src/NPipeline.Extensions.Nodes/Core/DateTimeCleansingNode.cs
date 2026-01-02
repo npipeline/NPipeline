@@ -222,6 +222,30 @@ public sealed class DateTimeCleansingNode<T> : PropertyTransformationNode<T>
     }
 
     /// <summary>
+    ///     Rounds a nullable DateTime to the nearest minute.
+    /// </summary>
+    public DateTimeCleansingNode<T> RoundToMinute(Expression<Func<T, DateTime?>> selector)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        Register(selector, value =>
+        {
+            if (!value.HasValue)
+                return null;
+
+            var ticks = value.Value.Ticks;
+            var ticksInMinute = TimeSpan.FromMinutes(1).Ticks;
+            var remainder = ticks % ticksInMinute;
+
+            return remainder < ticksInMinute / 2
+                ? value.Value.AddTicks(-remainder)
+                : value.Value.AddTicks(ticksInMinute - remainder);
+        });
+
+        return this;
+    }
+
+    /// <summary>
     ///     Rounds a DateTime to the nearest hour.
     /// </summary>
     public DateTimeCleansingNode<T> RoundToHour(Expression<Func<T, DateTime>> selector)
@@ -243,6 +267,30 @@ public sealed class DateTimeCleansingNode<T> : PropertyTransformationNode<T>
     }
 
     /// <summary>
+    ///     Rounds a nullable DateTime to the nearest hour.
+    /// </summary>
+    public DateTimeCleansingNode<T> RoundToHour(Expression<Func<T, DateTime?>> selector)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        Register(selector, value =>
+        {
+            if (!value.HasValue)
+                return null;
+
+            var ticks = value.Value.Ticks;
+            var ticksInHour = TimeSpan.FromHours(1).Ticks;
+            var remainder = ticks % ticksInHour;
+
+            return remainder < ticksInHour / 2
+                ? value.Value.AddTicks(-remainder)
+                : value.Value.AddTicks(ticksInHour - remainder);
+        });
+
+        return this;
+    }
+
+    /// <summary>
     ///     Rounds a DateTime to the nearest day.
     /// </summary>
     public DateTimeCleansingNode<T> RoundToDay(Expression<Func<T, DateTime>> selector)
@@ -258,6 +306,77 @@ public sealed class DateTimeCleansingNode<T> : PropertyTransformationNode<T>
             return remainder < ticksInDay / 2
                 ? value.AddTicks(-remainder)
                 : value.AddTicks(ticksInDay - remainder);
+        });
+
+        return this;
+    }
+
+    /// <summary>
+    ///     Rounds a nullable DateTime to the nearest day.
+    /// </summary>
+    public DateTimeCleansingNode<T> RoundToDay(Expression<Func<T, DateTime?>> selector)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        Register(selector, value =>
+        {
+            if (!value.HasValue)
+                return null;
+
+            var ticks = value.Value.Ticks;
+            var ticksInDay = TimeSpan.FromDays(1).Ticks;
+            var remainder = ticks % ticksInDay;
+
+            return remainder < ticksInDay / 2
+                ? value.Value.AddTicks(-remainder)
+                : value.Value.AddTicks(ticksInDay - remainder);
+        });
+
+        return this;
+    }
+
+    /// <summary>
+    ///     Clamps a DateTime value between minimum and maximum bounds.
+    /// </summary>
+    public DateTimeCleansingNode<T> Clamp(
+        Expression<Func<T, DateTime>> selector,
+        DateTime min,
+        DateTime max)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        if (min > max)
+            throw new ArgumentException("Minimum value cannot be greater than maximum value.", nameof(min));
+
+        Register(selector, value =>
+        {
+            if (value < min) return min;
+            if (value > max) return max;
+            return value;
+        });
+
+        return this;
+    }
+
+    /// <summary>
+    ///     Clamps a nullable DateTime value between minimum and maximum bounds.
+    /// </summary>
+    public DateTimeCleansingNode<T> Clamp(
+        Expression<Func<T, DateTime?>> selector,
+        DateTime min,
+        DateTime max)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+
+        if (min > max)
+            throw new ArgumentException("Minimum value cannot be greater than maximum value.", nameof(min));
+
+        Register(selector, value =>
+        {
+            if (!value.HasValue) return null;
+            if (value.Value < min) return min;
+            if (value.Value > max) return max;
+            return value.Value;
         });
 
         return this;

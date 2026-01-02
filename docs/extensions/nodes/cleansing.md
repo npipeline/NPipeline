@@ -77,27 +77,23 @@ Clean and normalize numeric data:
 ```csharp
 builder.AddNumericCleansing<Order>(x => x.Discount)
     .Clamp(0, 100)
-    .RoundDecimal(2);
+    .Round(2);
 ```
 
 ### Available Operations
 
-| Operation | Type | Example |
-|-----------|------|---------|
-| `RoundDouble(digits)` | double | `3.14159` → `3.14` |
-| `RoundDecimal(digits)` | decimal | `3.14159m` → `3.14m` |
-| `FloorDouble()` | double | `3.9` → `3.0` |
-| `CeilingDouble()` | double | `3.1` → `4.0` |
+| Operation | Types | Example |
+|-----------|-------|---------|
+| `Round(digits)` | double, decimal | `3.14159` → `3.14` |
+| `Floor()` | double | `3.9` → `3.0` |
+| `Ceiling()` | double | `3.1` → `4.0` |
 | `Clamp(min, max)` | all numeric | `150` → `100` (clamped to max) |
-| `AbsoluteValue()` | int, long | `-5` → `5` |
-| `AbsoluteValueDouble()` | double | `-5.5` → `5.5` |
-| `AbsoluteValueDecimal()` | decimal | `-5.5m` → `5.5m` |
+| `AbsoluteValue()` | double, decimal | `-5.5` → `5.5` |
 | `Scale(factor)` | decimal | `10m` × `2.5m` → `25m` |
-| `ScaleDecimal(factor)` | decimal | `10m` × `2.5m` → `25m` |
 | `DefaultIfNull(default)` | all nullable | `null` → `0` |
-| `ToZeroIfNegative()` | int, long | `-5` → `0` |
-| `ToZeroIfNegativeDouble()` | double | `-5.5` → `0.0` |
-| `ToZeroIfNegativeDecimal()` | decimal | `-5.5m` → `0m` |
+| `ToZeroIfNegative()` | double, decimal | `-5.5` → `0` |
+
+**Note:** Type-specific methods are inferred from parameter types. For example, `Round()` works with both `double` and `decimal` properties through method overloading.
 
 ### Examples
 
@@ -105,7 +101,7 @@ builder.AddNumericCleansing<Order>(x => x.Discount)
 // Price normalization
 builder.AddNumericCleansing<Product>(x => x.Price)
     .Clamp(0, decimal.MaxValue)
-    .RoundDecimal(2);
+    .Round(2);
 
 // Discount clamping
 builder.AddNumericCleansing<Order>(x => x.Discount)
@@ -114,7 +110,7 @@ builder.AddNumericCleansing<Order>(x => x.Discount)
 // Percentage cleanup
 builder.AddNumericCleansing<Survey>(x => x.CompletionRate)
     .Clamp(0, 100)
-    .RoundDouble(1);
+    .Round(1);
 
 // Age normalization
 builder.AddNumericCleansing<Person>(x => x.Age)
@@ -122,11 +118,11 @@ builder.AddNumericCleansing<Person>(x => x.Age)
 
 // Absolute value conversion
 builder.AddNumericCleansing<Measurement>(x => x.Value)
-    .AbsoluteValueDouble();
+    .AbsoluteValue();
 
 // Negative value handling
 builder.AddNumericCleansing<Transaction>(x => x.Amount)
-    .ToZeroIfNegativeDecimal();
+    .ToZeroIfNegative();
 ```
 
 ## DateTime Cleansing

@@ -234,4 +234,20 @@ public sealed class DateTimeValidationNode<T> : ValidationNode<T>
         Register(selector, value => value.Month == month, ruleName, _ => message);
         return this;
     }
+
+    #region Nullable Validations
+
+    /// <summary>
+    ///     Validates that a nullable DateTime is not null.
+    /// </summary>
+    public DateTimeValidationNode<T> IsNotNull(Expression<Func<T, DateTime?>> selector, string? errorMessage = null)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+        var ruleName = "IsNotNull";
+        var message = errorMessage ?? "Value must not be null";
+        Register(selector, value => value.HasValue, ruleName, _ => message);
+        return this;
+    }
+
+    #endregion
 }

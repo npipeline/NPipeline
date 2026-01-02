@@ -1,16 +1,25 @@
 ---
-title: Data Enrichment Nodes
-description: Enrich data with lookup values, computed properties, and default values. Set defaults based on conditions and enrich from external sources.
+title: Data Enrichment
+description: Enrich data with lookups, computed properties, and defaults using a unified, fluent API
 sidebar_position: 5
 ---
 
-# Data Enrichment Nodes
+# Data Enrichment
 
-Enrichment nodes add, compute, or set default values on properties. They enable data enrichment from lookup dictionaries and conditional default value assignment.
+The `EnrichmentNode<T>` provides a unified API for enriching data through lookups, computations, and default values. All operations are chainable and execute in the order they're defined.
 
-## Lookup Enrichment
+## Overview
 
-Enrich data by looking up values in dictionaries based on key properties:
+Enrichment operations fall into four categories:
+
+- **Lookup** - Enrich from dictionaries (only sets if key exists)
+- **Set** - Set from dictionaries (sets to default if key missing)
+- **Compute** - Calculate values from item properties
+- **Default** - Apply fallback values based on conditions
+
+## Lookup Operations
+
+Enrich properties by looking up values in dictionaries. Only sets the property if the key exists.
 
 ```csharp
 var statusLookup = new Dictionary<int, string>
@@ -20,145 +29,174 @@ var statusLookup = new Dictionary<int, string>
     { 3, "Pending" }
 };
 
-builder.Add(new LookupEnrichmentNode<Order>()
-    .AddProperty(x => x.StatusId, statusLookup, x => x.StatusName));
+builder.AddEnrichment<Order>()
+    .Lookup(x => x.StatusDescription, statusLookup, x => x.StatusId);
 ```
 
-### Available Operations
+### Method Signature
 
-| Operation | Purpose | Use Case |
-|-----------|---------|----------|
-| `AddProperty<TKey, TValue>(keySelector, lookup, valueSetter)` | Add a property from lookup if key exists | Enrich with code descriptions |
-| `ReplaceProperty<TKey, TValue>(keySelector, lookup, valueSetter)` | Replace property value from lookup | Update status descriptions |
-| `AddProperties<TKey, TValue>(keySelector, lookup, valueSetters)` | Add multiple properties from one lookup | Populate related fields |
-| `AddComputedProperty<TValue>(selector, computeValue)` | Compute and set property value | Calculate derived values |
+```csharp
+Lookup<TKey, TValue>(
+    Expression<Func<T, TValue>> propertySelector,
+    IReadOnlyDictionary<TKey, TValue> lookup,
+    Expression<Func<T, TKey>> keySelector)
+```
 
 ### Examples
 
 ```csharp
-// Single lookup enrichment
-var countryCodeLookup = new Dictionary<string, string>
+// Enrich with country names
+var countryLookup = new Dictionary<string, string>
 {
     { "US", "United States" },
     { "CA", "Canada" },
     { "MX", "Mexico" }
 };
 
-builder.Add(new LookupEnrichmentNode<Customer>()
-    .AddProperty(x => x.CountryCode, countryCodeLookup, x => x.CountryName));
+builder.AddEnrichment<Customer>()
+    .Lookup(x => x.CountryName, countryLookup, x => x.CountryCode);
 
-// Multiple properties from same lookup
-var regionLookup = new Dictionary<int, string>
-{
-    { 1, "North America" },
-    { 2, "Europe" },
-    { 3, "Asia" }
-};
+// Multiple lookups
+builder.AddEnrichment<Order>()
+    .Lookup(x => x.StatusName, statusLookup, x => x.StatusId)
+    .Lookup(x => x.ShippingMethod, shippingLookup, x => x.ShippingMethodId);
+```
 
-builder.Add(new LookupEnrichmentNode<Location>()
-    .AddProperties(
-        x => x.RegionId,
-        regionLookup,
-        x => x.RegionName,
-        x => x.RegionDescription));
+## Set Operations
 
-// Computed properties
-builder.Add(new LookupEnrichmentNode<Order>()
-    .AddComputedProperty(x => x.Total, order =>
-        order.Items.Sum(i => i.Price * i.Quantity)));
+Set property values from dictionaries. Sets to `default(TValue)` if key not found.
 
-// Replace with fallback to default
-var categoryLookup = new Dictionary<int, string>
-{
-    { 1, "Electronics" },
-    { 2, "Books" }
-};
-
-builder.Add(new LookupEnrichmentNode<Product>()
-    .ReplaceProperty(x => x.CategoryId, categoryLookup, x => x.CategoryName));
+```csharp
+builder.AddEnrichment<Product>()
+    .Set(x => x.CategoryName, categoryLookup, x => x.CategoryId);
 // If CategoryId not in lookup, CategoryName becomes null
 ```
 
-### Chaining
-
-Combine multiple enrichment operations:
+### Method Signature
 
 ```csharp
-builder.Add(new LookupEnrichmentNode<Order>()
-    .AddProperty(x => x.StatusId, statusLookup, x => x.StatusName)
-    .AddProperty(x => x.ShippingMethodId, shippingLookup, x => x.ShippingMethod)
-    .AddComputedProperty(x => x.EstimatedDelivery, order =>
-        order.OrderDate.AddDays(order.ShippingDays)));
+Set<TKey, TValue>(
+    Expression<Func<T, TValue>> propertySelector,
+    IReadOnlyDictionary<TKey, TValue> lookup,
+    Expression<Func<T, TKey>> keySelector)
 ```
 
-## Default Value Nodes
+## Compute Operations
 
-Set property values to defaults based on null checks and conditions:
+Calculate property values from other properties on the item.
 
 ```csharp
-builder.Add(new DefaultValueNode<User>()
-    .DefaultIfNull(x => x.CreatedDate, () => DateTime.UtcNow)
-    .DefaultIfNullOrEmpty(x => x.Department, "Unassigned"));
+builder.AddEnrichment<Order>()
+    .Compute(x => x.Total, order => 
+        order.Items.Sum(i => i.Price * i.Quantity))
+    .Compute(x => x.EstimatedDelivery, order =>
+        order.OrderDate.AddDays(order.ShippingDays));
 ```
 
-### Available Operations
+### Method Signature
 
-| Operation | Purpose | Trigger Condition |
-|-----------|---------|------------------|
-| `DefaultIfNull<TProp>(selector, default)` | Set default if null | Property is null |
-| `DefaultIfNullOrEmpty(selector, default)` | Set default if null or empty string | String is null or empty |
-| `DefaultIfNullOrWhitespace(selector, default)` | Set default if null or whitespace | String is null, empty, or whitespace |
-| `DefaultIfDefault<TProp>(selector, default)` | Set default if equals default(T) | Property equals default value |
-| `DefaultIfCondition<TProp>(selector, default, condition)` | Set default if condition true | Custom condition |
-| `DefaultIfZero(selector, default)` | Set default if zero (int) | Integer property is 0 |
-| `DefaultIfZero(selector, default)` | Set default if zero (decimal) | Decimal property is 0m |
-| `DefaultIfZero(selector, default)` | Set default if zero (double) | Double property is 0.0 |
-| `DefaultIfEmpty<TItem>(selector, default)` | Set default if empty collection | Collection has no items |
+```csharp
+Compute<TValue>(
+    Expression<Func<T, TValue>> propertySelector,
+    Func<T, TValue> computeValue)
+```
 
 ### Examples
 
 ```csharp
-// Null defaults
-builder.Add(new DefaultValueNode<User>()
-    .DefaultIfNull(x => x.CreatedDate, DateTime.UtcNow)
-    .DefaultIfNull(x => x.UpdatedDate, DateTime.UtcNow));
+// Calculate full name
+builder.AddEnrichment<User>()
+    .Compute(x => x.FullName, user => 
+        $"{user.FirstName} {user.LastName}");
 
-// String defaults
-builder.Add(new DefaultValueNode<Contact>()
-    .DefaultIfNullOrEmpty(x => x.Phone, "N/A")
-    .DefaultIfNullOrWhitespace(x => x.Address, "No Address"));
-
-// Numeric defaults
-builder.Add(new DefaultValueNode<Product>()
-    .DefaultIfZero(x => x.Quantity, 0)
-    .DefaultIfZero(x => x.UnitPrice, 0m)
-    .DefaultIfDefault(x => x.DiscountPercent, 0));
-
-// Collection defaults
-builder.Add(new DefaultValueNode<Order>()
-    .DefaultIfEmpty(x => x.Items, new List<OrderItem>()));
-
-// Conditional defaults
-builder.Add(new DefaultValueNode<Account>()
-    .DefaultIfCondition(x => x.Status, "Unknown", x => x.Status == null || x.Status == string.Empty));
+// Calculate age from birth date
+builder.AddEnrichment<Person>()
+    .Compute(x => x.Age, person =>
+    {
+        var today = DateTime.Today;
+        var age = today.Year - person.BirthDate.Year;
+        if (person.BirthDate.Date > today.AddYears(-age)) age--;
+        return age;
+    });
 ```
 
-### Chaining
+## Default Value Operations
 
-Combine multiple default operations:
+Set properties to default values based on various conditions.
+
+### DefaultIfNull
+
+Sets a default value if property is null.
 
 ```csharp
-builder.Add(new DefaultValueNode<User>()
+builder.AddEnrichment<User>()
     .DefaultIfNull(x => x.CreatedDate, DateTime.UtcNow)
-    .DefaultIfNullOrEmpty(x => x.FirstName, "Unknown")
-    .DefaultIfNullOrEmpty(x => x.LastName, "User")
-    .DefaultIfNullOrEmpty(x => x.Email, "no-email@example.com")
-    .DefaultIfZero(x => x.Age, 0));
+    .DefaultIfNull(x => x.Name, "Unknown");
 ```
 
-## Complete Example
+### DefaultIfEmpty
 
-Combining cleansing, validation, and enrichment:
+Sets a default value for strings if null or empty.
+
+```csharp
+builder.AddEnrichment<Contact>()
+    .DefaultIfEmpty(x => x.Phone, "N/A")
+    .DefaultIfEmpty(x => x.Email, "no-email@example.com");
+```
+
+### DefaultIfWhitespace
+
+Sets a default value for strings if null, empty, or whitespace.
+
+```csharp
+builder.AddEnrichment<Contact>()
+    .DefaultIfWhitespace(x => x.Address, "No Address");
+```
+
+### DefaultIfZero
+
+Sets a default value for numeric properties if zero. Overloaded for `int`, `decimal`, and `double`.
+
+```csharp
+builder.AddEnrichment<Product>()
+    .DefaultIfZero(x => x.Quantity, 1)
+    .DefaultIfZero(x => x.UnitPrice, 9.99m)
+    .DefaultIfZero(x => x.DiscountPercent, 0.0);
+```
+
+### DefaultIfDefault
+
+Sets a default value if property equals `default(T)`.
+
+```csharp
+builder.AddEnrichment<Order>()
+    .DefaultIfDefault(x => x.OrderDate, DateTime.UtcNow);
+```
+
+### DefaultWhen
+
+Sets a default value based on a custom condition.
+
+```csharp
+builder.AddEnrichment<Product>()
+    .DefaultWhen(x => x.Status, "Available", status => 
+        string.IsNullOrEmpty(status) || status == "Unknown");
+```
+
+### DefaultIfEmptyCollection
+
+Sets a default collection if the property is null or empty.
+
+```csharp
+builder.AddEnrichment<Order>()
+    .DefaultIfEmptyCollection(x => x.Items, new List<OrderItem>());
+```
+
+## Complete Examples
+
+### Chaining Multiple Operations
+
+All enrichment operations can be chained together:
 
 ```csharp
 var statusLookup = new Dictionary<int, string>
@@ -167,42 +205,126 @@ var statusLookup = new Dictionary<int, string>
     { 2, "Inactive" }
 };
 
+builder.AddEnrichment<Order>()
+    // First, apply defaults
+    .DefaultIfNull(x => x.OrderDate, DateTime.UtcNow)
+    .DefaultIfEmpty(x => x.CustomerName, "Guest")
+    .DefaultIfZero(x => x.Quantity, 1)
+    
+    // Then, enrich from lookups
+    .Lookup(x => x.StatusDescription, statusLookup, x => x.StatusId)
+    
+    // Finally, compute derived values
+    .Compute(x => x.Total, order => order.Quantity * order.UnitPrice)
+    .Compute(x => x.Label, order => 
+        $"{order.CustomerName} - {order.StatusDescription}");
+```
+
+### Real-World Pipeline
+
+```csharp
 var builder = new PipelineBuilder();
 
 // Clean the data
-builder.AddStringCleansing<Order>(x => x.CustomerName)
-    .Trim()
-    .ToTitleCase();
+builder.AddStringCleansing<Order>()
+    .Trim(x => x.CustomerName)
+    .ToTitleCase(x => x.CustomerName);
 
 // Validate required fields
-builder.AddStringValidation<Order>(x => x.CustomerName)
-    .HasMinLength(1)
-    .HasMaxLength(100);
+builder.AddStringValidation<Order>()
+    .IsNotEmpty(x => x.CustomerName)
+    .HasMaxLength(x => x.CustomerName, 100);
 
-builder.AddNumericValidation<Order>(x => x.Amount)
-    .IsGreaterThan(0);
+builder.AddNumericValidation<Order>()
+    .IsGreaterThan(x => x.Amount, 0);
 
-// Enrich with defaults
-builder.Add(new DefaultValueNode<Order>()
+// Enrich with defaults, lookups, and computed values
+builder.AddEnrichment<Order>()
     .DefaultIfNull(x => x.OrderDate, DateTime.UtcNow)
-    .DefaultIfNullOrEmpty(x => x.Notes, "No notes"));
-
-// Enrich with lookups
-builder.Add(new LookupEnrichmentNode<Order>()
-    .AddProperty(x => x.StatusId, statusLookup, x => x.StatusName)
-    .AddComputedProperty(x => x.Total, order =>
-        order.Items.Sum(i => i.Price * i.Quantity)));
+    .DefaultIfEmpty(x => x.Notes, "No notes")
+    .Lookup(x => x.StatusName, statusLookup, x => x.StatusId)
+    .Compute(x => x.Total, order =>
+        order.Items.Sum(i => i.Price * i.Quantity));
 
 var pipeline = builder.Build();
 ```
 
+## API Reference
+
+### Lookup & Set Methods
+
+| Method | Description |
+|--------|-------------|
+| `Lookup<TKey, TValue>(property, lookup, key)` | Enrich from dictionary, only if key exists |
+| `Set<TKey, TValue>(property, lookup, key)` | Set from dictionary, use default if key missing |
+
+### Compute Methods
+
+| Method | Description |
+|--------|-------------|
+| `Compute<TValue>(property, computeValue)` | Calculate and set property value |
+
+### Default Value Methods
+
+| Method | Description | Condition |
+|--------|-------------|-----------|
+| `DefaultIfNull<TValue>(property, default)` | Set if null | `value == null` |
+| `DefaultIfEmpty(property, default)` | Set if empty string | `string.IsNullOrEmpty(value)` |
+| `DefaultIfWhitespace(property, default)` | Set if whitespace string | `string.IsNullOrWhiteSpace(value)` |
+| `DefaultIfZero(property, default)` | Set if zero (int/decimal/double) | `value == 0` |
+| `DefaultIfDefault<TValue>(property, default)` | Set if default value | `value == default(TValue)` |
+| `DefaultWhen<TValue>(property, condition, default)` | Set if condition true | Custom predicate |
+| `DefaultIfEmptyCollection<TItem>(property, default)` | Set if null/empty collection | No items in collection |
+
 ## Performance Notes
 
-- **Lookup operations** use compiled expressions for property access - zero reflection in hot paths
-- **Dictionary lookups** use O(1) hash-based lookups
-- **Computed properties** are calculated once per item during pipeline execution
-- **Default operations** perform simple null/equality checks - negligible overhead
+- **Compiled expressions** for zero-reflection property access
+- **Dictionary lookups** use O(1) hash-based operations
+- **Operations execute in order** - later operations see results of earlier ones
+- **Single pass** - all enrichments applied during one item traversal
 
 ## Thread Safety
 
-All nodes are **immutable after construction** and safe to use across multiple pipeline executions.
+`EnrichmentNode<T>` is **immutable after construction** and safe to use across multiple pipeline executions.
+
+## Migration from Legacy Nodes
+
+If you're upgrading from `LookupEnrichmentNode` or `DefaultValueNode`:
+
+### LookupEnrichmentNode Migration
+
+**Before:**
+```csharp
+builder.Add(new LookupEnrichmentNode<Order>()
+    .AddProperty(x => x.StatusId, statusLookup, x => x.StatusName));
+```
+
+**After:**
+```csharp
+builder.AddEnrichment<Order>()
+    .Lookup(x => x.StatusName, statusLookup, x => x.StatusId);
+```
+
+Note: The parameter order has changed. The property to set comes first, then the lookup, then the key.
+
+### DefaultValueNode Migration
+
+**Before:**
+```csharp
+builder.Add(new DefaultValueNode<User>()
+    .DefaultIfNull(x => x.CreatedDate, () => DateTime.UtcNow)
+    .DefaultIfNullOrEmpty(x => x.Department, "Unassigned"));
+```
+
+**After:**
+```csharp
+builder.AddEnrichment<User>()
+    .DefaultIfNull(x => x.CreatedDate, DateTime.UtcNow)
+    .DefaultIfEmpty(x => x.Department, "Unassigned");
+```
+
+Key changes:
+- `DefaultIfNullOrEmpty` → `DefaultIfEmpty` (for strings)
+- `DefaultIfNullOrWhitespace` → `DefaultIfWhitespace`
+- `DefaultIfCondition` → `DefaultWhen`
+- Default values are now direct values, not factory functions

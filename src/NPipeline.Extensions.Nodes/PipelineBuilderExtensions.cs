@@ -123,4 +123,20 @@ public static class PipelineBuilderExtensions
         var nodeName = name ?? typeof(TypeConversionNode<TIn, TOut>).Name;
         return builder.AddTransform<TypeConversionNode<TIn, TOut>, TIn, TOut>(nodeName);
     }
+
+    /// <summary>
+    ///     Adds an enrichment node to the pipeline for setting property values from lookups, computations, or defaults.
+    /// </summary>
+    /// <typeparam name="T">The item type.</typeparam>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="name">Optional node name for debugging.</param>
+    /// <returns>A handle to the registered node for chaining.</returns>
+    public static TransformNodeHandle<T, T> AddEnrichment<T>(
+        this PipelineBuilder builder,
+        string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        var nodeName = name ?? typeof(EnrichmentNode<T>).Name;
+        return builder.AddTransform<EnrichmentNode<T>, T, T>(nodeName);
+    }
 }

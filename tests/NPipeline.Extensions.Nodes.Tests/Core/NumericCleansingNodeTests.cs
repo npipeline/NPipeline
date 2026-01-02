@@ -5,13 +5,13 @@ namespace NPipeline.Extensions.Nodes.Tests.Core;
 
 public class NumericCleansingNodeTests
 {
-    #region FloorDouble Tests
+    #region Floor Tests
 
     [Fact]
-    public async Task FloorDouble_RemovesDecimal_Floors()
+    public async Task Floor_RemovesDecimal_Floors()
     {
         var node = new NumericCleansingNode<TestObject>();
-        node.FloorDouble(x => x.DoubleValue);
+        node.Floor(x => x.DoubleValue);
 
         var item = new TestObject { DoubleValue = 5.9 };
         var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
@@ -20,13 +20,13 @@ public class NumericCleansingNodeTests
 
     #endregion
 
-    #region CeilingDouble Tests
+    #region Ceiling Tests
 
     [Fact]
-    public async Task CeilingDouble_RoundsUp_Ceils()
+    public async Task Ceiling_RoundsUp_Ceils()
     {
         var node = new NumericCleansingNode<TestObject>();
-        node.CeilingDouble(x => x.DoubleValue);
+        node.Ceiling(x => x.DoubleValue);
 
         var item = new TestObject { DoubleValue = 5.1 };
         var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
@@ -81,13 +81,13 @@ public class NumericCleansingNodeTests
 
     #endregion
 
-    #region RoundDouble Tests
+    #region Round Tests
 
     [Fact]
-    public async Task RoundDouble_WithPrecision_Rounds()
+    public async Task Round_WithPrecision_Rounds()
     {
         var node = new NumericCleansingNode<TestObject>();
-        node.RoundDouble(x => x.DoubleValue, 2);
+        node.Round(x => x.DoubleValue, 2);
 
         var item = new TestObject { DoubleValue = 5.556 };
         var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
@@ -95,10 +95,10 @@ public class NumericCleansingNodeTests
     }
 
     [Fact]
-    public async Task RoundDouble_WithNullableValue_Rounds()
+    public async Task Round_WithNullableValue_Rounds()
     {
         var node = new NumericCleansingNode<TestObject>();
-        node.RoundDouble(x => x.NullableDoubleValue, 2);
+        node.Round(x => x.NullableDoubleValue, 2);
 
         var item = new TestObject { NullableDoubleValue = 5.556 };
         var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
@@ -132,10 +132,10 @@ public class NumericCleansingNodeTests
     }
 
     [Fact]
-    public async Task AbsoluteValueDouble_WithNegativeDouble_ReturnsPositive()
+    public async Task AbsoluteValue_WithNegativeDouble_ReturnsPositive()
     {
         var node = new NumericCleansingNode<TestObject>();
-        node.AbsoluteValueDouble(x => x.DoubleValue);
+        node.AbsoluteValue(x => x.DoubleValue);
 
         var item = new TestObject { DoubleValue = -5.5 };
         var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
@@ -143,10 +143,10 @@ public class NumericCleansingNodeTests
     }
 
     [Fact]
-    public async Task AbsoluteValueDecimal_WithNegativeDecimal_ReturnsPositive()
+    public async Task AbsoluteValue_WithNegativeDecimal_ReturnsPositive()
     {
         var node = new NumericCleansingNode<TestObject>();
-        node.AbsoluteValueDecimal(x => x.DecimalValue);
+        node.AbsoluteValue(x => x.DecimalValue);
 
         var item = new TestObject { DecimalValue = -5.5m };
         var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
@@ -161,7 +161,7 @@ public class NumericCleansingNodeTests
     public async Task Scale_MultipliesDouble_Scales()
     {
         var node = new NumericCleansingNode<TestObject>();
-        node.ScaleDecimal(x => x.DecimalValue, 2);
+        node.Scale(x => x.DecimalValue, 2);
 
         var item = new TestObject { DecimalValue = 5m };
         var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
@@ -169,10 +169,10 @@ public class NumericCleansingNodeTests
     }
 
     [Fact]
-    public async Task ScaleDecimal_MultipliesDecimal_Scales()
+    public async Task Scale_MultipliesDecimal_Scales()
     {
         var node = new NumericCleansingNode<TestObject>();
-        node.ScaleDecimal(x => x.DecimalValue, 2.5m);
+        node.Scale(x => x.DecimalValue, 2.5m);
 
         var item = new TestObject { DecimalValue = 5m };
         var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
@@ -232,10 +232,10 @@ public class NumericCleansingNodeTests
     }
 
     [Fact]
-    public async Task ToZeroIfNegativeDouble_WithNegativeDouble_ReturnsZero()
+    public async Task ToZeroIfNegative_WithNegativeDouble_ReturnsZero()
     {
         var node = new NumericCleansingNode<TestObject>();
-        node.ToZeroIfNegativeDouble(x => x.DoubleValue);
+        node.ToZeroIfNegative(x => x.DoubleValue);
 
         var item = new TestObject { DoubleValue = -5.5 };
         var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
@@ -243,10 +243,10 @@ public class NumericCleansingNodeTests
     }
 
     [Fact]
-    public async Task ToZeroIfNegativeDecimal_WithNegativeDecimal_ReturnsZero()
+    public async Task ToZeroIfNegative_WithNegativeDecimal_ReturnsZero()
     {
         var node = new NumericCleansingNode<TestObject>();
-        node.ToZeroIfNegativeDecimal(x => x.DecimalValue);
+        node.ToZeroIfNegative(x => x.DecimalValue);
 
         var item = new TestObject { DecimalValue = -5.5m };
         var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
@@ -255,13 +255,13 @@ public class NumericCleansingNodeTests
 
     #endregion
 
-    #region RoundDecimal Tests
+    #region Round Decimal Tests
 
     [Fact]
-    public async Task RoundDecimal_WithPrecision_Rounds()
+    public async Task Round_WithDecimalPrecision_Rounds()
     {
         var node = new NumericCleansingNode<TestObject>();
-        node.RoundDecimal(x => x.DecimalValue, 2);
+        node.Round(x => x.DecimalValue, 2);
 
         var item = new TestObject { DecimalValue = 5.556m };
         var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
@@ -269,10 +269,10 @@ public class NumericCleansingNodeTests
     }
 
     [Fact]
-    public async Task RoundDecimal_WithNullableValue_Rounds()
+    public async Task Round_WithNullableDecimalValue_Rounds()
     {
         var node = new NumericCleansingNode<TestObject>();
-        node.RoundDecimal(x => x.NullableDecimalValue, 2);
+        node.Round(x => x.NullableDecimalValue, 2);
 
         var item = new TestObject { NullableDecimalValue = 5.556m };
         var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
@@ -301,8 +301,8 @@ public class NumericCleansingNodeTests
     {
         var node = new NumericCleansingNode<TestObject>();
 
-        node.RoundDouble(x => x.DoubleValue, 2)
-            .ScaleDecimal(x => x.DecimalValue, 2);
+        node.Round(x => x.DoubleValue, 2)
+            .Scale(x => x.DecimalValue, 2);
 
         var item = new TestObject { DoubleValue = 5.556, DecimalValue = 5m };
         var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);

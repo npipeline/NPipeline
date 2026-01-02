@@ -9,6 +9,23 @@ slug: /extensions/nodes
 
 The Nodes extension provides ready-made, production-ready nodes for common data processing operations. Each node is designed to be **fast**, **reliable**, and **easy to compose** into complex pipelines.
 
+:::info Implementation Status
+This extension is under active development. Currently implemented nodes:
+- ✅ Numeric Cleansing
+- ✅ DateTime Cleansing
+- ✅ Numeric Validation
+- ✅ DateTime Validation
+- ✅ Enrichment (Lookup, Compute, Defaults)
+- ✅ Filtering
+- ✅ Type Conversion
+
+Planned for future releases:
+- 📋 String Cleansing
+- 📋 Collection Cleansing
+- 📋 String Validation
+- 📋 Collection Validation
+:::
+
 ## Philosophy
 
 - **Granular**: Each node does one thing well
@@ -19,48 +36,55 @@ The Nodes extension provides ready-made, production-ready nodes for common data 
 
 ## Node Categories
 
-### [Data Cleansing](cleansing.md)
+### Data Cleansing
 
 Normalize and clean data properties:
-- **String Cleansing**: Trim, case conversion, whitespace handling, special character removal
-- **Numeric Cleansing**: Rounding, clamping, scaling, null defaults
+
+**Currently Available:**
+- **Numeric Cleansing**: Rounding, clamping, scaling, absolute values, null defaults
 - **DateTime Cleansing**: Timezone conversion, truncation, kind normalization
-- **Collection Cleansing**: Deduplication, filtering, sorting
+
+**Currently Available:**
+- **Numeric Cleansing**: Rounding, clamping, scaling, absolute values, null defaults
+- **DateTime Cleansing**: Timezone conversion, truncation, kind normalization
 
 ```csharp
-builder.AddStringCleansing<Person>(x => x.Email)
-    .Trim()
-    .ToLower();
+builder.AddNumericCleansing<Order>()
+    .Clamp(x => x.Discount, 0, 100)
+    .Round(x => x.Price, 2);
 
-builder.AddNumericCleansing<Order>(x => x.Discount)
-    .Clamp(0, 100);
-
-builder.AddDateTimeCleansing<Event>(x => x.StartTime)
-    .ToUtc()
-    .RoundToMinute();
+builder.AddDateTimeCleansing<Event>()
+    .ToUtc(x => x.StartTime)
+    .RoundToMinute(x => x.StartTime);
 ```
 
-### [Data Validation](validation.md)
+See [Data Cleansing documentation](cleansing.md) for details.
+
+### Data Validation
 
 Validate property values with clear error messages:
-- **String Validation**: Email, URL, regex patterns, length constraints
-- **Numeric Validation**: Range checks, type validation, positive/negative constraints
+
+**Currently Available:**
+- **Numeric Validation**: Range checks, positive/negative constraints
 - **DateTime Validation**: Range checks, timezone validation
-- **Collection Validation**: Length constraints, element validation
+
+**Currently Available:**
+- **Numeric Validation**: Range checks, positive/negative constraints
+- **DateTime Validation**: Range checks, timezone validation
 
 ```csharp
-builder.AddStringValidation<User>(x => x.Email)
-    .IsEmail()
-    .HasMaxLength(255);
+builder.AddNumericValidation<Product>()
+    .IsGreaterThan(x => x.Price, 0)
+    .IsLessThan(x => x.Discount, 100);
 
-builder.AddNumericValidation<Product>(x => x.Price)
-    .IsGreaterThan(0);
-
-builder.AddDateTimeValidation<Event>(x => x.StartDate)
-    .IsInFuture();
+builder.AddDateTimeValidation<Event>()
+    .IsInFuture(x => x.StartDate)
+    .IsAfter(x => x.EndDate, x => x.StartDate);
 ```
 
-### [Filtering](filtering.md)
+See [Data Validation documentation](validation.md) for details.
+
+### Data Filtering
 
 Filter items based on predicates:
 - **Simple Filtering**: Filter based on property values or custom predicates
@@ -89,21 +113,23 @@ builder.AddTypeConversion<ImportRow, Data>()
 
 ### [Data Enrichment](enrichment.md)
 
-Enrich data with lookup values and computed properties:
-- **Lookup Enrichment**: Add or replace properties using lookup dictionaries
-- **Computed Properties**: Set properties based on computed values
-- **Default Values**: Set defaults based on null checks and conditions
+Enrich data with lookups, computations, and defaults using a unified API:
+- **Lookup**: Enrich from dictionaries (only sets if key exists)
+- **Set**: Set from dictionaries (uses default if key missing)
+- **Compute**: Calculate values from item properties
+- **Default Values**: Apply fallbacks based on conditions
 
 ```csharp
 var statusLookup = new Dictionary<int, string> { { 1, "Active" }, { 2, "Inactive" } };
 
-builder.Add(new LookupEnrichmentNode<Order>()
-    .AddProperty(x => x.StatusId, statusLookup, x => x.StatusName)
-    .AddComputedProperty(x => x.Total, order => order.Items.Sum(i => i.Price * i.Quantity)));
-
-builder.Add(new DefaultValueNode<Order>()
+builder.AddEnrichment<Order>()
+    // Lookup enrichment
+    .Lookup(x => x.StatusName, statusLookup, x => x.StatusId)
+    // Computed properties
+    .Compute(x => x.Total, order => order.Items.Sum(i => i.Price * i.Quantity))
+    // Default values
     .DefaultIfNull(x => x.OrderDate, DateTime.UtcNow)
-    .DefaultIfNullOrEmpty(x => x.Notes, "No notes"));
+    .DefaultIfEmpty(x => x.Notes, "No notes");
 ```
 
 ## Quick Start
@@ -123,23 +149,20 @@ using NPipeline.Extensions.Nodes;
 // Create a simple pipeline
 var builder = new PipelineBuilder();
 
-// Add cleansing node
-var cleanseHandle = builder
-    .AddStringCleansing<Person>(x => x.Name)
-    .Trim()
-    .ToLower();
+// Add numeric cleansing
+var cleanseHandle = builder.AddNumericCleansing<Order>()
+    .Clamp(x => x.Discount, 0, 100)
+    .Round(x => x.Price, 2);
 
-// Add validation node
-var validateHandle = builder
-    .AddStringValidation<Person>(x => x.Email)
-    .IsEmail();
+// Add numeric validation
+var validateHandle = builder.AddNumericValidation<Order>()
+    .IsGreaterThan(x => x.Total, 0);
 
-// Add filtering node
-var filterHandle = builder.AddFiltering<Person>(x => x.Age >= 18);
-
-// Connect nodes
-builder.Connect(cleanseHandle, validateHandle);
-builder.Connect(validateHandle, filterHandle);
+// Add enrichment
+var enrichHandle = builder.AddEnrichment<Order>()
+    .DefaultIfNull(x => x.OrderDate, DateTime.UtcNow)
+    .Compute(x => x.TotalWithDiscount, order => 
+        order.Total * (1 - order.Discount / 100));
 
 // Build and execute
 var pipeline = builder.Build();
@@ -151,39 +174,39 @@ var result = await pipeline.ExecuteAsync();
 ### Chaining Operations
 
 ```csharp
-builder.AddStringCleansing<User>(x => x.Username)
-    .Trim()
-    .ToLower()
-    .RemoveSpecialCharacters();
+builder.AddNumericCleansing<Product>()
+    .Round(x => x.Price, 2)
+    .Clamp(x => x.Discount, 0, 100)
+    .AbsoluteValue(x => x.Adjustment);
 
-builder.AddNumericCleansing<Price>(x => x.Amount)
-    .Round(2)
-    .Clamp(0, decimal.MaxValue);
+builder.AddDateTimeCleansing<Event>()
+    .ToUtc(x => x.StartTime)
+    .RoundToMinute(x => x.StartTime);
 ```
 
 ### Multiple Properties
 
 ```csharp
-builder.AddStringCleansing<Contact>(x => x.FirstName)
-    .Trim()
-    .ToTitleCase();
+builder.AddNumericCleansing<Order>()
+    .Round(x => x.Subtotal, 2)
+    .Round(x => x.Tax, 2)
+    .Round(x => x.Total, 2);
 
-builder.AddStringCleansing<Contact>(x => x.LastName)
-    .Trim()
-    .ToTitleCase();
-
-builder.AddStringCleansing<Contact>(x => x.Email)
-    .Trim()
-    .ToLower();
+builder.AddDateTimeCleansing<Document>()
+    .ToUtc(x => x.CreatedAt)
+    .ToUtc(x => x.UpdatedAt);
 ```
 
 ### Validation with Custom Messages
 
 ```csharp
-builder.AddStringValidation<User>(x => x.Password)
-    .HasMinLength(8, "Password must be at least 8 characters")
-    .Matches(@"[A-Z]", "Password must contain uppercase letter")
-    .Matches(@"[0-9]", "Password must contain digit");
+builder.AddNumericValidation<Product>()
+    .IsGreaterThan(x => x.Price, 0, "Price must be positive")
+    .IsLessThan(x => x.Discount, 100, "Discount cannot exceed 100%");
+
+builder.AddDateTimeValidation<Event>()
+    .IsInFuture(x => x.StartDate, "Event must be in the future")
+    .IsAfter(x => x.EndDate, x => x.StartDate, "End date must be after start date");
 ```
 
 ## Performance Characteristics
