@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using NPipeline.Execution;
 using NPipeline.Extensions.Nodes.Core.Exceptions;
 using NPipeline.Nodes;

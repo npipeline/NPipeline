@@ -83,20 +83,17 @@ builder.AddNumericValidation<Order>(x => x.Quantity)
 
 | Validator | Purpose | Type |
 |-----------|---------|------|
-| `IsGreaterThan(value)` | Greater than | all numeric |
-| `IsGreaterThanOrEqual(value)` | Greater or equal | all numeric |
-| `IsLessThan(value)` | Less than | all numeric |
-| `IsLessThanOrEqual(value)` | Less or equal | all numeric |
-| `IsBetween(min, max)` | In range (inclusive) | all numeric |
-| `IsPositive()` | > 0 | all numeric |
-| `IsNegative()` | < 0 | all numeric |
-| `IsZeroOrPositive()` | >= 0 | all numeric |
-| `IsNonZero()` | != 0 | all numeric |
-| `IsEven()` | Even number | int, long |
-| `IsOdd()` | Odd number | int, long |
-| `HasDecimals(max)` | Max decimal places | decimal |
-| `IsWhole()` | No decimal places | decimal, double |
-| `IsPowerOfTwo()` | Is power of 2 | int, long |
+| `IsGreaterThan(value)` | Greater than | int, double, decimal |
+| `IsLessThan(value)` | Less than | int, double, decimal |
+| `IsBetween(min, max)` | In range (inclusive) | int, double, decimal |
+| `IsPositive()` | > 0 | int, double, decimal |
+| `IsNegative()` | < 0 | int, double, decimal |
+| `IsZeroOrPositive()` | >= 0 | int, double, decimal |
+| `IsNonZero()` | != 0 | int, double, decimal |
+| `IsEven()` | Even number | int |
+| `IsOdd()` | Odd number | int |
+| `IsFinite()` | Not NaN/Infinity | double |
+| `IsIntegerValue()` | No fractional part | double, decimal |
 
 ### Examples
 
@@ -104,7 +101,7 @@ builder.AddNumericValidation<Order>(x => x.Quantity)
 // Price validation
 builder.AddNumericValidation<Product>(x => x.Price)
     .IsGreaterThan(0, "Price must be greater than zero")
-    .HasDecimals(2, "Price can have at most 2 decimal places");
+    .IsFinite("Price must be a valid number");
 
 // Discount validation
 builder.AddNumericValidation<Order>(x => x.Discount)
@@ -112,17 +109,21 @@ builder.AddNumericValidation<Order>(x => x.Discount)
 
 // Age validation
 builder.AddNumericValidation<Person>(x => x.Age)
-    .IsGreaterThanOrEqual(0, "Age cannot be negative")
+    .IsPositive("Age cannot be negative")
     .IsLessThan(150, "Age must be less than 150");
 
 // Quantity validation
 builder.AddNumericValidation<OrderItem>(x => x.Quantity)
     .IsGreaterThan(0, "Quantity must be at least 1")
-    .IsLessThanOrEqual(10000, "Quantity cannot exceed 10000");
+    .IsLessThan(10001, "Quantity cannot exceed 10000");
 
 // Rating validation
 builder.AddNumericValidation<Review>(x => x.Rating)
     .IsBetween(1, 5, "Rating must be between 1 and 5 stars");
+
+// Measurement validation
+builder.AddNumericValidation<Sensor>(x => x.Reading)
+    .IsFinite("Reading must be a valid number, not NaN or Infinity");
 ```
 
 ## DateTime Validation
@@ -132,25 +133,28 @@ Validate date and time values:
 ```csharp
 builder.AddDateTimeValidation<Event>(x => x.StartDate)
     .IsInFuture()
-    .IsInYear(2024);
+    .IsWeekday();
 ```
 
 ### Available Validators
 
-| Validator | Purpose |
-|-----------|---------|
-| `IsInPast()` | Before current date/time |
-| `IsInFuture()` | After current date/time |
-| `IsInYear(year)` | Within specific year |
-| `IsInMonth(year, month)` | Within specific month |
-| `IsOnOrAfter(date)` | On or after date |
-| `IsOnOrBefore(date)` | On or before date |
-| `IsBetween(from, to)` | Within date range |
-| `IsWeekday()` | Monday-Friday |
-| `IsWeekend()` | Saturday-Sunday |
-| `IsUtc()` | UTC timezone |
-| `IsLocal()` | Local timezone |
-| `IsKind(kind)` | Specific DateTimeKind |
+| Validator | Purpose | Supports Nullable |
+|-----------|---------|-------------------|
+| `IsInFuture()` | After current date/time | DateTime, DateTime? |
+| `IsInPast()` | Before current date/time | DateTime, DateTime? |
+| `IsToday()` | Today's date | DateTime only |
+| `IsWeekday()` | Monday-Friday | DateTime only |
+| `IsWeekend()` | Saturday-Sunday | DateTime only |
+| `IsDayOfWeek(day)` | Specific day of week | DateTime only |
+| `IsUtc()` | UTC timezone | DateTime only |
+| `IsLocal()` | Local timezone | DateTime only |
+| `IsNotMinValue()` | Not DateTime.MinValue | DateTime only |
+| `IsNotMaxValue()` | Not DateTime.MaxValue | DateTime only |
+| `IsBefore(date)` | Before specific date | DateTime, DateTime? |
+| `IsAfter(date)` | After specific date | DateTime, DateTime? |
+| `IsBetween(from, to)` | Within date range | DateTime, DateTime? |
+| `IsInYear(year)` | Within specific year | DateTime only |
+| `IsInMonth(month)` | Within specific month | DateTime only |
 
 ### Examples
 
@@ -158,7 +162,7 @@ builder.AddDateTimeValidation<Event>(x => x.StartDate)
 // Event scheduling validation
 builder.AddDateTimeValidation<Event>(x => x.StartTime)
     .IsInFuture("Event must start in the future")
-    .IsInYear(2024, "Event must be in 2024");
+    .IsWeekday("Events can only be scheduled on weekdays");
 
 // Birth date validation
 builder.AddDateTimeValidation<Person>(x => x.BirthDate)
@@ -176,6 +180,10 @@ builder.AddDateTimeValidation<Appointment>(x => x.ScheduledTime)
 // Transaction timestamp
 builder.AddDateTimeValidation<Transaction>(x => x.Timestamp)
     .IsUtc("Transaction timestamp must be in UTC");
+
+// Specific day requirement
+builder.AddDateTimeValidation<WeeklyReport>(x => x.GeneratedDate)
+    .IsDayOfWeek(DayOfWeek.Friday, "Reports must be generated on Fridays");
 ```
 
 ## Collection Validation

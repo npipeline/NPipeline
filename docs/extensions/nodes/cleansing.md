@@ -77,22 +77,27 @@ Clean and normalize numeric data:
 ```csharp
 builder.AddNumericCleansing<Order>(x => x.Discount)
     .Clamp(0, 100)
-    .Round(2);
+    .RoundDecimal(2);
 ```
 
 ### Available Operations
 
 | Operation | Type | Example |
 |-----------|------|---------|
-| `Round(digits)` | double, decimal | `3.14159` → `3.14` |
-| `Floor()` | double | `3.9` → `3.0` |
-| `Ceiling()` | double | `3.1` → `4.0` |
+| `RoundDouble(digits)` | double | `3.14159` → `3.14` |
+| `RoundDecimal(digits)` | decimal | `3.14159m` → `3.14m` |
+| `FloorDouble()` | double | `3.9` → `3.0` |
+| `CeilingDouble()` | double | `3.1` → `4.0` |
 | `Clamp(min, max)` | all numeric | `150` → `100` (clamped to max) |
-| `AbsoluteValue()` | all numeric | `-5` → `5` |
-| `Scale(factor)` | double, decimal | `10` × `2.5` → `25` |
+| `AbsoluteValue()` | int, long | `-5` → `5` |
+| `AbsoluteValueDouble()` | double | `-5.5` → `5.5` |
+| `AbsoluteValueDecimal()` | decimal | `-5.5m` → `5.5m` |
+| `Scale(factor)` | decimal | `10m` × `2.5m` → `25m` |
+| `ScaleDecimal(factor)` | decimal | `10m` × `2.5m` → `25m` |
 | `DefaultIfNull(default)` | all nullable | `null` → `0` |
-| `ToZeroIfNegative()` | all numeric | `-5` → `0` |
-| `ToPositiveIfNegative()` | all numeric | `-5` → `5` |
+| `ToZeroIfNegative()` | int, long | `-5` → `0` |
+| `ToZeroIfNegativeDouble()` | double | `-5.5` → `0.0` |
+| `ToZeroIfNegativeDecimal()` | decimal | `-5.5m` → `0m` |
 
 ### Examples
 
@@ -100,21 +105,28 @@ builder.AddNumericCleansing<Order>(x => x.Discount)
 // Price normalization
 builder.AddNumericCleansing<Product>(x => x.Price)
     .Clamp(0, decimal.MaxValue)
-    .Round(2);
+    .RoundDecimal(2);
 
-// Discount validation
+// Discount clamping
 builder.AddNumericCleansing<Order>(x => x.Discount)
     .Clamp(0, 100);
 
 // Percentage cleanup
 builder.AddNumericCleansing<Survey>(x => x.CompletionRate)
     .Clamp(0, 100)
-    .Round(1);
+    .RoundDouble(1);
 
 // Age normalization
 builder.AddNumericCleansing<Person>(x => x.Age)
-    .Clamp(0, 150)
-    .DefaultIfNull(0);
+    .Clamp(0, 150);
+
+// Absolute value conversion
+builder.AddNumericCleansing<Measurement>(x => x.Value)
+    .AbsoluteValueDouble();
+
+// Negative value handling
+builder.AddNumericCleansing<Transaction>(x => x.Amount)
+    .ToZeroIfNegativeDecimal();
 ```
 
 ## DateTime Cleansing
@@ -129,17 +141,19 @@ builder.AddDateTimeCleansing<Event>(x => x.StartTime)
 
 ### Available Operations
 
-| Operation | Purpose | Example |
-|-----------|---------|---------|
-| `SpecifyKind(kind)` | Set DateTimeKind | Unspecified → Utc |
-| `ToUtc()` | Convert to UTC | Local → Utc |
-| `ToLocal()` | Convert to local time | Utc → Local |
-| `StripTime()` | Remove time component | 2024-01-15 14:30 → 2024-01-15 00:00 |
-| `StripDate()` | Remove date component | 2024-01-15 14:30 → 1900-01-01 14:30 |
-| `Truncate(precision)` | Truncate to precision | 14:30:45.123 → 14:30:45.000 |
-| `RoundToMinute()` | Round to nearest minute | 14:30:45 → 14:31:00 |
-| `RoundToHour()` | Round to nearest hour | 14:30:00 → 14:00:00 or 15:00:00 |
-| `RoundToDay()` | Round to nearest day | 14:30:00 → 00:00:00 or next day |
+| Operation | Purpose | Supports Nullable |
+|-----------|---------|-------------------|
+| `SpecifyKind(kind)` | Set DateTimeKind | DateTime only |
+| `ToUtc()` | Convert to UTC | Both |
+| `ToLocal()` | Convert to local time | Both |
+| `StripTime()` | Remove time component | Both |
+| `Truncate(precision)` | Truncate to precision | Both |
+| `RoundToMinute()` | Round to nearest minute | DateTime only |
+| `RoundToHour()` | Round to nearest hour | DateTime only |
+| `RoundToDay()` | Round to nearest day | DateTime only |
+| `DefaultIfMinValue(default)` | Replace MinValue | DateTime only |
+| `DefaultIfMaxValue(default)` | Replace MaxValue | DateTime only |
+| `DefaultIfNull(default)` | Replace null values | DateTime? only |
 
 ### Examples
 
@@ -149,14 +163,19 @@ builder.AddDateTimeCleansing<Transaction>(x => x.Timestamp)
     .SpecifyKind(DateTimeKind.Utc)
     .ToUtc();
 
-// Event time cleanup
+// Event time cleanup with rounding
 builder.AddDateTimeCleansing<Event>(x => x.StartTime)
-    .StripTime()  // Just the date, no time
-
-// UTC standardization
-builder.AddDateTimeCleansing<Log>(x => x.CreatedAt)
     .ToUtc()
-    .Truncate(TimeSpan.FromSeconds(1));
+    .RoundToMinute();
+
+// Date normalization (remove time)
+builder.AddDateTimeCleansing<Document>(x => x.CreatedDate)
+    .StripTime();
+
+// Default handling for edge cases
+builder.AddDateTimeCleansing<Record>(x => x.DateField)
+    .DefaultIfMinValue(DateTime.UtcNow)
+    .DefaultIfMaxValue(DateTime.UtcNow);
 ```
 
 ## Collection Cleansing

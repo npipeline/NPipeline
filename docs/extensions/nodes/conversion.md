@@ -1,21 +1,39 @@
 ---
 title: Type Conversion Nodes
-description: Convert between types safely with fallback defaults.
+description: Convert between types safely with comprehensive error handling.
 sidebar_position: 4
 ---
 
 # Type Conversion Nodes
 
-Type conversion nodes safely convert between different types. When conversion fails, a `TypeConversionException` is raised with details about the source type, target type, and the value that failed to convert.
+Type conversion nodes transform items from one type to another. When conversion fails, a `TypeConversionException` is raised with details about the source type, target type, and the value that failed to convert.
+
+The `TypeConversionNode<TIn, TOut>` provides factory methods for common conversions and supports custom converters via `WithConverter()`.
 
 ## String to Numeric Conversion
 
 Convert string representations to numeric types:
 
 ```csharp
-builder.AddTypeConversion<ImportRow, Data>()
-    .Map(x => x.Amount, x => decimal.Parse(x.AmountString))
-    .Map(x => x.Quantity, x => int.Parse(x.QuantityString));
+// String to Integer
+var stringToIntNode = TypeConversionNode<string, int>.StringToInt();
+var result = await stringToIntNode.ExecuteAsync("42", context, cancellationToken);
+// result = 42
+
+// String to Double
+var stringToDoubleNode = TypeConversionNode<string, double>.StringToDouble();
+var result = await stringToDoubleNode.ExecuteAsync("42.5", context, cancellationToken);
+// result = 42.5
+
+// String to Decimal
+var stringToDecimalNode = TypeConversionNode<string, decimal>.StringToDecimal();
+var result = await stringToDecimalNode.ExecuteAsync("42.50", context, cancellationToken);
+// result = 42.50m
+
+// String to Long
+var stringToLongNode = TypeConversionNode<string, long>.StringToLong();
+var result = await stringToLongNode.ExecuteAsync("9223372036854775807", context, cancellationToken);
+// result = 9223372036854775807L
 ```
 
 ## String to DateTime Conversion
@@ -23,25 +41,37 @@ builder.AddTypeConversion<ImportRow, Data>()
 Parse strings to dates:
 
 ```csharp
-builder.AddTypeConversion<ImportRow, Record>()
-    .Map(x => x.BirthDate, x => DateTime.Parse(x.DateOfBirthString))
-    .Map(x => x.CreatedAt, x => DateTime.ParseExact(x.DateString, "yyyy-MM-dd", CultureInfo.InvariantCulture));
+// Parse with default format
+var node = TypeConversionNode<string, DateTime>.StringToDateTime();
+var result = await node.ExecuteAsync("2025-01-15 14:30:00", context, cancellationToken);
+// result = DateTime(2025, 1, 15, 14, 30, 0)
+
+// Parse with specific format
+var node = TypeConversionNode<string, DateTime>.StringToDateTime(
+    format: "yyyy-MM-dd",
+    formatProvider: CultureInfo.InvariantCulture);
+var result = await node.ExecuteAsync("2025-01-15", context, cancellationToken);
+// result = DateTime(2025, 1, 15)
 ```
 
-## With Fallback Defaults
+## String to Boolean Conversion
 
-Provide defaults when conversion fails:
+Convert strings to boolean values with multiple formats supported:
 
 ```csharp
-builder.AddTypeConversion<ImportRow, Data>()
-    .MapWithDefault(
-        x => x.Amount,
-        x => decimal.Parse(x.AmountString),
-        fallback: 0m)
-    .MapWithDefault(
-        x => x.Quantity,
-        x => int.Parse(x.QuantityString),
-        fallback: 1);
+var node = TypeConversionNode<string, bool>.StringToBool();
+
+// Supported true values: "true", "1", "yes", "on"
+var result = await node.ExecuteAsync("true", context, cancellationToken);
+// result = true
+
+// Supported false values: "false", "0", "no", "off"
+var result = await node.ExecuteAsync("no", context, cancellationToken);
+// result = false
+
+// Case-insensitive
+var result = await node.ExecuteAsync("YES", context, cancellationToken);
+// result = true
 ```
 
 ## String to Enum Conversion
@@ -49,81 +79,146 @@ builder.AddTypeConversion<ImportRow, Data>()
 Convert strings to enum values:
 
 ```csharp
-builder.AddTypeConversion<ImportRow, Order>()
-    .Map(x => x.Status, x => Enum.Parse<OrderStatus>(x.StatusString))
-    .Map(x => x.Priority, x => Enum.Parse<PriorityLevel>(x.PriorityString, ignoreCase: true));
+public enum OrderStatus { Pending, Shipped, Delivered }
 
-// With fallback
-builder.AddTypeConversion<ImportRow, Order>()
-    .MapWithDefault(
-        x => x.Status,
-        x => Enum.Parse<OrderStatus>(x.StatusString),
-        fallback: OrderStatus.Pending);
+// Case-insensitive (default)
+var node = TypeConversionNode<string, OrderStatus>.StringToEnum<OrderStatus>();
+var result = await node.ExecuteAsync("pending", context, cancellationToken);
+// result = OrderStatus.Pending
+
+// Case-sensitive
+var node = TypeConversionNode<string, OrderStatus>.StringToEnum<OrderStatus>(ignoreCase: false);
+var result = await node.ExecuteAsync("Pending", context, cancellationToken);
+// result = OrderStatus.Pending
+
+// Invalid value throws TypeConversionException
+var result = await node.ExecuteAsync("invalid", context, cancellationToken);
+// throws TypeConversionException
 ```
 
-## Numeric Type Conversions
+## Numeric to String Conversion
 
-Convert between numeric types:
+Format numeric values as strings:
 
 ```csharp
-builder.AddTypeConversion<Data, Report>()
-    .Map(x => x.TotalAmount, x => (decimal)x.TotalInt)
-    .Map(x => x.AverageScore, x => (double)x.ScoreInt / 100)
-    .Map(x => x.Percentage, x => (float)x.Count / x.Total * 100);
+// Integer to String
+var node = TypeConversionNode<int, string>.IntToString();
+var result = await node.ExecuteAsync(42, context, cancellationToken);
+// result = "42"
+
+// With format specifier
+var node = TypeConversionNode<int, string>.IntToString("D5");
+var result = await node.ExecuteAsync(42, context, cancellationToken);
+// result = "00042"
+
+// Double to String
+var node = TypeConversionNode<double, string>.DoubleToString("F2");
+var result = await node.ExecuteAsync(42.567, context, cancellationToken);
+// result = "42.57"
+
+// Decimal to String
+var node = TypeConversionNode<decimal, string>.DecimalToString("C");
+var result = await node.ExecuteAsync(42.50m, context, cancellationToken);
+// result = "$42.50" (culture-dependent)
 ```
 
-## Try-Parse Pattern
+## DateTime to String Conversion
 
-Use TryParse methods for safe conversion:
+Format dates as strings:
 
 ```csharp
-builder.AddTypeConversion<ImportRow, Data>()
-    .MapWithDefault(
-        x => x.Amount,
-        x => decimal.TryParse(x.AmountString, out var result) ? result : throw new FormatException(),
-        fallback: 0m)
-    .MapWithDefault(
-        x => x.Date,
-        x => DateTime.TryParse(x.DateString, out var result) ? result : throw new FormatException(),
-        fallback: DateTime.MinValue);
+var dateTime = new DateTime(2025, 1, 15, 14, 30, 0);
+
+// Default format
+var node = TypeConversionNode<DateTime, string>.DateTimeToString();
+var result = await node.ExecuteAsync(dateTime, context, cancellationToken);
+// result = "1/15/2025 2:30:00 PM" (culture-dependent)
+
+// Specific format
+var node = TypeConversionNode<DateTime, string>.DateTimeToString("yyyy-MM-dd HH:mm:ss");
+var result = await node.ExecuteAsync(dateTime, context, cancellationToken);
+// result = "2025-01-15 14:30:00"
 ```
 
-## Complex Conversions
+## Boolean to String Conversion
 
-Perform complex transformation logic:
+Convert boolean values with custom representations:
 
 ```csharp
-builder.AddTypeConversion<SourceData, TargetData>()
-    .Map(x => x.FullName, x => $"{x.FirstName} {x.LastName}".Trim())
-    .Map(x => x.Age, x => DateTime.Today.Year - DateTime.Parse(x.BirthDate).Year)
-    .Map(x => x.IsAdult, x => (DateTime.Today.Year - DateTime.Parse(x.BirthDate).Year) >= 18)
-    .Map(x => x.FormattedPrice, x => decimal.Parse(x.PriceString).ToString("C"));
+// Default representations
+var node = TypeConversionNode<bool, string>.BoolToString();
+var result = await node.ExecuteAsync(true, context, cancellationToken);
+// result = "true"
+
+// Custom representations
+var node = TypeConversionNode<bool, string>.BoolToString("yes", "no");
+var result = await node.ExecuteAsync(true, context, cancellationToken);
+// result = "yes"
+
+// Binary representation
+var node = TypeConversionNode<bool, string>.BoolToString("1", "0");
+var result = await node.ExecuteAsync(false, context, cancellationToken);
+// result = "0"
 ```
 
-## Nullable Type Handling
+## Enum to String Conversion
 
-Handle nullable types safely:
+Convert enum values to their string representation:
 
 ```csharp
-builder.AddTypeConversion<ImportRow, Data>()
-    .Map(x => x.OptionalAmount, x => 
-        string.IsNullOrEmpty(x.AmountString) 
-            ? (decimal?)null 
-            : decimal.Parse(x.AmountString))
-    .Map(x => x.OptionalDate, x => 
-        string.IsNullOrEmpty(x.DateString) 
-            ? (DateTime?)null 
-            : DateTime.Parse(x.DateString));
+public enum Color { Red, Green, Blue }
+
+var node = TypeConversionNode<Color, string>.EnumToString<Color>();
+var result = await node.ExecuteAsync(Color.Red, context, cancellationToken);
+// result = "Red"
 ```
 
-## Collection Conversions
+## Custom Converters
 
-Convert collections to different types:
+Use custom conversion functions:
 
 ```csharp
-builder.AddTypeConversion<ImportRow, Data>()
-    .Map(x => x.Tags, x => x.TagsString.Split(',').Select(t => t.Trim()).ToList())
-    .Map(x => x.Values, x => x.ValuesString.Split(';').Select(decimal.Parse).ToArray());
+// Simple custom converter
+var node = new TypeConversionNode<string, int>()
+    .WithConverter(input => input.Length);
+var result = await node.ExecuteAsync("hello", context, cancellationToken);
+// result = 5
+
+// Complex custom converter
+var node = new TypeConversionNode<string, DateTime>()
+    .WithConverter(input =>
+    {
+        var parts = input.Split('/');
+        if (parts.Length != 3)
+            throw new TypeConversionException(typeof(string), typeof(DateTime), input, "Invalid format");
+        
+        return new DateTime(
+            int.Parse(parts[2]),  // year
+            int.Parse(parts[0]),  // month
+            int.Parse(parts[1])); // day
+    });
+var result = await node.ExecuteAsync("01/15/2025", context, cancellationToken);
+// result = DateTime(2025, 1, 15)
+```
+
+## Culture-Aware Conversions
+
+Use specific cultures for culture-sensitive conversions:
+
+```csharp
+var germanCulture = new CultureInfo("de-DE");
+
+// German uses comma as decimal separator
+var node = TypeConversionNode<string, double>.StringToDouble(
+    NumberStyles.Float | NumberStyles.AllowThousands,
+    germanCulture);
+var result = await node.ExecuteAsync("42,5", context, cancellationToken);
+// result = 42.5
+
+// Format output with culture
+var node = TypeConversionNode<double, string>.DoubleToString("F2", germanCulture);
+var result = await node.ExecuteAsync(42.567, context, cancellationToken);
+// result = "42,57" (German decimal separator)
 ```
 
 ## Error Handling
@@ -133,188 +228,167 @@ Type conversion exceptions provide detailed error information:
 ```csharp
 try
 {
-    await pipeline.ExecuteAsync();
+    var node = TypeConversionNode<string, int>.StringToInt();
+    var result = await node.ExecuteAsync("not a number", context, cancellationToken);
 }
 catch (TypeConversionException ex)
 {
-    Console.WriteLine($"Source Type: {ex.SourceType.Name}");
-    Console.WriteLine($"Target Type: {ex.TargetType.Name}");
-    Console.WriteLine($"Value: {ex.Value}");
-    Console.WriteLine($"Message: {ex.Message}");
+    Console.WriteLine($"Source Type: {ex.SourceType.Name}");    // "String"
+    Console.WriteLine($"Target Type: {ex.TargetType.Name}");    // "Int32"
+    Console.WriteLine($"Value: {ex.Value}");                     // "not a number"
+    Console.WriteLine($"Message: {ex.Message}");                 // "Cannot convert 'not a number' to int."
 }
 ```
 
-## Complete Example: CSV Import Pipeline
+## Pipeline Integration
 
-```csharp
-public class CsvImportPipeline
-{
-    public async Task ImportAsync(string filePath)
-    {
-        var builder = new PipelineBuilder();
-
-        // Read CSV
-        var source = builder.AddCsvSource<CsvRow>(filePath);
-
-        // Cleanse strings
-        var cleanse = builder.AddStringCleansing<CsvRow>(x => x.Name)
-            .Trim()
-            .ToTitleCase();
-
-        // Validate data
-        var validate = builder.AddStringValidation<CsvRow>(x => x.Email)
-            .IsEmail();
-
-        // Convert types
-        var convert = builder.AddTypeConversion<CsvRow, ImportedRecord>()
-            .Map(x => x.Name, x => x.Name)
-            .MapWithDefault(x => x.Amount, x => decimal.Parse(x.AmountString), fallback: 0m)
-            .MapWithDefault(x => x.Date, x => DateTime.Parse(x.DateString), fallback: DateTime.MinValue);
-
-        // Store results
-        var sink = builder.AddDatabaseSink<ImportedRecord>(connection);
-
-        // Connect nodes
-        builder.Connect(source, cleanse);
-        builder.Connect(cleanse, validate);
-        builder.Connect(validate, convert);
-        builder.Connect(convert, sink);
-
-        // Execute
-        var pipeline = builder.Build();
-        var result = await pipeline.ExecuteAsync();
-
-        Console.WriteLine($"Processed: {result.ItemsProcessed}");
-        Console.WriteLine($"Failed: {result.ErrorCount}");
-    }
-}
-
-private class CsvRow
-{
-    public string Name { get; set; }
-    public string Email { get; set; }
-    public string AmountString { get; set; }
-    public string DateString { get; set; }
-}
-
-private class ImportedRecord
-{
-    public string Name { get; set; }
-    public string Email { get; set; }
-    public decimal Amount { get; set; }
-    public DateTime Date { get; set; }
-}
-```
-
-## Culture-Aware Conversions
-
-Use specific cultures for conversions:
-
-```csharp
-var germanCulture = CultureInfo.GetCultureInfo("de-DE");
-
-builder.AddTypeConversion<ImportRow, Data>()
-    .Map(x => x.Amount, x => 
-        decimal.Parse(x.AmountString, germanCulture))
-    .Map(x => x.Date, x => 
-        DateTime.ParseExact(x.DateString, "dd.MM.yyyy", germanCulture));
-```
-
-## Performance Considerations
-
-- **Compiled Conversions**: Use compiled expressions for fastest conversions
-- **Fallback Strategy**: Fallback defaults avoid exception overhead for expected failures
-- **TryParse Pattern**: Prefer TryParse when conversion failure is common
-- **Lazy Conversion**: Only convert properties that are needed
-- **Batch Processing**: Conversion overhead is amortized over large batches
-
-## Type Conversion Patterns
-
-### Pattern 1: Direct Conversion
-
-```csharp
-.Map(x => x.IntValue, x => int.Parse(x.StringValue))
-```
-
-### Pattern 2: With Fallback
-
-```csharp
-.MapWithDefault(x => x.IntValue, x => int.Parse(x.StringValue), fallback: 0)
-```
-
-### Pattern 3: Conditional Conversion
-
-```csharp
-.Map(x => x.Value, x => 
-    string.IsNullOrEmpty(x.StringValue) 
-        ? null 
-        : int.Parse(x.StringValue))
-```
-
-### Pattern 4: Safe Conversion
-
-```csharp
-.MapWithDefault(x => x.Value,
-    x => int.TryParse(x.StringValue, out var val) ? val : throw new FormatException(),
-    fallback: 0)
-```
-
-## Combining with Other Nodes
+Add type conversion nodes to your pipeline:
 
 ```csharp
 var builder = new PipelineBuilder();
 
-// Cleanse first
-var cleanse = builder.AddStringCleansing<ImportRow>(x => x.AmountString)
-    .Trim()
-    .RemoveSpecialCharacters();
+// Create a CSV import scenario
+var pipeline = builder
+    .AddSource<CsvRow>(csvRows)
+    .AddStringCleansing<CsvRow>(name => name)
+        .Trim()
+        .ToLower()
+    .AddTypeConversion<CsvRow, ImportedRecord>()  // Note: needs .WithConverter()
+    .AddSink<ImportedRecord>(database)
+    .Build();
 
-// Validate format
-var validate = builder.AddStringValidation<ImportRow>(x => x.AmountString)
-    .IsNumeric("Amount must be numeric");
-
-// Convert type
-var convert = builder.AddTypeConversion<ImportRow, Data>()
-    .Map(x => x.Amount, x => decimal.Parse(x.AmountString));
-
-// Connect
-builder.Connect(cleanse, validate);
-builder.Connect(validate, convert);
+// For type-changing conversions, use custom converter
+var node = new TypeConversionNode<CsvRow, ImportedRecord>()
+    .WithConverter(row => new ImportedRecord
+    {
+        Id = int.Parse(row.IdString),
+        Amount = decimal.Parse(row.AmountString),
+        Date = DateTime.Parse(row.DateString)
+    });
 ```
+
+## Complete Example: Data Import with Validation
+
+```csharp
+public class ImportPipeline
+{
+    public async Task ImportAsync(List<string> csvLines)
+    {
+        var converter = new TypeConversionNode<string, ImportRecord>()
+            .WithConverter(line =>
+            {
+                var parts = line.Split(',');
+                return new ImportRecord
+                {
+                    Id = int.Parse(parts[0]),
+                    Name = parts[1].Trim(),
+                    Amount = decimal.Parse(parts[2]),
+                    Date = DateTime.Parse(parts[3], CultureInfo.InvariantCulture)
+                };
+            });
+
+        foreach (var line in csvLines)
+        {
+            try
+            {
+                var record = await converter.ExecuteAsync(line, PipelineContext.Default, CancellationToken.None);
+                await ProcessRecord(record);
+            }
+            catch (TypeConversionException ex)
+            {
+                Console.WriteLine($"Error converting line: {ex.Message}");
+                // Log error and continue
+            }
+        }
+    }
+
+    private async Task ProcessRecord(ImportRecord record)
+    {
+        // Process validated, converted record
+        Console.WriteLine($"Processing: {record.Name} - {record.Amount:C}");
+        await Task.Delay(100);
+    }
+
+    private class ImportRecord
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public decimal Amount { get; set; }
+        public DateTime Date { get; set; }
+    }
+}
+```
+
+## Supported Conversions
+
+| From | To | Method | Notes |
+|------|----|---------| ------|
+| `string` | `int` | `StringToInt()` | Supports number styles and format providers |
+| `string` | `long` | `StringToLong()` | Supports number styles and format providers |
+| `string` | `double` | `StringToDouble()` | Supports number styles and format providers |
+| `string` | `decimal` | `StringToDecimal()` | Supports number styles and format providers |
+| `string` | `bool` | `StringToBool()` | Supports: true/false, yes/no, on/off, 1/0 |
+| `string` | `DateTime` | `StringToDateTime()` | Supports format specifiers and format providers |
+| `string` | `TEnum` | `StringToEnum<TEnum>()` | Case-sensitive or insensitive |
+| `int` | `string` | `IntToString()` | Supports format specifiers |
+| `double` | `string` | `DoubleToString()` | Supports format specifiers |
+| `decimal` | `string` | `DecimalToString()` | Supports format specifiers |
+| `DateTime` | `string` | `DateTimeToString()` | Supports format specifiers |
+| `bool` | `string` | `BoolToString()` | Customizable true/false representations |
+| `TEnum` | `string` | `EnumToString<TEnum>()` | Uses enum's ToString() |
+| Custom | Custom | `WithConverter()` | Custom conversion function |
+
+## Edge Cases
+
+The type conversion nodes handle several edge cases:
+
+```csharp
+// Null or empty strings
+var node = TypeConversionNode<string, int>.StringToInt();
+// Empty string throws: TypeConversionException
+// Null string throws: TypeConversionException
+
+// Infinity and NaN
+var node = TypeConversionNode<string, double>.StringToDouble();
+var infinity = await node.ExecuteAsync("Infinity", context, cancellationToken);
+// result = double.PositiveInfinity
+
+var nan = await node.ExecuteAsync("NaN", context, cancellationToken);
+// result = double.NaN
+
+// Min and Max DateTime values
+var node = TypeConversionNode<DateTime, string>.DateTimeToString();
+var minValue = await node.ExecuteAsync(DateTime.MinValue, context, cancellationToken);
+// result = formatted DateTime.MinValue string
+```
+
+## Performance Considerations
+
+- **Compiled Expressions**: Factory methods use compiled functions for optimal performance
+- **No Allocations**: ValueTask support ensures synchronous conversions don't allocate
+- **Format Providers**: Specify format providers only when culture-specific behavior is needed
+- **Error Overhead**: Throw TypeConversionException only on actual conversion failures
+- **Reuse Nodes**: Create converter nodes once and reuse for multiple conversions
 
 ## Testing Type Conversions
 
 ```csharp
 [Fact]
-public async Task ConversionPipeline_ShouldConvertStringToDecimal()
+public async Task StringToInt_WithValidNumber_Converts()
 {
-    // Arrange
-    var item = new ImportRow { AmountString = "123.45" };
-    var converter = new TypeConversionNode<ImportRow, Data>();
-    converter.Map(x => x.Amount, x => decimal.Parse(x.AmountString));
-
-    // Act
-    var result = await converter.ExecuteAsync(item, context);
-
-    // Assert
-    result.Amount.Should().Be(123.45m);
+    var node = TypeConversionNode<string, int>.StringToInt();
+    var result = await node.ExecuteAsync("42", PipelineContext.Default, CancellationToken.None);
+    Assert.Equal(42, result);
 }
 
 [Fact]
-public async Task ConversionPipeline_ShouldUseFallbackOnParseError()
+public async Task StringToInt_WithInvalidInput_ThrowsTypeConversionException()
 {
-    // Arrange
-    var item = new ImportRow { AmountString = "invalid" };
-    var converter = new TypeConversionNode<ImportRow, Data>();
-    converter.MapWithDefault(
-        x => x.Amount,
-        x => decimal.Parse(x.AmountString),
-        fallback: 0m);
-
-    // Act
-    var result = await converter.ExecuteAsync(item, context);
-
-    // Assert
-    result.Amount.Should().Be(0m);
+    var node = TypeConversionNode<string, int>.StringToInt();
+    var ex = await Assert.ThrowsAsync<TypeConversionException>(() =>
+        node.ExecuteAsync("not a number", PipelineContext.Default, CancellationToken.None));
+    
+    Assert.Equal(typeof(string), ex.SourceType);
+    Assert.Equal(typeof(int), ex.TargetType);
 }
 ```

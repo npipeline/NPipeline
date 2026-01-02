@@ -34,6 +34,10 @@ builder.AddStringCleansing<Person>(x => x.Email)
 
 builder.AddNumericCleansing<Order>(x => x.Discount)
     .Clamp(0, 100);
+
+builder.AddDateTimeCleansing<Event>(x => x.StartTime)
+    .ToUtc()
+    .RoundToMinute();
 ```
 
 ### [Data Validation](validation.md)
@@ -50,8 +54,10 @@ builder.AddStringValidation<User>(x => x.Email)
     .HasMaxLength(255);
 
 builder.AddNumericValidation<Product>(x => x.Price)
-    .IsGreaterThan(0)
-    .HasDecimals(maxDecimalPlaces: 2);
+    .IsGreaterThan(0);
+
+builder.AddDateTimeValidation<Event>(x => x.StartDate)
+    .IsInFuture();
 ```
 
 ### [Filtering](filtering.md)

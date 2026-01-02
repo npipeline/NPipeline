@@ -10,6 +10,70 @@ namespace NPipeline.Extensions.Nodes;
 public static class PipelineBuilderExtensions
 {
     /// <summary>
+    ///     Adds a numeric cleansing node to the pipeline for cleaning and normalizing numeric values.
+    /// </summary>
+    /// <typeparam name="T">The item type.</typeparam>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="name">Optional node name for debugging.</param>
+    /// <returns>A handle to the registered node for chaining.</returns>
+    public static TransformNodeHandle<T, T> AddNumericCleansing<T>(
+        this PipelineBuilder builder,
+        string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        var nodeName = name ?? typeof(NumericCleansingNode<T>).Name;
+        return builder.AddTransform<NumericCleansingNode<T>, T, T>(nodeName);
+    }
+
+    /// <summary>
+    ///     Adds a datetime cleansing node to the pipeline for cleaning and normalizing date/time values.
+    /// </summary>
+    /// <typeparam name="T">The item type.</typeparam>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="name">Optional node name for debugging.</param>
+    /// <returns>A handle to the registered node for chaining.</returns>
+    public static TransformNodeHandle<T, T> AddDateTimeCleansing<T>(
+        this PipelineBuilder builder,
+        string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        var nodeName = name ?? typeof(DateTimeCleansingNode<T>).Name;
+        return builder.AddTransform<DateTimeCleansingNode<T>, T, T>(nodeName);
+    }
+
+    /// <summary>
+    ///     Adds a numeric validation node to the pipeline.
+    /// </summary>
+    /// <typeparam name="T">The item type.</typeparam>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="name">Optional node name for debugging.</param>
+    /// <returns>A handle to the registered node for chaining.</returns>
+    public static TransformNodeHandle<T, T> AddNumericValidation<T>(
+        this PipelineBuilder builder,
+        string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        var nodeName = name ?? typeof(NumericValidationNode<T>).Name;
+        return builder.AddTransform<NumericValidationNode<T>, T, T>(nodeName);
+    }
+
+    /// <summary>
+    ///     Adds a datetime validation node to the pipeline.
+    /// </summary>
+    /// <typeparam name="T">The item type.</typeparam>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="name">Optional node name for debugging.</param>
+    /// <returns>A handle to the registered node for chaining.</returns>
+    public static TransformNodeHandle<T, T> AddDateTimeValidation<T>(
+        this PipelineBuilder builder,
+        string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        var nodeName = name ?? typeof(DateTimeValidationNode<T>).Name;
+        return builder.AddTransform<DateTimeValidationNode<T>, T, T>(nodeName);
+    }
+
+    /// <summary>
     ///     Adds a validation node to the pipeline.
     /// </summary>
     /// <typeparam name="T">The item type.</typeparam>
@@ -41,5 +105,22 @@ public static class PipelineBuilderExtensions
         ArgumentNullException.ThrowIfNull(builder);
         var nodeName = name ?? typeof(FilteringNode<T>).Name;
         return builder.AddTransform<FilteringNode<T>, T, T>(nodeName);
+    }
+
+    /// <summary>
+    ///     Adds a type conversion node to the pipeline.
+    /// </summary>
+    /// <typeparam name="TIn">The input type.</typeparam>
+    /// <typeparam name="TOut">The output type.</typeparam>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="name">Optional node name for debugging.</param>
+    /// <returns>A handle to the registered node for chaining.</returns>
+    public static TransformNodeHandle<TIn, TOut> AddTypeConversion<TIn, TOut>(
+        this PipelineBuilder builder,
+        string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        var nodeName = name ?? typeof(TypeConversionNode<TIn, TOut>).Name;
+        return builder.AddTransform<TypeConversionNode<TIn, TOut>, TIn, TOut>(nodeName);
     }
 }
