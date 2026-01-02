@@ -4,19 +4,19 @@ using System.Text.RegularExpressions;
 namespace NPipeline.Extensions.Nodes.Core;
 
 /// <summary>
-/// A validation node for string properties that provides validators for common patterns and constraints.
+///     A validation node for string properties that provides validators for common patterns and constraints.
 /// </summary>
 public sealed partial class StringValidationNode<T> : ValidationNode<T>
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="StringValidationNode{T}" /> class.
+    ///     Initializes a new instance of the <see cref="StringValidationNode{T}" /> class.
     /// </summary>
     public StringValidationNode()
     {
     }
 
     /// <summary>
-    /// Validates that a string is not null or empty.
+    ///     Validates that a string is not null or empty.
     /// </summary>
     public StringValidationNode<T> IsNotEmpty(Expression<Func<T, string?>> selector, string? errorMessage = null)
     {
@@ -28,7 +28,7 @@ public sealed partial class StringValidationNode<T> : ValidationNode<T>
     }
 
     /// <summary>
-    /// Validates that a string is not null, empty, or whitespace-only.
+    ///     Validates that a string is not null, empty, or whitespace-only.
     /// </summary>
     public StringValidationNode<T> IsNotWhitespace(Expression<Func<T, string?>> selector, string? errorMessage = null)
     {
@@ -40,11 +40,12 @@ public sealed partial class StringValidationNode<T> : ValidationNode<T>
     }
 
     /// <summary>
-    /// Validates that a string has a minimum length.
+    ///     Validates that a string has a minimum length.
     /// </summary>
     public StringValidationNode<T> HasMinLength(Expression<Func<T, string?>> selector, int minLength, string? errorMessage = null)
     {
         ArgumentNullException.ThrowIfNull(selector);
+
         if (minLength < 0)
             throw new ArgumentException("Minimum length cannot be negative.", nameof(minLength));
 
@@ -55,11 +56,12 @@ public sealed partial class StringValidationNode<T> : ValidationNode<T>
     }
 
     /// <summary>
-    /// Validates that a string has a maximum length.
+    ///     Validates that a string has a maximum length.
     /// </summary>
     public StringValidationNode<T> HasMaxLength(Expression<Func<T, string?>> selector, int maxLength, string? errorMessage = null)
     {
         ArgumentNullException.ThrowIfNull(selector);
+
         if (maxLength < 0)
             throw new ArgumentException("Maximum length cannot be negative.", nameof(maxLength));
 
@@ -70,7 +72,7 @@ public sealed partial class StringValidationNode<T> : ValidationNode<T>
     }
 
     /// <summary>
-    /// Validates that a string length is within a range.
+    ///     Validates that a string length is within a range.
     /// </summary>
     public StringValidationNode<T> HasLengthBetween(
         Expression<Func<T, string?>> selector,
@@ -79,8 +81,10 @@ public sealed partial class StringValidationNode<T> : ValidationNode<T>
         string? errorMessage = null)
     {
         ArgumentNullException.ThrowIfNull(selector);
+
         if (minLength < 0)
             throw new ArgumentException("Minimum length cannot be negative.", nameof(minLength));
+
         if (maxLength < minLength)
             throw new ArgumentException("Maximum length must be greater than or equal to minimum length.", nameof(maxLength));
 
@@ -91,38 +95,42 @@ public sealed partial class StringValidationNode<T> : ValidationNode<T>
     }
 
     /// <summary>
-    /// Validates that a string matches an email format.
+    ///     Validates that a string matches an email format.
     /// </summary>
     public StringValidationNode<T> IsEmail(Expression<Func<T, string?>> selector, string? errorMessage = null)
     {
         ArgumentNullException.ThrowIfNull(selector);
         var ruleName = "IsEmail";
         var message = errorMessage ?? "Value must be a valid email address";
+
         // Simple email validation - checks for @ and . with basic structure
         Register(selector, value => value == null || EmailRegex().IsMatch(value), ruleName, _ => message);
         return this;
     }
 
     /// <summary>
-    /// Validates that a string is a valid URL (HTTP/HTTPS).
+    ///     Validates that a string is a valid URL (HTTP/HTTPS).
     /// </summary>
     public StringValidationNode<T> IsUrl(Expression<Func<T, string?>> selector, string? errorMessage = null)
     {
         ArgumentNullException.ThrowIfNull(selector);
         var ruleName = "IsUrl";
         var message = errorMessage ?? "Value must be a valid HTTP/HTTPS URL";
+
         Register(selector, value =>
         {
             if (value == null)
                 return true;
+
             return Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
                    (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
         }, ruleName, _ => message);
+
         return this;
     }
 
     /// <summary>
-    /// Validates that a string is a valid GUID format.
+    ///     Validates that a string is a valid GUID format.
     /// </summary>
     public StringValidationNode<T> IsGuid(Expression<Func<T, string?>> selector, string? errorMessage = null)
     {
@@ -134,7 +142,7 @@ public sealed partial class StringValidationNode<T> : ValidationNode<T>
     }
 
     /// <summary>
-    /// Validates that a string contains only alphanumeric characters.
+    ///     Validates that a string contains only alphanumeric characters.
     /// </summary>
     public StringValidationNode<T> IsAlphanumeric(Expression<Func<T, string?>> selector, string? errorMessage = null)
     {
@@ -146,7 +154,7 @@ public sealed partial class StringValidationNode<T> : ValidationNode<T>
     }
 
     /// <summary>
-    /// Validates that a string contains only alphabetic characters.
+    ///     Validates that a string contains only alphabetic characters.
     /// </summary>
     public StringValidationNode<T> IsAlphabetic(Expression<Func<T, string?>> selector, string? errorMessage = null)
     {
@@ -158,7 +166,7 @@ public sealed partial class StringValidationNode<T> : ValidationNode<T>
     }
 
     /// <summary>
-    /// Validates that a string contains only numeric digits.
+    ///     Validates that a string contains only numeric digits.
     /// </summary>
     public StringValidationNode<T> IsDigitsOnly(Expression<Func<T, string?>> selector, string? errorMessage = null)
     {
@@ -170,7 +178,7 @@ public sealed partial class StringValidationNode<T> : ValidationNode<T>
     }
 
     /// <summary>
-    /// Validates that a string is in a valid numeric format.
+    ///     Validates that a string is in a valid numeric format.
     /// </summary>
     public StringValidationNode<T> IsNumeric(Expression<Func<T, string?>> selector, string? errorMessage = null)
     {
@@ -182,7 +190,7 @@ public sealed partial class StringValidationNode<T> : ValidationNode<T>
     }
 
     /// <summary>
-    /// Validates that a string matches a regex pattern.
+    ///     Validates that a string matches a regex pattern.
     /// </summary>
     public StringValidationNode<T> Matches(
         Expression<Func<T, string?>> selector,
@@ -195,6 +203,7 @@ public sealed partial class StringValidationNode<T> : ValidationNode<T>
 
         var ruleName = "Matches";
         var message = errorMessage ?? $"Value must match pattern {pattern}";
+
         // Note: User-provided pattern, compiled at runtime for flexibility
         var regex = new Regex(pattern, options | RegexOptions.Compiled, TimeSpan.FromSeconds(1));
         Register(selector, value => value == null || regex.IsMatch(value), ruleName, _ => message);
@@ -202,7 +211,7 @@ public sealed partial class StringValidationNode<T> : ValidationNode<T>
     }
 
     /// <summary>
-    /// Validates that a string contains a substring.
+    ///     Validates that a string contains a substring.
     /// </summary>
     public StringValidationNode<T> Contains(
         Expression<Func<T, string?>> selector,
@@ -220,7 +229,7 @@ public sealed partial class StringValidationNode<T> : ValidationNode<T>
     }
 
     /// <summary>
-    /// Validates that a string starts with a prefix.
+    ///     Validates that a string starts with a prefix.
     /// </summary>
     public StringValidationNode<T> StartsWith(
         Expression<Func<T, string?>> selector,
@@ -238,7 +247,7 @@ public sealed partial class StringValidationNode<T> : ValidationNode<T>
     }
 
     /// <summary>
-    /// Validates that a string ends with a suffix.
+    ///     Validates that a string ends with a suffix.
     /// </summary>
     public StringValidationNode<T> EndsWith(
         Expression<Func<T, string?>> selector,
@@ -256,7 +265,7 @@ public sealed partial class StringValidationNode<T> : ValidationNode<T>
     }
 
     /// <summary>
-    /// Validates that a string is in a list of allowed values.
+    ///     Validates that a string is in a list of allowed values.
     /// </summary>
     public StringValidationNode<T> IsInList(
         Expression<Func<T, string?>> selector,

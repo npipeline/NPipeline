@@ -87,7 +87,7 @@ public class NumericCleansingNodeTests
     public async Task Round_WithPrecision_Rounds()
     {
         var node = new NumericCleansingNode<TestObject>();
-        node.Round(x => x.DoubleValue, 2);
+        node.Round(x => x.DoubleValue);
 
         var item = new TestObject { DoubleValue = 5.556 };
         var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
@@ -98,7 +98,7 @@ public class NumericCleansingNodeTests
     public async Task Round_WithNullableValue_Rounds()
     {
         var node = new NumericCleansingNode<TestObject>();
-        node.Round(x => x.NullableDoubleValue, 2);
+        node.Round(x => x.NullableDoubleValue);
 
         var item = new TestObject { NullableDoubleValue = 5.556 };
         var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
@@ -261,7 +261,7 @@ public class NumericCleansingNodeTests
     public async Task Round_WithDecimalPrecision_Rounds()
     {
         var node = new NumericCleansingNode<TestObject>();
-        node.Round(x => x.DecimalValue, 2);
+        node.Round(x => x.DecimalValue);
 
         var item = new TestObject { DecimalValue = 5.556m };
         var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
@@ -272,7 +272,7 @@ public class NumericCleansingNodeTests
     public async Task Round_WithNullableDecimalValue_Rounds()
     {
         var node = new NumericCleansingNode<TestObject>();
-        node.Round(x => x.NullableDecimalValue, 2);
+        node.Round(x => x.NullableDecimalValue);
 
         var item = new TestObject { NullableDecimalValue = 5.556m };
         var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
@@ -301,7 +301,7 @@ public class NumericCleansingNodeTests
     {
         var node = new NumericCleansingNode<TestObject>();
 
-        node.Round(x => x.DoubleValue, 2)
+        node.Round(x => x.DoubleValue)
             .Scale(x => x.DecimalValue, 2);
 
         var item = new TestObject { DoubleValue = 5.556, DecimalValue = 5m };

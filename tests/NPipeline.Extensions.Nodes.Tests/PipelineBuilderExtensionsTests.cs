@@ -1,7 +1,5 @@
 using AwesomeAssertions;
 using NPipeline.Extensions.Nodes.Core;
-using NPipeline.Extensions.Nodes.Core.ErrorHandlers;
-using NPipeline.Graph;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Extensions.Nodes.Tests;
@@ -782,7 +780,7 @@ public sealed class PipelineBuilderExtensionsTests
 
     private sealed class TestModel
     {
-        public string Name { get; set; } = string.Empty;
+        public string Name { get; } = string.Empty;
         public int Age { get; set; }
         public DateTime CreatedDate { get; set; }
         public IEnumerable<string>? Tags { get; set; }

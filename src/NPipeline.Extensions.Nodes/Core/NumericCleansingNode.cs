@@ -62,6 +62,7 @@ public sealed class NumericCleansingNode<T> : PropertyTransformationNode<T>
                 return null;
 
             var val = value.Value;
+
             if (val.CompareTo(min) < 0)
                 return min;
 
@@ -84,7 +85,10 @@ public sealed class NumericCleansingNode<T> : PropertyTransformationNode<T>
     {
         ArgumentNullException.ThrowIfNull(selector);
 
-        Register(selector, value => value.CompareTo(minValue) < 0 ? minValue : value);
+        Register(selector, value => value.CompareTo(minValue) < 0
+            ? minValue
+            : value);
+
         return this;
     }
 
@@ -98,7 +102,10 @@ public sealed class NumericCleansingNode<T> : PropertyTransformationNode<T>
     {
         ArgumentNullException.ThrowIfNull(selector);
 
-        Register(selector, value => value.CompareTo(maxValue) > 0 ? maxValue : value);
+        Register(selector, value => value.CompareTo(maxValue) > 0
+            ? maxValue
+            : value);
+
         return this;
     }
 

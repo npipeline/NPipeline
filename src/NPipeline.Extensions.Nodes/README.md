@@ -34,49 +34,49 @@ The foundation includes core infrastructure for building extension nodes:
 #### Base Classes
 
 - **`PropertyTransformationNode<T>`**: Base class for in-place property mutations
-  - Compiled property accessors (zero reflection in hot paths)
-  - Fluent API for registering transformations
-  - Supports nested property access
-  - Method chaining support
+    - Compiled property accessors (zero reflection in hot paths)
+    - Fluent API for registering transformations
+    - Supports nested property access
+    - Method chaining support
 
 - **`ValidationNode<T>`**: Base class for property-level validation
-  - Compiled property getters for performance
-  - Rich error context (property path, rule name, value)
-  - Exception-based validation integration
-  - Support for custom error messages
+    - Compiled property getters for performance
+    - Rich error context (property path, rule name, value)
+    - Exception-based validation integration
+    - Support for custom error messages
 
 - **`FilteringNode<T>`**: Generic filtering with predicates
-  - One or more filtering predicates
-  - Exception-based signalling for error handling
-  - Optional custom rejection reasons
-  - Zero allocations on success path
+    - One or more filtering predicates
+    - Exception-based signalling for error handling
+    - Optional custom rejection reasons
+    - Zero allocations on success path
 
 #### Utilities
 
 - **`PropertyAccessor`**: Compiles expression-based property accessors
-  - Type-safe getter and setter delegates
-  - Supports nested member access (e.g., `x => x.Address.Street`)
-  - Validates settability at configuration time
-  - No reflection in execution path
+    - Type-safe getter and setter delegates
+    - Supports nested member access (e.g., `x => x.Address.Street`)
+    - Validates settability at configuration time
+    - No reflection in execution path
 
 #### Error Handling
 
 - **`ValidationException`**: Thrown when validation fails
-  - Property path, rule name, and value included
-  - Integrated with error handlers
+    - Property path, rule name, and value included
+    - Integrated with error handlers
 
 - **`FilteringException`**: Thrown when filtering rejects an item
-  - Contains rejection reason
-  - Integrated with error handlers
+    - Contains rejection reason
+    - Integrated with error handlers
 
 - **`TypeConversionException`**: Thrown when type conversion fails
-  - Source and target types, value included
-  - Integrated with error handlers
+    - Source and target types, value included
+    - Integrated with error handlers
 
 - **Default Error Handlers**:
-  - `DefaultValidationErrorHandler<T>`: Configurable handling for validation failures
-  - `DefaultFilteringErrorHandler<T>`: Configurable handling for filtered items
-  - `DefaultTypeConversionErrorHandler<TIn, TOut>`: Configurable handling for conversion failures
+    - `DefaultValidationErrorHandler<T>`: Configurable handling for validation failures
+    - `DefaultFilteringErrorHandler<T>`: Configurable handling for filtered items
+    - `DefaultTypeConversionErrorHandler<TIn, TOut>`: Configurable handling for conversion failures
 
 ## Quick Start
 
@@ -203,23 +203,27 @@ All nodes are stateless and thread-safe by design:
 ## Current Features (Phase 1 Complete)
 
 ### ✅ Cleansing Nodes
+
 - **StringCleansingNode**: Trim, case conversion, special character removal
 - **NumericCleansingNode**: Clamping, rounding, scaling, absolute values
 - **DateTimeCleansingNode**: Timezone conversion, date/time normalization
 - **CollectionCleansingNode**: Remove nulls, remove duplicates, filtering
 
 ### ✅ Validation Nodes
+
 - **StringValidationNode**: Length, pattern, email, URL validation
 - **NumericValidationNode**: Range, positive/negative, comparison checks
 - **DateTimeValidationNode**: Past/future, range, day-of-week validation
 - **CollectionValidationNode**: Count, empty/non-empty checks
 
 ### ✅ Data Processing Nodes
+
 - **FilteringNode**: Predicate-based filtering with custom rejection reasons
 - **TypeConversionNode**: Type conversions with factory methods (string↔int, string↔DateTime, etc.)
 - **EnrichmentNode**: Lookup enrichment, computed properties, default values
 
 ### ✅ Infrastructure
+
 - Compiled property accessors (zero reflection)
 - Automatic error handler wiring
 - Configuration-first fluent builder API

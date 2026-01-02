@@ -6,6 +6,40 @@ namespace NPipeline.Extensions.Nodes.Tests.Core;
 
 public class CollectionCleansingNodeTests
 {
+    #region RemoveWhitespace Tests
+
+    [Fact]
+    public async Task RemoveWhitespace_RemovesWhitespaceStrings()
+    {
+        var node = new CollectionCleansingNode<TestObject>();
+        node.RemoveWhitespace(x => x.Items);
+
+        var item = new TestObject { Items = ["a", "   ", "b", "\t", "c"] };
+        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        Assert.NotNull(result.Items);
+        Assert.Equal(3, result.Items.Count());
+    }
+
+    #endregion
+
+    #region Reverse Tests
+
+    [Fact]
+    public async Task Reverse_RevergesOrder()
+    {
+        var node = new CollectionCleansingNode<TestObject>();
+        node.Reverse(x => x.Numbers);
+
+        var item = new TestObject { Numbers = [1, 2, 3, 4, 5] };
+        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        Assert.NotNull(result.Numbers);
+        var resultList = result.Numbers.ToList();
+        Assert.Equal(5, resultList[0]);
+        Assert.Equal(1, resultList[4]);
+    }
+
+    #endregion
+
     private sealed class TestObject
     {
         public IEnumerable<string?>? Items { get; set; }
@@ -101,22 +135,6 @@ public class CollectionCleansingNodeTests
 
     #endregion
 
-    #region RemoveWhitespace Tests
-
-    [Fact]
-    public async Task RemoveWhitespace_RemovesWhitespaceStrings()
-    {
-        var node = new CollectionCleansingNode<TestObject>();
-        node.RemoveWhitespace(x => x.Items);
-
-        var item = new TestObject { Items = ["a", "   ", "b", "\t", "c"] };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
-        Assert.NotNull(result.Items);
-        Assert.Equal(3, result.Items.Count());
-    }
-
-    #endregion
-
     #region Sort Tests
 
     [Fact]
@@ -143,24 +161,6 @@ public class CollectionCleansingNodeTests
         Assert.NotNull(result.NonNullableItems);
         var resultList = result.NonNullableItems.ToList();
         Assert.True(resultList[0] == "a" && resultList[1] == "b" && resultList[2] == "c");
-    }
-
-    #endregion
-
-    #region Reverse Tests
-
-    [Fact]
-    public async Task Reverse_RevergesOrder()
-    {
-        var node = new CollectionCleansingNode<TestObject>();
-        node.Reverse(x => x.Numbers);
-
-        var item = new TestObject { Numbers = [1, 2, 3, 4, 5] };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
-        Assert.NotNull(result.Numbers);
-        var resultList = result.Numbers.ToList();
-        Assert.Equal(5, resultList[0]);
-        Assert.Equal(1, resultList[4]);
     }
 
     #endregion

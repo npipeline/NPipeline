@@ -102,7 +102,9 @@ public sealed class NumericValidationNode<T> : ValidationNode<T>
     ///     Validates that an integer is not negative. Alias for IsZeroOrPositive.
     /// </summary>
     public NumericValidationNode<T> IsNotNegative(Expression<Func<T, int>> selector, string? errorMessage = null)
-        => IsZeroOrPositive(selector, errorMessage);
+    {
+        return IsZeroOrPositive(selector, errorMessage);
+    }
 
     /// <summary>
     ///     Validates that a double is zero or positive (non-negative).
@@ -120,7 +122,9 @@ public sealed class NumericValidationNode<T> : ValidationNode<T>
     ///     Validates that a double is not negative. Alias for IsZeroOrPositive.
     /// </summary>
     public NumericValidationNode<T> IsNotNegative(Expression<Func<T, double>> selector, string? errorMessage = null)
-        => IsZeroOrPositive(selector, errorMessage);
+    {
+        return IsZeroOrPositive(selector, errorMessage);
+    }
 
     /// <summary>
     ///     Validates that a decimal is zero or positive (non-negative).
@@ -138,7 +142,9 @@ public sealed class NumericValidationNode<T> : ValidationNode<T>
     ///     Validates that a decimal is not negative. Alias for IsZeroOrPositive.
     /// </summary>
     public NumericValidationNode<T> IsNotNegative(Expression<Func<T, decimal>> selector, string? errorMessage = null)
-        => IsZeroOrPositive(selector, errorMessage);
+    {
+        return IsZeroOrPositive(selector, errorMessage);
+    }
 
     /// <summary>
     ///     Validates that an integer is not zero.

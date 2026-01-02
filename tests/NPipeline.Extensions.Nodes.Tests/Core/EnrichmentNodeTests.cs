@@ -5,18 +5,27 @@ using NPipeline.Pipeline;
 namespace NPipeline.Extensions.Nodes.Tests.Core;
 
 /// <summary>
-/// Tests for <see cref="EnrichmentNode{T}"/> covering lookup, computation, and default value operations.
-/// 
-/// Scenarios tested:
-/// - Lookup: Adding properties from lookup dictionaries with existing and missing keys
-/// - Set: Unconditional property setting from lookups
-/// - Compute: Setting properties based on computed values
-/// - Defaults: Setting defaults for null, empty, whitespace, zero, and conditional cases
-/// - Chaining: Multiple enrichment operations in sequence
-/// - Cancellation: Pipeline cancellation support
+///     Tests for <see cref="EnrichmentNode{T}" /> covering lookup, computation, and default value operations.
+///     Scenarios tested:
+///     - Lookup: Adding properties from lookup dictionaries with existing and missing keys
+///     - Set: Unconditional property setting from lookups
+///     - Compute: Setting properties based on computed values
+///     - Defaults: Setting defaults for null, empty, whitespace, zero, and conditional cases
+///     - Chaining: Multiple enrichment operations in sequence
+///     - Cancellation: Pipeline cancellation support
 /// </summary>
 public sealed class EnrichmentNodeTests
 {
+    private sealed class TestData
+    {
+        public int Id { get; set; }
+        public string? Name { get; set; }
+        public int Age { get; set; }
+        public string? Description { get; set; }
+        public string? Label { get; set; }
+        public IEnumerable<string> Tags { get; set; } = [];
+    }
+
     #region Lookup Tests
 
     [Fact]
@@ -24,12 +33,14 @@ public sealed class EnrichmentNodeTests
     {
         // Arrange
         var node = new EnrichmentNode<TestData>();
+
         var lookup = new Dictionary<int, string?>
         {
             { 1, "One" },
             { 2, "Two" },
-            { 3, "Three" }
+            { 3, "Three" },
         };
+
         node.Lookup(x => x.Description, lookup, x => x.Id);
 
         var data = new TestData { Id = 2 };
@@ -47,11 +58,13 @@ public sealed class EnrichmentNodeTests
     {
         // Arrange
         var node = new EnrichmentNode<TestData>();
+
         var lookup = new Dictionary<int, string?>
         {
             { 1, "One" },
-            { 2, "Two" }
+            { 2, "Two" },
         };
+
         node.Lookup(x => x.Description, lookup, x => x.Id);
 
         var data = new TestData { Id = 99, Description = "Unchanged" };
@@ -69,11 +82,13 @@ public sealed class EnrichmentNodeTests
     {
         // Arrange
         var node = new EnrichmentNode<TestData>();
+
         var lookup = new Dictionary<int, string?>
         {
             { 1, "One" },
-            { 2, "Two" }
+            { 2, "Two" },
         };
+
         node.Set(x => x.Description, lookup, x => x.Id);
 
         var data = new TestData { Id = 1, Description = "Original" };
@@ -91,10 +106,12 @@ public sealed class EnrichmentNodeTests
     {
         // Arrange
         var node = new EnrichmentNode<TestData>();
+
         var lookup = new Dictionary<int, string?>
         {
-            { 1, "One" }
+            { 1, "One" },
         };
+
         node.Set(x => x.Description, lookup, x => x.Id);
 
         var data = new TestData { Id = 99, Description = "Original" };
@@ -134,6 +151,7 @@ public sealed class EnrichmentNodeTests
     {
         // Arrange
         var node = new EnrichmentNode<TestData>();
+
         node.Compute(
             x => x.Description,
             item => $"{item.Name ?? "Unknown"} ({item.Id})");
@@ -355,14 +373,4 @@ public sealed class EnrichmentNodeTests
     }
 
     #endregion
-
-    private sealed class TestData
-    {
-        public int Id { get; set; }
-        public string? Name { get; set; }
-        public int Age { get; set; }
-        public string? Description { get; set; }
-        public string? Label { get; set; }
-        public IEnumerable<string> Tags { get; set; } = [];
-    }
 }

@@ -6,12 +6,6 @@ namespace NPipeline.Extensions.Nodes.Tests.Core;
 
 public class CollectionValidationNodeTests
 {
-    private sealed class TestObject
-    {
-        public IEnumerable<string>? Items { get; set; }
-        public IEnumerable<int>? Numbers { get; set; }
-    }
-
     #region HasMinCount Tests
 
     [Fact]
@@ -25,6 +19,12 @@ public class CollectionValidationNodeTests
     }
 
     #endregion
+
+    private sealed class TestObject
+    {
+        public IEnumerable<string>? Items { get; set; }
+        public IEnumerable<int>? Numbers { get; set; }
+    }
 
     #region HasMaxCount Tests
 

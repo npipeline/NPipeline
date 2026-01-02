@@ -1,4 +1,3 @@
-using System;
 using NPipeline.Extensions.Nodes.Core;
 using NPipeline.Extensions.Nodes.Core.ErrorHandlers;
 using NPipeline.Graph;
@@ -19,7 +18,7 @@ public static class PipelineBuilderExtensions
         this PipelineBuilder builder,
         string? name = null)
     {
-        return AddConfiguredNode<StringCleansingNode<T>, T, T>(builder, name, configure: null);
+        return AddConfiguredNode<StringCleansingNode<T>, T, T>(builder, name, null);
     }
 
     /// <summary>
@@ -41,7 +40,7 @@ public static class PipelineBuilderExtensions
         this PipelineBuilder builder,
         string? name = null)
     {
-        return AddConfiguredNode<NumericCleansingNode<T>, T, T>(builder, name, configure: null);
+        return AddConfiguredNode<NumericCleansingNode<T>, T, T>(builder, name, null);
     }
 
     /// <summary>
@@ -63,7 +62,7 @@ public static class PipelineBuilderExtensions
         this PipelineBuilder builder,
         string? name = null)
     {
-        return AddConfiguredNode<CollectionCleansingNode<T>, T, T>(builder, name, configure: null);
+        return AddConfiguredNode<CollectionCleansingNode<T>, T, T>(builder, name, null);
     }
 
     /// <summary>
@@ -85,7 +84,7 @@ public static class PipelineBuilderExtensions
         this PipelineBuilder builder,
         string? name = null)
     {
-        return AddConfiguredNode<DateTimeCleansingNode<T>, T, T>(builder, name, configure: null);
+        return AddConfiguredNode<DateTimeCleansingNode<T>, T, T>(builder, name, null);
     }
 
     /// <summary>
@@ -113,9 +112,7 @@ public static class PipelineBuilderExtensions
         var handle = AddConfiguredNode<StringValidationNode<T>, T, T>(builder, name, configure);
 
         if (applyDefaultErrorHandler)
-        {
             builder.WithErrorHandler(handle, typeof(DefaultValidationErrorHandler<T>));
-        }
 
         return handle;
     }
@@ -133,12 +130,10 @@ public static class PipelineBuilderExtensions
         string? name = null,
         bool applyDefaultErrorHandler = true)
     {
-        var handle = AddConfiguredNode<NumericValidationNode<T>, T, T>(builder, name, configure: null);
+        var handle = AddConfiguredNode<NumericValidationNode<T>, T, T>(builder, name, null);
 
         if (applyDefaultErrorHandler)
-        {
             builder.WithErrorHandler(handle, typeof(DefaultValidationErrorHandler<T>));
-        }
 
         return handle;
     }
@@ -156,9 +151,7 @@ public static class PipelineBuilderExtensions
         var handle = AddConfiguredNode<NumericValidationNode<T>, T, T>(builder, name, configure);
 
         if (applyDefaultErrorHandler)
-        {
             builder.WithErrorHandler(handle, typeof(DefaultValidationErrorHandler<T>));
-        }
 
         return handle;
     }
@@ -176,12 +169,10 @@ public static class PipelineBuilderExtensions
         string? name = null,
         bool applyDefaultErrorHandler = true)
     {
-        var handle = AddConfiguredNode<DateTimeValidationNode<T>, T, T>(builder, name, configure: null);
+        var handle = AddConfiguredNode<DateTimeValidationNode<T>, T, T>(builder, name, null);
 
         if (applyDefaultErrorHandler)
-        {
             builder.WithErrorHandler(handle, typeof(DefaultValidationErrorHandler<T>));
-        }
 
         return handle;
     }
@@ -199,9 +190,7 @@ public static class PipelineBuilderExtensions
         var handle = AddConfiguredNode<DateTimeValidationNode<T>, T, T>(builder, name, configure);
 
         if (applyDefaultErrorHandler)
-        {
             builder.WithErrorHandler(handle, typeof(DefaultValidationErrorHandler<T>));
-        }
 
         return handle;
     }
@@ -226,9 +215,7 @@ public static class PipelineBuilderExtensions
         var handle = AddConfiguredNode<TValidationNode, T, T>(builder, name, configure);
 
         if (applyDefaultErrorHandler)
-        {
             builder.WithErrorHandler(handle, typeof(DefaultValidationErrorHandler<T>));
-        }
 
         return handle;
     }
@@ -246,12 +233,10 @@ public static class PipelineBuilderExtensions
         string? name = null,
         bool applyDefaultErrorHandler = true)
     {
-        var handle = AddConfiguredNode<CollectionValidationNode<T>, T, T>(builder, name, configure: null);
+        var handle = AddConfiguredNode<CollectionValidationNode<T>, T, T>(builder, name, null);
 
         if (applyDefaultErrorHandler)
-        {
             builder.WithErrorHandler(handle, typeof(DefaultValidationErrorHandler<T>));
-        }
 
         return handle;
     }
@@ -269,9 +254,7 @@ public static class PipelineBuilderExtensions
         var handle = AddConfiguredNode<CollectionValidationNode<T>, T, T>(builder, name, configure);
 
         if (applyDefaultErrorHandler)
-        {
             builder.WithErrorHandler(handle, typeof(DefaultValidationErrorHandler<T>));
-        }
 
         return handle;
     }
@@ -294,9 +277,7 @@ public static class PipelineBuilderExtensions
         var handle = builder.AddTransform<FilteringNode<T>, T, T>(nodeName);
 
         if (applyDefaultErrorHandler)
-        {
             builder.WithErrorHandler(handle, typeof(DefaultFilteringErrorHandler<T>));
-        }
 
         return handle;
     }
@@ -321,9 +302,7 @@ public static class PipelineBuilderExtensions
         builder.AddPreconfiguredNodeInstance(handle.Id, node);
 
         if (applyDefaultErrorHandler)
-        {
             builder.WithErrorHandler(handle, typeof(DefaultFilteringErrorHandler<T>));
-        }
 
         return handle;
     }
@@ -336,7 +315,7 @@ public static class PipelineBuilderExtensions
         string? name = null,
         bool applyDefaultErrorHandler = true)
     {
-        return AddTypeConversionInternal<TIn, TOut>(builder, configure: null, name, applyDefaultErrorHandler);
+        return AddTypeConversionInternal<TIn, TOut>(builder, null, name, applyDefaultErrorHandler);
     }
 
     /// <summary>
@@ -362,7 +341,7 @@ public static class PipelineBuilderExtensions
         bool applyDefaultErrorHandler = true)
     {
         ArgumentNullException.ThrowIfNull(converter);
-        return AddTypeConversion<TIn, TOut>(builder, node => node.WithConverter(converter), name, applyDefaultErrorHandler);
+        return builder.AddTypeConversion<TIn, TOut>(node => node.WithConverter(converter), name, applyDefaultErrorHandler);
     }
 
     /// <summary>
@@ -391,9 +370,7 @@ public static class PipelineBuilderExtensions
         var handle = AddConfiguredNode<TypeConversionNode<TIn, TOut>, TIn, TOut>(builder, name, configure);
 
         if (applyDefaultErrorHandler)
-        {
             builder.WithErrorHandler(handle, typeof(DefaultTypeConversionErrorHandler<TIn, TOut>));
-        }
 
         return handle;
     }

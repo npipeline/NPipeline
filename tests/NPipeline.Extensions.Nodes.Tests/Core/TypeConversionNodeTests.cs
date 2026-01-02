@@ -446,7 +446,7 @@ public sealed class TypeConversionNodeTests
     [Fact]
     public async Task StringToEnum_WithCaseInsensitive_Converts()
     {
-        var node = TypeConversions.StringToEnum<TestValues>(true);
+        var node = TypeConversions.StringToEnum<TestValues>();
         var result = await node.ExecuteAsync("value1", PipelineContext.Default, CancellationToken.None);
         Assert.Equal(TestValues.Value1, result);
     }

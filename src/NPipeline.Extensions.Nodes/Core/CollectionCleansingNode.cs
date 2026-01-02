@@ -3,19 +3,19 @@ using System.Linq.Expressions;
 namespace NPipeline.Extensions.Nodes.Core;
 
 /// <summary>
-/// A cleansing node for collection properties that provides operations for normalization and transformation.
+///     A cleansing node for collection properties that provides operations for normalization and transformation.
 /// </summary>
 public sealed class CollectionCleansingNode<T> : PropertyTransformationNode<T>
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="CollectionCleansingNode{T}" /> class.
+    ///     Initializes a new instance of the <see cref="CollectionCleansingNode{T}" /> class.
     /// </summary>
     public CollectionCleansingNode()
     {
     }
 
     /// <summary>
-    /// Removes null entries from a collection.
+    ///     Removes null entries from a collection.
     /// </summary>
     public CollectionCleansingNode<T> RemoveNulls<TItem>(Expression<Func<T, IEnumerable<TItem?>>> selector)
         where TItem : class
@@ -26,7 +26,7 @@ public sealed class CollectionCleansingNode<T> : PropertyTransformationNode<T>
     }
 
     /// <summary>
-    /// Removes duplicate entries from a collection.
+    ///     Removes duplicate entries from a collection.
     /// </summary>
     public CollectionCleansingNode<T> RemoveDuplicates<TItem>(
         Expression<Func<T, IEnumerable<TItem>>> selector,
@@ -39,7 +39,7 @@ public sealed class CollectionCleansingNode<T> : PropertyTransformationNode<T>
     }
 
     /// <summary>
-    /// Removes empty strings from a string collection.
+    ///     Removes empty strings from a string collection.
     /// </summary>
     public CollectionCleansingNode<T> RemoveEmpty(Expression<Func<T, IEnumerable<string>>> selector)
     {
@@ -49,7 +49,7 @@ public sealed class CollectionCleansingNode<T> : PropertyTransformationNode<T>
     }
 
     /// <summary>
-    /// Removes whitespace-only strings from a string collection.
+    ///     Removes whitespace-only strings from a string collection.
     /// </summary>
     public CollectionCleansingNode<T> RemoveWhitespace(Expression<Func<T, IEnumerable<string>>> selector)
     {
@@ -59,7 +59,7 @@ public sealed class CollectionCleansingNode<T> : PropertyTransformationNode<T>
     }
 
     /// <summary>
-    /// Sorts a collection in ascending order.
+    ///     Sorts a collection in ascending order.
     /// </summary>
     public CollectionCleansingNode<T> Sort<TItem>(
         Expression<Func<T, IEnumerable<TItem>>> selector,
@@ -73,7 +73,7 @@ public sealed class CollectionCleansingNode<T> : PropertyTransformationNode<T>
     }
 
     /// <summary>
-    /// Reverses the order of items in a collection.
+    ///     Reverses the order of items in a collection.
     /// </summary>
     public CollectionCleansingNode<T> Reverse<TItem>(Expression<Func<T, IEnumerable<TItem>>> selector)
     {
@@ -83,11 +83,12 @@ public sealed class CollectionCleansingNode<T> : PropertyTransformationNode<T>
     }
 
     /// <summary>
-    /// Takes the first N items from a collection.
+    ///     Takes the first N items from a collection.
     /// </summary>
     public CollectionCleansingNode<T> Take<TItem>(Expression<Func<T, IEnumerable<TItem>>> selector, int count)
     {
         ArgumentNullException.ThrowIfNull(selector);
+
         if (count < 0)
             throw new ArgumentException("Count cannot be negative.", nameof(count));
 
@@ -96,11 +97,12 @@ public sealed class CollectionCleansingNode<T> : PropertyTransformationNode<T>
     }
 
     /// <summary>
-    /// Skips the first N items in a collection.
+    ///     Skips the first N items in a collection.
     /// </summary>
     public CollectionCleansingNode<T> Skip<TItem>(Expression<Func<T, IEnumerable<TItem>>> selector, int count)
     {
         ArgumentNullException.ThrowIfNull(selector);
+
         if (count < 0)
             throw new ArgumentException("Count cannot be negative.", nameof(count));
 

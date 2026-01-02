@@ -350,8 +350,12 @@ public sealed class DateTimeCleansingNode<T> : PropertyTransformationNode<T>
 
         Register(selector, value =>
         {
-            if (value < min) return min;
-            if (value > max) return max;
+            if (value < min)
+                return min;
+
+            if (value > max)
+                return max;
+
             return value;
         });
 
@@ -373,9 +377,15 @@ public sealed class DateTimeCleansingNode<T> : PropertyTransformationNode<T>
 
         Register(selector, value =>
         {
-            if (!value.HasValue) return null;
-            if (value.Value < min) return min;
-            if (value.Value > max) return max;
+            if (!value.HasValue)
+                return null;
+
+            if (value.Value < min)
+                return min;
+
+            if (value.Value > max)
+                return max;
+
             return value.Value;
         });
 

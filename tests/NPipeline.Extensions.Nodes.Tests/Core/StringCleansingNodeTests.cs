@@ -5,37 +5,6 @@ namespace NPipeline.Extensions.Nodes.Tests.Core;
 
 public class StringCleansingNodeTests
 {
-    private sealed class TestObject
-    {
-        public string? StringValue { get; set; }
-    }
-
-    #region Trim Tests
-
-    [Fact]
-    public async Task Trim_WithWhitespace_Removes()
-    {
-        var node = new StringCleansingNode<TestObject>();
-        node.Trim(x => x.StringValue);
-
-        var item = new TestObject { StringValue = "  test  " };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
-        Assert.Equal("test", result.StringValue);
-    }
-
-    [Fact]
-    public async Task Trim_WithNull_Stays()
-    {
-        var node = new StringCleansingNode<TestObject>();
-        node.Trim(x => x.StringValue);
-
-        var item = new TestObject { StringValue = null };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
-        Assert.Null(result.StringValue);
-    }
-
-    #endregion
-
     #region TrimStart Tests
 
     [Fact]
@@ -186,6 +155,52 @@ public class StringCleansingNodeTests
 
     #endregion
 
+    #region Replace Tests
+
+    [Fact]
+    public async Task Replace_Replaces()
+    {
+        var node = new StringCleansingNode<TestObject>();
+        node.Replace(x => x.StringValue, "test", "demo");
+
+        var item = new TestObject { StringValue = "test string" };
+        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        Assert.Equal("demo string", result.StringValue);
+    }
+
+    #endregion
+
+    private sealed class TestObject
+    {
+        public string? StringValue { get; set; }
+    }
+
+    #region Trim Tests
+
+    [Fact]
+    public async Task Trim_WithWhitespace_Removes()
+    {
+        var node = new StringCleansingNode<TestObject>();
+        node.Trim(x => x.StringValue);
+
+        var item = new TestObject { StringValue = "  test  " };
+        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        Assert.Equal("test", result.StringValue);
+    }
+
+    [Fact]
+    public async Task Trim_WithNull_Stays()
+    {
+        var node = new StringCleansingNode<TestObject>();
+        node.Trim(x => x.StringValue);
+
+        var item = new TestObject { StringValue = null };
+        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        Assert.Null(result.StringValue);
+    }
+
+    #endregion
+
     #region Truncate Tests
 
     [Fact]
@@ -260,21 +275,6 @@ public class StringCleansingNodeTests
         var item = new TestObject { StringValue = "test_suf" };
         var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("test_suf", result.StringValue);
-    }
-
-    #endregion
-
-    #region Replace Tests
-
-    [Fact]
-    public async Task Replace_Replaces()
-    {
-        var node = new StringCleansingNode<TestObject>();
-        node.Replace(x => x.StringValue, "test", "demo");
-
-        var item = new TestObject { StringValue = "test string" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
-        Assert.Equal("demo string", result.StringValue);
     }
 
     #endregion
