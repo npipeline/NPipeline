@@ -13,6 +13,8 @@ This section details the officially supported extensions and how to leverage the
 
 ## Available Extensions
 
+* **[Nodes](nodes/index.md)**: Pre-built, production-ready nodes for common data processing operations. Includes cleansing, validation, filtering, and type conversion nodes for string, numeric, datetime, and collection data.
+
 * **[Dependency Injection](dependency-injection.md)**: Seamlessly integrate NPipeline with your favorite Dependency Injection container. Learn how to use constructor injection in your nodes and run pipelines with the `RunPipelineAsync<TDefinition>()` extension method.
 
 * **[Parallelism](parallelism.md)**: Execute pipeline nodes in parallel for improved performance. Discover how to use `ParallelExecutionStrategy` with `WithParallelOptions()` to configure parallel processing, queue policies, and ordering behavior.
@@ -27,6 +29,7 @@ This section details the officially supported extensions and how to leverage the
 
 | Package | Description | Key Features |
 |----------|-------------|---------------|
+| [`NPipeline.Extensions.Nodes`](../../src/NPipeline.Extensions.Nodes/NPipeline.Extensions.Nodes.csproj) | Pre-built data processing nodes | String/numeric/datetime cleansing, validation, filtering, type conversion |
 | [`NPipeline.Extensions.DependencyInjection`](../../../src/NPipeline.Extensions.DependencyInjection/NPipeline.Extensions.DependencyInjection.csproj) | DI container integration | Constructor injection, service lifetime management, `RunPipelineAsync()` extension |
 | [`NPipeline.Extensions.Parallelism`](../../../src/NPipeline.Extensions.Parallelism/NPipeline.Extensions.Parallelism.csproj) | Parallel processing capabilities | `ParallelExecutionStrategy`, `WithParallelOptions()`, queue policies |
 | [`NPipeline.Extensions.Testing`](../../../src/NPipeline.Extensions.Testing/NPipeline.Extensions.Testing.csproj) | Testing utilities | In-memory nodes, pipeline builder extensions, test context helpers |
@@ -45,6 +48,9 @@ This section details the officially supported extensions and how to leverage the
 Each extension is available as a separate NuGet package. Install only what you need:
 
 ```bash
+# Nodes (data processing)
+dotnet add package NPipeline.Extensions.Nodes
+
 # Dependency Injection
 dotnet add package NPipeline.Extensions.DependencyInjection
 
@@ -77,9 +83,19 @@ Most extensions follow a consistent pattern:
 4. **Configure options** as needed for the extension
 
 ```csharp
+using NPipeline;
+using NPipeline.Extensions.Nodes;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Parallelism;
-using NPipeline.Extensions.Testing;
+
+// Nodes setup
+var builder = new PipelineBuilder();
+builder.AddStringCleansing<User>(x => x.Email)
+    .Trim()
+    .ToLower();
+
+builder.AddStringValidation<User>(x => x.Email)
+    .IsEmail();
 
 // DI setup
 var services = new ServiceCollection();
