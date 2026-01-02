@@ -70,8 +70,8 @@ public sealed class DateTimeValidationNode<T> : ValidationNode<T>
         ArgumentNullException.ThrowIfNull(selector);
         var ruleName = "IsToday";
         var message = errorMessage ?? "Value must be today";
-        var today = DateTime.UtcNow.Date;
-        Register(selector, value => value.Date == today, ruleName, _ => message);
+        // Evaluate today at validation time, not registration time
+        Register(selector, value => value.Date == DateTime.Today, ruleName, _ => message);
         return this;
     }
 

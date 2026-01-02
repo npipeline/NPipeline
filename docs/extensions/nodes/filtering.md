@@ -45,6 +45,32 @@ builder.AddFiltering<Order>()
     .Where(x => x.CreatedDate >= DateTime.Today, "Order must be from today");
 ```
 
+## Fixed Message Where
+
+Use a string instead of a factory for simple messages:
+
+```csharp
+// When you have a fixed message, this is cleaner than a factory
+builder.AddFiltering<Order>()
+    .Where(x => x.Amount > 100, "Order amount must exceed $100")
+    .Where(x => x.Status != OrderStatus.Cancelled, "Order must not be cancelled");
+```
+
+## Property-Based Filtering
+
+Filter based on a specific property with built-in error messages:
+
+```csharp
+// Filter by property value
+builder.AddFiltering<Order>()
+    .WhereProperty(x => x.Status, status => status == OrderStatus.Active, "Status must be Active")
+    .WhereProperty(x => x.Amount, amount => amount > 100, "Amount must exceed $100");
+
+// Simpler than writing the full predicate
+builder.AddFiltering<Person>()
+    .WhereProperty(x => x.Age, age => age >= 18, "Must be 18 or older");
+```
+
 ## Complex Predicates
 
 Use complex conditional logic:

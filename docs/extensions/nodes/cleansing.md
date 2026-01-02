@@ -88,6 +88,9 @@ builder.AddNumericCleansing<Order>(x => x.Discount)
 | `Floor()` | double | `3.9` → `3.0` |
 | `Ceiling()` | double | `3.1` → `4.0` |
 | `Clamp(min, max)` | all numeric | `150` → `100` (clamped to max) |
+| `Clamp(nullable, min, max)` | nullable numeric | clamps while preserving null |
+| `Min(minValue)` | int, double, decimal | convenience method: `Clamp(minValue, max)` |
+| `Max(maxValue)` | int, double, decimal | convenience method: `Clamp(min, maxValue)` |
 | `AbsoluteValue()` | double, decimal | `-5.5` → `5.5` |
 | `Scale(factor)` | decimal | `10m` × `2.5m` → `25m` |
 | `DefaultIfNull(default)` | all nullable | `null` → `0` |
@@ -125,6 +128,32 @@ builder.AddNumericCleansing<Transaction>(x => x.Amount)
     .ToZeroIfNegative();
 ```
 
+### Numeric Constraints with Min/Max
+
+Use Min/Max helper methods for single-bound constraints:
+
+```csharp
+// Ensure age is at least 0 (cleaner than Clamp(0, int.MaxValue))
+builder.AddNumericCleansing<Person>(x => x.Age)
+    .Min(0);
+
+// Ensure quantity doesn't exceed 10000
+builder.AddNumericCleansing<Order>(x => x.Quantity)
+    .Max(10000);
+
+// Ensure price is at least 0.01
+builder.AddNumericCleansing<Product>(x => x.Price)
+    .Min(0.01m);
+
+// Clamp only the upper bound (discount can't exceed 100%)
+builder.AddNumericCleansing<Order>(x => x.DiscountPercent)
+    .Max(100);
+
+// Nullable numeric with minimum constraint
+builder.AddNumericCleansing<Item>(x => x.OptionalStock)
+    .Min(0);  // null values pass through, non-null values enforced >= 0
+```
+
 ## DateTime Cleansing
 
 Clean and normalize date/time data:
@@ -144,9 +173,10 @@ builder.AddDateTimeCleansing<Event>(x => x.StartTime)
 | `ToLocal()` | Convert to local time | Both |
 | `StripTime()` | Remove time component | Both |
 | `Truncate(precision)` | Truncate to precision | Both |
-| `RoundToMinute()` | Round to nearest minute | DateTime only |
-| `RoundToHour()` | Round to nearest hour | DateTime only |
-| `RoundToDay()` | Round to nearest day | DateTime only |
+| `RoundToMinute()` | Round to nearest minute | DateTime, DateTime? |
+| `RoundToHour()` | Round to nearest hour | DateTime, DateTime? |
+| `RoundToDay()` | Round to nearest day | DateTime, DateTime? |
+| `Clamp(min, max)` | Constrain to range | DateTime, DateTime? |
 | `DefaultIfMinValue(default)` | Replace MinValue | DateTime only |
 | `DefaultIfMaxValue(default)` | Replace MaxValue | DateTime only |
 | `DefaultIfNull(default)` | Replace null values | DateTime? only |
@@ -172,6 +202,35 @@ builder.AddDateTimeCleansing<Document>(x => x.CreatedDate)
 builder.AddDateTimeCleansing<Record>(x => x.DateField)
     .DefaultIfMinValue(DateTime.UtcNow)
     .DefaultIfMaxValue(DateTime.UtcNow);
+```
+
+### DateTime Rounding and Clamping
+
+Round times and constrain to ranges:
+
+```csharp
+// Round timestamps to nearest minute for metrics
+builder.AddDateTimeCleansing<Metric>(x => x.RecordedAt)
+    .RoundToMinute();
+
+// Round optional timestamps
+builder.AddDateTimeCleansing<Event>(x => x.OptionalEndTime)
+    .RoundToMinute();  // null values pass through unchanged
+
+// Round to nearest hour for reports
+builder.AddDateTimeCleansing<Report>(x => x.GeneratedAt)
+    .RoundToHour();
+
+// Clamp dates to valid range
+builder.AddDateTimeCleansing<Contract>(x => x.StartDate)
+    .Clamp(
+        DateTime.Now.AddYears(-1),
+        DateTime.Now.AddYears(10),
+        "Start date must be within ±10 years");
+
+// Clamp optional dates
+builder.AddDateTimeCleansing<Reservation>(x => x.OptionalCheckoutDate)
+    .Clamp(DateTime.Now, DateTime.Now.AddYears(2));
 ```
 
 ## Collection Cleansing

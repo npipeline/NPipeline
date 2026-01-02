@@ -86,14 +86,16 @@ builder.AddNumericValidation<Order>(x => x.Quantity)
 | `IsGreaterThan(value)` | Greater than | int, double, decimal |
 | `IsLessThan(value)` | Less than | int, double, decimal |
 | `IsBetween(min, max)` | In range (inclusive) | int, double, decimal |
-| `IsPositive()` | > 0 | int, double, decimal |
+| `IsPositive()` | > 0 | int, double, decimal, int?, double?, decimal? |
 | `IsNegative()` | < 0 | int, double, decimal |
 | `IsZeroOrPositive()` | >= 0 | int, double, decimal |
+| `IsNotNegative()` | >= 0 (alias) | int, double, decimal |
 | `IsNonZero()` | != 0 | int, double, decimal |
 | `IsEven()` | Even number | int |
 | `IsOdd()` | Odd number | int |
 | `IsFinite()` | Not NaN/Infinity | double |
 | `IsIntegerValue()` | No fractional part | double, decimal |
+| `IsNotNull()` | Not null | int?, double?, decimal? |
 
 ### Examples
 
@@ -126,6 +128,27 @@ builder.AddNumericValidation<Sensor>(x => x.Reading)
     .IsFinite("Reading must be a valid number, not NaN or Infinity");
 ```
 
+### Nullable Numeric Validation
+
+Validate nullable numeric types with built-in null handling:
+
+```csharp
+// Optional age that, if provided, must be positive
+builder.AddNumericValidation<Person>(x => x.OptionalAge)
+    .IsPositive("Age must be positive (null is allowed)")
+    .IsNotNull("Age is required");  // If you need to enforce non-null
+
+// Optional quantity that, if provided, must be greater than zero
+builder.AddNumericValidation<OrderItem>(x => x.OptionalQuantity)
+    .IsPositive("Quantity must be greater than zero if provided");
+
+// Using IsNotNegative (more intuitive alias for IsZeroOrPositive)
+builder.AddNumericValidation<Stock>(x => x.Quantity)
+    .IsNotNegative("Stock quantity cannot be negative");
+```
+
+The nullable overloads for `IsPositive()` automatically handle null values - they pass validation if the value is null, but fail if it's provided and doesn't meet the criteria. Use `IsNotNull()` to explicitly require non-null values.
+
 ## DateTime Validation
 
 Validate date and time values:
@@ -155,6 +178,7 @@ builder.AddDateTimeValidation<Event>(x => x.StartDate)
 | `IsBetween(from, to)` | Within date range | DateTime, DateTime? |
 | `IsInYear(year)` | Within specific year | DateTime only |
 | `IsInMonth(month)` | Within specific month | DateTime only |
+| `IsNotNull()` | Not null | DateTime? only |
 
 ### Examples
 
@@ -184,6 +208,25 @@ builder.AddDateTimeValidation<Transaction>(x => x.Timestamp)
 // Specific day requirement
 builder.AddDateTimeValidation<WeeklyReport>(x => x.GeneratedDate)
     .IsDayOfWeek(DayOfWeek.Friday, "Reports must be generated on Fridays");
+```
+
+### Nullable DateTime Validation
+
+Validate optional DateTime fields:
+
+```csharp
+// Optional deadline that, if provided, must be in the future
+builder.AddDateTimeValidation<Task>(x => x.DeadlineDate)
+    .IsInFuture("Deadline must be in the future (null is allowed)")
+    .IsNotNull("Deadline is required");  // If you need to enforce non-null
+
+// Optional end date that must be after start date if provided
+builder.AddDateTimeValidation<Event>(x => x.EndDateTime)
+    .IsInFuture("End time must be in the future");  // null passes validation
+
+// Optional notification time
+builder.AddDateTimeValidation<Reminder>(x => x.ScheduledTime)
+    .IsNotNull("Scheduled time is required");
 ```
 
 ## Collection Validation
