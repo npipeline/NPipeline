@@ -87,6 +87,25 @@ builder.AddTypeConversion<ImportRow, Data>()
     .Map(x => x.Date, x => DateTime.Parse(x.DateString));
 ```
 
+### [Data Enrichment](enrichment.md)
+
+Enrich data with lookup values and computed properties:
+- **Lookup Enrichment**: Add or replace properties using lookup dictionaries
+- **Computed Properties**: Set properties based on computed values
+- **Default Values**: Set defaults based on null checks and conditions
+
+```csharp
+var statusLookup = new Dictionary<int, string> { { 1, "Active" }, { 2, "Inactive" } };
+
+builder.Add(new LookupEnrichmentNode<Order>()
+    .AddProperty(x => x.StatusId, statusLookup, x => x.StatusName)
+    .AddComputedProperty(x => x.Total, order => order.Items.Sum(i => i.Price * i.Quantity)));
+
+builder.Add(new DefaultValueNode<Order>()
+    .DefaultIfNull(x => x.OrderDate, DateTime.UtcNow)
+    .DefaultIfNullOrEmpty(x => x.Notes, "No notes"));
+```
+
 ## Quick Start
 
 ### Installation
