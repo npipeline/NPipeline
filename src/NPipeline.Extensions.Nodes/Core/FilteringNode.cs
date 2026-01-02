@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using NPipeline.Execution;
 using NPipeline.Extensions.Nodes.Core.Exceptions;
 using NPipeline.Nodes;
@@ -71,9 +72,15 @@ public sealed class FilteringNode<T> : TransformNode<T, T>
     /// </summary>
     public override Task<T> ExecuteAsync(T item, PipelineContext context, CancellationToken cancellationToken)
     {
+        return FromValueTask(ExecuteValueTaskAsync(item, context, cancellationToken));
+    }
+
+    /// <inheritdoc />
+    protected override ValueTask<T> ExecuteValueTaskAsync(T item, PipelineContext context, CancellationToken cancellationToken)
+    {
         // Fast-path: no rules configured means pass-through
         if (_rules.Count == 0)
-            return Task.FromResult(item);
+            return ValueTask.FromResult(item);
 
         foreach (var rule in _rules)
         {
@@ -90,7 +97,7 @@ public sealed class FilteringNode<T> : TransformNode<T, T>
             }
         }
 
-        return Task.FromResult(item);
+        return ValueTask.FromResult(item);
     }
 
     private readonly record struct Rule(Func<T, bool> Predicate, Func<T, string>? Reason);

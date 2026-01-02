@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Threading.Tasks;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -74,14 +75,22 @@ public abstract class PropertyTransformationNode<T> : TransformNode<T, T>
         PipelineContext context,
         CancellationToken cancellationToken)
     {
-        // Apply transformations
+        return FromValueTask(ExecuteValueTaskAsync(item, context, cancellationToken));
+    }
+
+    /// <inheritdoc />
+    protected override ValueTask<T> ExecuteValueTaskAsync(
+        T item,
+        PipelineContext context,
+        CancellationToken cancellationToken)
+    {
         foreach (var rule in _rules)
         {
             cancellationToken.ThrowIfCancellationRequested();
             rule.Apply(item);
         }
 
-        return Task.FromResult(item);
+        return ValueTask.FromResult(item);
     }
 
     private interface ICompiledRule<in TItem>

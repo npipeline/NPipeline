@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Threading.Tasks;
 using NPipeline.Extensions.Nodes.Core.Exceptions;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -74,13 +75,22 @@ public abstract class ValidationNode<T> : TransformNode<T, T>
         PipelineContext context,
         CancellationToken cancellationToken)
     {
+        return FromValueTask(ExecuteValueTaskAsync(item, context, cancellationToken));
+    }
+
+    /// <inheritdoc />
+    protected override ValueTask<T> ExecuteValueTaskAsync(
+        T item,
+        PipelineContext context,
+        CancellationToken cancellationToken)
+    {
         foreach (var rule in _rules)
         {
             cancellationToken.ThrowIfCancellationRequested();
             rule.Validate(item, context);
         }
 
-        return Task.FromResult(item);
+        return ValueTask.FromResult(item);
     }
 
     private interface IRule<in TItem>
