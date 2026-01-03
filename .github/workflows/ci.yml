@@ -3,7 +3,7 @@ name: CI Build
 on:
   push:
     branches:
-      - main
+      - "**"
 
 env:
   DOTNET_VERSION: "10.0.x"
@@ -40,3 +40,4 @@ jobs:
 
       - name: Run tests
         run: dotnet test --no-build --configuration Release --verbosity normal
+
