@@ -25,59 +25,6 @@ dotnet add package NPipeline.Extensions.Nodes
 - .NET 8.0, 9.0, or 10.0
 - NPipeline 0.1.0 or later
 
-## Core Architecture
-
-### Phase 1: Foundation (Current Release)
-
-The foundation includes core infrastructure for building extension nodes:
-
-#### Base Classes
-
-- **`PropertyTransformationNode<T>`**: Base class for in-place property mutations
-    - Compiled property accessors (zero reflection in hot paths)
-    - Fluent API for registering transformations
-    - Supports nested property access
-    - Method chaining support
-
-- **`ValidationNode<T>`**: Base class for property-level validation
-    - Compiled property getters for performance
-    - Rich error context (property path, rule name, value)
-    - Exception-based validation integration
-    - Support for custom error messages
-
-- **`FilteringNode<T>`**: Generic filtering with predicates
-    - One or more filtering predicates
-    - Exception-based signalling for error handling
-    - Optional custom rejection reasons
-    - Zero allocations on success path
-
-#### Utilities
-
-- **`PropertyAccessor`**: Compiles expression-based property accessors
-    - Type-safe getter and setter delegates
-    - Supports nested member access (e.g., `x => x.Address.Street`)
-    - Validates settability at configuration time
-    - No reflection in execution path
-
-#### Error Handling
-
-- **`ValidationException`**: Thrown when validation fails
-    - Property path, rule name, and value included
-    - Integrated with error handlers
-
-- **`FilteringException`**: Thrown when filtering rejects an item
-    - Contains rejection reason
-    - Integrated with error handlers
-
-- **`TypeConversionException`**: Thrown when type conversion fails
-    - Source and target types, value included
-    - Integrated with error handlers
-
-- **Default Error Handlers**:
-    - `DefaultValidationErrorHandler<T>`: Configurable handling for validation failures
-    - `DefaultFilteringErrorHandler<T>`: Configurable handling for filtered items
-    - `DefaultTypeConversionErrorHandler<TIn, TOut>`: Configurable handling for conversion failures
-
 ## Quick Start
 
 ### Using Builder Extension Methods (Recommended)
@@ -126,7 +73,7 @@ var pipeline = builder.Build();
 For domain-specific validation, extend `ValidationNode<T>`:
 
 ```csharp
-using NPipeline.Extensions.Nodes.Core;
+using NPipeline.Extensions.Nodes;
 
 public sealed class CustomerValidator : ValidationNode<Customer>
 {
@@ -150,7 +97,7 @@ builder.AddValidationNode<Customer, CustomerValidator>("customer-validation");
 For domain-specific transformations, extend `PropertyTransformationNode<T>`:
 
 ```csharp
-using NPipeline.Extensions.Nodes.Core;
+using NPipeline.Extensions.Nodes;
 
 public sealed class CustomerNormalizer : PropertyTransformationNode<Customer>
 {
@@ -199,73 +146,6 @@ All nodes are stateless and thread-safe by design:
 - Predicates and transformations are pure functions
 - No shared mutable state
 - Safe for concurrent execution across multiple threads
-
-## Current Features (Phase 1 Complete)
-
-### ✅ Cleansing Nodes
-
-- **StringCleansingNode**: Trim, case conversion, special character removal
-- **NumericCleansingNode**: Clamping, rounding, scaling, absolute values
-- **DateTimeCleansingNode**: Timezone conversion, date/time normalization
-- **CollectionCleansingNode**: Remove nulls, remove duplicates, filtering
-
-### ✅ Validation Nodes
-
-- **StringValidationNode**: Length, pattern, email, URL validation
-- **NumericValidationNode**: Range, positive/negative, comparison checks
-- **DateTimeValidationNode**: Past/future, range, day-of-week validation
-- **CollectionValidationNode**: Count, empty/non-empty checks
-
-### ✅ Data Processing Nodes
-
-- **FilteringNode**: Predicate-based filtering with custom rejection reasons
-- **TypeConversionNode**: Type conversions with factory methods (string↔int, string↔DateTime, etc.)
-- **EnrichmentNode**: Lookup enrichment, computed properties, default values
-
-### ✅ Infrastructure
-
-- Compiled property accessors (zero reflection)
-- Automatic error handler wiring
-- Configuration-first fluent builder API
-- Comprehensive XML documentation
-
-## Planned Features
-
-### Phase 2: Advanced Data Quality
-
-- Anomaly detection nodes
-- Data profiling nodes
-- Statistical validation
-
-### Phase 3: Specialized Transformations
-
-- Text processing (templates, extraction, normalization)
-- Temporal operations (business days, scheduling)
-- Format conversion (JSON, XML, Base64, Hex)
-
-### Phase 4: Enterprise Features
-
-- Caching nodes with multiple strategies
-- Batch processing optimization
-- Distributed pipeline coordination
-
-## Performance Characteristics
-
-All Phase 1 nodes are designed for zero or minimal allocations:
-
-- **PropertyTransformationNode**: O(n) in number of properties, O(1) per property access
-- **ValidationNode**: O(n) in number of rules, O(1) per validation
-- **FilteringNode**: O(n) in number of predicates, O(1) per predicate check
-
-Success paths produce zero allocations (using ValueTask).
-
-## Best Practices
-
-1. **Single Responsibility**: Create specific node subclasses for specific domains
-2. **Configuration**: Configure transformations/validations in the constructor
-3. **Reuse**: Create node instances once and reuse across pipeline definitions
-4. **Error Handling**: Always configure appropriate error handlers for validation/filtering nodes
-5. **Testing**: Test nodes in isolation before composing in pipelines
 
 ## Contributing
 
