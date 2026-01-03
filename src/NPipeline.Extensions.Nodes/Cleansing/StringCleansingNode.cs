@@ -92,9 +92,21 @@ public sealed class StringCleansingNode<T> : PropertyTransformationNode<T>
     {
         ArgumentNullException.ThrowIfNull(selector);
 
-        Register(selector, value => value == null
-            ? null
-            : new string(value.Where(c => !char.IsWhiteSpace(c)).ToArray()));
+        Register(selector, value =>
+        {
+            if (value == null)
+                return null;
+
+            var sb = new StringBuilder(value.Length);
+
+            foreach (var ch in value)
+            {
+                if (!char.IsWhiteSpace(ch))
+                    sb.Append(ch);
+            }
+
+            return sb.ToString();
+        });
 
         return this;
     }
@@ -140,9 +152,21 @@ public sealed class StringCleansingNode<T> : PropertyTransformationNode<T>
     {
         ArgumentNullException.ThrowIfNull(selector);
 
-        Register(selector, value => value == null
-            ? null
-            : new string(value.Where(char.IsLetterOrDigit).ToArray()));
+        Register(selector, value =>
+        {
+            if (value == null)
+                return null;
+
+            var sb = new StringBuilder(value.Length);
+
+            foreach (var ch in value)
+            {
+                if (char.IsLetterOrDigit(ch))
+                    sb.Append(ch);
+            }
+
+            return sb.ToString();
+        });
 
         return this;
     }
@@ -154,9 +178,21 @@ public sealed class StringCleansingNode<T> : PropertyTransformationNode<T>
     {
         ArgumentNullException.ThrowIfNull(selector);
 
-        Register(selector, value => value == null
-            ? null
-            : new string(value.Where(c => !char.IsDigit(c)).ToArray()));
+        Register(selector, value =>
+        {
+            if (value == null)
+                return null;
+
+            var sb = new StringBuilder(value.Length);
+
+            foreach (var ch in value)
+            {
+                if (!char.IsDigit(ch))
+                    sb.Append(ch);
+            }
+
+            return sb.ToString();
+        });
 
         return this;
     }
@@ -168,9 +204,21 @@ public sealed class StringCleansingNode<T> : PropertyTransformationNode<T>
     {
         ArgumentNullException.ThrowIfNull(selector);
 
-        Register(selector, value => value == null
-            ? null
-            : new string(value.Where(c => c < 128).ToArray()));
+        Register(selector, value =>
+        {
+            if (value == null)
+                return null;
+
+            var sb = new StringBuilder(value.Length);
+
+            foreach (var ch in value)
+            {
+                if (ch < 128)
+                    sb.Append(ch);
+            }
+
+            return sb.ToString();
+        });
 
         return this;
     }

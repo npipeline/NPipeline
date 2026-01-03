@@ -143,6 +143,73 @@ public sealed class FilteringNodeTests
     }
 
     [Fact]
+    public async Task WhereProperty_WithPassingPredicate_ShouldReturnItem()
+    {
+        // Arrange
+        var node = new FilteringNode<TestData>();
+        node.WhereProperty(x => x.Age, age => age >= 18, "Must be adult");
+
+        var data = new TestData { Age = 25 };
+        var context = PipelineContext.Default;
+
+        // Act
+        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+
+        // Assert
+        result.Should().BeSameAs(data);
+    }
+
+    [Fact]
+    public async Task WhereProperty_WithFailingPredicate_ShouldThrowFilteringException()
+    {
+        // Arrange
+        var node = new FilteringNode<TestData>();
+        node.WhereProperty(x => x.Age, age => age >= 18, "Must be adult");
+
+        var data = new TestData { Age = 15 };
+        var context = PipelineContext.Default;
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<FilteringException>(async () =>
+            await node.ExecuteAsync(data, context, CancellationToken.None));
+
+        ex.Reason.Should().Be("Must be adult");
+    }
+
+    [Fact]
+    public async Task WhereProperty_WithoutCustomReason_ShouldUseDefaultMessage()
+    {
+        // Arrange
+        var node = new FilteringNode<TestData>();
+        node.WhereProperty(x => x.Age, age => age >= 18);
+
+        var data = new TestData { Age = 15 };
+        var context = PipelineContext.Default;
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<FilteringException>(async () =>
+            await node.ExecuteAsync(data, context, CancellationToken.None));
+
+        ex.Reason.Should().Contain("Age");
+        ex.Reason.Should().Contain("did not meet criteria");
+    }
+
+    [Fact]
+    public void WhereProperty_ShouldAllowChaining()
+    {
+        // Arrange
+        var node = new FilteringNode<TestData>();
+
+        // Act
+        var result = node
+            .WhereProperty(x => x.Age, age => age >= 18)
+            .WhereProperty(x => x.Name, name => !string.IsNullOrEmpty(name));
+
+        // Assert
+        result.Should().BeSameAs(node);
+    }
+
+    [Fact]
     public async Task Constructor_WithPredicate_ShouldInitializeWithRule()
     {
         // Arrange & Act

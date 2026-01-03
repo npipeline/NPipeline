@@ -9,23 +9,6 @@ slug: /extensions/nodes
 
 The Nodes extension provides ready-made, production-ready nodes for common data processing operations. Each node is designed to be **fast**, **reliable**, and **easy to compose** into complex pipelines.
 
-:::info Implementation Status
-This extension is under active development. Currently implemented nodes:
-- ✅ Numeric Cleansing
-- ✅ DateTime Cleansing
-- ✅ Numeric Validation
-- ✅ DateTime Validation
-- ✅ Enrichment (Lookup, Compute, Defaults)
-- ✅ Filtering
-- ✅ Type Conversion
-
-Planned for future releases:
-- 📋 String Cleansing
-- 📋 Collection Cleansing
-- 📋 String Validation
-- 📋 Collection Validation
-:::
-
 ## Philosophy
 
 - **Granular**: Each node does one thing well
@@ -34,19 +17,30 @@ Planned for future releases:
 - **Type-safe**: Strongly-typed APIs with expression-based property selection
 - **Dependency-free**: No external dependencies beyond NPipeline core
 
+## Available Nodes
+
+- ✅ String Cleansing (trim, case conversion, special character handling)
+- ✅ Numeric Cleansing (rounding, clamping, scaling, absolute values)
+- ✅ DateTime Cleansing (timezone conversion, truncation, rounding)
+- ✅ Collection Cleansing (remove nulls/duplicates, sort, take/skip)
+- ✅ String Validation (length, email, URL, GUID, regex patterns)
+- ✅ Numeric Validation (range checks, positive/negative, finite)
+- ✅ DateTime Validation (past/future, weekday/weekend, timezone)
+- ✅ Collection Validation (count, contains, unique items)
+- ✅ Enrichment (lookup, compute, default values)
+- ✅ Filtering (predicates, property-based filtering)
+- ✅ Type Conversion (string to numeric, datetime, enum)
+
 ## Node Categories
 
 ### Data Cleansing
 
 Normalize and clean data properties:
 
-**Currently Available:**
+- **String Cleansing**: Trim, case conversion, whitespace handling, special character removal
 - **Numeric Cleansing**: Rounding, clamping, scaling, absolute values, null defaults
 - **DateTime Cleansing**: Timezone conversion, truncation, kind normalization
-
-**Currently Available:**
-- **Numeric Cleansing**: Rounding, clamping, scaling, absolute values, null defaults
-- **DateTime Cleansing**: Timezone conversion, truncation, kind normalization
+- **Collection Cleansing**: Remove nulls/duplicates, sort, take/skip, reverse
 
 ```csharp
 builder.AddNumericCleansing<Order>()
@@ -64,13 +58,10 @@ See [Data Cleansing documentation](cleansing.md) for details.
 
 Validate property values with clear error messages:
 
-**Currently Available:**
-- **Numeric Validation**: Range checks, positive/negative constraints
-- **DateTime Validation**: Range checks, timezone validation
-
-**Currently Available:**
-- **Numeric Validation**: Range checks, positive/negative constraints
-- **DateTime Validation**: Range checks, timezone validation
+- **String Validation**: Length limits, email/URL/GUID formats, regex patterns
+- **Numeric Validation**: Range checks, positive/negative constraints, even/odd, finite
+- **DateTime Validation**: Past/future, range checks, weekday/weekend, timezone validation
+- **Collection Validation**: Count limits, contains checks, unique items, subset validation
 
 ```csharp
 builder.AddNumericValidation<Product>()

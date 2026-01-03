@@ -98,7 +98,28 @@ public static class PipelineBuilderExtensions
     }
 
     /// <summary>
-    ///     Adds a string validation node to the pipeline and applies the default validation error handler.
+    ///     Adds a string validation node to the pipeline.
+    /// </summary>
+    /// <typeparam name="T">The item type.</typeparam>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="name">Optional node name for debugging.</param>
+    /// <param name="applyDefaultErrorHandler">When true, wires up the default validation error handler.</param>
+    /// <returns>A handle to the registered node for chaining.</returns>
+    public static TransformNodeHandle<T, T> AddStringValidation<T>(
+        this PipelineBuilder builder,
+        string? name = null,
+        bool applyDefaultErrorHandler = true)
+    {
+        var handle = AddConfiguredNode<StringValidationNode<T>, T, T>(builder, name, null);
+
+        if (applyDefaultErrorHandler)
+            builder.WithErrorHandler(handle, typeof(DefaultValidationErrorHandler<T>));
+
+        return handle;
+    }
+
+    /// <summary>
+    ///     Adds a string validation node with explicit configuration.
     /// </summary>
     public static TransformNodeHandle<T, T> AddStringValidation<T>(
         this PipelineBuilder builder,
@@ -347,6 +368,20 @@ public static class PipelineBuilderExtensions
     /// </summary>
     /// <typeparam name="T">The item type.</typeparam>
     /// <param name="builder">The pipeline builder.</param>
+    /// <param name="name">Optional node name for debugging.</param>
+    /// <returns>A handle to the registered node for chaining.</returns>
+    public static TransformNodeHandle<T, T> AddEnrichment<T>(
+        this PipelineBuilder builder,
+        string? name = null)
+    {
+        return AddConfiguredNode<EnrichmentNode<T>, T, T>(builder, name, null);
+    }
+
+    /// <summary>
+    ///     Adds an enrichment node to the pipeline for setting property values from lookups, computations, or defaults.
+    /// </summary>
+    /// <typeparam name="T">The item type.</typeparam>
+    /// <param name="builder">The pipeline builder.</param>
     /// <param name="configure">Configuration delegate for setting property values.</param>
     /// <param name="name">Optional node name for debugging.</param>
     /// <returns>A handle to the registered node for chaining.</returns>
@@ -357,6 +392,25 @@ public static class PipelineBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(configure);
         return AddConfiguredNode<EnrichmentNode<T>, T, T>(builder, name, configure);
+    }
+
+    /// <summary>
+    ///     Adds a custom property transformation node to the pipeline.
+    ///     Use this for adding custom transformation nodes that extend <see cref="PropertyTransformationNode{T}" />.
+    /// </summary>
+    /// <typeparam name="T">The item type.</typeparam>
+    /// <typeparam name="TTransformationNode">The specific transformation node type.</typeparam>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="name">Optional node name for debugging.</param>
+    /// <param name="configure">Optional configuration delegate.</param>
+    /// <returns>A handle to the registered node for chaining.</returns>
+    public static TransformNodeHandle<T, T> AddTransformationNode<T, TTransformationNode>(
+        this PipelineBuilder builder,
+        string? name = null,
+        Action<TTransformationNode>? configure = null)
+        where TTransformationNode : PropertyTransformationNode<T>, new()
+    {
+        return AddConfiguredNode<TTransformationNode, T, T>(builder, name, configure);
     }
 
     private static TransformNodeHandle<TIn, TOut> AddTypeConversionInternal<TIn, TOut>(

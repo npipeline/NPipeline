@@ -40,12 +40,12 @@ var builder = new PipelineBuilder();
 // String cleansing with configuration
 builder.AddStringCleansing<Customer>(n => n
     .Trim(x => x.Name)
-    .ToLowerCase(x => x.Email));
+    .ToLower(x => x.Email));
 
 // Numeric validation with automatic error handling
 builder.AddNumericValidation<Order>(n => n
     .IsPositive(x => x.Quantity)
-    .IsInRange(x => x.Discount, 0, 100));
+    .IsBetween(x => x.Discount, 0, 100));
 
 // Collection cleansing
 builder.AddCollectionCleansing<User>(n => n

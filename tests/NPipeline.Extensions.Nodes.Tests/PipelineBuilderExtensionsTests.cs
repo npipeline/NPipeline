@@ -199,6 +199,46 @@ public sealed class PipelineBuilderExtensionsTests
     #region String Validation Tests
 
     [Fact]
+    public void AddStringValidation_BareVariant_ShouldRegisterNodeWithDefaultErrorHandler()
+    {
+        // Arrange
+        var builder = new PipelineBuilder();
+
+        // Act
+        var handle = builder.AddStringValidation<TestModel>("stringvalidation");
+
+        // Assert
+        handle.Should().NotBeNull();
+        handle.Id.Should().Be("stringvalidation");
+    }
+
+    [Fact]
+    public void AddStringValidation_BareVariantWithoutName_ShouldUseTypeName()
+    {
+        // Arrange
+        var builder = new PipelineBuilder();
+
+        // Act
+        var handle = builder.AddStringValidation<TestModel>();
+
+        // Assert
+        handle.Id.Should().Be("stringvalidationnode-1");
+    }
+
+    [Fact]
+    public void AddStringValidation_BareVariantWithoutErrorHandler_ShouldNotRegisterDefaultHandler()
+    {
+        // Arrange
+        var builder = new PipelineBuilder();
+
+        // Act
+        var handle = builder.AddStringValidation<TestModel>(applyDefaultErrorHandler: false);
+
+        // Assert
+        handle.Should().NotBeNull();
+    }
+
+    [Fact]
     public void AddStringValidation_WithConfiguration_ShouldRegisterNodeWithDefaultErrorHandler()
     {
         // Arrange
@@ -611,6 +651,33 @@ public sealed class PipelineBuilderExtensionsTests
     #region Enrichment Tests
 
     [Fact]
+    public void AddEnrichment_BareVariant_ShouldRegisterNode()
+    {
+        // Arrange
+        var builder = new PipelineBuilder();
+
+        // Act
+        var handle = builder.AddEnrichment<TestModel>("enrichment");
+
+        // Assert
+        handle.Should().NotBeNull();
+        handle.Id.Should().Be("enrichment");
+    }
+
+    [Fact]
+    public void AddEnrichment_BareVariantWithoutName_ShouldUseTypeName()
+    {
+        // Arrange
+        var builder = new PipelineBuilder();
+
+        // Act
+        var handle = builder.AddEnrichment<TestModel>();
+
+        // Assert
+        handle.Id.Should().StartWith("enrichmentnode");
+    }
+
+    [Fact]
     public void AddEnrichment_WithConfiguration_ShouldRegisterPreconfiguredInstance()
     {
         // Arrange
@@ -636,6 +703,53 @@ public sealed class PipelineBuilderExtensionsTests
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
             builder.AddEnrichment(configure!));
+    }
+
+    #endregion
+
+    #region TransformationNode Tests
+
+    [Fact]
+    public void AddTransformationNode_BareVariant_ShouldRegisterNode()
+    {
+        // Arrange
+        var builder = new PipelineBuilder();
+
+        // Act
+        var handle = builder.AddTransformationNode<TestModel, TestCustomTransformationNode>("customtransform");
+
+        // Assert
+        handle.Should().NotBeNull();
+        handle.Id.Should().Be("customtransform");
+    }
+
+    [Fact]
+    public void AddTransformationNode_WithoutName_ShouldUseTypeName()
+    {
+        // Arrange
+        var builder = new PipelineBuilder();
+
+        // Act
+        var handle = builder.AddTransformationNode<TestModel, TestCustomTransformationNode>();
+
+        // Assert
+        handle.Id.Should().StartWith("testcustomtransformationnode");
+    }
+
+    [Fact]
+    public void AddTransformationNode_WithConfiguration_ShouldRegisterPreconfiguredInstance()
+    {
+        // Arrange
+        var builder = new PipelineBuilder();
+
+        // Act
+        var handle = builder.AddTransformationNode<TestModel, TestCustomTransformationNode>(
+            configure: n => n.Register(x => x.Name, name => name?.ToUpperInvariant() ?? string.Empty),
+            name: "customconfig");
+
+        // Assert
+        handle.Should().NotBeNull();
+        handle.Id.Should().Be("customconfig");
     }
 
     #endregion
@@ -779,13 +893,17 @@ public sealed class PipelineBuilderExtensionsTests
 
     private sealed class TestModel
     {
-        public string Name { get; set; } = string.Empty;
+        public string Name { get; } = string.Empty;
         public int Age { get; set; }
         public DateTime CreatedDate { get; set; }
         public IEnumerable<string>? Tags { get; set; }
     }
 
     private sealed class TestValidationNode : ValidationNode<string>
+    {
+    }
+
+    private sealed class TestCustomTransformationNode : PropertyTransformationNode<TestModel>
     {
     }
 
