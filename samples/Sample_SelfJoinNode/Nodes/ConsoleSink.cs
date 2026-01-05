@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 using NPipeline.DataFlow;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using Sample_SelfJoinNode;
 
 namespace Sample_SelfJoinNode.Nodes;
 
@@ -88,7 +87,7 @@ public class ConsoleSink<T> : SinkNode<T>
         var growthStr = comparison.RevenueGrowthPercent.HasValue
             ? $"{comparison.RevenueGrowthPercent.Value:+0.0;-0.0}%"
             : "N/A";
-        
+
         var unitsGrowthStr = comparison.UnitsGrowthPercent.HasValue
             ? $"{comparison.UnitsGrowthPercent.Value:+0.0;-0.0}%"
             : "N/A";

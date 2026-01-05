@@ -1,38 +1,52 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using Microsoft.Extensions.Logging;
+using NPipeline.Configuration;
+using NPipeline.DataFlow.Windowing;
 using NPipeline.Nodes;
-using NPipeline.Pipeline;
-using Sample_SelfJoinNode;
 
 namespace Sample_SelfJoinNode.Nodes;
 
 /// <summary>
 ///     Aggregation node that summarizes year-over-year comparisons by category.
-///     This node aggregates growth statistics for each product category.
+///     This node aggregates growth statistics for each product category using tumbling windows.
 /// </summary>
 public class CategoryAggregator : AggregateNode<YearOverYearComparison, string, CategorySummary>
 {
-    private readonly ILogger<CategoryAggregator>? _logger;
-
     /// <summary>
     ///     Initializes a new instance of the <see cref="CategoryAggregator" /> class.
+    ///     Uses 30-second tumbling windows for aggregation.
     /// </summary>
-    /// <param name="logger">The logger for diagnostic information.</param>
-    public CategoryAggregator(ILogger<CategoryAggregator>? logger = null)
+    public CategoryAggregator()
+        : base(new AggregateNodeConfiguration<YearOverYearComparison>(
+            WindowAssigner.Tumbling(TimeSpan.FromSeconds(30))))
     {
-        _logger = logger;
     }
 
-    /// <inheritdoc />
-    protected override string GetKey(YearOverYearComparison item) => item.CurrentYearSales.Category;
+    /// <summary>
+    ///     Extracts the category key from a year-over-year comparison for grouping.
+    /// </summary>
+    /// <param name="item">The year-over-year comparison item.</param>
+    /// <returns>The category name for grouping.</returns>
+    public override string GetKey(YearOverYearComparison item)
+    {
+        return item.CurrentYearSales.Category;
+    }
 
-    /// <inheritdoc />
-    protected override CategorySummary CreateAccumulator(string key) => new(key, 0, 0, 0, 0, 0m);
+    /// <summary>
+    ///     Creates an initial accumulator for a new category group.
+    /// </summary>
+    /// <returns>A new CategorySummary with default values.</returns>
+    public override CategorySummary CreateAccumulator()
+    {
+        return new CategorySummary(string.Empty, 0, 0, 0, 0, 0m);
+    }
 
-    /// <inheritdoc />
-    protected override CategorySummary Accumulate(CategorySummary accumulator, YearOverYearComparison item)
+    /// <summary>
+    ///     Accumulates a year-over-year comparison into the category summary.
+    /// </summary>
+    /// <param name="accumulator">The current category summary.</param>
+    /// <param name="item">The year-over-year comparison to add.</param>
+    /// <returns>The updated category summary.</returns>
+    public override CategorySummary Accumulate(CategorySummary accumulator, YearOverYearComparison item)
     {
         var growingProducts = accumulator.GrowingProducts;
         var decliningProducts = accumulator.DecliningProducts;
@@ -42,9 +56,7 @@ public class CategoryAggregator : AggregateNode<YearOverYearComparison, string, 
 
         // Determine growth status
         if (item.RevenueGrowthPercent is null)
-        {
             newProducts++;
-        }
         else if (item.RevenueGrowthPercent > 0)
         {
             growingProducts++;
@@ -63,25 +75,17 @@ public class CategoryAggregator : AggregateNode<YearOverYearComparison, string, 
 
         count++;
 
-        var avgGrowth = count > 0 ? totalGrowth / count : 0m;
+        var avgGrowth = count > 0
+            ? totalGrowth / count
+            : 0m;
 
-        return accumulator with
-        {
-            TotalProducts = count,
-            GrowingProducts = growingProducts,
-            DecliningProducts = decliningProducts,
-            NewProducts = newProducts,
-            AverageRevenueGrowth = avgGrowth
-        };
-    }
-
-    /// <inheritdoc />
-    protected override CategorySummary Complete(string key, CategorySummary accumulator)
-    {
-        _logger?.LogInformation(
-            "CategoryAggregator: Completed aggregation for category {Category} - {TotalProducts} products, {GrowingProducts} growing, {DecliningProducts} declining, {NewProducts} new",
-            key, accumulator.TotalProducts, accumulator.GrowingProducts, accumulator.DecliningProducts, accumulator.NewProducts);
-
-        return accumulator;
+        return new CategorySummary(
+            item.CurrentYearSales.Category,
+            count,
+            growingProducts,
+            decliningProducts,
+            newProducts,
+            avgGrowth
+        );
     }
 }

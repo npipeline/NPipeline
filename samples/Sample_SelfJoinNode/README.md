@@ -1,6 +1,7 @@
 # Sample: Self Join Node
 
-This sample demonstrates how to use NPipeline's `AddSelfJoin` extension method to join a data stream with itself. It showcases year-over-year sales comparison as a practical, real-world use case for self-join operations.
+This sample demonstrates how to use NPipeline's `AddSelfJoin` extension method to join a data stream with itself. It showcases year-over-year sales comparison
+as a practical, real-world use case for self-join operations.
 
 ## Overview
 
@@ -72,12 +73,12 @@ SalesDataSource ──┬──► CurrentYearFilter ──┐
 The self-join operation works as follows:
 
 1. **Stream Splitting**: The source stream is split into two parallel streams:
-   - Current year data (left side of join)
-   - Previous year data (right side of join)
+    - Current year data (left side of join)
+    - Previous year data (right side of join)
 
 2. **Type Wrapping**: Internally, items are wrapped to distinguish left and right inputs:
-   - `LeftWrapper<SalesData>` for current year data
-   - `RightWrapper<SalesData>` for previous year data
+    - `LeftWrapper<SalesData>` for current year data
+    - `RightWrapper<SalesData>` for previous year data
 
 3. **Key Extraction**: The join key (ProductId) is extracted from both inputs
 
@@ -339,7 +340,7 @@ public class CustomGrowthAggregator : AggregateNode<YearOverYearComparison, stri
 {
     protected override string GetKey(YearOverYearComparison item) => item.CurrentYearSales.Category;
 
-    protected override CustomGrowthMetric CreateAccumulator(string key) => 
+    protected override CustomGrowthMetric CreateAccumulator(string key) =>
         new(key, 0, 0m, 0m, 0);
 
     protected override CustomGrowthMetric Accumulate(CustomGrowthMetric accumulator, YearOverYearComparison item)
@@ -362,46 +363,46 @@ public class CustomGrowthAggregator : AggregateNode<YearOverYearComparison, stri
 ## Best Practices
 
 1. **Choose the Right Join Type**: Select based on business requirements and data quality
-   - Use Inner Join for strict comparisons
-   - Use LeftOuter Join when current year completeness is critical
-   - Use RightOuter Join for historical analysis
-   - Use FullOuter Join for comprehensive data preservation
+    - Use Inner Join for strict comparisons
+    - Use LeftOuter Join when current year completeness is critical
+    - Use RightOuter Join for historical analysis
+    - Use FullOuter Join for comprehensive data preservation
 
 2. **Handle Nulls Gracefully**: Implement proper null handling for unmatched items
-   - Use nullable types for optional previous year data
-   - Provide meaningful status indicators (e.g., "New Product")
-   - Consider default values for calculations
+    - Use nullable types for optional previous year data
+    - Provide meaningful status indicators (e.g., "New Product")
+    - Consider default values for calculations
 
 3. **Monitor Memory Usage**: Be aware of memory consumption with large datasets
-   - Self-join nodes buffer unmatched items in memory
-   - Consider data volume and key cardinality
-   - Use appropriate join types to minimize buffering
+    - Self-join nodes buffer unmatched items in memory
+    - Consider data volume and key cardinality
+    - Use appropriate join types to minimize buffering
 
 4. **Optimize Key Selection**: Use efficient join keys for better performance
-   - Prefer low-cardinality keys
-   - Ensure keys are indexed if using external data sources
-   - Consider composite keys for complex matching
+    - Prefer low-cardinality keys
+    - Ensure keys are indexed if using external data sources
+    - Consider composite keys for complex matching
 
 5. **Test with Realistic Data**: Use representative data volumes and distributions
-   - Include edge cases (new products, discontinued products)
-   - Test with various growth patterns
-   - Verify aggregation accuracy
+    - Include edge cases (new products, discontinued products)
+    - Test with various growth patterns
+    - Verify aggregation accuracy
 
 ## Troubleshooting
 
 ### Common Issues
 
 - **Memory Pressure**: Large datasets or high-cardinality keys
-  - Solution: Use appropriate join types, consider data partitioning
+    - Solution: Use appropriate join types, consider data partitioning
 
 - **Performance Issues**: Poor key distribution or stream ordering
-  - Solution: Optimize key selection, consider pre-sorting
+    - Solution: Optimize key selection, consider pre-sorting
 
 - **Data Quality**: Unexpected null values or missing matches
-  - Solution: Implement proper null handling, validate input data
+    - Solution: Implement proper null handling, validate input data
 
 - **Type Erasure**: Confusion about left vs right inputs
-  - Solution: Understand the internal wrapper types, use clear variable names
+    - Solution: Understand the internal wrapper types, use clear variable names
 
 ### Debugging Tips
 
@@ -419,9 +420,12 @@ public class CustomGrowthAggregator : AggregateNode<YearOverYearComparison, stri
 
 ## Summary
 
-This sample demonstrates the power and flexibility of NPipeline's self-join functionality through a practical year-over-year sales analysis scenario. The `AddSelfJoin` extension method provides a clean, type-safe API for joining a data stream with itself, solving the "type erasure" issue that would otherwise complicate such operations.
+This sample demonstrates the power and flexibility of NPipeline's self-join functionality through a practical year-over-year sales analysis scenario. The
+`AddSelfJoin` extension method provides a clean, type-safe API for joining a data stream with itself, solving the "type erasure" issue that would otherwise
+complicate such operations.
 
 Key takeaways:
+
 - Self-joins are essential for temporal data analysis and comparisons
 - The AddSelfJoin extension method provides a convenient, type-safe API
 - Different join types serve different business requirements

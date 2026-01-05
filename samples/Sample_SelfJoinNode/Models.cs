@@ -1,5 +1,3 @@
-using System;
-
 namespace Sample_SelfJoinNode;
 
 /// <summary>
@@ -24,7 +22,9 @@ public sealed record SalesData(
     /// <summary>
     ///     Gets the average price per unit.
     /// </summary>
-    public decimal AveragePrice => UnitsSold > 0 ? Revenue / UnitsSold : 0m;
+    public decimal AveragePrice => UnitsSold > 0
+        ? Revenue / UnitsSold
+        : 0m;
 }
 
 /// <summary>
@@ -69,7 +69,7 @@ public sealed record YearOverYearComparison(
             if (PreviousYearSales is null || PreviousYearSales.Revenue == 0)
                 return null;
 
-            return ((CurrentYearSales.Revenue - PreviousYearSales.Revenue) / PreviousYearSales.Revenue) * 100m;
+            return (CurrentYearSales.Revenue - PreviousYearSales.Revenue) / PreviousYearSales.Revenue * 100m;
         }
     }
 
@@ -84,7 +84,7 @@ public sealed record YearOverYearComparison(
             if (PreviousYearSales is null || PreviousYearSales.UnitsSold == 0)
                 return null;
 
-            return ((CurrentYearSales.UnitsSold - PreviousYearSales.UnitsSold) / (decimal)PreviousYearSales.UnitsSold) * 100m;
+            return (CurrentYearSales.UnitsSold - PreviousYearSales.UnitsSold) / (decimal)PreviousYearSales.UnitsSold * 100m;
         }
     }
 
@@ -96,7 +96,7 @@ public sealed record YearOverYearComparison(
         : CurrentYearSales.Revenue - PreviousYearSales.Revenue;
 
     /// <summary>
-     ///     Gets the units sold difference between years.
+    ///     Gets the units sold difference between years.
     /// </summary>
     public int UnitsDifference => PreviousYearSales is null
         ? CurrentYearSales.UnitsSold
@@ -112,7 +112,7 @@ public sealed record YearOverYearComparison(
         > 0 => "Moderate Growth",
         0 => "Stable",
         < -20 => "Significant Decline",
-        _ => "Decline"
+        _ => "Decline",
     };
 }
 

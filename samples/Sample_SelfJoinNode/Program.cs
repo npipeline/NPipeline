@@ -83,7 +83,7 @@ public sealed class Program
             Console.WriteLine();
 
             // Create pipeline with specific join type
-            var pipeline = new SelfJoinPipeline(joinType, 2024);
+            var pipeline = new SelfJoinPipeline(joinType);
             Console.WriteLine($"Join Type: {joinType}");
             Console.WriteLine(pipeline.GetJoinTypeDescription());
             Console.WriteLine($"Comparison Year: {pipeline.GetComparisonYear()}");
@@ -96,9 +96,9 @@ public sealed class Program
             var parameters = new Dictionary<string, object>
             {
                 ["JoinType"] = joinType,
-                ["ComparisonYear"] = 2024
+                ["ComparisonYear"] = 2024,
             };
-            
+
             await host.Services.RunPipelineAsync<SelfJoinPipeline>(parameters, CancellationToken.None);
 
             Console.WriteLine();

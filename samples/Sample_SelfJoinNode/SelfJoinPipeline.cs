@@ -1,6 +1,12 @@
+using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
+using NPipeline;
+using NPipeline.DataFlow;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using NPipeline.SelfJoinExtensions;
 using Sample_SelfJoinNode.Nodes;
 
 namespace Sample_SelfJoinNode;
@@ -19,8 +25,8 @@ namespace Sample_SelfJoinNode;
 /// </remarks>
 public class SelfJoinPipeline : IPipelineDefinition
 {
-    private JoinType _joinType;
     private int _comparisonYear;
+    private JoinType _joinType;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="SelfJoinPipeline" /> class.
@@ -64,27 +70,22 @@ public class SelfJoinPipeline : IPipelineDefinition
         if (context.Parameters.TryGetValue("ComparisonYear", out var yearObj) && yearObj is int year)
             _comparisonYear = year;
 
-        // Add source node for sales data
-        var salesSource = builder.AddSource<SalesDataSource, SalesData>("sales-source");
+        // Add source node for current year data (left side of join)
+        var currentYearSource = builder.AddSource<CurrentYearDataSource, SalesData>("current-year-source");
 
-        // Add transform nodes to split data by year
-        // Current year data (left side of join)
-        var currentYearFilter = builder.AddTransform<CurrentYearFilter, SalesData, SalesData>("current-year-filter");
-        
-        // Previous year data (right side of join)
-        var previousYearFilter = builder.AddTransform<PreviousYearFilter, SalesData, SalesData>("previous-year-filter");
+        // Add source node for previous year data (right side of join)
+        var previousYearSource = builder.AddSource<PreviousYearDataSource, SalesData>("previous-year-source");
 
         // Add self-join node using the AddSelfJoin extension method
         // This joins the same type (SalesData) with itself based on ProductId
-        var selfJoin = builder.AddSelfJoin<
-            SalesData,
-            SalesData,
-            int,
-            YearOverYearComparison
-        >(
+        var selfJoin = builder.AddSelfJoin(
+            currentYearSource,
+            previousYearSource,
             "self-join",
-            _joinType,
-            (left, right) => new YearOverYearComparison(left, right)
+            (current, previous) => new YearOverYearComparison(current, previous),
+            sales => sales.ProductId,
+            sales => sales.ProductId,
+            _joinType
         );
 
         // Add aggregation node for category summaries
@@ -96,23 +97,12 @@ public class SelfJoinPipeline : IPipelineDefinition
 
         // Connect the nodes in the pipeline flow
 
-        // Connect source to both filter transforms
-        builder.Connect(salesSource, currentYearFilter);
-        builder.Connect(salesSource, previousYearFilter);
-
-        // Connect filters to self-join inputs
-        // Current year data connects to first input (left side)
-        builder.Connect(currentYearFilter, selfJoin);
-
-        // Previous year data connects to second input (right side)
-        builder.Connect(previousYearFilter, selfJoin);
-
         // Connect self-join output to aggregation
-        builder.Connect<YearOverYearComparison>(selfJoin, categoryAggregator);
+        builder.Connect(selfJoin, categoryAggregator);
 
         // Connect outputs to sinks
-        builder.Connect<YearOverYearComparison>(selfJoin, comparisonSink);
-        builder.Connect<CategorySummary>(categoryAggregator, categorySink);
+        builder.Connect(selfJoin, comparisonSink);
+        builder.Connect(categoryAggregator, categorySink);
     }
 
     /// <summary>
@@ -177,9 +167,12 @@ This implementation showcases production-ready patterns for:
         return _joinType switch
         {
             JoinType.Inner => "Inner Join: Only products with data in both years will be compared.",
-            JoinType.LeftOuter => "Left Outer Join: All products in the current year will be included. New products (no previous year data) will show 'New Product' status.",
-            JoinType.RightOuter => "Right Outer Join: All products in the previous year will be included. Discontinued products (no current year data) will be included.",
-            JoinType.FullOuter => "Full Outer Join: All products from both years will be included, with appropriate handling for new and discontinued products.",
+            JoinType.LeftOuter =>
+                "Left Outer Join: All products in the current year will be included. New products (no previous year data) will show 'New Product' status.",
+            JoinType.RightOuter =>
+                "Right Outer Join: All products in the previous year will be included. Discontinued products (no current year data) will be included.",
+            JoinType.FullOuter =>
+                "Full Outer Join: All products from both years will be included, with appropriate handling for new and discontinued products.",
             _ => $"Unknown Join Type: {_joinType}",
         };
     }
@@ -188,81 +181,144 @@ This implementation showcases production-ready patterns for:
     ///     Gets the comparison year being used.
     /// </summary>
     /// <returns>The comparison year.</returns>
-    public int GetComparisonYear() => _comparisonYear;
+    public int GetComparisonYear()
+    {
+        return _comparisonYear;
+    }
 }
 
 /// <summary>
-///     Transform node that filters sales data for the current (comparison) year.
+///     Source node that generates sales data for the current (comparison) year.
 ///     This provides the left side of the self-join.
 /// </summary>
-public class CurrentYearFilter : TransformNode<SalesData, SalesData>
+public class CurrentYearDataSource : SourceNode<SalesData>
 {
-    private int _comparisonYear;
+    private int _comparisonYear = 2024;
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="CurrentYearFilter" /> class.
+    ///     Initializes a new instance of the <see cref="CurrentYearDataSource" /> class.
     /// </summary>
-    public CurrentYearFilter()
+    public CurrentYearDataSource()
     {
-        _comparisonYear = 2024;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    ///     Generates sales data for the comparison year.
+    /// </summary>
     public override IDataPipe<SalesData> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         // Read comparison year from context if available
         if (context.Parameters.TryGetValue("ComparisonYear", out var yearObj) && yearObj is int year)
             _comparisonYear = year;
 
-        return base.Initialize(context, cancellationToken);
-    }
+        // Generate data from the underlying SalesDataSource and filter to current year
+        var salesSource = new SalesDataSource();
+        var allSalesData = salesSource.Initialize(context, cancellationToken);
 
-    /// <inheritdoc />
-    protected override SalesData Transform(SalesData input, CancellationToken cancellationToken)
-    {
-        // Only pass through data for the comparison year
-        if (input.Year == _comparisonYear)
-            return input;
-
-        // Return null to filter out other years (handled by the pipeline)
-        throw new InvalidOperationException($"Filtering out data from year {input.Year}");
+        // Create filtered pipe that only returns current year data
+        return new YearFilteredDataPipe(allSalesData, _comparisonYear);
     }
 }
 
 /// <summary>
-///     Transform node that filters sales data for the previous year.
+///     Source node that generates sales data for the previous year.
 ///     This provides the right side of the self-join.
 /// </summary>
-public class PreviousYearFilter : TransformNode<SalesData, SalesData>
+public class PreviousYearDataSource : SourceNode<SalesData>
 {
-    private int _comparisonYear;
+    private int _comparisonYear = 2024;
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="PreviousYearFilter" /> class.
+    ///     Initializes a new instance of the <see cref="PreviousYearDataSource" /> class.
     /// </summary>
-    public PreviousYearFilter()
+    public PreviousYearDataSource()
     {
-        _comparisonYear = 2024;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    ///     Generates sales data for the previous year.
+    /// </summary>
     public override IDataPipe<SalesData> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         // Read comparison year from context if available
         if (context.Parameters.TryGetValue("ComparisonYear", out var yearObj) && yearObj is int year)
             _comparisonYear = year;
 
-        return base.Initialize(context, cancellationToken);
+        // Generate data from the underlying SalesDataSource and filter to previous year
+        var salesSource = new SalesDataSource();
+        var allSalesData = salesSource.Initialize(context, cancellationToken);
+
+        // Create filtered pipe that only returns previous year data
+        return new YearFilteredDataPipe(allSalesData, _comparisonYear - 1);
+    }
+}
+
+/// <summary>
+///     Data pipe that filters sales data by year.
+/// </summary>
+public class YearFilteredDataPipe : IDataPipe<SalesData>
+{
+    private readonly IDataPipe<SalesData> _source;
+    private readonly int _targetYear;
+
+    public YearFilteredDataPipe(IDataPipe<SalesData> source, int targetYear)
+    {
+        _source = source;
+        _targetYear = targetYear;
     }
 
-    /// <inheritdoc />
-    protected override SalesData Transform(SalesData input, CancellationToken cancellationToken)
-    {
-        // Only pass through data for the previous year
-        if (input.Year == _comparisonYear - 1)
-            return input;
+    public string StreamName => $"{_source.StreamName}_filtered_{_targetYear}";
 
-        // Return null to filter out other years (handled by the pipeline)
-        throw new InvalidOperationException($"Filtering out data from year {input.Year}");
+    public Type GetDataType()
+    {
+        return typeof(SalesData);
+    }
+
+    public IAsyncEnumerable<object?> ToAsyncEnumerable(CancellationToken cancellationToken = default)
+    {
+        return ReadAsyncInternal(cancellationToken);
+
+        async IAsyncEnumerable<object?> ReadAsyncInternal([EnumeratorCancellation] CancellationToken ct)
+        {
+            await foreach (var item in _source.WithCancellation(ct))
+            {
+                if (item.Year == _targetYear)
+                    yield return item;
+            }
+        }
+    }
+
+    public IAsyncEnumerator<SalesData> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+    {
+        return ReadAsyncInternal(cancellationToken).GetAsyncEnumerator(cancellationToken);
+
+        IAsyncEnumerable<SalesData> ReadAsyncInternal(CancellationToken ct)
+        {
+            return IterateAsync(ct);
+        }
+
+        async IAsyncEnumerable<SalesData> IterateAsync([EnumeratorCancellation] CancellationToken ct)
+        {
+            await foreach (var item in _source.WithCancellation(ct))
+            {
+                if (item.Year == _targetYear)
+                    yield return item;
+            }
+        }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        GC.SuppressFinalize(this);
+        return _source.DisposeAsync();
+    }
+
+    public async IAsyncEnumerable<SalesData> ReadAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await foreach (var item in _source.WithCancellation(cancellationToken))
+        {
+            if (item.Year == _targetYear)
+                yield return item;
+        }
     }
 }
