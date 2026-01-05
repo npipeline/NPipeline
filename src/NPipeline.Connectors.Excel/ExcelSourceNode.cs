@@ -300,9 +300,11 @@ public sealed class ExcelSourceNode<T> : SourceNode<T>
                     return b;
 
                 if (value is string s)
+                {
                     return bool.TryParse(s, out var boolResult)
                         ? boolResult
                         : false;
+                }
 
                 return Convert.ToBoolean(value);
             }
