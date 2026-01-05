@@ -76,6 +76,13 @@ Provides CSV specific connectors.
 dotnet add package NPipeline.Connectors.Csv
 ```
 
+**9. NPipeline.Connectors.Excel (Optional)**
+Provides Excel specific connectors for reading and writing XLS and XLSX files.
+
+```bash
+dotnet add package NPipeline.Connectors.Excel
+```
+
 ### Using Visual Studio NuGet Package Manager
 
 1. Right-click on your project in the Solution Explorer and select "Manage NuGet Packages...".
@@ -88,10 +95,11 @@ dotnet add package NPipeline.Connectors.Csv
 The following table shows the dependencies for each NPipeline package:
 
 | Package | Dependencies |
-|---------|--------------|
+| --- | --- |
 | NPipeline.Extensions.DependencyInjection | Microsoft.Extensions.DependencyInjection.Abstractions |
 | NPipeline.Connectors | Microsoft.Extensions.DependencyInjection.Abstractions |
 | NPipeline.Connectors.Csv | CsvHelper |
+| NPipeline.Connectors.Excel | ExcelDataReader, DocumentFormat.OpenXml |
 | NPipeline.Extensions.Parallelism | System.Threading.Tasks.DataFlow |
 
 ## Setting Up Dependency Injection
