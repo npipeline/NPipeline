@@ -56,21 +56,6 @@ builder.AddFiltering<Order>()
     .Where(x => x.Status != OrderStatus.Cancelled, "Order must not be cancelled");
 ```
 
-## Property-Based Filtering
-
-Filter based on a specific property with built-in error messages:
-
-```csharp
-// Filter by property value
-builder.AddFiltering<Order>()
-    .WhereProperty(x => x.Status, status => status == OrderStatus.Active, "Status must be Active")
-    .WhereProperty(x => x.Amount, amount => amount > 100, "Amount must exceed $100");
-
-// Simpler than writing the full predicate
-builder.AddFiltering<Person>()
-    .WhereProperty(x => x.Age, age => age >= 18, "Must be 18 or older");
-```
-
 ## Complex Predicates
 
 Use complex conditional logic:

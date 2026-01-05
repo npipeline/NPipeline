@@ -1,4 +1,3 @@
-using System.Linq.Expressions;
 using NPipeline.Execution;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -77,34 +76,6 @@ public sealed class FilteringNode<T> : TransformNode<T, T>
         ArgumentNullException.ThrowIfNull(predicate);
         ArgumentNullException.ThrowIfNull(reasonMessage);
         _rules.Add(new Rule(predicate, _ => reasonMessage));
-        return this;
-    }
-
-    /// <summary>
-    ///     Filters items using a property-based predicate.
-    /// </summary>
-    /// <typeparam name="TProp">The property type.</typeparam>
-    /// <param name="propertySelector">Expression selecting the property.</param>
-    /// <param name="predicate">Predicate to test the property value.</param>
-    /// <param name="reason">Optional rejection reason.</param>
-    /// <returns>This node for method chaining.</returns>
-    public FilteringNode<T> WhereProperty<TProp>(
-        Expression<Func<T, TProp>> propertySelector,
-        Func<TProp, bool> predicate,
-        string? reason = null)
-    {
-        ArgumentNullException.ThrowIfNull(propertySelector);
-        ArgumentNullException.ThrowIfNull(predicate);
-
-        var accessor = PropertyAccessor.Create(propertySelector);
-        var propertyGetter = accessor.Getter;
-        var propertyName = accessor.MemberName;
-        var defaultReason = $"Property {propertyName} did not meet criteria";
-
-        _rules.Add(new Rule(
-            item => predicate(propertyGetter(item)),
-            _ => reason ?? defaultReason));
-
         return this;
     }
 
