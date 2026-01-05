@@ -654,4 +654,4 @@ var source = new ExcelSourceNode<MixedDataRecord>(
 
 - **[NPipeline Extensions Index](../.)**: Return to the extensions overview.
 - **[CSV Connector](./csv.md)**: Learn about working with CSV files.
-- **[Storage Abstraction](../concepts/storage-abstraction.md)**: Understand the storage layer architecture.
+- **[Storage Provider Interface](./storage-provider.md)**: Understand the storage layer architecture.
