@@ -28,6 +28,10 @@ The following connectors are available:
 
 - **[CSV](./csv.md)**: Read from and write to Comma-Separated Values (CSV) files.
   - Works with any storage backend via the `IStorageProvider` abstraction
+- **[Excel](./excel.md)**: Read from and write to Excel files (XLS and XLSX formats).
+  - Supports both legacy XLS (binary) and modern XLSX (Open XML) formats
+  - Configurable sheet selection, header handling, and type detection
+  - Works with any storage backend via the `IStorageProvider` abstraction
 
 ## General Usage Pattern
 
@@ -55,5 +59,6 @@ Explore the documentation for each specific connector to learn about its install
 ## Next Steps
 
 - **[CSV Connector](csv.md)**: Learn how to read from and write to CSV files
+- **[Excel Connector](excel.md)**: Learn how to read from and write to Excel files (XLS and XLSX)
 - **[Common Patterns](../core-concepts/common-patterns.md)**: See connectors in practical examples
 - **[Installation](../getting-started/installation.md)**: Review installation options for connector packages

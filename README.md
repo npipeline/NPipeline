@@ -178,6 +178,7 @@ functionality and features like enhanced parallelism, simplifying testing workfl
 | **NPipeline.Extensions.Testing**             | Testing utilities and extensions for assertion libraries like FluentAssertions and AwesomeAssertions |
 | **NPipeline.Connectors**                     | Core abstractions for data format/storage decoupling                                                 |
 | **NPipeline.Connectors.Csv**                 | CSV source and sink nodes                                                                            |
+| **NPipeline.Connectors.Excel**               | Excel source and sink nodes for XLS and XLSX files                                                   |
 
 ... and more to come.
 

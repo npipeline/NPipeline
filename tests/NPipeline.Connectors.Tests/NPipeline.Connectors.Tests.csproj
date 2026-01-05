@@ -36,7 +36,12 @@
         <ProjectReference Include="..\..\src\NPipeline.Extensions.DependencyInjection\NPipeline.Extensions.DependencyInjection.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline\NPipeline.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Connectors.Csv\NPipeline.Connectors.Csv.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.Connectors.Excel\NPipeline.Connectors.Excel.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Connectors\NPipeline.Connectors.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Excel\" />
     </ItemGroup>
 
 </Project>
