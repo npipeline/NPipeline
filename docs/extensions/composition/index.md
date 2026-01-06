@@ -380,4 +380,4 @@ This extension is part of NPipeline and is licensed under the MIT License.
 
 ## Contributing
 
-Contributions are welcome! Please see the [contribution guidelines](../../../CONTRIBUTING.md).
+Contributions are welcome! Please see the [contribution guidelines](pathname:///CONTRIBUTING.md).

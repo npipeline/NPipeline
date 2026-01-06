@@ -21,6 +21,8 @@ This section details the officially supported extensions and how to leverage the
 
 * **[Testing](testing/index.md)**: Utilities and helpers for writing comprehensive and efficient tests for your pipelines. Includes in-memory source/sink nodes, pipeline builder extensions, and assertion libraries.
 
+* **[Composition](composition/index.md)**: Create hierarchical, modular pipelines by treating entire pipelines as reusable transform nodes. Enables breaking complex workflows into smaller, well-tested building blocks with full type safety and context control.
+
 * **[Connectors](../connectors/index.md)**: Pre-built source and sink nodes for common data sources and destinations (e.g., CSV files).
 
 ## Extension Packages
@@ -31,6 +33,7 @@ This section details the officially supported extensions and how to leverage the
 |----------|-------------|---------------|
 | [`NPipeline.Extensions.Nodes`](../../src/NPipeline.Extensions.Nodes/NPipeline.Extensions.Nodes.csproj) | Pre-built data processing nodes | String/numeric/datetime cleansing, validation, filtering, type conversion |
 | [`NPipeline.Extensions.DependencyInjection`](../../../src/NPipeline.Extensions.DependencyInjection/NPipeline.Extensions.DependencyInjection.csproj) | DI container integration | Constructor injection, service lifetime management, `RunPipelineAsync()` extension |
+| [`NPipeline.Extensions.Composition`](../../../src/NPipeline.Extensions.Composition/NPipeline.Extensions.Composition.csproj) | Hierarchical pipeline composition | Sub-pipelines as nodes, modular design, context control, unlimited nesting |
 | [`NPipeline.Extensions.Parallelism`](../../../src/NPipeline.Extensions.Parallelism/NPipeline.Extensions.Parallelism.csproj) | Parallel processing capabilities | `ParallelExecutionStrategy`, `WithParallelOptions()`, queue policies |
 | [`NPipeline.Extensions.Testing`](../../../src/NPipeline.Extensions.Testing/NPipeline.Extensions.Testing.csproj) | Testing utilities | In-memory nodes, pipeline builder extensions, test context helpers |
 
@@ -53,6 +56,9 @@ dotnet add package NPipeline.Extensions.Nodes
 
 # Dependency Injection
 dotnet add package NPipeline.Extensions.DependencyInjection
+
+# Composition
+dotnet add package NPipeline.Extensions.Composition
 
 # Parallelism
 dotnet add package NPipeline.Extensions.Parallelism
