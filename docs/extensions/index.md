@@ -23,6 +23,8 @@ This section details the officially supported extensions and how to leverage the
 
 * **[Composition](composition/index.md)**: Create hierarchical, modular pipelines by treating entire pipelines as reusable transform nodes. Enables breaking complex workflows into smaller, well-tested building blocks with full type safety and context control.
 
+* **[Observability](observability.md)**: Comprehensive metrics collection and monitoring capabilities for NPipeline pipelines. Track node and pipeline performance, throughput, memory usage, retries, and errors with built-in logging sinks and custom metrics sink support.
+
 * **[Connectors](../connectors/index.md)**: Pre-built source and sink nodes for common data sources and destinations (e.g., CSV files).
 
 ## Extension Packages
@@ -36,6 +38,7 @@ This section details the officially supported extensions and how to leverage the
 | [`NPipeline.Extensions.Composition`](../../../src/NPipeline.Extensions.Composition/NPipeline.Extensions.Composition.csproj) | Hierarchical pipeline composition | Sub-pipelines as nodes, modular design, context control, unlimited nesting |
 | [`NPipeline.Extensions.Parallelism`](../../../src/NPipeline.Extensions.Parallelism/NPipeline.Extensions.Parallelism.csproj) | Parallel processing capabilities | `ParallelExecutionStrategy`, `WithParallelOptions()`, queue policies |
 | [`NPipeline.Extensions.Testing`](../../../src/NPipeline.Extensions.Testing/NPipeline.Extensions.Testing.csproj) | Testing utilities | In-memory nodes, pipeline builder extensions, test context helpers |
+| [`NPipeline.Extensions.Observability`](../../../src/NPipeline.Extensions.Observability/NPipeline.Extensions.Observability.csproj) | Metrics collection and monitoring | Node/pipeline metrics, throughput tracking, memory/CPU monitoring, custom sinks |
 
 ### Assertion Libraries
 
@@ -66,6 +69,9 @@ dotnet add package NPipeline.Extensions.Parallelism
 # Testing
 dotnet add package NPipeline.Extensions.Testing
 
+# Observability
+dotnet add package NPipeline.Extensions.Observability
+
 # Testing with AwesomeAssertions
 dotnet add package NPipeline.Extensions.Testing.AwesomeAssertions
 dotnet add package AwesomeAssertions
@@ -93,6 +99,7 @@ using NPipeline;
 using NPipeline.Extensions.Nodes;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Parallelism;
+using NPipeline.Extensions.Observability.DependencyInjection;
 
 // Nodes setup
 var builder = new PipelineBuilder();
@@ -106,6 +113,9 @@ builder.AddStringValidation<User>(x => x.Email)
 // DI setup
 var services = new ServiceCollection();
 services.AddNPipeline(Assembly.GetExecutingAssembly());
+
+// Observability setup
+services.AddNPipelineObservability();
 
 // Parallel pipeline definition
 public class MyParallelPipeline : IPipelineDefinition
@@ -131,7 +141,7 @@ public class MyParallelPipeline : IPipelineDefinition
 ## Best Practices
 
 * **Install only what you need**: Each extension is a separate package to keep your dependencies minimal
-* **Use the right tool for the job**: Leverage testing extensions for unit tests, parallelism for performance, DI for enterprise applications
+* **Use the right tool for the job**: Leverage testing extensions for unit tests, parallelism for performance, DI for enterprise applications, observability for production monitoring
 * **Combine extensions**: Extensions are designed to work together seamlessly
 * **Check compatibility**: Ensure extension versions are compatible with your NPipeline core version
 
@@ -140,4 +150,5 @@ public class MyParallelPipeline : IPipelineDefinition
 * **[Dependency Injection](dependency-injection.md)**: Learn about constructor injection and service lifetime management
 * **[Parallelism](parallelism.md)**: Explore parallel processing capabilities and configuration options
 * **[Testing](testing/index.md)**: Discover comprehensive testing utilities and assertion libraries
+* **[Observability](observability.md)**: Learn about metrics collection and monitoring for production pipelines
 * **[Connectors](../connectors/index.md)**: Explore pre-built connectors for external systems

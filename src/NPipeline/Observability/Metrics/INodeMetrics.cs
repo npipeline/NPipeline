@@ -66,6 +66,11 @@ public interface INodeMetrics
     double? ThroughputItemsPerSec { get; }
 
     /// <summary>
+    ///     The average time spent per processed item in milliseconds.
+    /// </summary>
+    double? AverageItemProcessingMs { get; }
+
+    /// <summary>
     ///     The thread ID that primarily processed this node.
     /// </summary>
     int? ThreadId { get; }
