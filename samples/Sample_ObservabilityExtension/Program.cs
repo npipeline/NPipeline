@@ -27,6 +27,10 @@ async Task RunPipelineAsync()
                 // - IObservabilityCollector (scoped)
                 // - IExecutionObserver (scoped, connected to the collector)
                 // - IObservablePipelineContextFactory (scoped, for creating contexts with observability)
+                //
+                // By default, memory metrics are disabled for optimal performance. Enable them with:
+                // services.AddNPipelineObservability(ObservabilityExtensionOptions.WithMemoryMetrics);
+                // or: services.AddNPipelineObservability(new ObservabilityExtensionOptions { EnableMemoryMetrics = true });
                 _ = services.AddNPipelineObservability();
             })
             .Build();

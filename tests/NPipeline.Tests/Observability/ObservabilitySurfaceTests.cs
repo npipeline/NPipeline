@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Threading.Tasks;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.Branching;
 using NPipeline.Execution;
@@ -22,7 +23,7 @@ public sealed class ObservabilitySurfaceTests
     }
 
     [Fact]
-    public void PipelineComplete_EmitsBranchMetrics()
+    public async Task PipelineComplete_EmitsBranchMetrics()
     {
         var surface = new ObservabilitySurface();
         var ctx = PipelineContext.Default;
@@ -36,16 +37,16 @@ public sealed class ObservabilitySurfaceTests
             .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
             .Build();
 
-        surface.CompletePipeline<TestDefinition>(ctx, graph, act);
+        await surface.CompletePipeline<TestDefinition>(ctx, graph, act);
     }
 
     [Fact]
-    public void PipelineFail_RecordsException()
+    public async Task PipelineFail_RecordsException()
     {
         var surface = new ObservabilitySurface();
         var ctx = PipelineContext.Default;
         var act = surface.BeginPipeline<TestDefinition>(ctx);
-        surface.FailPipeline<TestDefinition>(ctx, new InvalidOperationException("boom"), act);
+        await surface.FailPipeline<TestDefinition>(ctx, new InvalidOperationException("boom"), act);
     }
 
     [Fact]
@@ -64,7 +65,14 @@ public sealed class ObservabilitySurfaceTests
             new NodeLineageConfig());
 
         var inst = new DummyNode();
-        var scope = surface.BeginNode(ctx, def, inst);
+
+        var graph = PipelineGraphBuilder.Create()
+            .WithNodes(ImmutableList<NodeDefinition>.Empty)
+            .WithEdges(ImmutableList<Edge>.Empty)
+            .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
+            .Build();
+
+        var scope = surface.BeginNode(ctx, graph, def, inst);
         var completed = surface.CompleteNodeSuccess(ctx, scope);
         Assert.Single(observer.Started);
         Assert.Single(observer.Completed);
@@ -87,7 +95,14 @@ public sealed class ObservabilitySurfaceTests
             new NodeLineageConfig());
 
         var inst = new DummyNode();
-        var scope = surface.BeginNode(ctx, def, inst);
+
+        var graph = PipelineGraphBuilder.Create()
+            .WithNodes(ImmutableList<NodeDefinition>.Empty)
+            .WithEdges(ImmutableList<Edge>.Empty)
+            .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
+            .Build();
+
+        var scope = surface.BeginNode(ctx, graph, def, inst);
         var completed = surface.CompleteNodeFailure(ctx, scope, new Exception("fail"));
         Assert.Single(observer.Started);
         Assert.Single(observer.Completed);

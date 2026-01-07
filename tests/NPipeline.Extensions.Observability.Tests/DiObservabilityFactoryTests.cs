@@ -58,6 +58,7 @@ namespace NPipeline.Extensions.Observability.Tests
         {
             // Arrange
             var services = new ServiceCollection();
+            _ = services.AddSingleton<IObservabilityFactory, DiObservabilityFactory>();
             _ = services.AddSingleton<IObservabilityCollector, ObservabilityCollector>();
             var serviceProvider = services.BuildServiceProvider();
             var factory = new DiObservabilityFactory(serviceProvider);
@@ -75,6 +76,7 @@ namespace NPipeline.Extensions.Observability.Tests
         {
             // Arrange
             var services = new ServiceCollection();
+            _ = services.AddSingleton<IObservabilityFactory, DiObservabilityFactory>();
             _ = services.AddTransient<IObservabilityCollector, ObservabilityCollector>();
             var serviceProvider = services.BuildServiceProvider();
             var factory = new DiObservabilityFactory(serviceProvider);
@@ -92,6 +94,7 @@ namespace NPipeline.Extensions.Observability.Tests
         {
             // Arrange
             var services = new ServiceCollection();
+            _ = services.AddSingleton<IObservabilityFactory, DiObservabilityFactory>();
             _ = services.AddScoped<IObservabilityCollector, ObservabilityCollector>();
             var serviceProvider = services.BuildServiceProvider();
             var factory = new DiObservabilityFactory(serviceProvider);
@@ -109,6 +112,7 @@ namespace NPipeline.Extensions.Observability.Tests
         {
             // Arrange
             var services = new ServiceCollection();
+            _ = services.AddSingleton<IObservabilityFactory, DiObservabilityFactory>();
             _ = services.AddSingleton<IObservabilityCollector, CustomObservabilityCollector>();
             var serviceProvider = services.BuildServiceProvider();
             var factory = new DiObservabilityFactory(serviceProvider);
@@ -126,6 +130,7 @@ namespace NPipeline.Extensions.Observability.Tests
         {
             // Arrange
             var services = new ServiceCollection();
+            _ = services.AddSingleton<IObservabilityFactory, DiObservabilityFactory>();
             _ = services.AddSingleton<IObservabilityCollector, ObservabilityCollector>();
             var serviceProvider = services.BuildServiceProvider();
             var factory = new DiObservabilityFactory(serviceProvider);
@@ -145,6 +150,7 @@ namespace NPipeline.Extensions.Observability.Tests
         {
             // Arrange
             var services = new ServiceCollection();
+            _ = services.AddSingleton<IObservabilityFactory, DiObservabilityFactory>();
             _ = services.AddTransient<IObservabilityCollector, ObservabilityCollector>();
             var serviceProvider = services.BuildServiceProvider();
             var factory = new DiObservabilityFactory(serviceProvider);
@@ -164,6 +170,7 @@ namespace NPipeline.Extensions.Observability.Tests
         {
             // Arrange
             var services = new ServiceCollection();
+            _ = services.AddSingleton<IObservabilityFactory, DiObservabilityFactory>();
             _ = services.AddSingleton<IObservabilityCollector>(_ => new CustomObservabilityCollector());
             var serviceProvider = services.BuildServiceProvider();
             var factory = new DiObservabilityFactory(serviceProvider);
@@ -222,6 +229,13 @@ namespace NPipeline.Extensions.Observability.Tests
                 Exception? exception = null)
             {
                 throw new NotImplementedException();
+            }
+
+            public Task EmitMetricsAsync(string pipelineName, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, bool success,
+                Exception? exception = null, CancellationToken cancellationToken = default)
+            {
+                // Custom implementation - no-op for test
+                return Task.CompletedTask;
             }
         }
 

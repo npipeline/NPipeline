@@ -98,7 +98,7 @@ public sealed class DependencyInjectionTests
     }
 
     [Fact]
-    public void AddNPipelineObservability_Default_ShouldRegisterSinksAsTransient()
+    public void AddNPipelineObservability_Default_ShouldRegisterSinksAsScoped()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -106,14 +106,20 @@ public sealed class DependencyInjectionTests
 
         // Act
         var provider = services.BuildServiceProvider();
-        var sink1 = provider.GetRequiredService<IMetricsSink>();
-        var sink2 = provider.GetRequiredService<IMetricsSink>();
-        var pipelineSink1 = provider.GetRequiredService<IPipelineMetricsSink>();
-        var pipelineSink2 = provider.GetRequiredService<IPipelineMetricsSink>();
+        var scope1 = provider.CreateScope();
+        var scope2 = provider.CreateScope();
+        var sink1 = scope1.ServiceProvider.GetRequiredService<IMetricsSink>();
+        var sink2 = scope1.ServiceProvider.GetRequiredService<IMetricsSink>();
+        var sink3 = scope2.ServiceProvider.GetRequiredService<IMetricsSink>();
+        var pipelineSink1 = scope1.ServiceProvider.GetRequiredService<IPipelineMetricsSink>();
+        var pipelineSink2 = scope1.ServiceProvider.GetRequiredService<IPipelineMetricsSink>();
+        var pipelineSink3 = scope2.ServiceProvider.GetRequiredService<IPipelineMetricsSink>();
 
         // Assert
-        Assert.NotSame(sink1, sink2); // Transient, different instances
-        Assert.NotSame(pipelineSink1, pipelineSink2); // Transient, different instances
+        Assert.Same(sink1, sink2); // Same scope, same instance
+        Assert.NotSame(sink1, sink3); // Different scope, different instance
+        Assert.Same(pipelineSink1, pipelineSink2); // Same scope, same instance
+        Assert.NotSame(pipelineSink1, pipelineSink3); // Different scope, different instance
     }
 
     #endregion
@@ -326,11 +332,17 @@ public sealed class DependencyInjectionTests
 
         // Assert
         var provider = services.BuildServiceProvider();
-        _ = provider.GetRequiredService<IMetricsSink>();
-        _ = provider.GetRequiredService<IMetricsSink>();
-        _ = provider.GetRequiredService<IMetricsSink>();
+        var scope1 = provider.CreateScope();
+        var scope2 = provider.CreateScope();
 
-        Assert.Equal(3, callCount); // Factory called 3 times
+        // Scoped: same scope should reuse instance
+        _ = scope1.ServiceProvider.GetRequiredService<IMetricsSink>();
+        _ = scope1.ServiceProvider.GetRequiredService<IMetricsSink>();
+
+        // Different scope should call factory again
+        _ = scope2.ServiceProvider.GetRequiredService<IMetricsSink>();
+
+        Assert.Equal(2, callCount); // Factory called 2 times (once per scope)
     }
 
     #endregion
@@ -461,7 +473,8 @@ public sealed class DependencyInjectionTests
         var services = new ServiceCollection();
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => services.AddNPipelineObservability<CustomMetricsSink, CustomPipelineMetricsSink>(null!));
+        _ = Assert.Throws<ArgumentNullException>(() => services.AddNPipelineObservability<CustomMetricsSink, CustomPipelineMetricsSink>(
+            (Func<IServiceProvider, IObservabilityCollector>)null!));
     }
 
     [Fact]
@@ -712,6 +725,13 @@ public sealed class DependencyInjectionTests
                 totalItemsProcessed,
                 GetNodeMetrics(),
                 exception);
+        }
+
+        public Task EmitMetricsAsync(string pipelineName, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, bool success,
+            Exception? exception = null, CancellationToken cancellationToken = default)
+        {
+            // Custom implementation - no-op for test
+            return Task.CompletedTask;
         }
     }
 

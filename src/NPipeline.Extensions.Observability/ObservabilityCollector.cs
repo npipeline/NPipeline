@@ -9,6 +9,16 @@ namespace NPipeline.Observability;
 public sealed class ObservabilityCollector : IObservabilityCollector
 {
     private readonly ConcurrentDictionary<string, NodeMetricsBuilder> _nodeMetrics = new();
+    private readonly IObservabilityFactory _factory;
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="ObservabilityCollector" /> class.
+    /// </summary>
+    /// <param name="factory">The factory for resolving observability components.</param>
+    public ObservabilityCollector(IObservabilityFactory factory)
+    {
+        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+    }
 
     /// <summary>
     ///     Records the start of a node execution.
@@ -21,6 +31,18 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     {
         var builder = _nodeMetrics.GetOrAdd(nodeId, _ => new NodeMetricsBuilder(nodeId));
         builder.RecordStart(timestamp, threadId, initialMemoryMb);
+    }
+
+    /// <summary>
+    ///     Initializes a node entry without recording timing information.
+    /// </summary>
+    /// <param name="nodeId">The unique identifier of the node.</param>
+    /// <param name="threadId">The thread ID executing the node.</param>
+    /// <param name="initialMemoryMb">The initial memory usage in megabytes.</param>
+    public void InitializeNode(string nodeId, int? threadId = null, long? initialMemoryMb = null)
+    {
+        var builder = _nodeMetrics.GetOrAdd(nodeId, _ => new NodeMetricsBuilder(nodeId));
+        builder.Initialize(threadId, initialMemoryMb);
     }
 
     /// <summary>
@@ -134,6 +156,41 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     }
 
     /// <summary>
+    ///     Emits all collected metrics to the registered sinks.
+    /// </summary>
+    /// <param name="pipelineName">The name of the pipeline.</param>
+    /// <param name="runId">The unique identifier for this pipeline run.</param>
+    /// <param name="startTime">When the pipeline started.</param>
+    /// <param name="endTime">When the pipeline ended.</param>
+    /// <param name="success">Whether the pipeline execution was successful.</param>
+    /// <param name="exception">Any exception that occurred during pipeline execution.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A <see cref="Task" /> representing the asynchronous operation.</returns>
+    public async Task EmitMetricsAsync(string pipelineName, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, bool success,
+        Exception? exception = null, CancellationToken cancellationToken = default)
+    {
+        // Create pipeline metrics
+        var pipelineMetrics = CreatePipelineMetrics(pipelineName, runId, startTime, endTime, success, exception);
+
+        // Resolve and invoke node metrics sinks
+        var nodeMetricsSink = _factory.ResolveMetricsSink();
+        if (nodeMetricsSink != null)
+        {
+            foreach (var nodeMetric in pipelineMetrics.NodeMetrics)
+            {
+                await nodeMetricsSink.RecordAsync(nodeMetric, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        // Resolve and invoke pipeline metrics sink
+        var pipelineMetricsSink = _factory.ResolvePipelineMetricsSink();
+        if (pipelineMetricsSink != null)
+        {
+            await pipelineMetricsSink.RecordAsync(pipelineMetrics, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
     ///     Builder for constructing node metrics with thread-safe updates.
     /// </summary>
     private sealed class NodeMetricsBuilder
@@ -165,6 +222,11 @@ public sealed class ObservabilityCollector : IObservabilityCollector
             _threadId = threadId;
         }
 
+        public void Initialize(int? threadId, long? initialMemoryMb)
+        {
+            _threadId = threadId;
+        }
+
         public void RecordEnd(DateTimeOffset timestamp, bool success, Exception? exception, long? peakMemoryMb, long? processorTimeMs)
         {
             _endTime = timestamp;
@@ -187,7 +249,13 @@ public sealed class ObservabilityCollector : IObservabilityCollector
 
         public void RecordRetry(int retryCount)
         {
-            Interlocked.Exchange(ref _retryCount, Math.Max(_retryCount, retryCount));
+            int initial, computed;
+            do
+            {
+                initial = _retryCount;
+                computed = Math.Max(initial, retryCount);
+            }
+            while (Interlocked.CompareExchange(ref _retryCount, computed, initial) != initial);
         }
 
         public void RecordPerformanceMetrics(double throughputItemsPerSec, double averageItemProcessingMs)

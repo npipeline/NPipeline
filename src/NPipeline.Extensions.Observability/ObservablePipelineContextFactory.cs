@@ -1,5 +1,6 @@
 using NPipeline.Configuration;
 using NPipeline.Execution;
+using NPipeline.Extensions.Observability;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Observability;

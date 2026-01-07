@@ -257,7 +257,8 @@ namespace NPipeline.Extensions.Observability.Tests
             // Arrange
             var loggerMock = A.Fake<ILogger<CustomMetricsSink>>();
             var customSink = new CustomMetricsSink(loggerMock);
-            var collector = new ObservabilityCollector();
+            var factory = new TestObservabilityFactory();
+            var collector = new ObservabilityCollector(factory);
 
             // Act
             collector.RecordNodeStart("node1", DateTimeOffset.UtcNow);
@@ -283,7 +284,8 @@ namespace NPipeline.Extensions.Observability.Tests
             // Arrange
             var loggerMock = A.Fake<ILogger<CustomPipelineMetricsSink>>();
             var customSink = new CustomPipelineMetricsSink(loggerMock);
-            var collector = new ObservabilityCollector();
+            var factory = new TestObservabilityFactory();
+            var collector = new ObservabilityCollector(factory);
 
             var pipelineName = "TestPipeline";
             var runId = Guid.NewGuid();
@@ -483,7 +485,310 @@ namespace NPipeline.Extensions.Observability.Tests
 
         #endregion
 
+        #region End-to-End Metrics Flow to Sinks Tests
+
+        [Fact]
+        public async Task EndToEndMetricsFlow_WithDefaultSinks_ShouldEmitToAllSinks()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+            _ = services.AddNPipelineObservability();
+            var provider = services.BuildServiceProvider();
+            var scope = provider.CreateScope();
+            var collector = scope.ServiceProvider.GetRequiredService<IObservabilityCollector>();
+
+            var pipelineName = "TestPipeline";
+            var runId = Guid.NewGuid();
+            var startTime = DateTimeOffset.UtcNow;
+
+            // Act - Simulate pipeline execution
+            collector.RecordNodeStart("node1", startTime);
+            await Task.Delay(10);
+            collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true);
+            collector.RecordItemMetrics("node1", 100, 95);
+
+            collector.RecordNodeStart("node2", DateTimeOffset.UtcNow);
+            await Task.Delay(15);
+            collector.RecordNodeEnd("node2", DateTimeOffset.UtcNow, true);
+            collector.RecordItemMetrics("node2", 95, 90);
+
+            var endTime = DateTimeOffset.UtcNow;
+
+            // Emit metrics - this should call all registered sinks
+            await collector.EmitMetricsAsync(pipelineName, runId, startTime, endTime, true);
+
+            // Assert
+            // Verify metrics were collected
+            var allMetrics = collector.GetNodeMetrics();
+            Assert.Equal(2, allMetrics.Count);
+            Assert.Equal(195, allMetrics.Sum(m => m.ItemsProcessed));
+
+            // Verify each node has correct metrics
+            var node1Metrics = collector.GetNodeMetrics("node1");
+            Assert.NotNull(node1Metrics);
+            Assert.Equal(100, node1Metrics.ItemsProcessed);
+            Assert.Equal(95, node1Metrics.ItemsEmitted);
+
+            var node2Metrics = collector.GetNodeMetrics("node2");
+            Assert.NotNull(node2Metrics);
+            Assert.Equal(95, node2Metrics.ItemsProcessed);
+            Assert.Equal(90, node2Metrics.ItemsEmitted);
+        }
+
+        [Fact]
+        public async Task EndToEndMetricsFlow_WithCustomSinks_ShouldReceiveCorrectMetrics()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+
+            // Register custom sinks using factory delegates
+            var nodeSink = new TestNodeMetricsSink();
+            var pipelineSink = new TestPipelineMetricsSink();
+
+            _ = services.AddNPipelineObservability(
+                sp => nodeSink,
+                sp => pipelineSink);
+
+            var provider = services.BuildServiceProvider();
+            var scope = provider.CreateScope();
+            var collector = scope.ServiceProvider.GetRequiredService<IObservabilityCollector>();
+
+            var pipelineName = "CustomSinkPipeline";
+            var runId = Guid.NewGuid();
+            var startTime = DateTimeOffset.UtcNow;
+
+            // Act - Simulate pipeline execution
+            collector.RecordNodeStart("transform1", startTime);
+            await Task.Delay(10);
+            collector.RecordNodeEnd("transform1", DateTimeOffset.UtcNow, true);
+            collector.RecordItemMetrics("transform1", 50, 45);
+
+            collector.RecordNodeStart("transform2", DateTimeOffset.UtcNow);
+            await Task.Delay(15);
+            collector.RecordNodeEnd("transform2", DateTimeOffset.UtcNow, true);
+            collector.RecordItemMetrics("transform2", 45, 40);
+
+            var endTime = DateTimeOffset.UtcNow;
+
+            // Emit metrics
+            await collector.EmitMetricsAsync(pipelineName, runId, startTime, endTime, true);
+
+            // Assert - Verify sinks received metrics
+            Assert.Equal(2, nodeSink.ReceivedMetrics.Count);
+            var pipelineMetrics = Assert.Single(pipelineSink.ReceivedMetrics);
+
+            // Verify node sink received correct data
+            var transform1Metrics = nodeSink.ReceivedMetrics.FirstOrDefault(m => m.NodeId == "transform1");
+            Assert.NotNull(transform1Metrics);
+            Assert.Equal(50, transform1Metrics.ItemsProcessed);
+            Assert.Equal(45, transform1Metrics.ItemsEmitted);
+
+            var transform2Metrics = nodeSink.ReceivedMetrics.FirstOrDefault(m => m.NodeId == "transform2");
+            Assert.NotNull(transform2Metrics);
+            Assert.Equal(45, transform2Metrics.ItemsProcessed);
+            Assert.Equal(40, transform2Metrics.ItemsEmitted);
+
+            // Verify pipeline sink received correct data
+            Assert.Equal(pipelineName, pipelineMetrics.PipelineName);
+            Assert.Equal(runId, pipelineMetrics.RunId);
+            Assert.Equal(95, pipelineMetrics.TotalItemsProcessed); // 50 + 45
+            Assert.Equal(2, pipelineMetrics.NodeMetrics.Count);
+        }
+
+        [Fact]
+        public async Task EndToEndMetricsFlow_WithPipelineFailure_ShouldEmitFailureMetrics()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+
+            var nodeSink = new TestNodeMetricsSink();
+            var pipelineSink = new TestPipelineMetricsSink();
+
+            _ = services.AddNPipelineObservability(
+                sp => nodeSink,
+                sp => pipelineSink);
+
+            var provider = services.BuildServiceProvider();
+            var scope = provider.CreateScope();
+            var collector = scope.ServiceProvider.GetRequiredService<IObservabilityCollector>();
+
+            var pipelineName = "FailingPipeline";
+            var runId = Guid.NewGuid();
+            var startTime = DateTimeOffset.UtcNow;
+            var expectedException = new InvalidOperationException("Pipeline failed");
+
+            // Act - Simulate pipeline execution with failure
+            collector.RecordNodeStart("node1", startTime);
+            await Task.Delay(10);
+            collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true);
+            collector.RecordItemMetrics("node1", 100, 100);
+
+            collector.RecordNodeStart("node2", DateTimeOffset.UtcNow);
+            await Task.Delay(10);
+            collector.RecordNodeEnd("node2", DateTimeOffset.UtcNow, false, expectedException);
+            collector.RecordItemMetrics("node2", 50, 0);
+
+            var endTime = DateTimeOffset.UtcNow;
+
+            // Emit metrics with failure
+            await collector.EmitMetricsAsync(pipelineName, runId, startTime, endTime, false, expectedException);
+
+            // Assert - Verify sinks received failure metrics
+            Assert.Equal(2, nodeSink.ReceivedMetrics.Count);
+            var failurePipelineMetrics = Assert.Single(pipelineSink.ReceivedMetrics);
+
+            // Verify node2 has failure recorded
+            var node2Metrics = nodeSink.ReceivedMetrics.FirstOrDefault(m => m.NodeId == "node2");
+            Assert.NotNull(node2Metrics);
+            Assert.False(node2Metrics.Success);
+            Assert.NotNull(node2Metrics.Exception);
+            Assert.Equal(expectedException.Message, node2Metrics.Exception.Message);
+
+            // Verify pipeline sink received failure
+            Assert.False(failurePipelineMetrics.Success);
+            Assert.NotNull(failurePipelineMetrics.Exception);
+            Assert.Equal(expectedException.Message, failurePipelineMetrics.Exception.Message);
+            Assert.Equal(150, failurePipelineMetrics.TotalItemsProcessed); // 100 + 50
+        }
+
+        [Fact]
+        public async Task EndToEndMetricsFlow_WithRetries_ShouldRecordRetryCountInSink()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+
+            var nodeSink = new TestNodeMetricsSink();
+            var pipelineSink = new TestPipelineMetricsSink();
+
+            _ = services.AddNPipelineObservability(
+                sp => nodeSink,
+                sp => pipelineSink);
+
+            var provider = services.BuildServiceProvider();
+            var scope = provider.CreateScope();
+            var collector = scope.ServiceProvider.GetRequiredService<IObservabilityCollector>();
+
+            var pipelineName = "RetryPipeline";
+            var runId = Guid.NewGuid();
+            var startTime = DateTimeOffset.UtcNow;
+
+            // Act - Simulate pipeline execution with retries
+            collector.RecordNodeStart("retryNode", startTime);
+            collector.RecordRetry("retryNode", 1, "Temporary failure");
+            await Task.Delay(10);
+            collector.RecordRetry("retryNode", 2, "Another temporary failure");
+            await Task.Delay(10);
+            collector.RecordNodeEnd("retryNode", DateTimeOffset.UtcNow, true);
+            collector.RecordItemMetrics("retryNode", 100, 100);
+
+            var endTime = DateTimeOffset.UtcNow;
+
+            // Emit metrics
+            await collector.EmitMetricsAsync(pipelineName, runId, startTime, endTime, true);
+
+            // Assert - Verify retry count was recorded and sent to sink
+            var nodeMetrics = Assert.Single(nodeSink.ReceivedMetrics);
+
+            Assert.Equal("retryNode", nodeMetrics.NodeId);
+            Assert.Equal(2, nodeMetrics.RetryCount);
+            Assert.True(nodeMetrics.Success);
+        }
+
+        [Fact]
+        public async Task EndToEndMetricsFlow_MultiplePipelineRuns_ShouldIsolateMetrics()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+
+            var nodeSink = new TestNodeMetricsSink();
+            var pipelineSink = new TestPipelineMetricsSink();
+
+            _ = services.AddNPipelineObservability(
+                sp => nodeSink,
+                sp => pipelineSink);
+
+            var provider = services.BuildServiceProvider();
+
+            // Act - Run first pipeline
+            var scope1 = provider.CreateScope();
+            var collector1 = scope1.ServiceProvider.GetRequiredService<IObservabilityCollector>();
+
+            collector1.RecordNodeStart("node1", DateTimeOffset.UtcNow);
+            await Task.Delay(10);
+            collector1.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true);
+            collector1.RecordItemMetrics("node1", 100, 95);
+
+            await collector1.EmitMetricsAsync("Pipeline1", Guid.NewGuid(), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, true);
+
+            // Run second pipeline
+            var scope2 = provider.CreateScope();
+            var collector2 = scope2.ServiceProvider.GetRequiredService<IObservabilityCollector>();
+
+            collector2.RecordNodeStart("node1", DateTimeOffset.UtcNow);
+            await Task.Delay(10);
+            collector2.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true);
+            collector2.RecordItemMetrics("node1", 50, 45);
+
+            await collector2.EmitMetricsAsync("Pipeline2", Guid.NewGuid(), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, true);
+
+            // Assert - Verify each pipeline run is isolated
+            Assert.Equal(2, nodeSink.ReceivedMetrics.Count);
+            Assert.Equal(2, pipelineSink.ReceivedMetrics.Count);
+
+            // Verify first pipeline metrics
+            var pipeline1Metrics = pipelineSink.ReceivedMetrics[0];
+            Assert.Equal("Pipeline1", pipeline1Metrics.PipelineName);
+            Assert.Equal(100, pipeline1Metrics.TotalItemsProcessed);
+
+            // Verify second pipeline metrics
+            var pipeline2Metrics = pipelineSink.ReceivedMetrics[1];
+            Assert.Equal("Pipeline2", pipeline2Metrics.PipelineName);
+            Assert.Equal(50, pipeline2Metrics.TotalItemsProcessed);
+        }
+
+        #endregion
+
         #region Helper Classes
+
+        private sealed class TestObservabilityFactory : IObservabilityFactory
+        {
+            public IObservabilityCollector ResolveObservabilityCollector()
+            {
+                throw new NotImplementedException();
+            }
+
+            public IMetricsSink ResolveMetricsSink()
+            {
+                throw new NotImplementedException();
+            }
+
+            public IPipelineMetricsSink ResolvePipelineMetricsSink()
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public sealed class TestNodeMetricsSink : IMetricsSink
+        {
+            public List<INodeMetrics> ReceivedMetrics { get; } = [];
+
+            public Task RecordAsync(INodeMetrics nodeMetrics, CancellationToken cancellationToken = default)
+            {
+                ReceivedMetrics.Add(nodeMetrics);
+                return Task.CompletedTask;
+            }
+        }
+
+        public sealed class TestPipelineMetricsSink : IPipelineMetricsSink
+        {
+            public List<IPipelineMetrics> ReceivedMetrics { get; } = [];
+
+            public Task RecordAsync(IPipelineMetrics pipelineMetrics, CancellationToken cancellationToken = default)
+            {
+                ReceivedMetrics.Add(pipelineMetrics);
+                return Task.CompletedTask;
+            }
+        }
 
         public sealed class CustomMetricsSink(ILogger<CustomMetricsSink> logger) : IMetricsSink
         {

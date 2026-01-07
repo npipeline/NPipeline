@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using NPipeline.Observability.Metrics;
 
 namespace NPipeline.Observability;
 
@@ -27,5 +28,23 @@ public sealed class DiObservabilityFactory : IObservabilityFactory
         // Try to resolve from the service provider
         // Returns null if not registered, allowing observability to be optional
         return _serviceProvider.GetService<IObservabilityCollector>();
+    }
+
+    /// <summary>
+    ///     Resolves an optional node metrics sink for recording metrics.
+    /// </summary>
+    /// <returns>An <see cref="IMetricsSink" /> instance or null if no sink is configured.</returns>
+    public IMetricsSink? ResolveMetricsSink()
+    {
+        return _serviceProvider.GetService<IMetricsSink>();
+    }
+
+    /// <summary>
+    ///     Resolves an optional pipeline metrics sink for recording metrics.
+    /// </summary>
+    /// <returns>An <see cref="IPipelineMetricsSink" /> instance or null if no sink is configured.</returns>
+    public IPipelineMetricsSink? ResolvePipelineMetricsSink()
+    {
+        return _serviceProvider.GetService<IPipelineMetricsSink>();
     }
 }

@@ -1,26 +1,18 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using NPipeline.Execution;
-using NPipeline.Observability.Metrics;
+using NPipeline.Observability;
 
-namespace NPipeline.Observability;
+namespace NPipeline.Extensions.Observability;
 
 /// <summary>
 ///     Execution observer that collects metrics during pipeline execution.
 /// </summary>
-public sealed class MetricsCollectingExecutionObserver : IExecutionObserver
+public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector collector, bool collectMemoryMetrics = false) : IExecutionObserver
 {
-    private readonly IObservabilityCollector _collector;
+    private readonly IObservabilityCollector _collector = collector ?? throw new ArgumentNullException(nameof(collector));
     private readonly ConcurrentDictionary<string, DateTimeOffset> _nodeStartTimes = new();
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="MetricsCollectingExecutionObserver" /> class.
-    /// </summary>
-    /// <param name="collector">The observability collector to record metrics to.</param>
-    public MetricsCollectingExecutionObserver(IObservabilityCollector collector)
-    {
-        _collector = collector ?? throw new ArgumentNullException(nameof(collector));
-    }
+    private readonly ConcurrentDictionary<string, long> _nodeInitialMemory = new();
+    private readonly bool _collectMemoryMetrics = collectMemoryMetrics;
 
     /// <summary>
     ///     Called when a node starts execution.
@@ -29,11 +21,17 @@ public sealed class MetricsCollectingExecutionObserver : IExecutionObserver
     public void OnNodeStarted(NodeExecutionStarted e)
     {
         var threadId = Environment.CurrentManagedThreadId;
-        var process = Process.GetCurrentProcess();
-        var initialMemoryMb = process.WorkingSet64 / (1024 * 1024);
+        long? initialMemoryMb = null;
+
+        if (_collectMemoryMetrics)
+        {
+            var initialMemoryBytes = GC.GetTotalMemory(false);
+            initialMemoryMb = initialMemoryBytes / (1024 * 1024);
+            _nodeInitialMemory[e.NodeId] = initialMemoryBytes;
+        }
 
         _collector.RecordNodeStart(e.NodeId, e.StartTime, threadId, initialMemoryMb);
-        _nodeStartTimes.TryAdd(e.NodeId, e.StartTime);
+        _nodeStartTimes[e.NodeId] = e.StartTime;
     }
 
     /// <summary>
@@ -48,9 +46,15 @@ public sealed class MetricsCollectingExecutionObserver : IExecutionObserver
             endTime = startTime + e.Duration;
         }
 
-        var process = Process.GetCurrentProcess();
-        var peakMemoryMb = process.PeakWorkingSet64 / (1024 * 1024);
-        var processorTimeMs = process.TotalProcessorTime.TotalMilliseconds;
+        long? peakMemoryMb = null;
+        if (_collectMemoryMetrics)
+        {
+            var finalMemoryBytes = GC.GetTotalMemory(false);
+            peakMemoryMb = finalMemoryBytes / (1024 * 1024);
+            _nodeInitialMemory.TryRemove(e.NodeId, out _);
+        }
+
+        var processorTimeMs = 0L; // CPU time is not available per-node, skipping
 
         _collector.RecordNodeEnd(
             e.NodeId,
@@ -58,7 +62,7 @@ public sealed class MetricsCollectingExecutionObserver : IExecutionObserver
             e.Success,
             e.Error,
             peakMemoryMb,
-            (long)processorTimeMs);
+            processorTimeMs);
 
         // Calculate and record performance metrics if items were processed
         var nodeMetrics = _collector.GetNodeMetrics(e.NodeId);

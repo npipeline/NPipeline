@@ -6,6 +6,11 @@ using NPipeline.Observability;
 using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Threading.Tasks;
 
 namespace NPipeline.Execution.Services;
 
@@ -35,7 +40,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
     /// <param name="context">The pipeline context.</param>
     /// <param name="graph">The pipeline graph.</param>
     /// <param name="pipelineActivity">The pipeline activity.</param>
-    public void CompletePipeline<TDefinition>(PipelineContext context, PipelineGraph graph, IPipelineActivity pipelineActivity)
+    public async Task CompletePipeline<TDefinition>(PipelineContext context, PipelineGraph graph, IPipelineActivity pipelineActivity)
         where TDefinition : IPipelineDefinition, new()
     {
         // Emit branch metrics as tracing tags
@@ -53,6 +58,15 @@ public sealed class ObservabilitySurface : IObservabilitySurface
 
         var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
         logger.Log(LogLevel.Information, "Finished pipeline run for {PipelineName}", typeof(TDefinition).Name);
+
+        try
+        {
+            await EmitMetricsAsync<TDefinition>(context, success: true, exception: null).ConfigureAwait(false);
+        }
+        catch (Exception emitEx)
+        {
+            logger.Log(LogLevel.Error, emitEx, "Failed to emit observability metrics for pipeline {PipelineName}", typeof(TDefinition).Name);
+        }
     }
 
     /// <summary>
@@ -60,24 +74,60 @@ public sealed class ObservabilitySurface : IObservabilitySurface
     /// </summary>
     /// <typeparam name="TDefinition">The type of pipeline definition.</typeparam>
     /// <param name="context">The pipeline context.</param>
-    /// <param name="ex">The exception that caused the failure.</param>
+    /// <param name="ex">The exception that caused failure.</param>
     /// <param name="pipelineActivity">The pipeline activity.</param>
-    public void FailPipeline<TDefinition>(PipelineContext context, Exception ex, IPipelineActivity pipelineActivity)
-        where TDefinition : IPipelineDefinition, new()
+    public async Task FailPipeline<TDefinition>(PipelineContext context, Exception ex, IPipelineActivity pipelineActivity) where TDefinition : IPipelineDefinition, new()
     {
         var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
         logger.Log(LogLevel.Error, ex, "Pipeline run for {PipelineName} failed", typeof(TDefinition).Name);
         pipelineActivity.RecordException(ex);
+
+        try
+        {
+            await EmitMetricsAsync<TDefinition>(context, success: false, exception: ex).ConfigureAwait(false);
+        }
+        catch (Exception emitEx)
+        {
+            logger.Log(LogLevel.Error, emitEx, "Failed to emit observability metrics after pipeline failure for {PipelineName}", typeof(TDefinition).Name);
+        }
+    }
+
+    /// <summary>
+    ///     Emits metrics to registered sinks if observability is enabled.
+    /// </summary>
+    /// <typeparam name="TDefinition">The type of pipeline definition.</typeparam>
+    /// <param name="context">The pipeline context.</param>
+    /// <param name="success">Whether pipeline execution was successful.</param>
+    /// <param name="exception">Any exception that occurred during pipeline execution.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    private async Task EmitMetricsAsync<TDefinition>(PipelineContext context, bool success, Exception? exception) where TDefinition : IPipelineDefinition, new()
+    {
+        var collector = context.ObservabilityFactory.ResolveObservabilityCollector();
+        if (collector is null)
+        {
+            return;
+        }
+
+        var startTime = context.Items.TryGetValue(PipelineContextKeys.PipelineStartTimeUtc, out var startTimeObj) && startTimeObj is DateTime startTimeDt
+            ? startTimeDt
+            : DateTime.UtcNow;
+
+        var pipelineRunId = Guid.NewGuid();
+        var endTime = DateTime.UtcNow;
+        var pipelineName = typeof(TDefinition).Name;
+
+        await collector.EmitMetricsAsync(pipelineName, pipelineRunId, startTime, endTime, success, exception, context.CancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     ///     Starts node execution, returning a scope with timing and activity.
     /// </summary>
     /// <param name="context">The pipeline context.</param>
+    /// <param name="graph">The pipeline graph.</param>
     /// <param name="nodeDef">The node definition.</param>
     /// <param name="nodeInstance">The node instance.</param>
     /// <returns>A node observation scope containing timing and activity information.</returns>
-    public NodeObservationScope BeginNode(PipelineContext context, NodeDefinition nodeDef, INode nodeInstance)
+    public NodeObservationScope BeginNode(PipelineContext context, PipelineGraph graph, NodeDefinition nodeDef, INode nodeInstance)
     {
         var tracer = context.Tracer;
         var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
@@ -90,11 +140,35 @@ public sealed class ObservabilitySurface : IObservabilitySurface
 
         var startTs = DateTimeOffset.UtcNow;
         observer.OnNodeStarted(new NodeExecutionStarted(nodeDef.Id, nodeInstance.GetType().Name, startTs));
-        return new NodeObservationScope(nodeDef.Id, nodeInstance.GetType().Name, startTs, activity);
+
+        // Check for per-node observability configuration
+        IAutoObservabilityScope? autoObservabilityScope = null;
+        if (graph.ExecutionOptions.NodeExecutionAnnotations != null &&
+            graph.ExecutionOptions.NodeExecutionAnnotations.TryGetValue(
+                "NPipeline.Observability.Options:" + nodeDef.Id,
+                out var optionsValue))
+        {
+            var collector = context.ObservabilityFactory.ResolveObservabilityCollector();
+            if (collector != null && optionsValue != null)
+            {
+                // Create AutoObservabilityScope using reflection to avoid circular dependency
+                var scopeType = System.Type.GetType("NPipeline.Extensions.Observability.AutoObservabilityScope, NPipeline.Extensions.Observability");
+                if (scopeType != null)
+                {
+                    autoObservabilityScope = (IAutoObservabilityScope?)System.Activator.CreateInstance(
+                        scopeType,
+                        collector,
+                        nodeDef.Id,
+                        optionsValue);
+                }
+            }
+        }
+
+        return new NodeObservationScope(nodeDef.Id, nodeInstance.GetType().Name, startTs, activity, autoObservabilityScope);
     }
 
     /// <summary>
-    ///     Records node success and returns the NodeExecutionCompleted event for downstream persistence.
+    ///     Records node success and returns NodeExecutionCompleted event for downstream persistence.
     /// </summary>
     /// <param name="context">The pipeline context.</param>
     /// <param name="scope">The node observation scope.</param>
@@ -107,11 +181,18 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         var completed = new NodeExecutionCompleted(scope.NodeId, scope.NodeType, duration, true, null);
 
         context.ExecutionObserver.OnNodeCompleted(completed);
+
+        // Dispose AutoObservabilityScope if present
+        if (scope.AutoObservabilityScope is IAutoObservabilityScope autoScope)
+        {
+            autoScope.Dispose();
+        }
+
         return completed;
     }
 
     /// <summary>
-    ///     Records node failure and returns the NodeExecutionCompleted event for downstream persistence.
+    ///     Records node failure and returns NodeExecutionCompleted event for downstream persistence.
     /// </summary>
     /// <param name="context">The pipeline context.</param>
     /// <param name="scope">The node observation scope.</param>
@@ -119,10 +200,19 @@ public sealed class ObservabilitySurface : IObservabilitySurface
     /// <returns>A NodeExecutionCompleted event with failure information.</returns>
     public NodeExecutionCompleted CompleteNodeFailure(PipelineContext context, NodeObservationScope scope, Exception ex)
     {
-        scope.Activity.RecordException(ex);
+        var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
+        logger.Log(LogLevel.Error, ex, "Node {NodeId} failed", scope.NodeId);
         var duration = DateTimeOffset.UtcNow - scope.StartTime;
-        var failed = new NodeExecutionCompleted(scope.NodeId, scope.NodeType, duration, false, ex);
-        context.ExecutionObserver.OnNodeCompleted(failed);
-        return failed;
+        var completed = new NodeExecutionCompleted(scope.NodeId, scope.NodeType, duration, false, ex);
+
+        context.ExecutionObserver.OnNodeCompleted(completed);
+
+        // Dispose AutoObservabilityScope if present
+        if (scope.AutoObservabilityScope is IAutoObservabilityScope autoScope)
+        {
+            autoScope.Dispose();
+        }
+
+        return completed;
     }
 }

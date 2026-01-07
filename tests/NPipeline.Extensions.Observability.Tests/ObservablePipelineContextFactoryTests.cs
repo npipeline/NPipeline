@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Execution;
+using NPipeline.Extensions.Observability;
 using NPipeline.Observability.DependencyInjection;
 using Xunit;
 
