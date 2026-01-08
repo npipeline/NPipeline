@@ -49,7 +49,7 @@ public static class ObservabilityConfigurationExtensions
     /// <param name="handle">The source node handle.</param>
     /// <param name="builder">The pipeline builder.</param>
     /// <param name="options">
-    ///     The observability options. If null, <see cref="ObservabilityOptions.Default"/> is used.
+    ///     The observability options. If null, <see cref="ObservabilityOptions.Default" /> is used.
     /// </param>
     /// <returns>The same source node handle for method chaining.</returns>
     /// <exception cref="ArgumentNullException">Thrown when builder is null.</exception>
@@ -73,7 +73,7 @@ public static class ObservabilityConfigurationExtensions
     /// <param name="handle">The transform node handle.</param>
     /// <param name="builder">The pipeline builder.</param>
     /// <param name="options">
-    ///     The observability options. If null, <see cref="ObservabilityOptions.Default"/> is used.
+    ///     The observability options. If null, <see cref="ObservabilityOptions.Default" /> is used.
     /// </param>
     /// <returns>The same transform node handle for method chaining.</returns>
     /// <exception cref="ArgumentNullException">Thrown when builder is null.</exception>
@@ -96,7 +96,7 @@ public static class ObservabilityConfigurationExtensions
     /// <param name="handle">The sink node handle.</param>
     /// <param name="builder">The pipeline builder.</param>
     /// <param name="options">
-    ///     The observability options. If null, <see cref="ObservabilityOptions.Default"/> is used.
+    ///     The observability options. If null, <see cref="ObservabilityOptions.Default" /> is used.
     /// </param>
     /// <returns>The same sink node handle for method chaining.</returns>
     /// <exception cref="ArgumentNullException">Thrown when builder is null.</exception>
@@ -120,7 +120,7 @@ public static class ObservabilityConfigurationExtensions
     /// <param name="handle">The aggregate node handle.</param>
     /// <param name="builder">The pipeline builder.</param>
     /// <param name="options">
-    ///     The observability options. If null, <see cref="ObservabilityOptions.Default"/> is used.
+    ///     The observability options. If null, <see cref="ObservabilityOptions.Default" /> is used.
     /// </param>
     /// <returns>The same aggregate node handle for method chaining.</returns>
     /// <exception cref="ArgumentNullException">Thrown when builder is null.</exception>
@@ -145,7 +145,7 @@ public static class ObservabilityConfigurationExtensions
     /// <param name="handle">The join node handle.</param>
     /// <param name="builder">The pipeline builder.</param>
     /// <param name="options">
-    ///     The observability options. If null, <see cref="ObservabilityOptions.Default"/> is used.
+    ///     The observability options. If null, <see cref="ObservabilityOptions.Default" /> is used.
     /// </param>
     /// <returns>The same join node handle for method chaining.</returns>
     /// <exception cref="ArgumentNullException">Thrown when builder is null.</exception>
@@ -174,6 +174,7 @@ public static class ObservabilityConfigurationExtensions
         out ObservabilityOptions? options)
     {
         var key = $"{ObservabilityOptionsKey}:{nodeId}";
+
         if (executionAnnotations.TryGetValue(key, out var value) && value is ObservabilityOptions obs)
         {
             options = obs;

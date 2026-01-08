@@ -2,12 +2,11 @@ using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Execution;
 using NPipeline.Extensions.Observability;
 using NPipeline.Observability.DependencyInjection;
-using Xunit;
 
 namespace NPipeline.Observability.Tests;
 
 /// <summary>
-///     Tests for the <see cref="ObservablePipelineContextFactory"/> and related DI registrations.
+///     Tests for the <see cref="ObservablePipelineContextFactory" /> and related DI registrations.
 /// </summary>
 public sealed class ObservablePipelineContextFactoryTests
 {

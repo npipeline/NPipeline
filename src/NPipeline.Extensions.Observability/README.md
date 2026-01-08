@@ -98,6 +98,7 @@ This is automatically wired up when using `AddNPipelineObservability()`.
 ### IAutoObservabilityScope
 
 Provides automatic metrics recording for nodes that have observability enabled. Automatically tracks:
+
 - Items processed and emitted
 - Failures and errors
 - Performance metrics
@@ -114,15 +115,15 @@ public class MyPipeline : IPipelineDefinition
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
         var source = builder.AddSource<MySource, int>();
-        
+
         // Configure with default options (timing, item counts, thread info, performance metrics)
         var transform = builder.AddTransform<MyTransform, int, string>()
             .WithObservability(builder);
-        
+
         // Configure with full options (includes memory tracking)
         var sink = builder.AddSink<MySink, string>()
             .WithObservability(builder, ObservabilityOptions.Full);
-        
+
         builder.Connect(source, transform);
         builder.Connect(transform, sink);
     }
@@ -130,6 +131,7 @@ public class MyPipeline : IPipelineDefinition
 ```
 
 **How it works**: When you use `.WithObservability()`, the system:
+
 1. Stores the observability options in the node's execution annotations
 2. Creates an `IAutoObservabilityScope` when the node starts executing
 3. Automatically records item counts, failures, and performance metrics
@@ -137,12 +139,12 @@ public class MyPipeline : IPipelineDefinition
 
 ### ObservabilityOptions Presets
 
-| Preset | Timing | Item Counts | Memory | Thread Info | Performance |
-|--------|--------|-------------|--------|-------------|-------------|
-| `Default` | ✓ | ✓ | ✗ | ✓ | ✓ |
-| `Full` | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `Minimal` | ✓ | ✗ | ✗ | ✗ | ✗ |
-| `Disabled` | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Preset     | Timing | Item Counts | Memory | Thread Info | Performance |
+|------------|--------|-------------|--------|-------------|-------------|
+| `Default`  | ✓      | ✓           | ✗      | ✓           | ✓           |
+| `Full`     | ✓      | ✓           | ✓      | ✓           | ✓           |
+| `Minimal`  | ✓      | ✗           | ✗      | ✗           | ✗           |
+| `Disabled` | ✗      | ✗           | ✗      | ✗           | ✗           |
 
 ## Configuration Options
 
@@ -202,6 +204,7 @@ services.AddNPipelineObservability<CustomCollector, CustomMetricsSink, CustomPip
 ### Memory Metrics Details
 
 Memory metrics are measured as **per-node deltas** using `GC.GetTotalMemory()`, not global process memory:
+
 - Each node gets its own memory usage measurement
 - Memory is measured at node start and end
 - The difference represents the memory used by that specific node's execution

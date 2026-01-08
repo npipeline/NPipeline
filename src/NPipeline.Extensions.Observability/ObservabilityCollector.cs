@@ -8,8 +8,8 @@ namespace NPipeline.Observability;
 /// </summary>
 public sealed class ObservabilityCollector : IObservabilityCollector
 {
-    private readonly ConcurrentDictionary<string, NodeMetricsBuilder> _nodeMetrics = new();
     private readonly IObservabilityFactory _factory;
+    private readonly ConcurrentDictionary<string, NodeMetricsBuilder> _nodeMetrics = new();
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="ObservabilityCollector" /> class.
@@ -34,18 +34,6 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     }
 
     /// <summary>
-    ///     Initializes a node entry without recording timing information.
-    /// </summary>
-    /// <param name="nodeId">The unique identifier of the node.</param>
-    /// <param name="threadId">The thread ID executing the node.</param>
-    /// <param name="initialMemoryMb">The initial memory usage in megabytes.</param>
-    public void InitializeNode(string nodeId, int? threadId = null, long? initialMemoryMb = null)
-    {
-        var builder = _nodeMetrics.GetOrAdd(nodeId, _ => new NodeMetricsBuilder(nodeId));
-        builder.Initialize(threadId, initialMemoryMb);
-    }
-
-    /// <summary>
     ///     Records the completion of a node execution.
     /// </summary>
     /// <param name="nodeId">The unique identifier of the node.</param>
@@ -58,9 +46,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
         long? processorTimeMs = null)
     {
         if (_nodeMetrics.TryGetValue(nodeId, out var builder))
-        {
             builder.RecordEnd(timestamp, success, exception, peakMemoryMb, processorTimeMs);
-        }
     }
 
     /// <summary>
@@ -72,9 +58,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     public void RecordItemMetrics(string nodeId, long itemsProcessed, long itemsEmitted)
     {
         if (_nodeMetrics.TryGetValue(nodeId, out var builder))
-        {
             builder.RecordItemMetrics(itemsProcessed, itemsEmitted);
-        }
     }
 
     /// <summary>
@@ -86,9 +70,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     public void RecordRetry(string nodeId, int retryCount, string? reason = null)
     {
         if (_nodeMetrics.TryGetValue(nodeId, out var builder))
-        {
             builder.RecordRetry(retryCount);
-        }
     }
 
     /// <summary>
@@ -100,9 +82,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     public void RecordPerformanceMetrics(string nodeId, double throughputItemsPerSec, double averageItemProcessingMs)
     {
         if (_nodeMetrics.TryGetValue(nodeId, out var builder))
-        {
             builder.RecordPerformanceMetrics(throughputItemsPerSec, averageItemProcessingMs);
-        }
     }
 
     /// <summary>
@@ -123,7 +103,9 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     /// <returns>The node metrics, or null if not found.</returns>
     public INodeMetrics? GetNodeMetrics(string nodeId)
     {
-        return _nodeMetrics.TryGetValue(nodeId, out var builder) ? builder.Build() : null;
+        return _nodeMetrics.TryGetValue(nodeId, out var builder)
+            ? builder.Build()
+            : null;
     }
 
     /// <summary>
@@ -141,18 +123,21 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     {
         var nodeMetrics = GetNodeMetrics();
         var totalItemsProcessed = nodeMetrics.Sum(m => m.ItemsProcessed);
-        var durationMs = endTime.HasValue ? (long?)(long)(endTime.Value - startTime).TotalMilliseconds : null;
+
+        var durationMs = endTime.HasValue
+            ? (long?)(long)(endTime.Value - startTime).TotalMilliseconds
+            : null;
 
         return new PipelineMetrics(
-            PipelineName: pipelineName,
-            RunId: runId,
-            StartTime: startTime,
-            EndTime: endTime,
-            DurationMs: durationMs,
-            Success: success,
-            TotalItemsProcessed: totalItemsProcessed,
-            NodeMetrics: nodeMetrics,
-            Exception: exception);
+            pipelineName,
+            runId,
+            startTime,
+            endTime,
+            durationMs,
+            success,
+            totalItemsProcessed,
+            nodeMetrics,
+            exception);
     }
 
     /// <summary>
@@ -174,6 +159,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
 
         // Resolve and invoke node metrics sinks
         var nodeMetricsSink = _factory.ResolveMetricsSink();
+
         if (nodeMetricsSink != null)
         {
             foreach (var nodeMetric in pipelineMetrics.NodeMetrics)
@@ -184,10 +170,21 @@ public sealed class ObservabilityCollector : IObservabilityCollector
 
         // Resolve and invoke pipeline metrics sink
         var pipelineMetricsSink = _factory.ResolvePipelineMetricsSink();
+
         if (pipelineMetricsSink != null)
-        {
             await pipelineMetricsSink.RecordAsync(pipelineMetrics, cancellationToken).ConfigureAwait(false);
-        }
+    }
+
+    /// <summary>
+    ///     Initializes a node entry without recording timing information.
+    /// </summary>
+    /// <param name="nodeId">The unique identifier of the node.</param>
+    /// <param name="threadId">The thread ID executing the node.</param>
+    /// <param name="initialMemoryMb">The initial memory usage in megabytes.</param>
+    public void InitializeNode(string nodeId, int? threadId = null, long? initialMemoryMb = null)
+    {
+        var builder = _nodeMetrics.GetOrAdd(nodeId, _ => new NodeMetricsBuilder(nodeId));
+        builder.Initialize(threadId, initialMemoryMb);
     }
 
     /// <summary>
@@ -196,19 +193,19 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     private sealed class NodeMetricsBuilder
     {
         private readonly string _nodeId;
-        private DateTimeOffset? _startTime;
-        private DateTimeOffset? _endTime;
+        private double? _averageItemProcessingMs;
         private long? _durationMs;
-        private bool _success;
-        private long _itemsProcessed;
-        private long _itemsEmitted;
+        private DateTimeOffset? _endTime;
         private Exception? _exception;
-        private int _retryCount;
+        private long _itemsEmitted;
+        private long _itemsProcessed;
         private long? _peakMemoryUsageMb;
         private long? _processorTimeMs;
-        private double? _throughputItemsPerSec;
-        private double? _averageItemProcessingMs;
+        private int _retryCount;
+        private DateTimeOffset? _startTime;
+        private bool _success;
         private int? _threadId;
+        private double? _throughputItemsPerSec;
 
         public NodeMetricsBuilder(string nodeId)
         {
@@ -236,9 +233,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
             _processorTimeMs = processorTimeMs;
 
             if (_startTime.HasValue)
-            {
                 _durationMs = (long)(timestamp - _startTime.Value).TotalMilliseconds;
-            }
         }
 
         public void RecordItemMetrics(long itemsProcessed, long itemsEmitted)
@@ -250,12 +245,12 @@ public sealed class ObservabilityCollector : IObservabilityCollector
         public void RecordRetry(int retryCount)
         {
             int initial, computed;
+
             do
             {
                 initial = _retryCount;
                 computed = Math.Max(initial, retryCount);
-            }
-            while (Interlocked.CompareExchange(ref _retryCount, computed, initial) != initial);
+            } while (Interlocked.CompareExchange(ref _retryCount, computed, initial) != initial);
         }
 
         public void RecordPerformanceMetrics(double throughputItemsPerSec, double averageItemProcessingMs)
@@ -267,20 +262,20 @@ public sealed class ObservabilityCollector : IObservabilityCollector
         public INodeMetrics Build()
         {
             return new NodeMetrics(
-                NodeId: _nodeId,
-                StartTime: _startTime,
-                EndTime: _endTime,
-                DurationMs: _durationMs,
-                Success: _success,
-                ItemsProcessed: _itemsProcessed,
-                ItemsEmitted: _itemsEmitted,
-                Exception: _exception,
-                RetryCount: _retryCount,
-                PeakMemoryUsageMb: _peakMemoryUsageMb,
-                ProcessorTimeMs: _processorTimeMs,
-                ThroughputItemsPerSec: _throughputItemsPerSec,
-                AverageItemProcessingMs: _averageItemProcessingMs,
-                ThreadId: _threadId);
+                _nodeId,
+                _startTime,
+                _endTime,
+                _durationMs,
+                _success,
+                _itemsProcessed,
+                _itemsEmitted,
+                _exception,
+                _retryCount,
+                _peakMemoryUsageMb,
+                _processorTimeMs,
+                _throughputItemsPerSec,
+                _averageItemProcessingMs,
+                _threadId);
         }
     }
 }

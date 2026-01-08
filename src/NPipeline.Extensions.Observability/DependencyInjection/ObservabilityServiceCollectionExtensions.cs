@@ -84,7 +84,7 @@ public static class ObservabilityServiceCollectionExtensions
         services.TryAddScoped<IExecutionObserver>(sp =>
             new MetricsCollectingExecutionObserver(
                 sp.GetRequiredService<IObservabilityCollector>(),
-                collectMemoryMetrics: options.EnableMemoryMetrics));
+                options.EnableMemoryMetrics));
 
         // Register the context factory for automatic observer configuration
         services.TryAddScoped<IObservablePipelineContextFactory, ObservablePipelineContextFactory>();
@@ -144,7 +144,7 @@ public static class ObservabilityServiceCollectionExtensions
         services.TryAddScoped<IExecutionObserver>(sp =>
             new MetricsCollectingExecutionObserver(
                 sp.GetRequiredService<IObservabilityCollector>(),
-                collectMemoryMetrics: options.EnableMemoryMetrics));
+                options.EnableMemoryMetrics));
 
         // Register the context factory for automatic observer configuration
         services.TryAddScoped<IObservablePipelineContextFactory, ObservablePipelineContextFactory>();
@@ -204,7 +204,7 @@ public static class ObservabilityServiceCollectionExtensions
         services.TryAddScoped<IExecutionObserver>(sp =>
             new MetricsCollectingExecutionObserver(
                 sp.GetRequiredService<IObservabilityCollector>(),
-                collectMemoryMetrics: options.EnableMemoryMetrics));
+                options.EnableMemoryMetrics));
 
         // Register the context factory for automatic observer configuration
         services.TryAddScoped<IObservablePipelineContextFactory, ObservablePipelineContextFactory>();
@@ -266,7 +266,7 @@ public static class ObservabilityServiceCollectionExtensions
         services.TryAddScoped<IExecutionObserver>(sp =>
             new MetricsCollectingExecutionObserver(
                 sp.GetRequiredService<IObservabilityCollector>(),
-                collectMemoryMetrics: options.EnableMemoryMetrics));
+                options.EnableMemoryMetrics));
 
         // Register the context factory for automatic observer configuration
         services.TryAddScoped<IObservablePipelineContextFactory, ObservablePipelineContextFactory>();

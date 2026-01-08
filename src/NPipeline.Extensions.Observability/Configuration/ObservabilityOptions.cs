@@ -95,7 +95,7 @@ public sealed record ObservabilityOptions
         RecordItemCounts = true,
         RecordMemoryUsage = true,
         RecordThreadInfo = true,
-        RecordPerformanceMetrics = true
+        RecordPerformanceMetrics = true,
     };
 
     /// <summary>
@@ -107,7 +107,7 @@ public sealed record ObservabilityOptions
         RecordItemCounts = false,
         RecordMemoryUsage = false,
         RecordThreadInfo = false,
-        RecordPerformanceMetrics = false
+        RecordPerformanceMetrics = false,
     };
 
     /// <summary>
@@ -119,6 +119,6 @@ public sealed record ObservabilityOptions
         RecordItemCounts = false,
         RecordMemoryUsage = false,
         RecordThreadInfo = false,
-        RecordPerformanceMetrics = false
+        RecordPerformanceMetrics = false,
     };
 }

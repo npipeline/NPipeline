@@ -9,8 +9,8 @@ namespace NPipeline.Observability;
 ///     Factory for creating pipeline contexts with observability pre-configured.
 /// </summary>
 /// <remarks>
-///     This factory creates <see cref="PipelineContext"/> instances that are automatically
-///     wired up with <see cref="MetricsCollectingExecutionObserver"/> to enable automatic
+///     This factory creates <see cref="PipelineContext" /> instances that are automatically
+///     wired up with <see cref="MetricsCollectingExecutionObserver" /> to enable automatic
 ///     metrics collection during pipeline execution.
 /// </remarks>
 public sealed class ObservablePipelineContextFactory : IObservablePipelineContextFactory
@@ -18,7 +18,7 @@ public sealed class ObservablePipelineContextFactory : IObservablePipelineContex
     private readonly IExecutionObserver _executionObserver;
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="ObservablePipelineContextFactory"/> class.
+    ///     Initializes a new instance of the <see cref="ObservablePipelineContextFactory" /> class.
     /// </summary>
     /// <param name="executionObserver">The execution observer for metrics collection.</param>
     public ObservablePipelineContextFactory(IExecutionObserver executionObserver)
@@ -43,7 +43,7 @@ public sealed class ObservablePipelineContextFactory : IObservablePipelineContex
 
         var context = new PipelineContext(configuration)
         {
-            ExecutionObserver = _executionObserver
+            ExecutionObserver = _executionObserver,
         };
 
         return context;

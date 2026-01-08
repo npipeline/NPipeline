@@ -77,9 +77,7 @@ async Task RunPipelineAsync()
             var nodeMetrics = collector.GetNodeMetrics();
 
             if (nodeMetrics.Count == 0)
-            {
                 Console.WriteLine("No metrics collected.");
-            }
             else
             {
                 foreach (var metrics in nodeMetrics)
@@ -90,26 +88,21 @@ async Task RunPipelineAsync()
                     Console.WriteLine($"  Items Processed: {metrics.ItemsProcessed}");
                     Console.WriteLine($"  Items Emitted: {metrics.ItemsEmitted}");
                     Console.WriteLine($"  Success: {metrics.Success}");
+
                     if (metrics.ThreadId.HasValue)
-                    {
                         Console.WriteLine($"  Thread ID: {metrics.ThreadId}");
-                    }
+
                     if (metrics.ThroughputItemsPerSec.HasValue)
-                    {
                         Console.WriteLine($"  Throughput: {metrics.ThroughputItemsPerSec:F2} items/sec");
-                    }
+
                     if (metrics.AverageItemProcessingMs.HasValue)
-                    {
                         Console.WriteLine($"  Avg Processing Time: {metrics.AverageItemProcessingMs:F2}ms per item");
-                    }
+
                     if (metrics.RetryCount > 0)
-                    {
                         Console.WriteLine($"  Retry Count: {metrics.RetryCount}");
-                    }
+
                     if (metrics.PeakMemoryUsageMb.HasValue)
-                    {
                         Console.WriteLine($"  Peak Memory: {metrics.PeakMemoryUsageMb}MB");
-                    }
                 }
             }
         }

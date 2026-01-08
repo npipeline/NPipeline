@@ -2,7 +2,8 @@
 
 ## Overview
 
-This sample demonstrates the comprehensive observability features of the **NPipeline.Extensions.Observability** extension. It showcases how to collect, track, and analyze detailed metrics about pipeline execution across multiple stages.
+This sample demonstrates the comprehensive observability features of the **NPipeline.Extensions.Observability** extension. It showcases how to collect, track,
+and analyze detailed metrics about pipeline execution across multiple stages.
 
 ## What This Sample Demonstrates
 
@@ -25,9 +26,10 @@ NumberGenerator → NumberFilter → NumberMultiplier → ResultAggregator
 ```
 
 **Data Flow Example:**
+
 - **Input**: Numbers 1-100
 - **After Filter**: Odd numbers only (1, 3, 5, ..., 99) = 50 items
-- **After Multiplier**: Each odd number × 3 (3, 9, 15, ..., 297) = 50 items  
+- **After Multiplier**: Each odd number × 3 (3, 9, 15, ..., 297) = 50 items
 - **Final Output**: Aggregated results with statistics
 
 ## Key Features Demonstrated
@@ -35,6 +37,7 @@ NumberGenerator → NumberFilter → NumberMultiplier → ResultAggregator
 ### 1. Node-Level Metrics
 
 Each node automatically records:
+
 - **Duration**: Total execution time in milliseconds
 - **Items Processed**: Total items received
 - **Items Emitted**: Total items sent to the next node
@@ -44,6 +47,7 @@ Each node automatically records:
 ### 2. Performance Metrics
 
 Nodes can record:
+
 - **Throughput**: Items per second
 - **Average Processing Time**: Milliseconds per item
 - **Retry Attempts**: Number of retries (if using retry policies)
@@ -51,6 +55,7 @@ Nodes can record:
 ### 3. Resource Metrics
 
 Optional tracking of:
+
 - **Peak Memory Usage**: Maximum memory consumed during execution
 - **Processor Time**: CPU time used by the node
 - **Initial Memory**: Memory state at node start
@@ -58,6 +63,7 @@ Optional tracking of:
 ### 4. Difference Between Processed and Emitted
 
 The `NumberFilter` node demonstrates filtering:
+
 - **Processed**: 100 items (all input numbers)
 - **Emitted**: 50 items (odd numbers only)
 
@@ -167,6 +173,7 @@ Pipeline execution completed successfully!
 ### Duration (DurationMs)
 
 The total wall-clock time the node spent executing, from start to end. This includes:
+
 - Processing time
 - I/O wait time
 - Time waiting for downstream nodes
@@ -178,6 +185,7 @@ The total wall-clock time the node spent executing, from start to end. This incl
 - **Items Emitted**: Total output items the node sent
 
 These differ in:
+
 - **Filtering nodes**: Where some items are discarded
 - **Aggregating nodes**: Where multiple inputs become one output
 - **Sink nodes**: Where items are consumed but not emitted downstream
@@ -187,6 +195,7 @@ These differ in:
 Calculated as: `Items Processed / (Duration in seconds)`
 
 Lower values may indicate:
+
 - I/O-bound operations
 - Complex processing logic
 - Resource contention
@@ -248,6 +257,7 @@ public class CustomPipelineMetricsSink : IPipelineMetricsSink
 ### Thread Safety
 
 The `ObservabilityCollector` uses `ConcurrentDictionary<string, NodeMetricsBuilder>` to safely handle concurrent node executions. This makes it compatible with:
+
 - Parallel execution strategies
 - Multi-threaded node implementations
 - Concurrent data processing
@@ -257,6 +267,7 @@ See [Sample_ParallelExecution_Simplified](../Sample_ParallelExecution_Simplified
 ### Composition with Observability
 
 When using composite pipelines ([Sample_Composition](../Sample_Composition/)), observability metrics are automatically collected for:
+
 - Sub-pipeline nodes
 - Nested node hierarchies
 - Composite execution contexts

@@ -17,9 +17,7 @@ public class NumberMultiplier : TransformNode<int, int>
         var result = item * 2;
 
         if (item <= 5 || item % 25 == 0) // Log a few examples
-        {
             Console.WriteLine($"[NumberMultiplier] {item} × 2 = {result}");
-        }
 
         return await Task.FromResult(result);
     }

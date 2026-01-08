@@ -391,7 +391,8 @@ public sealed class DependencyInjectionTests
         IServiceCollection services = null!;
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => services.AddNPipelineObservability<CustomObservabilityCollector, CustomMetricsSink, CustomPipelineMetricsSink>());
+        _ = Assert.Throws<ArgumentNullException>(() =>
+            services.AddNPipelineObservability<CustomObservabilityCollector, CustomMetricsSink, CustomPipelineMetricsSink>());
     }
 
     [Fact]
@@ -426,8 +427,7 @@ public sealed class DependencyInjectionTests
         _ = services.AddLogging(); // Add logging services
 
         // Act
-        _ = services.AddNPipelineObservability<CustomMetricsSink, CustomPipelineMetricsSink>(
-            _ => new CustomObservabilityCollector());
+        _ = services.AddNPipelineObservability<CustomMetricsSink, CustomPipelineMetricsSink>(_ => new CustomObservabilityCollector());
 
         // Assert
         var provider = services.BuildServiceProvider();
@@ -445,8 +445,7 @@ public sealed class DependencyInjectionTests
         _ = services.AddLogging(); // Add logging services
 
         // Act
-        _ = services.AddNPipelineObservability<CustomMetricsSink, CustomPipelineMetricsSink>(
-            _ => new CustomObservabilityCollector());
+        _ = services.AddNPipelineObservability<CustomMetricsSink, CustomPipelineMetricsSink>(_ => new CustomObservabilityCollector());
 
         // Assert
         var provider = services.BuildServiceProvider();
@@ -462,8 +461,8 @@ public sealed class DependencyInjectionTests
         IServiceCollection services = null!;
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => services.AddNPipelineObservability<CustomMetricsSink, CustomPipelineMetricsSink>(
-            _ => new CustomObservabilityCollector()));
+        _ = Assert.Throws<ArgumentNullException>(() =>
+            services.AddNPipelineObservability<CustomMetricsSink, CustomPipelineMetricsSink>(_ => new CustomObservabilityCollector()));
     }
 
     [Fact]
@@ -485,8 +484,7 @@ public sealed class DependencyInjectionTests
         _ = services.AddLogging(); // Add logging services
 
         // Act
-        _ = services.AddNPipelineObservability<CustomMetricsSink, CustomPipelineMetricsSink>(
-            _ => new CustomObservabilityCollector());
+        _ = services.AddNPipelineObservability<CustomMetricsSink, CustomPipelineMetricsSink>(_ => new CustomObservabilityCollector());
 
         // Assert
         var provider = services.BuildServiceProvider();
@@ -596,29 +594,29 @@ public sealed class DependencyInjectionTests
 
     public sealed class CustomMetricsSink(ILogger<CustomMetricsSink> logger) : IMetricsSink
     {
-        public void RecordNodeMetrics(INodeMetrics nodeMetrics, CancellationToken _)
-        {
-            logger.LogInformation("Custom metrics recorded for node {NodeId}", nodeMetrics.NodeId);
-        }
-
         public Task RecordAsync(INodeMetrics nodeMetrics, CancellationToken cancellationToken = default)
         {
             RecordNodeMetrics(nodeMetrics, cancellationToken);
             return Task.CompletedTask;
         }
+
+        public void RecordNodeMetrics(INodeMetrics nodeMetrics, CancellationToken _)
+        {
+            logger.LogInformation("Custom metrics recorded for node {NodeId}", nodeMetrics.NodeId);
+        }
     }
 
     public sealed class CustomPipelineMetricsSink(ILogger<CustomPipelineMetricsSink> logger) : IPipelineMetricsSink
     {
-        public void RecordPipelineMetrics(IPipelineMetrics pipelineMetrics, CancellationToken _)
-        {
-            logger.LogInformation("Custom pipeline metrics recorded for {PipelineName}", pipelineMetrics.PipelineName);
-        }
-
         public Task RecordAsync(IPipelineMetrics pipelineMetrics, CancellationToken cancellationToken = default)
         {
             RecordPipelineMetrics(pipelineMetrics, cancellationToken);
             return Task.CompletedTask;
+        }
+
+        public void RecordPipelineMetrics(IPipelineMetrics pipelineMetrics, CancellationToken _)
+        {
+            logger.LogInformation("Custom pipeline metrics recorded for {PipelineName}", pipelineMetrics.PipelineName);
         }
     }
 
@@ -651,6 +649,7 @@ public sealed class DependencyInjectionTests
             if (_nodeMetrics.TryGetValue(nodeId, out var metrics))
             {
                 var duration = (long)(timestamp - metrics.StartTime)!.Value.TotalMilliseconds;
+
                 _nodeMetrics[nodeId] = metrics with
                 {
                     EndTime = timestamp,
@@ -658,7 +657,7 @@ public sealed class DependencyInjectionTests
                     Success = success,
                     Exception = exception,
                     PeakMemoryUsageMb = peakMemoryMb,
-                    ProcessorTimeMs = processorTimeMs
+                    ProcessorTimeMs = processorTimeMs,
                 };
             }
         }
@@ -670,7 +669,7 @@ public sealed class DependencyInjectionTests
                 _nodeMetrics[nodeId] = metrics with
                 {
                     ItemsProcessed = itemsProcessed,
-                    ItemsEmitted = itemsEmitted
+                    ItemsEmitted = itemsEmitted,
                 };
             }
         }
@@ -678,9 +677,7 @@ public sealed class DependencyInjectionTests
         public void RecordRetry(string nodeId, int retryCount, string? reason = null)
         {
             if (_nodeMetrics.TryGetValue(nodeId, out var metrics))
-            {
                 _nodeMetrics[nodeId] = metrics with { RetryCount = retryCount };
-            }
         }
 
         public void RecordPerformanceMetrics(string nodeId, double throughputItemsPerSec, double averageItemProcessingMs)
@@ -690,31 +687,33 @@ public sealed class DependencyInjectionTests
                 _nodeMetrics[nodeId] = metrics with
                 {
                     ThroughputItemsPerSec = throughputItemsPerSec,
-                    AverageItemProcessingMs = averageItemProcessingMs
+                    AverageItemProcessingMs = averageItemProcessingMs,
                 };
             }
         }
 
         public IReadOnlyList<INodeMetrics> GetNodeMetrics()
         {
-            return [.. _nodeMetrics.Values.Cast<INodeMetrics>()];
+            return [.. _nodeMetrics.Values];
         }
 
         public INodeMetrics? GetNodeMetrics(string nodeId)
         {
-            return _nodeMetrics.TryGetValue(nodeId, out var metrics) ? metrics : null;
+            return _nodeMetrics.TryGetValue(nodeId, out var metrics)
+                ? metrics
+                : null;
         }
 
         public IPipelineMetrics CreatePipelineMetrics(string pipelineName, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, bool success,
             Exception? exception = null)
         {
             long? duration = null;
+
             if (endTime.HasValue)
-            {
                 duration = (long)(endTime.Value - startTime).TotalMilliseconds;
-            }
 
             var totalItemsProcessed = _nodeMetrics.Values.Sum(m => m.ItemsProcessed);
+
             return new PipelineMetrics(
                 pipelineName,
                 runId,

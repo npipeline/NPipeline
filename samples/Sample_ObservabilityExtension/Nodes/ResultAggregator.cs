@@ -12,9 +12,9 @@ namespace Sample_ObservabilityExtension.Nodes;
 public class ResultAggregator : SinkNode<int>
 {
     private int _itemsReceived;
-    private long _sum;
-    private int _min = int.MaxValue;
     private int _max = int.MinValue;
+    private int _min = int.MaxValue;
+    private long _sum;
 
     /// <summary>
     ///     Processes all result items from the input pipe, aggregating statistics.
@@ -27,24 +27,16 @@ public class ResultAggregator : SinkNode<int>
             _sum += item;
 
             if (item < _min)
-            {
                 _min = item;
-            }
 
             if (item > _max)
-            {
                 _max = item;
-            }
 
             // Only log first and last few items to avoid clutter
             if (_itemsReceived <= 3 || _itemsReceived > 48)
-            {
                 Console.WriteLine($"[ResultAggregator] Item {_itemsReceived}: {item}");
-            }
             else if (_itemsReceived == 4)
-            {
                 Console.WriteLine("[ResultAggregator] ... (processing remaining items) ...");
-            }
         }
 
         // Display final statistics
@@ -58,6 +50,7 @@ public class ResultAggregator : SinkNode<int>
 
         // Record item metrics through the observability collector
         var collector = context.ExecutionObserver as IObservabilityCollector;
+
         if (collector != null)
         {
             // For sink, items processed equals items received, nothing is emitted
@@ -65,7 +58,7 @@ public class ResultAggregator : SinkNode<int>
 
             // Record performance metrics
             // Aggregation is fast: assume ~0.05ms per item
-            collector.RecordPerformanceMetrics(context.CurrentNodeId, throughputItemsPerSec: 20000.0, averageItemProcessingMs: 0.05);
+            collector.RecordPerformanceMetrics(context.CurrentNodeId, 20000.0, 0.05);
         }
     }
 }

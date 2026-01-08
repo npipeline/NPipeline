@@ -8,8 +8,8 @@ namespace NPipeline.Observability;
 ///     Factory for creating pipeline contexts with observability pre-configured.
 /// </summary>
 /// <remarks>
-///     This factory creates <see cref="PipelineContext"/> instances that are automatically
-///     wired up with <see cref="MetricsCollectingExecutionObserver"/> to enable automatic
+///     This factory creates <see cref="PipelineContext" /> instances that are automatically
+///     wired up with <see cref="MetricsCollectingExecutionObserver" /> to enable automatic
 ///     metrics collection during pipeline execution.
 /// </remarks>
 public interface IObservablePipelineContextFactory

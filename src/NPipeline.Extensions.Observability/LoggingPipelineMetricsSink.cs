@@ -30,16 +30,18 @@ public sealed class LoggingPipelineMetricsSink : IPipelineMetricsSink
     {
         ArgumentNullException.ThrowIfNull(pipelineMetrics);
 
-        var logLevel = pipelineMetrics.Success ? LogLevel.Information : LogLevel.Error;
+        var logLevel = pipelineMetrics.Success
+            ? LogLevel.Information
+            : LogLevel.Error;
 
         using (_logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["PipelineName"] = pipelineMetrics.PipelineName,
-            ["RunId"] = pipelineMetrics.RunId,
-            ["Success"] = pipelineMetrics.Success,
-            ["TotalItemsProcessed"] = pipelineMetrics.TotalItemsProcessed,
-            ["DurationMs"] = pipelineMetrics.DurationMs
-        }))
+               {
+                   ["PipelineName"] = pipelineMetrics.PipelineName,
+                   ["RunId"] = pipelineMetrics.RunId,
+                   ["Success"] = pipelineMetrics.Success,
+                   ["TotalItemsProcessed"] = pipelineMetrics.TotalItemsProcessed,
+                   ["DurationMs"] = pipelineMetrics.DurationMs,
+               }))
         {
             if (pipelineMetrics.Success)
             {
@@ -65,7 +67,9 @@ public sealed class LoggingPipelineMetricsSink : IPipelineMetricsSink
             // Log node-level metrics
             foreach (var nodeMetric in pipelineMetrics.NodeMetrics)
             {
-                var nodeLogLevel = nodeMetric.Success ? LogLevel.Information : LogLevel.Warning;
+                var nodeLogLevel = nodeMetric.Success
+                    ? LogLevel.Information
+                    : LogLevel.Warning;
 
                 if (nodeMetric.Success)
                 {
@@ -118,7 +122,8 @@ public sealed class LoggingPipelineMetricsSink : IPipelineMetricsSink
             // Calculate and log overall throughput
             if (pipelineMetrics.DurationMs.HasValue && pipelineMetrics.DurationMs.Value > 0)
             {
-                var overallThroughput = (double)pipelineMetrics.TotalItemsProcessed / (pipelineMetrics.DurationMs.Value / 1000.0);
+                var overallThroughput = pipelineMetrics.TotalItemsProcessed / (pipelineMetrics.DurationMs.Value / 1000.0);
+
                 _logger.Log(
                     LogLevel.Information,
                     "Overall pipeline throughput: {Throughput:F2} items/sec",

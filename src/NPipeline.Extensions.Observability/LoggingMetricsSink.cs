@@ -30,19 +30,21 @@ public sealed class LoggingMetricsSink : IMetricsSink
     {
         ArgumentNullException.ThrowIfNull(nodeMetrics);
 
-        var logLevel = nodeMetrics.Success ? LogLevel.Information : LogLevel.Warning;
+        var logLevel = nodeMetrics.Success
+            ? LogLevel.Information
+            : LogLevel.Warning;
 
         using (_logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["NodeId"] = nodeMetrics.NodeId,
-            ["Success"] = nodeMetrics.Success,
-            ["ItemsProcessed"] = nodeMetrics.ItemsProcessed,
-            ["ItemsEmitted"] = nodeMetrics.ItemsEmitted,
-            ["DurationMs"] = nodeMetrics.DurationMs,
-            ["RetryCount"] = nodeMetrics.RetryCount,
-            ["ThreadId"] = nodeMetrics.ThreadId,
-            ["AverageItemProcessingMs"] = nodeMetrics.AverageItemProcessingMs
-        }))
+               {
+                   ["NodeId"] = nodeMetrics.NodeId,
+                   ["Success"] = nodeMetrics.Success,
+                   ["ItemsProcessed"] = nodeMetrics.ItemsProcessed,
+                   ["ItemsEmitted"] = nodeMetrics.ItemsEmitted,
+                   ["DurationMs"] = nodeMetrics.DurationMs,
+                   ["RetryCount"] = nodeMetrics.RetryCount,
+                   ["ThreadId"] = nodeMetrics.ThreadId,
+                   ["AverageItemProcessingMs"] = nodeMetrics.AverageItemProcessingMs,
+               }))
         {
             if (nodeMetrics.Success)
             {

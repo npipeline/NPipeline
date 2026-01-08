@@ -9,10 +9,10 @@ namespace NPipeline.Extensions.Observability;
 /// </summary>
 public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector collector, bool collectMemoryMetrics = false) : IExecutionObserver
 {
-    private readonly IObservabilityCollector _collector = collector ?? throw new ArgumentNullException(nameof(collector));
-    private readonly ConcurrentDictionary<string, DateTimeOffset> _nodeStartTimes = new();
-    private readonly ConcurrentDictionary<string, long> _nodeInitialMemory = new();
     private readonly bool _collectMemoryMetrics = collectMemoryMetrics;
+    private readonly IObservabilityCollector _collector = collector ?? throw new ArgumentNullException(nameof(collector));
+    private readonly ConcurrentDictionary<string, long> _nodeInitialMemory = new();
+    private readonly ConcurrentDictionary<string, DateTimeOffset> _nodeStartTimes = new();
 
     /// <summary>
     ///     Called when a node starts execution.
@@ -41,12 +41,12 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
     public void OnNodeCompleted(NodeExecutionCompleted e)
     {
         var endTime = DateTimeOffset.UtcNow;
+
         if (_nodeStartTimes.TryRemove(e.NodeId, out var startTime))
-        {
             endTime = startTime + e.Duration;
-        }
 
         long? peakMemoryMb = null;
+
         if (_collectMemoryMetrics)
         {
             var finalMemoryBytes = GC.GetTotalMemory(false);
@@ -66,9 +66,11 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
 
         // Calculate and record performance metrics if items were processed
         var nodeMetrics = _collector.GetNodeMetrics(e.NodeId);
+
         if (nodeMetrics != null && nodeMetrics.ItemsProcessed > 0 && nodeMetrics.DurationMs.HasValue)
         {
             var durationSec = nodeMetrics.DurationMs.Value / 1000.0;
+
             if (durationSec > 0)
             {
                 var throughput = nodeMetrics.ItemsProcessed / durationSec;

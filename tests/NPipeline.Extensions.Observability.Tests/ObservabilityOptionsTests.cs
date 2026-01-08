@@ -1,10 +1,9 @@
 using NPipeline.Observability.Configuration;
-using Xunit;
 
 namespace NPipeline.Observability.Tests;
 
 /// <summary>
-///     Tests for the <see cref="ObservabilityOptions"/> record.
+///     Tests for the <see cref="ObservabilityOptions" /> record.
 /// </summary>
 public sealed class ObservabilityOptionsTests
 {
@@ -71,7 +70,7 @@ public sealed class ObservabilityOptionsTests
         var options = ObservabilityOptions.Default with
         {
             RecordMemoryUsage = true,
-            RecordPerformanceMetrics = false
+            RecordPerformanceMetrics = false,
         };
 
         // Assert
