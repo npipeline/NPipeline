@@ -2,8 +2,6 @@ using System.Diagnostics;
 using NPipeline.Observability;
 using NPipeline.Observability.Configuration;
 
-#pragma warning disable CS0414 // Fields are part of public API via RecordFailure method, kept for future use
-
 namespace NPipeline.Extensions.Observability;
 
 /// <summary>
@@ -29,8 +27,10 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
     private readonly Stopwatch _stopwatch;
     private readonly int? _threadId;
     private bool _disposed;
+    private Exception? _exception;
     private long _itemsEmitted;
     private long _itemsProcessed;
+    private bool _success;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="AutoObservabilityScope" /> class.
@@ -56,11 +56,9 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
             ? Environment.CurrentManagedThreadId
             : null;
 
+        _success = true;
         _itemsProcessed = 0;
         _itemsEmitted = 0;
-        _success = true;
-        _exception = null;
-        _disposed = false;
 
         // Always record node start with actual timestamp to enable duration calculation
         // The RecordTiming flag controls whether we call RecordNodeEnd, not whether we record start
@@ -106,6 +104,8 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
     /// <param name="exception">The exception that caused the failure.</param>
     public void RecordFailure(Exception exception)
     {
+        ArgumentNullException.ThrowIfNull(exception);
+
         _success = false;
         _exception = exception;
     }
@@ -170,8 +170,4 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
         // 2. In MetricsCollectingExecutionObserver.OnNodeCompleted
         // The second call will overwrite the first, which is correct since the observer has the authoritative timing
     }
-#pragma warning disable CS0414
-    private bool _success;
-    private Exception? _exception;
-#pragma warning restore CS0414
 }

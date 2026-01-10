@@ -77,17 +77,7 @@ public static class ObservabilityServiceCollectionExtensions
         services.TryAddScoped<IMetricsSink, TMetricsSink>();
         services.TryAddScoped<IPipelineMetricsSink, TPipelineMetricsSink>();
 
-        // Register the factory for DI resolution
-        services.TryAddScoped<IObservabilityFactory, DiObservabilityFactory>();
-
-        // Register the execution observer that bridges core events to the collector
-        services.TryAddScoped<IExecutionObserver>(sp =>
-            new MetricsCollectingExecutionObserver(
-                sp.GetRequiredService<IObservabilityCollector>(),
-                options.EnableMemoryMetrics));
-
-        // Register the context factory for automatic observer configuration
-        services.TryAddScoped<IObservablePipelineContextFactory, ObservablePipelineContextFactory>();
+        RegisterCoreObservabilityServices(services, options);
 
         return services;
     }
@@ -137,17 +127,7 @@ public static class ObservabilityServiceCollectionExtensions
         services.TryAddScoped<IMetricsSink>(metricsSinkFactory);
         services.TryAddScoped<IPipelineMetricsSink>(pipelineMetricsSinkFactory);
 
-        // Register the factory for DI resolution
-        services.TryAddScoped<IObservabilityFactory, DiObservabilityFactory>();
-
-        // Register the execution observer that bridges core events to the collector
-        services.TryAddScoped<IExecutionObserver>(sp =>
-            new MetricsCollectingExecutionObserver(
-                sp.GetRequiredService<IObservabilityCollector>(),
-                options.EnableMemoryMetrics));
-
-        // Register the context factory for automatic observer configuration
-        services.TryAddScoped<IObservablePipelineContextFactory, ObservablePipelineContextFactory>();
+        RegisterCoreObservabilityServices(services, options);
 
         return services;
     }
@@ -197,17 +177,7 @@ public static class ObservabilityServiceCollectionExtensions
         services.TryAddScoped<IMetricsSink, TMetricsSink>();
         services.TryAddScoped<IPipelineMetricsSink, TPipelineMetricsSink>();
 
-        // Register the factory for DI resolution
-        services.TryAddScoped<IObservabilityFactory, DiObservabilityFactory>();
-
-        // Register the execution observer that bridges core events to the collector
-        services.TryAddScoped<IExecutionObserver>(sp =>
-            new MetricsCollectingExecutionObserver(
-                sp.GetRequiredService<IObservabilityCollector>(),
-                options.EnableMemoryMetrics));
-
-        // Register the context factory for automatic observer configuration
-        services.TryAddScoped<IObservablePipelineContextFactory, ObservablePipelineContextFactory>();
+        RegisterCoreObservabilityServices(services, options);
 
         return services;
     }
@@ -259,6 +229,16 @@ public static class ObservabilityServiceCollectionExtensions
         services.TryAddScoped<IMetricsSink, TMetricsSink>();
         services.TryAddScoped<IPipelineMetricsSink, TPipelineMetricsSink>();
 
+        RegisterCoreObservabilityServices(services, options);
+
+        return services;
+    }
+
+    /// <summary>
+    ///     Registers the shared core services used by all observability configurations.
+    /// </summary>
+    private static void RegisterCoreObservabilityServices(IServiceCollection services, ObservabilityExtensionOptions options)
+    {
         // Register the factory for DI resolution
         services.TryAddScoped<IObservabilityFactory, DiObservabilityFactory>();
 
@@ -270,7 +250,5 @@ public static class ObservabilityServiceCollectionExtensions
 
         // Register the context factory for automatic observer configuration
         services.TryAddScoped<IObservablePipelineContextFactory, ObservablePipelineContextFactory>();
-
-        return services;
     }
 }
