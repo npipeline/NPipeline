@@ -307,8 +307,8 @@ Understanding service lifetimes is crucial for proper configuration:
 | Service | Default Lifetime | Rationale |
 |---------|------------------|-----------|
 | `IObservabilityCollector` | Scoped | One instance per pipeline run for isolation |
-| `IMetricsSink` | Transient | New instance per use to avoid state sharing |
-| `IPipelineMetricsSink` | Transient | New instance per use to avoid state sharing |
+| `IMetricsSink` | Scoped | New instance per pipeline run to avoid state sharing |
+| `IPipelineMetricsSink` | Scoped | New instance per pipeline run to avoid state sharing |
 | `IObservabilityFactory` | Scoped | Resolves scoped collector instances |
 
 ### Why Scoped Collector?
@@ -318,24 +318,30 @@ The collector is scoped to ensure:
 - **Memory management**: Metrics are automatically disposed when the scope ends
 - **Thread safety**: Concurrent pipeline runs don't interfere with each other
 
-### Why Transient Sinks?
+### Why Scoped Sinks?
 
-Sinks are transient because:
+Sinks are scoped because:
 - **Stateless operation**: Most sinks don't maintain state between uses
 - **Dependency resolution**: Allows sinks to receive scoped dependencies
-- **Flexibility**: Enables different sink instances for different scenarios
+- **Flexibility**: Enables different sink instances for different pipeline runs
 
 ## Configuration Options
 
 ### ObservabilityExtensionOptions
 
-The `ObservabilityExtensionOptions` class controls global behavior of the observability extension:
+The [`ObservabilityExtensionOptions`](../../src/NPipeline.Extensions.Observability/DependencyInjection/ObservabilityExtensionOptions.cs:10) class controls global behavior of the observability extension:
 
 ```csharp
 public sealed record ObservabilityExtensionOptions
 {
     /// Whether to automatically collect memory metrics (peak memory usage) for each node
     bool EnableMemoryMetrics { get; init; }
+
+    /// Default observability extension options with memory metrics disabled
+    public static ObservabilityExtensionOptions Default => new() { EnableMemoryMetrics = false };
+
+    /// Observability extension options with memory metrics enabled
+    public static ObservabilityExtensionOptions WithMemoryMetrics => new() { EnableMemoryMetrics = true };
 }
 ```
 
@@ -671,7 +677,7 @@ public sealed class AggregatingMetricsSink : IMetricsSink
 
 ## Related Topics
 
-- **[Observability Overview](./observability.md)**: Introduction to observability features
-- **[Metrics Reference](./observability-metrics.md)**: Detailed metrics documentation
-- **[Usage Examples](./observability-examples.md)**: Complete code examples
-- **[Dependency Injection](./dependency-injection.md)**: DI integration with NPipeline
+- **[Observability Overview](./overview.md)**: Introduction to observability features
+- **[Metrics Reference](./metrics.md)**: Detailed metrics documentation
+- **[Usage Examples](./examples.md)**: Complete code examples
+- **[Dependency Injection](../dependency-injection.md)**: DI integration with NPipeline

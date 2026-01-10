@@ -156,7 +156,7 @@ DurationMs = (long)(EndTime - StartTime).TotalMilliseconds
 #### PeakMemoryUsageMb
 
 - **Type**: `long?`
-- **Description**: Peak memory usage in megabytes during node execution (per-node delta)
+- **Description**: Per-node managed memory allocation delta in megabytes during node execution
 - **Source**: Calculated as delta between final and initial memory using `GC.GetTotalMemory(false)`
 - **Thread-Safe**: Yes (immutable)
 - **Granularity**: Per-node managed memory allocation delta
@@ -189,15 +189,14 @@ var memoryDeltaMb = deltaBytes / (1024 * 1024);
 #### ProcessorTimeMs
 
 - **Type**: `long?`
-- **Description**: Total processor time used in milliseconds (not available per-node)
-- **Source**: Not available at node level; only available at process level
+- **Description**: Total processor time used in milliseconds
+- **Source**: Not available per-node in current implementation
 - **Thread-Safe**: Yes (immutable)
 - **Granularity**: Process-level (not node-specific)
 
 **Important Notes**:
-- This metric is **not available per-node**; it's only available at the process level
-- The current implementation does not capture processor time for individual nodes
-- This field is included for future compatibility but will always be null for node metrics
+- This metric is **not available per-node** in the current implementation
+- The field is included for future compatibility but will always be `null` for node metrics
 - If you need CPU metrics, consider using system-level monitoring tools
 - May be null if metrics collection fails or is disabled
 
@@ -453,20 +452,6 @@ var memoryDeltaMb = deltaBytes / (1024 * 1024);
 - Garbage collection may cause memory usage to fluctuate
 - Memory metrics require both extension-level (`EnableMemoryMetrics`) and node-level (`RecordMemoryUsage`) options to be enabled
 
-### Processor Time Calculation
-
-Processor time is cumulative across all threads:
-
-```csharp
-ProcessorTimeMs = (long)Process.TotalProcessorTime.TotalMilliseconds
-```
-
-**Important Considerations**:
-- Processor time is cumulative across all threads in the process
-- For single-threaded nodes, `ProcessorTimeMs` ≈ `DurationMs`
-- For parallel nodes, `ProcessorTimeMs` > `DurationMs` indicates effective parallelism
-- Processor time includes all CPU activity, not just the node
-
 ### Retry Count Calculation
 
 Retry count tracks the maximum retry attempt observed:
@@ -620,6 +605,6 @@ var unreliableNodes = pipelineMetrics.NodeMetrics
 
 ## Related Topics
 
-- **[Observability Overview](./observability.md)**: Introduction to observability features
-- **[Configuration Guide](./observability-configuration.md)**: Setup and configuration options
-- **[Usage Examples](./observability-examples.md)**: Complete code examples
+- **[Observability Overview](./overview.md)**: Introduction to observability features
+- **[Configuration Guide](./configuration.md)**: Setup and configuration options
+- **[Usage Examples](./examples.md)**: Complete code examples

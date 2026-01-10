@@ -512,5 +512,5 @@ public async Task Pipeline_Should_RecordMetrics()
 ## See Also
 
 - [Getting Started](./getting-started.md) - Basic setup and usage
-- [Configuration](../../docs/extensions/observability-configuration.md) - DI configuration options
-- [Metrics Reference](../../docs/extensions/observability-metrics.md) - Complete metrics documentation
+- [Configuration](./configuration.md) - DI configuration options
+- [Metrics Reference](./metrics.md) - Complete metrics documentation

@@ -66,11 +66,12 @@ The extension requires:
 
 ### Basic Setup with Default Logging
 
-The simplest way to enable observability is with the default registration:
+The simplest way to enable observability is to use the [`IObservablePipelineContextFactory`](../../src/NPipeline.Extensions.Observability/IObservablePipelineContextFactory.cs:15), which automatically configures metrics collection:
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Observability.DependencyInjection;
+using NPipeline.Extensions.DependencyInjection;
 
 var services = new ServiceCollection();
 
@@ -83,7 +84,11 @@ services.AddNPipeline(Assembly.GetExecutingAssembly());
 var serviceProvider = services.BuildServiceProvider();
 
 // Run your pipeline - metrics will be automatically collected and logged
-await serviceProvider.RunPipelineAsync<MyPipelineDefinition>();
+await using var scope = serviceProvider.CreateAsyncScope();
+var runner = scope.ServiceProvider.GetRequiredService<IPipelineRunner>();
+var contextFactory = scope.ServiceProvider.GetRequiredService<IObservablePipelineContextFactory>();
+await using var context = contextFactory.Create();
+await runner.RunAsync<MyPipelineDefinition>(context);
 ```
 
 ### What Gets Logged
@@ -100,7 +105,7 @@ With the default configuration, you'll see structured logs like:
 
 ### Automatic Metrics Collection with IObservablePipelineContextFactory
 
-The simplest way to enable automatic metrics collection is to use the `IObservablePipelineContextFactory`:
+The [`IObservablePipelineContextFactory`](../../src/NPipeline.Extensions.Observability/IObservablePipelineContextFactory.cs:15) creates pipeline contexts with [`MetricsCollectingExecutionObserver`](../../src/NPipeline.Extensions.Observability/MetricsCollectingExecutionObserver.cs:10) pre-configured, enabling automatic metrics collection without manual wiring:
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
@@ -113,9 +118,9 @@ services.AddNPipelineObservability();
 // In your pipeline execution code:
 await using var scope = host.Services.CreateAsyncScope();
 var runner = scope.ServiceProvider.GetRequiredService<IPipelineRunner>();
+var contextFactory = scope.ServiceProvider.GetRequiredService<IObservablePipelineContextFactory>();
 
 // Create a context with observability pre-configured
-var contextFactory = scope.ServiceProvider.GetRequiredService<IObservablePipelineContextFactory>();
 await using var context = contextFactory.Create();
 
 // Run your pipeline - metrics are collected automatically!
@@ -131,7 +136,7 @@ foreach (var metrics in nodeMetrics)
 }
 ```
 
-The `IObservablePipelineContextFactory` automatically sets up the `ExecutionObserver` on the context, so you don't need to manually wire up the observer.
+The [`IObservablePipelineContextFactory`](../../src/NPipeline.Extensions.Observability/IObservablePipelineContextFactory.cs:15) automatically sets up the [`MetricsCollectingExecutionObserver`](../../src/NPipeline.Extensions.Observability/MetricsCollectingExecutionObserver.cs:10) on the context, eliminating the need to manually create or wire up the observer.
 
 ### Per-Node Observability Configuration
 
@@ -241,9 +246,9 @@ The extension provides strong thread-safety guarantees:
 
 ## Next Steps
 
-- **[Configuration Guide](./observability-configuration.md)**: Learn about all registration options and configuration patterns
-- **[Metrics Reference](./observability-metrics.md)**: Detailed reference for all available metrics and how they're calculated
-- **[Usage Examples](./observability-examples.md)**: Complete code examples for common scenarios
+- **[Configuration Guide](./configuration.md)**: Learn about all registration options and configuration patterns
+- **[Metrics Reference](./metrics.md)**: Detailed reference for all available metrics and how they're calculated
+- **[Usage Examples](./examples.md)**: Complete code examples for common scenarios
 
 ## Related Topics
 

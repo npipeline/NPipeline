@@ -23,7 +23,7 @@ This section details the officially supported extensions and how to leverage the
 
 * **[Composition](composition/index.md)**: Create hierarchical, modular pipelines by treating entire pipelines as reusable transform nodes. Enables breaking complex workflows into smaller, well-tested building blocks with full type safety and context control.
 
-* **[Observability](observability.md)**: Comprehensive metrics collection and monitoring capabilities for NPipeline pipelines. Track node and pipeline performance, throughput, memory usage, retries, and errors with built-in logging sinks and custom metrics sink support.
+* **[Observability](observability/overview.md)**: Comprehensive metrics collection and monitoring capabilities for NPipeline pipelines. Track node and pipeline performance, throughput, memory usage, retries, and errors with built-in logging sinks and custom metrics sink support.
 
 * **[Connectors](../connectors/index.md)**: Pre-built source and sink nodes for common data sources and destinations (e.g., CSV files).
 
@@ -150,5 +150,5 @@ public class MyParallelPipeline : IPipelineDefinition
 * **[Dependency Injection](dependency-injection.md)**: Learn about constructor injection and service lifetime management
 * **[Parallelism](parallelism.md)**: Explore parallel processing capabilities and configuration options
 * **[Testing](testing/index.md)**: Discover comprehensive testing utilities and assertion libraries
-* **[Observability](observability.md)**: Learn about metrics collection and monitoring for production pipelines
+* **[Observability](observability/overview.md)**: Learn about metrics collection and monitoring for production pipelines
 * **[Connectors](../connectors/index.md)**: Explore pre-built connectors for external systems

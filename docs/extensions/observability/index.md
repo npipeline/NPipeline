@@ -11,10 +11,10 @@ Comprehensive metrics collection and monitoring for NPipeline pipelines.
 
 ### Reference Documentation
 
-- **[Configuration](../../docs/extensions/observability-configuration.md)** - DI setup and configuration options
-- **[Metrics Reference](../../docs/extensions/observability-metrics.md)** - Complete metrics documentation
-- **[Examples](../../docs/extensions/observability-examples.md)** - Real-world usage examples
-- **[Main Documentation](../../docs/extensions/observability.md)** - Comprehensive guide
+- **[Configuration](./configuration.md)** - DI setup and configuration options
+- **[Metrics Reference](./metrics.md)** - Complete metrics documentation
+- **[Examples](./examples.md)** - Real-world usage examples
+- **[Overview](./overview.md)** - Comprehensive guide
 
 ## Quick Links
 
@@ -102,24 +102,19 @@ dotnet add package NPipeline.Extensions.Observability
 services.AddNPipelineObservability();
 
 // Use
-var collector = serviceProvider.GetRequiredService<IObservabilityCollector>();
-var observer = new MetricsCollectingExecutionObserver(collector);
-var context = PipelineContext.Default with
-{
-    ExecutionObservers = new List<IExecutionObserver> { observer }
-};
+var contextFactory = serviceProvider.GetRequiredService<IObservablePipelineContextFactory>();
+await using var context = contextFactory.Create();
 
 await runner.RunAsync<MyPipeline>(context);
 
 // View Results
-var metrics = collector.CreatePipelineMetrics(
-    "MyPipeline",
-    Guid.NewGuid(),
-    startTime,
-    DateTimeOffset.UtcNow,
-    true);
+var collector = serviceProvider.GetRequiredService<IObservabilityCollector>();
+var nodeMetrics = collector.GetNodeMetrics();
 
-Console.WriteLine($"Processed {metrics.TotalItemsProcessed} items");
+foreach (var metric in nodeMetrics)
+{
+    Console.WriteLine($"Node {metric.NodeId}: {metric.ItemsProcessed} items, {metric.DurationMs}ms");
+}
 ```
 
 ## Contributing
