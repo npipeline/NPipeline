@@ -156,45 +156,69 @@ DurationMs = (long)(EndTime - StartTime).TotalMilliseconds
 #### PeakMemoryUsageMb
 
 - **Type**: `long?`
-- **Description**: Peak memory usage in megabytes during node execution
-- **Source**: `Process.PeakWorkingSet64 / (1024 * 1024)`
+- **Description**: Peak memory usage in megabytes during node execution (per-node delta)
+- **Source**: Calculated as delta between final and initial memory using `GC.GetTotalMemory(false)`
 - **Thread-Safe**: Yes (immutable)
-- **Granularity**: Process-level, not node-specific
+- **Granularity**: Per-node managed memory allocation delta
 
 **Calculation**:
 ```csharp
-PeakMemoryUsageMb = Process.GetCurrentProcess().PeakWorkingSet64 / (1024 * 1024)
+// Initial memory at node start
+var initialMemoryBytes = GC.GetTotalMemory(false);
+
+// ... node execution ...
+
+// Final memory at node end
+var finalMemoryBytes = GC.GetTotalMemory(false);
+
+// Calculate delta (memory allocated during node execution)
+var deltaBytes = finalMemoryBytes - initialMemoryBytes;
+var memoryDeltaMb = deltaBytes / (1024 * 1024);
 ```
 
 **Usage**: Identify memory-intensive nodes and optimize memory usage. Track memory growth over time to detect leaks.
 
 **Important Notes**:
-- This is process-level memory, not node-specific
-- In parallel execution, this reflects the peak across all concurrent nodes
+- This is a **per-node delta** of managed memory allocations, not global process memory
+- Memory is measured using `GC.GetTotalMemory(false)` which captures managed memory allocations
+- In parallel execution, this reflects the memory allocated during that specific node's execution
 - May be null if metrics collection fails or is disabled
-- Use for relative comparisons, not absolute memory requirements
+- Memory metrics require both extension-level (`EnableMemoryMetrics`) and node-level (`RecordMemoryUsage`) options to be enabled
+- Use for relative comparisons between nodes, not absolute memory requirements
 
 #### ProcessorTimeMs
 
 - **Type**: `long?`
-- **Description**: Total processor time used in milliseconds
-- **Source**: `Process.TotalProcessorTime.TotalMilliseconds`
+- **Description**: Total processor time used in milliseconds (not available per-node)
+- **Source**: Not available at node level; only available at process level
 - **Thread-Safe**: Yes (immutable)
-- **Granularity**: Process-level, not node-specific
+- **Granularity**: Process-level (not node-specific)
+
+**Important Notes**:
+- This metric is **not available per-node**; it's only available at the process level
+- The current implementation does not capture processor time for individual nodes
+- This field is included for future compatibility but will always be null for node metrics
+- If you need CPU metrics, consider using system-level monitoring tools
+- May be null if metrics collection fails or is disabled
+
+#### AverageItemProcessingMs
+
+- **Type**: `double?`
+- **Description**: Average time spent processing each item in milliseconds
+- **Source**: Calculated from `DurationMs` and `ItemsProcessed`
+- **Thread-Safe**: Yes (immutable)
+- **Precision**: Double-precision floating point
 
 **Calculation**:
 ```csharp
-ProcessorTimeMs = (long)Process.GetCurrentProcess().TotalProcessorTime.TotalMilliseconds
+AverageItemProcessingMs = DurationMs / ItemsProcessed
 ```
 
-**Usage**: Measure CPU utilization and identify CPU-intensive nodes. Compare with wall-clock time to understand parallelism efficiency.
+**Usage**: Measure per-item processing efficiency. Identify nodes with high per-item overhead. Compare processing time across different data volumes.
 
-**Important Notes**:
-- This is cumulative process time, not node-specific
-- In parallel execution, this reflects CPU time across all threads
-- May be null if metrics collection fails or is disabled
-- For single-threaded nodes, `ProcessorTimeMs` ≈ `DurationMs`
-- For parallel nodes, `ProcessorTimeMs` > `DurationMs` indicates effective parallelism
+**Example**: If a node processes 1000 items in 500ms, average per-item time is 0.5ms.
+
+**Note**: Can be null if `DurationMs` is null or `ItemsProcessed` is zero.
 
 #### ThroughputItemsPerSec
 
@@ -405,21 +429,29 @@ ThroughputItemsPerSec = ItemsProcessed / (DurationMs / 1000.0)
 
 ### Memory Usage Calculation
 
-Memory usage is measured at the process level:
+Memory usage is measured as **per-node managed memory allocation deltas**:
 
 ```csharp
-// Peak memory during node execution
-PeakMemoryUsageMb = Process.PeakWorkingSet64 / (1024 * 1024)
-
 // Initial memory at node start
-InitialMemoryMb = Process.WorkingSet64 / (1024 * 1024)
+var initialMemoryBytes = GC.GetTotalMemory(false);
+
+// ... node execution ...
+
+// Final memory at node end
+var finalMemoryBytes = GC.GetTotalMemory(false);
+
+// Calculate delta (memory allocated during node execution)
+var deltaBytes = finalMemoryBytes - initialMemoryBytes;
+var memoryDeltaMb = deltaBytes / (1024 * 1024);
 ```
 
 **Important Considerations**:
-- Memory is measured at the process level, not per-node
-- In parallel execution, `PeakMemoryUsageMb` reflects the peak across all concurrent nodes
-- Memory usage includes all allocations, not just those from the node
+- Memory is measured using `GC.GetTotalMemory(false)` which captures managed memory allocations
+- This is a **per-node delta**, not global process memory or peak working set
+- In parallel execution, each node gets its own isolated memory measurement
+- The delta represents memory allocated during that specific node's execution
 - Garbage collection may cause memory usage to fluctuate
+- Memory metrics require both extension-level (`EnableMemoryMetrics`) and node-level (`RecordMemoryUsage`) options to be enabled
 
 ### Processor Time Calculation
 

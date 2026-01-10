@@ -185,8 +185,9 @@ services.AddNPipelineObservability<CustomCollector, CustomMetricsSink, CustomPip
 - **ItemsProcessed/ItemsEmitted**: Item counts (automatically tracked when observability is enabled)
 - **RetryCount**: Number of retry attempts (thread-safe, uses atomic operations)
 - **ThroughputItemsPerSec**: Processing throughput
+- **AverageItemProcessingMs**: Average time per item in milliseconds
 - **PeakMemoryUsageMb**: Peak memory usage during node execution (per-node delta, not global process memory)
-- **ProcessorTimeMs**: CPU time consumed
+- **ProcessorTimeMs**: CPU time consumed (not available per-node; only available at process level)
 - **ThreadId**: Executing thread ID
 - **Exception**: Any error that occurred
 
@@ -203,12 +204,17 @@ services.AddNPipelineObservability<CustomCollector, CustomMetricsSink, CustomPip
 
 ### Memory Metrics Details
 
-Memory metrics are measured as **per-node deltas** using `GC.GetTotalMemory()`, not global process memory:
+Memory metrics are measured as **per-node deltas** using `GC.GetTotalMemory(false)`, not global process memory:
 
 - Each node gets its own memory usage measurement
-- Memory is measured at node start and end
-- The difference represents the memory used by that specific node's execution
+- Memory is measured at node start and end using `GC.GetTotalMemory(false)`
+- The difference (final memory - initial memory) represents the memory allocated during that specific node's execution
 - This provides accurate, isolated memory tracking per node
+- **Note**: This measures managed memory allocations, not total process memory or peak working set
+
+**Important**: Memory metrics are only collected when:
+1. The extension is configured with `EnableMemoryMetrics = true` (via `ObservabilityExtensionOptions`)
+2. The node has `ObservabilityOptions.RecordMemoryUsage = true` set
 
 ## Best Practices
 
@@ -242,9 +248,41 @@ This ensures accurate metrics collection even when multiple nodes execute concur
 - Metrics collection overhead is typically < 1% for most pipelines
 - Memory overhead is proportional to the number of nodes (~ 1KB per node)
 - Sink implementations should be async for I/O operations
-- Memory metrics use `GC.GetTotalMemory()` which adds minimal overhead per node
+- Memory metrics use `GC.GetTotalMemory(false)` which adds minimal overhead per node when enabled
+- Memory metrics are only collected when both extension-level (`EnableMemoryMetrics`) and node-level (`RecordMemoryUsage`) options are enabled
 - Consider sampling or filtering in high-throughput scenarios
 - Disable memory tracking (`ObservabilityOptions.Default` instead of `Full`) if not needed to reduce overhead
+
+## Troubleshooting
+
+### Memory Metrics Not Collected
+
+**Problem**: Memory metrics are not appearing in collected data.
+
+**Solutions**:
+1. Verify memory metrics are enabled at extension level: `services.AddNPipelineObservability(ObservabilityExtensionOptions.WithMemoryMetrics)`
+2. Ensure nodes have memory tracking enabled: `.WithObservability(builder, ObservabilityOptions.Full)` or set `RecordMemoryUsage = true`
+3. Memory metrics require both extension-level AND node-level configuration to be enabled
+
+### Metrics Not Appearing
+
+**Problem**: Metrics are not being logged or sent to external systems.
+
+**Solutions**:
+1. Verify observability is registered: `services.AddNPipelineObservability()`
+2. Check that the pipeline is using `IObservablePipelineContextFactory` to create the context
+3. Ensure logging is configured properly for `LoggingMetricsSink`
+4. Verify sink implementations are not throwing exceptions
+
+### Performance Degradation
+
+**Problem**: Pipeline execution slows down when observability is enabled.
+
+**Solutions**:
+1. Use async sink implementations
+2. Implement batching or aggregation for external calls
+3. Disable memory tracking (`ObservabilityOptions.Default` instead of `Full`) if not needed
+4. Consider sampling for high-volume scenarios
 
 ## License
 

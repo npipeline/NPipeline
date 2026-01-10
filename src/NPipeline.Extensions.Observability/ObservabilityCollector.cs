@@ -29,6 +29,8 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     /// <param name="initialMemoryMb">The initial memory usage in megabytes.</param>
     public void RecordNodeStart(string nodeId, DateTimeOffset timestamp, int? threadId = null, long? initialMemoryMb = null)
     {
+        ArgumentNullException.ThrowIfNull(nodeId);
+
         var builder = _nodeMetrics.GetOrAdd(nodeId, _ => new NodeMetricsBuilder(nodeId));
         builder.RecordStart(timestamp, threadId, initialMemoryMb);
     }
@@ -45,44 +47,64 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     public void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Exception? exception = null, long? peakMemoryMb = null,
         long? processorTimeMs = null)
     {
-        if (_nodeMetrics.TryGetValue(nodeId, out var builder))
-            builder.RecordEnd(timestamp, success, exception, peakMemoryMb, processorTimeMs);
+        if (nodeId == null)
+        {
+            return;
+        }
+
+        var builder = _nodeMetrics.GetOrAdd(nodeId, _ => new NodeMetricsBuilder(nodeId));
+        builder.RecordEnd(timestamp, success, exception, peakMemoryMb, processorTimeMs);
     }
 
     /// <summary>
     ///     Records item processing metrics for a node.
     /// </summary>
-    /// <param name="nodeId">The unique identifier of the node.</param>
+    /// <param name="nodeId">The unique identifier of node.</param>
     /// <param name="itemsProcessed">The number of items processed.</param>
     /// <param name="itemsEmitted">The number of items emitted.</param>
     public void RecordItemMetrics(string nodeId, long itemsProcessed, long itemsEmitted)
     {
-        if (_nodeMetrics.TryGetValue(nodeId, out var builder))
-            builder.RecordItemMetrics(itemsProcessed, itemsEmitted);
+        if (nodeId == null)
+        {
+            return;
+        }
+
+        var builder = _nodeMetrics.GetOrAdd(nodeId, _ => new NodeMetricsBuilder(nodeId));
+        builder.RecordItemMetrics(itemsProcessed, itemsEmitted);
     }
 
     /// <summary>
     ///     Records a retry attempt for a node.
     /// </summary>
-    /// <param name="nodeId">The unique identifier of the node.</param>
+    /// <param name="nodeId">The unique identifier of node.</param>
     /// <param name="retryCount">The current retry attempt number.</param>
-    /// <param name="reason">The reason for the retry.</param>
+    /// <param name="reason">The reason for retry.</param>
     public void RecordRetry(string nodeId, int retryCount, string? reason = null)
     {
-        if (_nodeMetrics.TryGetValue(nodeId, out var builder))
-            builder.RecordRetry(retryCount);
+        if (nodeId == null)
+        {
+            return;
+        }
+
+        var builder = _nodeMetrics.GetOrAdd(nodeId, _ => new NodeMetricsBuilder(nodeId));
+        builder.RecordRetry(retryCount);
     }
 
     /// <summary>
     ///     Records performance metrics for a completed node execution.
     /// </summary>
-    /// <param name="nodeId">The unique identifier of the node.</param>
+    /// <param name="nodeId">The unique identifier of node.</param>
     /// <param name="throughputItemsPerSec">The throughput in items per second.</param>
     /// <param name="averageItemProcessingMs">The average time per item in milliseconds.</param>
     public void RecordPerformanceMetrics(string nodeId, double throughputItemsPerSec, double averageItemProcessingMs)
     {
-        if (_nodeMetrics.TryGetValue(nodeId, out var builder))
-            builder.RecordPerformanceMetrics(throughputItemsPerSec, averageItemProcessingMs);
+        if (nodeId == null)
+        {
+            return;
+        }
+
+        var builder = _nodeMetrics.GetOrAdd(nodeId, _ => new NodeMetricsBuilder(nodeId));
+        builder.RecordPerformanceMetrics(throughputItemsPerSec, averageItemProcessingMs);
     }
 
     /// <summary>
@@ -91,9 +113,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     /// <returns>A collection of node metrics.</returns>
     public IReadOnlyList<INodeMetrics> GetNodeMetrics()
     {
-        return _nodeMetrics.Values
-            .Select(builder => builder.Build())
-            .ToArray();
+        return [.. _nodeMetrics.Values.Select(static builder => builder.Build())];
     }
 
     /// <summary>
@@ -103,7 +123,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     /// <returns>The node metrics, or null if not found.</returns>
     public INodeMetrics? GetNodeMetrics(string nodeId)
     {
-        return _nodeMetrics.TryGetValue(nodeId, out var builder)
+        return nodeId != null && _nodeMetrics.TryGetValue(nodeId, out var builder)
             ? builder.Build()
             : null;
     }
@@ -121,6 +141,8 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     public IPipelineMetrics CreatePipelineMetrics(string pipelineName, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, bool success,
         Exception? exception = null)
     {
+        ArgumentNullException.ThrowIfNull(pipelineName);
+
         var nodeMetrics = GetNodeMetrics();
         var totalItemsProcessed = nodeMetrics.Sum(m => m.ItemsProcessed);
 
@@ -172,7 +194,9 @@ public sealed class ObservabilityCollector : IObservabilityCollector
         var pipelineMetricsSink = _factory.ResolvePipelineMetricsSink();
 
         if (pipelineMetricsSink != null)
+        {
             await pipelineMetricsSink.RecordAsync(pipelineMetrics, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -183,6 +207,11 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     /// <param name="initialMemoryMb">The initial memory usage in megabytes.</param>
     public void InitializeNode(string nodeId, int? threadId = null, long? initialMemoryMb = null)
     {
+        if (nodeId == null)
+        {
+            return;
+        }
+
         var builder = _nodeMetrics.GetOrAdd(nodeId, _ => new NodeMetricsBuilder(nodeId));
         builder.Initialize(threadId, initialMemoryMb);
     }
@@ -190,9 +219,10 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     /// <summary>
     ///     Builder for constructing node metrics with thread-safe updates.
     /// </summary>
-    private sealed class NodeMetricsBuilder
+    private sealed class NodeMetricsBuilder(string nodeId)
     {
-        private readonly string _nodeId;
+        private readonly string _nodeId = nodeId;
+        private readonly object _performanceMetricsLock = new();
         private double? _averageItemProcessingMs;
         private long? _durationMs;
         private DateTimeOffset? _endTime;
@@ -203,25 +233,29 @@ public sealed class ObservabilityCollector : IObservabilityCollector
         private long? _processorTimeMs;
         private int _retryCount;
         private DateTimeOffset? _startTime;
-        private bool _success;
+        private bool _success = true;
         private int? _threadId;
         private double? _throughputItemsPerSec;
-
-        public NodeMetricsBuilder(string nodeId)
-        {
-            _nodeId = nodeId;
-            _success = true;
-        }
 
         public void RecordStart(DateTimeOffset timestamp, int? threadId, long? initialMemoryMb)
         {
             _startTime = timestamp;
             _threadId = threadId;
+
+            if (initialMemoryMb.HasValue)
+            {
+                _peakMemoryUsageMb = initialMemoryMb;
+            }
         }
 
         public void Initialize(int? threadId, long? initialMemoryMb)
         {
             _threadId = threadId;
+
+            if (initialMemoryMb.HasValue)
+            {
+                _peakMemoryUsageMb = initialMemoryMb;
+            }
         }
 
         public void RecordEnd(DateTimeOffset timestamp, bool success, Exception? exception, long? peakMemoryMb, long? processorTimeMs)
@@ -233,13 +267,15 @@ public sealed class ObservabilityCollector : IObservabilityCollector
             _processorTimeMs = processorTimeMs;
 
             if (_startTime.HasValue)
+            {
                 _durationMs = (long)(timestamp - _startTime.Value).TotalMilliseconds;
+            }
         }
 
         public void RecordItemMetrics(long itemsProcessed, long itemsEmitted)
         {
-            Interlocked.Add(ref _itemsProcessed, itemsProcessed);
-            Interlocked.Add(ref _itemsEmitted, itemsEmitted);
+            _ = Interlocked.Add(ref _itemsProcessed, itemsProcessed);
+            _ = Interlocked.Add(ref _itemsEmitted, itemsEmitted);
         }
 
         public void RecordRetry(int retryCount)
@@ -255,8 +291,13 @@ public sealed class ObservabilityCollector : IObservabilityCollector
 
         public void RecordPerformanceMetrics(double throughputItemsPerSec, double averageItemProcessingMs)
         {
-            _throughputItemsPerSec = throughputItemsPerSec;
-            _averageItemProcessingMs = averageItemProcessingMs;
+            // Thread-safe: Use lock to ensure atomic updates for nullable double fields
+            // Interlocked.Exchange doesn't support nullable value types, so we use a lock
+            lock (_performanceMetricsLock)
+            {
+                _throughputItemsPerSec = throughputItemsPerSec;
+                _averageItemProcessingMs = averageItemProcessingMs;
+            }
         }
 
         public INodeMetrics Build()

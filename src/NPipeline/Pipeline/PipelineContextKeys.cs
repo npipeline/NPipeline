@@ -104,7 +104,7 @@ namespace NPipeline.Pipeline;
 ///             ? (PipelineRetryOptions)options
 ///             : null;
 ///
-///         // Safe: User-defined key with clear naming
+///         Safe: User-defined key with clear naming
 ///         context.Items["MyApp.CustomSetting"] = "value";
 ///
 ///         // Unsafe: Using reserved prefix - may conflict
@@ -193,6 +193,13 @@ public static class PipelineContextKeys
     public static string NodeExecutionOptions(string nodeId)
     {
         return $"execopt::{nodeId}";
+    }
+
+    /// <summary>Per-node observability scope - format: "observability.scope::{nodeId}" (value: IAutoObservabilityScope)</summary>
+    /// <remarks>Stores the observability scope for a node to track item counts during execution.</remarks>
+    public static string NodeObservabilityScope(string nodeId)
+    {
+        return $"observability.scope::{nodeId}";
     }
 
     // ===== PARALLEL EXECUTION METRICS =====

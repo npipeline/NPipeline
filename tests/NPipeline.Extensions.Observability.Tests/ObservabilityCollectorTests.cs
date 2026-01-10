@@ -819,7 +819,9 @@ public sealed class ObservabilityCollectorTests
 
         // Assert
         var metrics = collector.GetNodeMetrics(nodeId);
-        Assert.Null(metrics); // Node wasn't started, so no metrics exist
+        Assert.NotNull(metrics); // RecordNodeEnd now creates metrics via GetOrAdd pattern
+        Assert.Null(metrics.DurationMs); // But DurationMs should be null since there's no start time
+        Assert.True(metrics.Success); // Success status was recorded
     }
 
     [Fact]

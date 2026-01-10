@@ -34,6 +34,7 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
         context.Items[PipelineContextKeys.ParallelExecution] = true;
 
         var nodeId = context.CurrentNodeId;
+        var observabilityScope = TryGetNodeObservabilityScope(context, nodeId);
         var currentActivity = context.Tracer.CurrentActivity;
         var effectiveRetries = GetRetryOptions(nodeId, context);
         var cachedContext = CachedNodeExecutionContext.CreateWithRetryOptions(context, nodeId, effectiveRetries);
@@ -86,7 +87,10 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
                     itemsSeen++;
 
                     if (queue.Writer.TryWrite(item))
+                    {
+                        observabilityScope?.IncrementProcessed();
                         metrics.IncrementEnqueued();
+                    }
                     else
                     {
                         // Drop the incoming item (newest)
@@ -126,6 +130,6 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
         _ = Task.WhenAll(workers).ContinueWith(t => { outChannel.Writer.TryComplete(t.Exception); }, cancellationToken);
 
         return Task.FromResult<IDataPipe<TOut>>(
-            new StreamingDataPipe<TOut>(CreateOutputEnumerable(outChannel, nodeId, context, metrics, currentActivity, cancellationToken)));
+            new StreamingDataPipe<TOut>(CreateOutputEnumerable(outChannel, nodeId, context, metrics, currentActivity, cancellationToken, observabilityScope)));
     }
 }

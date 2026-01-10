@@ -208,6 +208,30 @@ public class MyPipeline : IPipelineDefinition
 - **`ObservabilityOptions.Minimal`**: Timing only
 - **`ObservabilityOptions.Disabled`**: No metrics for this node
 
+**Important**: Memory metrics require both:
+1. Extension-level configuration: `services.AddNPipelineObservability(ObservabilityExtensionOptions.WithMemoryMetrics)`
+2. Node-level configuration: `.WithObservability(builder, ObservabilityOptions.Full)` or set `RecordMemoryUsage = true`
+
+### Metrics Collected
+
+When observability is enabled, the following metrics are automatically collected:
+
+**Node Metrics**:
+- Execution timing (start, end, duration)
+- Items processed and emitted
+- Success/failure status
+- Retry attempts
+- Throughput (items per second)
+- Average processing time per item
+- Thread ID (if enabled)
+- Memory usage delta (if enabled)
+
+**Pipeline Metrics**:
+- Total execution time
+- Overall success/failure status
+- Total items processed across all nodes
+- Individual node metrics
+
 ## Next Steps
 
 - **[Configuration Guide](../observability-configuration.md)**: Learn about all registration options and custom sinks
@@ -296,32 +320,43 @@ Console.WriteLine($"Node required {metrics.RetryCount} retry attempts");
 3. **Sampling**: For high-throughput pipelines, consider implementing sampling in custom sinks
 4. **Memory**: Collector memory usage is proportional to number of nodes (typically ~1KB per node)
 
+## Troubleshooting
+
+### Memory Metrics Not Collected
+
+**Problem**: Memory metrics are not appearing in collected data.
+
+**Solutions**:
+1. Verify memory metrics are enabled at extension level: `services.AddNPipelineObservability(ObservabilityExtensionOptions.WithMemoryMetrics)`
+2. Ensure nodes have memory tracking enabled: `.WithObservability(builder, ObservabilityOptions.Full)` or set `RecordMemoryUsage = true`
+3. Memory metrics require both extension-level AND node-level configuration to be enabled
+
+### Metrics Not Collected
+
+**Problem**: Metrics are not being logged or sent to external systems.
+
+**Solutions**:
+1. Verify observability is registered: `services.AddNPipelineObservability()`
+2. Check that the pipeline is using `IObservablePipelineContextFactory` to create context
+3. Ensure logging is configured properly for `LoggingMetricsSink`
+4. Verify sink implementations are not throwing exceptions
+
+### Performance Issues
+
+**Problem**: Pipeline execution slows down when observability is enabled.
+
+**Solutions**:
+1. Use async sink implementations
+2. Implement batching or aggregation for external calls
+3. Disable memory tracking (`ObservabilityOptions.Default` instead of `Full`) if not needed
+4. Consider sampling for high-volume scenarios
+
 ## Next Steps
 
 - [Advanced Configuration](../../docs/extensions/observability-configuration.md) - Custom collectors, sinks, and factory delegates
 - [Metrics Reference](../../docs/extensions/observability-metrics.md) - Complete metrics documentation
 - [Examples](../../docs/extensions/observability-examples.md) - Real-world usage patterns
 - [Main Documentation](../../docs/extensions/observability.md) - Comprehensive observability guide
-
-## Troubleshooting
-
-### Metrics Not Collected
-
-1. Verify observer is added to `ExecutionObservers` in context
-2. Ensure observability services are registered: `services.AddNPipelineObservability()`
-3. Check that collector is resolved from DI correctly
-
-### Missing Node Metrics
-
-1. Node may not have started (check `RecordNodeStart` was called)
-2. Use `GetNodeMetrics()` to see all collected nodes
-3. Verify node ID matches between start and end calls
-
-### Performance Issues
-
-1. Review sink implementations for blocking I/O
-2. Consider batching or async operations in custom sinks
-3. Profile metrics collection overhead in production scenarios
 
 ## Support
 

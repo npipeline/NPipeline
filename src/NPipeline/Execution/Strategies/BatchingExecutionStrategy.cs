@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Nodes;
@@ -101,7 +102,16 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
                 $"The {nameof(BatchingExecutionStrategy)} can only be used with nodes that output a collection. Expected output type: {typeof(IReadOnlyCollection<TIn>).Name}, but found {typeof(TOut).Name}.");
         }
 
-        var batchedStream = input.BatchAsync(BatchSize, Timespan, cancellationToken);
+        var nodeId = context.CurrentNodeId;
+
+        // Get observability scope if available
+        NPipeline.Observability.IAutoObservabilityScope? observabilityScope = null;
+        if (context.Items.TryGetValue(NPipeline.Pipeline.PipelineContextKeys.NodeObservabilityScope(nodeId), out var scopeObj))
+        {
+            observabilityScope = scopeObj as NPipeline.Observability.IAutoObservabilityScope;
+        }
+
+        var batchedStream = BatchWithObservabilityAsync(input, BatchSize, Timespan, observabilityScope, cancellationToken);
 
         // The type system is a bit tricky here. We know TOut is IReadOnlyCollection<TIn>,
         // but we need to cast it to satisfy the compiler.
@@ -128,7 +138,16 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
                 $"The {nameof(BatchingExecutionStrategy)} can only be used with nodes that output a collection. Expected output type: {typeof(IReadOnlyCollection<TIn>).Name}, but found {typeof(TOut).Name}.");
         }
 
-        var batchedStream = input.BatchAsync(BatchSize, Timespan, cancellationToken);
+        var nodeId = context.CurrentNodeId;
+
+        // Get observability scope if available
+        NPipeline.Observability.IAutoObservabilityScope? observabilityScope = null;
+        if (context.Items.TryGetValue(NPipeline.Pipeline.PipelineContextKeys.NodeObservabilityScope(nodeId), out var scopeObj))
+        {
+            observabilityScope = scopeObj as NPipeline.Observability.IAutoObservabilityScope;
+        }
+
+        var batchedStream = BatchWithObservabilityAsync(input, BatchSize, Timespan, observabilityScope, cancellationToken);
 
         // The type system is a bit tricky here. We know TOut is IReadOnlyCollection<TIn>,
         // but we need to cast it to satisfy the compiler.
@@ -136,5 +155,53 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
 
         // Use Task.FromResult for already-completed synchronous result
         return Task.FromResult<IDataPipe<TOut>>(outputPipe);
+    }
+
+    /// <summary>
+    ///     Batches items with observability support.
+    /// </summary>
+    private static async IAsyncEnumerable<IReadOnlyCollection<T>> BatchWithObservabilityAsync<T>(
+        IDataPipe<T> input,
+        int batchSize,
+        TimeSpan timespan,
+        NPipeline.Observability.IAutoObservabilityScope? observabilityScope,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        try
+        {
+            var batch = new List<T>(batchSize);
+            var lastYieldTime = DateTime.UtcNow;
+
+            await foreach (var item in input.WithCancellation(cancellationToken))
+            {
+                // Track item processed
+                observabilityScope?.IncrementProcessed();
+
+                batch.Add(item);
+
+                // Check if we should emit the batch
+                if (batch.Count >= batchSize || DateTime.UtcNow - lastYieldTime >= timespan)
+                {
+                    // Track item emitted (one batch)
+                    observabilityScope?.IncrementEmitted();
+                    yield return batch.ToArray();
+                    batch = new List<T>(batchSize);
+                    lastYieldTime = DateTime.UtcNow;
+                }
+            }
+
+            // Emit any remaining items in the final batch
+            if (batch.Count > 0)
+            {
+                // Track item emitted (one batch)
+                observabilityScope?.IncrementEmitted();
+                yield return batch.ToArray();
+            }
+        }
+        finally
+        {
+            // Dispose AutoObservabilityScope after all items are processed, even on failure or cancellation
+            observabilityScope?.Dispose();
+        }
     }
 }

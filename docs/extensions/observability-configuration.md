@@ -327,6 +327,28 @@ Sinks are transient because:
 
 ## Configuration Options
 
+### ObservabilityExtensionOptions
+
+The `ObservabilityExtensionOptions` class controls global behavior of the observability extension:
+
+```csharp
+public sealed record ObservabilityExtensionOptions
+{
+    /// Whether to automatically collect memory metrics (peak memory usage) for each node
+    bool EnableMemoryMetrics { get; init; }
+}
+```
+
+**Default**: `EnableMemoryMetrics = false` (memory metrics disabled by default)
+
+**Important**: Memory metrics require BOTH:
+1. Extension-level configuration: `services.AddNPipelineObservability(ObservabilityExtensionOptions.WithMemoryMetrics)`
+2. Node-level configuration: `.WithObservability(builder, ObservabilityOptions.Full)` or set `RecordMemoryUsage = true`
+
+If either level is disabled, memory metrics will not be collected.
+
+### Default Configuration (Logging Sinks)
+
 ### Conditional Registration
 
 Enable observability based on configuration:

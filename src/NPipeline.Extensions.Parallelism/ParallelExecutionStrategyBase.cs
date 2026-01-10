@@ -5,6 +5,7 @@ using NPipeline.DataFlow;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Nodes;
+using NPipeline.Observability;
 using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
@@ -243,6 +244,7 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
     /// <param name="metrics">The metrics tracker.</param>
     /// <param name="currentActivity">The current tracing activity.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
+    /// <param name="observabilityScope">Optional observability scope for recording item counts.</param>
     /// <returns>An async enumerable of output items.</returns>
     protected static async IAsyncEnumerable<TOut> CreateOutputEnumerable<TOut>(
         Channel<TOut> outChannel,
@@ -250,17 +252,21 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
         PipelineContext context,
         ParallelExecutionMetrics metrics,
         IPipelineActivity? currentActivity,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken,
+        IAutoObservabilityScope? observabilityScope = null)
     {
         try
         {
             await foreach (var item in outChannel.Reader.ReadAllAsync(cancellationToken))
             {
+                observabilityScope?.IncrementEmitted();
                 yield return item;
             }
         }
         finally
         {
+            observabilityScope?.Dispose();
+
             // Tag drop and queue metrics on the current activity for observability
             currentActivity?.SetTag("parallel.dropped.newest", metrics.DroppedNewest);
             currentActivity?.SetTag("parallel.dropped.oldest", metrics.DroppedOldest);
@@ -273,5 +279,18 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
             context.Items[PipelineContextKeys.ParallelMetricsEnqueued(nodeId)] = metrics.Enqueued;
             context.Items[PipelineContextKeys.ParallelMetricsProcessed(nodeId)] = metrics.Processed;
         }
+    }
+
+    /// <summary>
+    ///     Attempts to retrieve the auto-observability scope for a node if one was configured.
+    /// </summary>
+    /// <param name="context">The pipeline execution context.</param>
+    /// <param name="nodeId">The node identifier.</param>
+    /// <returns>The configured scope, or null when observability is not enabled.</returns>
+    protected static IAutoObservabilityScope? TryGetNodeObservabilityScope(PipelineContext context, string nodeId)
+    {
+        return context.Items.TryGetValue(PipelineContextKeys.NodeObservabilityScope(nodeId), out var scopeObj)
+            ? scopeObj as IAutoObservabilityScope
+            : null;
     }
 }

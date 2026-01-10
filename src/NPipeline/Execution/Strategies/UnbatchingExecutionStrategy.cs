@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Nodes;
@@ -21,13 +22,22 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
         // Therefore, input IDataPipe<TIn> can be treated as an IAsyncEnumerable<IEnumerable<TOut>>.
         if (input is not IAsyncEnumerable<IEnumerable<TOut>> batchedSource)
 
-            // This should not happen if the pipeline is configured correctly.
+        // This should not happen if the pipeline is configured correctly.
         {
             throw new InvalidOperationException(
                 $"The input for {nameof(UnbatchingExecutionStrategy)} must be an IAsyncEnumerable of IEnumerable<{typeof(TOut).Name}>.");
         }
 
-        var flattenedSource = batchedSource.FlattenAsync(cancellationToken);
+        var nodeId = context.CurrentNodeId;
+
+        // Get observability scope if available
+        NPipeline.Observability.IAutoObservabilityScope? observabilityScope = null;
+        if (context.Items.TryGetValue(NPipeline.Pipeline.PipelineContextKeys.NodeObservabilityScope(nodeId), out var scopeObj))
+        {
+            observabilityScope = scopeObj as NPipeline.Observability.IAutoObservabilityScope;
+        }
+
+        var flattenedSource = FlattenWithObservabilityAsync(batchedSource, observabilityScope, cancellationToken);
 
         var outputPipe = new StreamingDataPipe<TOut>(flattenedSource, input.StreamName);
 
@@ -48,17 +58,56 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
         // Therefore, input IDataPipe<TIn> can be treated as an IAsyncEnumerable<IEnumerable<TOut>>.
         if (input is not IAsyncEnumerable<IEnumerable<TOut>> batchedSource)
 
-            // This should not happen if the pipeline is configured correctly.
+        // This should not happen if the pipeline is configured correctly.
         {
             throw new InvalidOperationException(
                 $"The input for {nameof(UnbatchingExecutionStrategy)} must be an IAsyncEnumerable of IEnumerable<{typeof(TOut).Name}>.");
         }
 
-        var flattenedSource = batchedSource.FlattenAsync(cancellationToken);
+        var nodeId = context.CurrentNodeId;
+
+        // Get observability scope if available
+        NPipeline.Observability.IAutoObservabilityScope? observabilityScope = null;
+        if (context.Items.TryGetValue(NPipeline.Pipeline.PipelineContextKeys.NodeObservabilityScope(nodeId), out var scopeObj))
+        {
+            observabilityScope = scopeObj as NPipeline.Observability.IAutoObservabilityScope;
+        }
+
+        var flattenedSource = FlattenWithObservabilityAsync(batchedSource, observabilityScope, cancellationToken);
 
         var outputPipe = new StreamingDataPipe<TOut>(flattenedSource, input.StreamName);
 
         // Use Task.FromResult for already-completed synchronous result
         return Task.FromResult<IDataPipe<TOut>>(outputPipe);
+    }
+
+    /// <summary>
+    ///     Flattens batches with observability support.
+    /// </summary>
+    private static async IAsyncEnumerable<T> FlattenWithObservabilityAsync<T>(
+        IAsyncEnumerable<IEnumerable<T>> batchedSource,
+        NPipeline.Observability.IAutoObservabilityScope? observabilityScope,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        try
+        {
+            await foreach (var batch in batchedSource.WithCancellation(cancellationToken))
+            {
+                // Track item processed (one batch)
+                observabilityScope?.IncrementProcessed();
+
+                foreach (var item in batch)
+                {
+                    // Track item emitted (each item in the batch)
+                    observabilityScope?.IncrementEmitted();
+                    yield return item;
+                }
+            }
+        }
+        finally
+        {
+            // Dispose AutoObservabilityScope after all items are processed, even on failure or cancellation
+            observabilityScope?.Dispose();
+        }
     }
 }

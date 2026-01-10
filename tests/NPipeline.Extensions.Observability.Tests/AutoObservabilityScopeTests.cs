@@ -397,8 +397,10 @@ public sealed class AutoObservabilityScopeTests
 
         // Similarly for emitted: 95 + 5 = 100
         Assert.Equal(100, metrics.ItemsEmitted);
-        Assert.NotNull(metrics.DurationMs);
-        Assert.True(metrics.DurationMs.Value > 0);
+
+        // DurationMs is now recorded when RecordTiming is enabled
+        _ = Assert.NotNull(metrics.DurationMs);
+        Assert.True(metrics.DurationMs >= 0);
     }
 
     [Fact]

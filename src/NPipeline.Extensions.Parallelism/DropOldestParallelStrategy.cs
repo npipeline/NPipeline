@@ -34,6 +34,7 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
         context.Items[PipelineContextKeys.ParallelExecution] = true;
 
         var nodeId = context.CurrentNodeId;
+        var observabilityScope = TryGetNodeObservabilityScope(context, nodeId);
         var currentActivity = context.Tracer.CurrentActivity;
         var effectiveRetries = GetRetryOptions(nodeId, context);
         var cachedContext = CachedNodeExecutionContext.CreateWithRetryOptions(context, nodeId, effectiveRetries);
@@ -83,7 +84,10 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
                 await foreach (var item in input.WithCancellation(cancellationToken))
                 {
                     if (queue.Writer.TryWrite(item))
+                    {
+                        observabilityScope?.IncrementProcessed();
                         metrics.IncrementEnqueued();
+                    }
                     else
                     {
                         // Drop oldest: read and discard one item, then try to write the new one
@@ -111,6 +115,7 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
 
                             if (queue.Writer.TryWrite(item))
                             {
+                                observabilityScope?.IncrementProcessed();
                                 metrics.IncrementEnqueued();
 
                                 break; // Success, exit the loop
@@ -153,6 +158,6 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
         _ = Task.WhenAll(workers).ContinueWith(t => { outChannel.Writer.TryComplete(t.Exception); }, cancellationToken);
 
         return Task.FromResult<IDataPipe<TOut>>(
-            new StreamingDataPipe<TOut>(CreateOutputEnumerable(outChannel, nodeId, context, metrics, currentActivity, cancellationToken)));
+            new StreamingDataPipe<TOut>(CreateOutputEnumerable(outChannel, nodeId, context, metrics, currentActivity, cancellationToken, observabilityScope)));
     }
 }
