@@ -25,8 +25,8 @@ public sealed class ThreadSafetyTests
         // Act - Multiple threads record performance metrics
         _ = Parallel.For(0, threadCount, i =>
         {
-            var throughput = 1000.0 + (i * 100);
-            var avgTime = 1.0 + (i * 0.1);
+            var throughput = 1000.0 + i * 100;
+            var avgTime = 1.0 + i * 0.1;
             collector.RecordPerformanceMetrics(nodeId, throughput, avgTime);
         });
 
@@ -81,7 +81,7 @@ public sealed class ThreadSafetyTests
         {
             for (var j = 0; j < nodeCount / threadCount; j++)
             {
-                var nodeId = $"node_{(i * (nodeCount / threadCount)) + j}";
+                var nodeId = $"node_{i * (nodeCount / threadCount) + j}";
                 collector.InitializeNode(nodeId, i, 100);
             }
         });
@@ -108,18 +108,15 @@ public sealed class ThreadSafetyTests
         _ = Parallel.For(0, threadCount, i =>
         {
             if (i % 2 == 0)
-            {
                 collector.InitializeNode(nodeId, i, 100);
-            }
             else
-            {
                 collector.RecordItemMetrics(nodeId, 10, 10);
-            }
         });
 
         // Assert
         var metrics = collector.GetNodeMetrics(nodeId);
         Assert.NotNull(metrics);
+
         // Item metrics should be accumulated correctly
         Assert.Equal(threadCount / 2 * 10, metrics.ItemsProcessed);
     }
@@ -144,7 +141,7 @@ public sealed class ThreadSafetyTests
         {
             for (var j = 0; j < operationsPerThread; j++)
             {
-                var operation = ((i * operationsPerThread) + j) % 5;
+                var operation = (i * operationsPerThread + j) % 5;
 
                 switch (operation)
                 {
@@ -264,7 +261,7 @@ public sealed class ThreadSafetyTests
         // Act - Multiple threads record metrics concurrently
         var recordTasks = Enumerable.Range(0, threadCount).Select(async i =>
         {
-            await Task.Yield();  // Force async execution
+            await Task.Yield(); // Force async execution
             var startTime = DateTimeOffset.UtcNow;
             var nodeId = $"node_{i}";
 
@@ -328,16 +325,14 @@ public sealed class ThreadSafetyTests
         var threadCount = 10;
 
         // Act - Concurrent RecordItemCount calls
-        _ = Parallel.For(0, threadCount, i =>
-        {
-            scope.RecordItemCount(i * 10, i * 9);
-        });
+        _ = Parallel.For(0, threadCount, i => { scope.RecordItemCount(i * 10, i * 9); });
 
         scope.Dispose();
 
         // Assert - Should have recorded the last value (or one of them)
         var metrics = collector.GetNodeMetrics(nodeId);
         Assert.NotNull(metrics);
+
         // Since RecordItemCount sets the value (not increments), we expect one of the values
         Assert.True(metrics.ItemsProcessed >= 0);
         Assert.True(metrics.ItemsEmitted >= 0);
@@ -354,10 +349,7 @@ public sealed class ThreadSafetyTests
         var threadCount = 10;
 
         // Act - Concurrent failure recordings
-        _ = Parallel.For(0, threadCount, i =>
-        {
-            scope.RecordFailure(new InvalidOperationException($"Exception {i}"));
-        });
+        _ = Parallel.For(0, threadCount, i => { scope.RecordFailure(new InvalidOperationException($"Exception {i}")); });
 
         scope.Dispose();
 
@@ -413,10 +405,7 @@ public sealed class ThreadSafetyTests
         observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
 
         // Act - Concurrent retry events
-        _ = Parallel.For(0, retryCount, i =>
-        {
-            observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, i, null));
-        });
+        _ = Parallel.For(0, retryCount, i => { observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, i, null)); });
 
         observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null));
 

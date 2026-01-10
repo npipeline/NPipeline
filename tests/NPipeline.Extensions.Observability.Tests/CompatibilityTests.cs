@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
@@ -78,6 +79,7 @@ public sealed class CompatibilityTests
         var parallelMetrics = collector.GetNodeMetrics("paralleltransform");
         Assert.NotNull(parallelMetrics);
         Assert.True(parallelMetrics.Success);
+
         // Drop-oldest may drop some items, so we check that metrics were collected
         Assert.True(parallelMetrics.ItemsProcessed >= 0);
         Assert.True(parallelMetrics.ItemsEmitted >= 0);
@@ -110,6 +112,7 @@ public sealed class CompatibilityTests
         var parallelMetrics = collector.GetNodeMetrics("paralleltransform");
         Assert.NotNull(parallelMetrics);
         Assert.True(parallelMetrics.Success);
+
         // Drop-newest may drop some items, so we check that metrics were collected
         Assert.True(parallelMetrics.ItemsProcessed >= 0);
         Assert.True(parallelMetrics.ItemsEmitted >= 0);
@@ -131,8 +134,7 @@ public sealed class CompatibilityTests
 
         // Act - Execute pipeline with parallelism and retries
         var pipeline = new TestPipelineWithParallelismAndRetries();
-        var exception = await Assert.ThrowsAsync<NodeExecutionException>(
-            () => runner.RunAsync<TestPipelineWithParallelismAndRetries>(context));
+        var exception = await Assert.ThrowsAsync<NodeExecutionException>(() => runner.RunAsync<TestPipelineWithParallelismAndRetries>(context));
 
         // Assert - Verify retry metrics were collected
         var collector = scope.ServiceProvider.GetRequiredService<IObservabilityCollector>();
@@ -142,6 +144,7 @@ public sealed class CompatibilityTests
 
         var parallelMetrics = collector.GetNodeMetrics("paralleltransform");
         Assert.NotNull(parallelMetrics);
+
         // Even when some items fail after retry exhaustion, retry metrics
         // should be recorded for the parallel transform node.
         Assert.True(parallelMetrics.RetryCount >= 0);
@@ -249,7 +252,7 @@ public sealed class CompatibilityTests
                 observer3.OnNodeStarted(new NodeExecutionStarted("node3", "TestNode", startTime));
                 Thread.Sleep(10);
                 observer3.OnNodeCompleted(new NodeExecutionCompleted("node3", "TestNode", TimeSpan.FromMilliseconds(10), true, null));
-            })
+            }),
         };
 
         await Task.WhenAll(tasks);
@@ -278,9 +281,11 @@ public sealed class CompatibilityTests
         // Arrange
         var services = new ServiceCollection();
         var customSink = new CustomTestMetricsSink();
+
         _ = services.AddNPipelineObservability(
             sp => customSink,
             sp => new TestPipelineMetricsSink());
+
         var provider = services.BuildServiceProvider();
         var scope = provider.CreateScope();
         var collector = scope.ServiceProvider.GetRequiredService<IObservabilityCollector>();
@@ -345,9 +350,11 @@ public sealed class CompatibilityTests
         // Arrange
         var services = new ServiceCollection();
         var customPipelineSink = new CustomTestPipelineMetricsSink();
+
         _ = services.AddNPipelineObservability(
             sp => new TestMetricsSink(),
             sp => customPipelineSink);
+
         var provider = services.BuildServiceProvider();
         var scope = provider.CreateScope();
         var collector = scope.ServiceProvider.GetRequiredService<IObservabilityCollector>();
@@ -389,8 +396,7 @@ public sealed class CompatibilityTests
 
         // Act - Execute pipeline with parallel failure
         var pipeline = new TestPipelineWithParallelFailure();
-        var exception = await Assert.ThrowsAsync<NodeExecutionException>(
-            () => runner.RunAsync<TestPipelineWithParallelFailure>(context));
+        var exception = await Assert.ThrowsAsync<NodeExecutionException>(() => runner.RunAsync<TestPipelineWithParallelFailure>(context));
 
         // Assert - Verify failure was recorded
         var collector = scope.ServiceProvider.GetRequiredService<IObservabilityCollector>();
@@ -400,6 +406,7 @@ public sealed class CompatibilityTests
 
         var parallelMetrics = collector.GetNodeMetrics("paralleltransform");
         Assert.NotNull(parallelMetrics);
+
         // Failures are surfaced through the sink node; parallel transform
         // metrics should still exist but may be marked as successful.
         Assert.True(parallelMetrics.ItemsProcessed >= 0);
@@ -439,6 +446,7 @@ public sealed class CompatibilityTests
 
         var parallelMetrics = collector.GetNodeMetrics("paralleltransform");
         Assert.NotNull(parallelMetrics);
+
         // Should have processed some items; success may be true when
         // cancellation is observed late.
         Assert.True(parallelMetrics.ItemsProcessed >= 0);
@@ -463,7 +471,7 @@ public sealed class CompatibilityTests
         await using var context = contextFactory.Create();
 
         // Act - Execute pipeline and measure time
-        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var sw = Stopwatch.StartNew();
         var pipeline = new TestPipelineWithBlockingParallelism();
         await runner.RunAsync<TestPipelineWithBlockingParallelism>(context);
         sw.Stop();
@@ -518,11 +526,14 @@ public sealed class CompatibilityTests
         {
             var source = builder.AddSource<TestSourceNode, int>("source")
                 .WithObservability(builder);
+
             var transform = builder.AddTransform<TestTransformNode, int, int>("parallelTransform")
                 .WithObservability(builder)
-                .WithBlockingParallelism(builder, maxDegreeOfParallelism: 4);
+                .WithBlockingParallelism(builder, 4);
+
             var sink = builder.AddSink<TestSinkNode, int>("sink")
                 .WithObservability(builder);
+
             _ = builder.Connect(source, transform);
             _ = builder.Connect(transform, sink);
         }
@@ -534,11 +545,14 @@ public sealed class CompatibilityTests
         {
             var source = builder.AddSource<TestSourceNode, int>("source")
                 .WithObservability(builder);
+
             var transform = builder.AddTransform<TestTransformNode, int, int>("parallelTransform")
                 .WithObservability(builder)
-                .WithDropOldestParallelism(builder, maxDegreeOfParallelism: 4, maxQueueLength: 5);
+                .WithDropOldestParallelism(builder, 4, 5);
+
             var sink = builder.AddSink<TestSinkNode, int>("sink")
                 .WithObservability(builder);
+
             _ = builder.Connect(source, transform);
             _ = builder.Connect(transform, sink);
         }
@@ -550,11 +564,14 @@ public sealed class CompatibilityTests
         {
             var source = builder.AddSource<TestSourceNode, int>("source")
                 .WithObservability(builder);
+
             var transform = builder.AddTransform<TestTransformNode, int, int>("parallelTransform")
                 .WithObservability(builder)
-                .WithDropNewestParallelism(builder, maxDegreeOfParallelism: 4, maxQueueLength: 5);
+                .WithDropNewestParallelism(builder, 4, 5);
+
             var sink = builder.AddSink<TestSinkNode, int>("sink")
                 .WithObservability(builder);
+
             _ = builder.Connect(source, transform);
             _ = builder.Connect(transform, sink);
         }
@@ -566,12 +583,15 @@ public sealed class CompatibilityTests
         {
             var source = builder.AddSource<TestSourceNode, int>("source")
                 .WithObservability(builder);
+
             var transform = builder.AddTransform<TestRetryTransformNode, int, int>("parallelTransform")
                 .WithObservability(builder)
-                .WithBlockingParallelism(builder, maxDegreeOfParallelism: 4)
-                .WithRetries(builder, maxRetries: 2);
+                .WithBlockingParallelism(builder, 4)
+                .WithRetries(builder, 2);
+
             var sink = builder.AddSink<TestSinkNode, int>("sink")
                 .WithObservability(builder);
+
             _ = builder.Connect(source, transform);
             _ = builder.Connect(transform, sink);
         }
@@ -583,11 +603,14 @@ public sealed class CompatibilityTests
         {
             var source = builder.AddSource<TestHighThroughputSourceNode, int>("source")
                 .WithObservability(builder);
+
             var transform = builder.AddTransform<TestTransformNode, int, int>("parallelTransform")
                 .WithObservability(builder)
-                .WithBlockingParallelism(builder, maxDegreeOfParallelism: 8);
+                .WithBlockingParallelism(builder, 8);
+
             var sink = builder.AddSink<TestSinkNode, int>("sink")
                 .WithObservability(builder);
+
             _ = builder.Connect(source, transform);
             _ = builder.Connect(transform, sink);
         }
@@ -599,10 +622,13 @@ public sealed class CompatibilityTests
         {
             var source = builder.AddSource<TestSourceNode, int>("source")
                 .WithObservability(builder);
+
             var transform = builder.AddTransform<TestTransformNode, int, int>("transform")
                 .WithObservability(builder);
+
             var sink = builder.AddSink<TestSinkNode, int>("sink")
                 .WithObservability(builder);
+
             _ = builder.Connect(source, transform);
             _ = builder.Connect(transform, sink);
         }
@@ -614,11 +640,14 @@ public sealed class CompatibilityTests
         {
             var source = builder.AddSource<TestSourceNode, int>("source")
                 .WithObservability(builder);
+
             var transform = builder.AddTransform<TestFailingTransformNode, int, int>("parallelTransform")
                 .WithObservability(builder)
-                .WithBlockingParallelism(builder, maxDegreeOfParallelism: 4);
+                .WithBlockingParallelism(builder, 4);
+
             var sink = builder.AddSink<TestSinkNode, int>("sink")
                 .WithObservability(builder);
+
             _ = builder.Connect(source, transform);
             _ = builder.Connect(transform, sink);
         }
@@ -630,11 +659,14 @@ public sealed class CompatibilityTests
         {
             var source = builder.AddSource<TestSlowSourceNode, int>("source")
                 .WithObservability(builder);
+
             var transform = builder.AddTransform<TestTransformNode, int, int>("parallelTransform")
                 .WithObservability(builder)
-                .WithBlockingParallelism(builder, maxDegreeOfParallelism: 4);
+                .WithBlockingParallelism(builder, 4);
+
             var sink = builder.AddSink<TestSinkNode, int>("sink")
                 .WithObservability(builder);
+
             _ = builder.Connect(source, transform);
             _ = builder.Connect(transform, sink);
         }
@@ -646,10 +678,13 @@ public sealed class CompatibilityTests
         {
             var source = builder.AddSource<TestHighThroughputSourceNode, int>("source")
                 .WithObservability(builder);
+
             var transform = builder.AddTransform<TestTransformNode, int, int>("transform")
                 .WithObservability(builder);
+
             var sink = builder.AddSink<TestSinkNode, int>("sink")
                 .WithObservability(builder);
+
             _ = builder.Connect(source, transform);
             _ = builder.Connect(transform, sink);
         }
@@ -692,11 +727,11 @@ public sealed class CompatibilityTests
         public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             _count++;
+
             // Fail on first attempt for some items
             if (_count % 3 == 0)
-            {
                 throw new InvalidOperationException($"Temporary failure for item {item}");
-            }
+
             return Task.FromResult(item * 2);
         }
     }
@@ -708,10 +743,10 @@ public sealed class CompatibilityTests
         public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             _count++;
+
             if (_count == 5)
-            {
                 throw new InvalidOperationException("Intentional failure");
-            }
+
             return Task.FromResult(item * 2);
         }
     }

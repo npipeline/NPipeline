@@ -274,7 +274,7 @@ public sealed class LoggingMetricsSinkTests
         // Arrange
         var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
         var sink = new LoggingMetricsSink(loggerMock);
-        var metrics = CreateNodeMetrics(false, null);
+        var metrics = CreateNodeMetrics(false);
 
         // Act
         await sink.RecordAsync(metrics, CancellationToken.None);

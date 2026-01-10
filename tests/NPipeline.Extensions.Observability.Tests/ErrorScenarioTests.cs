@@ -19,7 +19,7 @@ public sealed class ErrorScenarioTests
         // Arrange
         var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
         var sink = new LoggingMetricsSink(loggerMock);
-        var metrics = CreateNodeMetrics(success: false, exception: null);
+        var metrics = CreateNodeMetrics(false, null);
 
         // Act
         await sink.RecordAsync(metrics, CancellationToken.None);
@@ -36,7 +36,7 @@ public sealed class ErrorScenarioTests
         // Arrange
         var loggerMock = A.Fake<ILogger<LoggingPipelineMetricsSink>>();
         var sink = new LoggingPipelineMetricsSink(loggerMock);
-        var metrics = CreatePipelineMetrics(success: false, exception: null);
+        var metrics = CreatePipelineMetrics(false, null);
 
         // Act
         await sink.RecordAsync(metrics, CancellationToken.None);
@@ -155,7 +155,7 @@ public sealed class ErrorScenarioTests
     }
 
     [Fact]
-    public async Task AutoObservabilityScope_WithCancellation_ShouldDispose()
+    public void AutoObservabilityScope_WithCancellation_ShouldDispose()
     {
         // Arrange
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
@@ -181,7 +181,7 @@ public sealed class ErrorScenarioTests
     public async Task EmitMetricsAsync_NullNodeSink_ShouldComplete()
     {
         // Arrange
-        var factory = new TestObservabilityFactory(hasNodeSink: false);
+        var factory = new TestObservabilityFactory(false);
         var collector = new ObservabilityCollector(factory);
         var pipelineName = "TestPipeline";
         var runId = Guid.NewGuid();
@@ -223,7 +223,7 @@ public sealed class ErrorScenarioTests
     public async Task EmitMetricsAsync_BothSinksNull_ShouldComplete()
     {
         // Arrange
-        var factory = new TestObservabilityFactory(hasNodeSink: false, hasPipelineSink: false);
+        var factory = new TestObservabilityFactory(false, false);
         var collector = new ObservabilityCollector(factory);
         var pipelineName = "TestPipeline";
         var runId = Guid.NewGuid();
@@ -431,7 +431,8 @@ public sealed class ErrorScenarioTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => collector.CreatePipelineMetrics(null!, Guid.NewGuid(), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, true));
+        _ = Assert.Throws<ArgumentNullException>(() =>
+            collector.CreatePipelineMetrics(null!, Guid.NewGuid(), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, true));
     }
 
     [Fact]
@@ -577,9 +578,7 @@ public sealed class ErrorScenarioTests
         public Task RecordAsync(INodeMetrics metrics, CancellationToken cancellationToken = default)
         {
             if (!IsEnabled)
-            {
                 return Task.CompletedTask;
-            }
 
             RecordAsyncCallCount++;
             return Task.CompletedTask;
@@ -594,9 +593,7 @@ public sealed class ErrorScenarioTests
         public Task RecordAsync(IPipelineMetrics metrics, CancellationToken cancellationToken = default)
         {
             if (!IsEnabled)
-            {
                 return Task.CompletedTask;
-            }
 
             RecordAsyncCallCount++;
             return Task.CompletedTask;
@@ -618,12 +615,16 @@ public sealed class ErrorScenarioTests
 
         public IMetricsSink? ResolveMetricsSink()
         {
-            return _throwInNodeSink ? NodeMetricsSink : null;
+            return _throwInNodeSink
+                ? NodeMetricsSink
+                : null;
         }
 
         public IPipelineMetricsSink? ResolvePipelineMetricsSink()
         {
-            return _throwInPipelineSink ? PipelineMetricsSink : null;
+            return _throwInPipelineSink
+                ? PipelineMetricsSink
+                : null;
         }
     }
 

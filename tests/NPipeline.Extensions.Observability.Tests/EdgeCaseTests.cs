@@ -10,6 +10,47 @@ namespace NPipeline.Extensions.Observability.Tests;
 /// </summary>
 public sealed class EdgeCaseTests
 {
+    #region GC Pressure Tests
+
+    [Fact]
+    public void ObservabilityCollector_WithGCPressure_ShouldMaintainIntegrity()
+    {
+        // Arrange
+        var collector = new ObservabilityCollector(new TestObservabilityFactory());
+        const int nodeCount = 1000;
+
+        // Act - Create many nodes to trigger GC
+        for (var i = 0; i < nodeCount; i++)
+        {
+            var nodeId = $"node{i}";
+            var startTime = DateTimeOffset.UtcNow;
+
+            collector.RecordNodeStart(nodeId, startTime);
+            collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(100), true);
+            collector.RecordItemMetrics(nodeId, 100, 95);
+
+            // Force GC periodically
+            if (i % 100 == 0)
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+            }
+        }
+
+        // Assert - All metrics should be intact
+        for (var i = 0; i < nodeCount; i++)
+        {
+            var nodeId = $"node{i}";
+            var metrics = collector.GetNodeMetrics(nodeId);
+
+            Assert.NotNull(metrics);
+            Assert.Equal(100, metrics.ItemsProcessed);
+            Assert.Equal(95, metrics.ItemsEmitted);
+        }
+    }
+
+    #endregion
+
     #region Large Item Count Tests
 
     [Fact]
@@ -328,6 +369,7 @@ public sealed class EdgeCaseTests
         // Assert - Should have aggregated metrics
         var metrics = collector.GetNodeMetrics(nodeName);
         Assert.NotNull(metrics);
+
         // Note: Behavior depends on implementation - may aggregate or overwrite
         Assert.True(metrics.ItemsProcessed >= 0);
     }
@@ -462,13 +504,15 @@ public sealed class EdgeCaseTests
         // Arrange
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
+
         var options = new ObservabilityOptions
         {
             RecordItemCounts = false,
             RecordMemoryUsage = false,
             RecordThreadInfo = false,
-            RecordPerformanceMetrics = false
+            RecordPerformanceMetrics = false,
         };
+
         var scope = new AutoObservabilityScope(collector, nodeId, options);
 
         // Act
@@ -594,47 +638,6 @@ public sealed class EdgeCaseTests
         // Assert
         Assert.NotNull(metrics);
         Assert.Equal(0, metrics.DurationMs);
-    }
-
-    #endregion
-
-    #region GC Pressure Tests
-
-    [Fact]
-    public void ObservabilityCollector_WithGCPressure_ShouldMaintainIntegrity()
-    {
-        // Arrange
-        var collector = new ObservabilityCollector(new TestObservabilityFactory());
-        const int nodeCount = 1000;
-
-        // Act - Create many nodes to trigger GC
-        for (var i = 0; i < nodeCount; i++)
-        {
-            var nodeId = $"node{i}";
-            var startTime = DateTimeOffset.UtcNow;
-
-            collector.RecordNodeStart(nodeId, startTime);
-            collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(100), true);
-            collector.RecordItemMetrics(nodeId, 100, 95);
-
-            // Force GC periodically
-            if (i % 100 == 0)
-            {
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-            }
-        }
-
-        // Assert - All metrics should be intact
-        for (var i = 0; i < nodeCount; i++)
-        {
-            var nodeId = $"node{i}";
-            var metrics = collector.GetNodeMetrics(nodeId);
-
-            Assert.NotNull(metrics);
-            Assert.Equal(100, metrics.ItemsProcessed);
-            Assert.Equal(95, metrics.ItemsEmitted);
-        }
     }
 
     #endregion

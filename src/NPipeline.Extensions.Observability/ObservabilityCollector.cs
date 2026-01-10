@@ -48,9 +48,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
         long? processorTimeMs = null)
     {
         if (nodeId == null)
-        {
             return;
-        }
 
         var builder = _nodeMetrics.GetOrAdd(nodeId, _ => new NodeMetricsBuilder(nodeId));
         builder.RecordEnd(timestamp, success, exception, peakMemoryMb, processorTimeMs);
@@ -65,9 +63,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     public void RecordItemMetrics(string nodeId, long itemsProcessed, long itemsEmitted)
     {
         if (nodeId == null)
-        {
             return;
-        }
 
         var builder = _nodeMetrics.GetOrAdd(nodeId, _ => new NodeMetricsBuilder(nodeId));
         builder.RecordItemMetrics(itemsProcessed, itemsEmitted);
@@ -82,9 +78,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     public void RecordRetry(string nodeId, int retryCount, string? reason = null)
     {
         if (nodeId == null)
-        {
             return;
-        }
 
         var builder = _nodeMetrics.GetOrAdd(nodeId, _ => new NodeMetricsBuilder(nodeId));
         builder.RecordRetry(retryCount);
@@ -99,9 +93,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     public void RecordPerformanceMetrics(string nodeId, double throughputItemsPerSec, double averageItemProcessingMs)
     {
         if (nodeId == null)
-        {
             return;
-        }
 
         var builder = _nodeMetrics.GetOrAdd(nodeId, _ => new NodeMetricsBuilder(nodeId));
         builder.RecordPerformanceMetrics(throughputItemsPerSec, averageItemProcessingMs);
@@ -194,9 +186,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
         var pipelineMetricsSink = _factory.ResolvePipelineMetricsSink();
 
         if (pipelineMetricsSink != null)
-        {
             await pipelineMetricsSink.RecordAsync(pipelineMetrics, cancellationToken).ConfigureAwait(false);
-        }
     }
 
     /// <summary>
@@ -208,9 +198,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     public void InitializeNode(string nodeId, int? threadId = null, long? initialMemoryMb = null)
     {
         if (nodeId == null)
-        {
             return;
-        }
 
         var builder = _nodeMetrics.GetOrAdd(nodeId, _ => new NodeMetricsBuilder(nodeId));
         builder.Initialize(threadId, initialMemoryMb);
@@ -243,9 +231,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
             _threadId = threadId;
 
             if (initialMemoryMb.HasValue)
-            {
                 _peakMemoryUsageMb = initialMemoryMb;
-            }
         }
 
         public void Initialize(int? threadId, long? initialMemoryMb)
@@ -253,9 +239,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
             _threadId = threadId;
 
             if (initialMemoryMb.HasValue)
-            {
                 _peakMemoryUsageMb = initialMemoryMb;
-            }
         }
 
         public void RecordEnd(DateTimeOffset timestamp, bool success, Exception? exception, long? peakMemoryMb, long? processorTimeMs)
@@ -267,9 +251,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
             _processorTimeMs = processorTimeMs;
 
             if (_startTime.HasValue)
-            {
                 _durationMs = (long)(timestamp - _startTime.Value).TotalMilliseconds;
-            }
         }
 
         public void RecordItemMetrics(long itemsProcessed, long itemsEmitted)

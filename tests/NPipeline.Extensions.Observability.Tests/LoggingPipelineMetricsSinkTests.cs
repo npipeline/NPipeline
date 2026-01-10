@@ -331,7 +331,7 @@ public sealed class LoggingPipelineMetricsSinkTests
             false,
             nodeMetrics:
             [
-                CreateNodeMetrics("node1", false, null, itemsProcessed: 50),
+                CreateNodeMetrics("node1", false, itemsProcessed: 50),
             ]);
 
         // Act

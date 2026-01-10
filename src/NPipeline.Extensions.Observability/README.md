@@ -213,6 +213,7 @@ Memory metrics are measured as **per-node deltas** using `GC.GetTotalMemory(fals
 - **Note**: This measures managed memory allocations, not total process memory or peak working set
 
 **Important**: Memory metrics are only collected when:
+
 1. The extension is configured with `EnableMemoryMetrics = true` (via `ObservabilityExtensionOptions`)
 2. The node has `ObservabilityOptions.RecordMemoryUsage = true` set
 
@@ -260,6 +261,7 @@ This ensures accurate metrics collection even when multiple nodes execute concur
 **Problem**: Memory metrics are not appearing in collected data.
 
 **Solutions**:
+
 1. Verify memory metrics are enabled at extension level: `services.AddNPipelineObservability(ObservabilityExtensionOptions.WithMemoryMetrics)`
 2. Ensure nodes have memory tracking enabled: `.WithObservability(builder, ObservabilityOptions.Full)` or set `RecordMemoryUsage = true`
 3. Memory metrics require both extension-level AND node-level configuration to be enabled
@@ -269,6 +271,7 @@ This ensures accurate metrics collection even when multiple nodes execute concur
 **Problem**: Metrics are not being logged or sent to external systems.
 
 **Solutions**:
+
 1. Verify observability is registered: `services.AddNPipelineObservability()`
 2. Check that the pipeline is using `IObservablePipelineContextFactory` to create the context
 3. Ensure logging is configured properly for `LoggingMetricsSink`
@@ -279,6 +282,7 @@ This ensures accurate metrics collection even when multiple nodes execute concur
 **Problem**: Pipeline execution slows down when observability is enabled.
 
 **Solutions**:
+
 1. Use async sink implementations
 2. Implement batching or aggregation for external calls
 3. Disable memory tracking (`ObservabilityOptions.Default` instead of `Full`) if not needed
