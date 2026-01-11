@@ -605,6 +605,6 @@ var unreliableNodes = pipelineMetrics.NodeMetrics
 
 ## Related Topics
 
-- **[Observability Overview](./overview.md)**: Introduction to observability features
+- **[Observability Overview](./index.md)**: Introduction to observability features
 - **[Configuration Guide](./configuration.md)**: Setup and configuration options
 - **[Usage Examples](./examples.md)**: Complete code examples

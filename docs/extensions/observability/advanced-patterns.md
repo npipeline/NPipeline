@@ -6,6 +6,8 @@ This guide covers advanced patterns and real-world scenarios for the NPipeline O
 
 ### Implementing a Custom Collector
 
+Create custom collectors when you need to track additional metadata or metrics beyond the standard interface. This example captures host information and process details for distributed tracing scenarios.
+
 ```csharp
 public class DetailedObservabilityCollector : IObservabilityCollector
 {
@@ -40,6 +42,8 @@ public class DetailedObservabilityCollector : IObservabilityCollector
 
 ### Using Custom Collector
 
+Register your custom collector in the dependency injection container to replace the default implementation with your specialized version.
+
 ```csharp
 services.AddNPipelineObservability<
     DetailedObservabilityCollector,
@@ -50,6 +54,8 @@ services.AddNPipelineObservability<
 ## Integration with Monitoring Systems
 
 ### Application Insights Integration
+
+Send pipeline metrics directly to Azure Application Insights for cloud-native monitoring, alerting, and analysis within the Azure ecosystem.
 
 ```csharp
 public class ApplicationInsightsMetricsSink : IMetricsSink
@@ -92,6 +98,8 @@ public class ApplicationInsightsMetricsSink : IMetricsSink
 
 ### Prometheus Integration
 
+Expose metrics in Prometheus format for integration with Grafana dashboards, alerting rules, and time-series analysis in Kubernetes and on-premises environments.
+
 ```csharp
 public class PrometheusMetricsSink : IMetricsSink
 {
@@ -123,6 +131,8 @@ services.AddNPipelineObservability<PrometheusMetricsSink, PrometheusMetricsSink>
 ```
 
 ### OpenTelemetry Integration
+
+Use the OpenTelemetry standards for vendor-agnostic instrumentation, allowing you to switch monitoring backends without code changes.
 
 ```csharp
 public class OpenTelemetryMetricsSink : IMetricsSink
@@ -161,6 +171,8 @@ public class OpenTelemetryMetricsSink : IMetricsSink
 ## Batching and Buffering
 
 ### Buffered Metrics Sink
+
+Buffer metrics in an in-memory channel before sending them to the underlying sink, reducing network calls and improving throughput for high-volume pipelines.
 
 ```csharp
 public class BufferedMetricsSink : IMetricsSink, IAsyncDisposable
@@ -209,6 +221,8 @@ public class BufferedMetricsSink : IMetricsSink, IAsyncDisposable
 
 ### Rate-Limited Sink
 
+Enforce a maximum metrics submission rate to prevent overwhelming downstream systems while maintaining visibility into pipeline behavior.
+
 ```csharp
 public class RateLimitedMetricsSink : IMetricsSink
 {
@@ -243,6 +257,8 @@ public class RateLimitedMetricsSink : IMetricsSink
 ```
 
 ### Sampling Sink
+
+Reduce metric volume by probabilistically recording only a sample of successful operations while always capturing failures for debugging.
 
 ```csharp
 public class SamplingMetricsSink : IMetricsSink
@@ -279,6 +295,8 @@ public class SamplingMetricsSink : IMetricsSink
 ## Composite Sinks
 
 ### Multi-Destination Sink
+
+Send metrics to multiple monitoring systems simultaneously (e.g., Prometheus and Application Insights) with error isolation so one sink's failure doesn't affect others.
 
 ```csharp
 public class CompositeMetricsSink : IMetricsSink
@@ -329,6 +347,8 @@ services.AddNPipelineObservability(
 
 ### Pre-Aggregation Sink
 
+Aggregate metrics from multiple executions of the same node before flushing, significantly reducing the number of events sent to downstream systems.
+
 ```csharp
 public class PreAggregationMetricsSink : IMetricsSink
 {
@@ -370,6 +390,8 @@ public class PreAggregationMetricsSink : IMetricsSink
 
 ### Retry Sink
 
+Automatically retry failed metric submissions with exponential backoff to handle transient failures in downstream monitoring systems.
+
 ```csharp
 public class RetrySink : IMetricsSink
 {
@@ -403,6 +425,8 @@ public class RetrySink : IMetricsSink
 ```
 
 ### Circuit Breaker Sink
+
+Stop attempting to send metrics when a monitoring system repeatedly fails, preventing cascading failures and allowing time for recovery.
 
 ```csharp
 public class CircuitBreakerSink : IMetricsSink
@@ -469,6 +493,8 @@ public class CircuitBreakerSink : IMetricsSink
 
 ### Test Sink
 
+Capture all recorded metrics in memory during unit tests to verify observability behavior and assert on pipeline execution details.
+
 ```csharp
 public class TestMetricsSink : IMetricsSink
 {
@@ -511,6 +537,6 @@ public async Task Pipeline_Should_RecordMetrics()
 
 ## See Also
 
-- [Getting Started](./getting-started.md) - Basic setup and usage
+- [Getting Started](./index.md) - Basic setup and usage
 - [Configuration](./configuration.md) - DI configuration options
 - [Metrics Reference](./metrics.md) - Complete metrics documentation

@@ -675,9 +675,73 @@ public sealed class AggregatingMetricsSink : IMetricsSink
 3. Consider disabling expensive metrics (memory, processor time) in production
 4. Use sampling for high-volume scenarios
 
+## Architecture and Design
+
+### System Architecture
+
+The extension follows a layered architecture for separation of concerns:
+
+```text
+Pipeline Execution
+        ↓
+IExecutionObserver
+        ↓
+MetricsCollectingExecutionObserver
+        ↓
+IObservabilityCollector (Thread-safe)
+        ├→ Node Metrics
+        └→ Pipeline Metrics
+        ↓
+IMetricsSink / IPipelineMetricsSink
+        ├→ LoggingMetricsSink
+        ├→ Custom Sinks
+        └→ Composite Sinks
+```
+
+### Key Components
+
+- **`MetricsCollectingExecutionObserver`**: Hooks into pipeline execution lifecycle to capture node start/end events and delegate to the collector
+- **`IObservabilityCollector`**: Thread-safe collector that aggregates metrics from all nodes and provides query interfaces
+- **`IMetricsSink` / `IPipelineMetricsSink`**: Abstractions for emitting metrics to various destinations (logging, monitoring systems, etc.)
+- **`IObservabilityFactory`**: DI-aware factory for resolving and configuring observability components
+
+### Thread-Safety Guarantees
+
+The extension provides strong thread-safety guarantees for production environments:
+
+- **Concurrent metrics collection**: Multiple nodes can record metrics simultaneously without race conditions
+- **Atomic counter updates**: Item counts use `Interlocked.Add` for thread-safe increments
+- **Immutable metric records**: Once built, metric records are immutable and safe to share across threads
+- **Scoped isolation**: Each pipeline run gets its own collector instance, preventing cross-contamination between runs
+- **ConcurrentDictionary**: Internal metrics storage uses `ConcurrentDictionary` for lock-free operations
+
+## Performance Characteristics
+
+### Minimal Overhead
+
+The extension is designed for production use with minimal performance impact:
+
+- **Non-blocking metrics collection**: Metrics are recorded asynchronously without blocking pipeline execution
+- **Efficient data structures**: Uses optimized collections (ConcurrentDictionary) for metrics aggregation
+- **Optional observability**: Can be disabled entirely by not registering the services
+- **Scoped lifetime**: Metrics are isolated per pipeline run, preventing memory leaks
+
+### Memory Usage
+
+- **Per-pipeline overhead**: Approximately 1-2 KB per node for metrics storage
+- **Transient sinks**: Metrics sinks are created per pipeline run and disposed after use
+- **No persistent storage**: Metrics are not retained in memory beyond the pipeline execution scope
+
+### CPU Impact
+
+- **Lightweight timing**: Uses high-resolution `Stopwatch` timers with minimal CPU overhead
+- **Optional performance counters**: Memory and processor time collection can be disabled if not needed via `ObservabilityOptions.Minimal`
+- **Batch-friendly**: Metrics collection scales efficiently with large batch sizes and doesn't degrade with parallelism
+
 ## Related Topics
 
-- **[Observability Overview](./overview.md)**: Introduction to observability features
+- **[Getting Started](./index.md)**: Quick start and basic usage
 - **[Metrics Reference](./metrics.md)**: Detailed metrics documentation
 - **[Usage Examples](./examples.md)**: Complete code examples
-- **[Dependency Injection](../dependency-injection.md)**: DI integration with NPipeline
+- **[Advanced Patterns](./advanced-patterns.md)**: Advanced scenarios and custom implementations
+- **[Distributed Tracing](./tracing.md)**: Core tracing abstraction

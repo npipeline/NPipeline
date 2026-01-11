@@ -1008,6 +1008,6 @@ public sealed class Program
 
 ## Related Topics
 
-- **[Observability Overview](./overview.md)**: Introduction to observability features
+- **[Observability Overview](./index.md)**: Introduction to observability features
 - **[Configuration Guide](./configuration.md)**: Setup and configuration options
 - **[Metrics Reference](./metrics.md)**: Detailed metrics documentation

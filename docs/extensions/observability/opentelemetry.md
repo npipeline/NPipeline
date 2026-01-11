@@ -17,6 +17,7 @@ dotnet add package NPipeline.Extensions.Observability.OpenTelemetry
 ```
 
 This package requires:
+
 - `NPipeline` (core package)
 - `NPipeline.Extensions.Observability` (observability extension)
 - `OpenTelemetry` (1.12.0 or later)
@@ -248,10 +249,12 @@ The trace will show the complete hierarchy, making it easy to understand executi
 1. **Use meaningful service names**: Choose names that identify your application or service uniquely
 2. **Standardize activity names**: Use consistent naming for pipeline operations for better trace organization
 3. **Add context tags**: Use `SetTag()` to add relevant context for debugging:
+
    ```csharp
    activity.SetTag("node_id", nodeIdentifier);
    activity.SetTag("batch_size", items.Count);
    ```
+
 4. **Handle errors properly**: Ensure exceptions are recorded for visibility in traces
 5. **Avoid high cardinality tags**: Don't use timestamps or request IDs as tag values; use baggage instead
 6. **Sample high-volume traces**: For production pipelines with millions of items, consider sampling to avoid trace overhead
@@ -308,6 +311,7 @@ using var tracerProvider = new TracerProviderBuilder()
 1. **Verify service name matches**: The service name in `AddOpenTelemetryPipelineTracer()` must match one of the sources in `AddNPipelineSource()`
 2. **Check exporter configuration**: Ensure your backend (Jaeger, Zipkin, etc.) is running and properly configured
 3. **Enable debug logging**: Set up OpenTelemetry logging to debug connection issues:
+
    ```csharp
    .AddOtlpExporter(opt =>
    {

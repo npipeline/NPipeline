@@ -174,9 +174,9 @@ functionality and features like enhanced parallelism, simplifying testing workfl
 | **NPipeline**                                | Core streaming pipeline functionality (zero dependencies)                                            |
 | **NPipeline.Analyzers**                      | Roslyn analyzers for compile-time validation, style guidance, and developer guardrails               |
 | **NPipeline.Extensions.DependencyInjection** | Integration with Microsoft DI container                                                              |
+| **NPipeline.Extensions.Observability**       | Observability and telemetry support for pipeline monitoring                                          |
+| **NPipeline.Extensions.Observability.OpenTelemetry** | OpenTelemetry integration for distributed tracing and metrics                                |
 | **NPipeline.Extensions.Parallelism**         | Parallel processing with TPL Dataflow                                                                |
-| **NPipeline.Extensions.Observability**       | Observability and telemetry support for pipeline monitoring                                           |
-| **NPipeline.Extensions.Observability.OpenTelemetry** | OpenTelemetry integration for distributed tracing and metrics                                  |
 | **NPipeline.Extensions.Testing**             | Testing utilities and extensions for assertion libraries like FluentAssertions and AwesomeAssertions |
 | **NPipeline.Connectors**                     | Core abstractions for data format/storage decoupling                                                 |
 | **NPipeline.Connectors.Csv**                 | CSV source and sink nodes                                                                            |
@@ -192,9 +192,13 @@ functionality and features like enhanced parallelism, simplifying testing workfl
 
 ## Transparency: AI-Assisted Development
 
-This project leverages modern AI and LLM tools to enhance productivity in test generation, documentation, XML code comments and sample generation. We believe transparency about development practices is important.
+We believe in being open about how this library is built. We use AI tools to assist with boilerplate tasks like documentation, XML comments, and test generation to keep development pace high.
 
-All AI-generated content is carefully reviewed for accuracy, quality, and alignment with project standards before being included. The core library logic, architecture decisions, and critical functionality remain carefully designed and reviewed. Our goal is to use AI as a productivity multiplier while maintaining the high standards of a production-ready library.
+### Our Commitment to Quality
+
+- **Manual Validation:** All AI-suggested content is vetted against project standards before being merged.
+- **Core Integrity:** Architecture and critical logic are human-designed.
+- **Goal:** Leveraging AI as a "force multiplier" without compromising code quality or reliability.
 
 ## Contributing
 
