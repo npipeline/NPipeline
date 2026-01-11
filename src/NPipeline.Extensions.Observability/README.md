@@ -298,7 +298,8 @@ This ensures accurate metrics collection even when multiple nodes execute concur
 
 ## Distributed Tracing
 
-The extension includes `PipelineActivity`, an implementation of `IPipelineActivity` that wraps `System.Diagnostics.Activity` for OpenTelemetry-compatible distributed tracing:
+The extension includes `PipelineActivity`, an implementation of `IPipelineActivity` that wraps `System.Diagnostics.Activity` for OpenTelemetry-compatible
+distributed tracing:
 
 ```csharp
 using System.Diagnostics;
@@ -311,7 +312,7 @@ public class DistributedTracer : IPipelineTracer
     public IPipelineActivity StartActivity(string name)
     {
         var activity = new Activity(name).Start();
-        return activity != null 
+        return activity != null
             ? new PipelineActivity(activity)
             : new NullPipelineActivity();
     }

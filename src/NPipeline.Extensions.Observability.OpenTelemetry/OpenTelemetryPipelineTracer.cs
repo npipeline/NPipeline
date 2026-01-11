@@ -49,8 +49,8 @@ namespace NPipeline.Extensions.Observability.OpenTelemetry;
 /// </example>
 public sealed class OpenTelemetryPipelineTracer : IPipelineTracer
 {
-    private readonly string _serviceName;
     private readonly ActivitySource _activitySource;
+    private readonly string _serviceName;
 
     /// <summary>
     ///     Creates a new instance of <see cref="OpenTelemetryPipelineTracer" />.
@@ -85,7 +85,7 @@ public sealed class OpenTelemetryPipelineTracer : IPipelineTracer
         // there are no listeners or sampling drops the activity, StartActivity returns
         // null, in which case we fall back to the null tracer to avoid unnecessary
         // allocations.
-        var activity = _activitySource.StartActivity(name, ActivityKind.Internal);
+        var activity = _activitySource.StartActivity(name);
 
         if (activity is null)
             return NullPipelineTracer.Instance.StartActivity(name);
