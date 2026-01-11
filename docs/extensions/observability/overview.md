@@ -1,12 +1,12 @@
 ---
 title: Observability
-description: Comprehensive metrics collection and monitoring capabilities for NPipeline pipelines and nodes.
+description: Comprehensive metrics collection and distributed tracing capabilities for NPipeline pipelines and nodes.
 sidebar_position: 6
 ---
 
 # Observability
 
-The `NPipeline.Extensions.Observability` extension provides comprehensive metrics collection and monitoring capabilities for NPipeline pipelines. It enables detailed tracking of pipeline execution, node performance, throughput, and resource utilization, making it easier to identify bottlenecks, optimize performance, and troubleshoot issues in production environments.
+The `NPipeline.Extensions.Observability` extension provides comprehensive observability capabilities for NPipeline pipelines, including metrics collection and distributed tracing. It enables detailed tracking of pipeline execution, node performance, throughput, resource utilization, and exception handling, making it easier to identify bottlenecks, optimize performance, and troubleshoot issues in production environments.
 
 ## Overview
 
@@ -14,6 +14,7 @@ Observability is critical for understanding how data pipelines behave in product
 
 - **Node-level metrics**: Track execution time, items processed/emitted, retries, memory usage, and processor time for each node
 - **Pipeline-level metrics**: Aggregate metrics across all nodes, including total duration, throughput, and success/failure status
+- **Distributed tracing**: OpenTelemetry-compatible tracing through `PipelineActivity` and `System.Diagnostics.Activity`
 - **Thread-safe collection**: Metrics are collected safely across parallel and concurrent pipeline executions
 - **Flexible sinks**: Built-in logging sinks with support for custom metrics sinks (e.g., Application Insights, Prometheus, OpenTelemetry)
 - **Dependency injection integration**: Seamlessly integrates with Microsoft.Extensions.DependencyInjection
@@ -248,6 +249,7 @@ The extension provides strong thread-safety guarantees:
 
 - **[Configuration Guide](./configuration.md)**: Learn about all registration options and configuration patterns
 - **[Metrics Reference](./metrics.md)**: Detailed reference for all available metrics and how they're calculated
+- **[Distributed Tracing](./tracing.md)**: Learn about OpenTelemetry-compatible distributed tracing with `PipelineActivity`
 - **[Usage Examples](./examples.md)**: Complete code examples for common scenarios
 
 ## Related Topics

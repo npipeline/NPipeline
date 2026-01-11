@@ -1,10 +1,11 @@
 # NPipeline.Extensions.Observability
 
-Comprehensive observability and metrics collection for NPipeline pipelines.
+Comprehensive observability, metrics collection, and distributed tracing for NPipeline pipelines.
 
 ## Features
 
 - **Automatic metrics collection** - Node timing and lifecycle metrics are captured automatically
+- **Distributed tracing** - OpenTelemetry-compatible tracing with `PipelineActivity` wrapper for `System.Diagnostics.Activity`
 - **Thread-safe metrics collection** for concurrent pipeline execution
 - **Node-level metrics** tracking execution time, throughput, memory usage, and more
 - **Pipeline-level metrics** aggregating performance across all nodes
@@ -288,6 +289,54 @@ This ensures accurate metrics collection even when multiple nodes execute concur
 3. Disable memory tracking (`ObservabilityOptions.Default` instead of `Full`) if not needed
 4. Consider sampling for high-volume scenarios
 
+## Distributed Tracing
+
+The extension includes `PipelineActivity`, an implementation of `IPipelineActivity` that wraps `System.Diagnostics.Activity` for OpenTelemetry-compatible distributed tracing:
+
+```csharp
+using System.Diagnostics;
+using NPipeline.Extensions.Observability.Tracing;
+using NPipeline.Observability.Tracing;
+
+// Implement IPipelineTracer
+public class DistributedTracer : IPipelineTracer
+{
+    public IPipelineActivity StartActivity(string name)
+    {
+        var activity = new Activity(name).Start();
+        return activity != null 
+            ? new PipelineActivity(activity)
+            : new NullPipelineActivity();
+    }
+}
+
+// Register with DI
+services.AddSingleton<IPipelineTracer>(new DistributedTracer());
+
+// Use in pipeline context
+var context = new PipelineContext(
+    PipelineContextConfiguration.WithObservability(
+        tracer: provider.GetRequiredService<IPipelineTracer>()
+    )
+);
+```
+
+### OpenTelemetry Integration
+
+Export traces to OpenTelemetry backends like Jaeger or Zipkin:
+
+```csharp
+using OpenTelemetry.Trace;
+
+var tracerProvider = new TracerProviderBuilder()
+    .AddSource("MyPipeline")
+    .AddJaegerExporter()
+    .Build();
+```
+
+For detailed tracing documentation, see [Distributed Tracing](../../docs/extensions/observability/tracing.md).
+
 ## License
 
 MIT License - See LICENSE file in repository root
+
