@@ -129,6 +129,7 @@ public sealed class PipelineRunner(
         // Rent pooled dictionaries for node outputs and instances
         var nodeOutputs = PipelineObjectPool.RentNodeOutputDictionary();
         Dictionary<string, INode>? nodeInstances = null;
+        var pipelineCompleted = false;
 
         try
         {
@@ -274,7 +275,7 @@ public sealed class PipelineRunner(
                     context.Items.Remove(PipelineContextKeys.NodeExecutionOptions(nodeDef.Id));
 
                 var nodeInstance = nodeInstances[nodeDef.Id];
-                var nodeScope = observabilitySurface.BeginNode(context, nodeDef, nodeInstance);
+                var nodeScope = observabilitySurface.BeginNode(context, graph, nodeDef, nodeInstance);
 
                 try
                 {
@@ -364,6 +365,8 @@ public sealed class PipelineRunner(
                 var report = LineageGenerator.Generate(typeof(TDefinition).Name, graph, Guid.NewGuid());
                 await pipelineLineageSink.RecordAsync(report, context.CancellationToken).ConfigureAwait(false);
             }
+
+            pipelineCompleted = true;
         }
         catch (Exception ex)
         {
@@ -374,14 +377,14 @@ public sealed class PipelineRunner(
             if (isParallelExecution)
             {
                 // For parallel execution, preserve the original exception type for correct exception propagation semantics
-                observabilitySurface.FailPipeline<TDefinition>(context, ex, pipelineActivity);
+                await observabilitySurface.FailPipeline<TDefinition>(context, ex, pipelineActivity).ConfigureAwait(false);
                 throw;
             }
 
             // Preserve cancellation semantics: if the pipeline was cancelled, rethrow OperationCanceledException
             if (ex is OperationCanceledException)
             {
-                observabilitySurface.FailPipeline<TDefinition>(context, ex, pipelineActivity);
+                await observabilitySurface.FailPipeline<TDefinition>(context, ex, pipelineActivity).ConfigureAwait(false);
                 throw;
             }
 
@@ -389,17 +392,17 @@ public sealed class PipelineRunner(
             // This preserves the specific exception types thrown by the pipeline infrastructure
             if (ex is not PipelineException)
             {
-                observabilitySurface.FailPipeline<TDefinition>(context, ex, pipelineActivity);
+                await observabilitySurface.FailPipeline<TDefinition>(context, ex, pipelineActivity).ConfigureAwait(false);
                 throw new PipelineExecutionException(ErrorMessages.PipelineExecutionFailed(typeof(TDefinition).Name, ex), ex);
             }
 
-            observabilitySurface.FailPipeline<TDefinition>(context, ex, pipelineActivity);
+            await observabilitySurface.FailPipeline<TDefinition>(context, ex, pipelineActivity).ConfigureAwait(false);
             throw;
         }
         finally
         {
-            if (graph is not null)
-                observabilitySurface.CompletePipeline<TDefinition>(context, graph, pipelineActivity);
+            if (pipelineCompleted && graph is not null)
+                await observabilitySurface.CompletePipeline<TDefinition>(context, graph, pipelineActivity).ConfigureAwait(false);
 
             // Dispose all data pipes
             // Iterate over the actual nodeOutputs dictionary

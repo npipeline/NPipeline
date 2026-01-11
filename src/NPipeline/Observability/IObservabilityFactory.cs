@@ -1,3 +1,5 @@
+using NPipeline.Observability.Metrics;
+
 namespace NPipeline.Observability;
 
 /// <summary>
@@ -10,4 +12,16 @@ public interface IObservabilityFactory
     /// </summary>
     /// <returns>An <see cref="IObservabilityCollector" /> instance or null if observability is not enabled.</returns>
     IObservabilityCollector? ResolveObservabilityCollector();
+
+    /// <summary>
+    ///     Resolves an optional node metrics sink for recording metrics.
+    /// </summary>
+    /// <returns>An <see cref="IMetricsSink" /> instance or null if no sink is configured.</returns>
+    IMetricsSink? ResolveMetricsSink();
+
+    /// <summary>
+    ///     Resolves an optional pipeline metrics sink for recording metrics.
+    /// </summary>
+    /// <returns>An <see cref="IPipelineMetricsSink" /> instance or null if no sink is configured.</returns>
+    IPipelineMetricsSink? ResolvePipelineMetricsSink();
 }

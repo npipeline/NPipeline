@@ -3,6 +3,7 @@ using FakeItEasy;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.Execution;
+using NPipeline.Execution.Services;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Observability;
@@ -70,7 +71,7 @@ public static class PipelineRunnerTestHelpers
 
         public static IObservabilitySurface CreateObservabilitySurface()
         {
-            return A.Fake<IObservabilitySurface>();
+            return new ObservabilitySurface();
         }
 
         public static PipelineRunner CreateRunner(

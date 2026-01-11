@@ -8,9 +8,9 @@ namespace NPipeline.Observability;
 public interface IObservabilityCollector
 {
     /// <summary>
-    ///     Records the start of a node execution.
+    ///     Records start of a node execution.
     /// </summary>
-    /// <param name="nodeId">The unique identifier of the node.</param>
+    /// <param name="nodeId">The unique identifier of node.</param>
     /// <param name="timestamp">The timestamp when execution started.</param>
     /// <param name="threadId">The thread ID executing the node.</param>
     /// <param name="initialMemoryMb">The initial memory usage in megabytes.</param>
@@ -77,4 +77,18 @@ public interface IObservabilityCollector
     /// <returns>The pipeline metrics.</returns>
     IPipelineMetrics CreatePipelineMetrics(string pipelineName, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, bool success,
         Exception? exception = null);
+
+    /// <summary>
+    ///     Emits all collected metrics to the registered sinks.
+    /// </summary>
+    /// <param name="pipelineName">The name of the pipeline.</param>
+    /// <param name="runId">The unique identifier for this pipeline run.</param>
+    /// <param name="startTime">When the pipeline started.</param>
+    /// <param name="endTime">When the pipeline ended.</param>
+    /// <param name="success">Whether the pipeline execution was successful.</param>
+    /// <param name="exception">Any exception that occurred during pipeline execution.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A <see cref="Task" /> representing the asynchronous operation.</returns>
+    Task EmitMetricsAsync(string pipelineName, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, bool success,
+        Exception? exception = null, CancellationToken cancellationToken = default);
 }

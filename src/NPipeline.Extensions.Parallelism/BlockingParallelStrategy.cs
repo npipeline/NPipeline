@@ -38,6 +38,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         // Capture a stable node id (PipelineRunner sets this prior to invoking the strategy). In parallel execution
         // relying on context.CurrentNodeId inside the delegate would be racy if other nodes change it.
         var nodeId = context.CurrentNodeId;
+        var observabilityScope = TryGetNodeObservabilityScope(context, nodeId);
 
         // Capture the current activity for tagging observability metrics
         var currentActivity = context.Tracer.CurrentActivity;
@@ -100,7 +101,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         else
         {
             channel = Channel.CreateBounded<TOut>(new BoundedChannelOptions(outputCap.Value)
-                { SingleReader = false, SingleWriter = true, FullMode = BoundedChannelFullMode.Wait });
+            { SingleReader = false, SingleWriter = true, FullMode = BoundedChannelFullMode.Wait });
         }
 
         // Producer: feed block
@@ -110,6 +111,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
             {
                 await foreach (var item in input.WithCancellation(cancellationToken))
                 {
+                    observabilityScope?.IncrementProcessed();
                     // SendAsync applies backpressure based on transformBlock input capacity
                     await transformBlock.SendAsync(item, cancellationToken);
                     var count = transformBlock.InputCount;
@@ -134,7 +136,10 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
                     while (transformBlock.TryReceive(out var tuple))
                     {
                         if (tuple.hasValue)
+                        {
+                            observabilityScope?.IncrementEmitted();
                             await channel.Writer.WriteAsync(tuple.value, cancellationToken);
+                        }
                     }
 
                     // We cannot directly read Channel count; approximate output backlog using block's OutputCount + InputCount
@@ -193,6 +198,8 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
                     context.Items[PipelineContextKeys.ParallelMetricsRetryItems(nodeId)] = blockMetrics.ItemsWithRetry;
                     context.Items[PipelineContextKeys.ParallelMetricsMaxItemRetryAttempts(nodeId)] = blockMetrics.MaxItemRetryAttempts;
                 }
+
+                observabilityScope?.Dispose();
             }
         }
     }

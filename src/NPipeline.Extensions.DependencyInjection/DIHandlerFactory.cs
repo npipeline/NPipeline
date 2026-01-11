@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NPipeline.ErrorHandling;
 using NPipeline.Lineage;
 using NPipeline.Observability;
+using NPipeline.Observability.Metrics;
 
 namespace NPipeline.Extensions.DependencyInjection;
 
@@ -172,6 +173,38 @@ public sealed class DiHandlerFactory(IServiceProvider serviceProvider) : IErrorH
         try
         {
             return serviceProvider.GetService<IObservabilityCollector>();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    ///     Resolves an optional metrics sink for recording node-level metrics.
+    /// </summary>
+    /// <returns>An <see cref="IMetricsSink" /> instance or null if no sink is registered.</returns>
+    public IMetricsSink? ResolveMetricsSink()
+    {
+        try
+        {
+            return serviceProvider.GetService<IMetricsSink>();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    ///     Resolves an optional pipeline metrics sink for recording pipeline-level metrics.
+    /// </summary>
+    /// <returns>An <see cref="IPipelineMetricsSink" /> instance or null if no sink is registered.</returns>
+    public IPipelineMetricsSink? ResolvePipelineMetricsSink()
+    {
+        try
+        {
+            return serviceProvider.GetService<IPipelineMetricsSink>();
         }
         catch
         {
