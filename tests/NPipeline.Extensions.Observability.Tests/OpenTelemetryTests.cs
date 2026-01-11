@@ -12,6 +12,19 @@ namespace NPipeline.Extensions.Observability.Tests;
 /// </summary>
 public sealed class OpenTelemetryPipelineTracerTests
 {
+    static OpenTelemetryPipelineTracerTests()
+    {
+        // Register an ActivityListener to enable activity creation in tests.
+        // Without a listener, ActivitySource.StartActivity() returns null.
+        var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name.StartsWith("TestService", StringComparison.Ordinal),
+            Sample = (ref ActivityCreationOptions<ActivityContext> options) => ActivitySamplingResult.AllData,
+        };
+
+        ActivitySource.AddActivityListener(listener);
+    }
+
     [Fact]
     public void Constructor_WithValidServiceName_ShouldInitialize()
     {

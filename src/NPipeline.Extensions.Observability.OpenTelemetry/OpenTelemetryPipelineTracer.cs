@@ -72,6 +72,14 @@ public sealed class OpenTelemetryPipelineTracer : IPipelineTracer, IDisposable
         _activitySource = new ActivitySource(_serviceName);
     }
 
+    /// <summary>
+    ///     Disposes the <see cref="ActivitySource" /> used by this tracer.
+    /// </summary>
+    public void Dispose()
+    {
+        _activitySource?.Dispose();
+    }
+
     /// <inheritdoc />
     public IPipelineActivity? CurrentActivity { get; private set; }
 
@@ -93,13 +101,5 @@ public sealed class OpenTelemetryPipelineTracer : IPipelineTracer, IDisposable
         var pipelineActivity = new PipelineActivity(activity);
         CurrentActivity = pipelineActivity;
         return pipelineActivity;
-    }
-
-    /// <summary>
-    ///     Disposes the <see cref="ActivitySource" /> used by this tracer.
-    /// </summary>
-    public void Dispose()
-    {
-        _activitySource?.Dispose();
     }
 }
