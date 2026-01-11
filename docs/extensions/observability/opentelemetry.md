@@ -112,7 +112,7 @@ Register with the default service name ("NPipeline"):
 services.AddOpenTelemetryPipelineTracer();
 ```
 
-#### AddOpenTelemetryPipelineTracer(IServiceCollection, Func<IServiceProvider, OpenTelemetryPipelineTracer>)
+#### AddOpenTelemetryPipelineTracer(IServiceCollection, Func\<IServiceProvider, OpenTelemetryPipelineTracer>)
 
 Register with custom factory logic (useful for configuration-driven service names):
 
@@ -138,7 +138,7 @@ using var tracerProvider = new TracerProviderBuilder()
     .Build();
 ```
 
-#### AddNPipelineSources(TracerProviderBuilder, IEnumerable<string>)
+#### AddNPipelineSources(TracerProviderBuilder, IEnumerable\<string>)
 
 Configure your tracer provider to capture activities from multiple NPipeline services:
 

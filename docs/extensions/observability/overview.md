@@ -254,6 +254,6 @@ The extension provides strong thread-safety guarantees:
 
 ## Related Topics
 
-- **[Dependency Injection](./dependency-injection.md)**: Learn about DI integration with NPipeline
-- **[Parallelism](./parallelism.md)**: Understand how observability works with parallel execution strategies
-- **[Error Handling](../core-concepts/resilience/index.md)**: Learn about error handling and retry mechanisms
+- **[Dependency Injection](../dependency-injection.md)**: Learn about DI integration with NPipeline
+- **[Parallelism](../parallelism.md)**: Understand how observability works with parallel execution strategies
+- **[Error Handling](../../core-concepts/resilience/index.md)**: Learn about error handling and retry mechanisms

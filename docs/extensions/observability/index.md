@@ -22,7 +22,6 @@ Comprehensive metrics collection and monitoring for NPipeline pipelines.
 
 - [NPipeline GitHub Repository](https://github.com/NPipeline/NPipeline)
 - [NuGet Package](https://www.nuget.org/packages/NPipeline.Extensions.Observability)
-- [Project README](../../../src/NPipeline.Extensions.Observability/README.md)
 
 ## Features Overview
 
@@ -121,8 +120,8 @@ foreach (var metric in nodeMetrics)
 
 ## Contributing
 
-Contributions are welcome! Please see the main [NPipeline contributing guide](../../../CONTRIBUTING.md) for details.
+Contributions are welcome! Please see the main [NPipeline contributing guide](https://github.com/NPipeline/NPipeline/blob/main/CONTRIBUTING.md) for details.
 
 ## License
 
-MIT License - See [LICENSE](../../../LICENSE) file for details.
+MIT License - See the [LICENSE](https://github.com/NPipeline/NPipeline/blob/main/LICENSE) file for details.
