@@ -175,6 +175,8 @@ functionality and features like enhanced parallelism, simplifying testing workfl
 | **NPipeline.Analyzers**                      | Roslyn analyzers for compile-time validation, style guidance, and developer guardrails               |
 | **NPipeline.Extensions.DependencyInjection** | Integration with Microsoft DI container                                                              |
 | **NPipeline.Extensions.Parallelism**         | Parallel processing with TPL Dataflow                                                                |
+| **NPipeline.Extensions.Observability**       | Observability and telemetry support for pipeline monitoring                                           |
+| **NPipeline.Extensions.Observability.OpenTelemetry** | OpenTelemetry integration for distributed tracing and metrics                                  |
 | **NPipeline.Extensions.Testing**             | Testing utilities and extensions for assertion libraries like FluentAssertions and AwesomeAssertions |
 | **NPipeline.Connectors**                     | Core abstractions for data format/storage decoupling                                                 |
 | **NPipeline.Connectors.Csv**                 | CSV source and sink nodes                                                                            |
