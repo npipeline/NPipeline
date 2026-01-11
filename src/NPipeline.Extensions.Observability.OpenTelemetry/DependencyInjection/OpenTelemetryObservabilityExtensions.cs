@@ -64,7 +64,9 @@ public static class OpenTelemetryObservabilityExtensions
         if (string.IsNullOrWhiteSpace(serviceName))
             throw new ArgumentException("Service name cannot be empty or whitespace.", nameof(serviceName));
 
-        services.AddSingleton<IPipelineTracer>(new OpenTelemetryPipelineTracer(serviceName));
+        // Register the tracer as a singleton owned by the DI container so that
+        // it can participate correctly in application lifetime management.
+        services.AddSingleton<IPipelineTracer>(_ => new OpenTelemetryPipelineTracer(serviceName));
 
         return services;
     }

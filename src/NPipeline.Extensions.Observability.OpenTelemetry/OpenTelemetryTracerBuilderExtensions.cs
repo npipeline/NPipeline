@@ -14,6 +14,12 @@ namespace NPipeline.Extensions.Observability.OpenTelemetry;
 ///             cref="DependencyInjection.OpenTelemetryObservabilityExtensions.AddOpenTelemetryPipelineTracer(Microsoft.Extensions.DependencyInjection.IServiceCollection, string)" />
 ///         to enable end-to-end OpenTelemetry integration.
 ///     </para>
+///     <para>
+///         Activities are emitted from an <see cref="ActivitySource" /> whose
+///         <see cref="ActivitySource.Name" /> matches the service name used when constructing
+///         <see cref="OpenTelemetryPipelineTracer" />. The same service name must be passed to
+///         <see cref="AddNPipelineSource(TracerProviderBuilder,string)" /> for traces to be captured.
+///     </para>
 /// </remarks>
 public static class OpenTelemetryTracerBuilderExtensions
 {
@@ -23,7 +29,8 @@ public static class OpenTelemetryTracerBuilderExtensions
     /// <param name="builder">The <see cref="TracerProviderBuilder" /> to configure.</param>
     /// <param name="serviceName">
     ///     The service name used when creating the <see cref="OpenTelemetryPipelineTracer" />.
-    ///     This must match the service name prefix used in pipeline activities for traces to be captured.
+    ///     This must match the <see cref="ActivitySource.Name" /> used by the tracer
+    ///     for traces to be captured.
     /// </param>
     /// <returns>The <see cref="TracerProviderBuilder" /> for method chaining.</returns>
     /// <remarks>
@@ -126,6 +133,21 @@ public static class OpenTelemetryTracerBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(activity);
 
+        // Preferred path: activities created from ActivitySource where Source.Name
+        // represents the service name used by OpenTelemetryPipelineTracer.
+        var sourceName = activity.Source?.Name;
+
+        if (!string.IsNullOrEmpty(sourceName))
+        {
+            var activityName = string.IsNullOrEmpty(activity.DisplayName)
+                ? activity.OperationName
+                : activity.DisplayName;
+
+            return new NPipelineActivityInfo(sourceName, activityName, activity);
+        }
+
+        // Backwards-compatible fallback for activities whose DisplayName encodes
+        // "Service.Activity" in a single string.
         var displayName = activity.DisplayName;
         var dotIndex = displayName.IndexOf('.');
 
@@ -133,9 +155,9 @@ public static class OpenTelemetryTracerBuilderExtensions
             return null;
 
         var serviceName = displayName[..dotIndex];
-        var activityName = displayName[(dotIndex + 1)..];
+        var name = displayName[(dotIndex + 1)..];
 
-        return new NPipelineActivityInfo(serviceName, activityName, activity);
+        return new NPipelineActivityInfo(serviceName, name, activity);
     }
 }
 

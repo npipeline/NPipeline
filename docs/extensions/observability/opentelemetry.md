@@ -75,7 +75,7 @@ await runner.RunAsync<MyPipeline>(context);
 
 ### OpenTelemetryPipelineTracer
 
-`OpenTelemetryPipelineTracer` is an implementation of `IPipelineTracer` that creates `System.Diagnostics.Activity` instances prefixed with your service name:
+`OpenTelemetryPipelineTracer` is an implementation of `IPipelineTracer` that creates `System.Diagnostics.Activity` instances via an `ActivitySource` whose name matches your service name:
 
 ```csharp
 public sealed class OpenTelemetryPipelineTracer : IPipelineTracer
@@ -87,7 +87,12 @@ public sealed class OpenTelemetryPipelineTracer : IPipelineTracer
 }
 ```
 
-**Service Name Prefix**: All activities are created with the format `{serviceName}.{activityName}` (e.g., `MyPipeline.ProcessData`), making them easy to identify in trace visualizers.
+**ActivitySource integration**:
+
+- The tracer owns an `ActivitySource` whose `Name` is the `serviceName` you pass to the constructor.
+- Each call to `StartActivity(name)` starts an `Activity` from that source with `OperationName = name`.
+- OpenTelemetry providers configured with `.AddSource(serviceName)` will automatically capture these activities.
+- When there are no listeners or sampling drops the activity, the tracer falls back to a no-op tracer to avoid unnecessary allocations.
 
 ### Dependency Injection Extensions
 
@@ -124,7 +129,7 @@ services.AddOpenTelemetryPipelineTracer(sp =>
 
 #### AddNPipelineSource(TracerProviderBuilder, string)
 
-Configure your tracer provider to capture activities from a specific NPipeline service:
+Configure your tracer provider to capture activities from a specific NPipeline service by subscribing to its `ActivitySource`:
 
 ```csharp
 using var tracerProvider = new TracerProviderBuilder()
@@ -155,6 +160,8 @@ if (info != null)
     Console.WriteLine($"Service: {info.ServiceName}, Activity: {info.ActivityName}");
 }
 ```
+
+`GetNPipelineInfo` primarily uses `activity.Source.Name` as the service name and the activity's display/operation name as the activity name, but it also supports older patterns where the display name is in the form `Service.Activity`.
 
 ## Common Backends
 

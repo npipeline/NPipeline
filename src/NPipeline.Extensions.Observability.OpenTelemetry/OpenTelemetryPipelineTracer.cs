@@ -6,16 +6,17 @@ namespace NPipeline.Extensions.Observability.OpenTelemetry;
 
 /// <summary>
 ///     An implementation of <see cref="IPipelineTracer" /> that integrates with OpenTelemetry via
-///     <see cref="Activity" />.
+///     <see cref="ActivitySource" /> and <see cref="Activity" />.
 /// </summary>
 /// <remarks>
 ///     <para>
-///         This tracer creates <see cref="Activity" /> instances that are automatically captured
-///         by OpenTelemetry instrumentation. It enables distributed tracing of pipeline execution
-///         with seamless integration into OpenTelemetry ecosystems.
+///         This tracer creates <see cref="Activity" /> instances from an <see cref="ActivitySource" />
+///         whose name matches the configured service name. This is the recommended pattern for
+///         OpenTelemetry .NET integration and ensures activities are captured by providers
+///         configured with <c>AddSource(serviceName)</c>.
 ///     </para>
 ///     <para>
-///         Activities created by this tracer can be exported to various backends including:
+///         Activities created by this tracer can be exported to various backends including
 ///         Jaeger, Zipkin, Azure Monitor, AWS X-Ray, and others via OpenTelemetry SDKs.
 ///     </para>
 ///     <para>
@@ -49,6 +50,7 @@ namespace NPipeline.Extensions.Observability.OpenTelemetry;
 public sealed class OpenTelemetryPipelineTracer : IPipelineTracer
 {
     private readonly string _serviceName;
+    private readonly ActivitySource _activitySource;
 
     /// <summary>
     ///     Creates a new instance of <see cref="OpenTelemetryPipelineTracer" />.
@@ -67,6 +69,7 @@ public sealed class OpenTelemetryPipelineTracer : IPipelineTracer
             throw new ArgumentException("Service name cannot be empty or whitespace.", nameof(serviceName));
 
         _serviceName = serviceName;
+        _activitySource = new ActivitySource(_serviceName);
     }
 
     /// <inheritdoc />
@@ -77,16 +80,18 @@ public sealed class OpenTelemetryPipelineTracer : IPipelineTracer
     {
         ArgumentNullException.ThrowIfNull(name);
 
-        // Create activity with service name prefix for better trace identification
-        var activity = new Activity($"{_serviceName}.{name}").Start();
+        // Create activity from the ActivitySource so OpenTelemetry providers configured
+        // with AddSource(_serviceName) can correctly capture these activities. When
+        // there are no listeners or sampling drops the activity, StartActivity returns
+        // null, in which case we fall back to the null tracer to avoid unnecessary
+        // allocations.
+        var activity = _activitySource.StartActivity(name, ActivityKind.Internal);
 
-        if (activity != null)
-        {
-            var pipelineActivity = new PipelineActivity(activity);
-            CurrentActivity = pipelineActivity;
-            return pipelineActivity;
-        }
+        if (activity is null)
+            return NullPipelineTracer.Instance.StartActivity(name);
 
-        return NullPipelineTracer.Instance.StartActivity(name);
+        var pipelineActivity = new PipelineActivity(activity);
+        CurrentActivity = pipelineActivity;
+        return pipelineActivity;
     }
 }
