@@ -19,7 +19,7 @@ public sealed class ErrorScenarioTests
         // Arrange
         var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
         var sink = new LoggingMetricsSink(loggerMock);
-        var metrics = CreateNodeMetrics(false, null);
+        var metrics = CreateNodeMetrics(false);
 
         // Act
         await sink.RecordAsync(metrics, CancellationToken.None);
@@ -36,7 +36,7 @@ public sealed class ErrorScenarioTests
         // Arrange
         var loggerMock = A.Fake<ILogger<LoggingPipelineMetricsSink>>();
         var sink = new LoggingPipelineMetricsSink(loggerMock);
-        var metrics = CreatePipelineMetrics(false, null);
+        var metrics = CreatePipelineMetrics(false);
 
         // Act
         await sink.RecordAsync(metrics, CancellationToken.None);

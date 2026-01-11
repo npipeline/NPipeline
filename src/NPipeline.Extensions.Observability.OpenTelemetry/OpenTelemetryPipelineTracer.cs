@@ -47,7 +47,7 @@ namespace NPipeline.Extensions.Observability.OpenTelemetry;
 /// );
 /// </code>
 /// </example>
-public sealed class OpenTelemetryPipelineTracer : IPipelineTracer
+public sealed class OpenTelemetryPipelineTracer : IPipelineTracer, IDisposable
 {
     private readonly ActivitySource _activitySource;
     private readonly string _serviceName;
@@ -93,5 +93,13 @@ public sealed class OpenTelemetryPipelineTracer : IPipelineTracer
         var pipelineActivity = new PipelineActivity(activity);
         CurrentActivity = pipelineActivity;
         return pipelineActivity;
+    }
+
+    /// <summary>
+    ///     Disposes the <see cref="ActivitySource" /> used by this tracer.
+    /// </summary>
+    public void Dispose()
+    {
+        _activitySource?.Dispose();
     }
 }
