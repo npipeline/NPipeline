@@ -5,7 +5,8 @@ Comprehensive observability, metrics collection, and distributed tracing for NPi
 ## Features
 
 - **Automatic metrics collection** - Node timing and lifecycle metrics are captured automatically
-- **Distributed tracing** - OpenTelemetry-compatible tracing with `PipelineActivity` wrapper for `System.Diagnostics.Activity`
+- **Distributed tracing abstraction** - Core `PipelineActivity` wrapper for building custom tracing solutions
+- **OpenTelemetry integration** - Dedicated `NPipeline.Extensions.Observability.OpenTelemetry` sub-package for seamless OpenTelemetry backend export
 - **Thread-safe metrics collection** for concurrent pipeline execution
 - **Node-level metrics** tracking execution time, throughput, memory usage, and more
 - **Pipeline-level metrics** aggregating performance across all nodes
@@ -17,6 +18,12 @@ Comprehensive observability, metrics collection, and distributed tracing for NPi
 
 ```bash
 dotnet add package NPipeline.Extensions.Observability
+```
+
+For OpenTelemetry backend integration, also install:
+
+```bash
+dotnet add package NPipeline.Extensions.Observability.OpenTelemetry
 ```
 
 ## Quick Start

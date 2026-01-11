@@ -6,7 +6,12 @@ sidebar_position: 7
 
 # Distributed Tracing
 
-The `NPipeline.Extensions.Observability` extension includes built-in support for distributed tracing through the `PipelineActivity` class, which wraps `System.Diagnostics.Activity` to provide OpenTelemetry-compatible tracing capabilities.
+NPipeline provides two approaches for distributed tracing:
+
+1. **Core Tracing** (this page): Build your own tracer using `PipelineActivity` wrapper
+2. **OpenTelemetry Integration**: Use the dedicated `NPipeline.Extensions.Observability.OpenTelemetry` package for seamless OpenTelemetry integration (see [OpenTelemetry Integration](./opentelemetry.md))
+
+Both approaches use `System.Diagnostics.Activity` under the hood, making them compatible with .NET's native tracing infrastructure. Choose the approach that best fits your observability needs.
 
 ## Overview
 
@@ -31,6 +36,23 @@ public sealed class PipelineActivity(Activity activity) : IPipelineActivity
 ```
 
 The class delegates all operations to the underlying `Activity`, which is part of the .NET runtime and integrates seamlessly with OpenTelemetry instrumentation.
+
+## When to Use Which Approach?
+
+### Use Core Tracing (PipelineActivity) If:
+- You want lightweight, custom tracing without external dependencies
+- You're building your own observability solution
+- You need full control over how activities are created and managed
+- You're exporting traces manually or using a non-standard backend
+- You want to understand the fundamentals of how tracing works
+
+### Use OpenTelemetry Integration If:
+- You need production-grade distributed tracing with multiple backends
+- You want to export traces to Jaeger, Zipkin, Azure Application Insights, or AWS X-Ray
+- You prefer standardized telemetry configuration via OpenTelemetry SDKs
+- You're integrating with existing OpenTelemetry infrastructure
+- You want dependency injection convenience with minimal configuration
+- You need comprehensive activity filtering and sampling options
 
 ## Basic Usage
 

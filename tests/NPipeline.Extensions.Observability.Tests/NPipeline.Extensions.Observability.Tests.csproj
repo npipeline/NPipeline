@@ -37,6 +37,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\NPipeline.Extensions.Observability\NPipeline.Extensions.Observability.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.Extensions.Observability.OpenTelemetry\NPipeline.Extensions.Observability.OpenTelemetry.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Extensions.Parallelism\NPipeline.Extensions.Parallelism.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Extensions.DependencyInjection\NPipeline.Extensions.DependencyInjection.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline\NPipeline.csproj"/>

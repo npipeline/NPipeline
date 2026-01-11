@@ -129,6 +129,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Extensions.Observ
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample_ObservabilityExtension", "samples\Sample_ObservabilityExtension\Sample_ObservabilityExtension.csproj", "{B47D6B56-E43A-45DD-8D45-90DF3C16A46D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Extensions.Observability.OpenTelemetry", "src\NPipeline.Extensions.Observability.OpenTelemetry\NPipeline.Extensions.Observability.OpenTelemetry.csproj", "{DCDBF859-0816-418D-ACAC-985ACF4EFB36}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -367,6 +369,10 @@ Global
 		{B47D6B56-E43A-45DD-8D45-90DF3C16A46D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B47D6B56-E43A-45DD-8D45-90DF3C16A46D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B47D6B56-E43A-45DD-8D45-90DF3C16A46D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DCDBF859-0816-418D-ACAC-985ACF4EFB36}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DCDBF859-0816-418D-ACAC-985ACF4EFB36}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DCDBF859-0816-418D-ACAC-985ACF4EFB36}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DCDBF859-0816-418D-ACAC-985ACF4EFB36}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{C539C2BB-5FF5-45B1-9D16-C8E0F2FBDD41} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
@@ -427,5 +433,6 @@ Global
 		{F54CCE47-4474-4EE9-95BB-C3B3F868AEB7} = {09D2BF57-FE3E-4453-A8C5-C6FE30E8E88C}
 		{F4E13878-DD33-4672-A369-ADA9ECD1F2EE} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
 		{B47D6B56-E43A-45DD-8D45-90DF3C16A46D} = {2117093A-CC66-4607-8DBC-F692E0642ADD}
+		{DCDBF859-0816-418D-ACAC-985ACF4EFB36} = {09D2BF57-FE3E-4453-A8C5-C6FE30E8E88C}
 	EndGlobalSection
 EndGlobal
