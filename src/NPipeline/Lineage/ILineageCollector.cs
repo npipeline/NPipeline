@@ -30,4 +30,25 @@ public interface ILineageCollector
     /// <param name="options">The lineage options containing sampling configuration.</param>
     /// <returns>True if lineage should be collected for this item.</returns>
     bool ShouldCollectLineage(Guid lineageId, LineageOptions? options);
+
+    /// <summary>
+    ///     Gets the lineage information for a specific item.
+    /// </summary>
+    /// <param name="lineageId">The unique ID of the item.</param>
+    /// <returns>The lineage information, or null if not found.</returns>
+    LineageInfo? GetLineageInfo(Guid lineageId);
+
+    /// <summary>
+    ///     Gets all collected lineage information.
+    /// </summary>
+    /// <returns>A read-only collection of all lineage information.</returns>
+    IReadOnlyList<LineageInfo> GetAllLineageInfo();
+
+    /// <summary>
+    ///     Clears all collected lineage information.
+    /// </summary>
+    /// <remarks>
+    ///     Use this to reset the collector between pipeline runs or to free memory.
+    /// </remarks>
+    void Clear();
 }
