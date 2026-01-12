@@ -1,9 +1,7 @@
+using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using NPipeline.Lineage;
-using System.Text.Json;
-using Xunit;
 
 namespace NPipeline.Extensions.Lineage.Tests;
 
@@ -45,7 +43,7 @@ public class LoggingPipelineLineageSinkTests
     public async Task RecordAsync_WithNullLogger_ShouldUseNullLogger()
     {
         // Arrange
-        var sink = new LoggingPipelineLineageSink(null);
+        var sink = new LoggingPipelineLineageSink();
         var report = CreateTestReport();
 
         // Act & Assert
@@ -58,11 +56,13 @@ public class LoggingPipelineLineageSinkTests
     {
         // Arrange
         var logger = new TestLogger();
+
         var jsonOptions = new JsonSerializerOptions
         {
             WriteIndented = false,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         };
+
         var sink = new LoggingPipelineLineageSink(logger, jsonOptions);
         var report = CreateTestReport();
 
@@ -141,6 +141,7 @@ public class LoggingPipelineLineageSinkTests
         // Arrange
         var logger = new TestLogger();
         var sink = new LoggingPipelineLineageSink(logger);
+
         var report = new PipelineLineageReport(
             "EmptyPipeline",
             Guid.NewGuid(),
@@ -164,12 +165,15 @@ public class LoggingPipelineLineageSinkTests
         // Arrange
         var logger = new TestLogger();
         var sink = new LoggingPipelineLineageSink(logger);
+
         var nodes = Enumerable.Range(0, 100)
             .Select(i => new NodeLineageInfo($"node{i}", "Transform", "int", "int"))
             .ToList();
+
         var edges = Enumerable.Range(0, 99)
             .Select(i => new EdgeLineageInfo($"node{i}", $"node{i + 1}"))
             .ToList();
+
         var report = new PipelineLineageReport(
             "LargePipeline",
             Guid.NewGuid(),
@@ -193,6 +197,7 @@ public class LoggingPipelineLineageSinkTests
         // Arrange
         var logger = new TestLogger();
         var sink = new LoggingPipelineLineageSink(logger);
+
         var report = new PipelineLineageReport(
             "Pipeline with <special> & \"characters\"",
             Guid.NewGuid(),
@@ -214,7 +219,7 @@ public class LoggingPipelineLineageSinkTests
     public async Task RecordAsync_WithNullLogger_ShouldNotThrow()
     {
         // Arrange
-        var sink = new LoggingPipelineLineageSink(null);
+        var sink = new LoggingPipelineLineageSink();
         var report = CreateTestReport();
 
         // Act & Assert
@@ -252,7 +257,7 @@ public class LoggingPipelineLineageSinkTests
         var jsonOptions = new JsonSerializerOptions
         {
             WriteIndented = false,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         };
 
         // Act
@@ -268,6 +273,7 @@ public class LoggingPipelineLineageSinkTests
         // Arrange
         var logger = new TestLogger();
         var sink = new LoggingPipelineLineageSink(logger);
+
         var tasks = Enumerable.Range(0, 100)
             .Select(i => sink.RecordAsync(CreateTestReport($"Pipeline{i}"), CancellationToken.None));
 
@@ -283,10 +289,10 @@ public class LoggingPipelineLineageSinkTests
             Guid.NewGuid(),
             [
                 new NodeLineageInfo("node1", "Transform", "int", "int"),
-                new NodeLineageInfo("node2", "Transform", "int", "int")
+                new NodeLineageInfo("node2", "Transform", "int", "int"),
             ],
             [
-                new EdgeLineageInfo("node1", "node2")
+                new EdgeLineageInfo("node1", "node2"),
             ]
         );
     }
@@ -300,12 +306,12 @@ public class LoggingPipelineLineageSinkTests
                 new NodeLineageInfo("source1", "Source", null, "int"),
                 new NodeLineageInfo("node1", "Transform", "int", "int"),
                 new NodeLineageInfo("node2", "Transform", "int", "int"),
-                new NodeLineageInfo("sink1", "Sink", "int", null)
+                new NodeLineageInfo("sink1", "Sink", "int", null),
             ],
             [
                 new EdgeLineageInfo("source1", "node1"),
                 new EdgeLineageInfo("node1", "node2"),
-                new EdgeLineageInfo("node2", "sink1")
+                new EdgeLineageInfo("node2", "sink1"),
             ]
         );
     }

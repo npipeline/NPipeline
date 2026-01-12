@@ -4,7 +4,8 @@ Comprehensive data lineage tracking and provenance capabilities for NPipeline pi
 
 ## Overview
 
-The `NPipeline.Extensions.Lineage` extension provides production-ready lineage tracking for data flowing through NPipeline pipelines. Track the complete journey of each data item from source to destination, enabling data governance, debugging, audit trails, and data discovery.
+The `NPipeline.Extensions.Lineage` extension provides production-ready lineage tracking for data flowing through NPipeline pipelines. Track the complete journey
+of each data item from source to destination, enabling data governance, debugging, audit trails, and data discovery.
 
 ### Key Features
 
@@ -179,15 +180,15 @@ builder.EnableItemLevelLineage(options =>
     // Sampling configuration
     options.SampleEvery = 10; // Sample 1 in 10 items
     options.DeterministicSampling = true; // Use deterministic sampling
-    
+
     // Data configuration
     options.RedactData = true; // Don't include actual data in lineage records
-    
+
     // Metadata capture
     options.CaptureHopTimestamps = true;
     options.CaptureDecisions = true;
     options.CaptureObservedCardinality = true;
-    
+
     // Memory management
     options.MaterializationCap = 10000; // Max items to materialize
     options.OverflowPolicy = LineageOverflowPolicy.Degrade; // Switch to streaming
@@ -326,27 +327,27 @@ public interface ILineageCollector
     /// Creates a new lineage packet for a data item entering the pipeline.
     /// </summary>
     LineagePacket<T> CreateLineagePacket<T>(T item, string sourceNodeId);
-    
+
     /// <summary>
     /// Records a hop in the lineage trail for an item.
     /// </summary>
     void RecordHop(Guid lineageId, LineageHop hop);
-    
+
     /// <summary>
     /// Determines if lineage should be collected for a given item based on sampling settings.
     /// </summary>
     bool ShouldCollectLineage(Guid lineageId, LineageOptions? options);
-    
+
     /// <summary>
     /// Gets the lineage information for a specific item.
     /// </summary>
     LineageInfo? GetLineageInfo(Guid lineageId);
-    
+
     /// <summary>
     /// Gets all collected lineage information.
     /// </summary>
     IReadOnlyList<LineageInfo> GetAllLineageInfo();
-    
+
     /// <summary>
     /// Clears all collected lineage information.
     /// </summary>
@@ -422,37 +423,37 @@ public sealed class LineageOptions
     /// Gets or sets the sampling rate (1 in N items). Default is 1 (all items).
     /// </summary>
     public int SampleEvery { get; set; } = 1;
-    
+
     /// <summary>
     /// Gets or sets whether to use deterministic sampling. Default is true.
     /// </summary>
     public bool DeterministicSampling { get; set; } = true;
-    
+
     /// <summary>
     /// Gets or sets whether to redact actual data from lineage records. Default is false.
     /// </summary>
     public bool RedactData { get; set; } = false;
-    
+
     /// <summary>
     /// Gets or sets whether to capture hop timestamps. Default is true.
     /// </summary>
     public bool CaptureHopTimestamps { get; set; } = true;
-    
+
     /// <summary>
     /// Gets or sets whether to capture decision flags. Default is true.
     /// </summary>
     public bool CaptureDecisions { get; set; } = true;
-    
+
     /// <summary>
     /// Gets or sets whether to capture observed cardinality. Default is true.
     /// </summary>
     public bool CaptureObservedCardinality { get; set; } = true;
-    
+
     /// <summary>
     /// Gets or sets the maximum number of items to materialize. Default is 10000.
     /// </summary>
     public int MaterializationCap { get; set; } = 10000;
-    
+
     /// <summary>
     /// Gets or sets the overflow policy when materialization cap is reached. Default is Degrade.
     /// </summary>
@@ -474,7 +475,8 @@ options.SampleEvery = 1000; // 0.1% sampling
 options.SampleEvery = 10; // 10% sampling
 ```
 
-**Why Sampling Matters**: Lineage tracking has a non-zero cost. Each hop requires allocation, synchronization, and storage. Sampling allows you to maintain visibility into pipeline behavior while minimizing performance impact.
+**Why Sampling Matters**: Lineage tracking has a non-zero cost. Each hop requires allocation, synchronization, and storage. Sampling allows you to maintain
+visibility into pipeline behavior while minimizing performance impact.
 
 ### Memory Management
 
@@ -507,7 +509,8 @@ options.RedactData = true; // Data field will be null in LineageInfo
 
 ### Thread Safety
 
-The [`LineageCollector`](LineageCollector.cs) is thread-safe and can be used across parallel pipeline executions. It uses `ConcurrentDictionary` for storage and locks only when necessary for individual trail updates.
+The [`LineageCollector`](LineageCollector.cs) is thread-safe and can be used across parallel pipeline executions. It uses `ConcurrentDictionary` for storage and
+locks only when necessary for individual trail updates.
 
 ## Architecture
 

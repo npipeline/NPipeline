@@ -28,9 +28,7 @@ public sealed class DiLineageFactory : ILineageFactory
         ArgumentNullException.ThrowIfNull(sinkType);
 
         if (!typeof(ILineageSink).IsAssignableFrom(sinkType))
-        {
             return null;
-        }
 
         try
         {
@@ -57,9 +55,7 @@ public sealed class DiLineageFactory : ILineageFactory
         ArgumentNullException.ThrowIfNull(sinkType);
 
         if (!typeof(IPipelineLineageSink).IsAssignableFrom(sinkType))
-        {
             return null;
-        }
 
         try
         {

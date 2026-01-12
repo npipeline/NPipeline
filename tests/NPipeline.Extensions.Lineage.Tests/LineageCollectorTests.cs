@@ -1,7 +1,6 @@
 using FluentAssertions;
 using NPipeline.Configuration;
 using NPipeline.Lineage;
-using Xunit;
 
 namespace NPipeline.Extensions.Lineage.Tests;
 
@@ -57,7 +56,7 @@ public class LineageCollectorTests
         stringPacket.Data.Should().Be("string");
         intPacket.Data.Should().Be(42);
         objectPacket.Data.Should().BeOfType<TestData>();
-        ((TestData)objectPacket.Data!).Id.Should().Be(1);
+        objectPacket.Data!.Id.Should().Be(1);
     }
 
     [Fact]
@@ -67,6 +66,7 @@ public class LineageCollectorTests
         var collector = new LineageCollector();
         var item = "test data";
         var packet = collector.CreateLineagePacket(item, "source1");
+
         var hop = new LineageHop(
             "node1",
             HopDecisionFlags.Emitted,
@@ -238,15 +238,15 @@ public class LineageCollectorTests
         for (var i = 0; i < totalItems; i++)
         {
             var lineageId = Guid.NewGuid();
+
             if (collector.ShouldCollectLineage(lineageId, options))
-            {
                 sampledCount++;
-            }
         }
 
         // Assert
         sampledCount.Should().BeGreaterThan(0);
         sampledCount.Should().BeLessThan(totalItems);
+
         // Approximately 1/sampleEvery items should be sampled
         var expectedSamples = totalItems / sampleEvery;
         var tolerance = totalItems / sampleEvery;
@@ -379,12 +379,14 @@ public class LineageCollectorTests
         for (var t = 0; t < threads; t++)
         {
             var threadId = t;
+
             var task = Task.Run(() =>
             {
                 for (var i = 0; i < itemCount; i++)
                 {
                     var item = $"item-{threadId}-{i}";
                     var packet = collector.CreateLineagePacket(item, $"source-{threadId}");
+
                     var hop = new LineageHop(
                         $"node-{threadId}",
                         HopDecisionFlags.Emitted,
@@ -393,9 +395,11 @@ public class LineageCollectorTests
                         1,
                         null,
                         false);
+
                     collector.RecordHop(packet.LineageId, hop);
                 }
             });
+
             tasks.Add(task);
         }
 
@@ -429,6 +433,7 @@ public class LineageCollectorTests
                         1,
                         null,
                         false);
+
                     collector.RecordHop(packet.LineageId, hop);
                 }
             })

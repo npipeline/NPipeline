@@ -47,9 +47,7 @@ public sealed class LineageCollector : ILineageCollector
     public void RecordHop(Guid lineageId, LineageHop hop)
     {
         if (_lineageTrails.TryGetValue(lineageId, out var trail))
-        {
             trail.AddHop(hop);
-        }
     }
 
     /// <summary>
@@ -62,15 +60,11 @@ public sealed class LineageCollector : ILineageCollector
     {
         // If no options provided, default to collecting all lineage
         if (options == null)
-        {
             return true;
-        }
 
         // SampleEvery of 1 means collect all items
         if (options.SampleEvery <= 1)
-        {
             return true;
-        }
 
         // Use deterministic sampling if enabled
         if (options.DeterministicSampling)
@@ -79,13 +73,11 @@ public sealed class LineageCollector : ILineageCollector
             var hash = lineageId.GetHashCode();
             return Math.Abs(hash) % options.SampleEvery == 0;
         }
-        else
+
+        // Non-deterministic random sampling
+        lock (_random)
         {
-            // Non-deterministic random sampling
-            lock (_random)
-            {
-                return _random.Next(options.SampleEvery) == 0;
-            }
+            return _random.Next(options.SampleEvery) == 0;
         }
     }
 
@@ -96,7 +88,9 @@ public sealed class LineageCollector : ILineageCollector
     /// <returns>The lineage information, or null if not found.</returns>
     public LineageInfo? GetLineageInfo(Guid lineageId)
     {
-        return _lineageTrails.TryGetValue(lineageId, out var trail) ? trail.ToLineageInfo() : null;
+        return _lineageTrails.TryGetValue(lineageId, out var trail)
+            ? trail.ToLineageInfo()
+            : null;
     }
 
     /// <summary>
@@ -121,11 +115,11 @@ public sealed class LineageCollector : ILineageCollector
     /// </summary>
     private sealed class LineageTrail
     {
-        private readonly Guid _lineageId;
         private readonly object? _data;
-        private readonly ImmutableList<string>.Builder _traversalPathBuilder;
         private readonly List<LineageHop> _hops = [];
+        private readonly Guid _lineageId;
         private readonly object _lock = new();
+        private readonly ImmutableList<string>.Builder _traversalPathBuilder;
 
         public LineageTrail(Guid lineageId, object? data, ImmutableList<string> initialPath)
         {
@@ -143,9 +137,7 @@ public sealed class LineageCollector : ILineageCollector
 
                 // Add the node ID to the traversal path if not already present
                 if (!_traversalPathBuilder.Contains(hop.NodeId))
-                {
                     _traversalPathBuilder.Add(hop.NodeId);
-                }
             }
         }
 

@@ -10,6 +10,7 @@ namespace Sample_LineageExtension.Nodes;
 /// </summary>
 public class DatabaseSink : SinkNode<ProcessedOrder>
 {
+    private static readonly Random random = new();
     private readonly string _databaseName;
 
     /// <summary>
@@ -35,7 +36,7 @@ public class DatabaseSink : SinkNode<ProcessedOrder>
         await Task.Delay(100, cancellationToken);
 
         Console.WriteLine($"[DatabaseSink] Connected to database '{_databaseName}'");
-        Console.WriteLine($"[DatabaseSink] Starting to insert processed orders...");
+        Console.WriteLine("[DatabaseSink] Starting to insert processed orders...");
 
         var count = 0;
         var successCount = 0;
@@ -51,13 +52,9 @@ public class DatabaseSink : SinkNode<ProcessedOrder>
                 await SimulateInsertAsync(processedOrder, cancellationToken);
 
                 if (processedOrder.Result == ProcessingResult.Success)
-                {
                     successCount++;
-                }
                 else
-                {
                     failedCount++;
-                }
 
                 // Simulate variable processing time
                 await Task.Delay(random.Next(10, 50), cancellationToken);
@@ -76,12 +73,12 @@ public class DatabaseSink : SinkNode<ProcessedOrder>
         Console.WriteLine($"[DatabaseSink] Finished inserting {count} processed orders into '{_databaseName}':");
         Console.WriteLine($"  Successful: {successCount}");
         Console.WriteLine($"  Failed/Rejected: {failedCount}");
-        Console.WriteLine($"[DatabaseSink] Closing database connection...");
+        Console.WriteLine("[DatabaseSink] Closing database connection...");
 
         // Simulate connection close delay
         await Task.Delay(50, cancellationToken);
 
-        Console.WriteLine($"[DatabaseSink] Database connection closed");
+        Console.WriteLine("[DatabaseSink] Database connection closed");
     }
 
     /// <summary>
@@ -94,21 +91,19 @@ public class DatabaseSink : SinkNode<ProcessedOrder>
 
         // Simulate SQL INSERT statement
         var sql = $"""
-            INSERT INTO ProcessedOrders (
-                OrderId, CustomerId, CustomerName, TotalAmount, 
-                Discount, FinalAmount, ProcessingResult, ProcessedAt
-            ) VALUES (
-                {order.OrderId}, {customer.CustomerId}, '{customer.FullName}', 
-                {order.TotalAmount}, {processedOrder.ValidatedOrder.EnrichedOrder.Discount}, 
-                {processedOrder.ValidatedOrder.EnrichedOrder.FinalAmount}, 
-                '{processedOrder.Result}', '{processedOrder.ProcessedAt:yyyy-MM-dd HH:mm:ss}'
-            );
-            """;
+                   INSERT INTO ProcessedOrders (
+                       OrderId, CustomerId, CustomerName, TotalAmount, 
+                       Discount, FinalAmount, ProcessingResult, ProcessedAt
+                   ) VALUES (
+                       {order.OrderId}, {customer.CustomerId}, '{customer.FullName}', 
+                       {order.TotalAmount}, {processedOrder.ValidatedOrder.EnrichedOrder.Discount}, 
+                       {processedOrder.ValidatedOrder.EnrichedOrder.FinalAmount}, 
+                       '{processedOrder.Result}', '{processedOrder.ProcessedAt:yyyy-MM-dd HH:mm:ss}'
+                   );
+                   """;
 
         // In a real implementation, this would execute against an actual database
         // For demonstration, we just simulate the operation
         await Task.CompletedTask;
     }
-
-    private static readonly Random random = new();
 }

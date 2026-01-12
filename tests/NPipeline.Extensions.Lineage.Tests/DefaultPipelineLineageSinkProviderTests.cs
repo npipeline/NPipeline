@@ -2,7 +2,6 @@ using FluentAssertions;
 using NPipeline.Configuration;
 using NPipeline.Lineage;
 using NPipeline.Pipeline;
-using Xunit;
 
 namespace NPipeline.Extensions.Lineage.Tests;
 

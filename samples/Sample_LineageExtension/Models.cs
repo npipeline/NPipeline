@@ -6,6 +6,30 @@ namespace Sample_LineageExtension;
 /// </summary>
 public sealed record OrderEvent
 {
+    public OrderEvent(
+        int orderId,
+        int customerId,
+        int productId,
+        int quantity,
+        decimal unitPrice,
+        DateTime orderDate,
+        OrderStatus status = OrderStatus.Pending,
+        string? shippingAddress = null,
+        PaymentMethod paymentMethod = PaymentMethod.CreditCard,
+        bool isFlaggedForFraud = false)
+    {
+        OrderId = orderId;
+        CustomerId = customerId;
+        ProductId = productId;
+        Quantity = quantity;
+        UnitPrice = unitPrice;
+        OrderDate = orderDate;
+        Status = status;
+        ShippingAddress = shippingAddress;
+        PaymentMethod = paymentMethod;
+        IsFlaggedForFraud = isFlaggedForFraud;
+    }
+
     /// <summary>
     ///     Gets the unique identifier for the order.
     /// </summary>
@@ -61,32 +85,10 @@ public sealed record OrderEvent
     /// </summary>
     public bool IsFlaggedForFraud { get; init; }
 
-    public OrderEvent(
-        int orderId,
-        int customerId,
-        int productId,
-        int quantity,
-        decimal unitPrice,
-        DateTime orderDate,
-        OrderStatus status = OrderStatus.Pending,
-        string? shippingAddress = null,
-        PaymentMethod paymentMethod = PaymentMethod.CreditCard,
-        bool isFlaggedForFraud = false)
+    public override string ToString()
     {
-        OrderId = orderId;
-        CustomerId = customerId;
-        ProductId = productId;
-        Quantity = quantity;
-        UnitPrice = unitPrice;
-        OrderDate = orderDate;
-        Status = status;
-        ShippingAddress = shippingAddress;
-        PaymentMethod = paymentMethod;
-        IsFlaggedForFraud = isFlaggedForFraud;
+        return $"OrderEvent #{OrderId}: Customer {CustomerId}, Product {ProductId}, Qty {Quantity}, Total {TotalAmount:C}, Status {Status}";
     }
-
-    public override string ToString() =>
-        $"OrderEvent #{OrderId}: Customer {CustomerId}, Product {ProductId}, Qty {Quantity}, Total {TotalAmount:C}, Status {Status}";
 }
 
 /// <summary>
@@ -94,6 +96,26 @@ public sealed record OrderEvent
 /// </summary>
 public sealed record CustomerData
 {
+    public CustomerData(
+        int customerId,
+        string fullName,
+        string email,
+        string? phone,
+        LoyaltyTier loyaltyTier,
+        decimal lifetimeValue,
+        int orderCount,
+        DateTime registrationDate)
+    {
+        CustomerId = customerId;
+        FullName = fullName;
+        Email = email;
+        Phone = phone;
+        LoyaltyTier = loyaltyTier;
+        LifetimeValue = lifetimeValue;
+        OrderCount = orderCount;
+        RegistrationDate = registrationDate;
+    }
+
     /// <summary>
     ///     Gets the unique customer identifier.
     /// </summary>
@@ -139,28 +161,10 @@ public sealed record CustomerData
     /// </summary>
     public bool IsVip => LoyaltyTier == LoyaltyTier.Platinum || LoyaltyTier == LoyaltyTier.Gold;
 
-    public CustomerData(
-        int customerId,
-        string fullName,
-        string email,
-        string? phone,
-        LoyaltyTier loyaltyTier,
-        decimal lifetimeValue,
-        int orderCount,
-        DateTime registrationDate)
+    public override string ToString()
     {
-        CustomerId = customerId;
-        FullName = fullName;
-        Email = email;
-        Phone = phone;
-        LoyaltyTier = loyaltyTier;
-        LifetimeValue = lifetimeValue;
-        OrderCount = orderCount;
-        RegistrationDate = registrationDate;
+        return $"CustomerData #{CustomerId}: {FullName} ({LoyaltyTier}), LTV {LifetimeValue:C}, Orders {OrderCount}";
     }
-
-    public override string ToString() =>
-        $"CustomerData #{CustomerId}: {FullName} ({LoyaltyTier}), LTV {LifetimeValue:C}, Orders {OrderCount}";
 }
 
 /// <summary>
@@ -169,6 +173,19 @@ public sealed record CustomerData
 /// </summary>
 public sealed record EnrichedOrder
 {
+    public EnrichedOrder(
+        OrderEvent order,
+        CustomerData customer,
+        decimal discount,
+        ProcessingPriority priority)
+    {
+        Order = order;
+        Customer = customer;
+        Discount = discount;
+        Priority = priority;
+        EnrichedAt = DateTime.UtcNow;
+    }
+
     /// <summary>
     ///     Gets the order event data.
     /// </summary>
@@ -199,21 +216,11 @@ public sealed record EnrichedOrder
     /// </summary>
     public DateTime EnrichedAt { get; init; }
 
-    public EnrichedOrder(
-        OrderEvent order,
-        CustomerData customer,
-        decimal discount,
-        ProcessingPriority priority)
+    public override string ToString()
     {
-        Order = order;
-        Customer = customer;
-        Discount = discount;
-        Priority = priority;
-        EnrichedAt = DateTime.UtcNow;
+        return
+            $"EnrichedOrder #{Order.OrderId}: {Customer.FullName}, Original {Order.TotalAmount:C}, Discount {Discount:C}, Final {FinalAmount:C}, Priority {Priority}";
     }
-
-    public override string ToString() =>
-        $"EnrichedOrder #{Order.OrderId}: {Customer.FullName}, Original {Order.TotalAmount:C}, Discount {Discount:C}, Final {FinalAmount:C}, Priority {Priority}";
 }
 
 /// <summary>
@@ -221,6 +228,17 @@ public sealed record EnrichedOrder
 /// </summary>
 public sealed record ValidatedOrder
 {
+    public ValidatedOrder(
+        EnrichedOrder enrichedOrder,
+        bool isValid,
+        IReadOnlyList<string> validationErrors)
+    {
+        EnrichedOrder = enrichedOrder;
+        IsValid = isValid;
+        ValidationErrors = validationErrors;
+        ValidatedAt = DateTime.UtcNow;
+    }
+
     /// <summary>
     ///     Gets the enriched order.
     /// </summary>
@@ -241,21 +259,12 @@ public sealed record ValidatedOrder
     /// </summary>
     public DateTime ValidatedAt { get; init; }
 
-    public ValidatedOrder(
-        EnrichedOrder enrichedOrder,
-        bool isValid,
-        IReadOnlyList<string> validationErrors)
+    public override string ToString()
     {
-        EnrichedOrder = enrichedOrder;
-        IsValid = isValid;
-        ValidationErrors = validationErrors;
-        ValidatedAt = DateTime.UtcNow;
-    }
-
-    public override string ToString() =>
-        IsValid
+        return IsValid
             ? $"ValidatedOrder #{EnrichedOrder.Order.OrderId}: VALID, Final {EnrichedOrder.FinalAmount:C}"
             : $"ValidatedOrder #{EnrichedOrder.Order.OrderId}: INVALID, Errors: {string.Join(", ", ValidationErrors)}";
+    }
 }
 
 /// <summary>
@@ -263,6 +272,17 @@ public sealed record ValidatedOrder
 /// </summary>
 public sealed record ProcessedOrder
 {
+    public ProcessedOrder(
+        ValidatedOrder validatedOrder,
+        ProcessingResult result,
+        string? notes = null)
+    {
+        ValidatedOrder = validatedOrder;
+        Result = result;
+        Notes = notes;
+        ProcessedAt = DateTime.UtcNow;
+    }
+
     /// <summary>
     ///     Gets the validated order.
     /// </summary>
@@ -283,19 +303,10 @@ public sealed record ProcessedOrder
     /// </summary>
     public string? Notes { get; init; }
 
-    public ProcessedOrder(
-        ValidatedOrder validatedOrder,
-        ProcessingResult result,
-        string? notes = null)
+    public override string ToString()
     {
-        ValidatedOrder = validatedOrder;
-        Result = result;
-        Notes = notes;
-        ProcessedAt = DateTime.UtcNow;
+        return $"ProcessedOrder #{ValidatedOrder.EnrichedOrder.Order.OrderId}: Result {Result}, {(Notes != null ? $"Notes: {Notes}" : "")}";
     }
-
-    public override string ToString() =>
-        $"ProcessedOrder #{ValidatedOrder.EnrichedOrder.Order.OrderId}: Result {Result}, {(Notes != null ? $"Notes: {Notes}" : "")}";
 }
 
 /// <summary>
@@ -331,7 +342,7 @@ public enum OrderStatus
     /// <summary>
     ///     Order has failed processing.
     /// </summary>
-    Failed
+    Failed,
 }
 
 /// <summary>
@@ -362,7 +373,7 @@ public enum PaymentMethod
     /// <summary>
     ///     Cash on delivery.
     /// </summary>
-    CashOnDelivery
+    CashOnDelivery,
 }
 
 /// <summary>
@@ -388,7 +399,7 @@ public enum LoyaltyTier
     /// <summary>
     ///     Platinum tier customer.
     /// </summary>
-    Platinum
+    Platinum,
 }
 
 /// <summary>
@@ -414,7 +425,7 @@ public enum ProcessingPriority
     /// <summary>
     ///     Urgent priority processing.
     /// </summary>
-    Urgent
+    Urgent,
 }
 
 /// <summary>
@@ -445,5 +456,5 @@ public enum ProcessingResult
     /// <summary>
     ///     Order was sent to dead letter queue.
     /// </summary>
-    DeadLetter
+    DeadLetter,
 }

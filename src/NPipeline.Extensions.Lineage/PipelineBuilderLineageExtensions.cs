@@ -1,3 +1,4 @@
+using System.Text.Json;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Lineage;
@@ -19,7 +20,7 @@ public static class PipelineBuilderLineageExtensions
     /// </remarks>
     public static PipelineBuilder UseLoggingPipelineLineageSink(
         this PipelineBuilder builder,
-        System.Text.Json.JsonSerializerOptions? jsonOptions = null)
+        JsonSerializerOptions? jsonOptions = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
 

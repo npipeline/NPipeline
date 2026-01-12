@@ -1,9 +1,9 @@
+using System.Collections.Immutable;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Configuration;
 using NPipeline.Lineage;
 using NPipeline.Lineage.DependencyInjection;
-using Xunit;
 
 namespace NPipeline.Extensions.Lineage.Tests;
 
@@ -107,6 +107,7 @@ public class LineageServiceCollectionExtensionsTests
             factoryCalled = true;
             return new TestPipelineLineageSink();
         });
+
         var serviceProvider = services.BuildServiceProvider();
 
         // Assert
@@ -165,11 +166,13 @@ public class LineageServiceCollectionExtensionsTests
             receivedServiceProvider = sp;
             return new TestPipelineLineageSink();
         });
+
         var serviceProvider = services.BuildServiceProvider();
         serviceProvider.GetService<IPipelineLineageSink>();
 
         // Assert
         receivedServiceProvider.Should().NotBeNull();
+
         // The factory receives the scope's service provider, not the root provider
         receivedServiceProvider.Should().NotBeNull();
     }
@@ -181,7 +184,7 @@ public class LineageServiceCollectionExtensionsTests
         var services = new ServiceCollection();
 
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => services.AddNPipelineLineage((Func<IServiceProvider, IPipelineLineageSink>)null!));
+        Assert.Throws<ArgumentNullException>(() => services.AddNPipelineLineage(null!));
     }
 
     [Fact]
@@ -244,6 +247,7 @@ public class LineageServiceCollectionExtensionsTests
             factoryCalled = true;
             return new TestLineageCollector();
         });
+
         var serviceProvider = services.BuildServiceProvider();
 
         // Assert
@@ -296,7 +300,7 @@ public class LineageServiceCollectionExtensionsTests
         var services = new ServiceCollection();
 
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => services.AddNPipelineLineage<TestPipelineLineageSink>((Func<IServiceProvider, ILineageCollector>)null!));
+        Assert.Throws<ArgumentNullException>(() => services.AddNPipelineLineage<TestPipelineLineageSink>(null!));
     }
 
     [Fact]
@@ -471,7 +475,7 @@ public class LineageServiceCollectionExtensionsTests
     {
         public LineagePacket<T> CreateLineagePacket<T>(T item, string sourceNodeId)
         {
-            return new LineagePacket<T>(item, Guid.NewGuid(), System.Collections.Immutable.ImmutableList.Create(sourceNodeId));
+            return new LineagePacket<T>(item, Guid.NewGuid(), ImmutableList.Create(sourceNodeId));
         }
 
         public void RecordHop(Guid lineageId, LineageHop hop)
@@ -532,7 +536,7 @@ public class LineageServiceCollectionExtensionsTests
 
         public LineagePacket<T> CreateLineagePacket<T>(T item, string sourceNodeId)
         {
-            return new LineagePacket<T>(item, Guid.NewGuid(), System.Collections.Immutable.ImmutableList.Create(sourceNodeId));
+            return new LineagePacket<T>(item, Guid.NewGuid(), ImmutableList.Create(sourceNodeId));
         }
 
         public void RecordHop(Guid lineageId, LineageHop hop)

@@ -11,8 +11,8 @@ namespace Sample_LineageExtension.Nodes;
 /// </summary>
 public class OrderCustomerJoinNode : SourceNode<EnrichedOrder>
 {
-    private readonly OrderEvent[] _orders;
     private readonly CustomerData[] _customers;
+    private readonly OrderEvent[] _orders;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="OrderCustomerJoinNode" /> class.
@@ -49,17 +49,15 @@ public class OrderCustomerJoinNode : SourceNode<EnrichedOrder>
                 var priority = DeterminePriority(customer, order);
 
                 var enrichedOrder = new EnrichedOrder(
-                    order: order,
-                    customer: customer,
-                    discount: discount,
-                    priority: priority);
+                    order,
+                    customer,
+                    discount,
+                    priority);
 
                 enrichedOrders.Add(enrichedOrder);
             }
             else
-            {
                 Console.WriteLine($"[OrderCustomerJoinNode] Warning: Customer {order.CustomerId} not found for order {order.OrderId}");
-            }
         }
 
         Console.WriteLine($"[OrderCustomerJoinNode] Created {enrichedOrders.Count} enriched orders");
@@ -77,14 +75,12 @@ public class OrderCustomerJoinNode : SourceNode<EnrichedOrder>
             LoyaltyTier.Silver => 0.05m, // 5%
             LoyaltyTier.Gold => 0.10m, // 10%
             LoyaltyTier.Platinum => 0.15m, // 15%
-            _ => 0m
+            _ => 0m,
         };
 
         // Additional discount for large orders
         if (orderAmount > 500m)
-        {
             discountRate += 0.02m; // Extra 2% for orders over $500
-        }
 
         return Math.Round(orderAmount * discountRate, 2);
     }
@@ -96,21 +92,15 @@ public class OrderCustomerJoinNode : SourceNode<EnrichedOrder>
     {
         // VIP customers get higher priority
         if (customer.IsVip)
-        {
             return ProcessingPriority.High;
-        }
 
         // Large orders get higher priority
         if (order.TotalAmount > 1000m)
-        {
             return ProcessingPriority.High;
-        }
 
         // Fraud-flagged orders get lower priority
         if (order.IsFlaggedForFraud)
-        {
             return ProcessingPriority.Low;
-        }
 
         // Default priority
         return ProcessingPriority.Normal;

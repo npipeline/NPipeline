@@ -35,7 +35,10 @@ public class OrderSource : SourceNode<OrderEvent>
     {
         Console.WriteLine($"[OrderSource] Generating {_orderCount} order events...");
 
-        var random = _seed.HasValue ? new Random(_seed.Value) : new Random();
+        var random = _seed.HasValue
+            ? new Random(_seed.Value)
+            : new Random();
+
         var orders = new List<OrderEvent>();
         var baseDate = DateTime.UtcNow.AddDays(-30);
 
@@ -54,7 +57,7 @@ public class OrderSource : SourceNode<OrderEvent>
                 < 75 => OrderStatus.Processing,
                 < 90 => OrderStatus.Validated,
                 < 95 => OrderStatus.Completed,
-                _ => OrderStatus.Cancelled
+                _ => OrderStatus.Cancelled,
             };
 
             var paymentMethod = random.Next(0, 100) switch
@@ -63,22 +66,22 @@ public class OrderSource : SourceNode<OrderEvent>
                 < 80 => PaymentMethod.DebitCard,
                 < 90 => PaymentMethod.PayPal,
                 < 97 => PaymentMethod.BankTransfer,
-                _ => PaymentMethod.CashOnDelivery
+                _ => PaymentMethod.CashOnDelivery,
             };
 
             var isFlaggedForFraud = random.Next(0, 100) < 5; // 5% fraud rate
 
             var order = new OrderEvent(
-                orderId: i,
-                customerId: customerId,
-                productId: productId,
-                quantity: quantity,
-                unitPrice: unitPrice,
-                orderDate: orderDate,
-                status: status,
-                shippingAddress: $"123 Main St, City {random.Next(1, 10)}",
-                paymentMethod: paymentMethod,
-                isFlaggedForFraud: isFlaggedForFraud);
+                i,
+                customerId,
+                productId,
+                quantity,
+                unitPrice,
+                orderDate,
+                status,
+                $"123 Main St, City {random.Next(1, 10)}",
+                paymentMethod,
+                isFlaggedForFraud);
 
             orders.Add(order);
         }

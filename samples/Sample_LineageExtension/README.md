@@ -1,6 +1,7 @@
 # NPipeline Lineage Extension Sample
 
-This sample demonstrates the data lineage tracking capabilities of the NPipeline.Extensions.Lineage extension for NPipeline. Data lineage tracking provides visibility into how data flows through a pipeline, enabling debugging, auditing, and compliance monitoring.
+This sample demonstrates the data lineage tracking capabilities of the NPipeline.Extensions.Lineage extension for NPipeline. Data lineage tracking provides
+visibility into how data flows through a pipeline, enabling debugging, auditing, and compliance monitoring.
 
 ## Overview
 
@@ -150,7 +151,8 @@ The sample uses realistic e-commerce domain models:
 The sample implements various node types:
 
 - **Source Nodes**: [`OrderSource`](Nodes/OrderSource.cs), [`CustomerSource`](Nodes/CustomerSource.cs)
-- **Transform Nodes**: [`EnrichmentTransform`](Nodes/EnrichmentTransform.cs), [`ValidationTransform`](Nodes/ValidationTransform.cs), [`ProcessingTransform`](LineageDemoPipeline.cs:196)
+- **Transform Nodes**: [`EnrichmentTransform`](Nodes/EnrichmentTransform.cs), [`ValidationTransform`](Nodes/ValidationTransform.cs), [
+  `ProcessingTransform`](LineageDemoPipeline.cs:196)
 - **Branch Node**: [`FraudDetectionBranch`](Nodes/FraudDetectionBranch.cs)
 - **Sink Nodes**: [`ConsoleSink`](Nodes/ConsoleSink.cs), [`DatabaseSink`](Nodes/DatabaseSink.cs)
 
@@ -190,14 +192,14 @@ The sample follows NPipeline patterns:
 - [`LineageDemoPipeline.cs`](LineageDemoPipeline.cs): Pipeline definitions for all scenarios
 - [`Models.cs`](Models.cs): Domain models for the sample
 - [`Nodes/`](Nodes/): Directory containing all pipeline nodes
-  - [`OrderSource.cs`](Nodes/OrderSource.cs): Generates order events
-  - [`CustomerSource.cs`](Nodes/CustomerSource.cs): Generates customer profiles
-  - [`EnrichmentTransform.cs`](Nodes/EnrichmentTransform.cs): Enriches orders with customer data
-  - [`ValidationTransform.cs`](Nodes/ValidationTransform.cs): Validates enriched orders
-  - [`FraudDetectionBranch.cs`](Nodes/FraudDetectionBranch.cs): Branches based on fraud detection
-  - [`ConsoleSink.cs`](Nodes/ConsoleSink.cs): Writes processed orders to console
-  - [`DatabaseSink.cs`](Nodes/DatabaseSink.cs): Simulates database writes
-  - [`CustomLineageSink.cs`](Nodes/CustomLineageSink.cs): Custom lineage sink implementation
+    - [`OrderSource.cs`](Nodes/OrderSource.cs): Generates order events
+    - [`CustomerSource.cs`](Nodes/CustomerSource.cs): Generates customer profiles
+    - [`EnrichmentTransform.cs`](Nodes/EnrichmentTransform.cs): Enriches orders with customer data
+    - [`ValidationTransform.cs`](Nodes/ValidationTransform.cs): Validates enriched orders
+    - [`FraudDetectionBranch.cs`](Nodes/FraudDetectionBranch.cs): Branches based on fraud detection
+    - [`ConsoleSink.cs`](Nodes/ConsoleSink.cs): Writes processed orders to console
+    - [`DatabaseSink.cs`](Nodes/DatabaseSink.cs): Simulates database writes
+    - [`CustomLineageSink.cs`](Nodes/CustomLineageSink.cs): Custom lineage sink implementation
 - [`README.md`](README.md): This file
 
 ## Use Cases

@@ -22,9 +22,7 @@ public sealed class DefaultPipelineLineageSinkProvider : IPipelineLineageSinkPro
     public IPipelineLineageSink? Create(PipelineContext context)
     {
         if (context == null)
-        {
             return null;
-        }
 
         // Create a logging sink without a logger
         // The sink will use NullLogger internally if no logger is provided

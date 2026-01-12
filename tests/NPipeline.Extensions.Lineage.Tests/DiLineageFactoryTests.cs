@@ -1,9 +1,9 @@
+using System.Collections.Immutable;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Configuration;
 using NPipeline.Lineage;
 using NPipeline.Pipeline;
-using Xunit;
 
 namespace NPipeline.Extensions.Lineage.Tests;
 
@@ -458,7 +458,7 @@ public class DiLineageFactoryTests
     {
         public LineagePacket<T> CreateLineagePacket<T>(T item, string sourceNodeId)
         {
-            return new LineagePacket<T>(item, Guid.NewGuid(), System.Collections.Immutable.ImmutableList.Create(sourceNodeId));
+            return new LineagePacket<T>(item, Guid.NewGuid(), ImmutableList.Create(sourceNodeId));
         }
 
         public void RecordHop(Guid lineageId, LineageHop hop)

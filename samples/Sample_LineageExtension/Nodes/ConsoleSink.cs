@@ -70,15 +70,11 @@ public class ConsoleSink : SinkNode<ProcessedOrder>
 
             // Display validation errors if any
             if (!processedOrder.ValidatedOrder.IsValid && processedOrder.ValidatedOrder.ValidationErrors.Count > 0)
-            {
                 Console.WriteLine($"  Validation Errors: {string.Join(", ", processedOrder.ValidatedOrder.ValidationErrors)}");
-            }
 
             // Display notes if any
             if (!string.IsNullOrWhiteSpace(processedOrder.Notes))
-            {
                 Console.WriteLine($"  Notes: {processedOrder.Notes}");
-            }
         }
 
         Console.WriteLine($"[{_name}] Finished writing {count} processed orders:");

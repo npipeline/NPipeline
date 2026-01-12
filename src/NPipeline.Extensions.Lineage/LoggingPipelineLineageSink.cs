@@ -9,8 +9,8 @@ namespace NPipeline.Lineage;
 /// </summary>
 public sealed class LoggingPipelineLineageSink : IPipelineLineageSink
 {
-    private readonly ILogger _logger;
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly ILogger _logger;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="LoggingPipelineLineageSink" /> class.
@@ -20,10 +20,11 @@ public sealed class LoggingPipelineLineageSink : IPipelineLineageSink
     public LoggingPipelineLineageSink(ILogger<LoggingPipelineLineageSink>? logger = null, JsonSerializerOptions? jsonOptions = null)
     {
         _logger = logger ?? NullLogger<LoggingPipelineLineageSink>.Instance;
+
         _jsonOptions = jsonOptions ?? new JsonSerializerOptions
         {
             WriteIndented = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         };
     }
 
@@ -36,21 +37,19 @@ public sealed class LoggingPipelineLineageSink : IPipelineLineageSink
     public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken)
     {
         if (report == null)
-        {
             return Task.CompletedTask;
-        }
 
         try
         {
             var json = JsonSerializer.Serialize(report, _jsonOptions);
 
             using (_logger.BeginScope(new Dictionary<string, object?>
-            {
-                ["Pipeline"] = report.Pipeline,
-                ["RunId"] = report.RunId,
-                ["NodeCount"] = report.Nodes.Count,
-                ["EdgeCount"] = report.Edges.Count
-            }))
+                   {
+                       ["Pipeline"] = report.Pipeline,
+                       ["RunId"] = report.RunId,
+                       ["NodeCount"] = report.Nodes.Count,
+                       ["EdgeCount"] = report.Edges.Count,
+                   }))
             {
                 _logger.LogInformation(
                     "Pipeline lineage report for {Pipeline} (RunId: {RunId}): {LineageReport}",

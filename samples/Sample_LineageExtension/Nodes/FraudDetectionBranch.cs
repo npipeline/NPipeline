@@ -42,9 +42,7 @@ public class FraudDetectionBranch : TransformNode<EnrichedOrder, EnrichedOrder>
             _onFraudDetected?.Invoke(enrichedOrder);
         }
         else
-        {
             _onNormalOrder?.Invoke(enrichedOrder);
-        }
 
         // Return the original order unchanged to continue in the main pipeline
         return Task.FromResult(enrichedOrder);
@@ -60,33 +58,23 @@ public class FraudDetectionBranch : TransformNode<EnrichedOrder, EnrichedOrder>
 
         // Check if already flagged
         if (order.IsFlaggedForFraud)
-        {
             return true;
-        }
 
         // Suspicious: New customer with large order
         if (customer.OrderCount < 2 && order.TotalAmount > 1000m)
-        {
             return true;
-        }
 
         // Suspicious: Multiple orders from same customer in short time
         if (customer.OrderCount > 50 && order.TotalAmount < 50m)
-        {
             return true;
-        }
 
         // Suspicious: Unusual payment method for high value
         if (order.TotalAmount > 5000m && order.PaymentMethod == PaymentMethod.CashOnDelivery)
-        {
             return true;
-        }
 
         // Suspicious: Missing shipping address
         if (string.IsNullOrWhiteSpace(order.ShippingAddress))
-        {
             return true;
-        }
 
         return false;
     }

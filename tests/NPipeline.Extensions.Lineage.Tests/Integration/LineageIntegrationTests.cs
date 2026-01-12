@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Configuration;
 using NPipeline.Lineage;
 using NPipeline.Lineage.DependencyInjection;
-using Xunit;
 
 namespace NPipeline.Extensions.Lineage.Tests.Integration;
 
@@ -66,13 +65,13 @@ public class LineageIntegrationTests
 
         // Act - sample 100 items
         var sampledCount = 0;
+
         for (var i = 0; i < 100; i++)
         {
             var packet = collector.CreateLineagePacket(i, "source");
+
             if (collector.ShouldCollectLineage(packet.LineageId, options))
-            {
                 sampledCount++;
-            }
         }
 
         // Assert - with deterministic sampling, should be roughly 10% (±some tolerance)
@@ -260,11 +259,13 @@ public class LineageIntegrationTests
         // Arrange
         var factoryCalled = false;
         var services = new ServiceCollection();
+
         services.AddNPipelineLineage(_ =>
         {
             factoryCalled = true;
             return new TestPipelineLineageSink();
         });
+
         var serviceProvider = services.BuildServiceProvider();
 
         // Act
