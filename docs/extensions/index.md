@@ -19,6 +19,8 @@ This section details the officially supported extensions and how to leverage the
 
 * **[Dependency Injection](dependency-injection.md)**: Seamlessly integrate NPipeline with your favorite Dependency Injection container. Learn how to use constructor injection in your nodes and run pipelines with the `RunPipelineAsync<TDefinition>()` extension method.
 
+* **[Lineage](lineage/index.md)**: Comprehensive data lineage tracking and provenance capabilities. Track the complete journey of each data item from source to destination, enabling data governance, debugging, audit trails, and data discovery.
+
 * **[Nodes](nodes/index.md)**: Pre-built, production-ready nodes for common data processing operations. Includes cleansing, validation, filtering, and type conversion nodes for string, numeric, datetime, and collection data.
 
 * **[Observability](observability/index.md)**: Comprehensive metrics collection and monitoring capabilities for NPipeline pipelines. Track node and pipeline performance, throughput, memory usage, retries, and errors with built-in logging sinks and custom metrics sink support.
@@ -35,6 +37,7 @@ This section details the officially supported extensions and how to leverage the
 |----------|-------------|---------------|
 | [`NPipeline.Extensions.Composition`](../../../src/NPipeline.Extensions.Composition/NPipeline.Extensions.Composition.csproj) | Hierarchical pipeline composition | Sub-pipelines as nodes, modular design, context control, unlimited nesting |
 | [`NPipeline.Extensions.DependencyInjection`](../../../src/NPipeline.Extensions.DependencyInjection/NPipeline.Extensions.DependencyInjection.csproj) | DI container integration | Constructor injection, service lifetime management, `RunPipelineAsync()` extension |
+| [`NPipeline.Extensions.Lineage`](../../../src/NPipeline.Extensions.Lineage/NPipeline.Extensions.Lineage.csproj) | Data lineage tracking | Item-level lineage, pipeline reports, configurable sampling, custom sinks |
 | [`NPipeline.Extensions.Nodes`](../../src/NPipeline.Extensions.Nodes/NPipeline.Extensions.Nodes.csproj) | Pre-built data processing nodes | String/numeric/datetime cleansing, validation, filtering, type conversion |
 | [`NPipeline.Extensions.Observability`](../../../src/NPipeline.Extensions.Observability/NPipeline.Extensions.Observability.csproj) | Metrics collection and monitoring | Node/pipeline metrics, throughput tracking, memory/CPU monitoring, custom sinks |
 | [`NPipeline.Extensions.Parallelism`](../../../src/NPipeline.Extensions.Parallelism/NPipeline.Extensions.Parallelism.csproj) | Parallel processing capabilities | `ParallelExecutionStrategy`, `WithParallelOptions()`, queue policies |
@@ -59,6 +62,9 @@ dotnet add package NPipeline.Extensions.Composition
 
 # Dependency Injection
 dotnet add package NPipeline.Extensions.DependencyInjection
+
+# Lineage
+dotnet add package NPipeline.Extensions.Lineage
 
 # Nodes
 dotnet add package NPipeline.Extensions.Nodes
@@ -88,13 +94,14 @@ dotnet add package FluentAssertions
 ## Best Practices
 
 * **Install only what you need**: Each extension is a separate package to keep your dependencies minimal
-* **Use the right tool for the job**: Leverage testing extensions for unit tests, parallelism for performance, DI for enterprise applications, observability for production monitoring
+* **Use the right tool for the job**: Leverage testing extensions for unit tests, parallelism for performance, DI for enterprise applications, observability for production monitoring, lineage for data governance
 * **Combine extensions**: Extensions are designed to work together seamlessly
 * **Check compatibility**: Ensure extension versions are compatible with your NPipeline core version
 
 ## Next Steps
 
 * **[Dependency Injection](dependency-injection.md)**: Learn about constructor injection and service lifetime management
+* **[Lineage](lineage/index.md)**: Explore data lineage tracking for governance and debugging
 * **[Parallelism](parallelism.md)**: Explore parallel processing capabilities and configuration options
 * **[Testing](testing/index.md)**: Discover comprehensive testing utilities and assertion libraries
 * **[Observability](observability/index.md)**: Learn about metrics collection and monitoring for production pipelines

@@ -131,6 +131,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample_ObservabilityExtensi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Extensions.Observability.OpenTelemetry", "src\NPipeline.Extensions.Observability.OpenTelemetry\NPipeline.Extensions.Observability.OpenTelemetry.csproj", "{DCDBF859-0816-418D-ACAC-985ACF4EFB36}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample_LineageExtension", "samples\Sample_LineageExtension\Sample_LineageExtension.csproj", "{5F01F46F-C9F6-41E5-A487-648325CC9A1A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Extensions.Lineage", "src\NPipeline.Extensions.Lineage\NPipeline.Extensions.Lineage.csproj", "{6B3DAC4F-DE57-4E4F-BB1F-27BE58E4E9ED}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Extensions.Lineage.Tests", "tests\NPipeline.Extensions.Lineage.Tests\NPipeline.Extensions.Lineage.Tests.csproj", "{F76C71B2-97E0-4DD8-975E-B69F42B4673A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -373,6 +379,18 @@ Global
 		{DCDBF859-0816-418D-ACAC-985ACF4EFB36}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DCDBF859-0816-418D-ACAC-985ACF4EFB36}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DCDBF859-0816-418D-ACAC-985ACF4EFB36}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5F01F46F-C9F6-41E5-A487-648325CC9A1A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5F01F46F-C9F6-41E5-A487-648325CC9A1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5F01F46F-C9F6-41E5-A487-648325CC9A1A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5F01F46F-C9F6-41E5-A487-648325CC9A1A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6B3DAC4F-DE57-4E4F-BB1F-27BE58E4E9ED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6B3DAC4F-DE57-4E4F-BB1F-27BE58E4E9ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6B3DAC4F-DE57-4E4F-BB1F-27BE58E4E9ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6B3DAC4F-DE57-4E4F-BB1F-27BE58E4E9ED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F76C71B2-97E0-4DD8-975E-B69F42B4673A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F76C71B2-97E0-4DD8-975E-B69F42B4673A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F76C71B2-97E0-4DD8-975E-B69F42B4673A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F76C71B2-97E0-4DD8-975E-B69F42B4673A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{C539C2BB-5FF5-45B1-9D16-C8E0F2FBDD41} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
@@ -434,5 +452,8 @@ Global
 		{F4E13878-DD33-4672-A369-ADA9ECD1F2EE} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
 		{B47D6B56-E43A-45DD-8D45-90DF3C16A46D} = {2117093A-CC66-4607-8DBC-F692E0642ADD}
 		{DCDBF859-0816-418D-ACAC-985ACF4EFB36} = {09D2BF57-FE3E-4453-A8C5-C6FE30E8E88C}
+		{5F01F46F-C9F6-41E5-A487-648325CC9A1A} = {2117093A-CC66-4607-8DBC-F692E0642ADD}
+		{6B3DAC4F-DE57-4E4F-BB1F-27BE58E4E9ED} = {09D2BF57-FE3E-4453-A8C5-C6FE30E8E88C}
+		{F76C71B2-97E0-4DD8-975E-B69F42B4673A} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
 	EndGlobalSection
 EndGlobal

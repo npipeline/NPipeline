@@ -84,13 +84,19 @@ Install the core package to get started:
 
 ```bash
 dotnet add package NPipeline
-dotnet add package NPipeline.DependencyInjection
+dotnet add package NPipeline.Extensions.DependencyInjection
 ```
 
 Additionally, install the Analyzer package to enable Roslyn analyzers that provide compile-time checks and guardrails:
 
 ```bash
 dotnet add package NPipeline.Analyzers
+```
+
+For data lineage tracking and governance, install the Lineage extension:
+
+```bash
+dotnet add package NPipeline.Extensions.Lineage
 ```
 
 ## Simple Example
@@ -169,18 +175,19 @@ NPipeline is modular - install only what you need.
 While the core NPipeline library provides a powerful foundation for streaming data pipelines, the available extensions and connectors provide enhanced opt-in
 functionality and features like enhanced parallelism, simplifying testing workflows, and connecting to external systems with minimal friction.
 
-| Package                                      | Purpose                                                                                              |
-|----------------------------------------------|------------------------------------------------------------------------------------------------------|
-| **NPipeline**                                | Core streaming pipeline functionality (zero dependencies)                                            |
-| **NPipeline.Analyzers**                      | Roslyn analyzers for compile-time validation, style guidance, and developer guardrails               |
-| **NPipeline.Extensions.DependencyInjection** | Integration with Microsoft DI container                                                              |
-| **NPipeline.Extensions.Observability**       | Observability and telemetry support for pipeline monitoring                                          |
-| **NPipeline.Extensions.Observability.OpenTelemetry** | OpenTelemetry integration for distributed tracing and metrics                                |
-| **NPipeline.Extensions.Parallelism**         | Parallel processing with TPL Dataflow                                                                |
-| **NPipeline.Extensions.Testing**             | Testing utilities and extensions for assertion libraries like FluentAssertions and AwesomeAssertions |
-| **NPipeline.Connectors**                     | Core abstractions for data format/storage decoupling                                                 |
-| **NPipeline.Connectors.Csv**                 | CSV source and sink nodes                                                                            |
-| **NPipeline.Connectors.Excel**               | Excel source and sink nodes for XLS and XLSX files                                                   |
+| Package | Purpose |
+| --- | --- |
+| **NPipeline** | Core streaming pipeline functionality (zero dependencies) |
+| **NPipeline.Analyzers** | Roslyn analyzers for compile-time validation, style guidance, and developer guardrails |
+| **NPipeline.Extensions.DependencyInjection** | Integration with Microsoft DI container |
+| **NPipeline.Extensions.Lineage** | Data lineage tracking and provenance for governance, auditing, and debugging |
+| **NPipeline.Extensions.Observability** | Observability and telemetry support for pipeline monitoring |
+| **NPipeline.Extensions.Observability.OpenTelemetry** | OpenTelemetry integration for distributed tracing and metrics |
+| **NPipeline.Extensions.Parallelism** | Parallel processing with TPL Dataflow |
+| **NPipeline.Extensions.Testing** | Testing utilities and extensions for assertion libraries like FluentAssertions and AwesomeAssertions |
+| **NPipeline.Connectors** | Core abstractions for data format/storage decoupling |
+| **NPipeline.Connectors.Csv** | CSV source and sink nodes |
+| **NPipeline.Connectors.Excel** | Excel source and sink nodes for XLS and XLSX files |
 
 ... and more to come.
 

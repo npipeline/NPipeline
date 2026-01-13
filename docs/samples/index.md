@@ -31,14 +31,17 @@ This guide provides practical examples of NPipeline implementations, organized b
    - **Performance** → [Samples 11-12](./advanced.md) - Custom nodes, optimization
    - **Streaming** → [Samples 15-16](./advanced.md) - Windowing, time-based processing
    - **Complex Joins** → [Samples 17-20](./advanced.md) - Keyed joins, temporal logic
+   - **Extensions** → [Extension Samples](./extensions.md) - Lineage, observability, composition, nodes
 
 ### Already know what you need?
 
 Jump directly to samples by topic:
+
 - [File Processing](./basic.md#sample-02-file-processing)
 - [CSV Processing](./intermediate.md#sample-08-csv-connector)
 - [Real-time Analytics](./intermediate.md#sample-09-aggregatenode)
 - [Custom Node Implementation](./advanced.md)
+- [Extension Samples](./extensions.md)
 
 ## What Each Sample Includes
 
@@ -53,6 +56,7 @@ Every sample comes with:
 ## Sample Breakdown by Skill Level
 
 ### Basic Samples (1-5)
+
 Perfect for learning NPipeline fundamentals:
 
 - **Sample 01: Basic Pipeline** - Hello World of NPipeline
@@ -64,6 +68,7 @@ Perfect for learning NPipeline fundamentals:
 **→ [View all Basic Samples](./basic.md)**
 
 ### Intermediate Samples (6-10)
+
 Building real-world features:
 
 - **Sample 06: Advanced Error Handling** - Production resilience patterns
@@ -75,6 +80,7 @@ Building real-world features:
 **→ [View all Intermediate Samples](./intermediate.md)**
 
 ### Advanced Samples (11-23)
+
 Production-grade scenarios:
 
 - **11-12:** Foundational concepts (custom nodes, performance optimization)
@@ -85,30 +91,57 @@ Production-grade scenarios:
 
 **→ [View all Advanced Samples](./advanced.md)**
 
+### Extension Samples
+
+Demonstrating NPipeline extension packages:
+
+- **Lineage Extension** - Data lineage tracking and provenance
+- **Nodes Extension** - Pre-built data processing nodes
+- **Observability Extension** - Metrics collection and monitoring
+- **Composition Extension** - Hierarchical pipeline composition
+
+**→ [View all Extension Samples](./extensions.md)**
+
 ## Learning Paths
 
 Choose the path that matches your goals:
 
 ### Minimum Path (1-2 hours)
+
 Get started quickly with essentials:
+
 - Sample 01: Basic Pipeline
 - Sample 03: Basic Error Handling
 - Sample 04: Simple Data Transformation
 
 ### Foundation Path (4-5 hours)
+
 Build a solid understanding:
+
 - All Basic Samples (1-5)
 - Sample 06: Advanced Error Handling
 - Sample 09: AggregateNode
 
 ### Comprehensive Path (8+ hours)
+
 Master all patterns:
+
 - All Basic Samples (1-5)
 - All Intermediate Samples (6-10)
 - All Advanced Samples (11-23)
+- All Extension Samples
+
+### Extension-Focused Path (3-4 hours)
+
+Master extension packages:
+
+- All Basic Samples (1-5)
+- All Extension Samples
+- Sample 23: Complex Data Transformations
 
 ## Related Documentation
 
 - **[Core Concepts](../core-concepts/index.md)** - Learn fundamental NPipeline concepts
 - **[Architecture](../architecture/index.md)** - Understand how NPipeline works internally
 - **[Advanced Topics](../advanced-topics/index.md)** - Master performance optimization and production patterns
+- **[Extensions](../extensions/index.md)** - Discover available extension packages
