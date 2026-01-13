@@ -16,6 +16,12 @@ resilience patterns and error handling.
 dotnet add package NPipeline.Analyzers
 ```
 
+## Requirements
+
+- **.NET Standard 2.0** compatible IDE
+- **Visual Studio 2017+** or **JetBrains Rider** or **VS Code** with C# extension
+- **C# 8.0** or later for full feature support
+
 ## Features
 
 - **Real-time Diagnostics**: Detects common pipeline configuration issues and performance anti-patterns as you code
@@ -38,29 +44,29 @@ The package includes 18 comprehensive analyzers covering different aspects of pi
 
 ### Configuration Analyzers
 
-5. **BatchingConfigurationMismatchAnalyzer** - Detects mismatched batch size and timeout configurations
-6. **InappropriateParallelismConfigurationAnalyzer** - Identifies inappropriate parallelism settings that can cause resource contention
-7. **TimeoutConfigurationAnalyzer** - Detects timeout values that are too short or too long for the workload type
-8. **UnboundedMaterializationConfigurationAnalyzer** - Identifies potential memory leaks from unbounded materialization
+1. **BatchingConfigurationMismatchAnalyzer** - Detects mismatched batch size and timeout configurations
+2. **InappropriateParallelismConfigurationAnalyzer** - Identifies inappropriate parallelism settings that can cause resource contention
+3. **TimeoutConfigurationAnalyzer** - Detects timeout values that are too short or too long for the workload type
+4. **UnboundedMaterializationConfigurationAnalyzer** - Identifies potential memory leaks from unbounded materialization
 
 ### Async/Cancellation Analyzers
 
-9. **BlockingAsyncOperationAnalyzer** - Detects blocking calls on async operations that can cause deadlocks
-10. **CancellationTokenRespectAnalyzer** - Ensures proper cancellation token propagation and usage
-11. **SynchronousOverAsyncAnalyzer** - Identifies synchronous-over-asynchronous anti-patterns
+1. **BlockingAsyncOperationAnalyzer** - Detects blocking calls on async operations that can cause deadlocks
+2. **CancellationTokenRespectAnalyzer** - Ensures proper cancellation token propagation and usage
+3. **SynchronousOverAsyncAnalyzer** - Identifies synchronous-over-asynchronous anti-patterns
 
 ### Error Handling Analyzers
 
-12. **InefficientExceptionHandlingAnalyzer** - Detects inefficient exception handling patterns in hot paths
-13. **OperationCanceledExceptionAnalyzer** - Ensures proper handling of OperationCanceledException
+1. **InefficientExceptionHandlingAnalyzer** - Detects inefficient exception handling patterns in hot paths
+2. **OperationCanceledExceptionAnalyzer** - Ensures proper handling of OperationCanceledException
 
 ### Pipeline-Specific Analyzers
 
-14. **DependencyInjectionAnalyzer** - Detects dependency injection anti-patterns in node implementations
-15. **PipelineContextAccessAnalyzer** - Identifies unsafe access patterns on PipelineContext properties
-16. **ResilientExecutionConfigurationAnalyzer** - Validates resilient execution strategy configurations
-17. **SinkNodeInputConsumptionAnalyzer** - Ensures proper consumption of input in sink nodes
-18. **SourceNodeStreamingAnalyzer** - Detects non-streaming patterns in source nodes
+1. **DependencyInjectionAnalyzer** - Detects dependency injection anti-patterns in node implementations
+2. **PipelineContextAccessAnalyzer** - Identifies unsafe access patterns on PipelineContext properties
+3. **ResilientExecutionConfigurationAnalyzer** - Validates resilient execution strategy configurations
+4. **SinkNodeInputConsumptionAnalyzer** - Ensures proper consumption of input in sink nodes
+5. **SourceNodeStreamingAnalyzer** - Detects non-streaming patterns in source nodes
 
 ## Supported Code Fix Providers (18)
 
@@ -157,6 +163,7 @@ public async Task ProcessAsync(CancellationToken cancellationToken)
 1. **Ensure the package is installed** in the project you're working on
 2. **Restart Visual Studio** after installing the package
 3. **Check that analyzers are enabled** in your project settings:
+
    ```xml
    <PropertyGroup>
      <EnableNETAnalyzers>true</EnableNETAnalyzers>
@@ -267,25 +274,6 @@ When adding a new analyzer:
 - **Add unit tests** for all functionality
 - **Use meaningful variable and method names**
 
-## Requirements
-
-- **.NET Standard 2.0** compatible IDE
-- **Visual Studio 2017+** or **JetBrains Rider** or **VS Code** with C# extension
-- **C# 8.0** or later for full feature support
-
 ## License
 
 MIT License - see LICENSE file for details.
-
-## Related Packages
-
-- **[NPipeline](https://www.nuget.org/packages/NPipeline)** - Core pipeline framework
-- **[NPipeline.Extensions](https://www.nuget.org/packages/NPipeline.Extensions)** - Additional pipeline components
-- **[NPipeline.Benchmarks](https://www.nuget.org/packages/NPipeline.Benchmarks)** - Performance benchmarks
-
-## Support
-
-- **Documentation**: [https://npipeline.readthedocs.io](https://npipeline.readthedocs.io)
-- **Issues**: [GitHub Issues](https://github.com/npipeline/NPipeline/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/npipeline/NPipeline/discussions)
-- **Discord**: [NPipeline Community](https://discord.gg/npipeline)

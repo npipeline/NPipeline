@@ -18,6 +18,12 @@ The Composition extension provides the ability to create modular, hierarchical p
 dotnet add package NPipeline.Extensions.Composition
 ```
 
+## Requirements
+
+- **.NET 8.0, 9.0, or 10.0**
+- **Microsoft.Extensions.DependencyInjection.Abstractions** 10.0.0 or later
+- **NPipeline** core package
+
 ## Quick Start
 
 ### Basic Composition
@@ -236,7 +242,7 @@ public class CustomPipelineOutputSink<T> : ISinkNode<T>
 
 ## Examples
 
-See the [samples](../../samples/) directory for complete examples of composition usage:
+See the [sample_Composition](https://github.com/npipeline/NPipeline/tree/main/samples/Sample_Composition) project for complete working examples demonstrating:
 
 - Basic composition with simple sub-pipelines
 - Context inheritance patterns
@@ -246,8 +252,4 @@ See the [samples](../../samples/) directory for complete examples of composition
 
 ## License
 
-MIT License - see [LICENSE](../../LICENSE) for details.
-
-## Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](../../CONTRIBUTING.md) for guidelines.
+MIT License - see LICENSE file for details.

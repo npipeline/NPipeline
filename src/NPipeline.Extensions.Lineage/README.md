@@ -23,11 +23,12 @@ The `NPipeline.Extensions.Lineage` extension provides production-ready lineage t
 dotnet add package NPipeline.Extensions.Lineage
 ```
 
-The extension requires:
+## Requirements
 
-- `NPipeline` (core package)
-- `Microsoft.Extensions.DependencyInjection.Abstractions` (10.0.1 or later)
-- `Microsoft.Extensions.Logging.Abstractions` (10.0.1 or later)
+- **.NET 8.0, 9.0, or 10.0**
+- **Microsoft.Extensions.DependencyInjection.Abstractions** 10.0.0 or later
+- **Microsoft.Extensions.Logging.Abstractions** 10.0.0 or later
+- **NPipeline** core package
 
 ## Quick Start
 
@@ -124,4 +125,4 @@ For comprehensive documentation including detailed examples, configuration optio
 
 ## License
 
-MIT License - see [LICENSE](https://github.com/npipeline/NPipeline/tree/main/LICENSE) for details.
+MIT License - see LICENSE file for details.

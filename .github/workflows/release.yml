@@ -52,16 +52,7 @@ jobs:
         run: dotnet test --no-build --configuration Release --verbosity normal
 
       - name: Pack NuGet packages
-        run: |
-          dotnet pack src/NPipeline/NPipeline.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
-          dotnet pack src/NPipeline.Connectors/NPipeline.Connectors.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
-          dotnet pack src/NPipeline.Connectors.Csv/NPipeline.Connectors.Csv.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
-          dotnet pack src/NPipeline.Extensions.DependencyInjection/NPipeline.Extensions.DependencyInjection.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
-          dotnet pack src/NPipeline.Extensions.Parallelism/NPipeline.Extensions.Parallelism.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
-          dotnet pack src/NPipeline.Extensions.Testing/NPipeline.Extensions.Testing.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
-          dotnet pack src/NPipeline.Extensions.Testing.AwesomeAssertions/NPipeline.Extensions.Testing.AwesomeAssertions.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
-          dotnet pack src/NPipeline.Extensions.Testing.FluentAssertions/NPipeline.Extensions.Testing.FluentAssertions.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
-          dotnet pack src/NPipeline.Analyzers.Package/NPipeline.Analyzers.Package.csproj --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
+        run: dotnet pack src/**/*.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
 
       - name: Upload packages as artifacts
         uses: actions/upload-artifact@v6

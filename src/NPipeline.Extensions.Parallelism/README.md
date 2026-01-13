@@ -15,6 +15,12 @@ resilience patterns and error handling.
 dotnet add package NPipeline.Extensions.Parallelism
 ```
 
+## Requirements
+
+- **.NET 8.0**, **9.0**, or **10.0**
+- **NPipeline** core package
+- **System.Threading.Tasks.Dataflow** (automatically included for .NET 8.0)
+
 ## Execution Strategies
 
 The package provides multiple execution strategies to handle different parallel processing scenarios:
@@ -236,26 +242,6 @@ var mixedOptions = new ParallelOptions(
 );
 ```
 
-## Requirements
-
-- **.NET 8.0** or later
-- **NPipeline** core package
-- **System.Threading.Tasks.Dataflow** (automatically included for .NET 8.0)
-
 ## License
 
 MIT License - see LICENSE file for details.
-
-## Related Packages
-
-- **[NPipeline](https://www.nuget.org/packages/NPipeline)** - Core pipeline framework
-- **[NPipeline.Extensions](https://www.nuget.org/packages/NPipeline.Extensions)** - Additional pipeline components
-- **[NPipeline.Extensions.DependencyInjection](https://www.nuget.org/packages/NPipeline.Extensions.DependencyInjection)** - Dependency injection integration
-- **[NPipeline.Analyzers](https://www.nuget.org/packages/NPipeline.Analyzers)** - Roslyn analyzers for pipeline development
-
-## Support
-
-- **Documentation**: [https://npipeline.readthedocs.io](https://npipeline.readthedocs.io)
-- **Issues**: [GitHub Issues](https://github.com/npipeline/NPipeline/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/npipeline/NPipeline/discussions)
-- **Discord**: [NPipeline Community](https://discord.gg/npipeline)

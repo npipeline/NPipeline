@@ -15,6 +15,12 @@ resilience patterns and error handling.
 dotnet add package NPipeline.Connectors.Csv
 ```
 
+## Requirements
+
+- **.NET 8.0, 9.0, or 10.0**
+- **CsvHelper 33.1.0+** (automatically included as a dependency)
+- **NPipeline.Connectors** (automatically included as a dependency)
+
 ## Features
 
 - **CSV Source Node**: Read CSV files and deserialize to strongly-typed objects
@@ -129,25 +135,12 @@ public class CsvProcessingPipeline : IPipelineDefinition
 }
 ```
 
-## Requirements
-
-- **.NET 8.0, 9.0, or 10.0**
-- **CsvHelper 33.1.0+** (automatically included as a dependency)
-- **NPipeline.Connectors** (automatically included as a dependency)
-
-## License
-
-MIT License - see LICENSE file for details.
-
 ## Related Packages
 
 - **[NPipeline](https://www.nuget.org/packages/NPipeline)** - Core pipeline framework
 - **[NPipeline.Connectors](https://www.nuget.org/packages/NPipeline.Connectors)** - Storage abstractions and base connectors
 - **[NPipeline.Extensions.DependencyInjection](https://www.nuget.org/packages/NPipeline.Extensions.DependencyInjection)** - Dependency injection integration
 
-## Support
+## License
 
-- **Documentation**: [https://npipeline.readthedocs.io](https://npipeline.readthedocs.io)
-- **Issues**: [GitHub Issues](https://github.com/npipeline/NPipeline/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/npipeline/NPipeline/discussions)
-- **Discord**: [NPipeline Community](https://discord.gg/npipeline)
+MIT License - see LICENSE file for details.

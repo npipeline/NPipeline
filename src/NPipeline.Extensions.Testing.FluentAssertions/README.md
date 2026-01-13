@@ -16,6 +16,12 @@ resilience patterns and error handling.
 dotnet add package NPipeline.Extensions.Testing.FluentAssertions
 ```
 
+## Requirements
+
+- **.NET 8.0**, **9.0**, or **10.0**
+- **FluentAssertions 8.8.0** or later
+- **NPipeline.Extensions.Testing** (automatically included as a dependency)
+
 ## Features
 
 - **Fluent Assertion Methods**: Provides expressive assertion methods for pipeline testing
@@ -99,26 +105,11 @@ public async Task Pipeline_Should_Process_Data_Correctly()
 }
 ```
 
-## Requirements
-
-- **.NET 8.0** or later
-- **FluentAssertions 8.8.0** or later
-- **NPipeline.Extensions.Testing** (automatically included as a dependency)
-
-## License
-
-MIT License - see LICENSE file for details.
-
 ## Related Packages
 
 - **[NPipeline](https://www.nuget.org/packages/NPipeline)** - Core pipeline framework
 - **[NPipeline.Extensions.Testing](https://www.nuget.org/packages/NPipeline.Extensions.Testing)** - Core testing utilities for NPipeline
-- **[NPipeline.Extensions.Testing.AwesomeAssertions](https://www.nuget.org/packages/NPipeline.Extensions.Testing.AwesomeAssertions)** - Alternative assertion
-  library support
 
-## Support
+## License
 
-- **Documentation**: [https://npipeline.readthedocs.io](https://npipeline.readthedocs.io)
-- **Issues**: [GitHub Issues](https://github.com/npipeline/NPipeline/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/npipeline/NPipeline/discussions)
-- **Discord**: [NPipeline Community](https://discord.gg/npipeline)
+MIT License - see LICENSE file for details.

@@ -270,6 +270,7 @@ public static TransformNodeHandle<TIn, TOut> AddComposite<TIn, TOut, TDefinition
 ```
 
 **Parameters:**
+
 - `builder`: The pipeline builder
 - `name`: Optional node name (defaults to type name)
 - `contextConfiguration`: Optional context configuration
@@ -289,6 +290,7 @@ public static TransformNodeHandle<TIn, TOut> AddComposite<TIn, TOut, TDefinition
 ```
 
 **Parameters:**
+
 - `builder`: The pipeline builder
 - `configureContext`: Action to configure context inheritance
 - `name`: Optional node name
@@ -302,11 +304,13 @@ public static TransformNodeHandle<TIn, TOut> AddComposite<TIn, TOut, TDefinition
 Configuration for sub-pipeline context inheritance.
 
 **Properties:**
+
 - `InheritParentParameters`: Copy parent Parameters dictionary
 - `InheritParentItems`: Copy parent Items dictionary
 - `InheritParentProperties`: Copy parent Properties dictionary
 
 **Static Properties:**
+
 - `Default`: No inheritance (all flags false)
 - `InheritAll`: Full inheritance (all flags true)
 
@@ -315,6 +319,7 @@ Configuration for sub-pipeline context inheritance.
 Source node that retrieves input from parent context.
 
 **Type Parameters:**
+
 - `T`: Type of input item
 
 #### `PipelineOutputSink<T>`
@@ -322,6 +327,7 @@ Source node that retrieves input from parent context.
 Sink node that stores output in parent context.
 
 **Type Parameters:**
+
 - `T`: Type of output item
 
 #### `CompositeContextKeys`
@@ -329,6 +335,7 @@ Sink node that stores output in parent context.
 Well-known context keys for composite nodes.
 
 **Constants:**
+
 - `InputItem`: Key for input item storage
 - `OutputItem`: Key for output item storage
 
@@ -341,6 +348,7 @@ Well-known context keys for composite nodes.
 **Cause:** Sub-pipeline is missing `PipelineOutputSink` or it received no data.
 
 **Solution:** Ensure your sub-pipeline has:
+
 1. A `PipelineOutputSink<T>` as the final node
 2. Data flowing through the pipeline to the sink
 
@@ -373,11 +381,3 @@ builder.AddComposite<Customer, ValidatedCustomer, ValidationPipeline>(...);
 // In ValidationPipeline:
 var output = builder.AddSink<PipelineOutputSink<ValidatedCustomer>, ValidatedCustomer>("output");
 ```
-
-## License
-
-This extension is part of NPipeline and is licensed under the MIT License.
-
-## Contributing
-
-Contributions are welcome! Please see the [contribution guidelines](pathname:///CONTRIBUTING.md).

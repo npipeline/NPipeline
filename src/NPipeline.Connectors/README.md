@@ -16,6 +16,11 @@ resilience patterns and error handling.
 dotnet add package NPipeline.Connectors
 ```
 
+## Requirements
+
+- **.NET 8.0**, **9.0**, or **10.0**
+- **Microsoft.Extensions.DependencyInjection.Abstractions** 10.0.0 or later (for DI support)
+
 ## Key Features
 
 - **Storage Abstraction**: Unified interface for accessing different storage systems through a common API
@@ -136,9 +141,9 @@ NPipeline.Connectors supports an extensible set of storage schemes through its p
 ### Built-in Schemes
 
 - **file** - Local file system access (Windows, Linux, macOS)
-    - Supports absolute paths: `file:///C:/data/input.csv`
-    - Supports relative paths: `file://./data/input.csv`
-    - Supports UNC paths: `file://server/share/data/input.csv`
+  - Supports absolute paths: `file:///C:/data/input.csv`
+  - Supports relative paths: `file://./data/input.csv`
+  - Supports UNC paths: `file://server/share/data/input.csv`
 
 ### Extensible Scheme Support
 
@@ -357,24 +362,12 @@ services.AddStorageProvidersFromConfiguration(config =>
 - Avoid loading entire files into memory when possible
 - Use appropriate buffer sizes based on typical file sizes
 
-## Requirements
-
-- **.NET 8.0** or later
-- **Microsoft.Extensions.DependencyInjection.Abstractions** 10.0.0 or later (for DI support)
-
-## License
-
-MIT License - see LICENSE file for details.
-
 ## Related Packages
 
 - **[NPipeline](https://www.nuget.org/packages/NPipeline)** - Core pipeline framework
 - **[NPipeline.Analyzers](https://www.nuget.org/packages/NPipeline.Analyzers)** - Roslyn analyzers for pipeline development
 - **[NPipeline.Extensions](https://www.nuget.org/packages/NPipeline.Extensions)** - Additional pipeline components and utilities
 
-## Support
+## License
 
-- **Documentation**: [https://npipeline.readthedocs.io](https://npipeline.readthedocs.io)
-- **Issues**: [GitHub Issues](https://github.com/npipeline/NPipeline/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/npipeline/NPipeline/discussions)
-- **Discord**: [NPipeline Community](https://discord.gg/npipeline)
+MIT License - see LICENSE file for details.

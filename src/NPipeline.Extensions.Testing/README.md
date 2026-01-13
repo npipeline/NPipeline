@@ -16,6 +16,12 @@ resilience patterns and error handling.
 dotnet add package NPipeline.Extensions.Testing
 ```
 
+## Requirements
+
+- **.NET 8.0**, **9.0**, or **10.0**
+- **NPipeline** core package
+- **xUnit**, **NUnit**, or **MSTest** for test framework integration
+
 ## Key Features
 
 - **In-Memory Test Nodes**: Source and sink nodes that operate entirely in memory for fast, isolated testing
@@ -209,27 +215,6 @@ public class PerformanceTests
 }
 ```
 
-## Requirements
-
-- **.NET 8.0** or later
-- **NPipeline** core package
-- **xUnit**, **NUnit**, or **MSTest** for test framework integration
-- **FluentAssertions** (recommended) for readable assertions
-
 ## License
 
 MIT License - see LICENSE file for details.
-
-## Related Packages
-
-- **[NPipeline](https://www.nuget.org/packages/NPipeline)** - Core pipeline framework
-- **[NPipeline.Extensions](https://www.nuget.org/packages/NPipeline.Extensions)** - Additional pipeline components
-- **[NPipeline.Extensions.DependencyInjection](https://www.nuget.org/packages/NPipeline.Extensions.DependencyInjection)** - Dependency injection integration
-- **[NPipeline.Extensions.Parallelism](https://www.nuget.org/packages/NPipeline.Extensions.Parallelism)** - Parallel processing extensions
-
-## Support
-
-- **Documentation**: [https://npipeline.readthedocs.io](https://npipeline.readthedocs.io)
-- **Issues**: [GitHub Issues](https://github.com/npipeline/NPipeline/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/npipeline/NPipeline/discussions)
-- **Discord**: [NPipeline Community](https://discord.gg/npipeline)

@@ -61,6 +61,7 @@ var serviceProvider = services.BuildServiceProvider();
 ```
 
 **What gets registered:**
+
 - `IObservabilityCollector` (scoped) - collects metrics during execution
 - `IExecutionObserver` (scoped) - automatically wired to observer pipeline events
 - `IObservablePipelineContextFactory` (scoped) - creates contexts with observability enabled
@@ -69,6 +70,7 @@ var serviceProvider = services.BuildServiceProvider();
 - `IObservabilityFactory` → `DiObservabilityFactory` (scoped) - factory for sink resolution
 
 **Use when:**
+
 - You want quick observability without additional infrastructure
 - You're already using structured logging (Serilog, NLog, etc.)
 - You need metrics for local development or debugging
@@ -159,6 +161,7 @@ public sealed class CustomPipelineMetricsSink : IPipelineMetricsSink
 ```
 
 **Use when:**
+
 - You need to integrate with Application Insights, Prometheus, OpenTelemetry, or other monitoring systems
 - You want to transform or enrich metrics before emission
 - You need to send metrics to multiple destinations
@@ -196,6 +199,7 @@ var serviceProvider = services.BuildServiceProvider();
 ```
 
 **Use when:**
+
 - Your sinks require complex initialization logic
 - You need to resolve multiple dependencies from the service provider
 - You want to conditionally create sinks based on configuration
@@ -280,6 +284,7 @@ var serviceProvider = services.BuildServiceProvider();
 ```
 
 **Use when:**
+
 - You need to add custom logging or side effects during metrics collection
 - You want to transform or filter metrics before they're stored
 - You need to integrate with custom observability infrastructure
@@ -314,6 +319,7 @@ Understanding service lifetimes is crucial for proper configuration:
 ### Why Scoped Collector?
 
 The collector is scoped to ensure:
+
 - **Isolation**: Each pipeline run gets its own metrics, preventing cross-contamination
 - **Memory management**: Metrics are automatically disposed when the scope ends
 - **Thread safety**: Concurrent pipeline runs don't interfere with each other
@@ -321,6 +327,7 @@ The collector is scoped to ensure:
 ### Why Scoped Sinks?
 
 Sinks are scoped because:
+
 - **Stateless operation**: Most sinks don't maintain state between uses
 - **Dependency resolution**: Allows sinks to receive scoped dependencies
 - **Flexibility**: Enables different sink instances for different pipeline runs
@@ -348,6 +355,7 @@ public sealed record ObservabilityExtensionOptions
 **Default**: `EnableMemoryMetrics = false` (memory metrics disabled by default)
 
 **Important**: Memory metrics require BOTH:
+
 1. Extension-level configuration: `services.AddNPipelineObservability(ObservabilityExtensionOptions.WithMemoryMetrics)`
 2. Node-level configuration: `.WithObservability(builder, ObservabilityOptions.Full)` or set `RecordMemoryUsage = true`
 
@@ -650,6 +658,7 @@ public sealed class AggregatingMetricsSink : IMetricsSink
 **Problem**: Metrics are not being logged or sent to external systems.
 
 **Solutions**:
+
 1. Verify observability is registered: `services.AddNPipelineObservability()`
 2. Check that the pipeline is using DI: `await serviceProvider.RunPipelineAsync<T>()`
 3. Ensure logging is configured properly
@@ -660,6 +669,7 @@ public sealed class AggregatingMetricsSink : IMetricsSink
 **Problem**: Memory usage increases over time with long-running pipelines.
 
 **Solutions**:
+
 1. Ensure collectors are scoped, not singleton
 2. Verify sinks are transient and don't retain references
 3. Check for circular dependencies in sink implementations
@@ -670,6 +680,7 @@ public sealed class AggregatingMetricsSink : IMetricsSink
 **Problem**: Pipeline execution slows down when observability is enabled.
 
 **Solutions**:
+
 1. Use async sink implementations
 2. Implement batching or aggregation for external calls
 3. Consider disabling expensive metrics (memory, processor time) in production

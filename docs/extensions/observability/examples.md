@@ -122,6 +122,7 @@ public class Program
 ```
 
 **What happens automatically:**
+
 - `IObservablePipelineContextFactory` creates a context with `ExecutionObserver` pre-configured
 - No need to manually create `MetricsCollectingExecutionObserver` or wire it up
 - Metrics are collected by the framework during node execution

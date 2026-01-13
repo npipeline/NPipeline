@@ -77,6 +77,7 @@ public interface INodeMetrics
 - **Precision**: Millisecond
 
 **Calculation**:
+
 ```csharp
 DurationMs = (long)(EndTime - StartTime).TotalMilliseconds
 ```
@@ -146,6 +147,7 @@ DurationMs = (long)(EndTime - StartTime).TotalMilliseconds
 **Calculation**: Tracks the highest retry attempt number observed. If a node retries 3 times, this value will be 3.
 
 **Usage**: Identify unreliable nodes or external dependencies that frequently fail. High retry counts may indicate:
+
 - Unstable external services
 - Transient network issues
 - Insufficient timeout values
@@ -162,6 +164,7 @@ DurationMs = (long)(EndTime - StartTime).TotalMilliseconds
 - **Granularity**: Per-node managed memory allocation delta
 
 **Calculation**:
+
 ```csharp
 // Initial memory at node start
 var initialMemoryBytes = GC.GetTotalMemory(false);
@@ -179,6 +182,7 @@ var memoryDeltaMb = deltaBytes / (1024 * 1024);
 **Usage**: Identify memory-intensive nodes and optimize memory usage. Track memory growth over time to detect leaks.
 
 **Important Notes**:
+
 - This is a **per-node delta** of managed memory allocations, not global process memory
 - Memory is measured using `GC.GetTotalMemory(false)` which captures managed memory allocations
 - In parallel execution, this reflects the memory allocated during that specific node's execution
@@ -195,6 +199,7 @@ var memoryDeltaMb = deltaBytes / (1024 * 1024);
 - **Granularity**: Process-level (not node-specific)
 
 **Important Notes**:
+
 - This metric is **not available per-node** in the current implementation
 - The field is included for future compatibility but will always be `null` for node metrics
 - If you need CPU metrics, consider using system-level monitoring tools
@@ -209,6 +214,7 @@ var memoryDeltaMb = deltaBytes / (1024 * 1024);
 - **Precision**: Double-precision floating point
 
 **Calculation**:
+
 ```csharp
 AverageItemProcessingMs = DurationMs / ItemsProcessed
 ```
@@ -228,6 +234,7 @@ AverageItemProcessingMs = DurationMs / ItemsProcessed
 - **Precision**: Double-precision floating point
 
 **Calculation**:
+
 ```csharp
 ThroughputItemsPerSec = ItemsProcessed / (DurationMs / 1000.0)
 ```
@@ -248,6 +255,7 @@ ThroughputItemsPerSec = ItemsProcessed / (DurationMs / 1000.0)
 **Usage**: Understand thread assignment in parallel execution scenarios. Identify thread affinity issues or thread pool contention.
 
 **Important Notes**:
+
 - For single-threaded execution, this is the only thread used
 - For parallel execution, this is the thread that started execution
 - May be null if thread tracking is disabled
@@ -327,6 +335,7 @@ public interface IPipelineMetrics
 - **Precision**: Millisecond
 
 **Calculation**:
+
 ```csharp
 DurationMs = (long)(EndTime - StartTime).TotalMilliseconds
 ```
@@ -355,6 +364,7 @@ DurationMs = (long)(EndTime - StartTime).TotalMilliseconds
 - **Range**: 0 to `long.MaxValue`
 
 **Calculation**:
+
 ```csharp
 TotalItemsProcessed = NodeMetrics.Sum(m => m.ItemsProcessed)
 ```
@@ -362,6 +372,7 @@ TotalItemsProcessed = NodeMetrics.Sum(m => m.ItemsProcessed)
 **Usage**: Measure pipeline throughput and processing volume. Compare with duration to calculate overall pipeline throughput.
 
 **Important Notes**:
+
 - This is the sum across all nodes, not unique items
 - For pipelines with multiple nodes, this may be greater than the actual input count
 - Use `NodeMetrics[0].ItemsProcessed` for the actual input count (first node)
@@ -376,6 +387,7 @@ TotalItemsProcessed = NodeMetrics.Sum(m => m.ItemsProcessed)
 **Usage**: Analyze individual node performance within the pipeline context. Identify bottlenecks and optimize specific nodes.
 
 **Access Patterns**:
+
 ```csharp
 // Get all node metrics
 var allNodeMetrics = pipelineMetrics.NodeMetrics;
@@ -417,11 +429,13 @@ ThroughputItemsPerSec = ItemsProcessed / (DurationMs / 1000.0)
 ```
 
 **Example**:
+
 - ItemsProcessed: 5000
 - DurationMs: 2500
 - ThroughputItemsPerSec: 5000 / (2500 / 1000) = 2000 items/sec
 
 **Edge Cases**:
+
 - If `DurationMs` is null or zero, throughput is null
 - If `ItemsProcessed` is zero, throughput is zero
 - Throughput is calculated after node completion, not during execution
@@ -445,6 +459,7 @@ var memoryDeltaMb = deltaBytes / (1024 * 1024);
 ```
 
 **Important Considerations**:
+
 - Memory is measured using `GC.GetTotalMemory(false)` which captures managed memory allocations
 - This is a **per-node delta**, not global process memory or peak working set
 - In parallel execution, each node gets its own isolated memory measurement
@@ -462,6 +477,7 @@ RetryCount = Math.Max(currentRetryCount, newRetryCount)
 ```
 
 **Behavior**:
+
 - If a node retries 3 times (attempts 1, 2, 3), `RetryCount` will be 3
 - If multiple retries occur with different reasons, only the count is retained
 - Retry reasons are not currently captured in metrics (see TODO in source)
@@ -477,6 +493,7 @@ private readonly ConcurrentDictionary<string, NodeMetricsBuilder> _nodeMetrics =
 ```
 
 **Thread-Safety Guarantees**:
+
 - Multiple nodes can record metrics simultaneously without race conditions
 - `ConcurrentDictionary` provides atomic operations for adding and updating entries
 - Each node has its own `NodeMetricsBuilder` instance
@@ -494,6 +511,7 @@ public void RecordItemMetrics(long itemsProcessed, long itemsEmitted)
 ```
 
 **Thread-Safety Guarantees**:
+
 - `Interlocked.Add` ensures atomic addition without locks
 - Multiple threads can increment counters simultaneously
 - No lost updates or race conditions
@@ -510,6 +528,7 @@ public void RecordRetry(int retryCount)
 ```
 
 **Thread-Safety Guarantees**:
+
 - `Interlocked.Exchange` ensures atomic updates
 - Maximum retry count is always retained
 - No race conditions when multiple retries occur
@@ -527,6 +546,7 @@ public sealed record NodeMetrics(
 ```
 
 **Thread-Safety Guarantees**:
+
 - Records are immutable and safe to share across threads
 - No synchronization needed when reading built metrics
 - Safe to store in collections accessed by multiple threads
@@ -540,6 +560,7 @@ services.TryAddScoped<IObservabilityCollector, ObservabilityCollector>();
 ```
 
 **Thread-Safety Guarantees**:
+
 - Each pipeline run gets its own collector instance
 - Concurrent pipeline runs don't interfere with each other
 - Metrics are automatically disposed when the scope ends

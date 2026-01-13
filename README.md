@@ -22,16 +22,6 @@ real-time data streams. NPipeline is designed with performance in mind:
 Create sophisticated workflows with multiple data sources, parallel processing, joins, and branching operations. Build complex DAGs (Directed Acyclic
 Graphs) with ease.
 
-```mermaid
-graph LR
-    A[Source Node<br/>Generates data stream] --> B[Transform Node<br/>Processes data items]
-    B --> C[Sink Node<br/>Consumes and finalizes data]
-
-    style A fill:#e1f5fe
-    style B fill:#f3e5f5
-    style C fill:#e8f5e9
-```
-
 ### Type-Safe by Design
 
 Strongly-typed nodes with compile-time validation prevent common runtime errors. Your IDE will catch type mismatches before you run your code.
@@ -113,13 +103,7 @@ public class OrderSource : SourceNode<Order>
 {
     public override IDataPipe<Order> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
-        var orders = new[]
-        {
-            new Order(1, "Alice", 100m),
-            new Order(2, "Bob", 250m),
-            new Order(3, "Carol", 75m)
-        };
-
+        var orders = new[] { new Order(1, "Alice", 100m), new Order(2, "Bob", 250m), new Order(3, "Carol", 75m) };
         return new StreamingDataPipe<Order>(orders.ToAsyncEnumerable());
     }
 }
@@ -130,7 +114,6 @@ public class TaxCalculator : TransformNode<Order, ProcessedOrder>
     {
         var tax = order.Amount * 0.08m;
         var total = order.Amount + tax;
-
         return Task.FromResult(new ProcessedOrder(order.Id, order.Customer, order.Amount, tax, total));
     }
 }
@@ -173,18 +156,22 @@ await services.RunPipelineAsync<OrderPipeline>();
 NPipeline is modular - install only what you need.
 
 While the core NPipeline library provides a powerful foundation for streaming data pipelines, the available extensions and connectors provide enhanced opt-in
-functionality and features like enhanced parallelism, simplifying testing workflows, and connecting to external systems with minimal friction.
+functionality and features like data lineage tracking, observability with metrics and tracing, enhanced parallelism, simplifying testing workflows, and connecting to external systems with minimal friction.
 
 | Package | Purpose |
 | --- | --- |
 | **NPipeline** | Core streaming pipeline functionality (zero dependencies) |
 | **NPipeline.Analyzers** | Roslyn analyzers for compile-time validation, style guidance, and developer guardrails |
+| **NPipeline.Extensions.Composition** | Pipeline composition for treating entire pipelines as nodes within larger pipelines |
 | **NPipeline.Extensions.DependencyInjection** | Integration with Microsoft DI container |
 | **NPipeline.Extensions.Lineage** | Data lineage tracking and provenance for governance, auditing, and debugging |
+| **NPipeline.Extensions.Nodes** | Ready-made, granular nodes for common data processing tasks (cleansing, validation, transformation, enrichment, filtering) |
 | **NPipeline.Extensions.Observability** | Observability and telemetry support for pipeline monitoring |
 | **NPipeline.Extensions.Observability.OpenTelemetry** | OpenTelemetry integration for distributed tracing and metrics |
-| **NPipeline.Extensions.Parallelism** | Parallel processing with TPL Dataflow |
-| **NPipeline.Extensions.Testing** | Testing utilities and extensions for assertion libraries like FluentAssertions and AwesomeAssertions |
+| **NPipeline.Extensions.Parallelism** | Parallel processing with TPL Dataflow and configurable backpressure strategies |
+| **NPipeline.Extensions.Testing** | Core testing utilities with in-memory nodes, test harness, and assertion helpers |
+| **NPipeline.Extensions.Testing.FluentAssertions** | FluentAssertions extensions for pipeline testing |
+| **NPipeline.Extensions.Testing.AwesomeAssertions** | AwesomeAssertions extensions for pipeline testing |
 | **NPipeline.Connectors** | Core abstractions for data format/storage decoupling |
 | **NPipeline.Connectors.Csv** | CSV source and sink nodes |
 | **NPipeline.Connectors.Excel** | Excel source and sink nodes for XLS and XLSX files |
@@ -193,9 +180,9 @@ functionality and features like enhanced parallelism, simplifying testing workfl
 
 ## What's Next?
 
-1. **[Installation](docs/getting-started/installation.md)** - Set up NPipeline in your project
-2. **[Quick Start](docs/getting-started/quick-start.md)** - Build a complete pipeline step-by-step
-3. **[Core Concepts](docs/core-concepts/index.md)** - Learn the fundamentals of NPipeline
+1. **[Installation](https://www.npipeline.dev/docs/getting-started/installation)** - Set up NPipeline in your project
+2. **[Quick Start](https://www.npipeline.dev/docs/getting-started/quick-start)** - Build a complete pipeline step-by-step
+3. **[Core Concepts](https://www.npipeline.dev/docs/core-concepts)** - Learn the fundamentals of NPipeline
 
 ## Transparency: AI-Assisted Development
 
@@ -213,4 +200,4 @@ Contributions are welcome! Please feel free to open an issue or submit a pull re
 
 ## License
 
-NPipeline is licensed under the [MIT License](LICENSE).
+MIT License - see LICENSE file for details.

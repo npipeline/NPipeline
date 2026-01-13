@@ -26,6 +26,13 @@ For OpenTelemetry backend integration, also install:
 dotnet add package NPipeline.Extensions.Observability.OpenTelemetry
 ```
 
+## Requirements
+
+- **.NET 8.0, 9.0, or 10.0**
+- **Microsoft.Extensions.DependencyInjection.Abstractions** 10.0.0 or later
+- **Microsoft.Extensions.Logging.Abstractions** 10.0.0 or later
+- **NPipeline** core package
+
 ## Quick Start
 
 The simplest way to enable automatic observability is to use `IObservablePipelineContextFactory`:
@@ -237,10 +244,11 @@ Memory metrics are measured as **per-node deltas** using `GC.GetTotalMemory(fals
 
 ## Documentation
 
-- [Configuration Guide](../../docs/extensions/observability-configuration.md)
-- [Usage Examples](../../docs/extensions/observability-examples.md)
-- [Metrics Reference](../../docs/extensions/observability-metrics.md)
-- [Main Observability Documentation](../../docs/extensions/observability.md)
+- [Configuration Guide](https://www.npipeline.dev/docs/extensions/observability/configuration)
+- [Usage Examples](https://www.npipeline.dev/docs/extensions/observability/examples)
+- [Metrics Reference](https://www.npipeline.dev/docs/extensions/observability/metrics)
+- [Distributed Tracing](https://www.npipeline.dev/docs/extensions/observability/tracing)
+- [Main Observability Documentation](https://www.npipeline.dev/docs/extensions/observability/)
 
 ## Thread Safety
 
@@ -342,9 +350,6 @@ var tracerProvider = new TracerProviderBuilder()
     .Build();
 ```
 
-For detailed tracing documentation, see [Distributed Tracing](../../docs/extensions/observability/tracing.md).
-
 ## License
 
-MIT License - See LICENSE file in repository root
-
+MIT License - see LICENSE file for details.

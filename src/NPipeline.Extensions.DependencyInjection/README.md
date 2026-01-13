@@ -15,6 +15,12 @@ resilience patterns and error handling.
 dotnet add package NPipeline.Extensions.DependencyInjection
 ```
 
+## Requirements
+
+- **.NET 8.0, 9.0, or 10.0**
+- **Microsoft.Extensions.DependencyInjection.Abstractions** 10.0.0 or later
+- **NPipeline** core package
+
 ## Features
 
 - **Automatic Node Discovery**: Scan assemblies and automatically register pipeline components
@@ -344,26 +350,6 @@ services.AddNPipeline(builder =>
 });
 ```
 
-## Requirements
-
-- **.NET 8.0** or later
-- **Microsoft.Extensions.DependencyInjection.Abstractions** 10.0.0 or later
-- **NPipeline** core package
-
 ## License
 
 MIT License - see LICENSE file for details.
-
-## Related Packages
-
-- **[NPipeline](https://www.nuget.org/packages/NPipeline)** - Core pipeline framework
-- **[NPipeline.Extensions](https://www.nuget.org/packages/NPipeline.Extensions)** - Additional pipeline components
-- **[NPipeline.Extensions.Parallelism](https://www.nuget.org/packages/NPipeline.Extensions.Parallelism)** - Parallel processing extensions
-- **[NPipeline.Extensions.Testing](https://www.nuget.org/packages/NPipeline.Extensions.Testing)** - Testing utilities
-
-## Support
-
-- **Documentation**: [https://npipeline.readthedocs.io](https://npipeline.readthedocs.io)
-- **Issues**: [GitHub Issues](https://github.com/npipeline/NPipeline/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/npipeline/NPipeline/discussions)
-- **Discord**: [NPipeline Community](https://discord.gg/npipeline)

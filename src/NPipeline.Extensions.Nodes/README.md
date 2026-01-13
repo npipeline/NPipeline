@@ -20,10 +20,10 @@ focuses on:
 dotnet add package NPipeline.Extensions.Nodes
 ```
 
-### Requirements
+## Requirements
 
-- .NET 8.0, 9.0, or 10.0
-- NPipeline 0.1.0 or later
+- **.NET 8.0, 9.0, or 10.0**
+- **NPipeline** core package
 
 ## Quick Start
 
@@ -147,21 +147,6 @@ All nodes are stateless and thread-safe by design:
 - No shared mutable state
 - Safe for concurrent execution across multiple threads
 
-## Contributing
-
-Contributions are welcome! Please ensure:
-
-- Unit tests for all new code
-- XML documentation for public APIs
-- Follow existing code style and patterns
-- No external dependencies added without discussion
-
 ## License
 
-MIT License - see LICENSE file for details
-
-## Support
-
-- **Issues**: Report bugs at [GitHub Issues](https://github.com/NPipeline/NPipeline/issues)
-- **Documentation**: Full docs at [NPipeline Docs](https://npipeline.dev)
-- **Discussions**: Questions at [GitHub Discussions](https://github.com/NPipeline/NPipeline/discussions)
+MIT License - see LICENSE file for details.

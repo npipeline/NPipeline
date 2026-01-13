@@ -15,6 +15,13 @@ resilience patterns and error handling.
 dotnet add package NPipeline.Connectors.Excel
 ```
 
+## Requirements
+
+- **.NET 8.0, 9.0, or 10.0**
+- **ExcelDataReader 3.7.0+** (automatically included as a dependency)
+- **DocumentFormat.OpenXml 3.0.0+** (automatically included as a dependency)
+- **NPipeline.Connectors** (automatically included as a dependency)
+
 ## Features
 
 - **Excel Source Node**: Read Excel files (both XLS and XLSX formats) and deserialize to strongly-typed objects
@@ -200,14 +207,7 @@ The Excel connector supports automatic type conversion for the following .NET ty
 ### Writing
 
 - **XLSX**: Modern Open XML Excel format (supported via DocumentFormat.OpenXml)
-- **XLS**: Not supported for writing (use XLSX format instead)
-
-## Requirements
-
-- **.NET 8.0, 9.0, or 10.0**
-- **ExcelDataReader 3.7.0+** (automatically included as a dependency)
-- **DocumentFormat.OpenXml 3.0.0+** (automatically included as a dependency)
-- **NPipeline.Connectors** (automatically included as a dependency)
+- **XLS**: NOT supported for writing (use XLSX format instead)
 
 ## Performance Considerations
 
@@ -241,10 +241,6 @@ The Excel connector supports automatic type conversion for the following .NET ty
 5. **Validate data types**: Ensure your model properties match the data types in your Excel files
 6. **Handle encoding for legacy XLS**: Specify an explicit `Encoding` when reading legacy XLS files with text data
 
-## License
-
-MIT License - see LICENSE file for details.
-
 ## Related Packages
 
 - **[NPipeline](https://www.nuget.org/packages/NPipeline)** - Core pipeline framework
@@ -252,9 +248,6 @@ MIT License - see LICENSE file for details.
 - **[NPipeline.Extensions.DependencyInjection](https://www.nuget.org/packages/NPipeline.Extensions.DependencyInjection)** - Dependency injection integration
 - **[NPipeline.Connectors.Csv](https://www.nuget.org/packages/NPipeline.Connectors.Csv)** - CSV connector for alternative tabular data processing
 
-## Support
+## License
 
-- **Documentation**: [https://npipeline.readthedocs.io](https://npipeline.readthedocs.io)
-- **Issues**: [GitHub Issues](https://github.com/npipeline/NPipeline/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/npipeline/NPipeline/discussions)
-- **Discord**: [NPipeline Community](https://discord.gg/npipeline)
+MIT License - see LICENSE file for details.
