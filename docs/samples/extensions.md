@@ -24,7 +24,7 @@ These samples demonstrate how to use NPipeline extension packages to enhance you
 
 **Key takeaways:** Understanding how to implement data lineage tracking for debugging, auditing, and compliance. Learning sampling strategies to balance visibility with performance overhead.
 
-**→ [Lineage Extension Documentation](../extensions/lineage/index.md)** | **→ [Sample README](../../../samples/Sample_LineageExtension/README.md)**
+**→ [Lineage Extension Documentation](../extensions/lineage/index.md)**
 
 ---
 
@@ -43,7 +43,7 @@ These samples demonstrate how to use NPipeline extension packages to enhance you
 
 **Key takeaways:** Using pre-built nodes to accelerate development and ensure consistent data processing patterns. Understanding the fluent builder API for configuring node behavior.
 
-**→ [Nodes Extension Documentation](../extensions/nodes/index.md)** | **→ [Sample README](../../../samples/Sample_NodesExtension/README.md)**
+**→ [Nodes Extension Documentation](../extensions/nodes/index.md)**
 
 ---
 
@@ -62,7 +62,7 @@ These samples demonstrate how to use NPipeline extension packages to enhance you
 
 **Key takeaways:** Implementing production-grade monitoring for pipelines. Understanding metrics collection patterns and using observability data for performance tuning and troubleshooting.
 
-**→ [Observability Extension Documentation](../extensions/observability/index.md)** | **→ [Sample README](../../../samples/Sample_ObservabilityExtension/README.md)**
+**→ [Observability Extension Documentation](../extensions/observability/index.md)**
 
 ---
 
@@ -80,7 +80,7 @@ These samples demonstrate how to use NPipeline extension packages to enhance you
 
 **Key takeaways:** Building modular, reusable pipeline components. Understanding context control and inheritance patterns in composite pipelines. Creating maintainable pipeline architectures.
 
-**→ [Composition Extension Documentation](../extensions/composition/index.md)** | **→ [Sample README](../../../samples/Sample_Composition/README.md)**
+**→ [Composition Extension Documentation](../extensions/composition/index.md)**
 
 ---
 

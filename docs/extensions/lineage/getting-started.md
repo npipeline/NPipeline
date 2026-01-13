@@ -181,4 +181,3 @@ With default configuration, lineage tracking captures:
 - **[Performance](./performance.md)** - Learn about performance characteristics and optimization strategies
 - **[Use Cases](./use-cases.md)** - Explore common use cases and advanced examples
 - **[Extension Samples](../../samples/extensions.md)** - Sample applications for all extensions including lineage
-- **[Lineage Sample README](../../../samples/Sample_LineageExtension/README.md)** - Walk through a complete lineage extension sample application

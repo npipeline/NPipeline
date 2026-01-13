@@ -26,8 +26,6 @@ The Lineage extension documentation is now organized into the following sections
 
 ## Quick Links
 
-- **[Extension README](../../src/NPipeline.Extensions.Lineage/README.md)** - Complete API reference
 - **[Extension Samples](../samples/extensions.md)** - Sample applications for all extensions
-- **[Lineage Sample README](../../../samples/Sample_LineageExtension/README.md)** - Lineage extension sample walkthrough
 - **[NPipeline Core Concepts](../core-concepts/index.md)** - Core pipeline concepts
 - **[NPipeline Extensions](index.md)** - Other available extensions
