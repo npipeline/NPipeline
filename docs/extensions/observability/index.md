@@ -4,19 +4,14 @@ Comprehensive metrics collection and monitoring for NPipeline pipelines.
 
 ## Contents
 
-### Getting Started
-
-- **[Getting Started Guide](./getting-started.md)** - Quick start and basic usage
-- **[Advanced Patterns](./advanced-patterns.md)** - Advanced scenarios and integrations
-
 ### Reference Documentation
 
 - **[Configuration](./configuration.md)** - DI setup and configuration options
 - **[Metrics Reference](./metrics.md)** - Complete metrics documentation
 - **[Distributed Tracing](./tracing.md)** - Core tracing abstraction and building custom tracers
+- **[Advanced Patterns](./advanced-patterns.md)** - Advanced scenarios and integrations
 - **[OpenTelemetry Integration](./opentelemetry.md)** - Production-grade tracing with OpenTelemetry backends
 - **[Examples](./examples.md)** - Real-world usage examples
-- **[Overview](./overview.md)** - Comprehensive guide
 
 ## Features Overview
 
