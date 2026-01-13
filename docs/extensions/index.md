@@ -19,7 +19,7 @@ This section details the officially supported extensions and how to leverage the
 
 * **[Dependency Injection](dependency-injection.md)**: Seamlessly integrate NPipeline with your favorite Dependency Injection container. Learn how to use constructor injection in your nodes and run pipelines with the `RunPipelineAsync<TDefinition>()` extension method.
 
-* **[Lineage](lineage.md)**: Comprehensive data lineage tracking and provenance capabilities. Track the complete journey of each data item from source to destination, enabling data governance, debugging, audit trails, and data discovery.
+* **[Lineage](lineage/index.md)**: Comprehensive data lineage tracking and provenance capabilities. Track the complete journey of each data item from source to destination, enabling data governance, debugging, audit trails, and data discovery.
 
 * **[Nodes](nodes/index.md)**: Pre-built, production-ready nodes for common data processing operations. Includes cleansing, validation, filtering, and type conversion nodes for string, numeric, datetime, and collection data.
 
@@ -101,7 +101,7 @@ dotnet add package FluentAssertions
 ## Next Steps
 
 * **[Dependency Injection](dependency-injection.md)**: Learn about constructor injection and service lifetime management
-* **[Lineage](lineage.md)**: Explore data lineage tracking for governance and debugging
+* **[Lineage](lineage/index.md)**: Explore data lineage tracking for governance and debugging
 * **[Parallelism](parallelism.md)**: Explore parallel processing capabilities and configuration options
 * **[Testing](testing/index.md)**: Discover comprehensive testing utilities and assertion libraries
 * **[Observability](observability/index.md)**: Learn about metrics collection and monitoring for production pipelines
