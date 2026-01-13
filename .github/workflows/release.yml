@@ -52,7 +52,12 @@ jobs:
         run: dotnet test --no-build --configuration Release --verbosity normal
 
       - name: Pack NuGet packages
-        run: dotnet pack src/**/*.csproj --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p ./artifacts/packages
+          find src -maxdepth 2 -name "*.csproj" | while read csproj; do
+            echo "Packing: $csproj"
+            dotnet pack "$csproj" --no-build --configuration Release --output ./artifacts/packages -p:Version=${{ steps.version.outputs.version }}
+          done
 
       - name: Upload packages as artifacts
         uses: actions/upload-artifact@v6
