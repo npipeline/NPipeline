@@ -1,8 +1,9 @@
 {
   "label": "Lineage",
-  "position": 6,
+  "position": 3,
   "link": {
     "type": "generated-index",
     "description": "NPipeline Lineage extension documentation"
   }
 }
+

@@ -1,7 +1,7 @@
 ---
 title: Parallelism
 description: Enhance your NPipeline's performance by leveraging parallel processing capabilities.
-sidebar_position: 2
+sidebar_position: 6
 ---
 
 # Parallelism
@@ -213,7 +213,7 @@ The [`MetricsInterval`](../../../src/NPipeline.Extensions.Parallelism/ParallelOp
 
 - **Default value**: 1 second
 - **Purpose**: Determines the interval at which performance metrics (throughput, queue depth, worker utilization) are collected and reported
-- **When to adjust**: 
+- **When to adjust**:
   - Decrease for more granular monitoring in high-frequency trading or real-time analytics
   - Increase to reduce monitoring overhead in batch processing scenarios
   - Set to longer intervals when using custom metrics collection systems that batch data
@@ -265,6 +265,7 @@ var highVolumeTransform = builder.AddTransform<MyTransform, int, string>()
 ```
 
 When to adjust the default queue length:
+
 - **Increase** for high-throughput scenarios with bursty input patterns
 - **Decrease** for memory-constrained environments or when processing large items
 - **Keep default** for most typical workloads where balanced performance is desired
@@ -278,6 +279,7 @@ One of the most important aspects of parallel processing is understanding and ma
 > **DO NOT access `context.Items` or `context.Parameters` during parallel item processing.**
 >
 > These dictionaries are NOT thread-safe. If multiple worker threads try to access them simultaneously, you will get data races that cause:
+>
 > - Silent data corruption
 > - Non-deterministic crashes
 > - Impossible-to-reproduce bugs that only show up under production load
@@ -309,6 +311,7 @@ public class UnsafeMetricsTransform : TransformNode<int, int>
 ```
 
 **Why this breaks:**
+
 - Thread A reads count = 5
 - Thread B reads count = 5 (before A writes)
 - Thread A writes count = 6
@@ -342,6 +345,7 @@ public class SafeMetricsTransform : TransformNode<int, int>
 ```
 
 **Why this is safe:**
+
 - State manager uses internal locking for all operations
 - All updates are atomic and isolated
 - No data races - thread-safe by design
@@ -469,6 +473,7 @@ public class CountingTransform : TransformNode<int, int>
 ## Parallel Execution Configuration Methods
 
 NPipeline provides multiple ways to configure parallel execution, each suited to different needs:
+
 - **Preset API**: Best for common workload patterns with automatically optimized defaults
 - **Builder API**: Best for flexible customization while starting from sensible defaults
 - **Manual Configuration API**: Best for advanced performance tuning and complex scenarios
@@ -494,6 +499,7 @@ public sealed class SimplifiedParallelPipeline : IPipelineDefinition
 ```
 
 That's it! The `RunParallel` method with `ParallelWorkloadType.IoBound` automatically configures:
+
 - Degree of parallelism: `ProcessorCount * 4` (hide I/O latency)
 - Queue length: `ProcessorCount * 8`
 - Output buffer: `ProcessorCount * 16`
@@ -504,6 +510,7 @@ That's it! The `RunParallel` method with `ParallelWorkloadType.IoBound` automati
 NPipeline provides four built-in presets optimized for common workload patterns:
 
 #### `ParallelWorkloadType.General` (Default)
+
 **Best for**: Mixed CPU and I/O workloads, when you're unsure
 
 ```csharp
@@ -513,11 +520,13 @@ builder
 ```
 
 **Configuration**:
+
 - DOP: `ProcessorCount * 2`
 - Queue: `ProcessorCount * 4`
 - Buffer: `ProcessorCount * 8`
 
 #### `ParallelWorkloadType.CpuBound`
+
 **Best for**: CPU-intensive operations, mathematical computations, DSP
 
 ```csharp
@@ -527,11 +536,13 @@ builder
 ```
 
 **Configuration** (avoids oversubscription):
+
 - DOP: `ProcessorCount` (1:1 with CPU cores)
 - Queue: `ProcessorCount * 2`
 - Buffer: `ProcessorCount * 4`
 
 #### `ParallelWorkloadType.IoBound`
+
 **Best for**: File I/O, database operations, local service calls
 
 ```csharp
@@ -541,11 +552,13 @@ builder
 ```
 
 **Configuration** (high parallelism hides I/O latency):
+
 - DOP: `ProcessorCount * 4`
 - Queue: `ProcessorCount * 8`
 - Buffer: `ProcessorCount * 16`
 
 #### `ParallelWorkloadType.NetworkBound`
+
 **Best for**: HTTP calls, remote service calls, high-latency network operations
 
 ```csharp
@@ -555,6 +568,7 @@ builder
 ```
 
 **Configuration** (maximum throughput under high latency):
+
 - DOP: `Min(ProcessorCount * 8, 100)` (capped at 100)
 - Queue: `200` (large buffer)
 - Buffer: `400`
@@ -613,6 +627,7 @@ public class ParallelOptionsBuilder
 | **Learning curve** | Steeper | Gentle | Gradual |
 
 **Manual Configuration**:
+
 ```csharp
 .WithBlockingParallelism(
     builder,
@@ -622,11 +637,13 @@ public class ParallelOptionsBuilder
 ```
 
 **Preset API**:
+
 ```csharp
 .RunParallel(builder, ParallelWorkloadType.IoBound)
 ```
 
 **Builder API**:
+
 ```csharp
 .RunParallel(builder, opt => opt
     .MaxDegreeOfParallelism(Environment.ProcessorCount * 4)
@@ -787,4 +804,3 @@ By strategically applying parallelism, you can significantly boost the processin
 - **[Thread Safety Guidelines](../core-concepts/thread-safety.md)**: Comprehensive guide to thread safety and shared state management
 - **[Dependency Injection](dependency-injection.md)**: Learn how to integrate NPipeline with dependency injection frameworks
 - **[Testing Pipelines](testing/index.md)**: Understand how to effectively test your parallel pipelines
-

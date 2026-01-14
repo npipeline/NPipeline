@@ -1,7 +1,7 @@
 ---
 title: Dependency Injection
 description: Integrate NPipeline with .NET's dependency injection framework to manage dependencies in your nodes and pipelines.
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 # Dependency Injection
@@ -73,7 +73,6 @@ public class Program
 - Convenient for larger projects with many components
 - Works with components in multiple assemblies
 
-
 ### Fluent Configuration (Manual Registration)
 
 Use this approach for explicit, fine-grained control over service registration. This is ideal when:
@@ -81,7 +80,6 @@ Use this approach for explicit, fine-grained control over service registration. 
 - You want to avoid reflection overhead
 - You have a specific set of components to register
 - You need custom `ServiceLifetime` control for certain components
-
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
@@ -131,7 +129,6 @@ public class Program
 - Flexible `ServiceLifetime` control per component
 - Better for small/medium projects or performance-critical scenarios
 - Can mix manual registration with selective assembly scanning
-
 
 ### Mixed Approach (Manual + Assembly Scanning)
 
@@ -194,27 +191,27 @@ ScanAssemblies(params Assembly[] assemblies)
 
 `AddNPipeline` automatically scans the provided assemblies for:
 
-* **`IPipelineDefinition`**: Your pipeline definitions are registered as transient services, meaning a new instance is created for each pipeline run.
-* **`INode`**: Your custom node implementations (sources, transforms, sinks, join nodes, aggregation nodes) are registered as transient services by default. This ensures node isolation between pipeline runs.
-* **`INodeErrorHandler` / `IPipelineErrorHandler`**: Custom error handlers are also registered.
-* **`IDeadLetterSink`**: Dead letter sink implementations for handling failed items.
-* **`ILineageSink` / `IPipelineLineageSink`**: Lineage tracking sink implementations.
-* **`IPipelineLineageSinkProvider`**: Providers for creating lineage sinks dynamically.
+- **`IPipelineDefinition`**: Your pipeline definitions are registered as transient services, meaning a new instance is created for each pipeline run.
+- **`INode`**: Your custom node implementations (sources, transforms, sinks, join nodes, aggregation nodes) are registered as transient services by default. This ensures node isolation between pipeline runs.
+- **`INodeErrorHandler` / `IPipelineErrorHandler`**: Custom error handlers are also registered.
+- **`IDeadLetterSink`**: Dead letter sink implementations for handling failed items.
+- **`ILineageSink` / `IPipelineLineageSink`**: Lineage tracking sink implementations.
+- **`IPipelineLineageSinkProvider`**: Providers for creating lineage sinks dynamically.
 
 ### Core Services Registered
 
 In addition to scanning for your implementations, `AddNPipeline` registers these core NPipeline services:
 
-* **`IPipelineFactory`**: Factory for creating pipeline instances
-* **`IPipelineRunner`**: Main pipeline execution service
-* **`INodeFactory`**: DI-aware node factory (replaces default factory)
-* **`IErrorHandlerFactory`**: Factory for creating error handlers and dead-letter sinks
-* **`ILineageFactory`**: Factory for creating lineage sinks and resolving lineage collectors
-* **`IObservabilityFactory`**: Factory for resolving observability collectors
-* **Execution services**: CountingService, MergeStrategySelector, PipeMergeService, etc.
-* **Observability services**: LineageService, BranchService, NodeExecutor, etc.
-* **Error handling**: ErrorHandlingService
-* **Persistence**: PersistenceService
+- **`IPipelineFactory`**: Factory for creating pipeline instances
+- **`IPipelineRunner`**: Main pipeline execution service
+- **`INodeFactory`**: DI-aware node factory (replaces default factory)
+- **`IErrorHandlerFactory`**: Factory for creating error handlers and dead-letter sinks
+- **`ILineageFactory`**: Factory for creating lineage sinks and resolving lineage collectors
+- **`IObservabilityFactory`**: Factory for resolving observability collectors
+- **Execution services**: CountingService, MergeStrategySelector, PipeMergeService, etc.
+- **Observability services**: LineageService, BranchService, NodeExecutor, etc.
+- **Error handling**: ErrorHandlingService
+- **Persistence**: PersistenceService
 
 ### Overriding Default Registrations
 
@@ -452,20 +449,20 @@ When using dependency injection, the `DiContainerNodeFactory` is registered inst
 
 ### Service Lifetimes in Pipelines
 
-* **Transient**: New instance created for each node (default for nodes)
-* **Singleton**: Single instance shared across all pipeline runs
-* **Scoped**: Instance shared within a single pipeline execution
+- **Transient**: New instance created for each node (default for nodes)
+- **Singleton**: Single instance shared across all pipeline runs
+- **Scoped**: Instance shared within a single pipeline execution
 
 ## Benefits of Using Dependency Injection
 
-* **Decoupling**: Your nodes no longer need to create their own dependencies. They simply declare what they need in their constructors.
-* **Lifecycle Management**: The DI container manages the lifetime of your services (singleton, scoped, transient).
-* **Testability**: It becomes much easier to test your nodes by providing mock implementations of their dependencies.
-* **Configuration**: You can easily inject configuration objects (`IOptions<T>`) into your nodes to change their behavior without modifying code.
-* **Service Discovery**: The DI container automatically discovers and registers your pipeline components.
+- **Decoupling**: Your nodes no longer need to create their own dependencies. They simply declare what they need in their constructors.
+- **Lifecycle Management**: The DI container manages the lifetime of your services (singleton, scoped, transient).
+- **Testability**: It becomes much easier to test your nodes by providing mock implementations of their dependencies.
+- **Configuration**: You can easily inject configuration objects (`IOptions<T>`) into your nodes to change their behavior without modifying code.
+- **Service Discovery**: The DI container automatically discovers and registers your pipeline components.
 
 ## Related Topics
 
-* **[Parallelism](parallelism.md)**: Learn how to execute parts of your pipeline in parallel to improve performance.
-* **[Testing Extensions](./testing/index.md)**: Discover utilities for testing your pipelines and nodes effectively.
-* **[NPipeline Extensions Index](../index.md)**: Return to the extensions overview.
+- **[Parallelism](parallelism.md)**: Learn how to execute parts of your pipeline in parallel to improve performance.
+- **[Testing Extensions](./testing/index.md)**: Discover utilities for testing your pipelines and nodes effectively.
+- **[NPipeline Extensions Index](../index.md)**: Return to the extensions overview.

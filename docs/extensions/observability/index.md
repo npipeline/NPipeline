@@ -1,3 +1,10 @@
+---
+title: Observability
+description: Comprehensive metrics collection and monitoring for NPipeline pipelines.
+sidebar_position: 5
+slug: /extensions/observability
+---
+
 # NPipeline Observability Extension
 
 Comprehensive metrics collection and monitoring for NPipeline pipelines.

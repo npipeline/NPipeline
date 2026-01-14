@@ -1,7 +1,7 @@
 ---
 title: NPipeline Lineage Extension
 description: Comprehensive data lineage tracking and provenance capabilities for NPipeline pipelines.
-sidebar_position: 6
+sidebar_position: 3
 slug: /extensions/lineage
 ---
 
