@@ -463,6 +463,6 @@ When using dependency injection, the `DiContainerNodeFactory` is registered inst
 
 ## Related Topics
 
-- **[Parallelism](parallelism.md)**: Learn how to execute parts of your pipeline in parallel to improve performance.
+- **[Parallelism](parallelism/index.md)**: Learn how to execute parts of your pipeline in parallel to improve performance.
 - **[Testing Extensions](./testing/index.md)**: Discover utilities for testing your pipelines and nodes effectively.
 - **[NPipeline Extensions Index](../index.md)**: Return to the extensions overview.

@@ -5,7 +5,7 @@ sidebar_position: 1
 slug: /getting-started
 ---
 
-Welcome to NPipeline! Ready to build your first data pipeline? Follow these three steps to get up and running in minutes.
+Welcome to NPipeline! Ready to build your first data pipeline? Follow these steps to get up and running.
 
 ## See It in Action (60 seconds)
 
@@ -25,7 +25,6 @@ You'll see a working pipeline that processes data in real-time—streaming, tran
 
 1. **[Installation](./installation.md)** - Get NPipeline set up in your development environment (2 minutes)
 2. **[Quick Start](./quick-start.md)** - Build your first working pipeline (15 minutes)
-3. **[Why NPipeline?](./why-npipeline.md)** - Understand the philosophy, design principles, and zero-allocation fast paths
 
 ---
 
@@ -34,7 +33,7 @@ You'll see a working pipeline that processes data in real-time—streaming, tran
 Once you've completed the quick start, explore these resources:
 
 * **[Core Concepts](../core-concepts/index.md)** - Learn the building blocks (sources, transforms, sinks, graph execution)
-* **[Learning Paths](../index.md#choose-your-learning-path)** - Browse structured learning paths by experience level (Beginner, Intermediate, Expert)
+* **[Learning Paths](./learning-paths.md)** - Browse structured learning paths by experience level (Beginner, Intermediate, Expert)
 * **[Grouping Strategies](../core-concepts/grouping-strategies.md)** - Learn critical architectural decisions: when to use batching vs. aggregation
 * **[Core Resilience Concepts](../core-concepts/resilience/index.md)** - Build fault-tolerant pipelines
 * **[Performance Hygiene](../advanced-topics/performance-hygiene.md)** - Apply optimization patterns to your code

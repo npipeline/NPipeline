@@ -106,11 +106,13 @@ Data flows through `IDataPipe<T>` objects:
 **Aggregation** groups items for data correctness - to handle out-of-order or late-arriving events in event-time windows. It uses event timestamps, not arrival times, and can wait for latecomers within a configured grace period.
 
 **Use batching when:**
+
 - External systems work more efficiently with bulk operations
 - You need to reduce API call overhead
 - Order/timing of items doesn't affect correctness
 
 **Use aggregation when:**
+
 - Events can arrive out of order or late
 - You need time-windowed summaries or counts
 - Results must be correct despite late-arriving data
@@ -122,11 +124,13 @@ For a detailed comparison and decision framework, see [Grouping Strategies: Batc
 Use `ValueTask<T>` when your transform can complete synchronously in common cases (cache hits, simple calculations). Use `Task<T>` when your transform is almost always asynchronous.
 
 **ValueTask benefits:**
+
 - Zero heap allocations for synchronous completions
 - Eliminates up to 90% of GC pressure in high-cache-hit scenarios
 - Seamlessly transitions to async when needed
 
 **Example pattern:**
+
 ```csharp
 public override ValueTask<UserData> ExecuteAsync(string userId, PipelineContext context, CancellationToken cancellationToken)
 {
@@ -146,11 +150,13 @@ For complete implementation guidelines and performance impact analysis, see [Syn
 No, `ResilientExecutionStrategy` is specifically for **node-level restarts**, not basic item retries. There are two different retry mechanisms:
 
 **Item-level retries** (no ResilientExecutionStrategy needed):
+
 - Retry individual failed items
 - Configured via `PipelineRetryOptions.MaxItemRetries`
 - Handled in node error handlers with `NodeErrorDecision.Retry`
 
 **Node-level restarts** (requires ResilientExecutionStrategy):
+
 - Restart entire node streams on failure
 - Configured via `PipelineRetryOptions.MaxNodeRestartAttempts`
 - Requires three mandatory components:
@@ -167,6 +173,7 @@ For detailed configuration requirements, see [Getting Started with Resilience](.
 Use these approaches to verify pipeline optimization:
 
 1. **Enable build-time analyzers** to catch performance anti-patterns:
+
    ```csharp
    // In your .csproj
    <PackageReference Include="NPipeline.Analyzers" Version="*" />
@@ -179,6 +186,7 @@ Use these approaches to verify pipeline optimization:
    - Swallowed cancellation exceptions (NP9103)
 
 3. **Benchmark critical paths** with BenchmarkDotNet:
+
    ```csharp
    [MemoryDiagnoser]
    public class MyTransformBenchmarks
@@ -204,11 +212,13 @@ Materialization buffers items in memory to enable replay functionality during no
 3. **Buffer duration**: How many seconds of data you need to replay
 
 **Example calculations:**
+
 - Small objects (100 bytes): 10,000 items ≈ 1MB
 - Medium objects (1KB): 1,000 items ≈ 1MB
 - Large objects (10KB): 100 items ≈ 1MB
 
 **Configuration guidance:**
+
 ```csharp
 var options = new PipelineRetryOptions(
     MaxItemRetries: 3,
@@ -226,6 +236,7 @@ For detailed memory calculations and configuration examples, see [Materializatio
 Node restarts require **three mandatory components**. If any are missing, restarts silently fail:
 
 1. **ResilientExecutionStrategy not applied**:
+
    ```csharp
    // REQUIRED
    var nodeHandle = builder
@@ -235,6 +246,7 @@ Node restarts require **three mandatory components**. If any are missing, restar
    ```
 
 2. **MaxNodeRestartAttempts not configured**:
+
    ```csharp
    // REQUIRED - must be > 0
    var options = new PipelineRetryOptions(
@@ -245,6 +257,7 @@ Node restarts require **three mandatory components**. If any are missing, restar
    ```
 
 3. **MaxMaterializedItems is null** (most common issue):
+
    ```csharp
    // REQUIRED - must be positive number, not null
    var options = new PipelineRetryOptions(
@@ -255,6 +268,7 @@ Node restarts require **three mandatory components**. If any are missing, restar
    ```
 
 **Verification checklist:**
+
 - [ ] Node wrapped with ResilientExecutionStrategy
 - [ ] MaxNodeRestartAttempts > 0
 - [ ] MaxMaterializedItems is set to positive number
@@ -272,6 +286,7 @@ Common parallelism anti-patterns that can make parallel pipelines slower:
    - Too high degree of parallelism causing context switching overhead
 
 2. **I/O-bound work with excessive parallelism**:
+
    ```csharp
    // WRONG: Too much parallelism for I/O work
    new ParallelOptions { MaxDegreeOfParallelism = 100 }
@@ -281,6 +296,7 @@ Common parallelism anti-patterns that can make parallel pipelines slower:
    ```
 
 3. **Unnecessary ordering preservation**:
+
    ```csharp
    // SLOWER: Preserves order (default)
    new ParallelOptions { PreserveOrdering = true }
@@ -294,12 +310,13 @@ Common parallelism anti-patterns that can make parallel pipelines slower:
    - Too small queues causing blocking
 
 **Optimization steps:**
+
 1. Start with `MaxDegreeOfParallelism = Environment.ProcessorCount`
 2. Set `PreserveOrdering = false` if order isn't required
 3. Configure appropriate queue limits with `MaxQueueLength`
 4. Profile to identify actual bottlenecks
 
-For detailed parallelism configuration and best practices, see [Parallelism](../extensions/parallelism.md).
+For detailed parallelism configuration and best practices, see [Parallelism](../extensions/parallelism/index.md).
 
 ## Error Handling
 

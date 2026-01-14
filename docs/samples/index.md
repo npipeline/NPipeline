@@ -10,7 +10,7 @@ This guide provides practical examples of NPipeline implementations, organized b
 
 > **Location:** All samples are located in the `/samples/` directory of the repository. Each sample includes complete source code, configuration files, and a README with detailed explanations.
 
-## 👋 Recommended Learning Path
+## Recommended Learning Path
 
 **New to NPipeline?** Follow this path to master the framework:
 

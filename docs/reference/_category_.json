@@ -2,8 +2,8 @@
   "label": "Reference",
   "position": 9,
   "link": {
-    "type": "generated-index",
-    "description": "Complete API and diagnostic reference for NPipeline."
+    "type": "doc",
+    "id": "reference/index"
   }
 }
 

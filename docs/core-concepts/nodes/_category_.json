@@ -1,7 +1,6 @@
 {
   "label": "Nodes",
   "position": 4,
-  "collapsed": false,
   "link": {
     "type": "doc",
     "id": "core-concepts/nodes/index"

@@ -1,10 +1,10 @@
 ---
-title: Grouping Strategies - Batching vs Aggregation
+title: Batching vs Aggregation
 description: Understand the critical distinction between batching and aggregation, and choose the right approach for your data processing needs.
 sidebar_position: 2
 ---
 
-## Grouping Strategies: Batching vs Aggregation
+## Batching vs Aggregation
 
 When building data pipelines, you often need to group items together. NPipeline provides two fundamentally different approaches—**batching** and **aggregation**—each suited for solving different problems.
 
@@ -88,9 +88,9 @@ graph TD
 
 This decision tree helps you quickly determine the right grouping approach:
 
-* **External system efficiency** → Use **Batching** when your primary concern is optimizing interactions with external systems (databases, APIs, files)
-* **Data correctness with late data** → Use **Aggregation** when you need accurate results despite out-of-order or late-arriving events
-* **Both efficiency and correctness** → Use **Both** when you need to ensure correctness first (aggregation) and then optimize external system interactions (batching)
+- **External system efficiency** → Use **Batching** when your primary concern is optimizing interactions with external systems (databases, APIs, files)
+- **Data correctness with late data** → Use **Aggregation** when you need accurate results despite out-of-order or late-arriving events
+- **Both efficiency and correctness** → Use **Both** when you need to ensure correctness first (aggregation) and then optimize external system interactions (batching)
 
 ## Decision Framework: Which Should You Use?
 

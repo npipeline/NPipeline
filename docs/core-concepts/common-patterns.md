@@ -331,5 +331,5 @@ public sealed class MultiSourcePipeline : IPipelineDefinition
 ## Next Steps
 
 - **[Dependency Injection](../extensions/dependency-injection.md)**: Manage complex dependencies pipeline components
-- **[Parallelism](../extensions/parallelism.md)**: Speed up item processing
+- **[Parallelism](../extensions/parallelism/index.md)**: Speed up item processing
 - **[Testing Pipelines](../extensions/testing/index.md)**: Test pipeline components

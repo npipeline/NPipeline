@@ -9,6 +9,7 @@ sidebar_position: 3
 ## Prerequisites
 
 Before understanding execution strategies, you should be familiar with:
+
 - [Core Concepts Overview](../index.md) - Basic NPipeline concepts and terminology
 - [Nodes Overview](../nodes/index.md) - Understanding how nodes process data
 - [Defining Pipelines](../defining-pipelines.md) - How to apply execution strategies to nodes
@@ -80,11 +81,11 @@ graph TD
 
 This decision tree helps you select the appropriate execution strategy based on your specific requirements:
 
-* **Sequential Execution** for simple, ordered processing when parallelism isn't needed
-* **Parallel Execution** when you need to improve throughput:
-  * With `PreserveOrdering=true` when output order must match input order
-  * With `PreserveOrdering=false` for maximum throughput when order doesn't matter
-* **Resilient Execution** can be wrapped around any strategy to add error handling, retries, and circuit breaker capabilities
+- **Sequential Execution** for simple, ordered processing when parallelism isn't needed
+- **Parallel Execution** when you need to improve throughput:
+  - With `PreserveOrdering=true` when output order must match input order
+  - With `PreserveOrdering=false` for maximum throughput when order doesn't matter
+- **Resilient Execution** can be wrapped around any strategy to add error handling, retries, and circuit breaker capabilities
 
 ## Built-in Execution Strategies
 
@@ -142,14 +143,14 @@ This strategy is part of the `NPipeline.Extensions.Parallelism` NuGet package.
 
 When using `ParallelExecutionStrategy`, you can configure its behavior using `ParallelOptions`:
 
-* **`MaxDegreeOfParallelism`**: The maximum number of items to process concurrently. Defaults to `Environment.ProcessorCount`.
-* **`MaxQueueLength`**: The maximum number of input items to buffer. This controls backpressure.
-* **`QueuePolicy`**: Defines how to handle new items when `MaxQueueLength` is reached:
-  * `BoundedQueuePolicy.Block` (default): The pipeline will pause upstream to wait for space in the queue.
-  * `BoundedQueuePolicy.DropNewest`: New incoming items are dropped when the queue is full.
-  * `BoundedQueuePolicy.DropOldest`: The oldest items in the queue are dropped to make space for new ones.
-* **`PreserveOrdering`**: If `true`, output items are emitted in the same order as their corresponding input items. If `false`, items are emitted as soon as they are processed, potentially out of order, which can increase throughput. Defaults to `true`.
-* **`OutputBufferCapacity`**: The maximum number of processed items to buffer before sending them downstream. This can help smooth out bursts in processing.
+- **`MaxDegreeOfParallelism`**: The maximum number of items to process concurrently. Defaults to `Environment.ProcessorCount`.
+- **`MaxQueueLength`**: The maximum number of input items to buffer. This controls backpressure.
+- **`QueuePolicy`**: Defines how to handle new items when `MaxQueueLength` is reached:
+  - `BoundedQueuePolicy.Block` (default): The pipeline will pause upstream to wait for space in the queue.
+  - `BoundedQueuePolicy.DropNewest`: New incoming items are dropped when the queue is full.
+  - `BoundedQueuePolicy.DropOldest`: The oldest items in the queue are dropped to make space for new ones.
+- **`PreserveOrdering`**: If `true`, output items are emitted in the same order as their corresponding input items. If `false`, items are emitted as soon as they are processed, potentially out of order, which can increase throughput. Defaults to `true`.
+- **`OutputBufferCapacity`**: The maximum number of processed items to buffer before sending them downstream. This can help smooth out bursts in processing.
 
 #### Example: Parallel Processing with Bounded Queue
 
@@ -267,19 +268,19 @@ public sealed class NonOrderedParallelPipelineDefinition : IPipelineDefinition
 
 In this example, items are processed as soon as they complete, without waiting for slower items. This approach:
 
-* **Increases throughput**: Items are emitted immediately upon completion
-* **Reduces memory usage**: No need to buffer items to maintain order
-* **Improves latency**: Faster items don't wait for slower ones
-* **Results in unordered output**: The output sequence may not match the input sequence
+- **Increases throughput**: Items are emitted immediately upon completion
+- **Reduces memory usage**: No need to buffer items to maintain order
+- **Improves latency**: Faster items don't wait for slower ones
+- **Results in unordered output**: The output sequence may not match the input sequence
 
 #### When to Use Non-Ordered Execution
 
 Consider `PreserveOrdering = false` when:
 
-* **Downstream processing is order-agnostic**: Your operations don't depend on input sequence
-* **Performance is critical**: Maximizing throughput is more important than order
-* **Processing times are unpredictable**: When some items take significantly longer than others
-* **You're aggregating data**: When collecting statistics or metrics where order doesn't matter
+- **Downstream processing is order-agnostic**: Your operations don't depend on input sequence
+- **Performance is critical**: Maximizing throughput is more important than order
+- **Processing times are unpredictable**: When some items take significantly longer than others
+- **You're aggregating data**: When collecting statistics or metrics where order doesn't matter
 
 ### 3. `ResilientExecutionStrategy`
 
@@ -303,10 +304,10 @@ graph TD
 
 The `ResilientExecutionStrategy` wraps another execution strategy (e.g., `SequentialExecutionStrategy` or `ParallelExecutionStrategy`) to provide robust error handling capabilities. It integrates with NPipeline's [error handling mechanisms](error-handling) to implement:
 
-* **Node Restart**: Automatically re-executes a node if its underlying stream fails.
-* **Circuit Breaker**: Prevents repeated failures by temporarily stopping execution if a failure threshold is met.
-* **Retry Logic**: Retries individual item processing within a node.
-* **Materialization**: Buffers input items to allow for efficient restarts without re-reading from the original source.
+- **Node Restart**: Automatically re-executes a node if its underlying stream fails.
+- **Circuit Breaker**: Prevents repeated failures by temporarily stopping execution if a failure threshold is met.
+- **Retry Logic**: Retries individual item processing within a node.
+- **Materialization**: Buffers input items to allow for efficient restarts without re-reading from the original source.
 
 This strategy is part of core `NPipeline` library.
 
@@ -314,8 +315,8 @@ This strategy is part of core `NPipeline` library.
 
 When using `ResilientExecutionStrategy`, input items are materialized (buffered) to enable node restarts. This behavior is controlled by the `MaxMaterializedItems` parameter in `PipelineRetryOptions`:
 
-* **When `MaxMaterializedItems` is null** (default): Unbounded materialization - all items are buffered
-* **When `MaxMaterializedItems` has a value**: Limited materialization - only the specified number of items are buffered, after which new items replace oldest ones
+- **When `MaxMaterializedItems` is null** (default): Unbounded materialization - all items are buffered
+- **When `MaxMaterializedItems` has a value**: Limited materialization - only the specified number of items are buffered, after which new items replace oldest ones
 
 Materialization ensures that if a node fails and needs to restart, the pipeline can replay items from the buffer instead of re-reading from the original source, which might not support replay.
 
@@ -395,16 +396,13 @@ public sealed class ResilientPipelineDefinitionWithConfiguration : IPipelineDefi
         builder.Connect(transformHandle, sinkHandle);
     }
 }
-
-        await runner.RunAsync<ResilientPipelineDefinition>(context);
-    }
-}
 ```
 
 In this example, the `flakyProcessor` node will attempt to process items in parallel. If an item fails, the `ResilientExecutionStrategy` will consult the pipeline's error handler to decide if it should retry processing that item or even restart the entire node's stream. The circuit breaker (if configured in `PipelineRetryOptions`) would prevent excessive retries after too many consecutive failures.
 
 ### 3. Adding Resilience to Strategies
-For any of the above strategies, you can wrap them with resilient execution 
+
+For any of the above strategies, you can wrap them with resilient execution
 to add error handling, retries, and circuit breaker capabilities.
 
 **See:** [Error Handling](../resilience/error-handling.md)
@@ -416,19 +414,18 @@ For detailed information about resilience patterns, materialization requirements
 
 ## See Also
 
-* **[Resilience Overview](../resilience/index.md)**: Comprehensive guide to building fault-tolerant pipelines
-* **[Error Handling](../resilience/error-handling.md)**: In-depth coverage of error handling and resilient execution patterns
-* **[Materialization & Buffering](../resilience/materialization.md)**: Understanding buffer requirements for resilience
-* **[Getting Started with Resilience](../resilience/getting-started.md)**: Critical prerequisites and foundational concepts for resilience features
-* **[Parallelism Extension](../../extensions/parallelism.md)**: Advanced parallel execution strategies
-* **[Error Handling](../resilience/error-handling.md)**: Comprehensive error handling patterns
-* **[Architecture: Execution Flow](../../architecture/execution-flow.md)**: Deep dive into how execution strategies work internally
-* **[Performance Characteristics](../../architecture/performance-characteristics.md)**: Understanding performance implications of different strategies
+- **[Resilience Overview](../resilience/index.md)**: Comprehensive guide to building fault-tolerant pipelines
+- **[Error Handling](../resilience/error-handling.md)**: In-depth coverage of error handling and resilient execution patterns
+- **[Materialization & Buffering](../resilience/materialization.md)**: Understanding buffer requirements for resilience
+- **[Getting Started with Resilience](../resilience/getting-started.md)**: Critical prerequisites and foundational concepts for resilience features
+- **[Parallelism Extension](../../extensions/parallelism/index.md)**: Advanced parallel execution strategies
+- **[Error Handling](../resilience/error-handling.md)**: Comprehensive error handling patterns
+- **[Architecture: Execution Flow](../../architecture/execution-flow.md)**: Deep dive into how execution strategies work internally
+- **[Performance Characteristics](../../architecture/performance-characteristics.md)**: Understanding performance implications of different strategies
 
 ## Next Steps
 
-* **[Error Handling](../resilience/error-handling.md)**: Learn how to add error handling, retries, and circuit breaker capabilities to any strategy
-* **[Error Handling](../resilience/error-handling.md)**: Dive deeper into how NPipeline handles errors, retries, and dead-letter queues
-* **[Parallelism Extension](../../extensions/parallelism.md)**: Explore advanced parallel execution patterns
-* **[Architecture: Execution Flow](../../architecture/execution-flow.md)**: Understand how pipelines execute data at a deeper level
-
+- **[Error Handling](../resilience/error-handling.md)**: Learn how to add error handling, retries, and circuit breaker capabilities to any strategy
+- **[Error Handling](../resilience/error-handling.md)**: Dive deeper into how NPipeline handles errors, retries, and dead-letter queues
+- **[Parallelism Extension](../../extensions/parallelism/index.md)**: Explore advanced parallel execution patterns
+- **[Architecture: Execution Flow](../../architecture/execution-flow.md)**: Understand how pipelines execute data at a deeper level

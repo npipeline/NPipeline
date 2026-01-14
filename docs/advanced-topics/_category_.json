@@ -2,8 +2,7 @@
   "label": "Advanced Topics",
   "position": 7,
   "link": {
-    "type": "generated-index",
-    "description": "Dive deeper into advanced concepts for building high-performance, robust, and production-ready data pipelines.",
-    "slug": "/advanced-topics"
+    "type": "doc",
+    "id": "advanced-topics/index"
   }
 }

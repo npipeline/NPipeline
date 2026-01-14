@@ -1,6 +1,5 @@
 {
   "label": "Architecture",
   "position": 4,
-  "description": "Design principles, internal architecture, and WHY/WHAT documentation explaining how NPipeline works",
-  "collapsed": false
+  "description": "Design principles, internal architecture, and WHY/WHAT documentation explaining how NPipeline works"
 }

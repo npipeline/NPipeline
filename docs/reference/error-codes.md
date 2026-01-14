@@ -1,4 +1,4 @@
-# NPipeline Error Codes Reference
+# Error Codes
 
 This guide explains NPipeline error codes, their causes, and solutions.
 
@@ -335,6 +335,7 @@ builder.WithRetryOptions(options =>
 **Cause:** Your SinkNode implementation overrides ExecuteAsync but doesn't consume the input parameter. Sink nodes are designed to process all items from their input data pipe, but your implementation ignores the input.
 
 This can cause:
+
 - Data loss when items in the input pipe are not processed
 - Incomplete pipeline execution
 - Unexpected behavior when downstream nodes depend on sink's side effects
@@ -410,6 +411,7 @@ public class MySinkNode : SinkNode<string>
 4. **Method calls on nullable properties** without null verification
 
 These unsafe patterns can cause:
+
 - Runtime NullReferenceException when properties are null
 - Pipeline failures that are difficult to debug
 - Inconsistent behavior in production environments
@@ -559,6 +561,7 @@ await pipeline.ExecuteAsync(source, context);
 4. **.ToList() and .ToArray()** calls that materialize collections in memory
 
 These patterns can cause:
+
 - High memory usage when processing large datasets
 - Poor startup performance as all data must be loaded before processing begins
 - Increased GC pressure from large collections
@@ -658,6 +661,7 @@ public class GoodSourceNode : SourceNode<string>
 **Cause:** Your class implements ITransformNode but its generic output argument (`TOut`) is `IAsyncEnumerable<T>`, meaning `ExecuteAsync` effectively returns `Task<IAsyncEnumerable<T>>`. This indicates that the node is performing stream-based transformations, which is better represented by the IStreamTransformNode interface.
 
 This pattern can lead to:
+
 - Unclear intent about whether the node processes items individually or as streams
 - Missed opportunities for stream-specific optimizations
 - Interface segregation principle violation
@@ -729,6 +733,7 @@ public class DataProcessor : IStreamTransformNode<string, int>
 **Code Fix:**
 
 A code fix is available that will automatically convert your ITransformNode implementation to IStreamTransformNode:
+
 - Updates the base interface from `ITransformNode<TIn, TOut>` to `IStreamTransformNode<TIn, TOut>`
 - Changes the ExecuteAsync signature to accept `IAsyncEnumerable<TIn>` instead of TIn
 - Updates the return type to `IAsyncEnumerable<TOut>` (no Task wrapper)
@@ -747,6 +752,7 @@ A code fix is available that will automatically convert your ITransformNode impl
 **Cause:** Your IStreamTransformNode implementation is using an execution strategy that doesn't implement IStreamExecutionStrategy. This can result in suboptimal performance as the strategy cannot take advantage of stream-specific optimizations.
 
 This mismatch can lead to:
+
 - Reduced performance due to lack of stream-specific optimizations
 - Unnecessary materialization of streams
 - Missed opportunities for batch processing

@@ -25,7 +25,7 @@ This section details the officially supported extensions and how to leverage the
 
 * **[Observability](observability/index.md)**: Comprehensive metrics collection and monitoring capabilities for NPipeline pipelines. Track node and pipeline performance, throughput, memory usage, retries, and errors with built-in logging sinks and custom metrics sink support.
 
-* **[Parallelism](parallelism.md)**: Execute pipeline nodes in parallel for improved performance. Discover how to use `ParallelExecutionStrategy` with `WithParallelOptions()` to configure parallel processing, queue policies, and ordering behavior.
+* **[Parallelism](parallelism/index.md)**: Execute pipeline nodes in parallel for improved performance. Discover how to use `ParallelExecutionStrategy` with `WithParallelOptions()` to configure parallel processing, queue policies, and ordering behavior.
 
 * **[Testing](testing/index.md)**: Utilities and helpers for writing comprehensive and efficient tests for your pipelines. Includes in-memory source/sink nodes, pipeline builder extensions, and assertion libraries.
 
@@ -102,7 +102,7 @@ dotnet add package FluentAssertions
 
 * **[Dependency Injection](dependency-injection.md)**: Learn about constructor injection and service lifetime management
 * **[Lineage](lineage/index.md)**: Explore data lineage tracking for governance and debugging
-* **[Parallelism](parallelism.md)**: Explore parallel processing capabilities and configuration options
+* **[Parallelism](parallelism/index.md)**: Explore parallel processing capabilities and configuration options
 * **[Testing](testing/index.md)**: Discover comprehensive testing utilities and assertion libraries
 * **[Observability](observability/index.md)**: Learn about metrics collection and monitoring for production pipelines
 * **[Connectors](../connectors/index.md)**: Explore pre-built connectors for external systems
