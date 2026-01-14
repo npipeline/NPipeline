@@ -1,7 +1,7 @@
 ---
 title: Lookup Nodes
 description: Enrich your data streams by performing lookups against external data sources using NPipeline's Lookup Nodes.
-sidebar_position: 4
+sidebar_position: 7
 ---
 
 # Lookup Nodes
@@ -174,4 +174,3 @@ Lookup nodes are powerful for creating rich, contextual data streams within your
 ## Next Steps
 
 * **[Branch Nodes](branch.md)**: Learn about duplicating data streams to multiple downstream paths.
-

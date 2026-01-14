@@ -1,7 +1,7 @@
 ---
 title: Transform Nodes
 description: Learn how to implement transform nodes and optimize for high performance using ValueTask<T>.
-sidebar_position: 2
+sidebar_position: 3
 ---
 
 # Transform Nodes (`ITransformNode<TIn, TOut>`)
@@ -272,11 +272,11 @@ public sealed class ConversionTransform : ITransformNode<string, int>
 
 ## Performance Considerations
 
-Transform nodes support both `Task<T>` and `ValueTask<T>` return types. For high-throughput 
-scenarios where transforms often complete synchronously (cache hits, simple calculations), 
+Transform nodes support both `Task<T>` and `ValueTask<T>` return types. For high-throughput
+scenarios where transforms often complete synchronously (cache hits, simple calculations),
 `ValueTask<T>` can eliminate up to 90% of garbage collection pressure.
 
-**See:** [Synchronous Fast Paths and ValueTask Optimization](../../advanced-topics/synchronous-fast-paths.md) 
+**See:** [Synchronous Fast Paths and ValueTask Optimization](../../advanced-topics/synchronous-fast-paths.md)
 for complete implementation guide, including critical constraints, real-world examples, and dangerous patterns you must understand.
 
 ## Common Transform Patterns
@@ -310,7 +310,6 @@ public sealed class EnrichmentTransform : ITransformNode<Order, EnrichedOrder>
 ### Validation and Filtering
 
 For validation and filtering transforms that can complete synchronously, consider using `ValueTask<T>` for optimal performance. See the [Synchronous Fast Paths guide](../../advanced-topics/synchronous-fast-paths.md) for complete implementation details and critical constraints.
-
 
 ## Next Steps
 

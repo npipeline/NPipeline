@@ -1,7 +1,7 @@
 ---
 title: Lambda-Based Node Syntax
 description: Using lambda functions to define simple nodes without creating separate classes.
-sidebar_position: 7
+sidebar_position: 4
 ---
 
 # Lambda-Based Node Syntax
@@ -20,7 +20,7 @@ For each pattern, NPipeline provides a single, unified method that supports both
 
 ## When to Use Lambda Nodes
 
-### ✅ Use Lambda Nodes For:
+### ✅ Use Lambda Nodes For
 
 - **Simple, stateless transformations**: String manipulation, type conversion, basic calculations
 - **Quick prototyping**: Getting a pipeline working quickly during development
@@ -28,7 +28,7 @@ For each pattern, NPipeline provides a single, unified method that supports both
 - **Testing and debugging**: Temporary nodes for diagnostic purposes
 - **External service calls**: Short HTTP requests or API calls
 
-### ❌ Use Class-Based Nodes For:
+### ❌ Use Class-Based Nodes For
 
 - **Complex business logic**: Multi-step transformations requiring comprehensive testing
 - **Stateful operations**: Nodes that maintain internal state across executions

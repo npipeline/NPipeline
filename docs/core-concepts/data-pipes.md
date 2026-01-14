@@ -150,16 +150,18 @@ By abstracting the data flow into `IDataPipe<T>`, NPipeline allows you to build 
 A key architectural insight of NPipeline is the separation of concerns between **creating a pipe** and **iterating over a pipe**:
 
 **Synchronous Creation Phase:**
+
 ```csharp
 // Source creates and returns the pipe synchronously
 var pipe = source.Initialize(context, cancellationToken);  // Returns immediately
 ```
 
-- No `await` is needed
-- Pipeline structure is established instantly
-- No Task allocations overhead
+* No `await` is needed
+* Pipeline structure is established instantly
+* No Task allocations overhead
 
 **Asynchronous Iteration Phase:**
+
 ```csharp
 // Downstream nodes iterate asynchronously
 await foreach (var item in pipe.WithCancellation(cancellationToken))
@@ -168,9 +170,9 @@ await foreach (var item in pipe.WithCancellation(cancellationToken))
 }
 ```
 
-- Data flows asynchronously
-- Backpressure is managed automatically
-- Handles cancellation gracefully
+* Data flows asynchronously
+* Backpressure is managed automatically
+* Handles cancellation gracefully
 
 **Why Separate These Phases?**
 
@@ -180,6 +182,7 @@ await foreach (var item in pipe.WithCancellation(cancellationToken))
 4. **Consistency:** All source nodes follow the same pattern
 
 **Analogy - File I/O:**
+
 ```csharp
 // Creating a stream is fast and synchronous
 var stream = File.OpenRead(filePath);

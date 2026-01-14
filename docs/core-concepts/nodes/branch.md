@@ -1,7 +1,7 @@
 ---
 title: Branch Nodes
 description: Duplicate data streams to multiple downstream paths for branching logic or monitoring using NPipeline's Branch Nodes.
-sidebar_position: 5
+sidebar_position: 8
 ---
 
 # Branch Nodes
@@ -189,19 +189,18 @@ When a branch handler fails, the `BranchHandlerException` provides context about
 
 ## Performance Considerations
 
-* **Memory Usage**: For large-scale fan-out scenarios, be mindful of memory consumption. Each branch maintains its own processing queue and buffers, which can multiply memory usage with multiple branches.
-* **Backpressure**: If one branch of a `BranchNode` becomes slow, it can create backpressure that affects other branches. Consider using appropriate buffering strategies or async processing in sink implementations.
-* **Throughput Impact**: Duplicating streams incurs overhead. For high-throughput scenarios, profile your pipeline to ensure the fan-out doesn't become a bottleneck.
-* **Resource Management**: Ensure all branches properly dispose of resources, especially when using sinks that maintain connections or file handles.
+- **Memory Usage**: For large-scale fan-out scenarios, be mindful of memory consumption. Each branch maintains its own processing queue and buffers, which can multiply memory usage with multiple branches.
+- **Backpressure**: If one branch of a `BranchNode` becomes slow, it can create backpressure that affects other branches. Consider using appropriate buffering strategies or async processing in sink implementations.
+- **Throughput Impact**: Duplicating streams incurs overhead. For high-throughput scenarios, profile your pipeline to ensure the fan-out doesn't become a bottleneck.
+- **Resource Management**: Ensure all branches properly dispose of resources, especially when using sinks that maintain connections or file handles.
 
 ## Considerations for Branch Nodes
 
-* **Order of Processing:** While `BranchNode` duplicates items, the order in which items are processed in parallel branches is not guaranteed unless explicitly managed (e.g., by subsequent synchronization points).
-* **Performance Impact:** Duplicating streams and processing them in parallel can increase resource consumption (CPU, memory) if not managed carefully.
-* **Error Handling:** By default, errors in branch handlers are routed through the pipeline's error handling system. Configure `ErrorHandlingMode` to control this behavior.
+- **Order of Processing:** While `BranchNode` duplicates items, the order in which items are processed in parallel branches is not guaranteed unless explicitly managed (e.g., by subsequent synchronization points).
+- **Performance Impact:** Duplicating streams and processing them in parallel can increase resource consumption (CPU, memory) if not managed carefully.
+- **Error Handling:** By default, errors in branch handlers are routed through the pipeline's error handling system. Configure `ErrorHandlingMode` to control this behavior.
 
 ## Next Steps
 
-* **[Tap Nodes](tap.md)**: Learn about non-intrusive monitoring and side-channel processing.
-* **[Advanced Error Handling Patterns](../resilience/error-handling.md#advanced-patterns)**: Learn more about handling errors in complex pipeline structures.
-
+- **[Tap Nodes](tap.md)**: Learn about non-intrusive monitoring and side-channel processing.
+- **[Advanced Error Handling Patterns](../resilience/error-handling.md#advanced-patterns)**: Learn more about handling errors in complex pipeline structures.

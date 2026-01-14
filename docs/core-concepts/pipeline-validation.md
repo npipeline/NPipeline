@@ -1,3 +1,9 @@
+---
+title: Pipeline Validation
+description: Validate pipeline structures before execution to catch errors early using validation extensions.
+sidebar_position: 9
+---
+
 # Pipeline Validation Extensions - Usage Guide
 
 The `PipelineBuilderValidationExtensions` class provides fluent methods for validating and analyzing pipeline structures before building. This enables early error detection and helps with debugging complex pipelines.
@@ -288,6 +294,7 @@ builder.Validate(); // OK: All prerequisites configured
 **Purpose:** Ensures nodes using parallel execution have appropriate queue and threading settings to prevent resource exhaustion and performance degradation.
 
 **Why This Matters:** Misconfigured parallelism can cause:
+
 - **Unbounded memory growth** when queue limits aren't set
 - **High latency and buffering** when ordering is preserved with excessive parallelism
 - **Thread pool starvation** when parallelism is too high

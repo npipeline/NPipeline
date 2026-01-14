@@ -1,7 +1,7 @@
 ---
 title: Source Nodes
 description: Learn how to implement source nodes that generate the initial data stream entering your pipeline.
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 # Source Nodes (`ISourceNode<TOut>`)

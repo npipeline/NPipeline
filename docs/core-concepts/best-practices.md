@@ -1,7 +1,7 @@
 ---
 title: Best Practices
 description: Design principles and recommendations for building robust NPipeline pipelines.
-sidebar_position: 9
+sidebar_position: 11
 ---
 
 # Best Practices
@@ -473,4 +473,3 @@ Identify bottlenecks before optimizing.
 - **[Common Patterns](common-patterns.md)**: See these practices in action with practical examples
 - **[Testing Pipelines](../extensions/testing/index.md)**: Learn how to test your pipelines effectively
 - **[Error Handling](resilience/error-handling.md)**: Implement robust error handling in your pipelines
-

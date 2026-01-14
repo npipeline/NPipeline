@@ -1,7 +1,7 @@
 ---
 title: Join Nodes
 description: Merge data from multiple input streams based on common keys or time windows using NPipeline's Join Nodes.
-sidebar_position: 3
+sidebar_position: 6
 ---
 
 # Join Nodes
@@ -611,6 +611,7 @@ public sealed class YearOverYearComparisonPipeline : IPipelineDefinition
 ```
 
 **Expected Output:**
+
 ```text
 OrderComparison { CustomerId = 101, Amount2024 = 1000.00, Amount2023 = 800.00, Growth = 200.00 }
 OrderComparison { CustomerId = 102, Amount2024 = 1500.00, Amount2023 = 1200.00, Growth = 300.00 }
@@ -687,6 +688,7 @@ public sealed class PriceComparisonPipeline : IPipelineDefinition
 ```
 
 **Expected Output:**
+
 ```text
 PriceComparison { ProductCode = "P001", Name = "Widget A", PrimaryPrice = 10.00, SecondaryPrice = 12.00, Difference = 2.00 }
 PriceComparison { ProductCode = "P002", Name = "Widget B", PrimaryPrice = 20.00, SecondaryPrice = 18.00, Difference = -2.00 }
@@ -755,6 +757,7 @@ public sealed class EventCorrelationPipeline : IPipelineDefinition
 ```
 
 **Expected Output:**
+
 ```text
 CorrelatedEvents { CorrelationId = "CORR-001", Timestamp = 2024-01-01T10:00:00Z, SystemAData = "Data from A", SystemBData = "Data from B", TimeDifference = 00:00:05 }
 ```
@@ -787,8 +790,8 @@ Some join nodes may utilize the `KeySelectorAttribute` to automatically infer ke
 
 Join operations use the following delegate types located in the `NPipeline.Graph.PipelineDelegates` namespace:
 
-- `CustomMergeDelegate`: For custom merge logic in join nodes
-- `JoinKeySelectorDelegate`: For extracting join keys
+* `CustomMergeDelegate`: For custom merge logic in join nodes
+* `JoinKeySelectorDelegate`: For extracting join keys
 
 When using these delegates, ensure you import the correct namespace:
 
@@ -806,4 +809,3 @@ CustomMergeDelegate? myCustomMerge = (node, dataPipes, cancellationToken) => {
 
 * **[Lookup Nodes](lookup.md)**: Discover how to enrich data by querying external sources.
 * **[Branch Nodes](branch.md)**: Learn about duplicating data streams to multiple downstream paths.
-

@@ -1,7 +1,7 @@
 ---
 title: Batching Nodes
 description: Learn how to group data items into batches for efficient processing in NPipeline.
-sidebar_position: 2
+sidebar_position: 5
 ---
 
 # Batching Nodes
@@ -262,4 +262,3 @@ Use batching when operational necessity (database efficiency, transactional boun
 * **[Join Nodes](join.md)**: Learn how to merge data from multiple input streams.
 * **[Lookup Nodes](lookup.md)**: Discover how to enrich data by querying external sources.
 * **[Stream Transform Nodes](transform-nodes.md)**: Learn about the new stream-based transformation interface.
-

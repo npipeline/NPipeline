@@ -1,7 +1,7 @@
 ---
 title: Aggregation Nodes
 description: Learn how to perform powerful data aggregations within your NPipeline using specialized nodes.
-sidebar_position: 7
+sidebar_position: 10
 ---
 
 # Aggregation Nodes
@@ -33,41 +33,45 @@ NPipeline provides two aggregate base classes optimized for different scenarios:
 Use this when your **accumulator and result types are the same**. This is the most common case for simple aggregations like counting, summing, or collecting items into a collection.
 
 **Type Parameters:**
+
 * `TIn`: The type of input items to be aggregated.
 * `TKey`: The type of the key used for grouping items (e.g., a customer ID, a timestamp for time-based windows).
 * `TResult`: The type of the aggregation result (also used as the accumulator).
 
 **Methods to Override:**
+
 * `GetKey(TIn item)`: Extract the grouping key from an input item.
 * `CreateAccumulator()`: Initialize a new accumulator.
 * `Accumulate(TResult accumulator, TIn item)`: Add an input item to the accumulator, returning the updated result.
 * (Automatically handles: `GetResult()` returns the accumulator as-is)
 
 **Best For:**
-- Sums, counts, averages
-- Collecting items into lists or sets
-- Any scenario where intermediate state and final result are the same type
+* Sums, counts, averages
+* Collecting items into lists or sets
+* Any scenario where intermediate state and final result are the same type
 
 ### 2. **`AdvancedAggregateNode<TIn, TKey, TAccumulate, TResult>` (Advanced)**
 
 Use this when your **accumulator and result types differ**. This provides maximum flexibility for complex aggregation logic.
 
 **Type Parameters:**
+
 * `TIn`: The type of input items to be aggregated.
 * `TKey`: The type of the key used for grouping items.
 * `TAccumulate`: The type of the intermediate accumulation state.
 * `TResult`: The type of the final aggregated result.
 
 **Methods to Override:**
+
 * `GetKey(TIn item)`: Extract the grouping key from an input item.
 * `CreateAccumulator()`: Initialize a new accumulator.
 * `Accumulate(TAccumulate accumulator, TIn item)`: Add an input item to the accumulator.
 * `GetResult(TAccumulate accumulator)`: Transform the final accumulator state into the desired result.
 
 **Best For:**
-- Complex transformations where accumulator must have a different structure than result (e.g., accumulating as a list, returning as average)
-- Statistical computations (sum and count accumulated separately, then average computed on finalization)
-- Scenarios requiring conversion or projection in the final result
+* Complex transformations where accumulator must have a different structure than result (e.g., accumulating as a list, returning as average)
+* Statistical computations (sum and count accumulated separately, then average computed on finalization)
+* Scenarios requiring conversion or projection in the final result
 
 ## Examples
 
@@ -320,6 +324,7 @@ public class OrderShipmentAggregationNode : AdvancedAggregateNode<OrderEvent, st
 ```
 
 **Output:**
+
 ```
 Result for Electronics: 2
 Result for Books: 2
@@ -374,6 +379,7 @@ public static class Program
 ```
 
 **Output:**
+
 ```
 Average for temp_1: 20.7666667
 Average for temp_2: 18.5

@@ -1,6 +1,6 @@
 ---
 title: Defining Pipelines
-description: Learn how to define and construct your data pipelines using both the fluent PipelineBuilder API and class-based IPipelineDefinition approach.
+description: Comprehensive guide to defining and constructing data pipelines using NPipeline's fluent PipelineBuilder API and class-based IPipelineDefinition approach.
 sidebar_position: 5
 ---
 
@@ -8,7 +8,14 @@ sidebar_position: 5
 
 Defining a pipeline in NPipeline involves specifying the sequence of nodes and how they connect. NPipeline provides two complementary approaches: the fluent **`PipelineBuilder`** API for direct, expressive construction, and the **`IPipelineDefinition`** interface for class-based, reusable definitions.
 
-## The PipelineBuilder: Fluent API (Recommended for Most Cases)
+## Overview
+
+Both approaches ultimately produce the same result: an executable [`IPipeline`](ipipeline.md) instance. The choice between them depends on your specific needs:
+
+- **PipelineBuilder**: Fluent, expressive API ideal for simple to moderate pipelines
+- **IPipelineDefinition**: Class-based approach for complex, reusable pipelines with dependency injection
+
+## The PipelineBuilder: Fluent API
 
 The `PipelineBuilder` is a fluent API that provides a simple and expressive way to define the structure of your data pipeline. It is the primary tool for adding nodes, connecting them, and compiling the final, runnable `IPipeline` instance.
 
@@ -22,19 +29,21 @@ Building a pipeline with `PipelineBuilder` involves three main steps:
 
 ### Key Methods
 
-* `new PipelineBuilder()`: Creates a new pipeline builder instance.
-* `AddSource<TNode, TOut>(name)`: Adds a source node to the pipeline and returns a handle.
-* `AddTransform<TNode, TIn, TOut>(name)`: Adds a transform node and returns a handle. The input type `TIn` must match the output type of the connected source.
-* `AddSink<TNode, TIn>(name)`: Adds a sink node and returns a handle. The input type `TIn` must match the output type of the connected node.
-* `Connect(handle1, handle2)`: Connects two node handles in the pipeline.
-* `Build()`: Finalizes the pipeline definition and returns a `Pipeline` instance ready for execution.
+- `new PipelineBuilder()`: Creates a new pipeline builder instance.
+- `AddSource<TNode, TOut>(name)`: Adds a source node to the pipeline and returns a handle.
+- `AddTransform<TNode, TIn, TOut>(name)`: Adds a transform node and returns a handle. The input type `TIn` must match the output type of the connected source.
+- `AddSink<TNode, TIn>(name)`: Adds a sink node and returns a handle. The input type `TIn` must match the output type of the connected node.
+- `Connect(handle1, handle2)`: Connects two node handles in the pipeline.
+- `Build()`: Finalizes the pipeline definition and returns a `Pipeline` instance ready for execution.
 
 ### Basic Example
 
-Let's walk through a complete example using PipelineBuilder within an `IPipelineDefinition`:
+Let's walk through a complete example using PipelineBuilder:
 
 ```csharp
 using NPipeline;
+using NPipeline.DataFlow;
+using NPipeline.DataFlow.DataPipes;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -109,16 +118,16 @@ public static class Program
 }
 ```
 
-### When to Use PipelineBuilder
+### When to Use PipelineBuilder Directly
 
-* **Simple to moderate pipelines**: For straightforward data flows with a manageable number of nodes
-* **Quick prototyping**: When you want to get a pipeline running quickly
-* **Fluent, expressive API**: When you prefer readable, method-chaining style code
-* **Ad-hoc definitions**: When the pipeline structure is unlikely to be reused
+- **Simple to moderate pipelines**: For straightforward data flows with a manageable number of nodes
+- **Quick prototyping**: When you want to get a pipeline running quickly
+- **Fluent, expressive API**: When you prefer readable, method-chaining style code
+- **Ad-hoc definitions**: When the pipeline structure is unlikely to be reused
 
 ---
 
-## The IPipelineDefinition: Class-Based Approach (For Reusable, Complex Pipelines)
+## The IPipelineDefinition: Class-Based Approach
 
 For more complex or reusable pipeline structures, you can define your pipeline by implementing the `IPipelineDefinition` interface. This allows you to encapsulate the pipeline's structure within a dedicated class, making it easier to manage, test, and integrate with dependency injection frameworks.
 
@@ -131,7 +140,7 @@ public interface IPipelineDefinition
 }
 ```
 
-* **`Define`**: This method is where you add your sources, transforms, and sinks to the provided `builder`. The `context` parameter allows for dynamic pipeline construction based on runtime parameters or injected dependencies.
+- **`Define`**: This method is where you add your sources, transforms, and sinks to the provided `builder`. The `context` parameter allows for dynamic pipeline construction based on runtime parameters or injected dependencies.
 
 ### Advantages of Class-Based Definitions
 
@@ -196,6 +205,13 @@ public static class Program
 }
 ```
 
+### When to Use IPipelineDefinition
+
+- **Complex Pipelines**: For pipelines with many nodes or complex branching and joining logic, encapsulating the definition in a class improves organization.
+- **Dependency Injection**: When your nodes have dependencies that need to be injected, `IPipelineDefinition` is the preferred approach as it integrates cleanly with Dependency Injection (DI) containers.
+- **Reusability**: If you have common pipeline structures that you want to reuse, you can create base definition classes.
+- **Production Applications**: For maintainable, testable code in production environments.
+
 ---
 
 ## Choosing Your Approach
@@ -212,12 +228,14 @@ public static class Program
 ### Decision Guide
 
 **Use `PipelineBuilder` directly if:**
+
 - Your pipeline is simple or moderate in complexity
 - You're building a one-off data processing task
 - You prefer fluent, method-chaining style code
 - You want to get started quickly
 
 **Use `IPipelineDefinition` if:**
+
 - Your pipeline will be used in multiple places
 - You have complex branching, joining, or conditional logic
 - You want to inject dependencies (loggers, services, configuration)
@@ -236,25 +254,66 @@ await runner.RunAsync<MyPipelineDefinition>();
 ```
 
 The `PipelineRunner` handles:
+
 - Instantiating your `IPipelineDefinition`
 - Calling the `Define` method with a builder and context
 - Building the pipeline graph
 - Validating the configuration
 - Executing the pipeline
 
+### Advanced Execution Options
+
+The `PipelineRunner` provides a static factory method and a builder for different use cases:
+
+```csharp
+// Default runner with all default services
+var runner = PipelineRunner.Create();
+
+// With custom factories using the Builder
+var runner = new PipelineRunnerBuilder()
+    .WithPipelineFactory(customPipelineFactory)
+    .WithNodeFactory(customNodeFactory)
+    .Build();
+
+// With full dependency injection (all custom dependencies)
+var runner = new PipelineRunnerBuilder()
+    .WithPipelineFactory(pipelineFactory)
+    .WithNodeFactory(nodeFactory)
+    .WithExecutionCoordinator(executionCoordinator)
+    .WithInfrastructureService(infrastructureService)
+    .WithObservabilitySurface(observabilitySurface)
+    .Build();
+```
+
+---
+
+## Relationship Between Components
+
+The pipeline definition process follows this flow:
+
+1. You use the **`PipelineBuilder`** to define the structure of your pipeline by adding sources, transforms, and sinks.
+2. The `Build()` method on the `PipelineBuilder` creates an **`IPipelineDefinition`**.
+3. The `IPipelineDefinition` is then used to create an **`IPipeline`** instance.
+4. When you run the pipeline, data flows from `ISourceNode`s, through `ITransformNode`s, to `ISinkNode`s.
+5. The entire process is managed by the pipeline, and the **`PipelineContext`** is available to all nodes.
+
+This modular design allows you to create complex data processing workflows from simple, reusable components.
+
 ---
 
 ## Related Topics
 
-* **[Pipeline Execution](pipeline-execution/index.md)** - Learn how to run your defined pipelines
-* **[Pipeline Context](pipeline-context.md)** - Understand how to pass state and configuration to your pipeline nodes
-* **[Nodes Overview](nodes/index.md)** - Learn about source, transform, and sink nodes
-* **[Execution Strategies](pipeline-execution/execution-strategies.md)** - Control how nodes process data
-* **[Error Handling Guide](resilience/error-handling.md)** - Add resilience to your pipelines
-* **[Dependency Injection](../extensions/dependency-injection.md)** - Using DI with pipelines
+- **[Pipeline](ipipeline.md)**: Learn about the executable instance of your data pipeline
+- **[Pipeline Context](pipeline-context.md)**: Understand how to pass state and configuration to your pipeline nodes
+- **[Nodes Overview](nodes/index.md)**: Learn about source, transform, and sink nodes
+- **[Execution Strategies](pipeline-execution/execution-strategies.md)**: Control how nodes process data
+- **[Error Handling Guide](resilience/error-handling.md)**: Add resilience to your pipelines
+- **[Dependency Injection](../extensions/dependency-injection.md)**: Using DI with pipelines
+- **[Node Definition Structure](node-definition.md)**: Understanding the nested configuration structure of NodeDefinition
 
 ## Next Steps
 
-- **[Pipeline Context](pipeline-context.md)** - Learn about the final component that carries state across your pipeline
-- **[Execution Strategies](pipeline-execution/execution-strategies.md)** - Control how nodes process data
-- **[Error Handling Guide](resilience/error-handling.md)** - Add resilience to your pipelines
+- **[Pipeline Context](pipeline-context.md)**: Learn about the component that carries state across your pipeline
+- **[Execution Strategies](pipeline-execution/execution-strategies.md)**: Control how nodes process data
+- **[Error Handling Guide](resilience/error-handling.md)**: Add resilience to your pipelines
+- **[Dependency Injection](../extensions/dependency-injection.md)**: Using DI with pipelines

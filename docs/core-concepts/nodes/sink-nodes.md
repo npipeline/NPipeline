@@ -1,7 +1,7 @@
 ---
 title: Sink Nodes
 description: Learn how to implement sink nodes that consume and finalize data at the end of your pipeline.
-sidebar_position: 3
+sidebar_position: 4
 ---
 
 # Sink Nodes (`ISinkNode<TIn>`)

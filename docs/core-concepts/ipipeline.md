@@ -1,7 +1,7 @@
 ---
 title: Pipeline
 description: Learn about Pipeline, the executable instance of your data pipeline.
-sidebar_position: 2
+sidebar_position: 1
 slug: /core-concepts/ipipeline
 ---
 

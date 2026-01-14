@@ -1,7 +1,7 @@
 ---
 title: Time-Windowed Joins
 description: Learn how to perform joins on streams within specific time windows, a key technique for real-time and event-driven data processing.
-sidebar_position: 8
+sidebar_position: 11
 ---
 
 # Time-Windowed Joins
@@ -175,4 +175,3 @@ In this setup, the `AdCorrelationNode` will:
 
 * **[Node Types Index](index.md)**: Return to the node types overview.
 * **[Pipeline Execution](../pipeline-execution/index.md)**: Learn about how pipelines are executed and managed.
-

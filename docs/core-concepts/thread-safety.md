@@ -1,3 +1,9 @@
+---
+title: Thread Safety
+description: Guidelines for managing shared state and concurrency in NPipeline pipelines.
+sidebar_position: 8
+---
+
 # Thread Safety Guidelines
 
 NPipeline is designed for high-performance streaming data processing. This document clarifies thread safety requirements and best practices.

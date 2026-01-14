@@ -1,7 +1,7 @@
 ---
 title: Pipeline Context (PipelineContext)
 description: Understand how to manage and share state, configuration, and cancellation across your NPipeline nodes using PipelineContext.
-sidebar_position: 7
+sidebar_position: 2
 ---
 
 # `PipelineContext`
@@ -9,11 +9,12 @@ sidebar_position: 7
 The [`PipelineContext`](src/NPipeline/PipelineContext.cs) is a crucial component in NPipeline that provides a mechanism for sharing runtime information, services, and state across different nodes within a pipeline. It acts as a lightweight, scoped container that is passed through the pipeline during execution, allowing nodes to access common resources without explicit dependency injection in their constructors.
 
 This context is particularly useful for:
-*   **Logging**: Providing a consistent logging mechanism.
-*   **Metrics**: Capturing and reporting performance metrics.
-*   **Correlation IDs**: Propagating unique identifiers for tracing requests across nodes.
-*   **Shared State**: Storing transient state that needs to be accessible by multiple nodes.
-*   **CancellationToken**: Propagating cancellation requests throughout the pipeline.
+
+* **Logging**: Providing a consistent logging mechanism.
+* **Metrics**: Capturing and reporting performance metrics.
+* **Correlation IDs**: Propagating unique identifiers for tracing requests across nodes.
+* **Shared State**: Storing transient state that needs to be accessible by multiple nodes.
+* **CancellationToken**: Propagating cancellation requests throughout the pipeline.
 
 ## What is `PipelineContext`?
 
@@ -21,11 +22,11 @@ This context is particularly useful for:
 
 Key elements managed by `PipelineContext` include:
 
-*   **`CancellationToken`:** A primary mechanism for cooperative cancellation of the pipeline. All nodes should respect this token for graceful shutdown.
-*   **Parameters:** A dictionary for holding runtime parameters passed to the pipeline during initialization.
-*   **Items:** A dictionary for sharing transient state between pipeline nodes during execution.
-*   **Properties:** A dictionary for storing properties that can be used by extensions and plugins, providing a way to extend PipelineContext without modifying its core structure.
-*   **Arbitrary State:** You can store and retrieve any custom data or objects that need to be accessible by multiple nodes during the pipeline's execution. This is particularly useful for configuration, metrics, or shared resources.
+* **`CancellationToken`:** A primary mechanism for cooperative cancellation of the pipeline. All nodes should respect this token for graceful shutdown.
+* **Parameters:** A dictionary for holding runtime parameters passed to the pipeline during initialization.
+* **Items:** A dictionary for sharing transient state between pipeline nodes during execution.
+* **Properties:** A dictionary for storing properties that can be used by extensions and plugins, providing a way to extend PipelineContext without modifying its core structure.
+* **Arbitrary State:** You can store and retrieve any custom data or objects that need to be accessible by multiple nodes during the pipeline's execution. This is particularly useful for configuration, metrics, or shared resources.
 
 ## Constructor Parameters
 
@@ -167,31 +168,31 @@ NPipeline will automatically detect if your node implements `IContextAwareNode` 
 
 The [`PipelineContext`](src/NPipeline/PipelineContext.cs) includes properties and methods for:
 
-*   **`CancellationToken`**: A token that signals if the pipeline execution has been requested to stop. Nodes should monitor this token and cease operations if cancellation is requested.
-*   **`Parameters`**: A dictionary to hold any runtime parameters for the pipeline. These are typically set during pipeline initialization and remain constant throughout execution.
-*   **`Items`**: A dictionary for sharing state between pipeline nodes. This is used for transient data that needs to be accessible by multiple nodes during execution.
-*   **`Properties`**: A dictionary for storing properties that can be used by extensions and plugins. This provides a way to extend PipelineContext without modifying its core structure.
-*   **`LoggerFactory`**: The logger factory for this pipeline run, providing consistent logging across all nodes.
-*   **`Tracer`**: The tracer for this pipeline run, enabling distributed tracing.
-*   **`PipelineErrorHandler`**: The error handler for the entire pipeline.
-*   **`DeadLetterSink`**: The sink for items that have failed processing and have been redirected.
-*   **`ErrorHandlerFactory`**: The factory for creating error handlers and dead-letter sinks.
-*   **`LineageFactory`**: The factory for creating lineage sinks and resolving lineage collectors.
-*   **`ObservabilityFactory`**: The factory for resolving observability collectors.
-*   **`RetryOptions`**: Execution / retry configuration for this pipeline run. Values here override builder defaults when provided.
-*   **`CurrentNodeId`**: The ID of the node currently being executed. This is automatically managed by the pipeline runner.
-*   **`ExecutionObserver`**: Optional execution observer for instrumentation (node lifecycle, retries, queue/backpressure events).
-*   **`StateManager`**: Gets the state manager for this pipeline run, if available. This is accessed through the Properties dictionary.
-*   **`StatefulRegistry`**: Gets the stateful registry for this pipeline run, if available. This is accessed through the Properties dictionary.
-*   **Logging/Metrics Interfaces**: References to logging or metrics services (e.g., `ILogger`, `IMetricsRecorder`) that nodes can use to report events or data.
+* **`CancellationToken`**: A token that signals if the pipeline execution has been requested to stop. Nodes should monitor this token and cease operations if cancellation is requested.
+* **`Parameters`**: A dictionary to hold any runtime parameters for the pipeline. These are typically set during pipeline initialization and remain constant throughout execution.
+* **`Items`**: A dictionary for sharing state between pipeline nodes. This is used for transient data that needs to be accessible by multiple nodes during execution.
+* **`Properties`**: A dictionary for storing properties that can be used by extensions and plugins. This provides a way to extend PipelineContext without modifying its core structure.
+* **`LoggerFactory`**: The logger factory for this pipeline run, providing consistent logging across all nodes.
+* **`Tracer`**: The tracer for this pipeline run, enabling distributed tracing.
+* **`PipelineErrorHandler`**: The error handler for the entire pipeline.
+* **`DeadLetterSink`**: The sink for items that have failed processing and have been redirected.
+* **`ErrorHandlerFactory`**: The factory for creating error handlers and dead-letter sinks.
+* **`LineageFactory`**: The factory for creating lineage sinks and resolving lineage collectors.
+* **`ObservabilityFactory`**: The factory for resolving observability collectors.
+* **`RetryOptions`**: Execution / retry configuration for this pipeline run. Values here override builder defaults when provided.
+* **`CurrentNodeId`**: The ID of the node currently being executed. This is automatically managed by the pipeline runner.
+* **`ExecutionObserver`**: Optional execution observer for instrumentation (node lifecycle, retries, queue/backpressure events).
+* **`StateManager`**: Gets the state manager for this pipeline run, if available. This is accessed through the Properties dictionary.
+* **`StatefulRegistry`**: Gets the stateful registry for this pipeline run, if available. This is accessed through the Properties dictionary.
+* **Logging/Metrics Interfaces**: References to logging or metrics services (e.g., `ILogger`, `IMetricsRecorder`) that nodes can use to report events or data.
 
 ## State Management Capabilities
 
 `PipelineContext` provides several methods for managing state and resources:
 
-*   **`RegisterForDisposal(IAsyncDisposable disposable)`**: Registers an `IAsyncDisposable` resource to be disposed when the pipeline context is disposed. This ensures proper cleanup of resources created during pipeline execution. The disposal list is **lazily initialized** only when the first disposable is registered, optimizing performance for stateless pipelines that don't require resource cleanup.
-*   **`ScopedNode(string nodeId)`**: Sets the `CurrentNodeId` for the duration of the returned disposable scope. This is used internally by the pipeline runner to track which node is currently executing.
-*   **`TryGetStatefulRegistry(out IStatefulRegistry? registry)`**: Attempts to get the stateful registry for this pipeline run. Returns true if a stateful registry is available, false otherwise.
+* **`RegisterForDisposal(IAsyncDisposable disposable)`**: Registers an `IAsyncDisposable` resource to be disposed when the pipeline context is disposed. This ensures proper cleanup of resources created during pipeline execution. The disposal list is **lazily initialized** only when the first disposable is registered, optimizing performance for stateless pipelines that don't require resource cleanup.
+* **`ScopedNode(string nodeId)`**: Sets the `CurrentNodeId` for the duration of the returned disposable scope. This is used internally by the pipeline runner to track which node is currently executing.
+* **`TryGetStatefulRegistry(out IStatefulRegistry? registry)`**: Attempts to get the stateful registry for this pipeline run. Returns true if a stateful registry is available, false otherwise.
 
 ### Performance Note
 
@@ -199,9 +200,9 @@ The `RegisterForDisposal` method uses lazy initialization for its internal dispo
 
 ## Difference Between Parameters, Items, and Properties
 
-*   **Parameters**: These are typically set during pipeline initialization and are meant to be configuration values that remain constant throughout the pipeline execution. They are used to pass configuration to the pipeline as a whole.
-*   **Items**: These are used for sharing transient state between pipeline nodes during execution. Items can be modified by nodes and are meant for data that needs to be shared between different parts of the pipeline during a single run.
-*   **Properties**: These are used for storing properties that can be used by extensions and plugins. They provide a way to extend PipelineContext without modifying its core structure and are typically used by framework components rather than user code.
+* **Parameters**: These are typically set during pipeline initialization and are meant to be configuration values that remain constant throughout the pipeline execution. They are used to pass configuration to the pipeline as a whole.
+* **Items**: These are used for sharing transient state between pipeline nodes during execution. Items can be modified by nodes and are meant for data that needs to be shared between different parts of the pipeline during a single run.
+* **Properties**: These are used for storing properties that can be used by extensions and plugins. They provide a way to extend PipelineContext without modifying its core structure and are typically used by framework components rather than user code.
 
 ## Example: Using `PipelineContext` for Logging
 
@@ -449,15 +450,14 @@ In this example, `MyConfig` is stored in `PipelineContext` using a key ("MyConfi
 
 ## Best Practices
 
-*   **Keep it Lightweight**: Avoid adding large or frequently changing data structures to the context. For complex state management, consider dedicated state management nodes or services.
-*   **Transient State:** Use `PipelineContext` for state that is specific to a single pipeline run. Avoid using it for global application state.
-*   **Immutability (where possible)**: While the context itself is mutable, consider making items retrieved from it immutable or thread-safe if they are to be shared and modified across multiple concurrent nodes. Where possible, store immutable objects in context to prevent unexpected side effects from nodes modifying shared state.
-*   **Clarity**: Use meaningful keys for items stored in the context to improve readability and prevent naming collisions. Consider defining static string constants for your keys.
-*   **Optional Access**: Design nodes to gracefully handle cases where an expected item might not be present in the context (e.g., provide default values or log warnings).
-*   **Cancellation:** Always respect the `CancellationToken` provided by the `PipelineContext` (or directly via method parameters) to ensure your nodes can respond to cancellation requests.
+* **Keep it Lightweight**: Avoid adding large or frequently changing data structures to the context. For complex state management, consider dedicated state management nodes or services.
+* **Transient State:** Use `PipelineContext` for state that is specific to a single pipeline run. Avoid using it for global application state.
+* **Immutability (where possible)**: While the context itself is mutable, consider making items retrieved from it immutable or thread-safe if they are to be shared and modified across multiple concurrent nodes. Where possible, store immutable objects in context to prevent unexpected side effects from nodes modifying shared state.
+* **Clarity**: Use meaningful keys for items stored in the context to improve readability and prevent naming collisions. Consider defining static string constants for your keys.
+* **Optional Access**: Design nodes to gracefully handle cases where an expected item might not be present in the context (e.g., provide default values or log warnings).
+* **Cancellation:** Always respect the `CancellationToken` provided by the `PipelineContext` (or directly via method parameters) to ensure your nodes can respond to cancellation requests.
 
 ## Related Topics
 
-*   **[Streaming vs. Buffering](streaming-vs-buffering.md)**: Understand how NPipeline handles data flow and memory management.
-*   **[Error Handling](resilience/error-handling.md)**: Learn about NPipeline's error handling mechanisms.
-
+* **[Streaming vs. Buffering](streaming-vs-buffering.md)**: Understand how NPipeline handles data flow and memory management.
+* **[Error Handling](resilience/error-handling.md)**: Learn about NPipeline's error handling mechanisms.

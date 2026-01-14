@@ -1,7 +1,7 @@
 ---
-title: Batching vs Aggregation
-description: Understand the critical distinction between batching and aggregation, and choose the right approach for your data processing needs.
-sidebar_position: 2
+title: Grouping Strategies
+description: Critical decision framework for choosing between batching and aggregation in NPipeline.
+sidebar_position: 10
 ---
 
 ## Batching vs Aggregation
