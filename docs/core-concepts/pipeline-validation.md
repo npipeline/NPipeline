@@ -236,7 +236,7 @@ Extended rules are **enabled by default** to provide additional guidance on best
 
 **Purpose:** Ensures nodes using `ResilientExecutionStrategy` are fully configured for proper restart behavior.
 
-**Why This Matters:** Partial resilience configuration silently disables node restarts, allowing the entire pipeline to fail instead of recovering individual nodes. This can lead to unexplained pipeline crashes in production.
+**Why This Matters:** Partial resilience configuration prevents node restarts from working correctly. The system validates these requirements at runtime and throws clear exceptions if any are missing, providing immediate feedback about configuration issues.
 
 For nodes with `ResilientExecutionStrategy`, validates:
 
@@ -247,15 +247,17 @@ For nodes with `ResilientExecutionStrategy`, validates:
 - **Restart Attempts** - `MaxNodeRestartAttempts > 0` is configured
   - Controls how many times a node can be restarted
   - Must be greater than 0 to enable restarts
-  - Value of 0 disables restart functionality silently
+  - If set to 0, system throws `InvalidOperationException` when `RestartNode` is attempted
   
 - **Materialization** - `MaxMaterializedItems` is positive (not null or zero) to prevent unbounded memory
   - Streaming inputs must be materialized before retry to preserve them for restart
-  - `null` (unbounded) disables materialization and makes restarts impossible
-  - Zero or negative values are treated as disabled
+  - `null` (unbounded) causes `InvalidOperationException` when `RestartNode` is attempted
+  - Zero or negative values also cause validation exceptions
   
 - **Retry Configuration** - Retry options are set at graph or node level
   - Ensures at least one layer of retry configuration exists
+
+**Runtime Validation:** When `RestartNode` is returned by an error handler, the system validates that all prerequisites are configured. If any are missing, it throws `InvalidOperationException` with a clear message indicating which requirement failed. This prevents silent failures and provides actionable feedback.
 
 **When Validation Occurs:** During `Build()` or `Validate()` calls with extended validation enabled (default).
 

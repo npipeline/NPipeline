@@ -49,7 +49,7 @@ This parameter is critical because it determines:
 2. **Memory usage** for the buffer
 3. **Whether restart functionality works at all** for streaming inputs
 
-**:warning: Critical Warning**: Setting `MaxMaterializedItems` to `null` (unbounded) silently disables node restart functionality. For detailed explanation of why unbounded buffers break resilience guarantees, see the [Getting Started with Resilience](./getting-started.md) guide.
+**:warning: Critical Warning**: Setting `MaxMaterializedItems` to `null` (unbounded) causes `InvalidOperationException` when `RestartNode` is attempted. The system validates configuration at runtime and throws a clear exception if unbounded materialization is detected with a restart decision. For detailed explanation of why unbounded buffers break resilience guarantees, see the [Getting Started with Resilience](./getting-started.md) guide.
 
 ## CappedReplayableDataPipe Implementation
 
@@ -434,4 +434,3 @@ public class MonitoredPipelineDefinition : IPipelineDefinition
 - **[Getting Started with Resilience](getting-started.md)**: Understand the critical prerequisite relationships
 - **[Error Handling Guide](error-handling.md)**: Get practical implementation guidance
 - **[Troubleshooting](troubleshooting.md)**: Learn to diagnose and resolve materialization issues
-

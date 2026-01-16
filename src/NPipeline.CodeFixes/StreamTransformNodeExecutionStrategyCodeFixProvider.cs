@@ -127,7 +127,7 @@ public class StreamTransformNodeExecutionStrategyCodeFixProvider : CodeFixProvid
                 SyntaxFactory.IdentifierName("FromSeconds")));
 
         var argumentList = SyntaxFactory.ArgumentList(
-            SyntaxFactory.SeparatedList<ArgumentSyntax>(new[] { batchSizeArgument, timeSpanArgument }));
+            SyntaxFactory.SeparatedList(new[] { batchSizeArgument, timeSpanArgument }));
 
         var newExpression = SyntaxFactory.ObjectCreationExpression(
                 SyntaxFactory.IdentifierName("BatchingExecutionStrategy"))

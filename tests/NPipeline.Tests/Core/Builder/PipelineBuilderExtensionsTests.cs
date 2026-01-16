@@ -575,7 +575,7 @@ public sealed class PipelineBuilderExtensionsTests
     public void AddTap_WithoutName_GeneratesValidHandleId()
     {
         // Arrange
-        PipelineBuilder builder = new PipelineBuilder().WithoutEarlyNameValidation();
+        var builder = new PipelineBuilder().WithoutEarlyNameValidation();
         NoOpSink sink1 = new();
         NoOpSink sink2 = new();
 
@@ -593,7 +593,7 @@ public sealed class PipelineBuilderExtensionsTests
     public void AddBranch_WithoutName_GeneratesValidHandleId()
     {
         // Arrange
-        PipelineBuilder builder = new PipelineBuilder().WithoutEarlyNameValidation();
+        var builder = new PipelineBuilder().WithoutEarlyNameValidation();
 
         async Task Handler1(int i)
         {

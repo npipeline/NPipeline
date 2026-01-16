@@ -14,14 +14,14 @@ Configuration analyzers detect issues with pipeline configuration that can lead 
 **Severity:** Error  
 **Category:** Configuration  
 
-This analyzer detects when `PipelineRetryOptions.MaxMaterializedItems` is null or missing, which causes unbounded memory growth in `ResilientExecutionStrategy` and silently disables restart functionality. This is a critical configuration error that must be treated as a build-time error to prevent production failures.
+This analyzer detects when `PipelineRetryOptions.MaxMaterializedItems` is null or missing. The system validates this at runtime and throws `InvalidOperationException` when `RestartNode` is attempted with unbounded materialization. This analyzer provides early build-time detection of this critical configuration error.
 
 #### Why This Matters
 
 Unbounded materialization configuration causes:
 
 1. **Memory Leaks**: Unlimited memory growth as items are materialized for retry scenarios
-2. **Silent Failures**: Restart functionality is disabled without any indication
+2. **Runtime Exceptions**: Restart functionality throws `InvalidOperationException` when attempted
 3. **Production Crashes**: OutOfMemoryException in high-throughput scenarios
 4. **Resource Exhaustion**: System becomes unstable under load
 
@@ -36,7 +36,7 @@ var retryOptions = new PipelineRetryOptions(
     maxMaterializedItems: 1000); // Bounded memory usage
 ```
 
-#### Choosing the Right MaxMaterializedItems Value
+#### Choosing to Right MaxMaterializedItems Value
 
 | Scenario | Recommended Value | Reason |
 |----------|-------------------|--------|
@@ -48,7 +48,7 @@ var retryOptions = new PipelineRetryOptions(
 
 #### Enforcement Requirement
 
-This analyzer is configured as an **Error** by default because unbounded materialization is fundamentally incompatible with resilient pipeline operation. It should not be downgraded to a warning, as doing so would allow silently broken resilience configurations to pass build time.
+This analyzer is configured as an **Error** by default because unbounded materialization is fundamentally incompatible with resilient pipeline operation. The runtime validation throws `InvalidOperationException` when `RestartNode` is attempted with unbounded materialization, providing clear feedback about the configuration issue. This analyzer helps catch the issue earlier during development.
 
 ### NP9502: Inappropriate Parallelism Configuration
 

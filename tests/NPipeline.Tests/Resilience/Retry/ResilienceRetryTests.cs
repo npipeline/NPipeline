@@ -78,7 +78,7 @@ public sealed class ResilienceRetryTests
             builder.Connect(s, t).Connect(t, k);
             builder.AddPipelineErrorHandler<RestartHandler>();
             builder.WithResilience(t);
-            builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 3));
+            builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 3, maxMaterializedItems: 1000));
         }
     }
 }

@@ -83,6 +83,7 @@ public sealed class GraphLevelErrorHandlingTests
                 .WithResilience(flaky);
 
             builder.AddPipelineErrorHandler<RestartingErrorHandler>();
+            builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 3, maxMaterializedItems: 1000));
         }
     }
 }

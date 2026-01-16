@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Threading.Tasks;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.Branching;
 using NPipeline.Execution;

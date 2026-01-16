@@ -16,9 +16,10 @@ This guide provides quick-start checklists and patterns for the two most common 
 - [ ] **MaxNodeRestartAttempts > 0**: Set to a positive number (typically 2-3) in `PipelineRetryOptions`
 - [ ] **MaxMaterializedItems is Set**: Configured to a positive bounded value (recommended: 100-1,000) - **NEVER null**
 
-If ANY of these is missing or incorrect, your resilience configuration is silently incomplete and your pipeline will fail in production instead of recovering gracefully.
+The system validates these requirements at runtime. If any prerequisite is missing when `RestartNode` is returned, the system throws `InvalidOperationException` with a clear message indicating which requirement failed. This provides immediate feedback and prevents silent configuration errors.
 
 Use the NPipeline analyzers to catch these issues at build time:
+
 - **NP9001**: Detects incomplete restart configuration (error severity recommended)
 - **NP9501**: Detects unbounded materialization (error severity required)
 
@@ -26,13 +27,11 @@ Enable these in your `.editorconfig` to make them blocking errors in your build 
 
 ## Node Restart - Quick Start Checklist
 
-> ⚠️ **CRITICAL: READ THIS BEFORE USING `PipelineErrorDecision.RestartNode`**
+> ℹ️ **Note: Node Restart Requirements**
 >
-> Node restart is a powerful resilience feature, but it requires **three mandatory prerequisites**. Missing even one silently disables the feature and your entire pipeline fails.
+> Node restart is a powerful resilience feature that requires **three mandatory prerequisites**. The system validates these at runtime and throws clear exceptions if any are missing.
 >
-> If you've experienced mysterious pipeline failures where restart seemed enabled but didn't work, one of these requirements was missing.
->
-> **Good news:** The NPipeline build-time analyzer (NP9001) automatically detects incomplete restart configurations at compile time. Enable [NP9001](../../analyzers/resilience.md) in your `.editorconfig` to catch these issues before deployment.
+> If you've experienced mysterious pipeline failures where restart seemed enabled but didn't work, one of these requirements was missing. The improved runtime validation now provides immediate, actionable feedback when configuration is incomplete.
 
 ---
 
@@ -44,7 +43,7 @@ Your node must be wrapped with `ResilientExecutionStrategy`. This enables the re
 
 **What it does:** Allows the pipeline to restart the node when an error occurs.
 
-**Without it:** Restart decisions are ignored; the node cannot recover.
+**Without it:** System throws `InvalidOperationException` when `RestartNode` is attempted.
 
 **How to configure:**
 
@@ -67,7 +66,7 @@ Set `MaxNodeRestartAttempts > 0` in `PipelineRetryOptions`. This tells the pipel
 
 **What it does:** Limits how many restart attempts the pipeline will make before giving up.
 
-**Without it:** No restarts will be attempted.
+**Without it:** System throws `InvalidOperationException` when `RestartNode` is attempted.
 
 **How to configure:**
 
@@ -97,7 +96,7 @@ Set `MaxMaterializedItems` to a **non-null, positive number** on the input to th
 
 **What it does:** Buffers items from the input source so the node can be replayed from a known state if it fails.
 
-> 🚨 **CRITICAL ISSUE:** If `MaxMaterializedItems` is `null` (unbounded), the system silently falls back to `FailPipeline`, even if you've configured restart logic. Your entire pipeline crashes instead of just restarting the node.
+> 🚨 **CRITICAL REQUIREMENT:** If `MaxMaterializedItems` is `null` (unbounded), the system throws `InvalidOperationException` when `RestartNode` is attempted. Bounded materialization is required for safe restart operations.
 
 **How to configure:**
 
@@ -139,7 +138,7 @@ var options = new PipelineRetryOptions(
 **Never set `MaxMaterializedItems` to `null`:**
 
 ```csharp
-// WRONG - This disables restart silently!
+// WRONG - This throws InvalidOperationException on RestartNode
 var options = new PipelineRetryOptions(
     MaxItemRetries: 3,
     MaxNodeRestartAttempts: 2,
@@ -149,34 +148,27 @@ var options = new PipelineRetryOptions(
 
 **If you do:**
 
-- **Your pipeline will NOT restart on failures**
-- **The system silently falls back to `FailPipeline`**
-- **Your entire pipeline will crash** (not just the failing node)
-- **Risk of Out-of-Memory exceptions** with unbounded data streams
+- **System throws `InvalidOperationException`** when `RestartNode` is attempted
+- **Clear error message** indicates which requirement is missing
+- **No silent failures** - immediate feedback at runtime
 
-**Symptom:** You've configured restart logic, but when an error occurs, the pipeline fails completely instead of restarting the node.
+### Why Bounded Memory Buffers Are Required
 
-### Why Unbounded Memory Buffers Break Resilience Guarantees
+Bounded materialization (`MaxMaterializedItems` set to a positive value) is required for safe restart operations:
 
-Unbounded materialization (`MaxMaterializedItems: null`) creates a fundamental contradiction in the resilience model:
+1. **Memory Safety**: Bounded buffers have predictable memory footprints, preventing OutOfMemoryException that cannot be recovered from.
 
-1. **Memory Safety vs. Recovery Trade-off**: Unbounded buffers can consume all available memory, causing OutOfMemoryException that cannot be recovered from. This defeats the purpose of resilience.
+2. **Runtime Validation**: When the system detects unbounded materialization with a `RestartNode` decision, it throws `InvalidOperationException` to protect the system from undefined recovery boundaries.
 
-2. **Silent Failure Mode**: When the system detects unbounded materialization with a RestartNode decision, it cannot safely buffer items for replay. Instead of risking memory exhaustion, it silently falls back to `FailPipeline` to protect the system.
+3. **Predictable Behavior**: Bounded buffers lead to predictable memory usage patterns that can be safely executed and monitored.
 
-3. **Unpredictable Behavior**: In production, unbounded buffers lead to unpredictable memory usage patterns that can cause cascading failures across the entire system.
+4. **Resource Management**: Bounded buffers respect system memory constraints, preventing cascading failures.
 
-4. **Resource Contention**: Unbounded buffers compete with other processes for memory, potentially causing system-wide instability.
+**The Design Philosophy**: NPipeline prioritizes system stability and clear error messaging. By requiring explicit buffer limits, NPipeline ensures that restart operations have predictable memory footprints and can be safely executed. Runtime validation provides immediate feedback when configuration is incomplete.
 
-**The Design Philosophy**: NPipeline prioritizes system stability over incomplete recovery. An unbounded buffer represents an undefined recovery boundary, making safe restart impossible. By requiring explicit buffer limits, NPipeline ensures that restart operations have predictable memory footprints and can be safely executed.
+**Choosing Not to Set a Memory Cap = Choosing to Disable Restart**
 
-**Choosing Not to Set a Memory Cap = Choosing Complete Pipeline Failure**
-
-When you set `MaxMaterializedItems: null`, you are making an explicit choice to sacrifice restart capability in favor of unlimited buffering. This means:
-
-- **You accept that RestartNode will not work**
-- **You accept that your pipeline will fail completely on node errors**
-- **You accept the risk of OutOfMemoryException**
+When you set `MaxMaterializedItems: null`, you are making an explicit choice to sacrifice restart capability. The system will throw `InvalidOperationException` if `RestartNode` is attempted, providing clear feedback about the configuration issue.
 
 If you need node restart functionality, you **must** set a memory cap. The system cannot provide resilience guarantees without defined resource boundaries.
 
@@ -243,6 +235,7 @@ context.UseExponentialBackoffDelay(
 ```
 
 **Why this pattern:**
+
 - Exponential backoff gives services time to recover
 - Prevents thundering herd problems
 - Balanced for typical API rate limits
@@ -258,6 +251,7 @@ context.UseLinearBackoffDelay(
 ```
 
 **Why this pattern:**
+
 - Linear growth is predictable for database connection pools
 - Shorter delays work well for transient lock contention
 - Conservative max delay prevents long-running transactions
@@ -270,6 +264,7 @@ context.UseFixedDelay(TimeSpan.FromSeconds(2));
 ```
 
 **Why this pattern:**
+
 - File system recovery is typically immediate
 - Fixed delay provides predictable behavior
 - Simple and effective for I/O operations
@@ -365,19 +360,19 @@ public void Define(PipelineBuilder builder, PipelineContext context)
 ### Common Pitfalls to Avoid
 
 > :warning: **Common Mistake**: Not configuring retry delays at all
-> 
+>
 > Without retry delays, failed operations retry immediately, which can overwhelm recovering services.
 
 > :warning: **Common Mistake**: Using exponential backoff for in-memory operations
-> 
+>
 > In-memory operations typically recover immediately, so exponential backoff adds unnecessary delays.
 
 > :warning: **Common Mistake**: Setting max delay too high
-> 
+>
 > Very high max delays can cause long recovery times. Consider your SLA requirements.
 
 > **Pro Tip**: Always test retry behavior in development
-> 
+>
 > Use fixed delays in tests for predictable behavior, then switch to appropriate backoff in production.
 
 ## Next Steps

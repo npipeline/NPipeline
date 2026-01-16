@@ -84,6 +84,7 @@ public class CircuitBreakerIntegrationTests
         // Act - Wait for recovery timeout
         var maxRetries = 10;
         var retryCount = 0;
+
         while (retryCount < maxRetries && circuitBreaker.State != CircuitBreakerState.HalfOpen)
         {
             await Task.Delay(50);

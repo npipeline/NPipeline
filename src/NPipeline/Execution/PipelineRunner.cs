@@ -318,6 +318,37 @@ public sealed class PipelineRunner(
                         "Node {NodeId} failed with exception type {ExceptionType}: {ExceptionMessage}",
                         nodeDef.Id, ex.GetType().Name, ex.Message);
 
+                    // Check if this is a RestartNode-related configuration issue
+                    // This provides a runtime safety net for cases where analyzers might miss issues
+                    if (context.PipelineErrorHandler != null && nodeDef.ExecutionStrategy?.GetType().Name == "ResilientExecutionStrategy")
+                    {
+                        var effectiveRetries = context.RetryOptions;
+
+                        if (context.Items.TryGetValue($"retry::{nodeDef.Id}", out var specific) && specific is PipelineRetryOptions prc)
+                            effectiveRetries = prc;
+                        else if (context.Items.TryGetValue(PipelineContextKeys.GlobalRetryOptions, out var globalRetry) &&
+                                 globalRetry is PipelineRetryOptions grc)
+                            effectiveRetries = grc;
+
+                        if (effectiveRetries.MaxNodeRestartAttempts <= 0)
+                        {
+                            logger.Log(
+                                LogLevel.Warning,
+                                "Node {NodeId} uses ResilientExecutionStrategy but MaxNodeRestartAttempts is {MaxAttempts} (must be > 0). " +
+                                "Restart functionality is disabled. Configure: builder.WithRetryOptions(o => o.WithMaxNodeRestartAttempts(3))",
+                                nodeDef.Id, effectiveRetries.MaxNodeRestartAttempts);
+                        }
+
+                        if (effectiveRetries.MaxMaterializedItems == null)
+                        {
+                            logger.Log(
+                                LogLevel.Warning,
+                                "Node {NodeId} has MaxMaterializedItems set to null. " +
+                                "Restart functionality is disabled for streaming inputs. Configure: builder.WithRetryOptions(o => o.WithMaxMaterializedItems(1000))",
+                                nodeDef.Id);
+                        }
+                    }
+
                     // Check if this is a parallel execution scenario where we want to preserve the original exception
                     var isParallelExecution = context.Items.TryGetValue(PipelineContextKeys.ParallelExecution, out var parallelValue) &&
                                               parallelValue is bool isParallel && isParallel;

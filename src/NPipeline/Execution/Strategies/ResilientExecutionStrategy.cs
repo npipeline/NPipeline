@@ -110,6 +110,40 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         using var resilientActivity = context.Tracer.StartActivity("Node.Resilience");
         resilientActivity.SetTag("resilience.enabled", true);
 
+        var logger = context.LoggerFactory.CreateLogger(nameof(ResilientExecutionStrategy));
+
+        // Runtime validation: Check for missing prerequisites
+        // This provides a safety net for issues that analyzers might miss
+        if (context.PipelineErrorHandler is null)
+        {
+            throw new InvalidOperationException(
+                $"Node '{context.CurrentNodeId}' is using ResilientExecutionStrategy but no IPipelineErrorHandler is configured. " +
+                "Node restarts require an error handler. Configure: builder.AddPipelineErrorHandler<T>()");
+        }
+
+        // Determine effective retry options precedence
+        var effectiveRetries = context.RetryOptions;
+
+        if (context.Items.TryGetValue($"retry::{context.CurrentNodeId}", out var specific) && specific is PipelineRetryOptions prc)
+            effectiveRetries = prc;
+        else if (context.Items.TryGetValue(PipelineContextKeys.GlobalRetryOptions, out var globalRetry) && globalRetry is PipelineRetryOptions grc)
+            effectiveRetries = grc;
+
+        if (effectiveRetries.MaxNodeRestartAttempts <= 0)
+        {
+            throw new InvalidOperationException(
+                $"Node '{context.CurrentNodeId}' is using ResilientExecutionStrategy but MaxNodeRestartAttempts is {effectiveRetries.MaxNodeRestartAttempts} (must be > 0). " +
+                "Restart functionality is disabled. Configure: builder.WithRetryOptions(o => o.WithMaxNodeRestartAttempts(3))");
+        }
+
+        // Check for streaming inputs without materialization
+        if (input is IStreamingDataPipe && effectiveRetries.MaxMaterializedItems is null or <= 0)
+        {
+            throw new InvalidOperationException(
+                $"Node '{context.CurrentNodeId}' has streaming inputs but MaxMaterializedItems is {effectiveRetries.MaxMaterializedItems} (must be > 0). " +
+                "Restart functionality is disabled for streaming inputs. Configure: builder.WithRetryOptions(o => o.WithMaxMaterializedItems(1000))");
+        }
+
         if (context.PipelineErrorHandler is null)
         {
             // If there is no graph-level error handler, there is no need for this resilience layer.
@@ -187,8 +221,8 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         // 3. Context-level RetryOptions (may be default if not explicitly set on PipelineContext construction)
         var effectiveAtCreation = context.RetryOptions;
 
-        if (context.Items.TryGetValue($"retry::{creationNodeId}", out var specific) && specific is PipelineRetryOptions prc)
-            effectiveAtCreation = prc;
+        if (context.Items.TryGetValue($"retry::{creationNodeId}", out var specificRetry) && specificRetry is PipelineRetryOptions nodeRetryOptions)
+            effectiveAtCreation = nodeRetryOptions;
         else if (context.Items.TryGetValue(PipelineContextKeys.GlobalRetryOptions, out var globalRetry) && globalRetry is PipelineRetryOptions grc)
             effectiveAtCreation = grc;
 

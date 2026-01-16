@@ -472,7 +472,7 @@ public async Task ProcessContext(PipelineContext context)
 
 ### NP9001: Incomplete Resilient Configuration
 
-**Message:** `[NP9001] Error handler can return PipelineErrorDecision.RestartNode but may not have all three mandatory prerequisites configured. Missing prerequisites will silently disable restart, causing the entire pipeline to fail instead of recovering the failed node.`
+**Message:** `[NP9001] Error handler can return PipelineErrorDecision.RestartNode but may not have all three mandatory prerequisites configured. The system validates configuration at runtime and throws InvalidOperationException if prerequisites are missing.`
 
 **Category:** Configuration Error
 
@@ -484,7 +484,7 @@ public async Task ProcessContext(PipelineContext context)
 2. **MaxNodeRestartAttempts** must be > 0 in PipelineRetryOptions
 3. **MaxMaterializedItems** must be non-null (not unbounded)
 
-Missing even one of these prerequisites will **silently disable restart**, causing the entire pipeline to fail instead of recovering gracefully.
+**Runtime Validation:** The system validates these requirements at runtime. If any prerequisite is missing when `RestartNode` is returned, the system throws a clear `InvalidOperationException` with a detailed message explaining which requirement is missing. This prevents silent failures and provides immediate feedback about configuration issues.
 
 **Example of Problem Code:**
 
@@ -498,8 +498,9 @@ var pipeline = builder
     // Missing: .WithExecutionStrategy(builder, new ResilientExecutionStrategy(...))
     .Build();
 
-// If MyErrorHandler.HandleNodeFailureAsync() can return RestartNode,
-// but the node doesn't have ResilientExecutionStrategy, restart will fail silently!
+// If MyErrorHandler.HandleNodeFailureAsync() returns RestartNode,
+// the system will throw InvalidOperationException at runtime indicating
+// which prerequisite is missing.
 ```
 
 **Solution - Complete Configuration Checklist:**
@@ -532,7 +533,7 @@ var pipeline = builder.Build();
 await pipeline.ExecuteAsync(source, context);
 ```
 
-**Critical Warning:** Never set `MaxMaterializedItems` to `null` (unbounded). This silently disables restart functionality and can cause OutOfMemoryException. See the [Getting Started with Resilience](../core-concepts/resilience/getting-started.md) guide for detailed explanation of why unbounded buffers break resilience guarantees.
+**Configuration Guidance:** Always set `MaxMaterializedItems` to a positive bounded value. Setting it to `null` (unbounded) will cause `InvalidOperationException` when `RestartNode` is attempted, as the system cannot safely buffer items for replay without defined limits. See the [Getting Started with Resilience](../core-concepts/resilience/getting-started.md) guide for detailed explanation of why bounded buffers are required for resilience guarantees.
 
 **Read More:**
 

@@ -705,8 +705,7 @@ public sealed class SelfJoinExtensionsTests
                     $"{left.Value}-{right.Value}"
                 ),
                 item => item.Id,
-                item => item.Id,
-                JoinType.Inner);
+                item => item.Id);
 
             var sink = builder.AddSink<OutputRecordSink, OutputRecord>("sink");
             builder.Connect(joinNode, sink);
@@ -946,8 +945,7 @@ public sealed class SelfJoinExtensionsTests
                 "test_join",
                 (left, right) => new OutputRecord(left.Id, left.Value, right.Value, "matched"),
                 item => item.Id,
-                item => item.Value.Length,
-                JoinType.Inner);
+                item => item.Value.Length);
 
             var sink = builder.AddSink<OutputRecordSink, OutputRecord>("sink");
             builder.Connect(joinNode, sink);
@@ -993,8 +991,7 @@ public sealed class SelfJoinExtensionsTests
                 "test_join",
                 (left, right) => new OutputRecord(left.Id, left.Value, right.Value, "matched"),
                 item => item.Id,
-                item => item.Id,
-                JoinType.Inner);
+                item => item.Id);
 
             var sink = builder.AddSink<OutputRecordSink, OutputRecord>("sink");
             builder.Connect(joinNode, sink);
@@ -1104,8 +1101,7 @@ public sealed class SelfJoinExtensionsTests
                 "test_join",
                 (left, right) => new OutputRecord(left.Id, left.Value, right.Value, "matched"),
                 item => item.Id,
-                item => item.Id,
-                JoinType.Inner);
+                item => item.Id);
 
             var sink = builder.AddSink<OutputRecordSink, OutputRecord>("sink");
             builder.Connect(joinNode, sink);
@@ -1165,8 +1161,7 @@ public sealed class SelfJoinExtensionsTests
                 (left, right) => new OutputRecord(left.Id, left.Value, right.Value, "matched"),
                 item => item.Id,
                 item => item.Id,
-                JoinType.LeftOuter,
-                null);
+                JoinType.LeftOuter);
 
             var sink = builder.AddSink<OutputRecordSink, OutputRecord>("sink");
             builder.Connect(joinNode, sink);

@@ -18,7 +18,9 @@ public sealed class ResilientExecutionConfigurationCodeFixProvider : CodeFixProv
 {
     /// <inheritdoc />
     public override ImmutableArray<string> FixableDiagnosticIds =>
-        [ResilientExecutionConfigurationAnalyzer.IncompleteResilientConfigurationId];
+    [
+        ResilientExecutionConfigurationAnalyzer.IncompleteResilientConfigurationId,
+    ];
 
     /// <inheritdoc />
     public override FixAllProvider GetFixAllProvider()

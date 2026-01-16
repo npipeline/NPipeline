@@ -13,7 +13,7 @@ This guide covers diagnosing and resolving common issues with resilience configu
 
 ## Quick Diagnosis: Use Build-Time Validation
 
-**Start here first:** Before debugging at runtime, run the pipeline builder's validation to catch configuration issues early:
+**Start here first:** Before debugging at runtime, run pipeline builder's validation to catch configuration issues early:
 
 ```csharp
 var builder = new PipelineBuilder();
@@ -44,6 +44,8 @@ The **ResilienceConfigurationRule** automatically validates that your resilience
 - **MaxNodeRestartAttempts > 0?** Controls restart capability
 - **MaxMaterializedItems Set?** Prevents unbounded memory growth
 
+**Runtime Validation:** The system validates these requirements at runtime when `RestartNode` is returned. If any prerequisite is missing, system throws `InvalidOperationException` with a clear message indicating which requirement failed. This provides immediate feedback and prevents silent configuration errors.
+
 See [Resilience Configuration Rule Details](../pipeline-validation.md#resilience-configuration-rule-details) for complete validation documentation.
 
 ## Symptom-Based Troubleshooting
@@ -56,6 +58,8 @@ See [Resilience Configuration Rule Details](../pipeline-validation.md#resilience
 2. No materialization configured for streaming inputs
 3. Error handler not returning `RestartNode`
 4. Retry limits exhausted
+
+**Runtime Validation:** The system validates configuration when `RestartNode` is returned. If any prerequisite is missing, it throws `InvalidOperationException` with a clear message indicating which requirement failed.
 
 **Diagnostic Steps:**
 
@@ -800,4 +804,3 @@ public class ResilienceHealthCheck : IHealthCheck
 - **[Error Handling Guide](error-handling.md)**: Review proper configuration patterns
 - **[Getting Started with Resilience](getting-started.md)**: Understand critical prerequisite relationships
 - **[Error Codes Reference](../../reference/error-codes.md)**: Look up specific NPipeline error codes (NP01xx-NP05xx)
-

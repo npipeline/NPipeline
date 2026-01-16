@@ -233,7 +233,7 @@ For detailed memory calculations and configuration examples, see [Materializatio
 
 ### My node restarts aren't working
 
-Node restarts require **three mandatory components**. If any are missing, restarts silently fail:
+Node restarts require **three mandatory components**. If any are missing, the system throws `InvalidOperationException` at runtime with a clear message indicating which requirement is missing:
 
 1. **ResilientExecutionStrategy not applied**:
 
@@ -263,9 +263,11 @@ Node restarts require **three mandatory components**. If any are missing, restar
    var options = new PipelineRetryOptions(
        MaxItemRetries: 3,
        MaxNodeRestartAttempts: 2,
-       MaxMaterializedItems: 1000  // ← CRITICAL: null disables restarts
+       MaxMaterializedItems: 1000  // ← CRITICAL: null throws exception
    );
    ```
+
+**Runtime Validation:** The system validates these requirements when `RestartNode` is returned. If any prerequisite is missing, it throws `InvalidOperationException` with a clear message indicating which requirement failed. This provides immediate feedback and prevents silent configuration errors.
 
 **Verification checklist:**
 
@@ -274,7 +276,7 @@ Node restarts require **three mandatory components**. If any are missing, restar
 - [ ] MaxMaterializedItems is set to positive number
 - [ ] Error handler returns PipelineErrorDecision.RestartNode
 
-For the complete checklist and troubleshooting guide, see [Getting Started with Resilience](../core-concepts/resilience/getting-started.md).
+For complete checklist and troubleshooting guide, see [Getting Started with Resilience](../core-concepts/resilience/getting-started.md).
 
 ### My parallel pipeline is slower than sequential
 

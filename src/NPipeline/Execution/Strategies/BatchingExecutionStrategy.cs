@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Nodes;
+using NPipeline.Observability;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Execution.Strategies;
@@ -105,11 +106,10 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
         var nodeId = context.CurrentNodeId;
 
         // Get observability scope if available
-        NPipeline.Observability.IAutoObservabilityScope? observabilityScope = null;
-        if (context.Items.TryGetValue(NPipeline.Pipeline.PipelineContextKeys.NodeObservabilityScope(nodeId), out var scopeObj))
-        {
-            observabilityScope = scopeObj as NPipeline.Observability.IAutoObservabilityScope;
-        }
+        IAutoObservabilityScope? observabilityScope = null;
+
+        if (context.Items.TryGetValue(PipelineContextKeys.NodeObservabilityScope(nodeId), out var scopeObj))
+            observabilityScope = scopeObj as IAutoObservabilityScope;
 
         var batchedStream = BatchWithObservabilityAsync(input, BatchSize, Timespan, observabilityScope, cancellationToken);
 
@@ -141,11 +141,10 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
         var nodeId = context.CurrentNodeId;
 
         // Get observability scope if available
-        NPipeline.Observability.IAutoObservabilityScope? observabilityScope = null;
-        if (context.Items.TryGetValue(NPipeline.Pipeline.PipelineContextKeys.NodeObservabilityScope(nodeId), out var scopeObj))
-        {
-            observabilityScope = scopeObj as NPipeline.Observability.IAutoObservabilityScope;
-        }
+        IAutoObservabilityScope? observabilityScope = null;
+
+        if (context.Items.TryGetValue(PipelineContextKeys.NodeObservabilityScope(nodeId), out var scopeObj))
+            observabilityScope = scopeObj as IAutoObservabilityScope;
 
         var batchedStream = BatchWithObservabilityAsync(input, BatchSize, Timespan, observabilityScope, cancellationToken);
 
@@ -164,7 +163,7 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
         IDataPipe<T> input,
         int batchSize,
         TimeSpan timespan,
-        NPipeline.Observability.IAutoObservabilityScope? observabilityScope,
+        IAutoObservabilityScope? observabilityScope,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         try
@@ -185,6 +184,7 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
                     // Track item emitted (one batch)
                     observabilityScope?.IncrementEmitted();
                     yield return batch.ToArray();
+
                     batch = new List<T>(batchSize);
                     lastYieldTime = DateTime.UtcNow;
                 }

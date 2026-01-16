@@ -394,6 +394,19 @@ public sealed class ErrorHandlingService : IErrorHandlingService
                     context,
                     cancellationToken);
 
+                // If the error handler returned RestartNode, verify the node is using ResilientExecutionStrategy
+                if (pipelineDecision == PipelineErrorDecision.RestartNode)
+                {
+                    if (nodeDefinition.ExecutionStrategy?.GetType().Name != "ResilientExecutionStrategy")
+                    {
+                        throw new InvalidOperationException(
+                            $"Node '{nodeDefinition.Id}' error handler returned RestartNode, but the node is not using ResilientExecutionStrategy. " +
+                            "Node restart functionality requires wrapping the node with ResilientExecutionStrategy. " +
+                            "Fix: Add .WithResilience() to the node configuration, e.g., " +
+                            $"builder.AddNode(\"{nodeDefinition.Id}\", ...).WithResilience()");
+                    }
+                }
+
                 // Convert PipelineErrorDecision to NodeErrorDecision
                 return pipelineDecision switch
                 {

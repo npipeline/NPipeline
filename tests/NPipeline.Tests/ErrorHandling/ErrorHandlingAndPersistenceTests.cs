@@ -4,6 +4,7 @@ using NPipeline.DataFlow;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Execution.Services;
+using NPipeline.Execution.Strategies;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -25,7 +26,8 @@ public sealed class ErrorHandlingAndPersistenceTests
         var nodeDef = new NodeDefinition(
             new NodeIdentity("s1", "s1"),
             new NodeTypeSystem(typeof(FailingSourceNode), NodeKind.Source, null, typeof(object)),
-            new NodeExecutionConfig(),
+            new NodeExecutionConfig(
+                new ResilientExecutionStrategy(new SequentialExecutionStrategy())),
             new NodeMergeConfig(),
             new NodeLineageConfig());
 
