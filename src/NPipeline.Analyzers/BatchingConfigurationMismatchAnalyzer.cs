@@ -16,13 +16,13 @@ public sealed class BatchingConfigurationMismatchAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for batching configuration mismatch.
     /// </summary>
-    public const string BatchingConfigurationMismatchId = "NP9503";
+    public const string BatchingConfigurationMismatchId = "NP9004";
 
     private static readonly DiagnosticDescriptor Rule = new(
         BatchingConfigurationMismatchId,
         "Batching configuration mismatch detected",
         "Batching configuration mismatch: {0}. This can cause {1}.",
-        "Performance",
+        "Configuration & Setup",
         DiagnosticSeverity.Warning,
         true,
         "Batching configuration mismatches can cause performance issues. "

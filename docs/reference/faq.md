@@ -180,10 +180,10 @@ Use these approaches to verify pipeline optimization:
    ```
 
 2. **Check for common issues**:
-   - Blocking operations in async methods (NP9102)
-   - Missing ValueTask optimizations (NP9209)
-   - Non-streaming patterns in source nodes (NP9211)
-   - Swallowed cancellation exceptions (NP9103)
+   - Blocking operations in async methods (NP9101)
+   - Missing ValueTask optimizations (NP9106)
+   - Non-streaming patterns in source nodes (NP9107)
+   - Swallowed cancellation exceptions (NP9201)
 
 3. **Benchmark critical paths** with BenchmarkDotNet:
 

@@ -16,13 +16,13 @@ public sealed class TimeoutConfigurationAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for timeout configuration issues.
     /// </summary>
-    public const string TimeoutConfigurationId = "NP9504";
+    public const string TimeoutConfigurationId = "NP9005";
 
     private static readonly DiagnosticDescriptor Rule = new(
         TimeoutConfigurationId,
         "Inappropriate timeout configuration detected",
         "Timeout configuration '{0}' is inappropriate for {1} operations: {2}",
-        "Configuration",
+        "Configuration & Setup",
         DiagnosticSeverity.Warning,
         true,
         "Inappropriate timeout configurations can cause resource leaks, hanging operations, "

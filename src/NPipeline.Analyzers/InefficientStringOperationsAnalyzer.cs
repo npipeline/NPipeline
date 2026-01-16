@@ -16,13 +16,13 @@ public sealed class InefficientStringOperationsAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for inefficient string operations.
     /// </summary>
-    public const string InefficientStringOperationsId = "NP9202";
+    public const string InefficientStringOperationsId = "NP9104";
 
     private static readonly DiagnosticDescriptor Rule = new(
         InefficientStringOperationsId,
         "Inefficient string operation detected",
         "String operation '{0}' creates unnecessary allocations: {1}",
-        "Performance",
+        "Performance & Optimization",
         DiagnosticSeverity.Warning,
         true,
         "String operations in hot paths can cause significant memory pressure and performance degradation. "

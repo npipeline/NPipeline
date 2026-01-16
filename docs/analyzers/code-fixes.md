@@ -19,11 +19,12 @@ Code fix providers help developers quickly resolve analyzer warnings by:
 
 ### Available Code Fixes
 
-#### NP9501: Unbounded Materialization Configuration
+#### NP9002: Unbounded Materialization Configuration
 
 This code fix automatically adds appropriate `MaxMaterializedItems` values to `PipelineRetryOptions` constructors.
 
 **Before Fix:**
+
 ```csharp
 var retryOptions = new PipelineRetryOptions(
     maxRetryCount: 3,
@@ -32,6 +33,7 @@ var retryOptions = new PipelineRetryOptions(
 ```
 
 **After Fix:**
+
 ```csharp
 var retryOptions = new PipelineRetryOptions(
     maxRetryCount: 3,
@@ -40,27 +42,30 @@ var retryOptions = new PipelineRetryOptions(
     maxMaterializedItems: 1000);
 ```
 
-#### NP9502: Inappropriate Parallelism Configuration
+#### NP9003: Inappropriate Parallelism Configuration
 
 This code fix suggests appropriate parallelism values based on workload type and system characteristics.
 
 **Before Fix:**
+
 ```csharp
 builder.AddTransform<CpuTransform, Input, Output>("transform")
     .WithParallelism(Environment.ProcessorCount * 4);
 ```
 
 **After Fix:**
+
 ```csharp
 builder.AddTransform<CpuTransform, Input, Output>("transform")
     .WithParallelism(Environment.ProcessorCount);
 ```
 
-#### NP9503: Batching Configuration Mismatch
+#### NP9004: Batching Configuration Mismatch
 
 This code fix aligns batch sizes with appropriate timeout values based on processing characteristics.
 
 **Before Fix:**
+
 ```csharp
 var batchingOptions = new BatchingOptions(
     batchSize: 1000,
@@ -68,23 +73,26 @@ var batchingOptions = new BatchingOptions(
 ```
 
 **After Fix:**
+
 ```csharp
 var batchingOptions = new BatchingOptions(
     batchSize: 1000,
     timeout: TimeSpan.FromSeconds(5));
 ```
 
-#### NP9504: Timeout Configuration Issues
+#### NP9005: Timeout Configuration Issues
 
 This code fix suggests appropriate timeout values based on operation type and characteristics.
 
 **Before Fix:**
+
 ```csharp
 builder.AddTransform<DatabaseTransform, Input, Output>("transform")
     .WithTimeout(TimeSpan.Zero);
 ```
 
 **After Fix:**
+
 ```csharp
 builder.AddTransform<DatabaseTransform, Input, Output>("transform")
     .WithTimeout(TimeSpan.FromSeconds(30));
@@ -95,6 +103,7 @@ builder.AddTransform<DatabaseTransform, Input, Output>("transform")
 This code fix automatically converts blocking operations in async methods to proper async patterns.
 
 **Before Fix:**
+
 ```csharp
 public async Task<string> ProcessDataAsync()
 {
@@ -104,6 +113,7 @@ public async Task<string> ProcessDataAsync()
 ```
 
 **After Fix:**
+
 ```csharp
 public async Task<string> ProcessDataAsync()
 {
@@ -112,11 +122,12 @@ public async Task<string> ProcessDataAsync()
 }
 ```
 
-#### NP9205: Non-Streaming Patterns in SourceNode
+#### NP9107: Non-Streaming Patterns in SourceNode
 
 This code fix converts non-streaming SourceNode implementations to proper streaming patterns using IAsyncEnumerable.
 
 **Before Fix:**
+
 ```csharp
 public class BadSourceNode : SourceNode<Output>
 {
@@ -129,6 +140,7 @@ public class BadSourceNode : SourceNode<Output>
 ```
 
 **After Fix:**
+
 ```csharp
 public class GoodSourceNode : SourceNode<Output>
 {
@@ -147,11 +159,12 @@ public class GoodSourceNode : SourceNode<Output>
 }
 ```
 
-#### NP9401: Direct Dependency Instantiation
+#### NP9404: Direct Dependency Instantiation
 
 This code fix converts direct dependency instantiation to proper constructor injection patterns.
 
 **Before Fix:**
+
 ```csharp
 public class BadTransform : TransformNode<Input, Output>
 {
@@ -165,6 +178,7 @@ public class BadTransform : TransformNode<Input, Output>
 ```
 
 **After Fix:**
+
 ```csharp
 public class GoodTransform : TransformNode<Input, Output>
 {
@@ -183,11 +197,12 @@ public class GoodTransform : TransformNode<Input, Output>
 }
 ```
 
-#### NP9302: SinkNode Input Not Consumed
+#### NP9301: SinkNode Input Not Consumed
 
 This code fix adds proper input consumption patterns to SinkNode implementations.
 
 **Before Fix:**
+
 ```csharp
 public class BadSinkNode : SinkNode<Input>
 {
@@ -199,6 +214,7 @@ public class BadSinkNode : SinkNode<Input>
 ```
 
 **After Fix:**
+
 ```csharp
 public class GoodSinkNode : SinkNode<Input>
 {
@@ -258,8 +274,8 @@ Enable or disable code fixes in your `.editorconfig`:
 dotnet_code_fix.enable = true
 
 # Disable specific code fix providers
-dotnet_code_fix.NP9501.enable = false
-dotnet_code_fix.NP9502.enable = false
+dotnet_code_fix.NP9002.enable = false
+dotnet_code_fix.NP9003.enable = false
 ```
 
 ## See Also

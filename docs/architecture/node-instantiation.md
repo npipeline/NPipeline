@@ -215,7 +215,7 @@ var pipeline = builder.Build();
 
 ## Analyzer Support
 
-NPipeline includes analyzer **NP9505** that detects nodes without parameterless constructors:
+NPipeline includes analyzer **NP9403** that detects nodes without parameterless constructors:
 
 ### Warning Detection
 
@@ -226,7 +226,7 @@ public class ProblematicNode : TransformNode<string, int>
 {
     private readonly ILogger _logger;
 
-    // ⚠️ Warning NP9505: No parameterless constructor
+    // ⚠️ Warning NP9403: No parameterless constructor
     public ProblematicNode(ILogger logger)
     {
         _logger = logger;
@@ -264,17 +264,20 @@ public class ProblematicNode : TransformNode<string, int>
 ## Best Practices
 
 1. **Add explicit parameterless constructors** for clarity and to prevent accidental removal
+
    ```csharp
    public MyNode() { } // Explicit, won't be accidentally removed
    ```
 
 2. **Use both constructors** when you need flexibility
+
    ```csharp
    public MyNode() { }
    public MyNode(IService service) { _service = service; }
    ```
 
 3. **Keep constructors simple** - Complex initialization belongs in a factory method or builder pattern
+
    ```csharp
    // Good
    public MyNode() { }
@@ -286,6 +289,7 @@ public class ProblematicNode : TransformNode<string, int>
    ```
 
 4. **Don't worry about implicit constructors** - They're already optimized
+
    ```csharp
    // This is fine - it has an implicit parameterless constructor
    public MyNode : TransformNode<string, int>
@@ -295,6 +299,7 @@ public class ProblematicNode : TransformNode<string, int>
    ```
 
 5. **Use DIContainerNodeFactory for pure DI scenarios** if performance isn't critical
+
    ```csharp
    // When you always use DI and don't care about ~200μs overhead
    builder.UseDIContainerNodeFactory();

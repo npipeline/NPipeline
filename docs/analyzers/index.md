@@ -16,16 +16,15 @@ Think of them as **automated code review** by experts who understand how high-pe
 
 ## The NP9000 Series: Performance and Resilience Hygiene Toolkit
 
-The NP9000 series (NP9XXX) diagnostics represent a curated set of enforcement rules that protect you from the most common—and most dangerous—mistakes when building streaming data pipelines:
+The NP9000 series (NP9XXX) diagnostics represent a curated set of enforcement rules that protect you from most common—and most dangerous—mistakes when building streaming data pipelines:
 
 | Code Range | Category | Purpose |
 |-----------|----------|---------|
-| **NP90XX** | **Resilience** | Enforces proper error handling and recovery configuration |
-| **NP91XX** | **Performance** | Catches blocking operations, non-streaming patterns, and async/await anti-patterns |
-| **NP92XX** | **Data Flow** | Ensures proper data consumption and processing patterns |
-| **NP93XX** | **Reliability** | Detects inefficient exception handling and unsafe access patterns |
-| **NP94XX** | **Best Practices** | Validates dependency injection, resource management, and framework contract compliance |
-| **NP95XX** | **Configuration** | Detects configuration issues that can cause performance problems or silent failures |
+| **NP90XX** | **Configuration & Setup** | Enforces proper pipeline configuration for resilience, parallelism, batching, and timeouts |
+| **NP91XX** | **Performance & Optimization** | Catches blocking operations, non-streaming patterns, and async/await anti-patterns |
+| **NP92XX** | **Reliability & Error Handling** | Ensures proper error handling, cancellation propagation, and exception management |
+| **NP93XX** | **Data Integrity & Correctness** | Detects unsafe access patterns and ensures proper data consumption |
+| **NP94XX** | **Design & Architecture** | Validates dependency injection, node design, and framework contract compliance |
 
 ### Why This Matters
 
@@ -107,26 +106,28 @@ For all available NPipeline packages and installation options, see the [Installa
 
 | Code | Category | Problem | Fix |
 |------|----------|---------|-----|
-| **NP9001** | Resilience | Incomplete resilience configuration | Add missing prerequisites |
-| **NP9101** | Performance | Blocking operations in async methods | Use await instead of .Result/.Wait() |
-| **NP9102** | Performance | Swallowed OperationCanceledException | Re-throw or handle explicitly |
-| **NP9103** | Performance | Synchronous over async (fire-and-forget) | Await the async call |
-| **NP9104** | Performance | Disrespecting cancellation token | Check token and propagate |
-| **NP9201** | Performance | LINQ operations in hot paths | Use imperative alternatives |
-| **NP9202** | Performance | Inefficient string operations | Use StringBuilder, interpolation, or spans |
-| **NP9203** | Performance | Anonymous object allocation in hot paths | Use named types or value types |
-| **NP9204** | Performance | Missing ValueTask optimization | Use ValueTask for sync-heavy paths |
-| **NP9205** | Performance | Non-streaming patterns in SourceNode | Use IAsyncEnumerable with yield |
-| **NP9210** | Data Flow | ITransformNode returning IAsyncEnumerable | Use IStreamTransformNode instead |
-| **NP9211** | Data Flow | IStreamTransformNode with non-stream strategy | Use IStreamExecutionStrategy |
-| **NP9301** | Reliability | Inefficient exception handling patterns | Use specific exception handling |
-| **NP9302** | Data Processing | SinkNode input not consumed | Iterate the input pipe |
-| **NP9303** | Best Practice | Unsafe PipelineContext access | Use null-safe patterns |
-| **NP9401** | Best Practice | Direct dependency instantiation | Use constructor injection |
-| **NP9501** | Configuration | Unbounded materialization configuration | Set MaxMaterializedItems value |
-| **NP9502** | Configuration | Inappropriate parallelism configuration | Match parallelism to workload |
-| **NP9503** | Configuration | Batching configuration mismatch | Align batch size and timeout |
-| **NP9504** | Configuration | Timeout configuration issues | Set appropriate timeouts |
+| **NP9001** | Configuration & Setup | Incomplete resilience configuration | Add missing prerequisites |
+| **NP9002** | Configuration & Setup | Unbounded materialization configuration | Set MaxMaterializedItems value |
+| **NP9003** | Configuration & Setup | Inappropriate parallelism configuration | Match parallelism to workload |
+| **NP9004** | Configuration & Setup | Batching configuration mismatch | Align batch size and timeout |
+| **NP9005** | Configuration & Setup | Timeout configuration issues | Set appropriate timeouts |
+| **NP9101** | Performance & Optimization | Blocking operations in async methods | Use await instead of .Result/.Wait() |
+| **NP9102** | Performance & Optimization | Synchronous over async (fire-and-forget) | Await the async call |
+| **NP9103** | Performance & Optimization | LINQ operations in hot paths | Use imperative alternatives |
+| **NP9104** | Performance & Optimization | Inefficient string operations | Use StringBuilder, interpolation, or spans |
+| **NP9105** | Performance & Optimization | Anonymous object allocation in hot paths | Use named types or value types |
+| **NP9106** | Performance & Optimization | Missing ValueTask optimization | Use ValueTask for sync-heavy paths |
+| **NP9107** | Performance & Optimization | Non-streaming patterns in SourceNode | Use IAsyncEnumerable with yield |
+| **NP9108** | Performance & Optimization | Parameterless constructor performance suggestion | Add parameterless constructor |
+| **NP9201** | Reliability & Error Handling | Swallowed OperationCanceledException | Re-throw or handle explicitly |
+| **NP9202** | Reliability & Error Handling | Inefficient exception handling patterns | Use specific exception handling |
+| **NP9203** | Reliability & Error Handling | Disrespecting cancellation token | Check token and propagate |
+| **NP9301** | Data Integrity & Correctness | SinkNode input not consumed | Iterate through input pipe |
+| **NP9302** | Data Integrity & Correctness | Unsafe PipelineContext access | Use null-safe patterns |
+| **NP9401** | Design & Architecture | ITransformNode returning IAsyncEnumerable | Use IStreamTransformNode instead |
+| **NP9402** | Design & Architecture | IStreamTransformNode with non-stream strategy | Use IStreamExecutionStrategy |
+| **NP9403** | Design & Architecture | Missing parameterless constructor | Add parameterless constructor |
+| **NP9404** | Design & Architecture | Direct dependency instantiation | Use constructor injection |
 
 ## Philosophy
 
@@ -153,27 +154,22 @@ You can adjust analyzer severity in your `.editorconfig`:
 ```ini
 # Treat all analyzer warnings as errors
 dotnet_diagnostic.NP9001.severity = error
+dotnet_diagnostic.NP9002.severity = error
 dotnet_diagnostic.NP9101.severity = error
+dotnet_diagnostic.NP9102.severity = error
 dotnet_diagnostic.NP9103.severity = error
+dotnet_diagnostic.NP9107.severity = error
 dotnet_diagnostic.NP9201.severity = error
 dotnet_diagnostic.NP9202.severity = error
-dotnet_diagnostic.NP9203.severity = error
-dotnet_diagnostic.NP9205.severity = error
-dotnet_diagnostic.NP9210.severity = info
-dotnet_diagnostic.NP9211.severity = warning
 dotnet_diagnostic.NP9301.severity = error
 dotnet_diagnostic.NP9302.severity = error
-dotnet_diagnostic.NP9303.severity = error
 dotnet_diagnostic.NP9401.severity = error
-dotnet_diagnostic.NP9501.severity = error
-dotnet_diagnostic.NP9502.severity = warning
-dotnet_diagnostic.NP9503.severity = warning
-dotnet_diagnostic.NP9504.severity = warning
-dotnet_diagnostic.NP9505.severity = warning
+dotnet_diagnostic.NP9404.severity = error
 ```
 
 ## See Also
 
+- [Migration Guide](./migration-guide.md) - Migrate to the new analyzer diagnostic code system
 - [Resilience Analyzers](./resilience.md) - Build resilient error handling
 - [Reliability Analyzers](./reliability.md) - Improve exception handling and access patterns
 - [Performance Analyzers](./performance.md) - Write fast, non-blocking code

@@ -8,11 +8,11 @@ sidebar_position: 5
 
 Best practice analyzers enforce architectural patterns that ensure your code is testable, maintainable, and follows the framework's design principles.
 
-### NP9303: Unsafe PipelineContext Access
+### NP9302: Unsafe PipelineContext Access
 
-**ID:** `NP9303`
+**ID:** `NP9302`
 **Severity:** Warning  
-**Category:** Best Practice  
+**Category:** Data Integrity & Correctness  
 
 This analyzer detects unsafe access patterns to nullable properties on PipelineContext. Accessing potentially null properties without null-safety checks can cause null reference exceptions at runtime.
 
@@ -22,7 +22,7 @@ This analyzer detects unsafe access patterns to nullable properties on PipelineC
 // PROBLEM: Direct access to potentially null property
 public async Task HandleErrorAsync(PipelineContext context, Exception error)
 {
-    // NP9303: PipelineErrorHandler might be null
+    // NP9302: PipelineErrorHandler might be null
     await context.PipelineErrorHandler.HandleNodeFailureAsync(
         "nodeId", error, context, cancellationToken);
 }
@@ -30,14 +30,14 @@ public async Task HandleErrorAsync(PipelineContext context, Exception error)
 // PROBLEM: Direct dictionary access without existence check
 public string GetParameter(PipelineContext context, string key)
 {
-    // NP9303: Dictionary might not contain key, and Parameters might be null
+    // NP9302: Dictionary might not contain key, and Parameters might be null
     return context.Parameters[key].ToString();
 }
 
 // PROBLEM: Unsafe cast
 public void ProcessConfig(PipelineContext context)
 {
-    // NP9303: Configuration might be null or wrong type
+    // NP9302: Configuration might be null or wrong type
     var config = (MyConfig)context.Configuration;
     ProcessConfig(config);
 }
@@ -112,11 +112,11 @@ public string GetValue(PipelineContext context)
 4. **Testability**: Easier to test code that handles null cases explicitly
 5. **Maintainability**: Future developers understand property optionality
 
-### NP9401: Missing Dependency Injection for Services
+### NP9404: Missing Dependency Injection for Services
 
-**ID:** `NP9401`
+**ID:** `NP9404`
 **Severity:** Warning  
-**Category:** Best Practice  
+**Category:** Design & Architecture  
 
 This analyzer detects dependency injection anti-patterns in node implementations that can lead to tightly coupled code that is difficult to test and maintain. The analyzer identifies the following problematic patterns:
 
@@ -132,7 +132,7 @@ When node implementations directly instantiate their dependencies or use service
 // PROBLEM: Direct service instantiation
 public class BadTransformNode : TransformNode<string, string>
 {
-    private readonly BadService _badService = new BadService(); // NP9401: Direct instantiation
+    private readonly BadService _badService = new BadService(); // NP9404: Direct instantiation
 
     public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
     {
@@ -147,7 +147,7 @@ public class BadSourceNode : SourceNode<int>
 
     public BadSourceNode()
     {
-        _service = new BadService(); // NP9401: Static singleton assignment
+        _service = new BadService(); // NP9404: Static singleton assignment
     }
 }
 
@@ -163,7 +163,7 @@ public class BadSinkNode : SinkNode<string>
 
     public override async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
     {
-        var badService = _serviceProvider.GetService(typeof(BadService)) as BadService; // NP9401: Service locator
+        var badService = _serviceProvider.GetService(typeof(BadService)) as BadService; // NP9404: Service locator
         await foreach (var item in input.WithCancellation(cancellationToken))
         {
             // Process item
@@ -235,10 +235,10 @@ Adjust analyzer severity in `.editorconfig`:
 
 ```ini
 # Treat unsafe context access as errors
-dotnet_diagnostic.NP9303.severity = error
+dotnet_diagnostic.NP9302.severity = error
 
 # Treat DI anti-patterns as errors
-dotnet_diagnostic.NP9401.severity = error
+dotnet_diagnostic.NP9404.severity = error
 ```
 
 ## See Also

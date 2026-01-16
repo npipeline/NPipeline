@@ -17,7 +17,7 @@ public sealed class UnboundedMaterializationConfigurationAnalyzer : DiagnosticAn
     /// <summary>
     ///     Diagnostic ID for unbounded materialization configuration.
     /// </summary>
-    public const string UnboundedMaterializationConfigurationId = "NP9501";
+    public const string UnboundedMaterializationConfigurationId = "NP9002";
 
     private static readonly DiagnosticDescriptor Rule = new(
         UnboundedMaterializationConfigurationId,
@@ -25,7 +25,7 @@ public sealed class UnboundedMaterializationConfigurationAnalyzer : DiagnosticAn
         "PipelineRetryOptions configuration has unbounded materialization (MaxMaterializedItems is null or missing). "
         + "This can cause unbounded memory growth and silently disable restart functionality in ResilientExecutionStrategy. "
         + "Set MaxMaterializedItems to a reasonable value (e.g., 1000) to bound memory usage and enable restart.",
-        "Configuration",
+        "Configuration & Setup",
         DiagnosticSeverity.Error,
         true,
         "Unbounded materialization can cause OutOfMemoryException in high-throughput scenarios. "

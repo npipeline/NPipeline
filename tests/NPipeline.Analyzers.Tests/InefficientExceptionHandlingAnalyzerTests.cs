@@ -24,7 +24,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await ProcessAsync(input);
                            }
-                           // NP9301: Catch-all exception handler
+                           // NP9104: Catch-all exception handler
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Processing failed");
@@ -54,7 +54,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await ProcessAsync(input);
                            }
-                           // NP9301: Catch-all exception handler without type
+                           // NP9104: Catch-all exception handler without type
                            catch
                            {
                                _logger.LogError("Processing failed");
@@ -84,7 +84,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await ProcessAsync(input);
                            }
-                           // NP9301: Empty catch block
+                           // NP9104: Empty catch block
                            catch
                            {
                                // Exception silently ignored
@@ -113,7 +113,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                return await TransformAsync(input);
                            }
-                           // NP9301: Exception swallowing pattern
+                           // NP9104: Exception swallowing pattern
                            catch (Exception)
                            {
                                // Log but don't re-throw - silent failure
@@ -144,7 +144,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await SaveAsync(input);
                            }
-                           // NP9301: Inefficient exception filtering
+                           // NP9104: Inefficient exception filtering
                            catch (Exception ex) when (ex.Message.Contains("timeout"))
                            {
                                _logger.LogWarning($"Timeout occurred: {ex.Message}");
@@ -173,7 +173,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await ProcessAsync(input);
                            }
-                           // NP9301: Improper re-throw pattern
+                           // NP9104: Improper re-throw pattern
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Processing failed");
@@ -203,7 +203,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await ProcessDataAsync(input);
                            }
-                           // NP9301: Exception handling in ProcessAsync method
+                           // NP9104: Exception handling in ProcessAsync method
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Processing failed");
@@ -233,7 +233,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await SaveAsync(input);
                            }
-                           // NP9301: Exception handling in sink node
+                           // NP9104: Exception handling in sink node
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Save failed");
@@ -263,7 +263,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                return await GetDataAsync();
                            }
-                           // NP9301: Exception handling in source node
+                           // NP9104: Exception handling in source node
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Data retrieval failed");
@@ -296,7 +296,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                return await AggregateAsync(input);
                            }
-                           // NP9301: Exception handling in aggregate node
+                           // NP9104: Exception handling in aggregate node
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Aggregation failed");
@@ -326,7 +326,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await ProcessAsync(input);
                            }
-                           // This should not trigger NP9301 - specific exception type
+                           // This should not trigger NP9104 - specific exception type
                            catch (IOException ex)
                            {
                                _logger.LogError(ex, "IO processing failed");
@@ -354,7 +354,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                ProcessItem(data);
                            }
-                           // This should not trigger NP9301 - not a hot path method
+                           // This should not trigger NP9104 - not a hot path method
                            catch (Exception ex)
                            {
                                Console.WriteLine($"Error: {ex.Message}");
@@ -385,7 +385,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                return TransformItem(item);
                            }
-                           // This should not trigger NP9301 - not async
+                           // This should not trigger NP9104 - not async
                            catch (Exception ex)
                            {
                                Console.WriteLine($"Error: {ex.Message}");
@@ -415,7 +415,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await ProcessItemAsync(data);
                            }
-                           // This should not trigger NP9301 - not in NPipeline node
+                           // This should not trigger NP9104 - not in NPipeline node
                            catch (Exception ex)
                            {
                                Console.WriteLine($"Error: {ex.Message}");
@@ -446,7 +446,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                return await TransformAsync(input);
                            }
-                           // NP9301: Exception handling in ValueTask-returning method
+                           // NP9104: Exception handling in ValueTask-returning method
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Processing failed");
@@ -476,7 +476,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                return await GetDataAsync();
                            }
-                           // NP9301: Exception handling in RunAsync method
+                           // NP9104: Exception handling in RunAsync method
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Data retrieval failed");
@@ -506,7 +506,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                return await ProcessAsync(input);
                            }
-                           // NP9301: Exception handling in HandleAsync method
+                           // NP9104: Exception handling in HandleAsync method
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Processing failed");
@@ -536,7 +536,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                return await ProcessAsync(input);
                            }
-                           // NP9301: Exception handling in Initialize method
+                           // NP9104: Exception handling in Initialize method
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Processing failed");
@@ -566,7 +566,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                return await ProcessAsync(input);
                            }
-                           // NP9301: Exception handling in Process method
+                           // NP9104: Exception handling in Process method
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Processing failed");
@@ -596,7 +596,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
                            {
                                await ProcessAsync(input);
                            }
-                           // NP9301: Exception swallowing with logging only
+                           // NP9104: Exception swallowing with logging only
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Processing failed");

@@ -24,7 +24,7 @@ public sealed class UnboundedMaterializationConfigurationAnalyzerTests
                                MaxItemRetries: 3,
                                MaxNodeRestartAttempts: 2,
                                MaxSequentialNodeAttempts: 5,
-                               MaxMaterializedItems: null); // NP9501: Explicitly null
+                               MaxMaterializedItems: null); // NP9002: Explicitly null
                        }
                    }
                    """;
@@ -46,7 +46,7 @@ public sealed class UnboundedMaterializationConfigurationAnalyzerTests
                        public void TestMethod()
                        {
                            var options = new PipelineRetryOptions(
-                               MaxItemRetries: 3); // NP9501: Missing MaxMaterializedItems
+                               MaxItemRetries: 3); // NP9002: Missing MaxMaterializedItems
                        }
                    }
                    """;
@@ -67,7 +67,7 @@ public sealed class UnboundedMaterializationConfigurationAnalyzerTests
                    {
                        public void TestMethod()
                        {
-                           var options = new PipelineRetryOptions(3); // NP9501: Missing 2nd parameter (MaxMaterializedItems)
+                           var options = new PipelineRetryOptions(3); // NP9002: Missing 2nd parameter (MaxMaterializedItems)
                        }
                    }
                    """;
@@ -159,7 +159,7 @@ public sealed class UnboundedMaterializationConfigurationAnalyzerTests
                    {
                        public void TestMethod()
                        {
-                           var options = new PipelineRetryOptions(3, null); // NP9501: 2nd positional arg is null
+                           var options = new PipelineRetryOptions(3, null); // NP9002: 2nd positional arg is null
                        }
                    }
                    """;
@@ -207,10 +207,10 @@ public sealed class UnboundedMaterializationConfigurationAnalyzerTests
                        public void TestMethod()
                        {
                            // Positional first arg, then named MaxMaterializedItems
-                           var options1 = new PipelineRetryOptions(3, MaxMaterializedItems: null); // NP9501
+                           var options1 = new PipelineRetryOptions(3, MaxMaterializedItems: null); // NP9002
                            
                            // All named with MaxMaterializedItems null
-                           var options2 = new PipelineRetryOptions(MaxItemRetries: 3, MaxMaterializedItems: null); // NP9501
+                           var options2 = new PipelineRetryOptions(MaxItemRetries: 3, MaxMaterializedItems: null); // NP9002
                        }
                    }
                    """;

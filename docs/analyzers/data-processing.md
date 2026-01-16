@@ -8,9 +8,9 @@ sidebar_position: 4
 
 Data processing analyzers protect the integrity of data flow through your pipelines. They detect patterns that cause data loss, memory bloat, or improper stream handling.
 
-### NP9205: Non-Streaming Patterns in SourceNode
+### NP9107: Non-Streaming Patterns in SourceNode
 
-**ID:** `NP9205`
+**ID:** `NP9107`
 **Severity:** Warning  
 **Category:** Performance  
 
@@ -60,11 +60,11 @@ public class GoodSourceNode : SourceNode<string>
 }
 ```
 
-### NP9302: Input Parameter Not Consumed
+### NP9301: Input Parameter Not Consumed
 
-**ID:** `NP9302`
+**ID:** `NP9301`
 **Severity:** Error  
-**Category:** Data Processing  
+**Category:** Data Integrity - Input Consumption  
 
 This analyzer detects when a SinkNode implementation overrides ExecuteAsync but doesn't consume the input parameter. Sink nodes are designed to process all items from the input data pipe, but your implementation ignores the input.
 
@@ -99,10 +99,10 @@ Adjust analyzer severity in `.editorconfig`:
 
 ```ini
 # Treat non-streaming patterns as errors
-dotnet_diagnostic.NP9205.severity = error
+dotnet_diagnostic.NP9107.severity = error
 
 # Treat unconsumed input as errors
-dotnet_diagnostic.NP9302.severity = error
+dotnet_diagnostic.NP9301.severity = error
 ```
 
 ## See Also

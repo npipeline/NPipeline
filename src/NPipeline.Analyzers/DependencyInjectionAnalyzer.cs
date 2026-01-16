@@ -13,15 +13,15 @@ namespace NPipeline.Analyzers;
 public sealed class DependencyInjectionAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>
-    ///     Diagnostic identifier for the dependency injection anti-pattern warning.
+    ///     Diagnostic identifier for dependency injection anti-pattern warning.
     /// </summary>
-    public const string DependencyInjectionAntiPatternId = "NP9401";
+    public const string DependencyInjectionAntiPatternId = "NP9404";
 
     private static readonly DiagnosticDescriptor DependencyInjectionAntiPatternRule = new(
         DependencyInjectionAntiPatternId,
         "Dependency injection anti-pattern detected",
         "Avoid dependency injection anti-patterns in node implementations. Use constructor injection instead.",
-        "Best Practice",
+        "Design & Architecture",
         DiagnosticSeverity.Warning,
         true,
         "Node implementations should use constructor injection for dependencies instead of direct instantiation, static singletons, or service locator pattern.",

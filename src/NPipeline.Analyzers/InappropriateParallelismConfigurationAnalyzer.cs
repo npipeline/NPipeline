@@ -16,7 +16,7 @@ public sealed class InappropriateParallelismConfigurationAnalyzer : DiagnosticAn
     /// <summary>
     ///     Diagnostic ID for inappropriate parallelism configuration.
     /// </summary>
-    public const string InappropriateParallelismConfigurationId = "NP9502";
+    public const string InappropriateParallelismConfigurationId = "NP9003";
 
     // Analyzer heuristics cannot access Environment.ProcessorCount; use a conservative default instead.
     // Use 4 as a conservative default that matches test expectations in CI environments.
@@ -26,7 +26,7 @@ public sealed class InappropriateParallelismConfigurationAnalyzer : DiagnosticAn
         InappropriateParallelismConfigurationId,
         "Inappropriate parallelism configuration detected",
         "Parallelism configuration '{0}' is inappropriate for {1} workload: {2}",
-        "Performance",
+        "Configuration & Setup",
         DiagnosticSeverity.Warning,
         true,
         "Inappropriate parallelism configurations can cause resource contention, thread pool starvation, "

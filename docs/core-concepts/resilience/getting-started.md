@@ -21,7 +21,7 @@ The system validates these requirements at runtime. If any prerequisite is missi
 Use the NPipeline analyzers to catch these issues at build time:
 
 - **NP9001**: Detects incomplete restart configuration (error severity recommended)
-- **NP9501**: Detects unbounded materialization (error severity required)
+- **NP9002**: Detects unbounded materialization (error severity required)
 
 Enable these in your `.editorconfig` to make them blocking errors in your build pipeline.
 

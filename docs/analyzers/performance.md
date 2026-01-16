@@ -97,70 +97,9 @@ public async Task WaitAsync()
 }
 ```
 
-### NP9102: Swallowed OperationCanceledException
+### NP9102: Synchronous over Async Patterns
 
 **ID:** `NP9102`
-**Severity:** Warning  
-**Category:** Performance  
-
-This analyzer detects when `OperationCanceledException` is caught but not re-thrown. Swallowing cancellation exceptions breaks the cancellation contract and causes the pipeline to continue processing when it should stop.
-
-#### Problematic Pattern
-
-```csharp
-// PROBLEM: Swallowing OperationCanceledException
-public async Task ProcessAsync(CancellationToken cancellationToken)
-{
-    try
-    {
-        await SomeOperationAsync(cancellationToken);
-    }
-    catch (OperationCanceledException)
-    {
-        // NP9102: Silently swallowing cancellation
-        Console.WriteLine("Operation cancelled");
-    }
-}
-```
-
-#### Solution: Re-throw Cancellation
-
-```csharp
-// CORRECT: Re-throw cancellation exception
-public async Task ProcessAsync(CancellationToken cancellationToken)
-{
-    try
-    {
-        await SomeOperationAsync(cancellationToken);
-    }
-    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-    {
-        throw; // Re-throw to propagate cancellation
-    }
-    catch (OperationCanceledException)
-    {
-        // Handle other cancellation scenarios
-        throw;
-    }
-}
-
-// ALTERNATIVE: Handle other exceptions only
-public async Task ProcessAsync(CancellationToken cancellationToken)
-{
-    try
-    {
-        await SomeOperationAsync(cancellationToken);
-    }
-    catch (Exception ex) when (!(ex is OperationCanceledException))
-    {
-        // Handle non-cancellation exceptions
-    }
-}
-```
-
-### NP9103: Synchronous over Async Patterns
-
-**ID:** `NP9103`
 **Severity:** Warning  
 **Category:** Performance  
 
@@ -172,14 +111,14 @@ This analyzer detects "sync-over-async" patterns like unawaited async method cal
 // PROBLEM: Fire-and-forget async call (unawaited)
 public async Task ProcessDataAsync()
 {
-    SomeOperationAsync(); // NP9103: Async method not awaited
+    SomeOperationAsync(); // NP9102: Async method not awaited
     DoSomethingElse();
 }
 
 // PROBLEM: Async method called from sync method
 public void ProcessData()
 {
-    var result = SomeOperationAsync(); // NP9103: Async method not awaited
+    var result = SomeOperationAsync(); // NP9102: Async method not awaited
 }
 
 // PROBLEM: Task.Run wrapping sync work
@@ -187,7 +126,7 @@ public async Task ProcessDataAsync()
 {
     var result = await Task.Run(() => 
     {
-        return SomeSynchronousOperation(); // NP9103: Unnecessary Task.Run
+        return SomeSynchronousOperation(); // NP9102: Unnecessary Task.Run
     });
 }
 ```
@@ -216,9 +155,9 @@ public async Task ProcessDataAsync()
 }
 ```
 
-### NP9104: Cancellation Token Not Respected
+### NP9103: Cancellation Token Not Respected
 
-**ID:** `NP9104`
+**ID:** `NP9103`
 **Severity:** Warning  
 **Category:** Performance  
 
@@ -232,7 +171,7 @@ public async Task ProcessItemsAsync(IEnumerable<Item> items, CancellationToken c
 {
     foreach (var item in items)
     {
-        // NP9104: Not checking cancellation token
+        // NP9103: Not checking cancellation token
         await ProcessItemAsync(item);
     }
 }
@@ -270,51 +209,93 @@ private async IAsyncEnumerable<Item> GetItemsAsync([EnumeratorCancellation] Canc
 }
 ```
 
-### NP9204: Missing ValueTask Optimization
+### NP9104: Inefficient String Operations
 
-**ID:** `NP9204`
-**Severity:** Warning  
-**Category:** Performance  
+**ID:** `NP9104`
+**Severity:** Warning
+**Category:** Performance
 
-This analyzer detects cases where a method frequently completes synchronously but returns `Task` instead of `ValueTask`. Using `ValueTask` avoids heap allocations when the result is available synchronously, which is critical for high-throughput pipeline performance.
+This analyzer detects inefficient string operations that cause excessive allocations and GC pressure in performance-critical NPipeline code, particularly in high-throughput scenarios.
 
-#### Problem
+#### Why This Matters
+
+Inefficient string operations cause:
+
+1. **Memory Pressure**: Excessive allocations increase GC frequency
+2. **Poor Performance**: String operations are expensive in hot paths
+3. **Reduced Throughput**: Time spent on string operations reduces processing capacity
+4. **Scalability Issues**: Performance degrades with increased load
+
+#### Problematic Patterns
 
 ```csharp
-// PROBLEM: Allocates heap object even for synchronous completions
-public async Task<string> GetDataAsync(string id)
+// PROBLEM: String concatenation in loop
+public class BadTransform : ITransformNode<Input, Output>
 {
-    var cached = _cache.Get(id);
-    if (cached != null)
+    protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
     {
-        return cached; // Allocates Task on heap
+        string result = "";
+        foreach (var item in input.Items) // NP9104: Concatenation in loop
+        {
+            result += item.ToString(); // Creates new string each iteration
+        }
+        return new Output(result);
     }
-    
-    return await FetchFromDatabaseAsync(id);
+}
+
+// PROBLEM: Inefficient string formatting
+protected override async Task<string> ProcessAsync(Data data, CancellationToken cancellationToken)
+{
+    return string.Format("{0}-{1}-{2}", data.Id, data.Name, data.Value); // NP9104: Inefficient formatting
+}
+
+// PROBLEM: String operations in LINQ
+var results = items.Select(x => x.Name.ToUpper().Substring(0, 5).Trim()); // NP9104: Multiple allocations per item
+```
+
+#### Solution: Use Efficient String Operations
+
+```csharp
+// CORRECT: Use StringBuilder for concatenation
+public class GoodTransform : ITransformNode<Input, Output>
+{
+    protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
+    {
+        var sb = new StringBuilder();
+        foreach (var item in input.Items)
+        {
+            sb.Append(item.ToString());
+        }
+        return new Output(sb.ToString());
+    }
+}
+
+// CORRECT: Use string interpolation
+protected override async Task<string> ProcessAsync(Data data, CancellationToken cancellationToken)
+{
+    return $"{data.Id}-{data.Name}-{data.Value}"; // Efficient formatting
+}
+
+// CORRECT: Use span-based operations
+protected override async Task<string> ProcessAsync(string input, CancellationToken cancellationToken)
+{
+    return input.AsSpan().Slice(0, Math.Min(5, input.Length)).Trim().ToString(); // Zero-allocation where possible
 }
 ```
 
-#### Solution: Use ValueTask
+#### String Operation Guidelines
 
-```csharp
-// CORRECT: No allocation for synchronous returns
-public async ValueTask<string> GetDataAsync(string id)
-{
-    var cached = _cache.Get(id);
-    if (cached != null)
-    {
-        return cached; // No allocation - synchronous completion
-    }
-    
-    return await FetchFromDatabaseAsync(id);
-}
-```
+| Operation | Efficient Alternative | When to Use |
+|------------|----------------------|--------------|
+| Concatenation in loop | StringBuilder | Multiple concatenations |
+| String.Format | Interpolation | Simple formatting |
+| Substring/Trim | AsSpan().Slice() | Hot paths |
+| ToUpper/ToLower | string.Create with Span | Case conversion in hot paths |
+| Join | string.Join with Span | Array/list joining |
 
-**Important:** ValueTask comes with critical constraints that you must understand to avoid subtle bugs. For complete implementation guidance, including dangerous constraints and real-world examples, see [**Synchronous Fast Paths and ValueTask Optimization**](../../advanced-topics/synchronous-fast-paths)—the dedicated deep-dive guide that covers the complete pattern and critical safety considerations.
+### NP9105: LINQ Operations in Hot Paths
 
-### NP9201: LINQ Operations in Hot Paths
-
-**ID:** `NP9201`
+**ID:** `NP9105`
 **Severity:** Warning
 **Category:** Performance
 
@@ -337,7 +318,7 @@ public class BadTransform : ITransformNode<Input, Output>
 {
     protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
     {
-        // NP9201: LINQ in hot path creates allocations
+        // NP9105: LINQ in hot path creates allocations
         var filtered = input.Items.Where(x => x.IsActive).ToList();
         var sorted = filtered.OrderBy(x => x.Priority).ToList();
         var grouped = sorted.GroupBy(x => x.Category).ToList();
@@ -349,13 +330,13 @@ public class BadTransform : ITransformNode<Input, Output>
 // PROBLEM: LINQ in loop
 foreach (var batch in batches)
 {
-    // NP9201: LINQ inside loop creates pressure
+    // NP9105: LINQ inside loop creates pressure
     var processed = batch.Select(x => ProcessItem(x)).Where(x => x != null).ToList();
     await SendBatchAsync(processed);
 }
 
 // PROBLEM: Materializing LINQ results
-var items = sourceData.Where(x => x.IsValid).Select(x => x.Transform()).ToArray(); // NP9201: Immediate materialization
+var items = sourceData.Where(x => x.IsValid).Select(x => x.Transform()).ToArray(); // NP9105: Immediate materialization
 ```
 
 #### Solution: Use Imperative Alternatives
@@ -411,93 +392,49 @@ foreach (var batch in batches)
 | GroupBy() | Dictionary grouping | Direct grouping |
 | ToList()/ToArray() | Pre-sized collection | No resizing |
 
-### NP9202: Inefficient String Operations
+### NP9106: Missing ValueTask Optimization
 
-**ID:** `NP9202`
+**ID:** `NP9106`
 **Severity:** Warning
 **Category:** Performance
 
-This analyzer detects inefficient string operations that cause excessive allocations and GC pressure in performance-critical NPipeline code, particularly in high-throughput scenarios.
+This analyzer detects async methods that return Task instead of ValueTask, which can lead to unnecessary allocations and reduced performance in hot paths.
 
 #### Why This Matters
 
-Inefficient string operations cause:
+Using Task instead of ValueTask in hot paths:
 
-1. **Memory Pressure**: Excessive allocations increase GC frequency
-2. **Poor Performance**: String operations are expensive in hot paths
-3. **Reduced Throughput**: Time spent on string operations reduces processing capacity
-4. **Scalability Issues**: Performance degrades with increased load
+1. **Increases GC Pressure**: Each Task object creates heap allocation
+2. **Reduces Throughput**: Additional boxing and unboxing operations
+3. **Decreases Cache Locality**: Task objects have additional metadata
 
 #### Problematic Patterns
 
 ```csharp
-// PROBLEM: String concatenation in loop
-public class BadTransform : ITransformNode<Input, Output>
+// PROBLEM: Async method returning Task instead of ValueTask
+public async Task ProcessDataAsync()
 {
-    protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
-    {
-        string result = "";
-        foreach (var item in input.Items) // NP9202: Concatenation in loop
-        {
-            result += item.ToString(); // Creates new string each iteration
-        }
-        return new Output(result);
-    }
+    // NP9106: Async method returning Task instead of ValueTask
+    var result = await SomeAsyncOperation();
+    return result;
 }
-
-// PROBLEM: Inefficient string formatting
-protected override async Task<string> ProcessAsync(Data data, CancellationToken cancellationToken)
-{
-    return string.Format("{0}-{1}-{2}", data.Id, data.Name, data.Value); // NP9202: Inefficient formatting
-}
-
-// PROBLEM: String operations in LINQ
-var results = items.Select(x => x.Name.ToUpper().Substring(0, 5).Trim()); // NP9202: Multiple allocations per item
 ```
 
-#### Solution: Use Efficient String Operations
+#### Solution: Use ValueTask
 
 ```csharp
-// CORRECT: Use StringBuilder for concatenation
-public class GoodTransform : ITransformNode<Input, Output>
+// CORRECT: Use ValueTask
+public async ValueTask ProcessDataAsync()
 {
-    protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
-    {
-        var sb = new StringBuilder();
-        foreach (var item in input.Items)
-        {
-            sb.Append(item.ToString());
-        }
-        return new Output(sb.ToString());
-    }
-}
-
-// CORRECT: Use string interpolation
-protected override async Task<string> ProcessAsync(Data data, CancellationToken cancellationToken)
-{
-    return $"{data.Id}-{data.Name}-{data.Value}"; // Efficient formatting
-}
-
-// CORRECT: Use span-based operations
-protected override async Task<string> ProcessAsync(string input, CancellationToken cancellationToken)
-{
-    return input.AsSpan().Slice(0, Math.Min(5, input.Length)).Trim().ToString(); // Zero-allocation where possible
+    // Properly awaited
+    var result = await SomeAsyncOperation();
+    return result;
 }
 ```
 
-#### String Operation Guidelines
+### NP9105: Anonymous Object Allocation
 
-| Operation | Efficient Alternative | When to Use |
-|------------|----------------------|--------------|
-| Concatenation in loop | StringBuilder | Multiple concatenations |
-| String.Format | Interpolation | Simple formatting |
-| Substring/Trim | AsSpan().Slice() | Hot paths |
-| ToUpper/ToLower | string.Create with Span | Case conversion in hot paths |
-| Join | string.Join with Span | Array/list joining |
-
-### NP9203: Anonymous Object Allocation
-
-**ID:** `NP9203`
+**ID:** `NP9105`
 **Severity:** Warning
 **Category:** Performance
 
@@ -520,26 +457,24 @@ protected override async Task ExecuteAsync(IDataPipe<Output> output, PipelineCon
 {
     foreach (var item in inputItems)
     {
-        // NP9203: Anonymous object allocation in hot path
+        // NP9105: Anonymous object allocation in hot path
         var result = new { Id = item.Id, Name = item.Name, Value = item.Value * 2 };
         await output.ProduceAsync(new Output(result), cancellationToken);
     }
 }
 
 // PROBLEM: Anonymous objects in LINQ
-var processed = items.Select(x => new // NP9203: Anonymous object in LINQ
+var processed = items.Select(x => new // NP9105: Anonymous object in LINQ
 {
     Id = x.Id,
-    ProcessedValue = x.Value * 2,
-    Timestamp = DateTime.UtcNow
+    Name = x.Name
 }).ToList();
 
 // PROBLEM: Anonymous objects in loops
-foreach (var item in largeCollection)
+foreach (var item in items)
 {
-    // NP9203: Anonymous object allocation per iteration
+    // NP9105: Anonymous object allocation per iteration
     var temp = new { Original = item, Processed = Process(item) };
-    results.Add(temp);
 }
 ```
 
@@ -589,9 +524,9 @@ public readonly struct ProcessedItem
 | Multiple return values | Out parameters or struct | No heap allocation |
 | LINQ projections | Named type constructor | Clearer intent |
 
-### NP9205: Non-Streaming Patterns in SourceNode
+### NP9107: Non-Streaming Patterns in SourceNode
 
-**ID:** `NP9205`
+**ID:** `NP9107`
 **Severity:** Warning
 **Category:** Performance
 
@@ -651,28 +586,28 @@ Adjust analyzer severity in `.editorconfig`:
 dotnet_diagnostic.NP9101.severity = error
 
 # Treat swallowed cancellation as errors
-dotnet_diagnostic.NP9102.severity = error
+dotnet_diagnostic.NP9201.severity = error
 
 # Treat fire-and-forget async as errors
-dotnet_diagnostic.NP9103.severity = error
+dotnet_diagnostic.NP9102.severity = error
 
 # Treat ignored cancellation tokens as errors
-dotnet_diagnostic.NP9104.severity = error
+dotnet_diagnostic.NP9203.severity = error
 
 # Treat LINQ in hot paths as warnings
-dotnet_diagnostic.NP9201.severity = warning
+dotnet_diagnostic.NP9103.severity = warning
 
 # Treat inefficient string operations as warnings
-dotnet_diagnostic.NP9202.severity = warning
+dotnet_diagnostic.NP9104.severity = warning
 
 # Treat anonymous object allocation as warnings
-dotnet_diagnostic.NP9203.severity = warning
+dotnet_diagnostic.NP9105.severity = warning
 
 # Treat missing ValueTask optimization as warnings
-dotnet_diagnostic.NP9204.severity = warning
+dotnet_diagnostic.NP9106.severity = warning
 
 # Treat non-streaming patterns as errors
-dotnet_diagnostic.NP9205.severity = error
+dotnet_diagnostic.NP9107.severity = error
 ```
 
 ## See Also

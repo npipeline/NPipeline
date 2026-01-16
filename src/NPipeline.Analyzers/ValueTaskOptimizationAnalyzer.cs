@@ -21,14 +21,14 @@ public sealed class ValueTaskOptimizationAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for missing ValueTask optimization.
     /// </summary>
-    public const string MissingValueTaskOptimizationId = "NP9204";
+    public const string MissingValueTaskOptimizationId = "NP9106";
 
     private static readonly DiagnosticDescriptor MissingValueTaskOptimizationRule = new(
         MissingValueTaskOptimizationId,
         "Consider overriding ExecuteValueTaskAsync for synchronous operations",
         "TransformNode '{0}' uses Task.FromResult in ExecuteAsync but doesn't override ExecuteValueTaskAsync. "
         + "Overriding ExecuteValueTaskAsync can improve performance by avoiding Task allocations for synchronous operations.",
-        "Performance",
+        "Performance & Optimization",
         DiagnosticSeverity.Info,
         true,
         "TransformNode implementations that use Task.FromResult for synchronous operations can benefit from "

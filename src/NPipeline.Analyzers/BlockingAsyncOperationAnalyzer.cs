@@ -28,7 +28,7 @@ public sealed class BlockingAsyncOperationAnalyzer : DiagnosticAnalyzer
         "Avoid blocking calls in async methods",
         "Async method '{0}' contains a blocking operation '{1}' that can cause deadlocks and reduce performance. "
         + "Use async alternatives instead to maintain the async chain and prevent thread pool starvation.",
-        "Performance",
+        "Performance & Optimization",
         DiagnosticSeverity.Warning,
         true,
         "Blocking operations in async methods can cause deadlocks and performance issues. "

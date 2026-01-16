@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace NPipeline.CodeFixes;
 
 /// <summary>
-///     Provides Roslyn code fixes for NP9211 diagnostics on stream transform node execution strategies.
+///     Provides Roslyn code fixes for NP9402 diagnostics on stream transform node execution strategies.
 ///     Registers fixes to replace object creation or assignments with batching or unbatching execution strategies.
 /// </summary>
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(StreamTransformNodeExecutionStrategyCodeFixProvider))]
@@ -18,7 +18,7 @@ public class StreamTransformNodeExecutionStrategyCodeFixProvider : CodeFixProvid
 {
     /// <inheritdoc />
     public sealed override ImmutableArray<string> FixableDiagnosticIds =>
-        ["NP9211"];
+        ["NP9402"];
 
     /// <inheritdoc />
     public sealed override FixAllProvider GetFixAllProvider()

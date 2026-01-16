@@ -17,18 +17,18 @@ public sealed class NodeParameterlessConstructorAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic identifier for nodes without parameterless constructors.
     /// </summary>
-    public const string MissingParameterlessConstructorId = "NP9505";
+    public const string MissingParameterlessConstructorId = "NP9403";
 
     /// <summary>
     ///     Diagnostic identifier for performance suggestion to add parameterless constructor.
     /// </summary>
-    public const string PerformanceSuggestionId = "NP9506";
+    public const string PerformanceSuggestionId = "NP9108";
 
     private static readonly DiagnosticDescriptor MissingParameterlessConstructorRule = new(
         MissingParameterlessConstructorId,
         "Node missing public parameterless constructor",
         "Node '{0}' does not have a public parameterless constructor and requires DI or pre-configured instances",
-        "Design",
+        "Design & Architecture",
         DiagnosticSeverity.Warning,
         true,
         "Node implementations without parameterless constructors cannot use DefaultNodeFactory directly and require DIContainerNodeFactory or pre-configured instances. Consider adding a parameterless constructor or using dependency injection.",
@@ -38,7 +38,7 @@ public sealed class NodeParameterlessConstructorAnalyzer : DiagnosticAnalyzer
         PerformanceSuggestionId,
         "Add parameterless constructor for better performance",
         "Node '{0}' could benefit from a public parameterless constructor for optimized instantiation (200-300μs faster per pipeline run)",
-        "Performance",
+        "Performance & Optimization",
         DiagnosticSeverity.Info,
         true,
         "Nodes with parameterless constructors use compiled expression delegates for 3-5x faster instantiation. Consider adding a parameterless constructor if the node doesn't require constructor dependencies.",

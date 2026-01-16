@@ -16,14 +16,14 @@ public sealed class LinqInHotPathsAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for LINQ operations in hot paths.
     /// </summary>
-    public const string LinqInHotPathsId = "NP9201";
+    public const string LinqInHotPathsId = "NP9103";
 
     private static readonly DiagnosticDescriptor Rule = new(
         LinqInHotPathsId,
         "LINQ operation detected in hot path",
         "LINQ operation '{0}' detected in hot path method '{1}'. This creates unnecessary allocations and GC pressure. "
         + "Consider using imperative alternatives (foreach, for loops) for better performance in high-frequency execution paths.",
-        "Performance",
+        "Performance & Optimization",
         DiagnosticSeverity.Warning,
         true,
         "LINQ operations in hot paths create unnecessary allocations and GC pressure. "

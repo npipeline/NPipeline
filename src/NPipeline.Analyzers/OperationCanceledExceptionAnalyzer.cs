@@ -20,7 +20,7 @@ public sealed class OperationCanceledExceptionAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for swallowing OperationCanceledException.
     /// </summary>
-    public const string SwallowingOperationCanceledExceptionId = "NP9102";
+    public const string SwallowingOperationCanceledExceptionId = "NP9201";
 
     private static readonly DiagnosticDescriptor SwallowingOperationCanceledExceptionRule = new(
         SwallowingOperationCanceledExceptionId,
@@ -28,7 +28,7 @@ public sealed class OperationCanceledExceptionAnalyzer : DiagnosticAnalyzer
         "Catch block '{0}' may swallow OperationCanceledException without re-throwing it. "
         + "This prevents proper cancellation propagation and can leave pipelines hanging. "
         + "Re-throw OperationCanceledException to maintain cancellation semantics.",
-        "Reliability",
+        "Reliability & Error Handling",
         DiagnosticSeverity.Warning,
         true,
         "OperationCanceledException should never be swallowed as it breaks cancellation chains. "

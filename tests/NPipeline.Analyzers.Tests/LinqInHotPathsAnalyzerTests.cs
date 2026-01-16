@@ -21,7 +21,7 @@ public sealed class LinqInHotPathsAnalyzerTests
                    {
                        public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
-                           // NP9201: LINQ in hot path
+                           // NP9102: LINQ in hot path
                            var items = input.Split(' ');
                            var result = items.Where(x => x.Length > 5).ToList();
                            return string.Join(",", result);
@@ -46,7 +46,7 @@ public sealed class LinqInHotPathsAnalyzerTests
                    {
                        public async Task ProcessAsync(IEnumerable<string> items)
                        {
-                           // NP9201: LINQ in hot path
+                           // NP9102: LINQ in hot path
                            var filtered = items.Where(x => x != null).Select(x => x.ToUpper()).ToArray();
                            // Process filtered items...
                        }
@@ -73,7 +73,7 @@ public sealed class LinqInHotPathsAnalyzerTests
                        public async Task<IDataPipe<int>> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var numbers = Enumerable.Range(1, 100);
-                           // NP9201: LINQ in hot path
+                           // NP9102: LINQ in hot path
                            var filtered = numbers.Where(x => x % 2 == 0).ToList();
                            return new InMemoryDataPipe<int>(filtered);
                        }
@@ -97,7 +97,7 @@ public sealed class LinqInHotPathsAnalyzerTests
                    {
                        public async Task HandleDataAsync(IEnumerable<string> data)
                        {
-                           // NP9201: LINQ in async method (hot path)
+                           // NP9102: LINQ in async method (hot path)
                            var result = data.GroupBy(x => x.Length).ToList();
                            // Process grouped data...
                        }
@@ -121,7 +121,7 @@ public sealed class LinqInHotPathsAnalyzerTests
                    {
                        public string ProcessItem(int item)
                        {
-                           // NP9201: LINQ in NPipeline node class
+                           // NP9102: LINQ in NPipeline node class
                            var result = Enumerable.Range(item, 10).Where(x => x > item).ToList();
                            return string.Join(",", result);
                        }
@@ -145,7 +145,7 @@ public sealed class LinqInHotPathsAnalyzerTests
                    {
                        public async Task HandleAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
-                           // NP9201: LINQ in sink node
+                           // NP9102: LINQ in sink node
                            var words = input.Split(' ').Where(x => x.Length > 3).ToArray();
                            await ProcessWordsAsync(words);
                        }
@@ -175,7 +175,7 @@ public sealed class LinqInHotPathsAnalyzerTests
                            CancellationToken cancellationToken)
                        {
                            var items = new List<int>();
-                           // NP9201: LINQ in aggregate node
+                           // NP9102: LINQ in aggregate node
                            var filtered = items.Where(x => x > 0).OrderBy(x => x).ToList();
                            return new InMemoryDataPipe<int>(filtered);
                        }
@@ -198,7 +198,7 @@ public sealed class LinqInHotPathsAnalyzerTests
                    {
                        public void ProcessData(IEnumerable<string> data)
                        {
-                           // This should not trigger NP9201 - not a hot path method
+                           // This should not trigger NP9102 - not a hot path method
                            var result = data.Where(x => x != null).ToList();
                            Console.WriteLine(result.Count);
                        }
@@ -221,7 +221,7 @@ public sealed class LinqInHotPathsAnalyzerTests
                    {
                        public string ProcessData(IEnumerable<string> data)
                        {
-                           // This should not trigger NP9201 - not async
+                           // This should not trigger NP9102 - not async
                            var result = data.Where(x => x.Length > 0).ToList();
                            return string.Join(",", result);
                        }
@@ -244,7 +244,7 @@ public sealed class LinqInHotPathsAnalyzerTests
                    {
                        public async Task<string> ProcessDataAsync(IEnumerable<string> data)
                        {
-                           // This should not trigger NP9201 - not in NPipeline node
+                           // This should not trigger NP9102 - not in NPipeline node
                            var result = data.Where(x => x != null).ToList();
                            return string.Join(",", result);
                        }
@@ -268,7 +268,7 @@ public sealed class LinqInHotPathsAnalyzerTests
                    {
                        public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
-                           // NP9201: Multiple LINQ operations in hot path
+                           // NP9102: Multiple LINQ operations in hot path
                            var words = input.Split(' ').Where(x => x.Length > 2).ToList();
                            var filtered = words.Select(x => x.ToUpper()).Where(x => x.StartsWith("A")).ToArray();
                            return string.Join(",", filtered);
@@ -293,7 +293,7 @@ public sealed class LinqInHotPathsAnalyzerTests
                    {
                        public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
-                           // NP9201: Chained LINQ operations in hot path
+                           // NP9102: Chained LINQ operations in hot path
                            var result = input.Split(' ')
                                .Where(x => x.Length > 0)
                                .Select(x => x.Trim())
@@ -322,7 +322,7 @@ public sealed class LinqInHotPathsAnalyzerTests
                    {
                        public ValueTask<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
-                           // NP9201: LINQ in ValueTask-returning method
+                           // NP9102: LINQ in ValueTask-returning method
                            var result = input.Split(' ').Where(x => x.Length > 0).ToList();
                            return new ValueTask<string>(string.Join(",", result));
                        }
@@ -358,7 +358,7 @@ public sealed class LinqInHotPathsAnalyzerTests
                          {
                              public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                              {
-                                 // NP9201: {{method}} in hot path
+                                 // NP9102: {{method}} in hot path
                                  var items = input.Split(' ');
                                  var result = items.{{method}}(x => x.Length > 0);
                                  return string.Join(",", result);
@@ -383,7 +383,7 @@ public sealed class LinqInHotPathsAnalyzerTests
                    {
                        public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
-                           // This should not trigger NP9201 - custom Where method, not System.Linq
+                           // This should not trigger NP9102 - custom Where method, not System.Linq
                            var items = input.Split(' ');
                            var result = items.CustomWhere(x => x.Length > 0);
                            return string.Join(",", result);

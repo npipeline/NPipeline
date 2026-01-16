@@ -16,13 +16,13 @@ public sealed class StreamTransformNodeExecutionStrategyAnalyzer : DiagnosticAna
     /// <summary>
     ///     Diagnostic ID for IStreamTransformNode execution strategy mismatch.
     /// </summary>
-    public const string StreamTransformNodeExecutionStrategyId = "NP9211";
+    public const string StreamTransformNodeExecutionStrategyId = "NP9402";
 
     private static readonly DiagnosticDescriptor Rule = new(
         StreamTransformNodeExecutionStrategyId,
         "IStreamTransformNode should use IStreamExecutionStrategy",
         "IStreamTransformNode '{0}' uses an execution strategy that doesn't implement IStreamExecutionStrategy. Consider using a strategy that implements both IExecutionStrategy and IStreamExecutionStrategy for optimal performance.",
-        "Design",
+        "Design & Architecture",
         DiagnosticSeverity.Warning,
         true,
         "IStreamTransformNode is designed to work with execution strategies that implement IStreamExecutionStrategy. "

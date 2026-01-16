@@ -18,16 +18,16 @@ namespace NPipeline.Analyzers;
 public sealed class SourceNodeStreamingAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>
-    ///     Diagnostic ID for the analyzer.
+    ///     Diagnostic ID for analyzer.
     /// </summary>
-    public const string SourceNodeStreamingId = "NP9205";
+    public const string SourceNodeStreamingId = "NP9107";
 
     private static readonly DiagnosticDescriptor SourceNodeStreamingRule = new(
         SourceNodeStreamingId,
         "Use streaming patterns in SourceNode implementations",
         "SourceNode '{0}' contains non-streaming pattern '{1}' that can cause memory issues and poor performance. "
         + "Use async IAsyncEnumerable with yield return instead to stream data efficiently.",
-        "Performance",
+        "Performance & Optimization",
         DiagnosticSeverity.Warning,
         true,
         "Non-streaming patterns in SourceNode implementations can cause memory issues and performance problems. "

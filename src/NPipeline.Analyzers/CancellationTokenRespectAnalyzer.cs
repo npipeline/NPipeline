@@ -19,13 +19,13 @@ public sealed class CancellationTokenRespectAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for when cancellation tokens are not properly respected.
     /// </summary>
-    public const string CancellationTokenNotRespectedId = "NP9104";
+    public const string CancellationTokenNotRespectedId = "NP9203";
 
     private static readonly DiagnosticDescriptor CancellationTokenNotRespectedRule = new(
         CancellationTokenNotRespectedId,
         "Method should respect cancellation token",
         "Method '{0}' has a CancellationToken parameter but doesn't properly respect it. Consider passing the token to async operations and checking it periodically in long-running operations.",
-        "Resilience",
+        "Reliability & Error Handling",
         DiagnosticSeverity.Warning,
         true,
         "Cancellation tokens should be passed to async operations and checked periodically to ensure responsive cancellation. This helps prevent hanging operations and improves application responsiveness. https://npipeline.dev/docs/core-concepts/cancellation/best-practices.");

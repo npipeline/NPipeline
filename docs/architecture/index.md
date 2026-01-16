@@ -124,7 +124,7 @@ Understand how nodes are created and optimized:
 - Compiled Factory Pattern for 3-5x faster instantiation
 - Node Constructor Patterns (Parameterless, Mixed, DI-only)
 - Factory Selection and Trade-offs
-- Analyzer Support (NP9505) with automatic code fixes
+- Analyzer Support (NP9403) with automatic code fixes
 - Performance Characteristics
 
 ### [Performance Characteristics](performance-characteristics.md)
@@ -219,8 +219,8 @@ graph TD
 
 ## Next Steps
 
-* Start with **[Architectural Foundations](architectural-foundations.md)** to understand fundamental building blocks
-* Explore **[Component Architecture](component-architecture.md)** to see how components interact
-* Dive into **[Optimization Principles](optimization-principles.md)** to understand why NPipeline is fast
-* Review **[Common Patterns](../core-concepts/common-patterns.md)** for real-world examples
-* Review **[Best Practices](../core-concepts/best-practices.md)** for design guidelines
+- Start with **[Architectural Foundations](architectural-foundations.md)** to understand fundamental building blocks
+- Explore **[Component Architecture](component-architecture.md)** to see how components interact
+- Dive into **[Optimization Principles](optimization-principles.md)** to understand why NPipeline is fast
+- Review **[Common Patterns](../core-concepts/common-patterns.md)** for real-world examples
+- Review **[Best Practices](../core-concepts/best-practices.md)** for design guidelines

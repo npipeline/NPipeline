@@ -23,7 +23,7 @@ public sealed class InefficientStringOperationsAnalyzerTests
                            var report = "";
                            foreach (var item in items)
                            {
-                               // NP9202: String concatenation creates new objects each iteration
+                               // NP9104: String concatenation creates new objects each iteration
                                report += "Item: " + item + "\n";
                            }
                            return report;
@@ -47,7 +47,7 @@ public sealed class InefficientStringOperationsAnalyzerTests
                    {
                        public async Task ProcessAsync(Input input)
                        {
-                           // NP9202: String concatenation in hot path
+                           // NP9104: String concatenation in hot path
                            var message = "Processing " + input.Type + " with ID " + input.Id;
                            await LogAsync(message);
                        }
@@ -73,7 +73,7 @@ public sealed class InefficientStringOperationsAnalyzerTests
                    {
                        public string FormatData(Data data)
                        {
-                           // NP9202: Multiple string operations create allocations
+                           // NP9104: Multiple string operations create allocations
                            return "Data: " + data.Name + ", Value: " + data.Value.ToString() + ", Time: " + data.Timestamp;
                        }
                    }
@@ -95,7 +95,7 @@ public sealed class InefficientStringOperationsAnalyzerTests
                    {
                        public async Task HandleDataAsync(Data data)
                        {
-                           // NP9202: String concatenation in async method (hot path)
+                           // NP9104: String concatenation in async method (hot path)
                            var message = "Processing " + data.Type + " with value " + data.Value;
                            await ProcessAsync(message);
                        }
@@ -120,7 +120,7 @@ public sealed class InefficientStringOperationsAnalyzerTests
                    {
                        public string ProcessItem(int item)
                        {
-                           // NP9202: String concatenation in NPipeline node class
+                           // NP9104: String concatenation in NPipeline node class
                            return "Item: " + item + ", Processed: " + (item * 2);
                        }
                    }
@@ -146,7 +146,7 @@ public sealed class InefficientStringOperationsAnalyzerTests
                            var i = 0;
                            while (i < items.Length)
                            {
-                               // NP9202: String concatenation in while loop
+                               // NP9104: String concatenation in while loop
                                result += items[i] + ",";
                                i++;
                            }
@@ -174,7 +174,7 @@ public sealed class InefficientStringOperationsAnalyzerTests
                            var result = "";
                            for (int i = 0; i < items.Length; i++)
                            {
-                               // NP9202: String concatenation in for loop
+                               // NP9104: String concatenation in for loop
                                result += "Item " + i + ": " + items[i] + "\n";
                            }
                            return result;
@@ -202,7 +202,7 @@ public sealed class InefficientStringOperationsAnalyzerTests
                            var i = 0;
                            do
                            {
-                               // NP9202: String concatenation in do-while loop
+                               // NP9104: String concatenation in do-while loop
                                result += items[i] + ",";
                                i++;
                            } while (i < items.Length);
@@ -227,7 +227,7 @@ public sealed class InefficientStringOperationsAnalyzerTests
                    {
                        public async Task HandleAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
-                           // NP9202: String concatenation in sink node
+                           // NP9104: String concatenation in sink node
                            var logMessage = "Processing input: " + input + " at " + DateTime.Now;
                            await LogAsync(logMessage);
                        }
@@ -255,7 +255,7 @@ public sealed class InefficientStringOperationsAnalyzerTests
                            PipelineContext context, 
                            CancellationToken cancellationToken)
                        {
-                           // NP9202: String concatenation in aggregate node
+                           // NP9104: String concatenation in aggregate node
                            var message = "Processing " + input.Count + " items";
                            await LogAsync(message);
                            
@@ -280,7 +280,7 @@ public sealed class InefficientStringOperationsAnalyzerTests
                    {
                        public void ProcessData(string[] items)
                        {
-                           // This should not trigger NP9202 - not a hot path method
+                           // This should not trigger NP9104 - not a hot path method
                            var result = "";
                            foreach (var item in items)
                            {
@@ -305,7 +305,7 @@ public sealed class InefficientStringOperationsAnalyzerTests
                    {
                        public string ProcessData(string[] items)
                        {
-                           // This should not trigger NP9202 - not async
+                           // This should not trigger NP9104 - not async
                            var result = "";
                            foreach (var item in items)
                            {
@@ -330,7 +330,7 @@ public sealed class InefficientStringOperationsAnalyzerTests
                    {
                        public async Task ProcessDataAsync(string[] items)
                        {
-                           // This should not trigger NP9202 - not in NPipeline node
+                           // This should not trigger NP9104 - not in NPipeline node
                            var result = "";
                            foreach (var item in items)
                            {
@@ -357,7 +357,7 @@ public sealed class InefficientStringOperationsAnalyzerTests
                    {
                        public ValueTask<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
-                           // NP9202: String concatenation in ValueTask-returning method
+                           // NP9104: String concatenation in ValueTask-returning method
                            var result = "Processed: " + input + " at " + DateTime.Now;
                            return new ValueTask<string>(result);
                        }
@@ -380,7 +380,7 @@ public sealed class InefficientStringOperationsAnalyzerTests
                    {
                        public string BuildMessage(string type, string id, string value)
                        {
-                           // NP9202: Multiple string concatenations in single expression
+                           // NP9104: Multiple string concatenations in single expression
                            return "Type: " + type + ", ID: " + id + ", Value: " + value + ", Time: " + DateTime.Now;
                        }
                    }
@@ -402,7 +402,7 @@ public sealed class InefficientStringOperationsAnalyzerTests
                    {
                        public async Task<IDataPipe<int>> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
                        {
-                           // NP9202: String concatenation in RunAsync method
+                           // NP9104: String concatenation in RunAsync method
                            var message = "Starting source node at " + DateTime.Now;
                            await LogAsync(message);
                            

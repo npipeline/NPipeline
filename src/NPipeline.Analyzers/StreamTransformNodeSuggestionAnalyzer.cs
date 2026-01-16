@@ -16,18 +16,18 @@ public sealed class StreamTransformNodeSuggestionAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for suggesting IStreamTransformNode.
     /// </summary>
-    public const string StreamTransformNodeSuggestionId = "NP9210";
+    public const string StreamTransformNodeSuggestionId = "NP9401";
 
     private static readonly DiagnosticDescriptor Rule = new(
         StreamTransformNodeSuggestionId,
         "Consider using IStreamTransformNode for stream-based transformations",
         "Class '{0}' implements ITransformNode but ExecuteAsync returns IAsyncEnumerable<{1}>. Consider implementing IStreamTransformNode<{2}, {1}> instead for better interface segregation.",
-        "Design",
+        "Design & Architecture",
         DiagnosticSeverity.Info,
         true,
-        "When ExecuteAsync returns IAsyncEnumerable, the node is performing stream-based transformations. "
+        "When ExecuteAsync returns IAsyncEnumerable, node is performing stream-based transformations. "
         + "IStreamTransformNode is designed specifically for this use case and provides better interface segregation. "
-        + "Using IStreamTransformNode makes the intent clearer and allows for more optimized execution strategies. "
+        + "Using IStreamTransformNode makes intent clearer and allows for more optimized execution strategies. "
         + "https://npipeline.dev/docs/core-concepts/nodes/stream-transform-nodes.");
 
     /// <inheritdoc />

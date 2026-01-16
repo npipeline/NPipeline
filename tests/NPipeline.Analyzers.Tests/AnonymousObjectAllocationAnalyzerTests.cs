@@ -20,7 +20,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
                    {
                        public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
-                           // NP9203: Anonymous object in hot path
+                           // NP9105: Anonymous object in hot path
                            var result = new { Id = input, Processed = true, Timestamp = DateTime.UtcNow };
                            return result.Id;
                        }
@@ -45,7 +45,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
                        {
                            foreach (var item in items)
                            {
-                               // NP9203: Anonymous object in hot path
+                               // NP9105: Anonymous object in hot path
                                var result = new { Item = item, Processed = true };
                                await SaveAsync(result);
                            }
@@ -73,7 +73,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
                        public async Task<IDataPipe<int>> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var numbers = Enumerable.Range(1, 100);
-                           // NP9203: Anonymous object in hot path
+                           // NP9105: Anonymous object in hot path
                            var enriched = numbers.Select(x => new { Value = x, IsEven = x % 2 == 0 }).ToList();
                            return new InMemoryDataPipe<int>(enriched.Select(e => e.Value));
                        }
@@ -96,7 +96,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
                    {
                        public async Task HandleDataAsync(IEnumerable<string> data)
                        {
-                           // NP9203: Anonymous object in async method (hot path)
+                           // NP9105: Anonymous object in async method (hot path)
                            var result = data.Select(x => new { Original = x, Length = x.Length }).ToList();
                            await ProcessAsync(result);
                        }
@@ -121,7 +121,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
                    {
                        public string ProcessItem(int item)
                        {
-                           // NP9203: Anonymous object in NPipeline node class
+                           // NP9105: Anonymous object in NPipeline node class
                            var result = new { Input = item, Output = item.ToString(), Processed = true };
                            return result.Output;
                        }
@@ -144,7 +144,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
                    {
                        public async Task HandleAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
-                           // NP9203: Anonymous object in sink node
+                           // NP9105: Anonymous object in sink node
                            var enriched = new { Data = input, Metadata = new { Source = "Test", Version = 1 } };
                            await SaveAsync(enriched);
                        }
@@ -173,7 +173,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
                            CancellationToken cancellationToken)
                        {
                            var items = new List<int>();
-                           // NP9203: Anonymous object in aggregate node
+                           // NP9105: Anonymous object in aggregate node
                            var aggregated = items.Select(x => new { Value = x, Category = x > 0 ? "Positive" : "Negative" }).ToList();
                            return new InMemoryDataPipe<int>(aggregated.Select(a => a.Value));
                        }
@@ -199,7 +199,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
                            var items = input.Split(' ');
                            for (int i = 0; i < items.Length; i++)
                            {
-                               // NP9203: Anonymous object in loop
+                               // NP9105: Anonymous object in loop
                                var processed = new { Index = i, Value = items[i], Length = items[i].Length };
                                await ProcessItemAsync(processed);
                            }
@@ -228,7 +228,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
                        public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = input.Split(' ');
-                           // NP9203: Anonymous object in LINQ expression
+                           // NP9105: Anonymous object in LINQ expression
                            var processed = items.Select(x => new { Original = x, Upper = x.ToUpper() }).ToList();
                            return string.Join(",", processed.Select(p => p.Upper));
                        }
@@ -251,7 +251,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
                    {
                        public ValueTask<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
-                           // NP9203: Anonymous object in ValueTask-returning method
+                           // NP9105: Anonymous object in ValueTask-returning method
                            var result = new { Input = input, Length = input.Length };
                            return new ValueTask<string>(result.Input);
                        }
@@ -272,7 +272,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
                    {
                        public void ProcessData(IEnumerable<string> data)
                        {
-                           // This should not trigger NP9203 - not a hot path method
+                           // This should not trigger NP9105 - not a hot path method
                            var result = data.Select(x => new { Value = x, Length = x.Length }).ToList();
                            Console.WriteLine(result.Count);
                        }
@@ -293,7 +293,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
                    {
                        public string ProcessData(IEnumerable<string> data)
                        {
-                           // This should not trigger NP9203 - not async
+                           // This should not trigger NP9105 - not async
                            var result = data.Select(x => new { Value = x, Upper = x.ToUpper() }).ToList();
                            return string.Join(",", result.Select(r => r.Value));
                        }
@@ -314,7 +314,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
                    {
                        public async Task<string> ProcessDataAsync(IEnumerable<string> data)
                        {
-                           // This should not trigger NP9203 - not in NPipeline node
+                           // This should not trigger NP9105 - not in NPipeline node
                            var result = data.Select(x => new { Value = x, Processed = true }).ToList();
                            return string.Join(",", result.Select(r => r.Value));
                        }
@@ -338,7 +338,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
                        public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = input.Split(' ');
-                           // NP9203: Multiple anonymous object allocations in hot path
+                           // NP9105: Multiple anonymous object allocations in hot path
                            var first = items.Select(x => new { Original = x, Length = x.Length }).ToList();
                            var second = first.Select(x => new { Data = x, IsValid = x.Length > 0 }).ToList();
                            return string.Join(",", second.Select(s => s.Data.Original));
@@ -365,7 +365,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
                            var items = input.Split(' ');
                            foreach (var item in items)
                            {
-                               // NP9203: Anonymous object in foreach loop
+                               // NP9105: Anonymous object in foreach loop
                                var processed = new { Item = item, Processed = true, Timestamp = DateTime.UtcNow };
                                await SaveAsync(processed);
                            }
@@ -396,7 +396,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
                            int i = 0;
                            while (i < items.Length)
                            {
-                               // NP9203: Anonymous object in while loop
+                               // NP9105: Anonymous object in while loop
                                var processed = new { Index = i, Value = items[i] };
                                await ProcessAsync(processed);
                                i++;

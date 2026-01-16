@@ -19,7 +19,7 @@ public sealed class InappropriateParallelismConfigurationAnalyzerTests
                    {
                        public void Configure()
                        {
-                           // NP9502: Excessive parallelism
+                           // NP9003: Excessive parallelism
                            var strategy = new ParallelExecutionStrategy(degreeOfParallelism: 16);
                        }
                    }
@@ -41,7 +41,7 @@ public sealed class InappropriateParallelismConfigurationAnalyzerTests
                    {
                        public void Configure()
                        {
-                           // NP9502: High parallelism for I/O-bound workload
+                           // NP9003: High parallelism for I/O-bound workload
                            var strategy = new ParallelExecutionStrategy(degreeOfParallelism: 8);
                        }
                    }
@@ -63,7 +63,7 @@ public sealed class InappropriateParallelismConfigurationAnalyzerTests
                    {
                        public void Configure()
                        {
-                           // NP9502: Low parallelism for CPU-bound workload
+                           // NP9003: Low parallelism for CPU-bound workload
                            var strategy = new ParallelExecutionStrategy(degreeOfParallelism: 1);
                        }
                    }
@@ -85,7 +85,7 @@ public sealed class InappropriateParallelismConfigurationAnalyzerTests
                    {
                        public void Configure()
                        {
-                           // NP9502: Single-threaded execution for CPU-bound workload
+                           // NP9003: Single-threaded execution for CPU-bound workload
                            var strategy = new ParallelExecutionStrategy(degreeOfParallelism: 1);
                        }
                    }
@@ -107,7 +107,7 @@ public sealed class InappropriateParallelismConfigurationAnalyzerTests
                    {
                        public void Configure()
                        {
-                           // NP9502: PreserveOrdering enabled with high parallelism
+                           // NP9003: PreserveOrdering enabled with high parallelism
                            var options = new ParallelOptions(maxDegreeOfParallelism: 8, preserveOrdering: true);
                        }
                    }
@@ -130,7 +130,7 @@ public sealed class InappropriateParallelismConfigurationAnalyzerTests
                    {
                        public void Define(PipelineBuilder builder, PipelineContext context)
                        {
-                           // NP9502: Excessive parallelism
+                           // NP9003: Excessive parallelism
                            var transform = builder.AddTransform<TestTransform, int, string>("test")
                                .WithBlockingParallelism(builder, 16);
                        }

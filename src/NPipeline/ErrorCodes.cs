@@ -17,27 +17,99 @@ namespace NPipeline;
 ///     - NP07xx: Lineage and Tracking Errors
 ///     - NP08xx: Extension and Integration Errors
 ///     Analyzer Diagnostics:
-///     - NP90xx: Configuration Analyzers
-///     - NP91xx: Async Programming Analyzers
-///     - NP92xx: Performance Analyzers
-///     - NP93xx: Reliability Analyzers
-///     - NP94xx: Best Practice Analyzers
+///     - NP90XX: Configuration &amp; Setup Analyzers
+///     - NP91XX: Performance &amp; Optimization Analyzers
+///     - NP92XX: Reliability &amp; Error Handling Analyzers
+///     - NP93XX: Data Integrity &amp; Correctness Analyzers
+///     - NP94XX: Design &amp; Architecture Analyzers
 ///     - NP99xx: Internal Framework Errors
 ///     Documentation: https://github.com/npipeline/NPipeline/docs/reference/error-codes
 /// </remarks>
 public static class ErrorCodes
 {
-    #region Configuration Analyzers (NP90xx)
+    #region Configuration & Setup Analyzers (NP90XX)
 
     /// <summary>Detects missing resilience configuration that can cause runtime failures when RestartNode is returned.</summary>
     public const string IncompleteResilientConfiguration = "NP9001";
 
+    /// <summary>Prevents unbounded memory growth in retry options.</summary>
+    public const string UnboundedMaterializationConfiguration = "NP9002";
+
+    /// <summary>Detects inappropriate parallelism configuration.</summary>
+    public const string InappropriateParallelismConfiguration = "NP9003";
+
+    /// <summary>Detects batching configuration mismatches.</summary>
+    public const string BatchingConfigurationMismatch = "NP9004";
+
+    /// <summary>Detects timeout configuration issues.</summary>
+    public const string TimeoutConfiguration = "NP9005";
+
     #endregion
 
-    #region Best Practice Analyzers (NP94xx)
+    #region Performance & Optimization Analyzers (NP91XX)
+
+    /// <summary>Detects blocking operations in async methods.</summary>
+    public const string BlockingAsyncOperation = "NP9101";
+
+    /// <summary>Synchronous method calling async operations without proper await.</summary>
+    public const string SynchronousOverAsync = "NP9102";
+
+    /// <summary>Detects LINQ usage in performance-critical paths.</summary>
+    public const string LinqInHotPaths = "NP9103";
+
+    /// <summary>Detects inefficient string operations.</summary>
+    public const string InefficientStringOperations = "NP9104";
+
+    /// <summary>Detects unnecessary object allocations.</summary>
+    public const string AnonymousObjectAllocation = "NP9105";
+
+    /// <summary>Detects ValueTask operations that could be optimized by using Task instead.</summary>
+    public const string MissingValueTaskOptimization = "NP9106";
+
+    /// <summary>Source node is not streaming data properly.</summary>
+    public const string SourceNodeNotStreamingData = "NP9107";
+
+    /// <summary>Add parameterless constructor for better performance.</summary>
+    public const string ParameterlessConstructorPerformanceSuggestion = "NP9108";
+
+    #endregion
+
+    #region Reliability & Error Handling Analyzers (NP92XX)
+
+    /// <summary>Detects catch blocks that may swallow OperationCanceledException without re-throwing it.</summary>
+    public const string SwallowedOperationCanceledException = "NP9201";
+
+    /// <summary>Detects inefficient exception handling patterns.</summary>
+    public const string InefficientExceptionHandling = "NP9202";
+
+    /// <summary>Detects when methods don't properly respect cancellation tokens.</summary>
+    public const string NodeNotRespectingCancellationToken = "NP9203";
+
+    #endregion
+
+    #region Data Integrity & Correctness Analyzers (NP93XX)
+
+    /// <summary>SinkNode implementations that don't consume their input parameter, which can lead to data loss and unexpected pipeline failures.</summary>
+    public const string SinkNodeInputNotConsumed = "NP9301";
+
+    /// <summary>Detects unsafe access patterns on PipelineContext properties and dictionaries that can lead to NullReferenceException at runtime.</summary>
+    public const string UnsafePipelineContextAccess = "NP9302";
+
+    #endregion
+
+    #region Design & Architecture Analyzers (NP94XX)
+
+    /// <summary>Suggests using StreamTransformNode for streaming data processing.</summary>
+    public const string StreamTransformNodeSuggestion = "NP9401";
+
+    /// <summary>Detects StreamTransformNode with incompatible execution strategies.</summary>
+    public const string StreamTransformNodeExecutionStrategy = "NP9402";
+
+    /// <summary>Node missing public parameterless constructor.</summary>
+    public const string MissingParameterlessConstructor = "NP9403";
 
     /// <summary>Detects dependency injection anti-patterns in node implementations.</summary>
-    public const string DependencyInjectionAntiPattern = "NP9401";
+    public const string DependencyInjectionAntiPattern = "NP9404";
 
     #endregion
 
@@ -196,70 +268,6 @@ public static class ErrorCodes
 
     /// <summary>Batch size must be greater than zero.</summary>
     public const string BatchSizeMustBeGreaterThanZero = "NP0504";
-
-    #endregion
-
-    #region Async Programming Analyzers (NP91xx)
-
-    /// <summary>Detects blocking operations in async methods.</summary>
-    public const string BlockingAsyncOperation = "NP9101";
-
-    /// <summary>Detects catch blocks that may swallow OperationCanceledException without re-throwing it.</summary>
-    public const string SwallowedOperationCanceledException = "NP9102";
-
-    /// <summary>Synchronous method calling async operations without proper await.</summary>
-    public const string SynchronousOverAsync = "NP9103";
-
-    /// <summary>Detects when methods don't properly respect cancellation tokens.</summary>
-    public const string NodeNotRespectingCancellationToken = "NP9104";
-
-    #endregion
-
-    #region Performance Analyzers (NP92xx)
-
-    /// <summary>Detects LINQ usage in performance-critical paths.</summary>
-    public const string LinqInHotPaths = "NP9201";
-
-    /// <summary>Detects inefficient string operations.</summary>
-    public const string InefficientStringOperations = "NP9202";
-
-    /// <summary>Detects unnecessary object allocations.</summary>
-    public const string AnonymousObjectAllocation = "NP9203";
-
-    /// <summary>Detects ValueTask operations that could be optimized by using Task instead.</summary>
-    public const string MissingValueTaskOptimization = "NP9204";
-
-    /// <summary>Source node is not streaming data properly.</summary>
-    public const string SourceNodeNotStreamingData = "NP9205";
-
-    #endregion
-
-    #region Reliability Analyzers (NP93xx)
-
-    /// <summary>Detects inefficient exception handling patterns.</summary>
-    public const string InefficientExceptionHandling = "NP9301";
-
-    /// <summary>SinkNode implementations that don't consume their input parameter, which can lead to data loss and unexpected pipeline failures.</summary>
-    public const string SinkNodeInputNotConsumed = "NP9302";
-
-    /// <summary>Detects unsafe access patterns on PipelineContext properties and dictionaries that can lead to NullReferenceException at runtime.</summary>
-    public const string UnsafePipelineContextAccess = "NP9303";
-
-    #endregion
-
-    #region Configuration Analyzers (NP95xx)
-
-    /// <summary>Prevents unbounded memory growth in retry options.</summary>
-    public const string UnboundedMaterializationConfiguration = "NP9501";
-
-    /// <summary>Detects inappropriate parallelism configuration.</summary>
-    public const string InappropriateParallelismConfiguration = "NP9502";
-
-    /// <summary>Detects batching configuration mismatches.</summary>
-    public const string BatchingConfigurationMismatch = "NP9503";
-
-    /// <summary>Detects timeout configuration issues.</summary>
-    public const string TimeoutConfiguration = "NP9504";
 
     #endregion
 }

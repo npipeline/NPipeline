@@ -26,7 +26,7 @@ public class SinkNodeInputConsumptionAnalyzerTests
                            {
                                public Task ExecuteAsync(IDataPipe<int> input, PipelineContext context, CancellationToken cancellationToken)
                                {
-                                   // Input parameter not consumed - this should trigger NP9302
+                                   // Input parameter not consumed - this should trigger NP9301
                                    return Task.CompletedTask;
                                }
                                
@@ -41,7 +41,7 @@ public class SinkNodeInputConsumptionAnalyzerTests
         var diagnostics = await GetDiagnostics(testCode);
 
         Assert.Single(diagnostics);
-        Assert.Equal("NP9302", diagnostics[0].Id);
+        Assert.Equal("NP9301", diagnostics[0].Id);
     }
 
     [Fact]
@@ -143,7 +143,7 @@ public class SinkNodeInputConsumptionAnalyzerTests
         var diagnostics = await compilationWithAnalyzers.GetAllDiagnosticsAsync();
 
         // Filter to only include our analyzer's diagnostics
-        var filteredDiagnostics = diagnostics.Where(d => d.Id == "NP9302").ToArray();
+        var filteredDiagnostics = diagnostics.Where(d => d.Id == "NP9301").ToArray();
 
         return filteredDiagnostics;
     }

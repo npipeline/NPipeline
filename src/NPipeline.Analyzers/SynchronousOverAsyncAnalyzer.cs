@@ -19,14 +19,14 @@ public sealed class SynchronousOverAsyncAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for synchronous over async anti-patterns.
     /// </summary>
-    public const string SynchronousOverAsyncId = "NP9103";
+    public const string SynchronousOverAsyncId = "NP9102";
 
     private static readonly DiagnosticDescriptor SynchronousOverAsyncRule = new(
         SynchronousOverAsyncId,
         "Avoid synchronous over async anti-patterns",
         "Method '{0}' contains synchronous over async anti-pattern '{1}' that can cause deadlocks and reduce performance. "
         + "Use proper async patterns instead to maintain the async chain and prevent thread pool starvation.",
-        "Performance",
+        "Performance & Optimization",
         DiagnosticSeverity.Warning,
         true,
         "Synchronous over async patterns can cause deadlocks and performance issues. "

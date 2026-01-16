@@ -16,13 +16,13 @@ public sealed class SinkNodeInputConsumptionAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for when SinkNode doesn't consume input parameter.
     /// </summary>
-    public const string SinkNodeInputNotConsumedId = "NP9302";
+    public const string SinkNodeInputNotConsumedId = "NP9301";
 
     private static readonly DiagnosticDescriptor SinkNodeInputNotConsumedRule = new(
         SinkNodeInputNotConsumedId,
         "SinkNode should consume input parameter",
         "SinkNode '{0}' overrides ExecuteAsync but doesn't consume input parameter. Sink nodes should process all items from input data pipe.",
-        "Correctness",
+        "Data Integrity & Correctness",
         DiagnosticSeverity.Error,
         true,
         "SinkNode implementations should consume all items from their input data pipe. Failing to consume input may result in data loss and unexpected behavior. Use await foreach to iterate through input items. https://npipeline.dev/docs/nodes/sink-nodes/best-practices.");

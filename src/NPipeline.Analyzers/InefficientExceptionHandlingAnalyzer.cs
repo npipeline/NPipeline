@@ -16,13 +16,13 @@ public sealed class InefficientExceptionHandlingAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for inefficient exception handling patterns.
     /// </summary>
-    public const string InefficientExceptionHandlingId = "NP9301";
+    public const string InefficientExceptionHandlingId = "NP9202";
 
     private static readonly DiagnosticDescriptor Rule = new(
         InefficientExceptionHandlingId,
         "Inefficient exception handling pattern detected",
         "Exception handling pattern '{0}' may cause performance issues or hide important errors: {1}",
-        "Reliability",
+        "Reliability & Error Handling",
         DiagnosticSeverity.Warning,
         true,
         "Inefficient exception handling can cause performance issues and mask important errors. "

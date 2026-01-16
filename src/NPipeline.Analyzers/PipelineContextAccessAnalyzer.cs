@@ -20,13 +20,13 @@ public sealed class PipelineContextAccessAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for unsafe PipelineContext access patterns.
     /// </summary>
-    public const string UnsafePipelineContextAccessId = "NP9303";
+    public const string UnsafePipelineContextAccessId = "NP9302";
 
     private static readonly DiagnosticDescriptor UnsafePipelineContextAccessRule = new(
         UnsafePipelineContextAccessId,
         "Unsafe access pattern on PipelineContext",
         "Unsafe access pattern '{0}' detected on PipelineContext. This can lead to NullReferenceException at runtime. Use null-conditional operators (?.) or check for null before accessing these properties.",
-        "Reliability",
+        "Data Integrity & Correctness",
         DiagnosticSeverity.Warning,
         true,
         "PipelineContext has several nullable properties and dictionary access patterns that require careful handling. "

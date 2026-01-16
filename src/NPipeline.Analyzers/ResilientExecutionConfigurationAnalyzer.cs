@@ -29,7 +29,7 @@ public sealed class ResilientExecutionConfigurationAnalyzer : DiagnosticAnalyzer
         "Error handler can return PipelineErrorDecision.RestartNode but may not have all three mandatory prerequisites configured. "
         + "Missing prerequisites will silently disable restart, causing the entire pipeline to fail instead of recovering the failed node. "
         + "Checklist: (1) Node wrapped with ResilientExecutionStrategy, (2) MaxNodeRestartAttempts > 0, (3) MaxMaterializedItems is not null.",
-        "Resilience",
+        "Configuration & Setup",
         DiagnosticSeverity.Warning,
         true,
         "See node restart quick start guide for complete configuration requirements. "

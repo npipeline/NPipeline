@@ -16,14 +16,14 @@ public sealed class AnonymousObjectAllocationAnalyzer : DiagnosticAnalyzer
     /// <summary>
     ///     Diagnostic ID for anonymous object allocation in hot paths.
     /// </summary>
-    public const string AnonymousObjectAllocationId = "NP9203";
+    public const string AnonymousObjectAllocationId = "NP9105";
 
     private static readonly DiagnosticDescriptor Rule = new(
         AnonymousObjectAllocationId,
         "Anonymous object allocation detected in hot path",
         "Anonymous object allocation detected in hot path method '{0}'. This creates unnecessary GC pressure and allocation overhead. "
         + "Consider using value types, named types, or object pooling for better performance in high-frequency execution paths.",
-        "Performance",
+        "Performance & Optimization",
         DiagnosticSeverity.Warning,
         true,
         "Anonymous object allocations in hot paths create unnecessary GC pressure and allocation overhead. "

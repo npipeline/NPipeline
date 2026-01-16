@@ -8,9 +8,9 @@ sidebar_position: 6
 
 Configuration analyzers detect issues with pipeline configuration that can lead to performance problems, resource leaks, or silent failures. These analyzers focus on ensuring that your pipeline configuration is optimal for your workload and doesn't introduce hidden problems.
 
-### NP9501: Unbounded Materialization Configuration
+### NP9002: Unbounded Materialization Configuration
 
-**ID:** `NP9501`  
+**ID:** `NP9002`  
 **Severity:** Error  
 **Category:** Configuration  
 
@@ -50,9 +50,9 @@ var retryOptions = new PipelineRetryOptions(
 
 This analyzer is configured as an **Error** by default because unbounded materialization is fundamentally incompatible with resilient pipeline operation. The runtime validation throws `InvalidOperationException` when `RestartNode` is attempted with unbounded materialization, providing clear feedback about the configuration issue. This analyzer helps catch the issue earlier during development.
 
-### NP9502: Inappropriate Parallelism Configuration
+### NP9003: Inappropriate Parallelism Configuration
 
-**ID:** `NP9502`  
+**ID:** `NP9003`
 **Severity:** Warning  
 **Category:** Performance  
 
@@ -76,9 +76,9 @@ Inappropriate parallelism configuration causes:
 | Mixed | Processor count × 1.5 | Only if required |
 | Memory-intensive | Processor count ÷ 2 | Only if required |
 
-### NP9503: Batching Configuration Mismatch
+### NP9004: Batching Configuration Mismatch
 
-**ID:** `NP9503`  
+**ID:** `NP9004`
 **Severity:** Warning  
 **Category:** Performance  
 
@@ -93,9 +93,9 @@ This analyzer detects batching configurations where batch sizes and timeouts are
 | 100-1000 | 1-10s | High-throughput scenarios |
 | 1000+ | 5-30s | Batch processing systems |
 
-### NP9504: Timeout Configuration Issues
+### NP9005: Timeout Configuration Issues
 
-**ID:** `NP9504`  
+**ID:** `NP9005`
 **Severity:** Warning  
 **Category:** Configuration  
 
@@ -124,16 +124,16 @@ Adjust analyzer severity in `.editorconfig`:
 
 ```ini
 # Treat unbounded materialization as errors
-dotnet_diagnostic.NP9501.severity = error
+dotnet_diagnostic.NP9002.severity = error
 
 # Treat inappropriate parallelism as warnings
-dotnet_diagnostic.NP9502.severity = warning
+dotnet_diagnostic.NP9003.severity = warning
 
 # Treat batching mismatches as warnings
-dotnet_diagnostic.NP9503.severity = warning
+dotnet_diagnostic.NP9004.severity = warning
 
 # Treat timeout issues as warnings
-dotnet_diagnostic.NP9504.severity = warning
+dotnet_diagnostic.NP9005.severity = warning
 ```
 
 ## See Also
