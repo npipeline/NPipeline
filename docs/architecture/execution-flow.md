@@ -6,7 +6,9 @@ sidebar_position: 3
 
 # Execution Flow
 
-**This page explains WHAT happens during pipeline execution.** For HOW TO configure execution strategies, see [Execution Strategies](../core-concepts/pipeline-execution/execution-strategies.md).
+This page provides a deep dive into how NPipeline executes pipelines at the internal level. Understanding execution flow helps you reason about performance, concurrency, and error handling behavior.
+
+For practical configuration guidance, see [Execution Strategies](../core-concepts/pipeline-execution/execution-strategies.md).
 
 NPipeline supports multiple execution models to handle different requirements: sequential (the default) and parallel execution through extensions.
 
@@ -29,8 +31,9 @@ NPipeline follows a clear separation of concerns:
 - Transforms process items as they arrive
 
 > **💡 Key Insight**
-> 
+>
 > This design provides:
+>
 > - **Clear execution boundaries:** Source setup is fast; transforms and sinks handle async work
 > - **Predictable performance:** No hidden delays during source initialization
 > - **Type safety:** Synchronous source returns enable better variance and lazy evaluation

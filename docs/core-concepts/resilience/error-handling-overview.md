@@ -28,6 +28,7 @@ NPipeline distinguishes between two complementary levels of error handling:
 ### 1. Node-Level Error Handling
 
 Deals with errors that occur while processing an individual item within a specific node. You define what happens to that item:
+
 - Skip it and continue
 - Retry the operation
 - Redirect it to a dead-letter queue
@@ -38,6 +39,7 @@ Deals with errors that occur while processing an individual item within a specif
 ### 2. Pipeline-Level Error Handling
 
 Deals with more severe errors that might affect an entire node's stream or the pipeline's execution flow:
+
 - Restart the failing node
 - Continue without the failing node
 - Fail the entire pipeline
@@ -144,11 +146,3 @@ flowchart TD
 - [Getting Started with Resilience](getting-started.md) - Quick guide to common error handling patterns
 - [Retries](retries.md) - Configure retry policies and strategies
 - [Circuit Breakers](circuit-breakers.md) - Prevent cascading failures with circuit breaker patterns
-
-## Quick Start
-
-For a quick introduction to error handling, see [Getting Started with Resilience](getting-started.md). This guide covers the mandatory prerequisites and basic patterns to get you started.
-
-For detailed implementation of specific error handlers, see:
-- [Node-Level Error Handling](node-error-handling.md) for handling individual item failures
-- [Pipeline-Level Error Handling](pipeline-error-handling.md) for handling stream/node failures

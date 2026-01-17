@@ -14,9 +14,6 @@ Before understanding execution strategies, you should be familiar with:
 - [Nodes Overview](../nodes/index.md) - Understanding how nodes process data
 - [Defining Pipelines](../defining-pipelines.md) - How to apply execution strategies to nodes
 
-> **Documentation Scope**
-> This guide covers **all execution strategies** - sequential, parallel, and resilient. If you need to add **resilience capabilities** (error handling, retries, node restart) to a strategy, see [Error Handling](../resilience/error-handling.md).
-
 Execution strategies define how a node processes its input stream and produces its output. They are crucial for controlling parallelism, managing backpressure, and implementing resilience patterns within your NPipeline. By default, nodes execute sequentially, but you can configure them to run in parallel or with built-in fault tolerance.
 
 Execution strategies primarily apply to [Transform Nodes](../nodes/index.md#transform-nodes) and custom nodes that implement `ITransformNode`.

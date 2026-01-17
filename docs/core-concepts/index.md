@@ -7,9 +7,9 @@ slug: /core-concepts
 
 # Core Concepts
 
-**This section shows you HOW TO build pipelines with NPipeline.** It provides practical guides and implementation patterns for every major feature.
+This section provides practical guides and implementation patterns for building pipelines with NPipeline. **Each guide embeds the rationale directly with the implementation guidance** — you'll understand both the how and the why without constant navigation between pages.
 
-> **Want to understand WHY NPipeline works this way?** See [Architecture Overview](../architecture/index.md) for deep dives into design decisions and internals.
+For deeper exploration of architectural decisions and internal mechanics, see [Architecture Overview](../architecture/index.md).
 
 NPipeline is designed with a few key concepts at its heart. Understanding these will help you build powerful and efficient data pipelines.
 
@@ -21,8 +21,8 @@ Start here to understand the core building blocks of NPipeline.
 
 | Concept | Description |
 | :--- | :--- |
-| **[Pipeline](ipipeline.md)** | The executable instance of a pipeline. It's responsible for running nodes in the correct order. |
-| **[Pipeline Context](pipeline-context.md)** | An object that flows through the pipeline, carrying shared state, cancellation tokens, and other contextual information. |
+| **[Pipeline](ipipeline.md)** | The executable instance of a pipeline. It's responsible for running nodes in correct order. |
+| **[Pipeline Context](pipeline-context.md)** | An object that flows through pipeline, carrying shared state, cancellation tokens, and other contextual information. |
 | **[Data Pipes](data-pipes.md)** | The fundamental mechanism for transferring items between nodes, providing type-safe asynchronous streaming. |
 
 ---
@@ -33,8 +33,8 @@ Learn how to define and construct your data pipelines.
 
 | Concept | Description |
 | :--- | :--- |
-| **[Defining Pipelines](defining-pipelines.md)** | Both the fluent `PipelineBuilder` API and class-based `IPipelineDefinition` approaches for constructing pipelines. |
-| **[Node Definition Structure](node-definition.md)** | Understanding the nested configuration structure of NodeDefinition for advanced customization. |
+| **[Defining Pipelines](defining-pipelines.md)** | Both of fluent `PipelineBuilder` API and class-based `IPipelineDefinition` approaches for constructing pipelines. |
+| **[Node Definition Structure](node-definition.md)** | Understanding of nested configuration structure of NodeDefinition for advanced customization. |
 | **[Nodes](nodes/index.md)** | The fundamental unit of work in a pipeline. Nodes can be sources, transforms, or sinks. |
 
 ---
@@ -47,7 +47,7 @@ Understand how pipelines run and how to control execution behavior.
 | :--- | :--- |
 | **[Pipeline Execution](pipeline-execution/index.md)** | Overview of how pipelines are executed and controlled. |
 | **[Execution Strategies](pipeline-execution/execution-strategies.md)** | Control how nodes process data (sequential, parallel, batched). |
-| **[Streaming vs Buffering](streaming-vs-buffering.md)** | Understand memory tradeoffs and choose the right approach for your use case. |
+| **[Streaming vs Buffering](streaming-vs-buffering.md)** | Understand memory tradeoffs and choose right approach for your use case. |
 | **[Thread Safety](thread-safety.md)** | Design safe concurrent pipelines and understand NPipeline's threading model. |
 | **[Pipeline Validation](pipeline-validation.md)** | Validate pipelines before execution to catch errors early. |
 
@@ -57,7 +57,7 @@ Understand how pipelines run and how to control execution behavior.
 
 Critical design choices that affect correctness and performance.
 
-> **⚠️ Important**: Read this section carefully before implementing any grouping logic. Choosing the wrong approach can lead to subtle data corruption bugs or unnecessary complexity.
+> **⚠️ Important**: Read this section carefully before implementing any grouping logic. Choosing wrong approach can lead to subtle data corruption bugs or unnecessary complexity.
 
 | Concept | Description |
 | :--- | :--- |
@@ -91,11 +91,11 @@ Practical patterns and best practices for building production-ready pipelines.
 
 ## How They Fit Together
 
-1. You use the **`PipelineBuilder`** to define the structure of your pipeline by adding sources, transforms, and sinks.
-2. The `Build()` method on the `PipelineBuilder` creates an **`IPipelineDefinition`**.
+1. You use to **`PipelineBuilder`** to define the structure of your pipeline by adding sources, transforms, and sinks.
+2. The `Build()` method on `PipelineBuilder` creates an **`IPipelineDefinition`**.
 3. The `IPipelineDefinition` is then used to create an **`IPipeline`** instance.
 4. When you run the pipeline, data flows from `ISourceNode`s, through `ITransformNode`s, to `ISinkNode`s.
-5. The entire process is managed by the pipeline, and the **`PipelineContext`** is available to all nodes.
+5. The entire process is managed by the pipeline, and **`PipelineContext`** is available to all nodes.
 
 This modular design allows you to create complex data processing workflows from simple, reusable components.
 
@@ -113,7 +113,7 @@ When building production-grade pipelines with NPipeline, it's important to consi
 
 ### Parallelism
 
-- **Leverage NPipeline.Extensions.Parallelism for CPU-bound operations**: For computationally intensive transformations, use the parallelism extensions to distribute work across multiple CPU cores.
+- **Leverage NPipeline.Extensions.Parallelism for CPU-bound operations**: For computationally intensive transformations, use parallelism extensions to distribute work across multiple CPU cores.
 - **Configure appropriate degree of parallelism**: Balance parallelism with available system resources. Too much parallelism can lead to resource contention and diminished returns.
 - **Consider resource contention when designing pipelines**: Be mindful of shared resources like database connections or file handles when implementing parallel processing.
 
@@ -127,7 +127,7 @@ When building production-grade pipelines with NPipeline, it's important to consi
 
 ## Next Steps
 
-- **[Defining Pipelines](./defining-pipelines.md)**: Explore both the fluent API and class-based approaches for defining pipelines
+- **[Defining Pipelines](./defining-pipelines.md)**: Explore both of fluent API and class-based approaches for defining pipelines
 - **[Pipeline](./ipipeline.md)**: Learn about the executable instance of a pipeline
 - **[Nodes](./nodes/index.md)**: Understand the fundamental unit of work in a pipeline
 - **[Pipeline Context](./pipeline-context.md)**: Discover the object that carries shared state through the pipeline
@@ -135,4 +135,4 @@ When building production-grade pipelines with NPipeline, it's important to consi
 
 ---
 
-**Want to understand WHY NPipeline works this way?** See [Architecture Overview](../architecture/index.md).
+For deeper exploration of design decisions and internal architecture, see [Architecture Overview](../architecture/index.md).

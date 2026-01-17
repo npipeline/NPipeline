@@ -12,9 +12,9 @@ Batching is used when downstream operations need collecting a specified number o
 
 ---
 
-## ⚠️ Critical Decision: Batching vs. Aggregation
+## Critical Decision: Batching vs. Aggregation
 
-**Before implementing batching, ensure you've chosen the right grouping strategy.** Batching solves an **operational efficiency problem** (reduce load on external systems), but if your real concern is **data correctness with late-arriving events**, you need **Aggregation** instead.
+Before implementing batching, ensure you've chosen the right grouping strategy. Batching solves an operational efficiency problem (reduce load on external systems), but if your real concern is data correctness with late-arriving events, you need Aggregation instead.
 
 **→ [Read Grouping Strategies: Batching vs. Aggregation](../grouping-strategies.md) to make the right choice**
 

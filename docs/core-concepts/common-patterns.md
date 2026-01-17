@@ -6,12 +6,7 @@ sidebar_position: 12
 
 # Common Patterns
 
-This guide covers practical patterns and recipes for solving common data processing scenarios with NPipeline.
-
-> **Want to understand the principles first?** See [Best Practices](best-practices.md) to learn the reasoning and guidelines behind building good pipelines.
-
-> **Implementation-focused.** This guide answers the "how" - with working code examples and recipes.  
-> **Principle-focused** guides like [Best Practices](best-practices.md) explain the "why" behind good pipeline design.
+This guide provides practical code recipes and examples for solving real-world scenarios with NPipeline. Each pattern demonstrates a complete, working solution you can adapt to your needs.
 
 ## Pattern 1: ETL Pipeline
 

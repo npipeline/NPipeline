@@ -6,7 +6,7 @@ sidebar_position: 14
 
 # Execution Plan Caching: Eliminating Compilation Overhead
 
-**This page explains HOW execution plan caching works and WHEN it's applied.** For configuration details, see [Pipeline Runner Configuration](../core-concepts/pipeline-execution/ipipelinerunner.md).
+This page provides a deep dive into how NPipeline caches compiled execution plans to eliminate repetitive expression compilation overhead. Understanding execution plan caching helps you reason about performance characteristics and configuration options.
 
 ## The Problem: Compilation Overhead
 

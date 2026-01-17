@@ -12,9 +12,9 @@ For pipelines where events may arrive late or out of sequence—especially with 
 
 ---
 
-## ⚠️ Critical Decision: Aggregation vs. Batching
+## Critical Decision: Aggregation vs. Batching
 
-**Before implementing aggregation, ensure it's actually what you need.** Aggregation solves a **data correctness problem** (handling events that arrive out of order or late), but if your real concern is **operational efficiency** (reducing load on external systems), you likely need **Batching** instead.
+Before implementing aggregation, ensure it's actually what you need. Aggregation solves a data correctness problem (handling events that arrive out of order or late), but if your real concern is operational efficiency (reducing load on external systems), you likely need Batching instead.
 
 **→ [Read Grouping Strategies: Batching vs. Aggregation](../grouping-strategies.md) to make the right choice**
 
@@ -46,6 +46,7 @@ Use this when your **accumulator and result types are the same**. This is the mo
 * (Automatically handles: `GetResult()` returns the accumulator as-is)
 
 **Best For:**
+
 * Sums, counts, averages
 * Collecting items into lists or sets
 * Any scenario where intermediate state and final result are the same type
@@ -69,6 +70,7 @@ Use this when your **accumulator and result types differ**. This provides maximu
 * `GetResult(TAccumulate accumulator)`: Transform the final accumulator state into the desired result.
 
 **Best For:**
+
 * Complex transformations where accumulator must have a different structure than result (e.g., accumulating as a list, returning as average)
 * Statistical computations (sum and count accumulated separately, then average computed on finalization)
 * Scenarios requiring conversion or projection in the final result

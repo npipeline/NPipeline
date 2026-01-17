@@ -9,14 +9,15 @@ sidebar_position: 3
 ## Prerequisites
 
 Before implementing ValueTask optimization, you should be familiar with:
+
 - [Core Concepts Overview](../core-concepts/index.md) - Basic NPipeline concepts and terminology
 - [Nodes Overview](../core-concepts/nodes/index.md) - Understanding how nodes process data
 - [Transform Nodes](../core-concepts/nodes/transform-nodes.md) - Node implementation details
 - [Optimization Principles](../architecture/optimization-principles.md) - Understanding why ValueTask improves performance
 
-> For general performance best practices, see [Performance Hygiene](performance-hygiene.md).
+This is **definitive guide** for understanding and implementing `ValueTask<T>` pattern in transformer nodes.
 
-This is **definitive guide** for understanding and implementing `ValueTask<T>` pattern in transformer nodes. For a quick introduction, see [Performance Hygiene: Use ValueTask\<T\> for Fast Path Scenarios](performance-hygiene.md#use-valuetaskt-for-fast-path-scenarios).
+**When should you care about this?** If your pipeline processes thousands of items per second and some transforms (validation, caching, filtering) are synchronous, this optimization can reduce garbage collection pauses by 50-90%. For low-throughput pipelines or transforms that are almost always async, the additional complexity may not be worth it. For a quick introduction, see [Performance Hygiene: Use ValueTask\<T\> for Fast Path Scenarios](performance-hygiene.md#use-valuetaskt-for-fast-path-scenarios).
 
 ## The Performance Paradox
 

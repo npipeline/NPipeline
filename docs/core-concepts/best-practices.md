@@ -6,12 +6,17 @@ sidebar_position: 11
 
 # Best Practices
 
-This guide provides design principles and recommendations for building robust, maintainable, and performant NPipeline pipelines.
+This guide provides design principles and recommendations for building robust, maintainable pipelines with NPipeline. These principles help you make informed decisions about architecture, error handling, performance, and code organization.
 
-> **Looking for implementation examples?** See [Common Patterns](common-patterns.md) for practical code recipes demonstrating these principles in action.
+## Core Principles
 
-> **Principle-focused.** This guide answers the "why" - the reasoning and principles behind building good pipelines.  
-> **Implementation-focused** guides like [Common Patterns](common-patterns.md) show you the "how" with working code examples.
+### 1. Favor Streaming Over Buffering
+
+NPipeline is designed around streaming data flow. Process items as they arrive and yield results immediately rather than collecting entire datasets into memory.
+
+**Why this matters:** Streaming ensures predictable memory usage and allows pipelines to handle arbitrarily large datasets without running out of memory. It also reduces latency since items can start processing immediately without waiting for the entire dataset to load.
+
+**How to apply it:** Use `IAsyncEnumerable<T>` for data flow and avoid methods like `ToListAsync()` unless your logic specifically requires access to the entire dataset at once (e.g., sorting or global aggregation).
 
 ## Principle 1: Single Responsibility
 

@@ -6,7 +6,9 @@ sidebar_position: 4
 
 # Data Flow Details
 
-Understanding how data flows through NPipeline and the lazy evaluation principles that make it efficient is key to building high-performance pipelines.
+NPipeline uses lazy evaluation for memory efficiency, ensuring only active items are in memory at any given time. This design choice allows the pipeline to handle arbitrarily large datasets without running out of memory, as items are processed and discarded immediately rather than being buffered in memory.
+
+Data flows through the pipeline as follows:
 
 ## How Data Pipes Work
 
@@ -40,7 +42,14 @@ await foreach (var item in transformedPipe.WithCancellation(cancellationToken))
 
 ## Lazy Evaluation
 
-The key to NPipeline's efficiency is **lazy evaluation**: data is only processed when explicitly consumed.
+The key to NPipeline's efficiency is **lazy evaluation**: data is only processed when explicitly consumed. This means memory usage stays constant regardless of dataset size—each item is processed and discarded before the next arrives, rather than being buffered in memory.
+
+**Why this matters for you:**
+
+- **Streaming large files** (CSV, JSON) without loading them into memory
+- **Handling datasets larger than available RAM**
+- **Immediate responsiveness** (results flow to output as soon as they're ready, no waiting for entire batch)
+- **Cancellation efficiency** (if you stop processing early, the source stops reading)
 
 ### How Lazy Evaluation Works
 
@@ -96,15 +105,19 @@ await foreach (var item in pipe.WithCancellation(cancellationToken))
 }
 ```
 
-**Memory Efficiency:**
+**Memory Efficiency (Process Terabytes on Gigabyte Hardware):**
 
 ```csharp
 // Reading 1 million items from a file:
-// - Lazy: Only ~1 item in memory at a time
-// - Eager (.ToList()): ~100 MB or more in memory
+// - Lazy: Only ~1 item in memory at a time → constant memory regardless of dataset size
+// - Eager (.ToList()): ~100 MB or more in memory → proportional to dataset size
+
+// Real scenario: Processing 100GB CSV file
+// Lazy approach: ~50MB memory overhead
+// Eager approach: 100GB+ RAM required (won't fit on most servers)
 ```
 
-**Streaming Responsiveness:**
+**Streaming Responsiveness (Real-Time Feedback):**
 
 ```csharp
 // Results are available immediately

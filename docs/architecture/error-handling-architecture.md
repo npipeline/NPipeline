@@ -6,13 +6,18 @@ sidebar_position: 6
 
 # Error Handling Architecture
 
-**This page explains WHAT happens when errors occur in pipelines.** For HOW TO implement error handling and resilience, see [Error Handling](../core-concepts/resilience/error-handling.md) and [Resilience Overview](../core-concepts/resilience/index.md).
+This page provides a deep dive into how errors propagate and are handled throughout NPipeline. Understanding error handling architecture helps you reason about error propagation, containment strategies, and integration patterns.
 
-NPipeline provides multiple strategies for handling errors that occur during pipeline execution, from early failure to graceful degradation.
+NPipeline provides multiple strategies for handling errors that occur during pipeline execution. The key insight is **where** the error happens determines **what** you can do about it:
+
+- **Item-level errors** (one order failed validation) → skip it, retry it, or store it for review
+- **Stream-level errors** (database connection died) → restart the node, bypass it, or fail the pipeline
+
+For practical implementation guidance, see [Error Handling](../core-concepts/resilience/error-handling.md).
 
 ## Error Propagation
 
-By default, errors propagate up the pipeline and stop execution:
+By default, errors propagate up the pipeline and stop execution. This is often the right behavior for critical failures, but may be too harsh for transient errors or data validation issues.
 
 ```csharp
 var sourcePipe = await source.Initialize(context, ct);      // Returns 100 items
@@ -29,12 +34,18 @@ try
 catch (InvalidOperationException ex)
 {
     // Error caught here - items 51-100 never processed
+    // This is appropriate for critical errors (e.g., corrupted data stream)
+    // But maybe not for validation failures on individual items
 }
 ```
 
+**When fail-fast is right:** Database connection errors, invalid stream format, system resource exhaustion
+
+**When you want containment instead:** Validation failures, temporary network issues, item-level data problems
+
 ## Error Containment
 
-Contain errors within a node to prevent pipeline failure:
+Contain errors within a node to prevent pipeline failure. This is how you convert a single item failure into a recoverable problem.
 
 ```csharp
 public class SafeTransform : ITransformNode<Input, Output>
@@ -68,6 +79,8 @@ public class SafeTransform : ITransformNode<Input, Output>
     }
 }
 ```
+
+**Use this pattern when:** A validation check fails, a cache lookup times out, or external service responds with an error for one item (but should work for others)
 
 ## Dead-Letter Handling
 

@@ -6,7 +6,9 @@ sidebar_position: 10
 
 # Design Principles
 
-**This page explains WHY NPipeline is designed the way it is.** For HOW TO build pipelines using these principles, see [Core Concepts](../core-concepts/index.md).
+This page explores the foundational design decisions and architectural principles behind NPipeline. Understanding these principles helps you reason about the framework's behavior and make informed decisions when building pipelines.
+
+For practical implementation guidance, see [Core Concepts](../core-concepts/index.md).
 
 NPipeline is built on six core principles that guide its design and evolution:
 
@@ -174,4 +176,3 @@ These principles guide decisions when trade-offs arise:
 - Review **[Architectural Foundations](architectural-foundations.md)** to understand fundamentals
 - Explore **[Extension Points](extension-points.md)** to build custom components
 - Start with **[Getting Started - Quick Start](../getting-started/quick-start.md)**
-

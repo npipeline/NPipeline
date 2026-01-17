@@ -6,9 +6,9 @@ sidebar_position: 2
 
 # Component Architecture
 
-**This page explains WHAT the components are and WHY they exist.** For HOW TO use them to build pipelines, see [Core Concepts](../core-concepts/index.md) and [Defining Pipelines](../core-concepts/defining-pipelines.md).
+This page explores the major system components and their roles in NPipeline. Understanding these components and their interactions is essential to working effectively with the framework.
 
-NPipeline consists of several key components that work together to define, build, and execute pipelines. Understanding their roles and interactions is essential to working effectively with the framework.
+NPipeline consists of several key components that work together to define, build, and execute pipelines.
 
 ## Major Components Overview
 
@@ -24,6 +24,7 @@ public interface IPipelineDefinition
 ```
 
 **Responsibilities:**
+
 - Connect nodes via the builder
 - Configure the execution topology
 - Define error handling strategy
@@ -238,6 +239,7 @@ await runner.RunAsync<MyPipeline>(context, cts.Token);
 NPipeline uses a **plan-based execution model** for optimal performance. During pipeline initialization, the system generates pre-compiled execution plans for each node containing strongly-typed delegates that eliminate reflection overhead during steady-state execution.
 
 **Benefits:**
+
 - Zero reflection overhead during execution
 - Improved performance through direct delegate calls
 - Type safety enforced at plan creation time
@@ -316,4 +318,3 @@ graph TD
 - **[Node Instantiation](node-instantiation.md)** - Understand node creation patterns and performance
 - **[Execution Flow](execution-flow.md)** - Understand sequential and parallel execution
 - **[Dependency Injection Integration](dependency-injection.md)** - Learn about DI integration
-
