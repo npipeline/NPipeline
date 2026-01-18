@@ -118,7 +118,7 @@ public sealed class StreamTransformNodeSuggestionAnalyzer : DiagnosticAnalyzer
                 IsTaskLike(namedType, "System.Threading.Tasks.ValueTask"))
             {
                 if (namedType.TypeArguments.Length == 1 &&
-                    namedType.TypeArguments[0] is ITypeSymbol wrapped &&
+                    namedType.TypeArguments[0] is { } wrapped &&
                     ReturnsIAsyncEnumerable(wrapped, asyncEnumerableSymbol, out elementType))
                     return true;
             }
@@ -143,6 +143,6 @@ public sealed class StreamTransformNodeSuggestionAnalyzer : DiagnosticAnalyzer
 
     private static bool IsTaskLike(INamedTypeSymbol namedType, string metadataName)
     {
-        return namedType.ConstructedFrom?.ToDisplayString() == metadataName;
+        return namedType.ConstructedFrom.ToDisplayString() == metadataName;
     }
 }

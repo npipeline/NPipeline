@@ -56,7 +56,7 @@ public sealed class CancellationTokenRespectAnalyzer : DiagnosticAnalyzer
             return;
 
         // Check if this is an async iterator method with [EnumeratorCancellation] attribute
-        var returnType = context.SemanticModel.GetTypeInfo(methodDeclaration.ReturnType!).Type;
+        var returnType = context.SemanticModel.GetTypeInfo(methodDeclaration.ReturnType).Type;
 
         if (returnType?.Name == "IAsyncEnumerable")
         {
@@ -67,7 +67,7 @@ public sealed class CancellationTokenRespectAnalyzer : DiagnosticAnalyzer
             {
                 foreach (var attribute in attributeList.Attributes)
                 {
-                    var attributeName = attribute.Name?.ToString();
+                    var attributeName = attribute.Name.ToString();
 
                     if (attributeName == "EnumeratorCancellation" || attributeName == "EnumeratorCancellationAttribute")
                     {
@@ -226,7 +226,7 @@ public sealed class CancellationTokenRespectAnalyzer : DiagnosticAnalyzer
         private void CheckAsyncIteratorMethod(MethodDeclarationSyntax method)
         {
             // Check if this is an async iterator method (returns IAsyncEnumerable<T>)
-            var returnType = semanticModel.GetTypeInfo(method.ReturnType!).Type;
+            var returnType = semanticModel.GetTypeInfo(method.ReturnType).Type;
 
             if (returnType?.Name != "IAsyncEnumerable")
                 return;
@@ -256,7 +256,7 @@ public sealed class CancellationTokenRespectAnalyzer : DiagnosticAnalyzer
                 {
                     foreach (var attribute in attributeList.Attributes)
                     {
-                        var attributeName = attribute.Name?.ToString();
+                        var attributeName = attribute.Name.ToString();
 
                         if (attributeName == "EnumeratorCancellation" || attributeName == "EnumeratorCancellationAttribute")
                         {
@@ -297,9 +297,6 @@ public sealed class CancellationTokenRespectAnalyzer : DiagnosticAnalyzer
         /// </summary>
         private bool HasCancellationTokenArgument(InvocationExpressionSyntax invocation)
         {
-            if (invocation.ArgumentList == null)
-                return false;
-
             foreach (var arg in invocation.ArgumentList.Arguments)
             {
                 if (arg.Expression is IdentifierNameSyntax identifier &&
