@@ -33,13 +33,16 @@ public static class PipelineObjectPool
     private const int MaxPooledCapacity = 100;
 
     // Lightweight object pools using ConcurrentBag for thread-safe pooling
-    private static readonly ConcurrentBag<List<string>> _stringListPool = new();
-    private static readonly ConcurrentBag<Dictionary<string, int>> _stringIntDictionaryPool = new();
-    private static readonly ConcurrentBag<Dictionary<string, object>> _stringObjectDictionaryPool = new();
-    private static readonly ConcurrentBag<Dictionary<string, INode>> _nodeDictionaryPool = new();
-    private static readonly ConcurrentBag<Dictionary<string, IDataPipe?>> _nodeOutputDictionaryPool = new();
-    private static readonly ConcurrentBag<Queue<string>> _stringQueuePool = new();
-    private static readonly ConcurrentBag<HashSet<string>> _stringHashSetPool = new();
+    private static readonly ConcurrentBag<List<string>> StringListPool = new();
+    private static readonly ConcurrentBag<Dictionary<string, int>> StringIntDictionaryPool = new();
+    private static readonly ConcurrentBag<Dictionary<string, object>> StringObjectDictionaryPool = new();
+    private static readonly ConcurrentBag<Dictionary<string, INode>> NodeDictionaryPool = new();
+    private static readonly ConcurrentBag<Dictionary<string, IDataPipe?>> NodeOutputDictionaryPool = new();
+    private static readonly ConcurrentBag<Queue<string>> StringQueuePool = new();
+    private static readonly ConcurrentBag<HashSet<string>> StringHashSetPool = new();
+
+    // Generic list pool using ConcurrentDictionary to maintain type-specific pools
+    private static readonly ConcurrentDictionary<Type, object> GenericListPools = new();
 
     /// <summary>
     ///     Rents a List&lt;string&gt; from the pool. Must be returned via <see cref="Return(List{string})" />.
@@ -51,7 +54,7 @@ public static class PipelineObjectPool
     /// <returns>A List&lt;string&gt; instance from the pool.</returns>
     public static List<string> RentStringList()
     {
-        if (_stringListPool.TryTake(out var list))
+        if (StringListPool.TryTake(out var list))
             return list;
 
         // Pool is empty, create a new instance pre-sized for typical pipeline node count
@@ -64,15 +67,49 @@ public static class PipelineObjectPool
     /// <param name="list">The list to return. It will be cleared before being returned to the pool.</param>
     public static void Return(List<string> list)
     {
-        if (list == null)
-            return;
-
         // Don't pool lists that have grown too large to avoid holding excessive memory
         if (list.Capacity > MaxPooledCapacity)
             return;
 
         list.Clear();
-        _stringListPool.Add(list);
+        StringListPool.Add(list);
+    }
+
+    /// <summary>
+    ///     Rents a List&lt;T&gt; from the pool. Must be returned via <see cref="Return{T}(List{T})" />.
+    /// </summary>
+    /// <remarks>
+    ///     The list will be empty when returned from the pool.
+    ///     Typical usage is for batching operations in async enumerable extensions.
+    /// </remarks>
+    /// <param name="capacityHint">The initial capacity hint for the list.</param>
+    /// <returns>A List&lt;T&gt; instance from the pool.</returns>
+    public static List<T> RentList<T>(int capacityHint = 10)
+    {
+        var pool = (ConcurrentBag<List<T>>)GenericListPools.GetOrAdd(typeof(T), _ => new ConcurrentBag<List<T>>());
+
+        if (pool.TryTake(out var list))
+        {
+            list.EnsureCapacity(capacityHint);
+            return list;
+        }
+
+        return new List<T>(capacityHint);
+    }
+
+    /// <summary>
+    ///     Returns a List&lt;T&gt; to the pool for reuse.
+    /// </summary>
+    /// <param name="list">The list to return. It will be cleared before being returned to the pool.</param>
+    public static void Return<T>(List<T> list)
+    {
+        // Don't pool lists that have grown too large to avoid holding excessive memory
+        if (list.Capacity > MaxPooledCapacity)
+            return;
+
+        list.Clear();
+        var pool = (ConcurrentBag<List<T>>)GenericListPools.GetOrAdd(typeof(T), _ => new ConcurrentBag<List<T>>());
+        pool.Add(list);
     }
 
     /// <summary>
@@ -85,7 +122,7 @@ public static class PipelineObjectPool
     /// <returns>A Dictionary&lt;string, int&gt; instance from the pool.</returns>
     public static Dictionary<string, int> RentStringIntDictionary()
     {
-        if (_stringIntDictionaryPool.TryTake(out var dictionary))
+        if (StringIntDictionaryPool.TryTake(out var dictionary))
             return dictionary;
 
         // Pool is empty, create a new instance pre-sized for typical pipeline node count
@@ -98,15 +135,12 @@ public static class PipelineObjectPool
     /// <param name="dictionary">The dictionary to return. It will be cleared before being returned to the pool.</param>
     public static void Return(Dictionary<string, int> dictionary)
     {
-        if (dictionary == null)
-            return;
-
         // Don't pool dictionaries that have grown too large
         if (dictionary.Count > MaxPooledCapacity)
             return;
 
         dictionary.Clear();
-        _stringIntDictionaryPool.Add(dictionary);
+        StringIntDictionaryPool.Add(dictionary);
     }
 
     /// <summary>
@@ -114,7 +148,7 @@ public static class PipelineObjectPool
     /// </summary>
     public static Dictionary<string, object> RentStringObjectDictionary(int capacityHint = 10)
     {
-        if (_stringObjectDictionaryPool.TryTake(out var dictionary))
+        if (StringObjectDictionaryPool.TryTake(out var dictionary))
         {
             dictionary.EnsureCapacity(capacityHint);
             return dictionary;
@@ -128,14 +162,11 @@ public static class PipelineObjectPool
     /// </summary>
     public static void Return(Dictionary<string, object> dictionary)
     {
-        if (dictionary == null)
-            return;
-
         if (dictionary.Count > MaxPooledCapacity)
             return;
 
         dictionary.Clear();
-        _stringObjectDictionaryPool.Add(dictionary);
+        StringObjectDictionaryPool.Add(dictionary);
     }
 
     /// <summary>
@@ -143,7 +174,7 @@ public static class PipelineObjectPool
     /// </summary>
     public static Dictionary<string, INode> RentNodeDictionary(int capacityHint = 10)
     {
-        if (_nodeDictionaryPool.TryTake(out var dictionary))
+        if (NodeDictionaryPool.TryTake(out var dictionary))
         {
             dictionary.EnsureCapacity(capacityHint);
             return dictionary;
@@ -157,14 +188,11 @@ public static class PipelineObjectPool
     /// </summary>
     public static void Return(Dictionary<string, INode> dictionary)
     {
-        if (dictionary == null)
-            return;
-
         if (dictionary.Count > MaxPooledCapacity)
             return;
 
         dictionary.Clear();
-        _nodeDictionaryPool.Add(dictionary);
+        NodeDictionaryPool.Add(dictionary);
     }
 
     /// <summary>
@@ -172,7 +200,7 @@ public static class PipelineObjectPool
     /// </summary>
     public static Dictionary<string, IDataPipe?> RentNodeOutputDictionary(int capacityHint = 10)
     {
-        if (_nodeOutputDictionaryPool.TryTake(out var dictionary))
+        if (NodeOutputDictionaryPool.TryTake(out var dictionary))
         {
             dictionary.EnsureCapacity(capacityHint);
             return dictionary;
@@ -186,14 +214,11 @@ public static class PipelineObjectPool
     /// </summary>
     public static void Return(Dictionary<string, IDataPipe?> dictionary)
     {
-        if (dictionary == null)
-            return;
-
         if (dictionary.Count > MaxPooledCapacity)
             return;
 
         dictionary.Clear();
-        _nodeOutputDictionaryPool.Add(dictionary);
+        NodeOutputDictionaryPool.Add(dictionary);
     }
 
     /// <summary>
@@ -206,7 +231,7 @@ public static class PipelineObjectPool
     /// <returns>A Queue&lt;string&gt; instance from the pool.</returns>
     public static Queue<string> RentStringQueue()
     {
-        if (_stringQueuePool.TryTake(out var queue))
+        if (StringQueuePool.TryTake(out var queue))
             return queue;
 
         // Pool is empty, create a new instance
@@ -219,15 +244,12 @@ public static class PipelineObjectPool
     /// <param name="queue">The queue to return. It will be cleared before being returned to the pool.</param>
     public static void Return(Queue<string> queue)
     {
-        if (queue == null)
-            return;
-
         // Don't pool queues that have grown too large
         if (queue.Count > MaxPooledCapacity)
             return;
 
         queue.Clear();
-        _stringQueuePool.Add(queue);
+        StringQueuePool.Add(queue);
     }
 
     /// <summary>
@@ -240,7 +262,7 @@ public static class PipelineObjectPool
     /// <returns>A HashSet&lt;string&gt; instance from the pool.</returns>
     public static HashSet<string> RentStringHashSet()
     {
-        if (_stringHashSetPool.TryTake(out var set))
+        if (StringHashSetPool.TryTake(out var set))
             return set;
 
         // Pool is empty, create a new instance pre-sized for typical pipeline node count
@@ -253,14 +275,11 @@ public static class PipelineObjectPool
     /// <param name="set">The set to return. It will be cleared before being returned to the pool.</param>
     public static void Return(HashSet<string> set)
     {
-        if (set == null)
-            return;
-
         // Don't pool sets that have grown too large
         if (set.Count > MaxPooledCapacity)
             return;
 
         set.Clear();
-        _stringHashSetPool.Add(set);
+        StringHashSetPool.Add(set);
     }
 }

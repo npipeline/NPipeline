@@ -1,5 +1,7 @@
 using System.Collections.Frozen;
 using System.Collections.Immutable;
+using System.Security.Cryptography;
+using System.Text;
 using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Lineage;
@@ -75,6 +77,13 @@ public sealed record PipelineGraph
     public ExecutionOptionsConfiguration ExecutionOptions { get; init; } = ExecutionOptionsConfiguration.Default;
 
     /// <summary>
+    ///     A cached hash of the graph structure, computed once during build.
+    ///     This eliminates the need to recompute the hash on every cache lookup,
+    ///     reducing string allocations in high-throughput scenarios.
+    /// </summary>
+    public string GraphHash { get; init; } = string.Empty;
+
+    /// <summary>
     ///     Called after the record is initialized to ensure NodeDefinitionMap is populated from Nodes if needed.
     ///     This method should be called after object initialization, or use the factory method CreateAndInitialize.
     /// </summary>
@@ -98,7 +107,7 @@ public sealed class PipelineGraphBuilder
     private PipelineCircuitBreakerOptions? _circuitBreakerOptions;
     private IDeadLetterSink? _deadLetterSink;
     private Type? _deadLetterSinkType;
-    private ImmutableList<Edge> _edges = ImmutableList<Edge>.Empty;
+    private ImmutableList<Edge> _edges = [];
     private bool _itemLevelLineageEnabled;
     private LineageOptions? _lineageOptions;
     private ILineageSink? _lineageSink;
@@ -106,7 +115,7 @@ public sealed class PipelineGraphBuilder
     private FrozenDictionary<string, NodeDefinition> _nodeDefinitionMap = FrozenDictionary<string, NodeDefinition>.Empty;
     private ImmutableDictionary<string, object> _nodeExecutionAnnotations = ImmutableDictionary<string, object>.Empty;
     private ImmutableDictionary<string, PipelineRetryOptions> _nodeRetryOverrides = ImmutableDictionary<string, PipelineRetryOptions>.Empty;
-    private ImmutableList<NodeDefinition> _nodes = ImmutableList<NodeDefinition>.Empty;
+    private ImmutableList<NodeDefinition> _nodes = [];
     private IPipelineErrorHandler? _pipelineErrorHandler;
     private Type? _pipelineErrorHandlerType;
     private IPipelineLineageSink? _pipelineLineageSink;
@@ -149,7 +158,7 @@ public sealed class PipelineGraphBuilder
     /// <returns>The builder instance for method chaining.</returns>
     public PipelineGraphBuilder WithNodes(IEnumerable<NodeDefinition> nodes)
     {
-        _nodes = ImmutableList.CreateRange(nodes);
+        _nodes = [.. nodes];
         return this;
     }
 
@@ -171,7 +180,7 @@ public sealed class PipelineGraphBuilder
     /// <returns>The builder instance for method chaining.</returns>
     public PipelineGraphBuilder WithEdges(IEnumerable<Edge> edges)
     {
-        _edges = ImmutableList.CreateRange(edges);
+        _edges = [.. edges];
         return this;
     }
 
@@ -467,7 +476,7 @@ public sealed class PipelineGraphBuilder
     /// <returns>The constructed PipelineGraph.</returns>
     public PipelineGraph Build()
     {
-        return new PipelineGraph
+        var graph = new PipelineGraph
         {
             Nodes = _nodes,
             Edges = _edges,
@@ -499,5 +508,55 @@ public sealed class PipelineGraphBuilder
                 Visualizer = _visualizer,
             },
         };
+
+        // Compute and cache the graph hash once during build
+        graph = graph with { GraphHash = ComputeGraphHash(graph) };
+
+        return graph;
+    }
+
+    /// <summary>
+    ///     Computes a stable hash of the pipeline graph structure.
+    /// </summary>
+    /// <remarks>
+    ///     The hash includes all structural elements that affect execution plan compilation:
+    ///     - Node IDs, types, input types, output types
+    ///     - Edge connections (source and target node IDs)
+    ///     - Execution strategies (if specified at definition time)
+    ///     Changes to any of these elements will result in a different hash and cache miss.
+    /// </remarks>
+    private static string ComputeGraphHash(PipelineGraph graph)
+    {
+        var sb = new StringBuilder();
+
+        // Sort nodes by ID for stable hashing
+        foreach (var node in graph.Nodes.OrderBy(n => n.Id))
+        {
+            _ = sb.Append(node.Id);
+            _ = sb.Append(':');
+            _ = sb.Append(node.NodeType.FullName ?? node.NodeType.Name);
+            _ = sb.Append(':');
+            _ = sb.Append(node.InputType?.FullName ?? "null");
+            _ = sb.Append(':');
+            _ = sb.Append(node.OutputType?.FullName ?? "null");
+            _ = sb.Append(':');
+            _ = sb.Append(node.ExecutionStrategy?.GetType().FullName ?? "null");
+            _ = sb.Append(';');
+        }
+
+        _ = sb.Append('|');
+
+        // Sort edges for stable hashing
+        foreach (var edge in graph.Edges.OrderBy(e => e.SourceNodeId).ThenBy(e => e.TargetNodeId))
+        {
+            _ = sb.Append(edge.SourceNodeId);
+            _ = sb.Append("->");
+            _ = sb.Append(edge.TargetNodeId);
+            _ = sb.Append(';');
+        }
+
+        // Use SHA256 to create a fixed-length hash
+        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(sb.ToString()));
+        return Convert.ToBase64String(hashBytes);
     }
 }
