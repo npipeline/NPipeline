@@ -734,7 +734,7 @@ var nodeHandle = builder
 **Read More:**
 
 - [Build-Time Resilience Analyzer Guide](../analyzers/resilience.md)
-- [Execution Strategy Best Practices](../core-concepts/resilience/execution-strategies.md)
+- [Execution Strategy Best Practices](../core-concepts/pipeline-execution/execution-strategies.md)
 
 ---
 

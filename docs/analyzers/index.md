@@ -169,7 +169,6 @@ dotnet_diagnostic.NP9404.severity = error
 
 ## See Also
 
-- [Migration Guide](./migration-guide.md) - Migrate to the new analyzer diagnostic code system
 - [Resilience Analyzers](./resilience.md) - Build resilient error handling
 - [Reliability Analyzers](./reliability.md) - Improve exception handling and access patterns
 - [Performance Analyzers](./performance.md) - Write fast, non-blocking code
