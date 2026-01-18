@@ -183,7 +183,7 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
                 {
                     // Track item emitted (one batch)
                     observabilityScope?.IncrementEmitted();
-                    yield return batch.ToArray();
+                    yield return batch;
 
                     batch = new List<T>(batchSize);
                     lastYieldTime = DateTime.UtcNow;
@@ -195,7 +195,7 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
             {
                 // Track item emitted (one batch)
                 observabilityScope?.IncrementEmitted();
-                yield return batch.ToArray();
+                yield return batch;
             }
         }
         finally
