@@ -15,6 +15,9 @@ namespace NPipeline.Connectors.Csv;
 /// <typeparam name="T">Record type to serialize for each CSV row.</typeparam>
 public sealed class CsvSinkNode<T> : SinkNode<T>
 {
+    private static readonly Lazy<IStorageResolver> DefaultResolver =
+        new(() => StorageProviderFactory.CreateResolver());
+
     private readonly CsvConfiguration _csvConfiguration;
     private readonly Encoding _encoding;
     private readonly IStorageProvider? _provider;
@@ -37,13 +40,12 @@ public sealed class CsvSinkNode<T> : SinkNode<T>
     /// </summary>
     public CsvSinkNode(
         StorageUri uri,
-        IStorageResolver resolver,
+        IStorageResolver? resolver = null,
         CsvConfiguration? configuration = null,
         Encoding? encoding = null)
         : this(uri, configuration, encoding)
     {
-        ArgumentNullException.ThrowIfNull(resolver);
-        _resolver = resolver;
+        _resolver = resolver ?? DefaultResolver.Value;
     }
 
     /// <summary>

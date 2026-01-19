@@ -195,20 +195,20 @@ The `CsvSinkNode<T>` writes items from the pipeline to a CSV file.
 
 ### Configuration
 
-The constructor for `CsvSinkNode<T>` takes the file path, a storage resolver, and optional configuration for writing the CSV.
+The constructor for `CsvSinkNode<T>` takes the file path and optional configuration for writing the CSV.
 
 ```csharp
 public CsvSinkNode(
     StorageUri uri,
-    IStorageResolver resolver,
+    IStorageResolver? resolver = null,
     CsvConfiguration? configuration = null,
     Encoding? encoding = null)
 ```
 
 - **`uri`**: The `StorageUri` representing the location of the output CSV file. Use `StorageUri.FromFilePath("path/to/file.csv")` for local files.
-- **`resolver`**: The `IStorageResolver` to resolve storage providers. Create one using `StorageProviderFactory.CreateResolver()` for standard file system support.
-- **`configuration`**: An optional `CsvConfiguration` object to customize writing.
-- **`encoding`**: An optional `Encoding` for the file. Defaults to UTF-8.
+- **`resolver`**: *(Optional)* The `IStorageResolver` to resolve storage providers. If omitted, a default resolver with file system support is used automatically.
+- **`configuration`**: *(Optional)* A `CsvConfiguration` object to customize writing.
+- **`encoding`**: *(Optional)* An `Encoding` for the file. Defaults to UTF-8.
 
 ### Example: Writing to a CSV File
 

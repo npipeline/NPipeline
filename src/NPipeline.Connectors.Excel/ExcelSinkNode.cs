@@ -21,13 +21,16 @@ namespace NPipeline.Connectors.Excel;
 ///         for sheet selection, header writing, and type conversion.
 ///     </para>
 ///     <para>
-///         The node supports two constructor patterns:
+///         The node supports multiple constructor patterns:
 ///         <list type="bullet">
 ///             <item>
-///                 <description>Using an <see cref="IStorageResolver" /> to resolve the provider at execution time</description>
+///                 <description>Using the default <see cref="IStorageResolver" /> (recommended for simplicity)</description>
 ///             </item>
 ///             <item>
-///                 <description>Using a specific <see cref="IStorageProvider" /> instance</description>
+///                 <description>Using a custom <see cref="IStorageResolver" /> for resolver-based provider resolution at execution time</description>
+///             </item>
+///             <item>
+///                 <description>Using a specific <see cref="IStorageProvider" /> instance for direct provider injection</description>
 ///             </item>
 ///         </list>
 ///     </para>
@@ -43,6 +46,9 @@ namespace NPipeline.Connectors.Excel;
 /// </remarks>
 public sealed class ExcelSinkNode<T> : SinkNode<T>
 {
+    private static readonly Lazy<IStorageResolver> DefaultResolver =
+        new(() => StorageProviderFactory.CreateResolver());
+
     private readonly ExcelConfiguration _configuration;
     private readonly IStorageProvider? _provider;
     private readonly IStorageResolver? _resolver;
@@ -61,17 +67,16 @@ public sealed class ExcelSinkNode<T> : SinkNode<T>
     ///     Construct an Excel sink node that resolves a storage provider from a resolver at execution time.
     /// </summary>
     /// <param name="uri">The URI of the Excel file to write to.</param>
-    /// <param name="resolver">The storage resolver used to obtain the storage provider.</param>
+    /// <param name="resolver">The storage resolver used to obtain the storage provider. If <c>null</c>, a default resolver is used.</param>
     /// <param name="configuration">Optional configuration for Excel writing. If <c>null</c>, default configuration is used.</param>
-    /// <exception cref="ArgumentNullException">Thrown if <paramref name="uri" /> or <paramref name="resolver" /> is <c>null</c>.</exception>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="uri" /> is <c>null</c>.</exception>
     public ExcelSinkNode(
         StorageUri uri,
-        IStorageResolver resolver,
+        IStorageResolver? resolver = null,
         ExcelConfiguration? configuration = null)
         : this(uri, configuration)
     {
-        ArgumentNullException.ThrowIfNull(resolver);
-        _resolver = resolver;
+        _resolver = resolver ?? DefaultResolver.Value;
     }
 
     /// <summary>
