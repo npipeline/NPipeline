@@ -23,7 +23,7 @@ public sealed class ExcelSinkNodeTests
             };
 
             // Write test data
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<int>(uri, resolver, config);
             IDataPipe<int> input = new StreamingDataPipe<int>(Enumerable.Range(1, 5).ToAsyncEnumerable());
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
@@ -59,7 +59,7 @@ public sealed class ExcelSinkNodeTests
                 new() { Id = 2, Name = "Bob", Age = 25 },
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<TestRecord>(uri, resolver, config);
             IDataPipe<TestRecord> input = new StreamingDataPipe<TestRecord>(testData.ToAsyncEnumerable());
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
@@ -112,7 +112,7 @@ public sealed class ExcelSinkNodeTests
                 new() { Id = 2, Name = "Bob", Age = 25 },
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<TestRecord>(uri, resolver, config);
             IDataPipe<TestRecord> input = new StreamingDataPipe<TestRecord>(testData.ToAsyncEnumerable());
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
@@ -143,7 +143,7 @@ public sealed class ExcelSinkNodeTests
             };
 
             // Write test data
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<int>(uri, resolver, config);
             IDataPipe<int> input = new StreamingDataPipe<int>(Enumerable.Range(1, 3).ToAsyncEnumerable());
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
@@ -185,7 +185,7 @@ public sealed class ExcelSinkNodeTests
             };
 
             // Write test data
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<int>(uri, resolver, config);
             IDataPipe<int> input = new StreamingDataPipe<int>(Enumerable.Range(1, 3).ToAsyncEnumerable());
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
@@ -252,7 +252,7 @@ public sealed class ExcelSinkNodeTests
                 },
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<ComplexRecord>(uri, resolver, config);
             IDataPipe<ComplexRecord> input = new StreamingDataPipe<ComplexRecord>(testData.ToAsyncEnumerable());
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
@@ -317,7 +317,7 @@ public sealed class ExcelSinkNodeTests
                 new() { Id = 3, NullableInt = 30, NullableString = "Test3" },
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<NullableRecord>(uri, resolver, config);
             IDataPipe<NullableRecord> input = new StreamingDataPipe<NullableRecord>(testData.ToAsyncEnumerable());
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
@@ -364,7 +364,7 @@ public sealed class ExcelSinkNodeTests
             };
 
             var cts = new CancellationTokenSource();
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<int>(uri, resolver, config);
 
             // Create a slow input stream
@@ -407,7 +407,7 @@ public sealed class ExcelSinkNodeTests
 
             // Write test data
             var testData = new List<string> { "Apple", "Banana", "Cherry" };
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<string>(uri, resolver, config);
             IDataPipe<string> input = new StreamingDataPipe<string>(testData.ToAsyncEnumerable());
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
@@ -454,7 +454,7 @@ public sealed class ExcelSinkNodeTests
                 new() { Id = 2, Date = new DateTime(2021, 6, 15) },
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<DateTimeRecord>(uri, resolver, config);
             IDataPipe<DateTimeRecord> input = new StreamingDataPipe<DateTimeRecord>(testData.ToAsyncEnumerable());
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
@@ -504,7 +504,7 @@ public sealed class ExcelSinkNodeTests
                 new() { Id = 3, IsActive = true },
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<BoolRecord>(uri, resolver, config);
             IDataPipe<BoolRecord> input = new StreamingDataPipe<BoolRecord>(testData.ToAsyncEnumerable());
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
@@ -554,7 +554,7 @@ public sealed class ExcelSinkNodeTests
                 new() { Id = 2, Amount = 7890.12m },
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<DecimalRecord>(uri, resolver, config);
             IDataPipe<DecimalRecord> input = new StreamingDataPipe<DecimalRecord>(testData.ToAsyncEnumerable());
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
@@ -598,7 +598,7 @@ public sealed class ExcelSinkNodeTests
 
             // Write test data
             var testData = new List<int> { 1, 2, 3, 4, 5 };
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<int>(uri, resolver, config);
             IDataPipe<int> input = new StreamingDataPipe<int>(testData.ToAsyncEnumerable());
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
@@ -645,7 +645,7 @@ public sealed class ExcelSinkNodeTests
                 new() { Id = 2, Value = 789.012 },
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<DoubleRecord>(uri, resolver, config);
             IDataPipe<DoubleRecord> input = new StreamingDataPipe<DoubleRecord>(testData.ToAsyncEnumerable());
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
@@ -689,7 +689,7 @@ public sealed class ExcelSinkNodeTests
 
             // Write empty data
             var testData = new List<TestRecord>();
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<TestRecord>(uri, resolver, config);
             IDataPipe<TestRecord> input = new StreamingDataPipe<TestRecord>(testData.ToAsyncEnumerable());
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);

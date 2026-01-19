@@ -42,6 +42,10 @@ namespace NPipeline.Connectors.Excel;
 /// </remarks>
 public sealed class ExcelSourceNode<T> : SourceNode<T>
 {
+    private static readonly Lazy<IStorageResolver> DefaultResolver = new(
+        () => StorageProviderFactory.CreateResolver(),
+        LazyThreadSafetyMode.ExecutionAndPublication);
+
     private readonly ExcelConfiguration _configuration;
     private readonly IStorageProvider? _provider;
     private readonly IStorageResolver? _resolver;
@@ -60,16 +64,18 @@ public sealed class ExcelSourceNode<T> : SourceNode<T>
     ///     Construct an Excel source that resolves a storage provider from a resolver at execution time.
     /// </summary>
     /// <param name="uri">The URI of the Excel file to read from.</param>
-    /// <param name="resolver">The storage resolver used to obtain the storage provider.</param>
+    /// <param name="resolver">
+    ///     The storage resolver used to obtain the storage provider. If <c>null</c>, a default resolver
+    ///     created by <see cref="StorageProviderFactory.CreateResolver" /> is used.
+    /// </param>
     /// <param name="configuration">Optional configuration for Excel reading. If <c>null</c>, default configuration is used.</param>
-    /// <exception cref="ArgumentNullException">Thrown if <paramref name="uri" /> or <paramref name="resolver" /> is <c>null</c>.</exception>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="uri" /> is <c>null</c>.</exception>
     public ExcelSourceNode(
         StorageUri uri,
-        IStorageResolver resolver,
+        IStorageResolver? resolver = null,
         ExcelConfiguration? configuration = null)
         : this(uri, configuration)
     {
-        ArgumentNullException.ThrowIfNull(resolver);
         _resolver = resolver;
     }
 
@@ -94,7 +100,7 @@ public sealed class ExcelSourceNode<T> : SourceNode<T>
     public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
         var provider = _provider ?? StorageProviderFactory.GetProviderOrThrow(
-            _resolver ?? throw new InvalidOperationException("No storage resolver configured for ExcelSourceNode."),
+            _resolver ?? DefaultResolver.Value,
             _uri);
 
         if (provider is IStorageProviderMetadataProvider metaProvider)

@@ -22,7 +22,7 @@ public sealed class ExcelRoundTripTests
                 FirstRowIsHeader = false,
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
 
             // Write data
             var originalData = Enumerable.Range(1, 5).ToList();
@@ -65,7 +65,7 @@ public sealed class ExcelRoundTripTests
                 FirstRowIsHeader = true,
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
 
             // Write data
             var originalData = new List<TestRecord>
@@ -123,7 +123,7 @@ public sealed class ExcelRoundTripTests
                 FirstRowIsHeader = true,
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
 
             // Write complex data
             var originalData = new List<ComplexRecord>
@@ -211,7 +211,7 @@ public sealed class ExcelRoundTripTests
                 FirstRowIsHeader = true,
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
 
             // Write data with multiple types
             var originalData = new List<MixedTypeRecord>
@@ -299,7 +299,7 @@ public sealed class ExcelRoundTripTests
                 FirstRowIsHeader = true,
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
 
             // Write data with write configuration
             var originalData = new List<TestRecord>
@@ -353,7 +353,7 @@ public sealed class ExcelRoundTripTests
                 FirstRowIsHeader = true,
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
 
             // Write data with nullable values
             var originalData = new List<NullableRecord>
@@ -408,7 +408,7 @@ public sealed class ExcelRoundTripTests
                 FirstRowIsHeader = false,
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
 
             // Write large dataset
             var originalData = Enumerable.Range(1, 100).ToList();
@@ -453,7 +453,7 @@ public sealed class ExcelRoundTripTests
                 FirstRowIsHeader = true,
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
 
             // Write empty data
             var originalData = new List<TestRecord>();
@@ -497,7 +497,7 @@ public sealed class ExcelRoundTripTests
                 FirstRowIsHeader = true,
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
 
             // Write data with special characters
             var originalData = new List<TestRecord>
@@ -550,7 +550,7 @@ public sealed class ExcelRoundTripTests
                 FirstRowIsHeader = false,
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
 
             // Write data to custom sheet
             var originalData = Enumerable.Range(1, 5).ToList();
@@ -594,7 +594,7 @@ public sealed class ExcelRoundTripTests
                 FirstRowIsHeader = true,
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
 
             // Write data with precise DateTime values
             var originalData = new List<DateTimeRecord>
@@ -644,7 +644,7 @@ public sealed class ExcelRoundTripTests
                 FirstRowIsHeader = true,
             };
 
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
 
             // Write data with precise decimal values
             var originalData = new List<DecimalRecord>

@@ -49,7 +49,7 @@ public class Customer
 }
 
 // Create a storage resolver for file operations
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
+var resolver = StorageProviderFactory.CreateResolver();
 
 // Create a CSV source node
 var csvSource = new CsvSourceNode<Customer>(
@@ -66,7 +66,7 @@ var source = builder.AddSource(() => csvSource, "csv-source");
 
 ```csharp
 // Create a storage resolver for file operations
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
+var resolver = StorageProviderFactory.CreateResolver();
 
 // Create a CSV sink node
 var csvSink = new CsvSinkNode<Customer>(
@@ -97,7 +97,7 @@ var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
 var encoding = Encoding.UTF8;
 
 // Create storage resolver
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
+var resolver = StorageProviderFactory.CreateResolver();
 
 // Create source with custom configuration
 var csvSource = new CsvSourceNode<Customer>(

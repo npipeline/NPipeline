@@ -24,7 +24,7 @@ public class ExcelNodeFactory
         // Try to get resolver from context, otherwise use default
         var storageResolver = context.Properties.TryGetValue("StorageResolver", out var resolverObj) && resolverObj is IStorageResolver resolver
             ? resolver
-            : StorageProviderFactory.CreateResolver().Resolver;
+            : StorageProviderFactory.CreateResolver();
 
         return new ExcelSourceNode<Customer>(sourceUri, storageResolver);
     }
@@ -41,7 +41,7 @@ public class ExcelNodeFactory
         // Try to get resolver from context, otherwise use default
         var storageResolver = context.Properties.TryGetValue("StorageResolver", out var resolverObj) && resolverObj is IStorageResolver resolver
             ? resolver
-            : StorageProviderFactory.CreateResolver().Resolver;
+            : StorageProviderFactory.CreateResolver();
 
         return new ExcelSinkNode<Customer>(sinkUri, storageResolver);
     }
@@ -78,7 +78,7 @@ public class ExcelConnectorPipeline : IPipelineDefinition
     {
         // Store storage resolver in context for nodes to use
         if (!context.Properties.ContainsKey("StorageResolver"))
-            context.Properties["StorageResolver"] = StorageProviderFactory.CreateResolver().Resolver;
+            context.Properties["StorageResolver"] = StorageProviderFactory.CreateResolver();
 
         // Add the Excel source node that reads customer data
         var source = builder.AddSource<ExcelSourceNode<Customer>, Customer>("excel-source");

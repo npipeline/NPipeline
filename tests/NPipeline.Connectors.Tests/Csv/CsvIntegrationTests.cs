@@ -26,7 +26,7 @@ public sealed class CsvIntegrationTests
             cfg.HelperConfiguration.HasHeaderRecord = false;
 
             // Write: CsvSinkNode<int>
-            var resolver = StorageProviderFactory.CreateResolver().Resolver;
+            var resolver = StorageProviderFactory.CreateResolver();
             var sink = new CsvSinkNode<int>(uri, resolver, cfg);
             IDataPipe<int> input = new StreamingDataPipe<int>(Enumerable.Range(1, 5).ToAsyncEnumerable());
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);

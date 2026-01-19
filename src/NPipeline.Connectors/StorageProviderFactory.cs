@@ -17,9 +17,27 @@ public static class StorageProviderFactory
     ///     Creates a resolver using the supplied options.
     /// </summary>
     /// <remarks>
+    ///     If any provider creation errors occur, this method throws an <see cref="InvalidOperationException" />.
+    ///     Use <see cref="CreateResolverWithErrors" /> when you need to inspect errors instead of throwing.
+    /// </remarks>
+    public static IStorageResolver CreateResolver(StorageResolverOptions? options = null)
+    {
+        var effectiveOptions = (options ?? new StorageResolverOptions()) with { CollectErrors = true };
+        var (resolver, errors) = CreateResolverWithErrors(effectiveOptions);
+
+        return errors.Count == 0
+            ? resolver
+            : throw new InvalidOperationException(FormatResolverErrors(errors));
+    }
+
+    /// <summary>
+    ///     Creates a resolver and returns any provider creation errors.
+    /// </summary>
+    /// <remarks>
     ///     Set <see cref="StorageResolverOptions.CollectErrors" /> to capture per-provider creation errors in the result.
     /// </remarks>
-    public static StorageResolverResult CreateResolver(StorageResolverOptions? options = null)
+    public static (IStorageResolver Resolver, IReadOnlyDictionary<string, IReadOnlyList<string>> Errors)
+        CreateResolverWithErrors(StorageResolverOptions? options = null)
     {
         options ??= new StorageResolverOptions();
 
@@ -42,7 +60,7 @@ public static class StorageProviderFactory
             }
         }
 
-        return new StorageResolverResult(resolver, errors ?? EmptyErrorMap);
+        return (resolver, errors ?? EmptyErrorMap);
     }
 
     /// <summary>
@@ -231,5 +249,17 @@ public static class StorageProviderFactory
         return type ?? (StorageProviderRegistry.TryResolve(typeName, out var aliasType)
             ? aliasType
             : null);
+    }
+
+    private static string FormatResolverErrors(IReadOnlyDictionary<string, IReadOnlyList<string>> errors)
+    {
+        var segments = new List<string>(errors.Count);
+
+        foreach (var (name, details) in errors)
+        {
+            segments.Add($"{name}: {string.Join(" | ", details)}");
+        }
+
+        return $"Failed to create one or more storage providers: {string.Join("; ", segments)}";
     }
 }

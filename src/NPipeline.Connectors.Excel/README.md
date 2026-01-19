@@ -53,7 +53,7 @@ public class Product
 }
 
 // Create a storage resolver for file operations
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
+var resolver = StorageProviderFactory.CreateResolver();
 
 // Create an Excel source node
 var excelSource = new ExcelSourceNode<Product>(
@@ -70,7 +70,7 @@ var source = builder.AddSource(() => excelSource, "excel-source");
 
 ```csharp
 // Create a storage resolver for file operations
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
+var resolver = StorageProviderFactory.CreateResolver();
 
 // Create an Excel sink node
 var excelSink = new ExcelSinkNode<Product>(
@@ -100,7 +100,7 @@ var excelConfig = new ExcelConfiguration
 };
 
 // Create storage resolver
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
+var resolver = StorageProviderFactory.CreateResolver();
 
 // Create source with custom configuration
 var excelSource = new ExcelSourceNode<Product>(
@@ -146,7 +146,7 @@ var config = new ExcelConfiguration
     FirstRowIsHeader = true
 };
 
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
+var resolver = StorageProviderFactory.CreateResolver();
 var excelSource = new ExcelSourceNode<SalesRecord>(
     StorageUri.FromFilePath("quarterly_report.xlsx"),
     resolver,
@@ -163,7 +163,7 @@ var config = new ExcelConfiguration
     FirstRowIsHeader = true
 };
 
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
+var resolver = StorageProviderFactory.CreateResolver();
 var excelSink = new ExcelSinkNode<ProcessedRecord>(
     StorageUri.FromFilePath("output.xlsx"),
     resolver,

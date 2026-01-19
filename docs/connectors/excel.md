@@ -38,19 +38,48 @@ var cloudUri = StorageUri.Parse("s3://my-bucket/path/to/file.xlsx");
 
 ### IStorageResolver
 
-The `IStorageResolver` interface is responsible for discovering and resolving storage providers capable of handling a given `StorageUri`. You must provide a resolver to both `ExcelSourceNode` and `ExcelSinkNode`.
+The `IStorageResolver` interface is responsible for discovering and resolving storage providers capable of handling a given `StorageUri`.
 
-To create a resolver for standard file system operations, use:
+**Default Behavior (Optional):** When no resolver is provided, `ExcelSourceNode` and `ExcelSinkNode` automatically create a default resolver configured with the standard file system provider. This is ideal for most use cases involving local files.
 
-```csharp
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
-```
-
-You may need a custom resolver when:
+**When to Provide an Explicit Resolver:** You only need to provide a custom resolver when:
 
 - Working with cloud storage systems (S3, Azure, etc.)
 - Using custom storage providers
 - Needing to override default provider selection
+
+To create a custom resolver:
+
+```csharp
+var resolver = StorageProviderFactory.CreateResolver();
+```
+
+### When You Need an Explicit Resolver
+
+For most scenarios involving local files, you can omit the resolver parameter:
+
+```csharp
+// Simple case: reading local Excel file (resolver not needed)
+var source = new ExcelSourceNode<Product>(StorageUri.FromFilePath("products.xlsx"));
+```
+
+However, you must provide an explicit resolver when working with cloud storage:
+
+```csharp
+// Advanced case: reading from Azure Blob Storage (custom resolver required)
+var resolver = StorageProviderFactory.CreateResolver(
+    new StorageResolverOptions
+    {
+        IncludeFileSystem = true,
+        AdditionalProviders = new[] { new AzureBlobStorageProvider() } // Custom provider
+    }
+);
+
+var source = new ExcelSourceNode<Product>(
+    StorageUri.Parse("https://mystorageaccount.blob.core.windows.net/container/products.xlsx"),
+    resolver // Explicit resolver needed for cloud storage
+);
+```
 
 ## `ExcelSourceNode<T>`
 
@@ -58,18 +87,18 @@ The `ExcelSourceNode<T>` reads data from an Excel file and emits each row as an 
 
 ### Configuration
 
-The constructor for `ExcelSourceNode<T>` takes the file path, a storage resolver, and optional configuration for parsing the Excel file.
+The constructor for `ExcelSourceNode<T>` takes the file path and optional configuration for parsing the Excel file.
 
 ```csharp
 public ExcelSourceNode(
     StorageUri uri,
-    IStorageResolver resolver,
+    IStorageResolver? resolver = null,
     ExcelConfiguration? configuration = null)
 ```
 
 - **`uri`**: The `StorageUri` representing the location of the Excel file. Use `StorageUri.FromFilePath("path/to/file.xlsx")` for local files.
-- **`resolver`**: The `IStorageResolver` to resolve storage providers. Create one using `StorageProviderFactory.CreateResolver().Resolver` for standard file system support.
-- **`configuration`**: An optional `ExcelConfiguration` object to customize parsing (e.g., sheet selection, header handling, encoding).
+- **`resolver`**: *(Optional)* The `IStorageResolver` to resolve storage providers. If omitted, a default resolver with file system support is used automatically.
+- **`configuration`**: *(Optional)* An `ExcelConfiguration` object to customize parsing (e.g., sheet selection, header handling, encoding).
 
 ### Example: Reading an Excel File
 
@@ -106,8 +135,8 @@ public sealed class ExcelReaderPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        var resolver = StorageProviderFactory.CreateResolver().Resolver;
-        var source = builder.AddSource("excel_source", new ExcelSourceNode<Product>(StorageUri.FromFilePath("products.xlsx"), resolver));
+        // Resolver is optional - default file system resolver is used automatically
+        var source = builder.AddSource("excel_source", new ExcelSourceNode<Product>(StorageUri.FromFilePath("products.xlsx")));
         var sink = builder.AddSink<ConsoleSinkNode, Product>("console_sink");
 
         builder.Connect(source, sink);
@@ -157,18 +186,18 @@ The `ExcelSinkNode<T>` writes items from the pipeline to an Excel file in XLSX f
 
 ### Configuration
 
-The constructor for `ExcelSinkNode<T>` takes the file path, a storage resolver, and optional configuration for writing the Excel file.
+The constructor for `ExcelSinkNode<T>` takes the file path and optional configuration for writing the Excel file.
 
 ```csharp
 public ExcelSinkNode(
     StorageUri uri,
-    IStorageResolver resolver,
+    IStorageResolver? resolver = null,
     ExcelConfiguration? configuration = null)
 ```
 
 - **`uri`**: The `StorageUri` representing the location of the output Excel file. Use `StorageUri.FromFilePath("path/to/file.xlsx")` for local files.
-- **`resolver`**: The `IStorageResolver` to resolve storage providers. Create one using `StorageProviderFactory.CreateResolver().Resolver` for standard file system support.
-- **`configuration`**: An optional `ExcelConfiguration` object to customize writing (e.g., sheet name, header handling).
+- **`resolver`**: *(Optional)* The `IStorageResolver` to resolve storage providers. If omitted, a default resolver with file system support is used automatically.
+- **`configuration`**: *(Optional)* An `ExcelConfiguration` object to customize writing (e.g., sheet name, header handling).
 
 ### Example: Writing to an Excel File
 
@@ -188,9 +217,9 @@ public sealed class ExcelWriterPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        var resolver = StorageProviderFactory.CreateResolver().Resolver;
+        // Resolver is optional - default file system resolver is used automatically
         var source = builder.AddSource<InMemorySourceNode<ProcessedProduct>, ProcessedProduct>("source");
-        var sink = builder.AddSink("excel_sink", new ExcelSinkNode<ProcessedProduct>(StorageUri.FromFilePath("output.xlsx"), resolver));
+        var sink = builder.AddSink("excel_sink", new ExcelSinkNode<ProcessedProduct>(StorageUri.FromFilePath("output.xlsx")));
 
         builder.Connect(source, sink);
     }
@@ -257,6 +286,7 @@ The [`BufferSize`](../../../src/NPipeline.Connectors.Excel/ExcelConfiguration.cs
 - **Performance impact**: Larger buffers can improve I/O performance for large files but use more memory
 
 When to adjust BufferSize:
+
 - **Increase** (e.g., 8192, 16384) for:
   - Processing very large Excel files
   - High-throughput scenarios where I/O performance is critical
@@ -275,8 +305,8 @@ var largeFileConfig = new ExcelConfiguration
     FirstRowIsHeader = true
 };
 
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
-var source = new ExcelSourceNode<Product>(StorageUri.FromFilePath("large_dataset.xlsx"), resolver, largeFileConfig);
+// Resolver is optional - omit it to use the default file system resolver
+var source = new ExcelSourceNode<Product>(StorageUri.FromFilePath("large_dataset.xlsx"), configuration: largeFileConfig);
 ```
 
 ### Sheet Selection
@@ -291,8 +321,8 @@ var readConfig = new ExcelConfiguration
     FirstRowIsHeader = true
 };
 
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
-var source = new ExcelSourceNode<SalesRecord>(StorageUri.FromFilePath("sales_report.xlsx"), resolver, readConfig);
+// Resolver is optional - omit it to use the default file system resolver
+var source = new ExcelSourceNode<SalesRecord>(StorageUri.FromFilePath("sales_report.xlsx"), configuration: readConfig);
 ```
 
 ```csharp
@@ -303,8 +333,8 @@ var writeConfig = new ExcelConfiguration
     FirstRowIsHeader = true
 };
 
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
-var sink = new ExcelSinkNode<ProcessedRecord>(StorageUri.FromFilePath("output.xlsx"), resolver, writeConfig);
+// Resolver is optional - omit it to use the default file system resolver
+var sink = new ExcelSinkNode<ProcessedRecord>(StorageUri.FromFilePath("output.xlsx"), configuration: writeConfig);
 ```
 
 ### Type Detection Configuration
@@ -349,8 +379,8 @@ var encodingConfig = new ExcelConfiguration
     FirstRowIsHeader = true
 };
 
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
-var source = new ExcelSourceNode<LegacyRecord>(StorageUri.FromFilePath("legacy_data.xls"), resolver, encodingConfig);
+// Resolver is optional - omit it to use the default file system resolver
+var source = new ExcelSourceNode<LegacyRecord>(StorageUri.FromFilePath("legacy_data.xls"), configuration: encodingConfig);
 ```
 
 ### Example: Transforming and Writing to Excel
@@ -386,10 +416,10 @@ public sealed class ExcelTransformPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        var resolver = StorageProviderFactory.CreateResolver().Resolver;
-        var source = builder.AddSource("excel_source", new ExcelSourceNode<Product>(StorageUri.FromFilePath("products.xlsx"), resolver));
+        // Resolver is optional - default file system resolver is used automatically
+        var source = builder.AddSource("excel_source", new ExcelSourceNode<Product>(StorageUri.FromFilePath("products.xlsx")));
         var transform = builder.AddTransform<ProductSummarizer, Product, ProductSummary>("summarizer");
-        var sink = builder.AddSink("excel_sink", new ExcelSinkNode<ProductSummary>(StorageUri.FromFilePath("summaries.xlsx"), resolver));
+        var sink = builder.AddSink("excel_sink", new ExcelSinkNode<ProductSummary>(StorageUri.FromFilePath("summaries.xlsx")));
 
         builder.Connect(source, transform);
         builder.Connect(transform, sink);
@@ -419,17 +449,21 @@ After running, this will create a `summaries.xlsx` file with the following conte
 The Excel connector supports automatic type conversion for the following .NET types:
 
 ### Primitive Types
+
 - `int`, `long`, `short` (and nullable variants)
 - `float`, `double`, `decimal` (and nullable variants)
 - `bool` (and nullable variant)
 
 ### String Types
+
 - `string`
 
 ### Date/Time Types
+
 - `DateTime` (and nullable variant)
 
 ### GUID Types
+
 - `Guid` (and nullable variant)
 
 ### Type Conversion Behavior
@@ -550,18 +584,15 @@ The `ExcelSinkNode<T>` collects all items in memory before writing due to XLSX f
 To read from multiple sheets in a workbook, create multiple source nodes with different sheet configurations:
 
 ```csharp
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
-
+// Resolver is optional - omit it to use the default file system resolver
 var q1Source = new ExcelSourceNode<SalesRecord>(
     StorageUri.FromFilePath("sales.xlsx"),
-    resolver,
-    new ExcelConfiguration { SheetName = "Q1", FirstRowIsHeader = true }
+    configuration: new ExcelConfiguration { SheetName = "Q1", FirstRowIsHeader = true }
 );
 
 var q2Source = new ExcelSourceNode<SalesRecord>(
     StorageUri.FromFilePath("sales.xlsx"),
-    resolver,
-    new ExcelConfiguration { SheetName = "Q2", FirstRowIsHeader = true }
+    configuration: new ExcelConfiguration { SheetName = "Q2", FirstRowIsHeader = true }
 );
 
 // Add both sources to your pipeline
@@ -578,15 +609,13 @@ public sealed class RoundTripPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        var resolver = StorageProviderFactory.CreateResolver().Resolver;
-
+        // Resolver is optional - default file system resolver is used automatically
         // Read from input file
         var source = builder.AddSource(
             "excel_source",
             new ExcelSourceNode<Product>(
                 StorageUri.FromFilePath("input.xlsx"),
-                resolver,
-                new ExcelConfiguration { SheetName = "RawData", FirstRowIsHeader = true }
+                configuration: new ExcelConfiguration { SheetName = "RawData", FirstRowIsHeader = true }
             )
         );
 
@@ -598,8 +627,7 @@ public sealed class RoundTripPipeline : IPipelineDefinition
             "excel_sink",
             new ExcelSinkNode<Product>(
                 StorageUri.FromFilePath("output.xlsx"),
-                resolver,
-                new ExcelConfiguration { SheetName = "ProcessedData", FirstRowIsHeader = true }
+                configuration: new ExcelConfiguration { SheetName = "ProcessedData", FirstRowIsHeader = true }
             )
         );
 
@@ -623,11 +651,10 @@ var legacyConfig = new ExcelConfiguration
     AnalyzeInitialRowCount = 100
 };
 
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
+// Resolver is optional - omit it to use the default file system resolver
 var source = new ExcelSourceNode<LegacyRecord>(
     StorageUri.FromFilePath("old_data.xls"),
-    resolver,
-    legacyConfig
+    configuration: legacyConfig
 );
 ```
 
@@ -642,11 +669,10 @@ var mixedDataConfig = new ExcelConfiguration
     FirstRowIsHeader = true
 };
 
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
+// Resolver is optional - omit it to use the default file system resolver
 var source = new ExcelSourceNode<MixedDataRecord>(
     StorageUri.FromFilePath("mixed_data.xlsx"),
-    resolver,
-    mixedDataConfig
+    configuration: mixedDataConfig
 );
 ```
 

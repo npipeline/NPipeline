@@ -24,7 +24,7 @@ public class CsvNodeFactory
         // Try to get resolver from context, otherwise use default
         var storageResolver = context.Properties.TryGetValue("StorageResolver", out var resolverObj) && resolverObj is IStorageResolver resolver
             ? resolver
-            : StorageProviderFactory.CreateResolver().Resolver;
+            : StorageProviderFactory.CreateResolver();
 
         return new CsvSourceNode<Customer>(sourceUri, storageResolver);
     }
@@ -41,7 +41,7 @@ public class CsvNodeFactory
         // Try to get resolver from context, otherwise use default
         var storageResolver = context.Properties.TryGetValue("StorageResolver", out var resolverObj) && resolverObj is IStorageResolver resolver
             ? resolver
-            : StorageProviderFactory.CreateResolver().Resolver;
+            : StorageProviderFactory.CreateResolver();
 
         return new CsvSinkNode<Customer>(sinkUri, storageResolver);
     }
@@ -78,7 +78,7 @@ public class CsvConnectorPipeline : IPipelineDefinition
     {
         // Store storage resolver in context for nodes to use
         if (!context.Properties.ContainsKey("StorageResolver"))
-            context.Properties["StorageResolver"] = StorageProviderFactory.CreateResolver().Resolver;
+            context.Properties["StorageResolver"] = StorageProviderFactory.CreateResolver();
 
         // Add the CSV source node that reads customer data
         var source = builder.AddSource<CsvSourceNode<Customer>, Customer>("csv-source");

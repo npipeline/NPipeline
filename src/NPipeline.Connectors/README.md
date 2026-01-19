@@ -40,7 +40,7 @@ The `StorageProviderFactory` provides factory methods to create and configure st
 
 ```csharp
 // Create a resolver with built-in file system provider
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
+var resolver = StorageProviderFactory.CreateResolver();
 
 // Create a resolver with additional custom providers
 var customProviders = new[] { new S3StorageProvider(), new AzureBlobStorageProvider() };
@@ -141,9 +141,9 @@ NPipeline.Connectors supports an extensible set of storage schemes through its p
 ### Built-in Schemes
 
 - **file** - Local file system access (Windows, Linux, macOS)
-  - Supports absolute paths: `file:///C:/data/input.csv`
-  - Supports relative paths: `file://./data/input.csv`
-  - Supports UNC paths: `file://server/share/data/input.csv`
+    - Supports absolute paths: `file:///C:/data/input.csv`
+    - Supports relative paths: `file://./data/input.csv`
+    - Supports UNC paths: `file://server/share/data/input.csv`
 
 ### Extensible Scheme Support
 
@@ -169,7 +169,7 @@ var inputUri = StorageUri.FromFilePath("./data/input.csv");
 var outputUri = StorageUri.FromFilePath("./data/output.csv");
 
 // Create resolver with file system provider
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
+var resolver = StorageProviderFactory.CreateResolver();
 var provider = StorageProviderFactory.GetProviderOrThrow(resolver, inputUri);
 
 // Read from file

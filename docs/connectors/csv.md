@@ -38,19 +38,48 @@ var cloudUri = StorageUri.Parse("s3://my-bucket/path/to/file.csv");
 
 ### IStorageResolver
 
-The `IStorageResolver` interface is responsible for discovering and resolving storage providers capable of handling a given `StorageUri`. You must provide a resolver to both `CsvSourceNode` and `CsvSinkNode`. 
+The `IStorageResolver` interface is responsible for discovering and resolving storage providers capable of handling a given `StorageUri`.
 
-To create a resolver for standard file system operations, use:
+**Default Behavior (Optional):** When no resolver is provided, `CsvSourceNode` and `CsvSinkNode` automatically create a default resolver configured with the standard file system provider. This is ideal for most use cases involving local files.
 
-```csharp
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
-```
-
-You may need a custom resolver when:
+**When to Provide an Explicit Resolver:** You only need to provide a custom resolver when:
 
 - Working with cloud storage systems (S3, Azure, etc.)
 - Using custom storage providers
 - Needing to override default provider selection
+
+To create a custom resolver:
+
+```csharp
+var resolver = StorageProviderFactory.CreateResolver();
+```
+
+### When You Need an Explicit Resolver
+
+For most scenarios involving local files, you can omit the resolver parameter:
+
+```csharp
+// Simple case: reading local CSV file (resolver not needed)
+var source = new CsvSourceNode<User>(StorageUri.FromFilePath("users.csv"));
+```
+
+However, you must provide an explicit resolver when working with cloud storage:
+
+```csharp
+// Advanced case: reading from S3 (custom resolver required)
+var resolver = StorageProviderFactory.CreateResolver(
+    new StorageResolverOptions
+    {
+        IncludeFileSystem = true,
+        AdditionalProviders = new[] { new S3StorageProvider() } // Custom provider
+    }
+);
+
+var source = new CsvSourceNode<User>(
+    StorageUri.Parse("s3://my-bucket/users.csv"),
+    resolver // Explicit resolver needed for cloud storage
+);
+```
 
 ## `CsvSourceNode<T>`
 
@@ -58,20 +87,20 @@ The `CsvSourceNode<T>` reads data from a CSV file and emits each row as an item 
 
 ### Configuration
 
-The constructor for `CsvSourceNode<T>` takes the file path, a storage resolver, and optional configuration for parsing the CSV.
+The constructor for `CsvSourceNode<T>` takes the file path and optional configuration for parsing the CSV.
 
 ```csharp
 public CsvSourceNode(
     StorageUri uri,
-    IStorageResolver resolver,
+    IStorageResolver? resolver = null,
     CsvConfiguration? configuration = null,
     Encoding? encoding = null)
 ```
 
 - **`uri`**: The `StorageUri` representing the location of the CSV file. Use `StorageUri.FromFilePath("path/to/file.csv")` for local files.
-- **`resolver`**: The `IStorageResolver` to resolve storage providers. Create one using `StorageProviderFactory.CreateResolver().Resolver` for standard file system support.
-- **`configuration`**: An optional `CsvConfiguration` object to customize parsing (e.g., delimiter, culture, quoting).
-- **`encoding`**: An optional `Encoding` for the file. Defaults to UTF-8.
+- **`resolver`**: *(Optional)* The `IStorageResolver` to resolve storage providers. If omitted, a default resolver with file system support is used automatically.
+- **`configuration`**: *(Optional)* A `CsvConfiguration` object to customize parsing (e.g., delimiter, culture, quoting).
+- **`encoding`**: *(Optional)* Text encoding. Defaults to UTF-8.
 
 ### Example: Reading a CSV File
 
@@ -108,8 +137,8 @@ public sealed class CsvReaderPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        var resolver = StorageProviderFactory.CreateResolver().Resolver;
-        var source = builder.AddSource("csv_source", new CsvSourceNode<User>(StorageUri.FromFilePath("users.csv"), resolver));
+        // Resolver is optional - default file system resolver is used automatically
+        var source = builder.AddSource("csv_source", new CsvSourceNode<User>(StorageUri.FromFilePath("users.csv")));
         var sink = builder.AddSink<ConsoleSinkNode, User>("console_sink");
 
         builder.Connect(source, sink);
@@ -177,7 +206,7 @@ public CsvSinkNode(
 ```
 
 - **`uri`**: The `StorageUri` representing the location of the output CSV file. Use `StorageUri.FromFilePath("path/to/file.csv")` for local files.
-- **`resolver`**: The `IStorageResolver` to resolve storage providers. Create one using `StorageProviderFactory.CreateResolver().Resolver` for standard file system support.
+- **`resolver`**: The `IStorageResolver` to resolve storage providers. Create one using `StorageProviderFactory.CreateResolver()` for standard file system support.
 - **`configuration`**: An optional `CsvConfiguration` object to customize writing.
 - **`encoding`**: An optional `Encoding` for the file. Defaults to UTF-8.
 
@@ -199,9 +228,9 @@ public sealed class CsvWriterPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        var resolver = StorageProviderFactory.CreateResolver().Resolver;
+        // Resolver is optional - default file system resolver is used automatically
         var source = builder.AddSource<InMemorySourceNode<ProcessedUser>, ProcessedUser>("source");
-        var sink = builder.AddSink("csv_sink", new CsvSinkNode<ProcessedUser>(StorageUri.FromFilePath("output.csv"), resolver));
+        var sink = builder.AddSink("csv_sink", new CsvSinkNode<ProcessedUser>(StorageUri.FromFilePath("output.csv")));
 
         builder.Connect(source, sink);
     }
@@ -258,6 +287,7 @@ The [`BufferSize`](../../../src/NPipeline.Connectors.Csv/CsvConfiguration.cs:16)
 - **Performance impact**: Larger buffers can improve I/O performance for large files but use more memory
 
 When to adjust BufferSize:
+
 - **Increase** (e.g., 4096, 8192) for:
   - Processing very large CSV files
   - High-throughput scenarios where I/O performance is critical
@@ -278,8 +308,8 @@ var largeFileConfig = new CsvConfiguration()
     }
 };
 
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
-var source = new CsvSourceNode<User>(StorageUri.FromFilePath("large_dataset.csv"), resolver, largeFileConfig);
+// Resolver is optional - omit it to use the default file system resolver
+var source = new CsvSourceNode<User>(StorageUri.FromFilePath("large_dataset.csv"), configuration: largeFileConfig);
 ```
 
 ### Example: Using a custom delimiter and no header
@@ -307,8 +337,8 @@ public sealed class UserMap : ClassMap<User>
     }
 }
 
-var resolver = StorageProviderFactory.CreateResolver().Resolver;
-var source = new CsvSourceNode<User>(StorageUri.FromFilePath("users.tsv"), resolver, config);
+// Resolver is optional - omit it to use the default file system resolver
+var source = new CsvSourceNode<User>(StorageUri.FromFilePath("users.tsv"), configuration: config);
 ```
 
 In this advanced scenario, we configure the source to read a tab-separated file (`.tsv`) that does not have a header. Because there's no header, we must provide a `ClassMap` to tell CsvHelper how to map columns by their index to the properties of our `User` record. You can register the class map through the `CsvConfiguration` object.
@@ -341,10 +371,10 @@ public sealed class CsvTransformPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        var resolver = StorageProviderFactory.CreateResolver().Resolver;
-        var source = builder.AddSource("csv_source", new CsvSourceNode<User>(StorageUri.FromFilePath("users.csv"), resolver));
+        // Resolver is optional - default file system resolver is used automatically
+        var source = builder.AddSource("csv_source", new CsvSourceNode<User>(StorageUri.FromFilePath("users.csv")));
         var transform = builder.AddTransform<Summarizer, User, UserSummary>("summarizer");
-        var sink = builder.AddSink("csv_sink", new CsvSinkNode<UserSummary>(StorageUri.FromFilePath("summaries.csv"), resolver));
+        var sink = builder.AddSink("csv_sink", new CsvSinkNode<UserSummary>(StorageUri.FromFilePath("summaries.csv")));
 
         builder.Connect(source, transform);
         builder.Connect(transform, sink);
@@ -374,4 +404,3 @@ For more advanced configuration, refer to the [CsvHelper documentation](https://
 ## Related Topics
 
 - **[NPipeline Extensions Index](../.)**: Return to the extensions overview.
-
