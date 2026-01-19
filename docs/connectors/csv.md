@@ -138,7 +138,7 @@ public sealed class CsvReaderPipeline : IPipelineDefinition
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
         // Resolver is optional - default file system resolver is used automatically
-        var source = builder.AddSource("csv_source", new CsvSourceNode<User>(StorageUri.FromFilePath("users.csv")));
+        var source = builder.AddSource(new CsvSourceNode<User>(StorageUri.FromFilePath("users.csv")), "csv_source");
         var sink = builder.AddSink<ConsoleSinkNode, User>("console_sink");
 
         builder.Connect(source, sink);
@@ -230,7 +230,7 @@ public sealed class CsvWriterPipeline : IPipelineDefinition
     {
         // Resolver is optional - default file system resolver is used automatically
         var source = builder.AddSource<InMemorySourceNode<ProcessedUser>, ProcessedUser>("source");
-        var sink = builder.AddSink("csv_sink", new CsvSinkNode<ProcessedUser>(StorageUri.FromFilePath("output.csv")));
+        var sink = builder.AddSink(new CsvSinkNode<ProcessedUser>(StorageUri.FromFilePath("output.csv")), "csv_sink");
 
         builder.Connect(source, sink);
     }
@@ -372,9 +372,9 @@ public sealed class CsvTransformPipeline : IPipelineDefinition
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
         // Resolver is optional - default file system resolver is used automatically
-        var source = builder.AddSource("csv_source", new CsvSourceNode<User>(StorageUri.FromFilePath("users.csv")));
+        var source = builder.AddSource(new CsvSourceNode<User>(StorageUri.FromFilePath("users.csv")), "csv_source");
         var transform = builder.AddTransform<Summarizer, User, UserSummary>("summarizer");
-        var sink = builder.AddSink("csv_sink", new CsvSinkNode<UserSummary>(StorageUri.FromFilePath("summaries.csv")));
+        var sink = builder.AddSink(new CsvSinkNode<UserSummary>(StorageUri.FromFilePath("summaries.csv")), "csv_sink");
 
         builder.Connect(source, transform);
         builder.Connect(transform, sink);

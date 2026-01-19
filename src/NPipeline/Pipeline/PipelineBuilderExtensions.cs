@@ -28,7 +28,7 @@ public static class PipelineBuilderExtensions
         var handle = builder.AddTransform<TapNode<T>, T, T>(name ?? "Tap");
         var node = new TapNode<T>(sink);
         builder.RegisterBuilderDisposable(node);
-        builder.AddPreconfiguredNodeInstance(handle.Id, node);
+        _ = builder.AddPreconfiguredNodeInstance(handle.Id, node);
         return handle;
     }
 
@@ -49,7 +49,7 @@ public static class PipelineBuilderExtensions
         var handle = builder.AddTransform<TapNode<T>, T, T>(name ?? "Tap");
         var node = new TapNode<T>(sinkFactory());
         builder.RegisterBuilderDisposable(node);
-        builder.AddPreconfiguredNodeInstance(handle.Id, node);
+        _ = builder.AddPreconfiguredNodeInstance(handle.Id, node);
         return handle;
     }
 
@@ -71,7 +71,7 @@ public static class PipelineBuilderExtensions
         var node = new BranchNode<T>();
         builder.RegisterBuilderDisposable(node);
         node.AddOutput(outputHandler);
-        builder.AddPreconfiguredNodeInstance(handle.Id, node);
+        _ = builder.AddPreconfiguredNodeInstance(handle.Id, node);
         return handle;
     }
 
@@ -98,7 +98,7 @@ public static class PipelineBuilderExtensions
             node.AddOutput(handler);
         }
 
-        builder.AddPreconfiguredNodeInstance(handle.Id, node);
+        _ = builder.AddPreconfiguredNodeInstance(handle.Id, node);
         return handle;
     }
 
@@ -135,7 +135,7 @@ public static class PipelineBuilderExtensions
         var nodeName = name ?? $"Transform_{typeof(TIn).Name}_to_{typeof(TOut).Name}";
         var handle = builder.AddTransform<LambdaTransformNode<TIn, TOut>, TIn, TOut>(nodeName);
         var node = new LambdaTransformNode<TIn, TOut>(transform);
-        builder.AddPreconfiguredNodeInstance(handle.Id, node);
+        _ = builder.AddPreconfiguredNodeInstance(handle.Id, node);
         return handle;
     }
 
@@ -164,7 +164,28 @@ public static class PipelineBuilderExtensions
         var nodeName = name ?? $"Transform_{typeof(TIn).Name}_to_{typeof(TOut).Name}";
         var handle = builder.AddTransform<AsyncLambdaTransformNode<TIn, TOut>, TIn, TOut>(nodeName);
         var node = new AsyncLambdaTransformNode<TIn, TOut>(transform);
-        builder.AddPreconfiguredNodeInstance(handle.Id, node);
+        _ = builder.AddPreconfiguredNodeInstance(handle.Id, node);
+        return handle;
+    }
+
+    /// <summary>
+    ///     Adds a preconfigured source node instance to the pipeline using the runtime type of the node.
+    /// </summary>
+    /// <typeparam name="TOut">The output item type.</typeparam>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="node">The source node instance.</param>
+    /// <param name="name">An optional descriptive name for the node. If null, a default name is used.</param>
+    /// <returns>A handle to the newly added source node.</returns>
+    public static SourceNodeHandle<TOut> AddSource<TOut>(
+        this PipelineBuilder builder,
+        ISourceNode<TOut> node,
+        string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+
+        var handle = builder.AddSource<TOut>(node.GetType(), name);
+        builder.RegisterBuilderDisposable(node);
+        _ = builder.AddPreconfiguredNodeInstance(handle.Id, node);
         return handle;
     }
 
@@ -202,7 +223,7 @@ public static class PipelineBuilderExtensions
         var nodeName = name ?? $"Source_{typeof(TOut).Name}";
         var handle = builder.AddSource<LambdaSourceNode<TOut>, TOut>(nodeName);
         var node = new LambdaSourceNode<TOut>(factory);
-        builder.AddPreconfiguredNodeInstance(handle.Id, node);
+        _ = builder.AddPreconfiguredNodeInstance(handle.Id, node);
         return handle;
     }
 
@@ -233,7 +254,28 @@ public static class PipelineBuilderExtensions
         var nodeName = name ?? $"Source_{typeof(TOut).Name}";
         var handle = builder.AddSource<LambdaSourceNode<TOut>, TOut>(nodeName);
         var node = new LambdaSourceNode<TOut>(factory);
-        builder.AddPreconfiguredNodeInstance(handle.Id, node);
+        _ = builder.AddPreconfiguredNodeInstance(handle.Id, node);
+        return handle;
+    }
+
+    /// <summary>
+    ///     Adds a preconfigured sink node instance to the pipeline using the runtime type of the node.
+    /// </summary>
+    /// <typeparam name="TIn">The input item type.</typeparam>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="node">The sink node instance.</param>
+    /// <param name="name">An optional descriptive name for the node. If null, a default name is used.</param>
+    /// <returns>A handle to the newly added sink node.</returns>
+    public static SinkNodeHandle<TIn> AddSink<TIn>(
+        this PipelineBuilder builder,
+        ISinkNode<TIn> node,
+        string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+
+        var handle = builder.AddSink<TIn>(node.GetType(), name);
+        builder.RegisterBuilderDisposable(node);
+        _ = builder.AddPreconfiguredNodeInstance(handle.Id, node);
         return handle;
     }
 
@@ -271,7 +313,7 @@ public static class PipelineBuilderExtensions
         var nodeName = name ?? $"Sink_{typeof(TIn).Name}";
         var handle = builder.AddSink<LambdaSinkNode<TIn>, TIn>(nodeName);
         var node = new LambdaSinkNode<TIn>(consume);
-        builder.AddPreconfiguredNodeInstance(handle.Id, node);
+        _ = builder.AddPreconfiguredNodeInstance(handle.Id, node);
         return handle;
     }
 
@@ -302,7 +344,7 @@ public static class PipelineBuilderExtensions
         var nodeName = name ?? $"Sink_{typeof(TIn).Name}";
         var handle = builder.AddSink<LambdaSinkNode<TIn>, TIn>(nodeName);
         var node = new LambdaSinkNode<TIn>(consume);
-        builder.AddPreconfiguredNodeInstance(handle.Id, node);
+        _ = builder.AddPreconfiguredNodeInstance(handle.Id, node);
         return handle;
     }
 }

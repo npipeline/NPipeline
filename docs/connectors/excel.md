@@ -100,6 +100,8 @@ public ExcelSourceNode(
 - **`resolver`**: *(Optional)* The `IStorageResolver` to resolve storage providers. If omitted, a default resolver with file system support is used automatically.
 - **`configuration`**: *(Optional)* An `ExcelConfiguration` object to customize parsing (e.g., sheet selection, header handling, encoding).
 
+> **Tip:** When you need to provide custom configuration (resolver, sheet selection, etc.), instantiate `ExcelSourceNode<T>` yourself and call `builder.AddSource(new ExcelSourceNode<Product>(...), "excel_source")`. The builder registers the preconfigured instance and tracks disposal for you, so you no longer have to call `AddPreconfiguredNodeInstance` manually.
+
 ### Example: Reading an Excel File
 
 Let's assume you have a `products.xlsx` file with the following structure:
@@ -136,7 +138,7 @@ public sealed class ExcelReaderPipeline : IPipelineDefinition
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
         // Resolver is optional - default file system resolver is used automatically
-        var source = builder.AddSource("excel_source", new ExcelSourceNode<Product>(StorageUri.FromFilePath("products.xlsx")));
+        var source = builder.AddSource(new ExcelSourceNode<Product>(StorageUri.FromFilePath("products.xlsx")), "excel_source");
         var sink = builder.AddSink<ConsoleSinkNode, Product>("console_sink");
 
         builder.Connect(source, sink);
@@ -199,6 +201,8 @@ public ExcelSinkNode(
 - **`resolver`**: *(Optional)* The `IStorageResolver` to resolve storage providers. If omitted, a default resolver with file system support is used automatically.
 - **`configuration`**: *(Optional)* An `ExcelConfiguration` object to customize writing (e.g., sheet name, header handling).
 
+> **Tip:** When you need to pass a custom resolver or configuration, instantiate `ExcelSinkNode<T>` yourself and register it via `builder.AddSink(new ExcelSinkNode<ProcessedProduct>(...), "excel_sink")`. The builder handles registration and disposal for you automatically.
+
 ### Example: Writing to an Excel File
 
 Let's take processed product data and write it to an `output.xlsx` file.
@@ -219,7 +223,7 @@ public sealed class ExcelWriterPipeline : IPipelineDefinition
     {
         // Resolver is optional - default file system resolver is used automatically
         var source = builder.AddSource<InMemorySourceNode<ProcessedProduct>, ProcessedProduct>("source");
-        var sink = builder.AddSink("excel_sink", new ExcelSinkNode<ProcessedProduct>(StorageUri.FromFilePath("output.xlsx")));
+        var sink = builder.AddSink(new ExcelSinkNode<ProcessedProduct>(StorageUri.FromFilePath("output.xlsx")), "excel_sink");
 
         builder.Connect(source, sink);
     }
@@ -417,9 +421,9 @@ public sealed class ExcelTransformPipeline : IPipelineDefinition
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
         // Resolver is optional - default file system resolver is used automatically
-        var source = builder.AddSource("excel_source", new ExcelSourceNode<Product>(StorageUri.FromFilePath("products.xlsx")));
+        var source = builder.AddSource(new ExcelSourceNode<Product>(StorageUri.FromFilePath("products.xlsx")), "excel_source");
         var transform = builder.AddTransform<ProductSummarizer, Product, ProductSummary>("summarizer");
-        var sink = builder.AddSink("excel_sink", new ExcelSinkNode<ProductSummary>(StorageUri.FromFilePath("summaries.xlsx")));
+        var sink = builder.AddSink(new ExcelSinkNode<ProductSummary>(StorageUri.FromFilePath("summaries.xlsx")), "excel_sink");
 
         builder.Connect(source, transform);
         builder.Connect(transform, sink);
@@ -611,6 +615,7 @@ public sealed class RoundTripPipeline : IPipelineDefinition
     {
         // Resolver is optional - default file system resolver is used automatically
         // Read from input file
+
         var source = builder.AddSource(
             "excel_source",
             new ExcelSourceNode<Product>(

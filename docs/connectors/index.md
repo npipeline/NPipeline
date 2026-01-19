@@ -35,21 +35,22 @@ The following connectors are available:
 
 ## General Usage Pattern
 
-Most source connectors are added to a pipeline using `AddSource()`, and sink connectors are added using `AddSink()`. They require some configuration, such as a file path and (optionally) a storage resolver, which are passed to their constructor.
+Most source connectors are added to a pipeline using `AddSource()` and sink connectors are added using `AddSink()`.
+When you need to pass configuration (file path, resolver, etc.), instantiate the connector and register it with the builder using the overloads that accept a preconfigured node instance. These helpers automatically call `AddPreconfiguredNodeInstance()` and track disposal for you.
 
 ```csharp
 // Example of using a source and sink connector
 var resolver = StorageProviderFactory.CreateResolver();
 
 var pipeline = new PipelineBuilder()
-    // Read data from a source connector
-    .AddSource("user_source", new CsvSourceNode<User>(StorageUri.FromFilePath("users.csv"), resolver))
+  // Read data from a source connector
+    .AddSource(new CsvSourceNode<User>(StorageUri.FromFilePath("users.csv"), resolver), "user_source")
 
     // ... add transforms ...
 
     // Write data to a sink connector
-    .AddSink("summary_sink", new CsvSinkNode<UserSummary>(StorageUri.FromFilePath("summaries.csv"), resolver), "summarizer")
-    .Build();
+    .AddSink(new CsvSinkNode<UserSummary>(StorageUri.FromFilePath("summaries.csv"), resolver), "summary_sink")
+  .Build();
 ```
 
 > **Note:** NPipeline uses a storage abstraction layer that requires `StorageUri` objects instead of plain file paths. Use `StorageUri.FromFilePath()` for local files or `StorageUri.Parse()` for absolute URIs (e.g., "s3://bucket/key"). For local files, the resolver is optional. For custom providers or cloud storage, create a resolver via `StorageProviderFactory.CreateResolver()` and pass it explicitly.

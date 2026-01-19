@@ -100,13 +100,31 @@ public sealed partial class PipelineBuilder
     #region Node Registration
 
     /// <summary>
-    ///     Adds a source node to the pipeline.
+    ///     Adds a source node to the pipeline using a compile-time node type.
     /// </summary>
     /// <param name="name">Optional node name. If not provided, an auto-generated name will be used.</param>
     public SourceNodeHandle<TOut> AddSource<TNode, TOut>(string? name = null) where TNode : ISourceNode<TOut>
     {
         name ??= GenerateUniqueNodeName(typeof(TNode).Name);
         return RegisterNode(name, NodeKind.Source, typeof(TNode), null, typeof(TOut), static (id, def) => new SourceNodeHandle<TOut>(id));
+    }
+
+    /// <summary>
+    ///     Adds a source node to the pipeline using a runtime node type. This is intended for scenarios
+    ///     where the node instance has already been created and the concrete type is only known at runtime.
+    /// </summary>
+    /// <param name="nodeType">Concrete source node type.</param>
+    /// <param name="name">Optional node name. If not provided, an auto-generated name will be used.</param>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="nodeType" /> does not implement <see cref="ISourceNode{TOut}" />.</exception>
+    public SourceNodeHandle<TOut> AddSource<TOut>(Type nodeType, string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(nodeType);
+
+        if (!typeof(ISourceNode<TOut>).IsAssignableFrom(nodeType))
+            throw new ArgumentException($"Type {nodeType.FullName} must implement ISourceNode<{typeof(TOut).Name}>", nameof(nodeType));
+
+        name ??= GenerateUniqueNodeName(nodeType.Name);
+        return RegisterNode(name, NodeKind.Source, nodeType, null, typeof(TOut), static (id, def) => new SourceNodeHandle<TOut>(id));
     }
 
     /// <summary>
@@ -130,13 +148,31 @@ public sealed partial class PipelineBuilder
     }
 
     /// <summary>
-    ///     Adds a sink node to the pipeline.
+    ///     Adds a sink node to the pipeline using a compile-time node type.
     /// </summary>
     /// <param name="name">Optional node name. If not provided, an auto-generated name will be used.</param>
     public SinkNodeHandle<TIn> AddSink<TNode, TIn>(string? name = null) where TNode : ISinkNode<TIn>
     {
         name ??= GenerateUniqueNodeName(typeof(TNode).Name);
         return RegisterNode(name, NodeKind.Sink, typeof(TNode), typeof(TIn), null, static (id, def) => new SinkNodeHandle<TIn>(id));
+    }
+
+    /// <summary>
+    ///     Adds a sink node to the pipeline using a runtime node type. This is intended for scenarios
+    ///     where the node instance has already been created and the concrete type is only known at runtime.
+    /// </summary>
+    /// <param name="nodeType">Concrete sink node type.</param>
+    /// <param name="name">Optional node name. If not provided, an auto-generated name will be used.</param>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="nodeType" /> does not implement <see cref="ISinkNode{TIn}" />.</exception>
+    public SinkNodeHandle<TIn> AddSink<TIn>(Type nodeType, string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(nodeType);
+
+        if (!typeof(ISinkNode<TIn>).IsAssignableFrom(nodeType))
+            throw new ArgumentException($"Type {nodeType.FullName} must implement ISinkNode<{typeof(TIn).Name}>", nameof(nodeType));
+
+        name ??= GenerateUniqueNodeName(nodeType.Name);
+        return RegisterNode(name, NodeKind.Sink, nodeType, typeof(TIn), null, static (id, def) => new SinkNodeHandle<TIn>(id));
     }
 
     /// <summary>

@@ -81,7 +81,8 @@ public class ExcelConnectorPipeline : IPipelineDefinition
             context.Properties["StorageResolver"] = StorageProviderFactory.CreateResolver();
 
         // Add the Excel source node that reads customer data
-        var source = builder.AddSource<ExcelSourceNode<Customer>, Customer>("excel-source");
+        var sourceNode = ExcelNodeFactory.CreateExcelSourceNode(context);
+        var source = builder.AddSource(sourceNode, "excel-source");
 
         // Add the validation transform node
         var validation = builder.AddTransform<ValidationTransform, Customer, Customer>("validation-transform");
@@ -90,11 +91,8 @@ public class ExcelConnectorPipeline : IPipelineDefinition
         var transform = builder.AddTransform<DataTransform, Customer, Customer>("data-transform");
 
         // Add the Excel sink node that writes processed customer data
-        var sink = builder.AddSink<ExcelSinkNode<Customer>, Customer>("excel-sink");
-
-        // Register pre-configured node instances to resolve constructor ambiguity
-        _ = builder.AddPreconfiguredNodeInstance(source.Id, ExcelNodeFactory.CreateExcelSourceNode(context));
-        _ = builder.AddPreconfiguredNodeInstance(sink.Id, ExcelNodeFactory.CreateExcelSinkNode(context));
+        var sinkNode = ExcelNodeFactory.CreateExcelSinkNode(context);
+        var sink = builder.AddSink(sinkNode, "excel-sink");
 
         // Connect the nodes in a linear flow: source -> validation -> transform -> sink
         _ = builder.Connect(source, validation);
