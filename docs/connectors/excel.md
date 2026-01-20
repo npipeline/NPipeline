@@ -60,7 +60,14 @@ For most scenarios involving local files, you can omit the resolver parameter:
 
 ```csharp
 // Simple case: reading local Excel file (resolver not needed)
-var source = new ExcelSourceNode<Product>(StorageUri.FromFilePath("products.xlsx"));
+var source = new ExcelSourceNode<Product>(
+    StorageUri.FromFilePath("products.xlsx"),
+    row => new Product(
+        row.Get<int>("Id") ?? 0,
+        row.Get<string>("Name") ?? string.Empty,
+        row.Get<decimal>("Price") ?? 0m,
+        row.Get<string>("Category") ?? string.Empty)
+);
 ```
 
 However, you must provide an explicit resolver when working with cloud storage:
@@ -77,6 +84,11 @@ var resolver = StorageProviderFactory.CreateResolver(
 
 var source = new ExcelSourceNode<Product>(
     StorageUri.Parse("https://mystorageaccount.blob.core.windows.net/container/products.xlsx"),
+    row => new Product(
+        row.Get<int>("Id") ?? 0,
+        row.Get<string>("Name") ?? string.Empty,
+        row.Get<decimal>("Price") ?? 0m,
+        row.Get<string>("Category") ?? string.Empty),
     resolver // Explicit resolver needed for cloud storage
 );
 ```
@@ -92,11 +104,13 @@ The constructor for `ExcelSourceNode<T>` takes the file path and optional config
 ```csharp
 public ExcelSourceNode(
     StorageUri uri,
+    Func<ExcelRow, T> rowMapper,
     IStorageResolver? resolver = null,
     ExcelConfiguration? configuration = null)
 ```
 
 - **`uri`**: The `StorageUri` representing the location of the Excel file. Use `StorageUri.FromFilePath("path/to/file.xlsx")` for local files.
+- **`rowMapper`**: The row mapper used to construct `T` from an `ExcelRow`. This is required and avoids reflection.
 - **`resolver`**: *(Optional)* The `IStorageResolver` to resolve storage providers. If omitted, a default resolver with file system support is used automatically.
 - **`configuration`**: *(Optional)* An `ExcelConfiguration` object to customize parsing (e.g., sheet selection, header handling, encoding).
 
@@ -138,7 +152,13 @@ public sealed class ExcelReaderPipeline : IPipelineDefinition
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
         // Resolver is optional - default file system resolver is used automatically
-        var source = builder.AddSource(new ExcelSourceNode<Product>(StorageUri.FromFilePath("products.xlsx")), "excel_source");
+        var source = builder.AddSource(new ExcelSourceNode<Product>(
+            StorageUri.FromFilePath("products.xlsx"),
+            row => new Product(
+                row.Get<int>("Id") ?? 0,
+                row.Get<string>("Name") ?? string.Empty,
+                row.Get<decimal>("Price") ?? 0m,
+                row.Get<string>("Category") ?? string.Empty)), "excel_source");
         var sink = builder.AddSink<ConsoleSinkNode, Product>("console_sink");
 
         builder.Connect(source, sink);
@@ -310,7 +330,14 @@ var largeFileConfig = new ExcelConfiguration
 };
 
 // Resolver is optional - omit it to use the default file system resolver
-var source = new ExcelSourceNode<Product>(StorageUri.FromFilePath("large_dataset.xlsx"), configuration: largeFileConfig);
+var source = new ExcelSourceNode<Product>(
+    StorageUri.FromFilePath("large_dataset.xlsx"),
+    row => new Product(
+        row.Get<int>("Id") ?? 0,
+        row.Get<string>("Name") ?? string.Empty,
+        row.Get<decimal>("Price") ?? 0m,
+        row.Get<string>("Category") ?? string.Empty),
+    configuration: largeFileConfig);
 ```
 
 ### Sheet Selection
@@ -326,7 +353,14 @@ var readConfig = new ExcelConfiguration
 };
 
 // Resolver is optional - omit it to use the default file system resolver
-var source = new ExcelSourceNode<SalesRecord>(StorageUri.FromFilePath("sales_report.xlsx"), configuration: readConfig);
+var source = new ExcelSourceNode<SalesRecord>(
+    StorageUri.FromFilePath("sales_report.xlsx"),
+    row => new SalesRecord(
+        row.Get<string>("Region") ?? string.Empty,
+        row.Get<string>("Product") ?? string.Empty,
+        row.Get<decimal>("Amount") ?? 0m,
+        row.Get<DateTime>("Date") ?? default),
+    configuration: readConfig);
 ```
 
 ```csharp
@@ -384,7 +418,13 @@ var encodingConfig = new ExcelConfiguration
 };
 
 // Resolver is optional - omit it to use the default file system resolver
-var source = new ExcelSourceNode<LegacyRecord>(StorageUri.FromFilePath("legacy_data.xls"), configuration: encodingConfig);
+var source = new ExcelSourceNode<LegacyRecord>(
+    StorageUri.FromFilePath("legacy_data.xls"),
+    row => new LegacyRecord(
+        row.Get<string>("Id") ?? string.Empty,
+        row.Get<string>("Name") ?? string.Empty,
+        row.Get<string>("Value") ?? string.Empty),
+    configuration: encodingConfig);
 ```
 
 ### Example: Transforming and Writing to Excel
@@ -421,7 +461,13 @@ public sealed class ExcelTransformPipeline : IPipelineDefinition
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
         // Resolver is optional - default file system resolver is used automatically
-        var source = builder.AddSource(new ExcelSourceNode<Product>(StorageUri.FromFilePath("products.xlsx")), "excel_source");
+        var source = builder.AddSource(new ExcelSourceNode<Product>(
+            StorageUri.FromFilePath("products.xlsx"),
+            row => new Product(
+                row.Get<int>("Id") ?? 0,
+                row.Get<string>("Name") ?? string.Empty,
+                row.Get<decimal>("Price") ?? 0m,
+                row.Get<string>("Category") ?? string.Empty)), "excel_source");
         var transform = builder.AddTransform<ProductSummarizer, Product, ProductSummary>("summarizer");
         var sink = builder.AddSink(new ExcelSinkNode<ProductSummary>(StorageUri.FromFilePath("summaries.xlsx")), "excel_sink");
 
@@ -591,11 +637,21 @@ To read from multiple sheets in a workbook, create multiple source nodes with di
 // Resolver is optional - omit it to use the default file system resolver
 var q1Source = new ExcelSourceNode<SalesRecord>(
     StorageUri.FromFilePath("sales.xlsx"),
+    row => new SalesRecord(
+        row.Get<string>("Region") ?? string.Empty,
+        row.Get<string>("Product") ?? string.Empty,
+        row.Get<decimal>("Amount") ?? 0m,
+        row.Get<DateTime>("Date") ?? default),
     configuration: new ExcelConfiguration { SheetName = "Q1", FirstRowIsHeader = true }
 );
 
 var q2Source = new ExcelSourceNode<SalesRecord>(
     StorageUri.FromFilePath("sales.xlsx"),
+    row => new SalesRecord(
+        row.Get<string>("Region") ?? string.Empty,
+        row.Get<string>("Product") ?? string.Empty,
+        row.Get<decimal>("Amount") ?? 0m,
+        row.Get<DateTime>("Date") ?? default),
     configuration: new ExcelConfiguration { SheetName = "Q2", FirstRowIsHeader = true }
 );
 
@@ -620,6 +676,11 @@ public sealed class RoundTripPipeline : IPipelineDefinition
             "excel_source",
             new ExcelSourceNode<Product>(
                 StorageUri.FromFilePath("input.xlsx"),
+                row => new Product(
+                    row.Get<int>("Id") ?? 0,
+                    row.Get<string>("Name") ?? string.Empty,
+                    row.Get<decimal>("Price") ?? 0m,
+                    row.Get<string>("Category") ?? string.Empty),
                 configuration: new ExcelConfiguration { SheetName = "RawData", FirstRowIsHeader = true }
             )
         );
@@ -659,6 +720,10 @@ var legacyConfig = new ExcelConfiguration
 // Resolver is optional - omit it to use the default file system resolver
 var source = new ExcelSourceNode<LegacyRecord>(
     StorageUri.FromFilePath("old_data.xls"),
+    row => new LegacyRecord(
+        row.Get<string>("Id") ?? string.Empty,
+        row.Get<string>("Name") ?? string.Empty,
+        row.Get<string>("Value") ?? string.Empty),
     configuration: legacyConfig
 );
 ```
@@ -677,6 +742,10 @@ var mixedDataConfig = new ExcelConfiguration
 // Resolver is optional - omit it to use the default file system resolver
 var source = new ExcelSourceNode<MixedDataRecord>(
     StorageUri.FromFilePath("mixed_data.xlsx"),
+    row => new MixedDataRecord(
+        row.Get<string>("Id") ?? string.Empty,
+        row.Get<string>("Value") ?? string.Empty,
+        row.Get<string>("Type") ?? string.Empty),
     configuration: mixedDataConfig
 );
 ```

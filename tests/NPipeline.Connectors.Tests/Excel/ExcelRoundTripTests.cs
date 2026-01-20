@@ -31,7 +31,7 @@ public sealed class ExcelRoundTripTests
             await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
-            var src = new ExcelSourceNode<int>(uri, resolver, config);
+            var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<int>();
@@ -80,7 +80,7 @@ public sealed class ExcelRoundTripTests
             await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
-            var src = new ExcelSourceNode<TestRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<TestRecord>(uri, MapTestRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<TestRecord>();
@@ -157,7 +157,7 @@ public sealed class ExcelRoundTripTests
             await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
-            var src = new ExcelSourceNode<ComplexRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<ComplexRecord>(uri, MapComplexRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<ComplexRecord>();
@@ -241,7 +241,7 @@ public sealed class ExcelRoundTripTests
             await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
-            var src = new ExcelSourceNode<MixedTypeRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<MixedTypeRecord>(uri, MapMixedTypeRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<MixedTypeRecord>();
@@ -313,7 +313,7 @@ public sealed class ExcelRoundTripTests
             await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back with read configuration
-            var src = new ExcelSourceNode<TestRecord>(uri, resolver, readConfig);
+            var src = new ExcelSourceNode<TestRecord>(uri, MapTestRecordFromHeaders, resolver, readConfig);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<TestRecord>();
@@ -368,7 +368,7 @@ public sealed class ExcelRoundTripTests
             await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
-            var src = new ExcelSourceNode<NullableRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<NullableRecord>(uri, MapNullableRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<NullableRecord>();
@@ -418,7 +418,7 @@ public sealed class ExcelRoundTripTests
             await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
-            var src = new ExcelSourceNode<int>(uri, resolver, config);
+            var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<int>();
@@ -463,7 +463,7 @@ public sealed class ExcelRoundTripTests
             await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
-            var src = new ExcelSourceNode<TestRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<TestRecord>(uri, MapTestRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<TestRecord>();
@@ -512,7 +512,7 @@ public sealed class ExcelRoundTripTests
             await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
-            var src = new ExcelSourceNode<TestRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<TestRecord>(uri, MapTestRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<TestRecord>();
@@ -560,7 +560,7 @@ public sealed class ExcelRoundTripTests
             await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back from custom sheet
-            var src = new ExcelSourceNode<int>(uri, resolver, config);
+            var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<int>();
@@ -608,7 +608,7 @@ public sealed class ExcelRoundTripTests
             await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
-            var src = new ExcelSourceNode<DateTimeRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<DateTimeRecord>(uri, MapDateTimeRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<DateTimeRecord>();
@@ -658,7 +658,7 @@ public sealed class ExcelRoundTripTests
             await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
-            var src = new ExcelSourceNode<DecimalRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<DecimalRecord>(uri, MapDecimalRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<DecimalRecord>();
@@ -727,5 +727,76 @@ public sealed class ExcelRoundTripTests
     {
         public int Id { get; set; }
         public decimal Amount { get; set; }
+    }
+
+    private static int MapIntRow(ExcelRow row)
+    {
+        return row.GetByIndex<int>(0) ?? 0;
+    }
+
+    private static TestRecord MapTestRecordFromHeaders(ExcelRow row)
+    {
+        return new TestRecord
+        {
+            Id = row.Get<int>("Id") ?? 0,
+            Name = row.Get<string>("Name") ?? string.Empty,
+            Age = row.Get<int>("Age") ?? 0,
+        };
+    }
+
+    private static ComplexRecord MapComplexRecordFromHeaders(ExcelRow row)
+    {
+        return new ComplexRecord
+        {
+            Id = row.Get<int>("Id") ?? 0,
+            Name = row.Get<string>("Name") ?? string.Empty,
+            Age = row.Get<int>("Age") ?? 0,
+            Salary = row.Get<decimal>("Salary") ?? 0m,
+            IsActive = row.Get<bool>("IsActive") ?? false,
+            BirthDate = row.Get<DateTime>("BirthDate") ?? default,
+            Score = row.Get<double>("Score") ?? 0d,
+            NullableValue = row.Get<int?>("NullableValue"),
+        };
+    }
+
+    private static MixedTypeRecord MapMixedTypeRecordFromHeaders(ExcelRow row)
+    {
+        return new MixedTypeRecord
+        {
+            IntValue = row.Get<int>("IntValue") ?? 0,
+            StringValue = row.Get<string>("StringValue") ?? string.Empty,
+            DoubleValue = row.Get<double>("DoubleValue") ?? 0d,
+            BoolValue = row.Get<bool>("BoolValue") ?? false,
+            DateTimeValue = row.Get<DateTime>("DateTimeValue") ?? default,
+            DecimalValue = row.Get<decimal>("DecimalValue") ?? 0m,
+        };
+    }
+
+    private static NullableRecord MapNullableRecordFromHeaders(ExcelRow row)
+    {
+        return new NullableRecord
+        {
+            Id = row.Get<int>("Id") ?? 0,
+            NullableInt = row.Get<int?>("NullableInt"),
+            NullableString = row.Get<string>("NullableString"),
+        };
+    }
+
+    private static DateTimeRecord MapDateTimeRecordFromHeaders(ExcelRow row)
+    {
+        return new DateTimeRecord
+        {
+            Id = row.Get<int>("Id") ?? 0,
+            Date = row.Get<DateTime>("Date") ?? default,
+        };
+    }
+
+    private static DecimalRecord MapDecimalRecordFromHeaders(ExcelRow row)
+    {
+        return new DecimalRecord
+        {
+            Id = row.Get<int>("Id") ?? 0,
+            Amount = row.Get<decimal>("Amount") ?? 0m,
+        };
     }
 }

@@ -38,7 +38,22 @@ public class ExcelConnectorPipeline : IPipelineDefinition
 
         // Create the Excel source node - reads customer data from the input file
         // Resolver is optional; defaults to file system provider for local files
-        var sourceNode = new ExcelSourceNode<Customer>(StorageUri.FromFilePath(sourcePath));
+        var sourceNode = new ExcelSourceNode<Customer>(
+            StorageUri.FromFilePath(sourcePath),
+            row => new Customer
+            {
+                Id = row.Get<int>("Id") ?? 0,
+                FirstName = row.Get<string>("FirstName") ?? string.Empty,
+                LastName = row.Get<string>("LastName") ?? string.Empty,
+                Email = row.Get<string>("Email") ?? string.Empty,
+                Age = row.Get<int>("Age") ?? 0,
+                RegistrationDate = row.Get<DateTime>("RegistrationDate") ?? default,
+                Country = row.Get<string>("Country") ?? string.Empty,
+                AccountBalance = row.Get<decimal>("AccountBalance") ?? 0m,
+                IsPremiumMember = row.Get<bool>("IsPremiumMember") ?? false,
+                DiscountPercentage = row.Get<double>("DiscountPercentage") ?? 0d,
+                LoyaltyPoints = row.Get<long>("LoyaltyPoints") ?? 0L,
+            });
         var source = builder.AddSource(sourceNode, "excel-source");
 
         // Add validation transform to filter invalid records

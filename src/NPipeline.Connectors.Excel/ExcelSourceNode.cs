@@ -1,6 +1,5 @@
 using System.Data;
 using System.Globalization;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using ExcelDataReader;
@@ -16,7 +15,7 @@ namespace NPipeline.Connectors.Excel;
 /// <summary>
 ///     Source node that reads Excel data using a pluggable <see cref="IStorageProvider" />.
 /// </summary>
-/// <typeparam name="T">Record type to deserialize each Excel row to.</typeparam>
+/// <typeparam name="T">Type emitted for each Excel row.</typeparam>
 /// <remarks>
 ///     <para>
 ///         This source node supports reading both legacy XLS (binary) and modern XLSX (Open XML) formats
@@ -35,9 +34,8 @@ namespace NPipeline.Connectors.Excel;
 ///         </list>
 ///     </para>
 ///     <para>
-///         Data mapping is performed using reflection to map Excel columns to properties of type <typeparamref name="T" />.
-///         When <see cref="ExcelConfiguration.FirstRowIsHeader" /> is <c>true</c>, column names from the first row
-///         are used for property mapping. When <c>false</c>, properties are mapped by column index.
+///         Data mapping is performed using the explicit <see cref="ExcelRow" /> mapper delegate supplied by the caller.
+///         This avoids reflection and supports positional records and custom conversion logic.
 ///     </para>
 /// </remarks>
 public sealed class ExcelSourceNode<T> : SourceNode<T>
@@ -50,14 +48,18 @@ public sealed class ExcelSourceNode<T> : SourceNode<T>
     private readonly IStorageProvider? _provider;
     private readonly IStorageResolver? _resolver;
     private readonly StorageUri _uri;
+    private readonly Func<ExcelRow, T> _rowMapper;
 
     private ExcelSourceNode(
         StorageUri uri,
-        ExcelConfiguration? configuration)
+        ExcelConfiguration? configuration,
+        Func<ExcelRow, T> rowMapper)
     {
         ArgumentNullException.ThrowIfNull(uri);
+        ArgumentNullException.ThrowIfNull(rowMapper);
         _uri = uri;
         _configuration = configuration ?? new ExcelConfiguration();
+        _rowMapper = rowMapper;
     }
 
     /// <summary>
@@ -68,13 +70,15 @@ public sealed class ExcelSourceNode<T> : SourceNode<T>
     ///     The storage resolver used to obtain the storage provider. If <c>null</c>, a default resolver
     ///     created by <see cref="StorageProviderFactory.CreateResolver" /> is used.
     /// </param>
+    /// <param name="rowMapper">Row mapper used to construct <typeparamref name="T" /> from an <see cref="ExcelRow" />.</param>
     /// <param name="configuration">Optional configuration for Excel reading. If <c>null</c>, default configuration is used.</param>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="uri" /> is <c>null</c>.</exception>
     public ExcelSourceNode(
         StorageUri uri,
+        Func<ExcelRow, T> rowMapper,
         IStorageResolver? resolver = null,
         ExcelConfiguration? configuration = null)
-        : this(uri, configuration)
+        : this(uri, configuration, rowMapper)
     {
         _resolver = resolver;
     }
@@ -84,13 +88,15 @@ public sealed class ExcelSourceNode<T> : SourceNode<T>
     /// </summary>
     /// <param name="provider">The storage provider to use for reading the Excel file.</param>
     /// <param name="uri">The URI of the Excel file to read from.</param>
+    /// <param name="rowMapper">Row mapper used to construct <typeparamref name="T" /> from an <see cref="ExcelRow" />.</param>
     /// <param name="configuration">Optional configuration for Excel reading. If <c>null</c>, default configuration is used.</param>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="provider" /> or <paramref name="uri" /> is <c>null</c>.</exception>
     public ExcelSourceNode(
         IStorageProvider provider,
         StorageUri uri,
+        Func<ExcelRow, T> rowMapper,
         ExcelConfiguration? configuration = null)
-        : this(uri, configuration)
+        : this(uri, configuration, rowMapper)
     {
         ArgumentNullException.ThrowIfNull(provider);
         _provider = provider;
@@ -115,7 +121,7 @@ public sealed class ExcelSourceNode<T> : SourceNode<T>
         return new StreamingDataPipe<T>(stream, $"ExcelSourceNode<{typeof(T).Name}>");
     }
 
-    private static async IAsyncEnumerable<T> Read(
+    private async IAsyncEnumerable<T> Read(
         IStorageProvider provider,
         StorageUri uri,
         ExcelConfiguration config,
@@ -176,94 +182,93 @@ public sealed class ExcelSourceNode<T> : SourceNode<T>
         // Read data rows
         while (reader.Read())
         {
-            var item = CreateInstance(reader, headers, config.FirstRowIsHeader);
+            var item = CreateInstance(reader, headers, config.FirstRowIsHeader, _rowMapper);
 
             if (item is not null)
                 yield return item;
         }
     }
 
-    private static T? CreateInstance(IDataReader reader, Dictionary<string, int> headers, bool hasHeaders)
+    private static T? CreateInstance(
+        IDataReader reader,
+        Dictionary<string, int> headers,
+        bool hasHeaders,
+        Func<ExcelRow, T> rowMapper)
     {
-        var type = typeof(T);
-
-        // Handle primitive types and strings
-        if (type.IsPrimitive || type == typeof(string) || type == typeof(decimal) || type == typeof(DateTime) || type == typeof(Guid))
+        try
         {
-            if (reader.FieldCount > 0)
-            {
-                var value = reader.GetValue(0);
-                return ConvertValue(value);
-            }
-
+            var excelRow = new ExcelRow(reader, headers, hasHeaders);
+            return rowMapper(excelRow);
+        }
+        catch
+        {
             return default;
         }
+    }
+}
 
-        // Handle complex types
-        var instance = Activator.CreateInstance<T>();
+public readonly struct ExcelRow
+{
+    private readonly IDataRecord _record;
+    private readonly IReadOnlyDictionary<string, int> _headers;
+    private readonly bool _hasHeaders;
 
-        if (instance is null)
-            return default;
+    public ExcelRow(IDataRecord record, IReadOnlyDictionary<string, int> headers, bool hasHeaders)
+    {
+        _record = record;
+        _headers = headers;
+        _hasHeaders = hasHeaders;
+    }
 
-        var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+    public bool TryGet<T>(string name, out T? value, T? defaultValue = default)
+    {
+        value = defaultValue;
 
-        foreach (var property in properties)
+        if (!_hasHeaders || !_headers.TryGetValue(name, out var index))
+            return false;
+
+        if (index >= _record.FieldCount)
+            return false;
+
+        var raw = _record.GetValue(index);
+
+        if (raw == DBNull.Value)
+            return false;
+
+        var converted = ExcelValueConverter.Convert(raw, typeof(T));
+
+        if (converted is T typed)
         {
-            if (!property.CanWrite)
-                continue;
-
-            int columnIndex;
-
-            if (hasHeaders)
-            {
-                // Map by header name
-                if (!headers.TryGetValue(property.Name, out columnIndex))
-                    continue;
-            }
-            else
-            {
-                // Map by property order (using property name hash as a stable order)
-                columnIndex = Math.Abs(property.Name.GetHashCode()) % reader.FieldCount;
-            }
-
-            if (columnIndex >= reader.FieldCount)
-                continue;
-
-            try
-            {
-                var value = reader.GetValue(columnIndex);
-
-                if (value == DBNull.Value)
-                    continue;
-
-                var convertedValue = ConvertValue(value, property.PropertyType);
-
-                if (convertedValue is not null)
-                    property.SetValue(instance, convertedValue);
-            }
-            catch
-            {
-                // Skip conversion errors and continue with next property
-            }
+            value = typed;
+            return true;
         }
 
-        return instance;
+        return false;
     }
 
-    private static T? ConvertValue(object? value)
+    public T? Get<T>(string name, T? defaultValue = default)
     {
-        if (value is null || value == DBNull.Value)
-            return default;
-
-        var targetType = typeof(T);
-        var convertedValue = ConvertValue(value, targetType);
-
-        return convertedValue is T tValue
-            ? tValue
-            : default;
+        return TryGet(name, out T? value, defaultValue) ? value : defaultValue;
     }
 
-    private static object? ConvertValue(object? value, Type targetType)
+    public T? GetByIndex<T>(int index, T? defaultValue = default)
+    {
+        if (index < 0 || index >= _record.FieldCount)
+            return defaultValue;
+
+        var raw = _record.GetValue(index);
+
+        if (raw == DBNull.Value)
+            return defaultValue;
+
+        var converted = ExcelValueConverter.Convert(raw, typeof(T));
+        return converted is T typed ? typed : defaultValue;
+    }
+}
+
+internal static class ExcelValueConverter
+{
+    public static object? Convert(object? value, Type targetType)
     {
         if (value is null || value == DBNull.Value)
             return null;
@@ -273,49 +278,40 @@ public sealed class ExcelSourceNode<T> : SourceNode<T>
 
         try
         {
-            // Handle nullable types
             var underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
 
-            // Handle string conversion
             if (underlyingType == typeof(string))
                 return value.ToString();
 
-            // Handle numeric types
             if (underlyingType == typeof(int) || underlyingType == typeof(int?))
-                return Convert.ToInt32(value);
+                return System.Convert.ToInt32(value);
 
             if (underlyingType == typeof(long) || underlyingType == typeof(long?))
-                return Convert.ToInt64(value);
+                return System.Convert.ToInt64(value);
 
             if (underlyingType == typeof(short) || underlyingType == typeof(short?))
-                return Convert.ToInt16(value);
+                return System.Convert.ToInt16(value);
 
             if (underlyingType == typeof(decimal) || underlyingType == typeof(decimal?))
-                return Convert.ToDecimal(value);
+                return System.Convert.ToDecimal(value);
 
             if (underlyingType == typeof(double) || underlyingType == typeof(double?))
-                return Convert.ToDouble(value);
+                return System.Convert.ToDouble(value);
 
             if (underlyingType == typeof(float) || underlyingType == typeof(float?))
-                return Convert.ToSingle(value);
+                return System.Convert.ToSingle(value);
 
-            // Handle boolean
             if (underlyingType == typeof(bool) || underlyingType == typeof(bool?))
             {
                 if (value is bool b)
                     return b;
 
                 if (value is string s)
-                {
-                    return bool.TryParse(s, out var boolResult)
-                        ? boolResult
-                        : false;
-                }
+                    return bool.TryParse(s, out var boolResult) ? boolResult : false;
 
-                return Convert.ToBoolean(value);
+                return System.Convert.ToBoolean(value);
             }
 
-            // Handle DateTime
             if (underlyingType == typeof(DateTime) || underlyingType == typeof(DateTime?))
             {
                 if (value is DateTime dt)
@@ -324,22 +320,18 @@ public sealed class ExcelSourceNode<T> : SourceNode<T>
                 if (double.TryParse(value.ToString(), out var oaDate))
                     return DateTime.FromOADate(oaDate);
 
-                return Convert.ToDateTime(value);
+                return System.Convert.ToDateTime(value);
             }
 
-            // Handle Guid
             if (underlyingType == typeof(Guid) || underlyingType == typeof(Guid?))
             {
                 if (value is Guid g)
                     return g;
 
-                return Guid.TryParse(value.ToString(), out var guidResult)
-                    ? guidResult
-                    : Guid.Empty;
+                return Guid.TryParse(value.ToString(), out var guidResult) ? guidResult : Guid.Empty;
             }
 
-            // Default conversion
-            return Convert.ChangeType(value, underlyingType, CultureInfo.InvariantCulture);
+            return System.Convert.ChangeType(value, underlyingType, CultureInfo.InvariantCulture);
         }
         catch
         {

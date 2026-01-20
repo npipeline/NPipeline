@@ -29,7 +29,7 @@ public sealed class ExcelSourceNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode
-            var src = new ExcelSourceNode<int>(uri, resolver, config);
+            var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<int>();
@@ -77,7 +77,7 @@ public sealed class ExcelSourceNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode
-            var src = new ExcelSourceNode<TestRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<TestRecord>(uri, MapTestRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<TestRecord>();
@@ -135,7 +135,7 @@ public sealed class ExcelSourceNodeTests
                 FirstRowIsHeader = false,
             };
 
-            var src = new ExcelSourceNode<TestRecord>(uri, resolver, readConfig);
+            var src = new ExcelSourceNode<TestRecord>(uri, MapTestRecordFromIndexes, resolver, readConfig);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<TestRecord>();
@@ -178,7 +178,7 @@ public sealed class ExcelSourceNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode with sheet name
-            var src = new ExcelSourceNode<int>(uri, resolver, config);
+            var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<int>();
@@ -220,7 +220,7 @@ public sealed class ExcelSourceNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode with null sheet name
-            var src = new ExcelSourceNode<int>(uri, resolver, config);
+            var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<int>();
@@ -287,7 +287,7 @@ public sealed class ExcelSourceNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode
-            var src = new ExcelSourceNode<ComplexRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<ComplexRecord>(uri, MapComplexRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<ComplexRecord>();
@@ -352,7 +352,7 @@ public sealed class ExcelSourceNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode
-            var src = new ExcelSourceNode<NullableRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<NullableRecord>(uri, MapNullableRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<NullableRecord>();
@@ -405,7 +405,7 @@ public sealed class ExcelSourceNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode - headers should match case-insensitively
-            var src = new ExcelSourceNode<TestRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<TestRecord>(uri, MapTestRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<TestRecord>();
@@ -450,7 +450,7 @@ public sealed class ExcelSourceNodeTests
 
             // Read using ExcelSourceNode with cancellation
             var cts = new CancellationTokenSource();
-            var src = new ExcelSourceNode<int>(uri, resolver, config);
+            var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, cts.Token);
 
             var result = new List<int>();
@@ -494,7 +494,7 @@ public sealed class ExcelSourceNodeTests
             var resolver = StorageProviderFactory.CreateResolver();
 
             // Read using ExcelSourceNode with missing file
-            var src = new ExcelSourceNode<int>(uri, resolver, config);
+            var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<int>();
@@ -542,7 +542,7 @@ public sealed class ExcelSourceNodeTests
                 FirstRowIsHeader = false,
             };
 
-            var src = new ExcelSourceNode<int>(uri, resolver, readConfig);
+            var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, readConfig);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<int>();
@@ -584,7 +584,7 @@ public sealed class ExcelSourceNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode
-            var src = new ExcelSourceNode<string>(uri, resolver, config);
+            var src = new ExcelSourceNode<string>(uri, MapStringRow, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<string>();
@@ -631,7 +631,7 @@ public sealed class ExcelSourceNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode
-            var src = new ExcelSourceNode<DateTimeRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<DateTimeRecord>(uri, MapDateTimeRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<DateTimeRecord>();
@@ -681,7 +681,7 @@ public sealed class ExcelSourceNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode
-            var src = new ExcelSourceNode<BoolRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<BoolRecord>(uri, MapBoolRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<BoolRecord>();
@@ -731,7 +731,7 @@ public sealed class ExcelSourceNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode
-            var src = new ExcelSourceNode<DecimalRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<DecimalRecord>(uri, MapDecimalRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<DecimalRecord>();
@@ -796,5 +796,87 @@ public sealed class ExcelSourceNodeTests
     {
         public int Id { get; set; }
         public decimal Amount { get; set; }
+    }
+
+    private static int MapIntRow(ExcelRow row)
+    {
+        return row.GetByIndex<int>(0) ?? 0;
+    }
+
+    private static string MapStringRow(ExcelRow row)
+    {
+        return row.GetByIndex<string>(0) ?? string.Empty;
+    }
+
+    private static TestRecord MapTestRecordFromHeaders(ExcelRow row)
+    {
+        return new TestRecord
+        {
+            Id = row.Get<int>("Id") ?? 0,
+            Name = row.Get<string>("Name") ?? string.Empty,
+            Age = row.Get<int>("Age") ?? 0,
+        };
+    }
+
+    private static TestRecord MapTestRecordFromIndexes(ExcelRow row)
+    {
+        return new TestRecord
+        {
+            Id = row.GetByIndex<int>(0) ?? 0,
+            Name = row.GetByIndex<string>(1) ?? string.Empty,
+            Age = row.GetByIndex<int>(2) ?? 0,
+        };
+    }
+
+    private static ComplexRecord MapComplexRecordFromHeaders(ExcelRow row)
+    {
+        return new ComplexRecord
+        {
+            Id = row.Get<int>("Id") ?? 0,
+            Name = row.Get<string>("Name") ?? string.Empty,
+            Age = row.Get<int>("Age") ?? 0,
+            Salary = row.Get<decimal>("Salary") ?? 0m,
+            IsActive = row.Get<bool>("IsActive") ?? false,
+            BirthDate = row.Get<DateTime>("BirthDate") ?? default,
+            Score = row.Get<double>("Score") ?? 0d,
+            NullableValue = row.Get<int?>("NullableValue"),
+        };
+    }
+
+    private static NullableRecord MapNullableRecordFromHeaders(ExcelRow row)
+    {
+        return new NullableRecord
+        {
+            Id = row.Get<int>("Id") ?? 0,
+            NullableInt = row.Get<int?>("NullableInt"),
+            NullableString = row.Get<string>("NullableString"),
+        };
+    }
+
+    private static DateTimeRecord MapDateTimeRecordFromHeaders(ExcelRow row)
+    {
+        return new DateTimeRecord
+        {
+            Id = row.Get<int>("Id") ?? 0,
+            Date = row.Get<DateTime>("Date") ?? default,
+        };
+    }
+
+    private static BoolRecord MapBoolRecordFromHeaders(ExcelRow row)
+    {
+        return new BoolRecord
+        {
+            Id = row.Get<int>("Id") ?? 0,
+            IsActive = row.Get<bool>("IsActive") ?? false,
+        };
+    }
+
+    private static DecimalRecord MapDecimalRecordFromHeaders(ExcelRow row)
+    {
+        return new DecimalRecord
+        {
+            Id = row.Get<int>("Id") ?? 0,
+            Amount = row.Get<decimal>("Amount") ?? 0m,
+        };
     }
 }

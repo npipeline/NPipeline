@@ -58,6 +58,11 @@ var resolver = StorageProviderFactory.CreateResolver();
 // Create an Excel source node
 var excelSource = new ExcelSourceNode<Product>(
     StorageUri.FromFilePath("products.xlsx"),
+    row => new Product(
+        row.Get<int>("Id") ?? 0,
+        row.Get<string>("Name") ?? string.Empty,
+        row.Get<decimal>("Price") ?? 0m,
+        row.Get<string>("Category") ?? string.Empty),
     resolver
 );
 
@@ -105,6 +110,11 @@ var resolver = StorageProviderFactory.CreateResolver();
 // Create source with custom configuration
 var excelSource = new ExcelSourceNode<Product>(
     StorageUri.FromFilePath("data.xlsx"),
+    row => new Product(
+        row.Get<int>("Id") ?? 0,
+        row.Get<string>("Name") ?? string.Empty,
+        row.Get<decimal>("Price") ?? 0m,
+        row.Get<string>("Category") ?? string.Empty),
     resolver,
     excelConfig
 );
@@ -122,7 +132,15 @@ public class ExcelProcessingPipeline : IPipelineDefinition
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
         // Add Excel source
-        var source = builder.AddSource<ExcelSourceNode<Product>, Product>("excel-source");
+        var source = builder.AddSource(
+            new ExcelSourceNode<Product>(
+                StorageUri.FromFilePath("products.xlsx"),
+                row => new Product(
+                    row.Get<int>("Id") ?? 0,
+                    row.Get<string>("Name") ?? string.Empty,
+                    row.Get<decimal>("Price") ?? 0m,
+                    row.Get<string>("Category") ?? string.Empty)),
+            "excel-source");
 
         // Add a transform (example)
         var transform = builder.AddTransform<ProductTransform, Product, Product>("transform");
@@ -149,6 +167,11 @@ var config = new ExcelConfiguration
 var resolver = StorageProviderFactory.CreateResolver();
 var excelSource = new ExcelSourceNode<SalesRecord>(
     StorageUri.FromFilePath("quarterly_report.xlsx"),
+    row => new SalesRecord(
+        row.Get<string>("Region") ?? string.Empty,
+        row.Get<string>("Product") ?? string.Empty,
+        row.Get<decimal>("Amount") ?? 0m,
+        row.Get<DateTime>("Date") ?? default),
     resolver,
     config
 );
