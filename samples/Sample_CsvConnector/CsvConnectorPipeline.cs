@@ -38,7 +38,19 @@ public class CsvConnectorPipeline : IPipelineDefinition
 
         // Create the CSV source node - reads customer data from the input file
         // Resolver is optional; defaults to file system provider for local files
-        var sourceNode = new CsvSourceNode<Customer>(StorageUri.FromFilePath(sourcePath));
+        var sourceNode = new CsvSourceNode<Customer>(
+            StorageUri.FromFilePath(sourcePath),
+            row => new Customer
+            {
+                Id = row.Get("Id", 0),
+                FirstName = row.Get("FirstName", string.Empty),
+                LastName = row.Get("LastName", string.Empty),
+                Email = row.Get("Email", string.Empty),
+                Age = row.Get("Age", 0),
+                RegistrationDate = row.Get("RegistrationDate", default(DateTime)),
+                Country = row.Get("Country", string.Empty),
+            });
+
         var source = builder.AddSource(sourceNode, "csv-source");
 
         // Add validation transform to filter invalid records

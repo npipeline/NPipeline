@@ -4,7 +4,7 @@ description: Understanding the IStorageProvider abstraction and implementing cus
 sidebar_position: 2
 ---
 
-# Storage Provider Interface
+## Storage Provider Interface
 
 ## Overview
 
@@ -15,11 +15,13 @@ The `IStorageProvider` interface is a foundational abstraction that enables NPip
 `IStorageProvider` defines the following operations:
 
 ### Essential Operations
+
 - **`OpenReadAsync(uri, cancellationToken)`** - Opens a readable stream for a resource
 - **`OpenWriteAsync(uri, cancellationToken)`** - Opens a writable stream for a resource
 - **`ExistsAsync(uri, cancellationToken)`** - Checks whether a resource exists
 
 ### Extended Operations (Optional)
+
 - **`DeleteAsync(uri, cancellationToken)`** - Deletes a resource (default throws `NotSupportedException`)
 - **`ListAsync(prefix, recursive, cancellationToken)`** - Lists resources at a location (default throws `NotSupportedException`)
 - **`GetMetadataAsync(uri, cancellationToken)`** - Retrieves detailed metadata (default returns null)
@@ -51,7 +53,7 @@ if (provider is IStorageProviderMetadataProvider metadataProvider)
 ### Capability Flags
 
 | **Flag** | **Description** |
-|---|---|
+| --- | --- |
 | `SupportsRead` | Provider supports `OpenReadAsync()` |
 | `SupportsWrite` | Provider supports `OpenWriteAsync()` |
 | `SupportsDelete` | Provider supports `DeleteAsync()` |
@@ -66,7 +68,8 @@ if (provider is IStorageProviderMetadataProvider metadataProvider)
 Represents a location in the storage system with structure: `scheme://host/path?param=value`
 
 **Examples:**
-```
+
+```text
 file:///C:/data/file.csv                           // Local filesystem
 file://\\server\share\data.csv                     // UNC path
 s3://my-bucket/data/2024/file.parquet              // AWS S3
@@ -111,12 +114,14 @@ public sealed record StorageMetadata
 The default provider for local file access with full feature support.
 
 **Characteristics:**
+
 - True directory hierarchy
 - Full read/write/delete/list support
 - MIME type detection
 - File metadata with timestamps
 
 **Example:**
+
 ```csharp
 var provider = new FileSystemStorageProvider();
 var uri = StorageUri.FromFilePath("C:\\data\\input.csv");
@@ -140,6 +145,7 @@ if (metadata != null)
 ```
 
 **Resilience Handling:**
+
 - Gracefully skips inaccessible directories during recursive listing
 - Handles concurrent file deletions
 - Skips symbolic links/junctions in recursive traversal
@@ -152,7 +158,12 @@ All connectors support reading through `OpenReadAsync`:
 
 ```csharp
 var uri = StorageUri.FromFilePath("data.csv");
-var source = new CsvSourceNode<MyData>(uri);
+var source = new CsvSourceNode<MyData>(
+    uri,
+    row => new MyData(
+        row.Get<string>("Id") ?? string.Empty,
+        row.Get<string>("Value") ?? string.Empty)
+);
 
 // When the pipeline runs, the CSV connector uses the storage provider
 // to open the file for reading
@@ -246,13 +257,13 @@ if (metadata.SupportsDelete)
 
 `StorageUri` represents a location in any storage system:
 
-```
+```text
 scheme://[host]/path[?param=value]
 ```
 
 ### Examples
 
-```
+```text
 // Local filesystem (Windows)
 file:///C:/data/users.csv
 
@@ -372,7 +383,8 @@ public sealed class MyCustomStorageProvider : IStorageProvider, IStorageProvider
    - Network/timeout issues → `IOException` or `OperationCanceledException`
 
 2. **Document Recursion Semantics**: Clearly explain how `recursive` works in your implementation:
-   ```csharp
+
+    ```csharp
    /// <remarks>
    /// With recursive=false, returns objects matching the prefix with "/" delimiter applied.
    /// With recursive=true, returns all objects with the prefix (flat list).
@@ -380,7 +392,8 @@ public sealed class MyCustomStorageProvider : IStorageProvider, IStorageProvider
    ```
 
 3. **Implement Capabilities Accurately**: Set capability flags to match actual implementation:
-   ```csharp
+
+    ```csharp
    public StorageProviderMetadata GetMetadata()
    {
        return new StorageProviderMetadata
@@ -395,7 +408,8 @@ public sealed class MyCustomStorageProvider : IStorageProvider, IStorageProvider
    ```
 
 4. **Respect Cancellation**: Always check the `CancellationToken` during enumeration:
-   ```csharp
+
+    ```csharp
    public async IAsyncEnumerable<StorageItem> ListAsync(
        StorageUri prefix,
        bool recursive = false,
@@ -410,7 +424,8 @@ public sealed class MyCustomStorageProvider : IStorageProvider, IStorageProvider
    ```
 
 5. **Populate Metadata Fields**: Provide all available metadata:
-   ```csharp
+
+    ```csharp
    return new StorageMetadata
    {
        Size = contentLength,
@@ -435,7 +450,11 @@ Then use them with connectors:
 ```csharp
 var uri = StorageUri.Parse("custom://bucket/key");
 var pipeline = new PipelineBuilder()
-    .AddSource<CsvSourceNode<MyData>>("source")
+    .AddSource(new CsvSourceNode<MyData>(
+        uri,
+        row => new MyData(
+            row.Get<string>("Id") ?? string.Empty,
+            row.Get<string>("Value") ?? string.Empty)), "source")
     // ... transforms ...
     .Build();
 ```
@@ -560,14 +579,15 @@ await Task.WhenAll(tasks);
 Different backends have different recursion behaviors:
 
 | Backend | Non-Recursive (recursive=false) | Recursive (recursive=true) |
-|---------|--------------------------------|--------------------------|
+| --- | --- | --- |
 | Filesystem | Direct children only | All descendants |
 | S3/Azure | Objects with prefix, "/" delimiter applied | All objects with prefix |
 | Database | N/A | Query-based filtering |
 
-### Error Handling
+### Error Handling Notes
 
 During recursive listing, providers should gracefully handle:
+
 - Permission restrictions on subdirectories
 - Concurrent deletions during enumeration
 - Circular references (symlinks/junctions)

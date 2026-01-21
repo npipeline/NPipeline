@@ -5,7 +5,7 @@ sidebar_position: 1
 slug: /connectors
 ---
 
-# Connectors Overview
+## Connectors Overview
 
 Connectors are pre-built nodes that make it easy to read data from and write data to external systems. They are specialized `ISourceNode` and `ISinkNode` implementations that handle the specifics of communicating with systems like databases, file formats, message queues, and cloud services.
 
@@ -40,16 +40,19 @@ When you need to pass configuration (file path, resolver, etc.), instantiate the
 
 ```csharp
 // Example of using a source and sink connector
-var resolver = StorageProviderFactory.CreateResolver();
-
 var pipeline = new PipelineBuilder()
   // Read data from a source connector
-    .AddSource(new CsvSourceNode<User>(StorageUri.FromFilePath("users.csv"), resolver), "user_source")
+    .AddSource(new CsvSourceNode<User>(
+        StorageUri.FromFilePath("users.csv"),
+        row => new User(
+            row.Get<int>("Id") ?? 0,
+            row.Get<string>("Name") ?? string.Empty,
+            row.Get<string>("Email") ?? string.Empty)), "user_source")
 
     // ... add transforms ...
 
     // Write data to a sink connector
-    .AddSink(new CsvSinkNode<UserSummary>(StorageUri.FromFilePath("summaries.csv"), resolver), "summary_sink")
+    .AddSink(new CsvSinkNode<UserSummary>(StorageUri.FromFilePath("summaries.csv")), "summary_sink")
   .Build();
 ```
 

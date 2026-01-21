@@ -19,7 +19,7 @@ public sealed class StorageResolverTests
     }
 
     [Fact]
-    public void RegisterProvider_SameTypeRegisteredTwice_IsIdempotent()
+    public void RegisterProvider_SameTypeRegisteredTwice_AllowsMultipleInstances()
     {
         var resolver = new StorageResolver();
         resolver.RegisterProvider(new FooProvider());
@@ -27,8 +27,8 @@ public sealed class StorageResolverTests
 
         var all = resolver.GetAvailableProviders().ToArray();
 
-        all.Count(p => p is FooProvider).Should().Be(1);
-        all.Single(p => p is FooProvider).Scheme.ToString().Should().Be("foo");
+        all.Count(p => p is FooProvider).Should().Be(2);
+        all.All(p => p.Scheme.ToString() == "foo").Should().BeTrue();
     }
 
     private sealed class FooProvider : IStorageProvider

@@ -111,170 +111,235 @@ public sealed class ExcelSinkNode<T> : SinkNode<T>
                 throw new UnsupportedStorageCapabilityException(_uri, "write", meta.Name);
         }
 
-        // Collect all items to write (Excel writing requires all data upfront)
-        var items = new List<T>();
-
-        await foreach (var item in input.WithCancellation(cancellationToken))
-        {
-            if (item is not null)
-                items.Add(item);
-        }
-
-        // Write to a memory stream first, then to the provider
-        using var memoryStream = new MemoryStream();
-        WriteToExcel(memoryStream, items, _configuration, cancellationToken);
-
-        memoryStream.Position = 0;
-
         await using var stream = await provider.OpenWriteAsync(_uri, cancellationToken).ConfigureAwait(false);
-        await memoryStream.CopyToAsync(stream, _configuration.BufferSize, cancellationToken).ConfigureAwait(false);
+        await WriteToExcelStream(stream, input, _configuration, cancellationToken).ConfigureAwait(false);
     }
 
-    private static void WriteToExcel(Stream stream, List<T> items, ExcelConfiguration config, CancellationToken cancellationToken)
+    private static async Task WriteToExcelStream(
+        Stream stream,
+        IDataPipe<T> source,
+        ExcelConfiguration config,
+        CancellationToken cancellationToken)
     {
-        using var spreadsheetDocument = SpreadsheetDocument.Create(stream, SpreadsheetDocumentType.Workbook);
+        var targetStream = stream;
+        var requiresCopyBack = !stream.CanRead || !stream.CanSeek;
 
-        var workbookPart = spreadsheetDocument.AddWorkbookPart();
-        workbookPart.Workbook = new Workbook();
+        // OpenXML packaging requires a readable, seekable stream. If the provider only supplies a write-only stream,
+        // fall back to a temporary buffer and copy the result back to the original stream once complete.
+        if (requiresCopyBack)
+            targetStream = new MemoryStream();
 
-        var worksheetPart = workbookPart.AddNewPart<WorksheetPart>();
-        var sheetData = new SheetData();
-        worksheetPart.Worksheet = new Worksheet(sheetData);
-
-        var sheets = workbookPart.Workbook.AppendChild(new Sheets());
-
-        var sheet = new Sheet
+        using (var spreadsheetDocument = SpreadsheetDocument.Create(targetStream, SpreadsheetDocumentType.Workbook))
         {
-            Id = workbookPart.GetIdOfPart(worksheetPart),
-            SheetId = 1,
-            Name = config.SheetName ?? "Sheet1",
-        };
+            var workbookPart = spreadsheetDocument.AddWorkbookPart();
+            workbookPart.Workbook = new Workbook();
 
-        sheets.Append(sheet);
+            var worksheetPart = workbookPart.AddNewPart<WorksheetPart>();
 
-        // Check if T is a complex type with properties or a primitive type
-        var type = typeof(T);
-        var isComplexType = type.IsClass && type != typeof(string);
+            using (var writer = OpenXmlWriter.Create(worksheetPart))
+            {
+                writer.WriteStartElement(new Worksheet());
+                writer.WriteStartElement(new SheetData());
 
-        var properties = isComplexType
-            ? type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.CanRead).ToList()
-            : null;
+                var type = typeof(T);
+                var isComplexType = type.IsClass && type != typeof(string);
 
-        // Write header row if configured and T is a complex type
-        uint rowIndex = 1;
+                var properties = isComplexType
+                    ? type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.CanRead).ToArray()
+                    : Array.Empty<PropertyInfo>();
 
-        if (config.FirstRowIsHeader && isComplexType && properties != null)
+                uint rowIndex = 1;
+
+                if (config.FirstRowIsHeader && isComplexType && properties.Length > 0)
+                {
+                    WriteHeaderRow(writer, properties, rowIndex);
+                    rowIndex++;
+                }
+
+                await foreach (var item in source.WithCancellation(cancellationToken))
+                {
+                    if (item is null)
+                        continue;
+
+                    WriteDataRow(writer, item, properties, isComplexType, rowIndex);
+                    rowIndex++;
+                }
+
+                writer.WriteEndElement(); // SheetData
+                writer.WriteEndElement(); // Worksheet
+            }
+
+            var sheets = workbookPart.Workbook.AppendChild(new Sheets());
+
+            sheets.Append(new Sheet
+            {
+                Id = workbookPart.GetIdOfPart(worksheetPart),
+                SheetId = 1,
+                Name = config.SheetName ?? "Sheet1",
+            });
+
+            workbookPart.Workbook.Save();
+        }
+
+        if (requiresCopyBack && targetStream is MemoryStream buffer)
         {
-            var headerRow = new Row { RowIndex = rowIndex };
+            buffer.Position = 0;
+            await buffer.CopyToAsync(stream, cancellationToken).ConfigureAwait(false);
+            await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
 
+    private static void WriteHeaderRow(OpenXmlWriter writer, IReadOnlyList<PropertyInfo> properties, uint rowIndex)
+    {
+        writer.WriteStartElement(new Row { RowIndex = rowIndex });
+
+        for (var i = 0; i < properties.Count; i++)
+        {
+            WriteInlineStringCell(writer, properties[i].Name, rowIndex, (uint)(i + 1));
+        }
+
+        writer.WriteEndElement();
+    }
+
+    private static void WriteDataRow(
+        OpenXmlWriter writer,
+        T item,
+        IReadOnlyList<PropertyInfo> properties,
+        bool isComplexType,
+        uint rowIndex)
+    {
+        writer.WriteStartElement(new Row { RowIndex = rowIndex });
+
+        if (isComplexType && properties.Count > 0)
+        {
             for (var i = 0; i < properties.Count; i++)
             {
-                var cell = CreateTextCell(properties[i].Name, rowIndex, (uint)(i + 1));
-                headerRow.AppendChild(cell);
+                var value = properties[i].GetValue(item, null);
+                WriteCell(writer, value, rowIndex, (uint)(i + 1));
             }
-
-            sheetData.AppendChild(headerRow);
-            rowIndex++;
         }
+        else
+            WriteCell(writer, item, rowIndex, 1);
 
-        // Write data rows
-        foreach (var item in items)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var row = new Row { RowIndex = rowIndex };
-
-            if (isComplexType && properties != null)
-            {
-                // Complex type: write each property as a column
-                for (var i = 0; i < properties.Count; i++)
-                {
-                    var value = properties[i].GetValue(item, null);
-                    var cell = CreateCell(value, rowIndex, (uint)(i + 1));
-                    row.AppendChild(cell);
-                }
-            }
-            else
-            {
-                // Primitive type: write value directly
-                var cell = CreateCell(item, rowIndex, 1);
-                row.AppendChild(cell);
-            }
-
-            sheetData.AppendChild(row);
-            rowIndex++;
-        }
-
-        workbookPart.Workbook.Save();
+        writer.WriteEndElement();
     }
 
-    private static Cell CreateTextCell(string value, uint rowIndex, uint columnIndex)
+    private static void WriteInlineStringCell(OpenXmlWriter writer, string text, uint rowIndex, uint columnIndex)
     {
         var cell = new Cell
         {
-            DataType = CellValues.String,
             CellReference = GetCellReference(rowIndex, columnIndex),
+            DataType = CellValues.InlineString,
         };
 
-        // Inline string for better compatibility
-        var inlineString = new InlineString(new Text(value));
-        cell.AppendChild(inlineString);
-
-        return cell;
+        writer.WriteStartElement(cell);
+        writer.WriteElement(new InlineString(new Text(text)));
+        writer.WriteEndElement();
     }
 
-    private static Cell CreateCell(object? value, uint rowIndex, uint columnIndex)
+    private static void WriteCell(OpenXmlWriter writer, object? value, uint rowIndex, uint columnIndex)
+    {
+        var reference = GetCellReference(rowIndex, columnIndex);
+        var (cell, inlineString) = CreateCellValue(value, reference);
+
+        writer.WriteStartElement(cell);
+
+        if (inlineString is not null)
+            writer.WriteElement(inlineString);
+        else if (cell.CellValue is not null)
+            writer.WriteElement(cell.CellValue);
+
+        writer.WriteEndElement();
+    }
+
+    private static (Cell Cell, InlineString? InlineString) CreateCellValue(object? value, string cellReference)
     {
         var cell = new Cell
         {
-            CellReference = GetCellReference(rowIndex, columnIndex),
+            CellReference = cellReference,
         };
 
         if (value is null || value == DBNull.Value)
-            return cell;
+            return (cell, null);
 
-        var type = value.GetType();
+        switch (value)
+        {
+            case string s:
+                cell.DataType = CellValues.InlineString;
+                return (cell, new InlineString(new Text(s)));
 
-        if (type == typeof(string))
-        {
-            cell.DataType = CellValues.String;
-            var inlineString = new InlineString(new Text((string)value));
-            cell.AppendChild(inlineString);
-        }
-        else if (type == typeof(bool) || type == typeof(bool?))
-        {
-            var boolValue = (bool)value;
-            cell.DataType = CellValues.Boolean;
+            case bool b:
+                cell.DataType = CellValues.Boolean;
 
-            // FIX: Use "1" for true and "0" for false to match Open XML specification
-            cell.CellValue = new CellValue(boolValue
-                ? "1"
-                : "0");
-        }
-        else if (type == typeof(DateTime) || type == typeof(DateTime?))
-        {
-            cell.DataType = CellValues.Number;
-            cell.CellValue = new CellValue(((DateTime)value).ToOADate().ToString(CultureInfo.InvariantCulture));
-        }
-        else if (type == typeof(int) || type == typeof(int?) ||
-                 type == typeof(long) || type == typeof(long?) ||
-                 type == typeof(short) || type == typeof(short?) ||
-                 type == typeof(decimal) || type == typeof(decimal?) ||
-                 type == typeof(double) || type == typeof(double?) ||
-                 type == typeof(float) || type == typeof(float?))
-        {
-            cell.DataType = CellValues.Number;
-            cell.CellValue = new CellValue(Convert.ToDouble(value).ToString(CultureInfo.InvariantCulture));
-        }
-        else
-        {
-            // Default to string for other types
-            cell.DataType = CellValues.String;
-            var inlineString = new InlineString(new Text(value.ToString() ?? string.Empty));
-            cell.AppendChild(inlineString);
-        }
+                cell.CellValue = new CellValue(b
+                    ? "1"
+                    : "0");
 
-        return cell;
+                return (cell, null);
+
+            case DateTime dt:
+                cell.DataType = CellValues.Number;
+                cell.CellValue = new CellValue(dt.ToOADate().ToString(CultureInfo.InvariantCulture));
+                return (cell, null);
+
+            case DateTimeOffset dto:
+                cell.DataType = CellValues.Number;
+                cell.CellValue = new CellValue(dto.UtcDateTime.ToOADate().ToString(CultureInfo.InvariantCulture));
+                return (cell, null);
+
+            case int i:
+                cell.DataType = CellValues.Number;
+                cell.CellValue = new CellValue(i.ToString(CultureInfo.InvariantCulture));
+                return (cell, null);
+
+            case long l:
+                cell.DataType = CellValues.Number;
+                cell.CellValue = new CellValue(l.ToString(CultureInfo.InvariantCulture));
+                return (cell, null);
+
+            case short s16:
+                cell.DataType = CellValues.Number;
+                cell.CellValue = new CellValue(s16.ToString(CultureInfo.InvariantCulture));
+                return (cell, null);
+
+            case decimal m:
+                cell.DataType = CellValues.Number;
+                cell.CellValue = new CellValue(m.ToString(CultureInfo.InvariantCulture));
+                return (cell, null);
+
+            case double d:
+                cell.DataType = CellValues.Number;
+                cell.CellValue = new CellValue(d.ToString(CultureInfo.InvariantCulture));
+                return (cell, null);
+
+            case float f:
+                cell.DataType = CellValues.Number;
+                cell.CellValue = new CellValue(f.ToString(CultureInfo.InvariantCulture));
+                return (cell, null);
+
+            case uint ui:
+                cell.DataType = CellValues.Number;
+                cell.CellValue = new CellValue(ui.ToString(CultureInfo.InvariantCulture));
+                return (cell, null);
+
+            case ulong ul:
+                cell.DataType = CellValues.Number;
+                cell.CellValue = new CellValue(ul.ToString(CultureInfo.InvariantCulture));
+                return (cell, null);
+
+            case ushort us:
+                cell.DataType = CellValues.Number;
+                cell.CellValue = new CellValue(us.ToString(CultureInfo.InvariantCulture));
+                return (cell, null);
+
+            case Enum e:
+                cell.DataType = CellValues.InlineString;
+                return (cell, new InlineString(new Text(e.ToString())));
+
+            default:
+                cell.DataType = CellValues.InlineString;
+                return (cell, new InlineString(new Text(value.ToString() ?? string.Empty)));
+        }
     }
 
     private static string GetCellReference(uint row, uint column)

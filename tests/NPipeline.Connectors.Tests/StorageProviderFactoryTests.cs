@@ -60,17 +60,12 @@ public class StorageProviderFactoryTests
     [Fact]
     public void CreateResolver_ReturnsErrors_ForInvalidConfiguredProvider()
     {
-        var config = new ConnectorConfiguration
-        {
-            Providers = new Dictionary<string, StorageProviderConfig>
+        var config = new ConnectorConfiguration()
+            .AddProvider("bad", new StorageProviderConfig
             {
-                ["bad"] = new()
-                {
-                    ProviderType = "No.Such.Type",
-                    Enabled = true,
-                },
-            },
-        };
+                ProviderType = "No.Such.Type",
+                Enabled = true,
+            });
 
         var (resolver, errors) = StorageProviderFactory.CreateResolverWithErrors(new StorageResolverOptions
         {

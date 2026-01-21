@@ -4,7 +4,7 @@ description: Read from and write to Comma-Separated Values (CSV) files with NPip
 sidebar_position: 1
 ---
 
-# CSV Connector
+## CSV Connector
 
 The `NPipeline.Connectors.Csv` package provides specialized source and sink nodes for working with Comma-Separated Values (CSV) files. This allows you to easily integrate CSV data into your pipelines as an input source or an output destination.
 
@@ -60,7 +60,13 @@ For most scenarios involving local files, you can omit the resolver parameter:
 
 ```csharp
 // Simple case: reading local CSV file (resolver not needed)
-var source = new CsvSourceNode<User>(StorageUri.FromFilePath("users.csv"));
+var source = new CsvSourceNode<User>(
+    StorageUri.FromFilePath("users.csv"),
+    row => new User(
+        row.Get<int>("Id") ?? 0,
+        row.Get<string>("Name") ?? string.Empty,
+        row.Get<string>("Email") ?? string.Empty)
+);
 ```
 
 However, you must provide an explicit resolver when working with cloud storage:
@@ -77,7 +83,11 @@ var resolver = StorageProviderFactory.CreateResolver(
 
 var source = new CsvSourceNode<User>(
     StorageUri.Parse("s3://my-bucket/users.csv"),
-    resolver // Explicit resolver needed for cloud storage
+    row => new User(
+        row.Get<int>("Id") ?? 0,
+        row.Get<string>("Name") ?? string.Empty,
+        row.Get<string>("Email") ?? string.Empty),
+    resolver: resolver // Explicit resolver needed for cloud storage
 );
 ```
 
@@ -85,19 +95,21 @@ var source = new CsvSourceNode<User>(
 
 The `CsvSourceNode<T>` reads data from a CSV file and emits each row as an item of type `T`.
 
-### Configuration
+### Source Configuration
 
 The constructor for `CsvSourceNode<T>` takes the file path and optional configuration for parsing the CSV.
 
 ```csharp
 public CsvSourceNode(
     StorageUri uri,
+    Func<CsvRow, T> rowMapper,
     IStorageResolver? resolver = null,
     CsvConfiguration? configuration = null,
     Encoding? encoding = null)
 ```
 
 - **`uri`**: The `StorageUri` representing the location of the CSV file. Use `StorageUri.FromFilePath("path/to/file.csv")` for local files.
+- **`rowMapper`**: The row mapper used to construct `T` from a `CsvRow`. This is required and avoids reflection.
 - **`resolver`**: *(Optional)* The `IStorageResolver` to resolve storage providers. If omitted, a default resolver with file system support is used automatically.
 - **`configuration`**: *(Optional)* A `CsvConfiguration` object to customize parsing (e.g., delimiter, culture, quoting).
 - **`encoding`**: *(Optional)* Text encoding. Defaults to UTF-8.
@@ -137,8 +149,14 @@ public sealed class CsvReaderPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        // Resolver is optional - default file system resolver is used automatically
-        var source = builder.AddSource(new CsvSourceNode<User>(StorageUri.FromFilePath("users.csv")), "csv_source");
+        // Create the CSV source node - resolver is optional; defaults to file system provider for local files
+        var sourceNode = new CsvSourceNode<User>(
+            StorageUri.FromFilePath("users.csv"),
+            row => new User(
+                row.Get<int>("Id") ?? 0,
+                row.Get<string>("Name") ?? string.Empty,
+                row.Get<string>("Email") ?? string.Empty));
+        var source = builder.AddSource(sourceNode, "csv_source");
         var sink = builder.AddSink<ConsoleSinkNode, User>("console_sink");
 
         builder.Connect(source, sink);
@@ -193,7 +211,7 @@ CSV reading completed
 
 The `CsvSinkNode<T>` writes items from the pipeline to a CSV file.
 
-### Configuration
+### Sink Configuration
 
 The constructor for `CsvSinkNode<T>` takes the file path and optional configuration for writing the CSV.
 
@@ -228,9 +246,10 @@ public sealed class CsvWriterPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        // Resolver is optional - default file system resolver is used automatically
         var source = builder.AddSource<InMemorySourceNode<ProcessedUser>, ProcessedUser>("source");
-        var sink = builder.AddSink(new CsvSinkNode<ProcessedUser>(StorageUri.FromFilePath("output.csv")), "csv_sink");
+        // Create the CSV sink node - resolver is optional; defaults to file system provider for local files
+        var sinkNode = new CsvSinkNode<ProcessedUser>(StorageUri.FromFilePath("output.csv"));
+        var sink = builder.AddSink(sinkNode, "csv_sink");
 
         builder.Connect(source, sink);
     }
@@ -309,7 +328,13 @@ var largeFileConfig = new CsvConfiguration()
 };
 
 // Resolver is optional - omit it to use the default file system resolver
-var source = new CsvSourceNode<User>(StorageUri.FromFilePath("large_dataset.csv"), configuration: largeFileConfig);
+var source = new CsvSourceNode<User>(
+    StorageUri.FromFilePath("large_dataset.csv"),
+    row => new User(
+        row.Get<int>("Id") ?? 0,
+        row.Get<string>("Name") ?? string.Empty,
+        row.Get<string>("Email") ?? string.Empty),
+    configuration: largeFileConfig);
 ```
 
 ### Example: Using a custom delimiter and no header
@@ -325,23 +350,17 @@ var config = new CsvConfiguration(CultureInfo.InvariantCulture)
     HasHeaderRecord = false,
 };
 
-// The node will expect properties to be mapped by index
-// This requires using CsvHelper's class mapping feature
-public sealed class UserMap : ClassMap<User>
-{
-    public UserMap()
-    {
-        Map(m => m.Id).Index(0);
-        Map(m => m.Name).Index(1);
-        Map(m => m.Email).Index(2);
-    }
-}
-
 // Resolver is optional - omit it to use the default file system resolver
-var source = new CsvSourceNode<User>(StorageUri.FromFilePath("users.tsv"), configuration: config);
+var source = new CsvSourceNode<User>(
+    StorageUri.FromFilePath("users.tsv"),
+    row => new User(
+        row.GetByIndex<int>(0) ?? 0,
+        row.GetByIndex<string>(1) ?? string.Empty,
+        row.GetByIndex<string>(2) ?? string.Empty),
+    configuration: config);
 ```
 
-In this advanced scenario, we configure the source to read a tab-separated file (`.tsv`) that does not have a header. Because there's no header, we must provide a `ClassMap` to tell CsvHelper how to map columns by their index to the properties of our `User` record. You can register the class map through the `CsvConfiguration` object.
+In this advanced scenario, we configure the source to read a tab-separated file (`.tsv`) that does not have a header. Because there's no header, map by index using `row.GetByIndex<T>(index)`.
 
 ### Example: Transforming and Writing to CSV
 
@@ -372,9 +391,15 @@ public sealed class CsvTransformPipeline : IPipelineDefinition
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
         // Resolver is optional - default file system resolver is used automatically
-        var source = builder.AddSource(new CsvSourceNode<User>(StorageUri.FromFilePath("users.csv")), "csv_source");
+        var source = builder.AddSource(new CsvSourceNode<User>(
+            StorageUri.FromFilePath("users.csv"),
+            row => new User(
+                row.Get<int>("Id") ?? 0,
+                row.Get<string>("Name") ?? string.Empty,
+                row.Get<string>("Email") ?? string.Empty)), "csv_source");
         var transform = builder.AddTransform<Summarizer, User, UserSummary>("summarizer");
-        var sink = builder.AddSink(new CsvSinkNode<UserSummary>(StorageUri.FromFilePath("summaries.csv")), "csv_sink");
+        var sinkNode = new CsvSinkNode<UserSummary>(StorageUri.FromFilePath("summaries.csv"));
+        var sink = builder.AddSink(sinkNode, "csv_sink");
 
         builder.Connect(source, transform);
         builder.Connect(transform, sink);

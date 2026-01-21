@@ -32,7 +32,7 @@ public sealed class CsvIntegrationTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read: CsvSourceNode<int>
-            var src = new CsvSourceNode<int>(uri, resolver, cfg);
+            var src = new CsvSourceNode<int>(uri, MapIntRow, resolver, cfg);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<int>();
@@ -50,5 +50,10 @@ public sealed class CsvIntegrationTests
             if (File.Exists(tempFile))
                 File.Delete(tempFile);
         }
+    }
+
+    private static int MapIntRow(CsvRow row)
+    {
+        return row.GetByIndex(0, 0);
     }
 }

@@ -30,6 +30,7 @@ dotnet add package NPipeline.Connectors.Csv
 - **Type-Safe Operations**: Compile-time safety with generic type parameters
 - **Storage Abstraction**: Works with pluggable storage providers for flexible file access
 - **Streaming Processing**: Memory-efficient streaming for large CSV files
+- **Row-Level Error Handling**: Opt-in handler to decide whether to skip or fail on mapping errors
 
 ## Usage
 
@@ -54,6 +55,13 @@ var resolver = StorageProviderFactory.CreateResolver();
 // Create a CSV source node
 var csvSource = new CsvSourceNode<Customer>(
     StorageUri.FromFilePath("customers.csv"),
+    row => new Customer
+    {
+        Id = row.Get<int>("Id") ?? 0,
+        FirstName = row.Get<string>("FirstName") ?? string.Empty,
+        LastName = row.Get<string>("LastName") ?? string.Empty,
+        Email = row.Get<string>("Email") ?? string.Empty,
+    },
     resolver
 );
 
@@ -93,6 +101,14 @@ var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
     TrimOptions = TrimOptions.Trim
 };
 
+// Optional: decide how to handle mapping errors (return true to skip the row)
+csvConfig.RowErrorHandler = (ex, row) =>
+{
+    // log and continue
+    Console.WriteLine($"Row error: {ex.Message}");
+    return true;
+};
+
 // Custom encoding
 var encoding = Encoding.UTF8;
 
@@ -102,6 +118,13 @@ var resolver = StorageProviderFactory.CreateResolver();
 // Create source with custom configuration
 var csvSource = new CsvSourceNode<Customer>(
     StorageUri.FromFilePath("data.csv"),
+    row => new Customer
+    {
+        Id = row.Get<int>("Id") ?? 0,
+        FirstName = row.Get<string>("FirstName") ?? string.Empty,
+        LastName = row.Get<string>("LastName") ?? string.Empty,
+        Email = row.Get<string>("Email") ?? string.Empty,
+    },
     resolver,
     csvConfig,
     encoding
@@ -120,7 +143,17 @@ public class CsvProcessingPipeline : IPipelineDefinition
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
         // Add CSV source
-        var source = builder.AddSource<CsvSourceNode<Customer>, Customer>("csv-source");
+        var source = builder.AddSource(
+            new CsvSourceNode<Customer>(
+                StorageUri.FromFilePath("customers.csv"),
+                row => new Customer
+                {
+                    Id = row.Get<int>("Id") ?? 0,
+                    FirstName = row.Get<string>("FirstName") ?? string.Empty,
+                    LastName = row.Get<string>("LastName") ?? string.Empty,
+                    Email = row.Get<string>("Email") ?? string.Empty,
+                }),
+            "csv-source");
 
         // Add a transform (example)
         var transform = builder.AddTransform<CustomerTransform, Customer, Customer>("transform");

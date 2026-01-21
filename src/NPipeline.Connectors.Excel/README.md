@@ -33,6 +33,7 @@ dotnet add package NPipeline.Connectors.Excel
 - **Type-Safe Operations**: Compile-time safety with generic type parameters
 - **Storage Abstraction**: Works with pluggable storage providers for flexible file access
 - **Streaming Processing**: Memory-efficient streaming for large Excel files (reading)
+- **Streaming Writes**: Uses OpenXmlWriter to stream rows directly to the provider without double-buffering
 - **Automatic Type Conversion**: Built-in type mapping for common .NET types
 
 ## Usage

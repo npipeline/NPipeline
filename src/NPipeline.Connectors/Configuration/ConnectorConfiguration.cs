@@ -8,12 +8,25 @@ public sealed record ConnectorConfiguration
 {
     /// <summary>
     ///     Map of provider names to their configs. The key is arbitrary and only used for identification.
+    ///     Mutable for DX: callers can add via object initializer or <see cref="AddProvider" />.
     /// </summary>
-    public IReadOnlyDictionary<string, StorageProviderConfig> Providers { get; init; }
-        = new Dictionary<string, StorageProviderConfig>(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, StorageProviderConfig> Providers { get; } =
+        new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     ///     Default scheme to assume when parsing non-URI paths, typically "file".
     /// </summary>
     public string DefaultScheme { get; init; } = "file";
+
+    /// <summary>
+    ///     Convenience helper to add a provider entry fluently.
+    /// </summary>
+    public ConnectorConfiguration AddProvider(string name, StorageProviderConfig config)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+        ArgumentNullException.ThrowIfNull(config);
+
+        Providers[name] = config;
+        return this;
+    }
 }

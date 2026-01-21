@@ -4,7 +4,7 @@ description: Read from and write to Excel files (XLS and XLSX) with NPipeline us
 sidebar_position: 2
 ---
 
-# Excel Connector
+## Excel Connector
 
 The `NPipeline.Connectors.Excel` package provides specialized source and sink nodes for working with Excel files. This allows you to easily integrate Excel data into your pipelines as an input source or an output destination.
 
@@ -89,7 +89,7 @@ var source = new ExcelSourceNode<Product>(
         row.Get<string>("Name") ?? string.Empty,
         row.Get<decimal>("Price") ?? 0m,
         row.Get<string>("Category") ?? string.Empty),
-    resolver // Explicit resolver needed for cloud storage
+    resolver: resolver // Explicit resolver needed for cloud storage
 );
 ```
 
@@ -97,7 +97,7 @@ var source = new ExcelSourceNode<Product>(
 
 The `ExcelSourceNode<T>` reads data from an Excel file and emits each row as an item of type `T`.
 
-### Configuration
+### Source Configuration
 
 The constructor for `ExcelSourceNode<T>` takes the file path and optional configuration for parsing the Excel file.
 
@@ -121,7 +121,7 @@ public ExcelSourceNode(
 Let's assume you have a `products.xlsx` file with the following structure:
 
 | Id | Name | Price | Category |
-|----|------|-------|----------|
+| --- | --- | --- | --- |
 | 1 | Widget | 19.99 | Electronics |
 | 2 | Gadget | 29.99 | Electronics |
 | 3 | Tool | 9.99 | Hardware |
@@ -151,14 +151,15 @@ public sealed class ExcelReaderPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        // Resolver is optional - default file system resolver is used automatically
-        var source = builder.AddSource(new ExcelSourceNode<Product>(
+        // Create the Excel source node - resolver is optional; defaults to file system provider for local files
+        var sourceNode = new ExcelSourceNode<Product>(
             StorageUri.FromFilePath("products.xlsx"),
             row => new Product(
                 row.Get<int>("Id") ?? 0,
                 row.Get<string>("Name") ?? string.Empty,
                 row.Get<decimal>("Price") ?? 0m,
-                row.Get<string>("Category") ?? string.Empty)), "excel_source");
+                row.Get<string>("Category") ?? string.Empty));
+        var source = builder.AddSource(sourceNode, "excel_source");
         var sink = builder.AddSink<ConsoleSinkNode, Product>("console_sink");
 
         builder.Connect(source, sink);
@@ -206,7 +207,7 @@ Excel reading completed
 
 The `ExcelSinkNode<T>` writes items from the pipeline to an Excel file in XLSX format.
 
-### Configuration
+### Sink Configuration
 
 The constructor for `ExcelSinkNode<T>` takes the file path and optional configuration for writing the Excel file.
 
@@ -241,9 +242,10 @@ public sealed class ExcelWriterPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        // Resolver is optional - default file system resolver is used automatically
         var source = builder.AddSource<InMemorySourceNode<ProcessedProduct>, ProcessedProduct>("source");
-        var sink = builder.AddSink(new ExcelSinkNode<ProcessedProduct>(StorageUri.FromFilePath("output.xlsx")), "excel_sink");
+        // Create the Excel sink node - resolver is optional; defaults to file system provider for local files
+        var sinkNode = new ExcelSinkNode<ProcessedProduct>(StorageUri.FromFilePath("output.xlsx"));
+        var sink = builder.AddSink(sinkNode, "excel_sink");
 
         builder.Connect(source, sink);
     }
@@ -275,7 +277,7 @@ public static class Program
 **Expected `output.xlsx` Content:**
 
 | Id | FullName | AdjustedPrice | Status |
-|----|----------|---------------|--------|
+| --- | --- | --- | --- |
 | 1 | Widget Pro | 21.99 | In Stock |
 | 2 | Gadget Ultra | 32.99 | Low Stock |
 | 3 | Tool Basic | 10.99 | Out of Stock |
@@ -289,7 +291,7 @@ The `ExcelConfiguration` class provides comprehensive options for configuring Ex
 #### Properties
 
 | Property | Type | Default | Description |
-|----------|------|---------|-------------|
+| --- | --- | --- | --- |
 | `BufferSize` | `int` | `4096` | Buffer size for stream operations in bytes. Larger buffers improve I/O performance but use more memory. |
 | `SheetName` | `string?` | `null` | Name of the sheet to read from or write to. When `null`, uses the first sheet for reading or creates a default sheet ("Sheet1") for writing. |
 | `FirstRowIsHeader` | `bool` | `true` | Indicates whether the first row contains column headers. When `true`, the first row is used for property mapping. |
@@ -469,7 +471,8 @@ public sealed class ExcelTransformPipeline : IPipelineDefinition
                 row.Get<decimal>("Price") ?? 0m,
                 row.Get<string>("Category") ?? string.Empty)), "excel_source");
         var transform = builder.AddTransform<ProductSummarizer, Product, ProductSummary>("summarizer");
-        var sink = builder.AddSink(new ExcelSinkNode<ProductSummary>(StorageUri.FromFilePath("summaries.xlsx")), "excel_sink");
+        var sinkNode = new ExcelSinkNode<ProductSummary>(StorageUri.FromFilePath("summaries.xlsx"));
+        var sink = builder.AddSink(sinkNode, "excel_sink");
 
         builder.Connect(source, transform);
         builder.Connect(transform, sink);
@@ -489,7 +492,7 @@ public class Program
 After running, this will create a `summaries.xlsx` file with the following content:
 
 | Name | Category | PriceRange |
-|------|----------|------------|
+| --- | --- | --- |
 | Widget | Electronics | Medium |
 | Gadget | Electronics | High |
 | Tool | Hardware | Low |
@@ -526,14 +529,14 @@ The Excel connector supports automatic type conversion for the following .NET ty
 ### Reading
 
 | Format | Extension | Library | Notes |
-|--------|-----------|---------|-------|
+| --- | --- | --- | --- |
 | Legacy Excel | `.xls` | ExcelDataReader | Binary format, supports encoding configuration |
 | Modern Excel | `.xlsx` | ExcelDataReader | Open XML format, UTF-8 encoding |
 
 ### Writing
 
 | Format | Extension | Library | Notes |
-|--------|-----------|---------|-------|
+| --- | --- | --- | --- |
 | Modern Excel | `.xlsx` | DocumentFormat.OpenXml | Open XML format only |
 | Legacy Excel | `.xls` | Not supported | Use XLSX format instead |
 
@@ -585,7 +588,7 @@ The `ExcelSinkNode<T>` collects all items in memory before writing due to XLSX f
 - **Complex type conversion**: Some complex type conversions may fail silently. Ensure your data types are compatible
 - **Nullable handling**: Null values are handled gracefully but may result in empty cells in the output
 
-### Error Handling
+### Error Handling Guidelines
 
 - **Conversion errors**: Type conversion errors during reading are silently skipped, and the property is not populated
 - **Missing sheets**: If a specified sheet is not found, an `InvalidOperationException` is thrown
@@ -599,7 +602,7 @@ The `ExcelSinkNode<T>` collects all items in memory before writing due to XLSX f
 2. **Convert legacy XLS to XLSX**: If you need to write legacy XLS files, convert them to XLSX first
 3. **Specify file extensions**: Always include the file extension (`.xlsx` or `.xls`) in your `StorageUri`
 
-### Configuration
+### Configuration Guidelines
 
 1. **Specify sheet names explicitly**: This improves code clarity and prevents errors when working with multi-sheet workbooks
 2. **Enable headers for structured data**: Set `FirstRowIsHeader = true` for better property mapping
@@ -671,9 +674,7 @@ public sealed class RoundTripPipeline : IPipelineDefinition
     {
         // Resolver is optional - default file system resolver is used automatically
         // Read from input file
-
         var source = builder.AddSource(
-            "excel_source",
             new ExcelSourceNode<Product>(
                 StorageUri.FromFilePath("input.xlsx"),
                 row => new Product(
@@ -682,7 +683,8 @@ public sealed class RoundTripPipeline : IPipelineDefinition
                     row.Get<decimal>("Price") ?? 0m,
                     row.Get<string>("Category") ?? string.Empty),
                 configuration: new ExcelConfiguration { SheetName = "RawData", FirstRowIsHeader = true }
-            )
+            ),
+            "excel_source"
         );
 
         // Process data
@@ -690,11 +692,11 @@ public sealed class RoundTripPipeline : IPipelineDefinition
 
         // Write to output file
         var sink = builder.AddSink(
-            "excel_sink",
             new ExcelSinkNode<Product>(
                 StorageUri.FromFilePath("output.xlsx"),
                 configuration: new ExcelConfiguration { SheetName = "ProcessedData", FirstRowIsHeader = true }
-            )
+            ),
+            "excel_sink"
         );
 
         builder.Connect(source, transform);

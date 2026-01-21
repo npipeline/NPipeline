@@ -65,7 +65,7 @@ public sealed class ExcelSinkNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read back to verify headers
-            var src = new ExcelSourceNode<TestRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<TestRecord>(uri, MapTestRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<TestRecord>();
@@ -149,7 +149,7 @@ public sealed class ExcelSinkNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read back to verify sheet name
-            var src = new ExcelSourceNode<int>(uri, resolver, config);
+            var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<int>();
@@ -191,7 +191,7 @@ public sealed class ExcelSinkNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read back to verify
-            var src = new ExcelSourceNode<int>(uri, resolver, config);
+            var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<int>();
@@ -258,7 +258,7 @@ public sealed class ExcelSinkNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read back to verify
-            var src = new ExcelSourceNode<ComplexRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<ComplexRecord>(uri, MapComplexRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<ComplexRecord>();
@@ -323,7 +323,7 @@ public sealed class ExcelSinkNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read back to verify
-            var src = new ExcelSourceNode<NullableRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<NullableRecord>(uri, MapNullableRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<NullableRecord>();
@@ -382,7 +382,7 @@ public sealed class ExcelSinkNodeTests
             // Cancel after a short delay
             cts.CancelAfter(100);
 
-            await Assert.ThrowsAsync<OperationCanceledException>(async () => { await sink.ExecuteAsync(input, PipelineContext.Default, cts.Token); });
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => { await sink.ExecuteAsync(input, PipelineContext.Default, cts.Token); });
         }
         finally
         {
@@ -413,7 +413,7 @@ public sealed class ExcelSinkNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read back to verify
-            var src = new ExcelSourceNode<string>(uri, resolver, config);
+            var src = new ExcelSourceNode<string>(uri, MapStringRow, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<string>();
@@ -460,7 +460,7 @@ public sealed class ExcelSinkNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read back to verify
-            var src = new ExcelSourceNode<DateTimeRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<DateTimeRecord>(uri, MapDateTimeRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<DateTimeRecord>();
@@ -510,7 +510,7 @@ public sealed class ExcelSinkNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read back to verify
-            var src = new ExcelSourceNode<BoolRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<BoolRecord>(uri, MapBoolRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<BoolRecord>();
@@ -560,7 +560,7 @@ public sealed class ExcelSinkNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read back to verify
-            var src = new ExcelSourceNode<DecimalRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<DecimalRecord>(uri, MapDecimalRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<DecimalRecord>();
@@ -604,7 +604,7 @@ public sealed class ExcelSinkNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read back to verify
-            var src = new ExcelSourceNode<int>(uri, resolver, config);
+            var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<int>();
@@ -651,7 +651,7 @@ public sealed class ExcelSinkNodeTests
             await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read back to verify
-            var src = new ExcelSourceNode<DoubleRecord>(uri, resolver, config);
+            var src = new ExcelSourceNode<DoubleRecord>(uri, MapDoubleRecordFromHeaders, resolver, config);
             var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<DoubleRecord>();
@@ -702,6 +702,87 @@ public sealed class ExcelSinkNodeTests
             if (File.Exists(tempFile))
                 File.Delete(tempFile);
         }
+    }
+
+    private static int MapIntRow(ExcelRow row)
+    {
+        return row.GetByIndex(0, 0);
+    }
+
+    private static string MapStringRow(ExcelRow row)
+    {
+        return row.GetByIndex(0, string.Empty) ?? string.Empty;
+    }
+
+    private static TestRecord MapTestRecordFromHeaders(ExcelRow row)
+    {
+        return new TestRecord
+        {
+            Id = row.Get("Id", 0),
+            Name = row.Get("Name", string.Empty) ?? string.Empty,
+            Age = row.Get("Age", 0),
+        };
+    }
+
+    private static ComplexRecord MapComplexRecordFromHeaders(ExcelRow row)
+    {
+        return new ComplexRecord
+        {
+            Id = row.Get("Id", 0),
+            Name = row.Get("Name", string.Empty) ?? string.Empty,
+            Age = row.Get("Age", 0),
+            Salary = row.Get("Salary", 0m),
+            IsActive = row.Get("IsActive", false),
+            BirthDate = row.Get("BirthDate", default(DateTime)),
+            Score = row.Get("Score", 0d),
+            NullableValue = row.Get<int?>("NullableValue"),
+        };
+    }
+
+    private static NullableRecord MapNullableRecordFromHeaders(ExcelRow row)
+    {
+        return new NullableRecord
+        {
+            Id = row.Get("Id", 0),
+            NullableInt = row.Get<int?>("NullableInt"),
+            NullableString = row.Get<string>("NullableString"),
+        };
+    }
+
+    private static DateTimeRecord MapDateTimeRecordFromHeaders(ExcelRow row)
+    {
+        return new DateTimeRecord
+        {
+            Id = row.Get("Id", 0),
+            Date = row.Get("Date", default(DateTime)),
+        };
+    }
+
+    private static BoolRecord MapBoolRecordFromHeaders(ExcelRow row)
+    {
+        return new BoolRecord
+        {
+            Id = row.Get("Id", 0),
+            IsActive = row.Get("IsActive", false),
+        };
+    }
+
+    private static DecimalRecord MapDecimalRecordFromHeaders(ExcelRow row)
+    {
+        return new DecimalRecord
+        {
+            Id = row.Get("Id", 0),
+            Amount = row.Get("Amount", 0m),
+        };
+    }
+
+    private static DoubleRecord MapDoubleRecordFromHeaders(ExcelRow row)
+    {
+        return new DoubleRecord
+        {
+            Id = row.Get("Id", 0),
+            Value = row.Get("Value", 0d),
+        };
     }
 
     // Test record classes

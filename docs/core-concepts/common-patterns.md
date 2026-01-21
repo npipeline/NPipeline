@@ -4,7 +4,7 @@ description: Practical patterns and recipes for building effective NPipeline pip
 sidebar_position: 12
 ---
 
-# Common Patterns
+## Common Patterns
 
 This guide provides practical code recipes and examples for solving real-world scenarios with NPipeline. Each pattern demonstrates a complete, working solution you can adapt to your needs.
 
@@ -12,7 +12,7 @@ This guide provides practical code recipes and examples for solving real-world s
 
 Extract, Transform, Load pipelines are a fundamental use case for NPipeline. This pattern demonstrates reading data from a source, transforming it, and writing to a destination.
 
-### Scenario
+### Scenario (ETL Pipeline)
 
 Extract customer data from a CSV file, enrich it with regional information, and load it into a database.
 
@@ -21,6 +21,7 @@ using NPipeline;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Execution;
+using NPipeline.Connectors;
 using NPipeline.Connectors.Csv;
 using NPipeline.Nodes;
 using NPipeline.Observability.Tracing;
@@ -29,12 +30,6 @@ using NPipeline.Pipeline;
 // Define your data models
 public sealed record RawCustomer(int Id, string Name, string Email, string City);
 public sealed record EnrichedCustomer(int Id, string Name, string Email, string City, string Region);
-
-// Define nodes
-public sealed class CustomerCsvSource : CsvSourceNode<RawCustomer>
-{
-    public CustomerCsvSource() : base("customers.csv") { }
-}
 
 public sealed class RegionEnricher : TransformNode<RawCustomer, EnrichedCustomer>
 {
@@ -81,7 +76,13 @@ public sealed class EtlPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        var source = builder.AddSource<CustomerCsvSource, RawCustomer>();
+        var source = builder.AddSource(new CsvSourceNode<RawCustomer>(
+            StorageUri.FromFilePath("customers.csv"),
+            row => new RawCustomer(
+                row.Get<int>("Id") ?? 0,
+                row.Get<string>("Name") ?? string.Empty,
+                row.Get<string>("Email") ?? string.Empty,
+                row.Get<string>("City") ?? string.Empty)));
         var transform = builder.AddTransform<RegionEnricher, RawCustomer, EnrichedCustomer>();
         var sink = builder.AddSink<DatabaseSink, EnrichedCustomer>();
 
@@ -105,7 +106,7 @@ public static class Program
 
 This pattern demonstrates validating data and routing invalid items to a separate error stream.
 
-### Scenario
+### Scenario (Validation)
 
 Validate product prices and separate invalid items for review.
 
@@ -155,7 +156,7 @@ public sealed class ValidationPipeline : IPipelineDefinition
 
 Process data through multiple independent transformations in parallel.
 
-### Scenario
+### Scenario (Branching)
 
 Calculate different metrics (sum, average, count) on the same data stream.
 
@@ -200,7 +201,7 @@ public sealed class MetricsAggregator : SinkNode<SalesData>
 
 Process data in batches rather than individual items.
 
-### Scenario
+### Scenario (Batching)
 
 Save records in batches of 100 to improve database performance.
 
@@ -248,7 +249,7 @@ public sealed class BatchDatabaseSink : SinkNode<Customer>
 
 Route items to different sinks based on conditions.
 
-### Scenario
+### Scenario (Conditional Routing)
 
 Send high-value orders for expedited processing and normal orders to standard processing.
 
@@ -280,7 +281,7 @@ public sealed class OrderRouter : TransformNode<Order, Order>
 
 Merge data from multiple sources into a single stream.
 
-### Scenario
+### Scenario (Data Merging)
 
 Combine customer data from multiple CSV files.
 

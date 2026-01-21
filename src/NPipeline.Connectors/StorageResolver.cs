@@ -73,9 +73,6 @@ public sealed class StorageResolver : IStorageResolver
             if (_providers.Contains(provider))
                 return;
 
-            if (_providers.Any(p => p.GetType() == provider.GetType()))
-                return;
-
             _providers.Add(provider);
         }
     }

@@ -42,18 +42,19 @@ public class ExcelConnectorPipeline : IPipelineDefinition
             StorageUri.FromFilePath(sourcePath),
             row => new Customer
             {
-                Id = row.Get<int>("Id") ?? 0,
-                FirstName = row.Get<string>("FirstName") ?? string.Empty,
-                LastName = row.Get<string>("LastName") ?? string.Empty,
-                Email = row.Get<string>("Email") ?? string.Empty,
-                Age = row.Get<int>("Age") ?? 0,
-                RegistrationDate = row.Get<DateTime>("RegistrationDate") ?? default,
-                Country = row.Get<string>("Country") ?? string.Empty,
-                AccountBalance = row.Get<decimal>("AccountBalance") ?? 0m,
-                IsPremiumMember = row.Get<bool>("IsPremiumMember") ?? false,
-                DiscountPercentage = row.Get<double>("DiscountPercentage") ?? 0d,
-                LoyaltyPoints = row.Get<long>("LoyaltyPoints") ?? 0L,
+                Id = row.Get("Id", 0),
+                FirstName = row.Get("FirstName", string.Empty) ?? string.Empty,
+                LastName = row.Get("LastName", string.Empty) ?? string.Empty,
+                Email = row.Get("Email", string.Empty) ?? string.Empty,
+                Age = row.Get("Age", 0),
+                RegistrationDate = row.Get("RegistrationDate", default(DateTime)),
+                Country = row.Get("Country", string.Empty) ?? string.Empty,
+                AccountBalance = row.Get("AccountBalance", 0m),
+                IsPremiumMember = row.Get("IsPremiumMember", false),
+                DiscountPercentage = row.Get("DiscountPercentage", 0d),
+                LoyaltyPoints = row.Get("LoyaltyPoints", 0L),
             });
+
         var source = builder.AddSource(sourceNode, "excel-source");
 
         // Add validation transform to filter invalid records

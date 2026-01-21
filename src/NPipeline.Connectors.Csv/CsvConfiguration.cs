@@ -76,6 +76,12 @@ public class CsvConfiguration
     public CsvHelper.Configuration.CsvConfiguration HelperConfiguration { get; }
 
     /// <summary>
+    ///     Optional handler invoked when a row mapping throws in <see cref="CsvSourceNode{T}" />.
+    ///     Return true to skip the row and continue; return false or rethrow to fail the pipeline.
+    /// </summary>
+    public Func<Exception, CsvRow, bool>? RowErrorHandler { get; set; }
+
+    /// <summary>
     ///     Implicit conversion to CsvHelper's CsvConfiguration for compatibility.
     /// </summary>
     /// <param name="config">The NPipeline CSV configuration.</param>

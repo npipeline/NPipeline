@@ -81,6 +81,17 @@ public sealed class CsvSinkNode<T> : SinkNode<T>
         await using var writer = new StreamWriter(stream, _encoding, _csvConfiguration.BufferSize, false);
         await using var csv = new CsvWriter(writer, _csvConfiguration.HelperConfiguration);
 
+        var type = typeof(T);
+
+        var shouldWriteHeader = _csvConfiguration.HelperConfiguration.HasHeaderRecord
+                                && ShouldWriteHeader(type);
+
+        if (shouldWriteHeader)
+        {
+            csv.WriteHeader(type);
+            await csv.NextRecordAsync();
+        }
+
         await foreach (var item in input.WithCancellation(cancellationToken))
         {
             if (item is null)
@@ -91,5 +102,14 @@ public sealed class CsvSinkNode<T> : SinkNode<T>
         }
 
         await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static bool ShouldWriteHeader(Type type)
+    {
+        // Avoid writing headers for primitives/strings where the header would be meaningless (e.g., "Int32").
+        if (type.IsPrimitive || type.IsEnum || type == typeof(string))
+            return false;
+
+        return true;
     }
 }

@@ -47,8 +47,8 @@ public sealed class ExcelSourceNode<T> : SourceNode<T>
     private readonly ExcelConfiguration _configuration;
     private readonly IStorageProvider? _provider;
     private readonly IStorageResolver? _resolver;
-    private readonly StorageUri _uri;
     private readonly Func<ExcelRow, T> _rowMapper;
+    private readonly StorageUri _uri;
 
     private ExcelSourceNode(
         StorageUri uri,
@@ -207,12 +207,21 @@ public sealed class ExcelSourceNode<T> : SourceNode<T>
     }
 }
 
+/// <summary>
+///     Represents the current Excel row and provides typed accessors.
+/// </summary>
 public readonly struct ExcelRow
 {
     private readonly IDataRecord _record;
     private readonly IReadOnlyDictionary<string, int> _headers;
     private readonly bool _hasHeaders;
 
+    /// <summary>
+    ///     Initialize a new instance of <see cref="ExcelRow" />.
+    /// </summary>
+    /// <param name="record">The data record representing the current row.</param>
+    /// <param name="headers">Header lookup map.</param>
+    /// <param name="hasHeaders">Whether header records are present.</param>
     public ExcelRow(IDataRecord record, IReadOnlyDictionary<string, int> headers, bool hasHeaders)
     {
         _record = record;
@@ -220,6 +229,14 @@ public readonly struct ExcelRow
         _hasHeaders = hasHeaders;
     }
 
+    /// <summary>
+    ///     Try to read a field by header name and convert it to <typeparamref name="T" />.
+    /// </summary>
+    /// <param name="name">Header name.</param>
+    /// <param name="value">Converted value or <paramref name="defaultValue" />.</param>
+    /// <param name="defaultValue">Value used when the field is missing or conversion fails.</param>
+    /// <typeparam name="T">Target type.</typeparam>
+    /// <returns><c>true</c> when a value is present and converted; otherwise <c>false</c>.</returns>
     public bool TryGet<T>(string name, out T? value, T? defaultValue = default)
     {
         value = defaultValue;
@@ -246,11 +263,27 @@ public readonly struct ExcelRow
         return false;
     }
 
+    /// <summary>
+    ///     Read a field by header name and return a converted value or <paramref name="defaultValue" />.
+    /// </summary>
+    /// <param name="name">Header name.</param>
+    /// <param name="defaultValue">Value used when the field is missing or conversion fails.</param>
+    /// <typeparam name="T">Target type.</typeparam>
+    /// <returns>Converted value or <paramref name="defaultValue" />.</returns>
     public T? Get<T>(string name, T? defaultValue = default)
     {
-        return TryGet(name, out T? value, defaultValue) ? value : defaultValue;
+        return TryGet(name, out var value, defaultValue)
+            ? value
+            : defaultValue;
     }
 
+    /// <summary>
+    ///     Read a field by index and return a converted value or <paramref name="defaultValue" />.
+    /// </summary>
+    /// <param name="index">Field index.</param>
+    /// <param name="defaultValue">Value used when the field is missing or conversion fails.</param>
+    /// <typeparam name="T">Target type.</typeparam>
+    /// <returns>Converted value or <paramref name="defaultValue" />.</returns>
     public T? GetByIndex<T>(int index, T? defaultValue = default)
     {
         if (index < 0 || index >= _record.FieldCount)
@@ -262,7 +295,10 @@ public readonly struct ExcelRow
             return defaultValue;
 
         var converted = ExcelValueConverter.Convert(raw, typeof(T));
-        return converted is T typed ? typed : defaultValue;
+
+        return converted is T typed
+            ? typed
+            : defaultValue;
     }
 }
 
@@ -307,7 +343,11 @@ internal static class ExcelValueConverter
                     return b;
 
                 if (value is string s)
-                    return bool.TryParse(s, out var boolResult) ? boolResult : false;
+                {
+                    return bool.TryParse(s, out var boolResult)
+                        ? boolResult
+                        : false;
+                }
 
                 return System.Convert.ToBoolean(value);
             }
@@ -328,7 +368,9 @@ internal static class ExcelValueConverter
                 if (value is Guid g)
                     return g;
 
-                return Guid.TryParse(value.ToString(), out var guidResult) ? guidResult : Guid.Empty;
+                return Guid.TryParse(value.ToString(), out var guidResult)
+                    ? guidResult
+                    : Guid.Empty;
             }
 
             return System.Convert.ChangeType(value, underlyingType, CultureInfo.InvariantCulture);
