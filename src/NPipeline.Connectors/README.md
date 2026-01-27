@@ -134,6 +134,258 @@ if (metadata != null)
 }
 ```
 
+### Database Connector Abstractions
+
+NPipeline.Connectors also provides database-agnostic abstractions for implementing database connectors (PostgreSQL, SQL Server, MySQL, Oracle, etc.). These abstractions enable:
+
+- **Unified Database API**: Common interfaces for database operations across different database systems
+- **Extensible Base Classes**: Ready-to-use base classes for source and sink nodes
+- **Configuration Management**: Standardized configuration with validation
+- **Error Handling**: Comprehensive exception hierarchy for database errors
+- **Security**: Built-in SQL injection prevention through identifier validation
+- **Retry Logic**: Configurable retry policies for transient errors
+
+#### Core Interfaces
+
+**IDatabaseConnection** - Database connection abstraction:
+
+```csharp
+public interface IDatabaseConnection : IAsyncDisposable
+{
+    bool IsOpen { get; }
+    Task OpenAsync(CancellationToken cancellationToken = default);
+    Task CloseAsync(CancellationToken cancellationToken = default);
+    Task<IDatabaseCommand> CreateCommandAsync(CancellationToken cancellationToken = default);
+}
+```
+
+**IDatabaseCommand** - Database command abstraction:
+
+```csharp
+public interface IDatabaseCommand : IAsyncDisposable
+{
+    string CommandText { get; set; }
+    int CommandTimeout { get; set; }
+    System.Data.CommandType CommandType { get; set; }
+    void AddParameter(string name, object? value);
+    Task<IDatabaseReader> ExecuteReaderAsync(CancellationToken cancellationToken = default);
+    Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default);
+}
+```
+
+**IDatabaseReader** - Database reader abstraction:
+
+```csharp
+public interface IDatabaseReader : IAsyncDisposable
+{
+    bool HasRows { get; }
+    int FieldCount { get; }
+    string GetName(int ordinal);
+    Type GetFieldType(int ordinal);
+    Task<bool> ReadAsync(CancellationToken cancellationToken = default);
+    Task<bool> NextResultAsync(CancellationToken cancellationToken = default);
+    T? GetFieldValue<T>(int ordinal);
+    bool IsDBNull(int ordinal);
+}
+```
+
+**IDatabaseWriter<T>** - Database writer abstraction:
+
+```csharp
+public interface IDatabaseWriter<T>
+{
+    Task WriteAsync(T item, CancellationToken cancellationToken = default);
+    Task WriteBatchAsync(IEnumerable<T> items, CancellationToken cancellationToken = default);
+    Task FlushAsync(CancellationToken cancellationToken = default);
+}
+```
+
+**IDatabaseMapper<T>** - Database mapper abstraction:
+
+```csharp
+public interface IDatabaseMapper<T>
+{
+    T MapFromReader(IDatabaseReader reader);
+    IEnumerable<DatabaseParameter> MapToParameters(T item);
+}
+```
+
+#### Base Classes
+
+**DatabaseSourceNode<TReader, T>** - Base class for database source nodes:
+
+```csharp
+public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
+    where TReader : IDatabaseReader
+{
+    protected abstract Task<IDatabaseConnection> GetConnectionAsync(CancellationToken cancellationToken);
+    protected abstract Task<TReader> ExecuteQueryAsync(IDatabaseConnection connection, CancellationToken cancellationToken);
+    protected abstract T MapRow(TReader reader);
+    
+    protected virtual bool StreamResults => false;
+    protected virtual int FetchSize => 100;
+    protected virtual DeliverySemantic DeliverySemantic => DeliverySemantic.AtLeastOnce;
+    protected virtual CheckpointStrategy CheckpointStrategy => CheckpointStrategy.None;
+}
+```
+
+**DatabaseSinkNode<T>** - Base class for database sink nodes:
+
+```csharp
+public abstract class DatabaseSinkNode<T> : SinkNode<T>
+{
+    protected abstract Task<IDatabaseConnection> GetConnectionAsync(CancellationToken cancellationToken);
+    protected abstract Task<IDatabaseWriter<T>> CreateWriterAsync(IDatabaseConnection connection, CancellationToken cancellationToken);
+    
+    protected virtual bool UseTransaction => false;
+    protected virtual int BatchSize => 100;
+    protected virtual DeliverySemantic DeliverySemantic => DeliverySemantic.AtLeastOnce;
+    protected virtual CheckpointStrategy CheckpointStrategy => CheckpointStrategy.None;
+    protected virtual bool ContinueOnError => false;
+}
+```
+
+**DatabaseConfigurationBase** - Base configuration class:
+
+```csharp
+public abstract class DatabaseConfigurationBase
+{
+    public string ConnectionString { get; set; } = string.Empty;
+    public int CommandTimeout { get; set; } = 30;
+    public int ConnectionTimeout { get; set; } = 15;
+    public int MinPoolSize { get; set; } = 1;
+    public int MaxPoolSize { get; set; } = 100;
+    public bool ValidateIdentifiers { get; set; } = true;
+    public DeliverySemantic DeliverySemantic { get; set; } = DeliverySemantic.AtLeastOnce;
+    public CheckpointStrategy CheckpointStrategy { get; set; } = CheckpointStrategy.None;
+    
+    public virtual void Validate();
+}
+```
+
+#### Configuration Enums
+
+**DeliverySemantic** - Delivery semantics for database operations:
+
+```csharp
+public enum DeliverySemantic
+{
+    AtLeastOnce,  // Items may be delivered multiple times but never lost
+    AtMostOnce,   // Items may be lost but never delivered multiple times
+    ExactlyOnce     // Items are delivered exactly once (commercial feature)
+}
+```
+
+**CheckpointStrategy** - Checkpoint strategies for recovery:
+
+```csharp
+public enum CheckpointStrategy
+{
+    None,      // No checkpointing (free version)
+    Offset,     // Offset-based checkpointing (commercial feature)
+    KeyBased,   // Key-based checkpointing (commercial feature)
+    Cursor,     // Cursor-based checkpointing (commercial feature)
+    CDC          // Change Data Capture checkpointing (commercial feature)
+}
+```
+
+#### Utilities
+
+**DatabaseRetryPolicy** - Retry policy for transient errors:
+
+```csharp
+var retryPolicy = new DatabaseRetryPolicy
+{
+    MaxRetryAttempts = 3,
+    InitialDelay = TimeSpan.FromSeconds(1),
+    MaxDelay = TimeSpan.FromSeconds(30),
+    ShouldRetry = ex => DatabaseErrorClassifier.IsTransientError(ex)
+};
+
+var result = await retryPolicy.ExecuteAsync(async ct => 
+    await ExecuteDatabaseOperation(ct));
+```
+
+**DatabaseErrorClassifier** - Error classification:
+
+```csharp
+bool isTransient = DatabaseErrorClassifier.IsTransientError(exception);
+bool isConnectionError = DatabaseErrorClassifier.IsConnectionError(exception);
+bool isMappingError = DatabaseErrorClassifier.IsMappingError(exception);
+bool isConstraintViolation = DatabaseErrorClassifier.IsConstraintViolation(exception);
+bool isSyntaxError = DatabaseErrorClassifier.IsSyntaxError(exception);
+```
+
+**DatabaseConnectionStringBuilder** - Connection string utilities:
+
+```csharp
+// Build connection string from parameters
+var parameters = new Dictionary<string, string>
+{
+    ["Server"] = "localhost",
+    ["Database"] = "mydb",
+    ["Port"] = "5432"
+};
+var connectionString = DatabaseConnectionStringBuilder.BuildConnectionString(parameters);
+
+// Parse connection string into parameters
+var parsed = DatabaseConnectionStringBuilder.ParseConnectionString(connectionString);
+```
+
+**DatabaseIdentifierValidator** - SQL injection prevention:
+
+```csharp
+// Validate identifier
+if (DatabaseIdentifierValidator.IsValidIdentifier(tableName))
+{
+    // Safe to use in SQL
+}
+
+// Quote identifier for safe SQL usage
+var quoted = DatabaseIdentifierValidator.QuoteIdentifier(tableName, "\"");
+
+// Validate and throw if invalid
+DatabaseIdentifierValidator.ValidateIdentifier(tableName, nameof(tableName));
+```
+
+#### Exceptions
+
+**DatabaseExceptionBase** - Base exception class:
+
+```csharp
+public abstract class DatabaseExceptionBase : Exception
+{
+    public string? ErrorCode { get; }
+    public int? SqlState { get; }
+}
+```
+
+**Specific Exception Types**:
+
+- `DatabaseException` - Generic database errors
+- `DatabaseConnectionException` - Connection-related errors
+- `DatabaseMappingException` - Mapping errors with property name
+- `DatabaseOperationException` - Operation errors with error code and SQL state
+- `DatabaseParameter` - Record for database parameters
+
+#### Dependency Injection
+
+```csharp
+using Microsoft.Extensions.DependencyInjection;
+using NPipeline.Connectors.DependencyInjection;
+
+// Add database options
+var services = new ServiceCollection();
+services.AddDatabaseOptions(options =>
+{
+    options.DefaultConnectionString = "Server=localhost;Database=mydb;";
+    options.NamedConnections["ReadOnly"] = "Server=localhost;Database=mydb;ReadOnly=true;";
+});
+
+// Add database options from configuration
+services.AddDatabaseOptions<MyDatabaseOptions>("Database");
+```
+
 ## Supported Storage Schemes
 
 NPipeline.Connectors supports an extensible set of storage schemes through its provider architecture:
@@ -141,9 +393,9 @@ NPipeline.Connectors supports an extensible set of storage schemes through its p
 ### Built-in Schemes
 
 - **file** - Local file system access (Windows, Linux, macOS)
-    - Supports absolute paths: `file:///C:/data/input.csv`
-    - Supports relative paths: `file://./data/input.csv`
-    - Supports UNC paths: `file://server/share/data/input.csv`
+  - Supports absolute paths: `file:///C:/data/input.csv`
+  - Supports relative paths: `file://./data/input.csv`
+  - Supports UNC paths: `file://server/share/data/input.csv`
 
 ### Extensible Scheme Support
 
