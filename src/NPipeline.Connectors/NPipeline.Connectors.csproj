@@ -25,6 +25,7 @@
 
     <PropertyGroup>
         <WarningsNotAsErrors>$(WarningsNotAsErrors);CS1591</WarningsNotAsErrors>
+        <NoWarn>$(NoWarn);CA1710;SYSLIB1045</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
