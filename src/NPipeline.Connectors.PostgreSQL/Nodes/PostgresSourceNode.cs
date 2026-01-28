@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using NPipeline.Connectors.Abstractions;
 using NPipeline.Connectors.Configuration;
@@ -27,6 +28,7 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
         private readonly bool _continueOnError;
         private readonly string? _connectionName;
         private readonly IReadOnlyList<PropertyBinding> _bindings;
+        private readonly Func<T> _createInstance;
 
         /// <summary>
         /// Gets whether to stream results.
@@ -84,6 +86,7 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
             _connectionName = null;
             _cachedMapper = ResolveDefaultMapper(mapper, _configuration, continueOnError);
             _bindings = BuildBindings();
+            _createInstance = BuildCreateInstanceDelegate();
         }
 
         /// <summary>
@@ -122,6 +125,7 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
             _connectionName = string.IsNullOrWhiteSpace(connectionName) ? null : connectionName;
             _cachedMapper = ResolveDefaultMapper(mapper, _configuration, continueOnError);
             _bindings = BuildBindings();
+            _createInstance = BuildCreateInstanceDelegate();
         }
 
         /// <summary>
@@ -199,7 +203,7 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
         /// <returns>The mapped object.</returns>
         protected virtual T MapConventionBased(PostgresRow row)
         {
-            var instance = Activator.CreateInstance<T>();
+            var instance = _createInstance();
             foreach (var binding in _bindings)
             {
                 try
@@ -207,10 +211,10 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
                     var value = row.GetValue(binding.ColumnName);
                     if (value != null)
                     {
-                        var convertedValue = ConvertValue(value, binding.Property.PropertyType);
-                        if (convertedValue != null || binding.Property.PropertyType.IsClass || Nullable.GetUnderlyingType(binding.Property.PropertyType) != null)
+                        var convertedValue = ConvertValue(value, binding.PropertyType);
+                        if (convertedValue != null || binding.PropertyType.IsClass || Nullable.GetUnderlyingType(binding.PropertyType) != null)
                         {
-                            binding.Property.SetValue(instance, convertedValue);
+                            binding.Setter(instance, convertedValue);
                         }
                     }
                 }
@@ -256,8 +260,32 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
                 .. typeof(T)
                     .GetProperties(BindingFlags.Public | BindingFlags.Instance)
                     .Where(p => p.CanWrite)
-                    .Select(p => new PropertyBinding(p, GetColumnName(p)))
+                    .Select(p => new PropertyBinding(p.PropertyType, GetColumnName(p), BuildSetter(p)))
             ];
+        }
+
+        private static Action<T, object?> BuildSetter(PropertyInfo property)
+        {
+            var instanceParam = Expression.Parameter(typeof(T), "instance");
+            var valueParam = Expression.Parameter(typeof(object), "value");
+
+            var convertedValue = Expression.Convert(valueParam, property.PropertyType);
+            var setCall = Expression.Call(instanceParam, property.SetMethod!, convertedValue);
+
+            return Expression.Lambda<Action<T, object?>>(setCall, instanceParam, valueParam).Compile();
+        }
+
+        private static Func<T> BuildCreateInstanceDelegate()
+        {
+            if (typeof(T).IsValueType)
+            {
+                return Expression.Lambda<Func<T>>(Expression.Default(typeof(T))).Compile();
+            }
+
+            var ctor = typeof(T).GetConstructor(Type.EmptyTypes)
+                ?? throw new InvalidOperationException($"Type '{typeof(T).FullName}' does not have a parameterless constructor");
+
+            return Expression.Lambda<Func<T>>(Expression.New(ctor)).Compile();
         }
 
         private static string GetColumnName(PropertyInfo property)
@@ -283,6 +311,6 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
                 : PostgresMapperBuilder.Build<T>();
         }
 
-        private sealed record PropertyBinding(PropertyInfo Property, string ColumnName);
+        private sealed record PropertyBinding(Type PropertyType, string ColumnName, Action<T, object?> Setter);
     }
 }

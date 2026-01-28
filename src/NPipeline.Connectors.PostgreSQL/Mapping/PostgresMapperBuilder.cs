@@ -6,6 +6,7 @@ namespace NPipeline.Connectors.PostgreSQL.Mapping
 {
     /// <summary>
     /// Builds cached mapping delegates from <see cref="PostgresRow"/> to CLR types using attributes.
+    /// Uses compiled delegates for optimal performance during row mapping.
     /// </summary>
     internal static class PostgresMapperBuilder
     {
@@ -30,10 +31,12 @@ namespace NPipeline.Connectors.PostgreSQL.Mapping
                 })
                 .ToList();
 
+            // Compile a delegate for instance creation to avoid Activator.CreateInstance<T>() reflection on each row
+            var createInstance = BuildCreateInstanceDelegate<T>();
+
             return row =>
             {
-                var instance = Activator.CreateInstance<T>()
-                    ?? throw new PostgresMappingException($"Failed to create instance of type {typeof(T).FullName}");
+                var instance = createInstance();
 
                 foreach (var mapping in mappings)
                 {
@@ -49,6 +52,18 @@ namespace NPipeline.Connectors.PostgreSQL.Mapping
 
                 return instance;
             };
+        }
+
+        /// <summary>
+        /// Builds a compiled delegate for creating instances of type T.
+        /// </summary>
+        private static Func<T> BuildCreateInstanceDelegate<T>()
+        {
+            var ctor = typeof(T).GetConstructor(Type.EmptyTypes)
+                ?? throw new InvalidOperationException($"Type '{typeof(T).FullName}' does not have a parameterless constructor");
+
+            var newExpression = Expression.New(ctor);
+            return Expression.Lambda<Func<T>>(newExpression).Compile();
         }
 
         private static Action<T, PostgresRow> BuildApplyDelegate<T>(PropertyInfo property, string columnName)
