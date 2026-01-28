@@ -230,14 +230,11 @@ The sample demonstrates various configuration options:
 var config = new PostgresConfiguration
 {
     ConnectionString = "your_connection_string",
-    WriteStrategy = PostgresWriteStrategy.Batch,  // PerRow, Batch, or Copy
+  WriteStrategy = PostgresWriteStrategy.Batch,  // PerRow or Batch in the free connector
     BatchSize = 100,                            // For Batch strategy
     // Additional options available:
-    // CheckpointStrategy = CheckpointStrategy.KeyBased,
-    // CheckpointKeyColumn = "id",
+  // CheckpointStrategy = CheckpointStrategy.InMemory,
     // DeliverySemantic = DeliverySemantic.AtLeastOnce,
-    // UseUpsert = true,
-    // UpsertConflictColumns = new[] { "id" }
 };
 ```
 
@@ -247,7 +244,7 @@ var config = new PostgresConfiguration
 |----------|-------------|--------------|----------|
 | **PerRow** | Slowest | Lowest | Small batches, per-row error handling |
 | **Batch** | Good | Moderate | Most scenarios, balanced performance |
-| **Copy** | Fastest | Highest | Bulk imports, large datasets |
+| **Copy** | Fastest | Highest | Bulk imports, large datasets (Pro connector) |
 
 ## Code Examples
 

@@ -165,19 +165,7 @@ namespace NPipeline.Connectors.PostgreSQL.Mapping
                 return true;
             }
 
-            if (_caseInsensitive)
-            {
-                for (var i = 0; i < _reader.FieldCount; i++)
-                {
-                    if (string.Equals(_reader.GetName(i), name, StringComparison.OrdinalIgnoreCase))
-                    {
-                        ordinal = i;
-                        _columnIndexes[name] = i;
-                        return true;
-                    }
-                }
-            }
-            else
+            if (!_caseInsensitive)
             {
                 try
                 {

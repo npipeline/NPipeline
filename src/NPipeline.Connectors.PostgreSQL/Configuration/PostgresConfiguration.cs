@@ -142,7 +142,7 @@ namespace NPipeline.Connectors.PostgreSQL.Configuration
         /// <summary>
         /// Gets or sets whether to use binary format for COPY writes.
         /// </summary>
-        public bool UseBinaryCopy { get; set; } = true;
+        public bool UseBinaryCopy { get; set; }
 
         /// <summary>
         /// Gets or sets whether to stream results when reading.
@@ -244,9 +244,43 @@ namespace NPipeline.Connectors.PostgreSQL.Configuration
                 throw new ArgumentException("RetryDelay cannot be negative.", nameof(RetryDelay));
             }
 
+            ValidateFeatureSupport();
+
             if (UseUpsert && (UpsertConflictColumns == null || UpsertConflictColumns.Length == 0))
             {
                 throw new ArgumentException("UpsertConflictColumns must be provided when UseUpsert is enabled.", nameof(UpsertConflictColumns));
+            }
+        }
+
+        /// <summary>
+        /// Validates whether requested features are supported by this connector edition.
+        /// Override in commercial editions to enable additional features.
+        /// </summary>
+        protected virtual void ValidateFeatureSupport()
+        {
+            if (WriteStrategy == PostgresWriteStrategy.Copy)
+            {
+                throw new NotSupportedException("PostgresWriteStrategy.Copy is available in the commercial PostgreSQL connector.");
+            }
+
+            if (UseBinaryCopy)
+            {
+                throw new NotSupportedException("Binary COPY is available in the commercial PostgreSQL connector.");
+            }
+
+            if (UseUpsert)
+            {
+                throw new NotSupportedException("Upsert support is available in the commercial PostgreSQL connector.");
+            }
+
+            if (DeliverySemantic == DeliverySemantic.ExactlyOnce)
+            {
+                throw new NotSupportedException("Exactly-once delivery semantics are available in the commercial PostgreSQL connector.");
+            }
+
+            if (CheckpointStrategy != CheckpointStrategy.None && CheckpointStrategy != CheckpointStrategy.InMemory)
+            {
+                throw new NotSupportedException("Advanced checkpointing is available in the commercial PostgreSQL connector.");
             }
         }
     }

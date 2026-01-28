@@ -20,7 +20,6 @@ dotnet add package NPipeline.Connectors.PostgreSQL
 - SSL/TLS support
 - NpgsqlDataSource support
 - Connection timeout configuration
-- Pool size configuration
 
 ### Source Node Features
 
@@ -30,8 +29,7 @@ dotnet add package NPipeline.Connectors.PostgreSQL
 - Custom mapper support with `Func<PostgresRow, T>`
 - Convention-based mapping with snake_case conversion
 - Retry logic with transient error detection
-- Row-level error handling with continue on error option
-- Multiple result set support
+- Row-level error handling with continue-on-error option
 - Command timeout configuration
 
 ### Sink Node Features
@@ -41,7 +39,7 @@ dotnet add package NPipeline.Connectors.PostgreSQL
 - Batch write strategy
 - Transaction support
 - Batch size configuration
-- Error handling with continue on error option
+- Error handling with continue-on-error option
 
 ### Mapping Features
 
@@ -56,96 +54,22 @@ dotnet add package NPipeline.Connectors.PostgreSQL
 
 ### Checkpointing
 
-The PostgreSQL connector supports checkpoint strategies for recovery from failures during pipeline execution.
-
-#### Available Checkpoint Strategies
-
-- **None (Default)**: No checkpointing - data may be lost on failure. Use this when:
-  - Data can be easily reprocessed
-  - Performance is critical and checkpointing overhead is unacceptable
-  - The source data is static and won't change
+The free connector supports `CheckpointStrategy.None` and `CheckpointStrategy.InMemory` for transient, in-process recovery. Advanced checkpoint strategies and persistent storage options are reserved for the commercial connector.
 
 ```csharp
 var configuration = new PostgresConfiguration
 {
     ConnectionString = connectionString,
-    CheckpointStrategy = CheckpointStrategy.None
+    CheckpointStrategy = CheckpointStrategy.InMemory
 };
 ```
-
-- **InMemory**: Checkpoints are stored in memory and lost on process restart. Provides recovery from transient failures during pipeline execution. Use this when:
-  - You need to recover from transient failures (network issues, temporary database unavailability)
-  - The pipeline runs for a long time and you want to avoid reprocessing all data on failure
-  - Process restarts are acceptable to lose checkpoint state
-  - You need simple checkpointing without external storage dependencies
-
-```csharp
-var configuration = new PostgresConfiguration
-{
-    ConnectionString = connectionString,
-    CheckpointStrategy = CheckpointStrategy.InMemory,
-    StreamResults = true
-};
-
-var source = new PostgresSourceNode<Customer>(
-    connectionString,
-    "SELECT id, name, email FROM customers",
-    configuration: configuration
-);
-```
-
-#### How InMemory Checkpointing Works
-
-1. **Progress Tracking**: The connector tracks the row number as it reads from the database
-2. **Checkpoint Updates**: For streaming mode, checkpoints are updated after each row. For buffered mode, checkpoints are updated every 100 rows
-3. **Failure Recovery**: If a transient failure occurs, the pipeline can be restarted and will resume from the last checkpoint
-4. **Checkpoint Clearing**: Checkpoints are automatically cleared when the pipeline completes successfully
-
-#### Example: Using InMemory Checkpointing with Retry Logic
-
-```csharp
-using NPipeline.Connectors.PostgreSQL;
-using NPipeline.Connectors.PostgreSQL.Nodes;
-using NPipeline.Pipeline;
-using NPipeline.Connectors.Configuration;
-
-var configuration = new PostgresConfiguration
-{
-    ConnectionString = connectionString,
-    CheckpointStrategy = CheckpointStrategy.InMemory,
-    StreamResults = true,
-    MaxRetryAttempts = 3,
-    RetryDelay = TimeSpan.FromSeconds(5)
-};
-
-var source = new PostgresSourceNode<Customer>(
-    connectionString,
-    "SELECT id, name, email FROM large_customers_table",
-    configuration: configuration
-);
-
-var pipeline = new PipelineBuilder()
-    .AddSource(source)
-    .Build();
-
-// The pipeline will automatically retry on transient errors
-// and resume from the last checkpoint position
-await pipeline.RunAsync();
-```
-
-#### Limitations of InMemory Checkpointing
-
-- **Process Restart**: Checkpoints are lost if the process restarts
-- **Multiple Instances**: Each process instance maintains its own checkpoint state
-- **Memory Usage**: Minimal memory overhead for storing checkpoint state
-- **Thread Safety**: Checkpoint storage is thread-safe for concurrent pipeline executions
 
 ### Delivery Semantics
 
 - AtLeastOnce delivery
 - AtMostOnce delivery
 
-### Error Handling
+### Error Handling Features
 
 - `PostgresException` for general PostgreSQL errors
 - `PostgresConnectionException` for connection errors
@@ -160,7 +84,7 @@ await pipeline.RunAsync();
 - Detailed error messages
 - Stack trace preservation
 
-### Configuration
+### Configuration Features
 
 - `PostgresConfiguration` for connector settings
 - Command timeout configuration
@@ -171,7 +95,7 @@ await pipeline.RunAsync();
 - SSL mode configuration
 - Prepared statement configuration
 
-### Dependency Injection
+### Dependency Injection Features
 
 - DI integration with `AddPostgresConnector`
 - Connection pool abstractions
@@ -192,17 +116,24 @@ await pipeline.RunAsync();
 - Compiled delegates for mapping
 - Metadata caching
 
-### Security
+### Security Features
 
 - Identifier validation to prevent SQL injection
 - SSL/TLS support for secure connections
+
+### Pro Preview (Planned)
+
+- Binary `COPY` write strategy with `UseBinaryCopy`
+- Upsert support (`ON CONFLICT`) with configurable targets
+- Exactly-once delivery semantics
+- Advanced checkpointing and CDC helpers
 
 ## Quick Start
 
 ### Reading from PostgreSQL
 
 ```csharp
-using NPipeline.Connectors.PostgreSQL;
+using NPipeline.Connectors.Exceptions;
 using NPipeline.Connectors.PostgreSQL.Nodes;
 using NPipeline.Pipeline;
 
@@ -230,50 +161,10 @@ var pipeline = new PipelineBuilder()
 await pipeline.RunAsync();
 ```
 
-### Reading from PostgreSQL with In-Memory Checkpointing
-
-```csharp
-using NPipeline.Connectors.PostgreSQL;
-using NPipeline.Connectors.PostgreSQL.Nodes;
-using NPipeline.Pipeline;
-using NPipeline.Connectors.Configuration;
-
-// Define your model
-public class Customer
-{
-    public int Id { get; set; }
-    public string Name { get; set; }
-    public string Email { get; set; }
-}
-
-// Create a source node with in-memory checkpointing
-var connectionString = "Host=localhost;Database=mydb;Username=postgres;Password=password";
-var configuration = new PostgresConfiguration
-{
-    ConnectionString = connectionString,
-    CheckpointStrategy = CheckpointStrategy.InMemory,
-    StreamResults = true
-};
-
-var source = new PostgresSourceNode<Customer>(
-    connectionString,
-    "SELECT id, name, email FROM customers WHERE active = @active",
-    configuration: configuration,
-    parameters: new[] { new DatabaseParameter("@active", true) }
-);
-
-// Use in a pipeline
-var pipeline = new PipelineBuilder()
-    .AddSource(source)
-    .Build();
-
-await pipeline.RunAsync();
-```
-
 ### Writing to PostgreSQL
 
 ```csharp
-using NPipeline.Connectors.PostgreSQL;
+using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.Connectors.PostgreSQL.Nodes;
 using NPipeline.Pipeline;
 
@@ -316,12 +207,12 @@ var configuration = new PostgresConfiguration
     MinPoolSize = 1,
     MaxPoolSize = 100,
     ReadBufferSize = 8192,
-    EnableSsl = true,
-    SslMode = PostgresSslMode.Require,
+    UseSslMode = true,
+    SslMode = Npgsql.SslMode.Require,
     UsePreparedStatements = true,
     ValidateIdentifiers = true,
     DeliverySemantic = DeliverySemantic.AtLeastOnce,
-    CheckpointStrategy = CheckpointStrategy.None
+    CheckpointStrategy = CheckpointStrategy.InMemory
 };
 ```
 
@@ -329,7 +220,7 @@ var configuration = new PostgresConfiguration
 
 The connection string supports all Npgsql connection string options:
 
-```
+```text
 Host=localhost
 Port=5432
 Database=mydb
@@ -443,8 +334,8 @@ var services = new ServiceCollection();
 services.AddPostgresConnector(options =>
 {
     options.DefaultConnectionString = "Host=localhost;Database=mydb;Username=postgres;Password=password";
-    options.DefaultBatchSize = 100;
-    options.DefaultCommandTimeout = 30;
+    options.DefaultConfiguration.BatchSize = 100;
+    options.DefaultConfiguration.CommandTimeout = 30;
 });
 
 var serviceProvider = services.BuildServiceProvider();
@@ -555,8 +446,8 @@ Configure SSL/TLS for secure connections:
 ```csharp
 var configuration = new PostgresConfiguration
 {
-    EnableSsl = true,
-    SslMode = PostgresSslMode.VerifyFull
+    UseSslMode = true,
+    SslMode = Npgsql.SslMode.VerifyFull
 };
 ```
 

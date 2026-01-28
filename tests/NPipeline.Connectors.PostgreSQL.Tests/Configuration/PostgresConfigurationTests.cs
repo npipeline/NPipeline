@@ -32,7 +32,7 @@ public sealed class PostgresConfigurationTests
         config.RetryDelay.Should().Be(TimeSpan.FromSeconds(1));
         config.CaseInsensitiveMapping.Should().BeTrue();
         config.CacheMappingMetadata.Should().BeTrue();
-        config.UseBinaryCopy.Should().BeTrue();
+        config.UseBinaryCopy.Should().BeFalse();
         config.StreamResults.Should().BeTrue();
         config.FetchSize.Should().Be(1000);
         config.ThrowOnMappingError.Should().BeTrue();
@@ -279,61 +279,84 @@ public sealed class PostgresConfigurationTests
     }
 
     [Fact]
-    public void Validate_WithUseUpsertEnabledAndNoConflictColumns_ShouldThrowArgumentException()
+    public void Validate_WithUseUpsertEnabled_ShouldThrowNotSupportedException()
     {
         // Arrange
         var config = new PostgresConfiguration
         {
-            UseUpsert = true,
-            UpsertConflictColumns = null
+            UseUpsert = true
         };
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => config.Validate());
+        Assert.Throws<NotSupportedException>(() => config.Validate());
     }
 
     [Fact]
-    public void Validate_WithUseUpsertEnabledAndEmptyConflictColumns_ShouldThrowArgumentException()
+    public void Validate_WithUseBinaryCopyEnabled_ShouldThrowNotSupportedException()
     {
         // Arrange
         var config = new PostgresConfiguration
         {
-            UseUpsert = true,
-            UpsertConflictColumns = []
+            UseBinaryCopy = true
         };
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => config.Validate());
+        Assert.Throws<NotSupportedException>(() => config.Validate());
     }
 
     [Fact]
-    public void Validate_WithUseUpsertEnabledAndConflictColumns_ShouldNotThrow()
+    public void Validate_WithCopyWriteStrategy_ShouldThrowNotSupportedException()
     {
         // Arrange
         var config = new PostgresConfiguration
         {
-            UseUpsert = true,
-            UpsertConflictColumns = new[] { "id" }
+            WriteStrategy = PostgresWriteStrategy.Copy
         };
 
         // Act & Assert
-        var exception = Record.Exception(() => config.Validate());
-        exception.Should().BeNull();
+        Assert.Throws<NotSupportedException>(() => config.Validate());
     }
 
     [Fact]
-    public void Validate_WithUseUpsertDisabledAndNoConflictColumns_ShouldNotThrow()
+    public void Validate_WithExactlyOnceDeliverySemantic_ShouldThrowNotSupportedException()
     {
         // Arrange
         var config = new PostgresConfiguration
         {
-            UseUpsert = false,
-            UpsertConflictColumns = null
+            DeliverySemantic = NPipeline.Connectors.Configuration.DeliverySemantic.ExactlyOnce
         };
 
         // Act & Assert
-        var exception = Record.Exception(() => config.Validate());
-        exception.Should().BeNull();
+        Assert.Throws<NotSupportedException>(() => config.Validate());
+    }
+
+    [Fact]
+    public void Validate_WithCheckpointStrategyEnabled_ShouldThrowNotSupportedException()
+    {
+        // Arrange
+        var config = new PostgresConfiguration
+        {
+            CheckpointStrategy = NPipeline.Connectors.Configuration.CheckpointStrategy.Offset
+        };
+
+        // Act & Assert
+        Assert.Throws<NotSupportedException>(() => config.Validate());
+    }
+
+    [Fact]
+    public void Validate_WithInMemoryCheckpointStrategy_ShouldNotThrow()
+    {
+        // Arrange
+        var config = new PostgresConfiguration
+        {
+            CheckpointStrategy = NPipeline.Connectors.Configuration.CheckpointStrategy.InMemory
+        };
+
+        // Act
+        var action = () => config.Validate();
+
+        // Assert
+        action.Should().NotThrow();
     }
 
     [Fact]

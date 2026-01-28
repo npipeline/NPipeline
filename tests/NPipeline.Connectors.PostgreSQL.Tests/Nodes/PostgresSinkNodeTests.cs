@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.Connectors.PostgreSQL.Nodes;
-using WriteStrategy = NPipeline.Connectors.PostgreSQL.Nodes.PostgresWriteStrategy;
+using WriteStrategy = NPipeline.Connectors.PostgreSQL.Configuration.PostgresWriteStrategy;
 
 namespace NPipeline.Connectors.PostgreSQL.Tests.Nodes
 {
