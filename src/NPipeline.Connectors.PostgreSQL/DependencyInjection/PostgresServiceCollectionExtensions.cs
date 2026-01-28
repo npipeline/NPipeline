@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
 using NPipeline.Connectors.PostgreSQL.Connection;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 
@@ -21,16 +20,13 @@ namespace NPipeline.Connectors.PostgreSQL.DependencyInjection
             this IServiceCollection services,
             Action<PostgresOptions>? configure = null)
         {
-            services.AddOptions<PostgresOptions>();
-            if (configure != null)
-            {
-                services.Configure(configure);
-            }
+            var options = new PostgresOptions();
+            configure?.Invoke(options);
 
-            services.TryAddSingleton(sp => sp.GetRequiredService<IOptions<PostgresOptions>>().Value);
+            services.TryAddSingleton(options);
             services.TryAddSingleton<IPostgresConnectionPool>(sp =>
             {
-                var opts = sp.GetRequiredService<IOptions<PostgresOptions>>().Value;
+                var opts = sp.GetRequiredService<PostgresOptions>();
                 return new PostgresConnectionPool(opts);
             });
 
@@ -52,8 +48,10 @@ namespace NPipeline.Connectors.PostgreSQL.DependencyInjection
             string name,
             string connectionString)
         {
-            services.AddOptions<PostgresOptions>()
-                .Configure(o => o.AddOrUpdateConnection(name, connectionString));
+            var options = services.FirstOrDefault(sd => sd.ServiceType == typeof(PostgresOptions))?.ImplementationInstance as PostgresOptions
+                ?? new PostgresOptions();
+            options.AddOrUpdateConnection(name, connectionString);
+            services.TryAddSingleton(options);
 
             return services;
         }
@@ -68,8 +66,10 @@ namespace NPipeline.Connectors.PostgreSQL.DependencyInjection
             this IServiceCollection services,
             string connectionString)
         {
-            services.AddOptions<PostgresOptions>()
-                .Configure(o => o.DefaultConnectionString = connectionString);
+            var options = services.FirstOrDefault(sd => sd.ServiceType == typeof(PostgresOptions))?.ImplementationInstance as PostgresOptions
+                ?? new PostgresOptions();
+            options.DefaultConnectionString = connectionString;
+            services.TryAddSingleton(options);
 
             return services;
         }
