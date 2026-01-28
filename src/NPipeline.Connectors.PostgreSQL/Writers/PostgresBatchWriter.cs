@@ -36,11 +36,11 @@ namespace NPipeline.Connectors.PostgreSQL.Writers
             Func<T, IEnumerable<DatabaseParameter>>? parameterMapper,
             PostgresConfiguration configuration)
         {
-            _connection = connection;
-            _schema = schema;
-            _tableName = tableName;
+            _connection = connection ?? throw new ArgumentNullException(nameof(connection));
+            _schema = schema ?? throw new ArgumentNullException(nameof(schema));
+            _tableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _parameterMapper = parameterMapper;
-            _configuration = configuration;
             _batchParameters = [];
             _insertSql = BuildInsertSql();
         }
@@ -77,7 +77,7 @@ namespace NPipeline.Connectors.PostgreSQL.Writers
         /// <param name="item">The item to write.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public Task WriteAsync(T item, CancellationToken cancellationToken = default)
+        public async Task WriteAsync(T item, CancellationToken cancellationToken = default)
         {
             var parameters = _parameterMapper?.Invoke(item) ?? GetParametersFromItem(item);
 
@@ -86,7 +86,15 @@ namespace NPipeline.Connectors.PostgreSQL.Writers
                 _batchParameters.Add(param);
             }
 
-            return Task.CompletedTask;
+            // Check if batch size is reached and flush
+            var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanWrite && !p.IsDefined(typeof(PostgresIgnoreAttribute), false));
+            var propertyCount = properties.Count();
+
+            if (_batchParameters.Count >= propertyCount * _configuration.BatchSize)
+            {
+                await FlushAsync(cancellationToken);
+            }
         }
 
         /// <summary>
@@ -100,6 +108,12 @@ namespace NPipeline.Connectors.PostgreSQL.Writers
             foreach (var item in items)
             {
                 await WriteAsync(item, cancellationToken);
+            }
+
+            // Flush any remaining buffered items after writing all
+            if (_batchParameters.Count > 0)
+            {
+                await FlushAsync(cancellationToken);
             }
         }
 
@@ -190,8 +204,8 @@ namespace NPipeline.Connectors.PostgreSQL.Writers
         /// </summary>
         public async ValueTask DisposeAsync()
         {
-            // Connection is owned by the sink node, not the writer
-            await ValueTask.CompletedTask;
+            // Flush any buffered items before disposal
+            await FlushAsync();
         }
     }
 }

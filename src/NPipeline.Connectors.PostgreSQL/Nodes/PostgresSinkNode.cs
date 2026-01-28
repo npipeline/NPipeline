@@ -39,6 +39,9 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
             PostgresConfiguration? configuration = null,
             string? schema = null)
         {
+            ArgumentNullException.ThrowIfNull(connectionString, nameof(connectionString));
+            ArgumentNullException.ThrowIfNull(tableName, nameof(tableName));
+
             _configuration = configuration ?? new PostgresConfiguration();
             _configuration.Validate();
             _connectionPool = new PostgresConnectionPool(connectionString);
@@ -74,6 +77,13 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
             string? schema = null,
             string? connectionName = null)
         {
+            ArgumentNullException.ThrowIfNull(connectionPool, nameof(connectionPool));
+
+            if (string.IsNullOrWhiteSpace(tableName))
+            {
+                throw new ArgumentNullException(nameof(tableName));
+            }
+
             _configuration = configuration ?? new PostgresConfiguration();
             _configuration.Validate();
             _connectionPool = connectionPool;
