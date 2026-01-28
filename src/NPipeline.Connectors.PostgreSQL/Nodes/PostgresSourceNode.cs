@@ -60,6 +60,15 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
             DatabaseParameter[]? parameters = null,
             bool continueOnError = false)
         {
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new ArgumentNullException(nameof(connectionString));
+            }
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                throw new ArgumentNullException(nameof(query));
+            }
+
             _configuration = configuration ?? new PostgresConfiguration();
             _configuration.Validate();
             _connectionPool = new PostgresConnectionPool(connectionString);
@@ -90,6 +99,13 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
             bool continueOnError = false,
             string? connectionName = null)
         {
+            ArgumentNullException.ThrowIfNull(connectionPool, nameof(connectionPool));
+
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                throw new ArgumentNullException(nameof(query));
+            }
+
             _configuration = configuration ?? new PostgresConfiguration();
             _configuration.Validate();
             _connectionPool = connectionPool;

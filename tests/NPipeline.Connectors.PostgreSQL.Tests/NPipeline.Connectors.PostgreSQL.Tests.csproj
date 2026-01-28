@@ -9,7 +9,7 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <NoWarn>$(NoWarn);CS1591</NoWarn>
+        <NoWarn>$(NoWarn);CS1591;xUnit1004</NoWarn>
         <GenerateDocumentationFile>false</GenerateDocumentationFile>
     </PropertyGroup>
 

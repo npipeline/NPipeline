@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Linq;
 using NPipeline.Connectors.Abstractions;
 using NPipeline.Connectors.Exceptions;
 using NPipeline.Connectors.Utilities;
@@ -36,11 +35,11 @@ namespace NPipeline.Connectors.PostgreSQL.Writers
             Func<T, IEnumerable<DatabaseParameter>>? parameterMapper,
             PostgresConfiguration configuration)
         {
-            _connection = connection;
-            _schema = schema;
-            _tableName = tableName;
+            _connection = connection ?? throw new ArgumentNullException(nameof(connection));
+            _schema = schema ?? throw new ArgumentNullException(nameof(schema));
+            _tableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _parameterMapper = parameterMapper;
-            _configuration = configuration;
             _insertSql = BuildInsertSql();
         }
 
