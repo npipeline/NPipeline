@@ -1,3 +1,5 @@
+using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using NPipeline.Connectors.Abstractions;
 using NPipeline.Connectors.Exceptions;
@@ -19,6 +21,9 @@ namespace NPipeline.Connectors.PostgreSQL.Writers
         private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
         private readonly PostgresConfiguration _configuration;
         private readonly string _insertSql;
+        private readonly PropertyMapping[] _mappings;
+        private readonly string[] _parameterNames;
+        private readonly Func<T, object?[]> _valueFactory;
 
         /// <summary>
         /// Initializes a new instance of <see cref="PostgresPerRowWriter{T}"/> class.
@@ -39,7 +44,11 @@ namespace NPipeline.Connectors.PostgreSQL.Writers
             _schema = schema ?? throw new ArgumentNullException(nameof(schema));
             _tableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _configuration.Validate();
             _parameterMapper = parameterMapper;
+            _mappings = BuildMappings();
+            _parameterNames = BuildParameterNames(_mappings.Length);
+            _valueFactory = BuildValueFactory(_mappings);
             _insertSql = BuildInsertSql();
         }
 
@@ -49,22 +58,19 @@ namespace NPipeline.Connectors.PostgreSQL.Writers
         /// <returns>The INSERT SQL statement.</returns>
         private string BuildInsertSql()
         {
-            var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanWrite && !p.IsDefined(typeof(PostgresIgnoreAttribute), false));
-
-            var columns = properties.Select(GetColumnName).ToArray();
-            var parameters = properties.Select(p => $"@{p.Name}").ToArray();
+            if (_mappings.Length == 0)
+            {
+                throw new InvalidOperationException($"Type '{typeof(T).Name}' does not expose any writable properties to persist.");
+            }
 
             var quotedTableName = DatabaseIdentifierValidator.QuoteIdentifier($"{_schema}.{_tableName}");
-            var quotedColumnsList = new List<string>();
-            foreach (var column in columns)
-            {
-                quotedColumnsList.Add(DatabaseIdentifierValidator.QuoteIdentifier(column));
-            }
-            var quotedColumns = string.Join(", ", quotedColumnsList);
-            var paramList = string.Join(", ", parameters);
+            var quotedColumns = _mappings
+                .Select(m => ValidateAndQuoteIdentifier(m.ColumnName, nameof(m.ColumnName)))
+                .ToArray();
 
-            return $"INSERT INTO {quotedTableName} ({quotedColumns}) VALUES ({paramList})";
+            var paramList = string.Join(", ", _parameterNames);
+
+            return $"INSERT INTO {quotedTableName} ({string.Join(", ", quotedColumns)}) VALUES ({paramList})";
         }
 
         /// <summary>
@@ -80,11 +86,10 @@ namespace NPipeline.Connectors.PostgreSQL.Writers
             command.CommandType = System.Data.CommandType.Text;
             command.CommandTimeout = _configuration.CommandTimeout;
 
-            var parameters = _parameterMapper?.Invoke(item) ?? GetParametersFromItem(item);
-
-            foreach (var param in parameters)
+            var values = GetValues(item);
+            for (var i = 0; i < values.Length; i++)
             {
-                command.AddParameter(param.Name, param.Value);
+                command.AddParameter(_parameterNames[i], values[i] ?? DBNull.Value);
             }
 
             _ = await command.ExecuteNonQueryAsync(cancellationToken);
@@ -100,7 +105,7 @@ namespace NPipeline.Connectors.PostgreSQL.Writers
         {
             foreach (var item in items)
             {
-                await WriteAsync(item, cancellationToken);
+                await WriteAsync(item, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -114,43 +119,102 @@ namespace NPipeline.Connectors.PostgreSQL.Writers
             return Task.CompletedTask;
         }
 
-        /// <summary>
-        /// Gets parameters from an item using convention-based mapping.
-        /// </summary>
-        /// <param name="item">The item.</param>
-        /// <returns>The parameters.</returns>
-        private IEnumerable<DatabaseParameter> GetParametersFromItem(T item)
+        private object?[] GetValues(T item)
         {
-            var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanWrite && !p.IsDefined(typeof(PostgresIgnoreAttribute), false));
-
-            foreach (var property in properties)
+            if (_parameterMapper == null)
             {
-                var value = property.GetValue(item);
-                yield return new DatabaseParameter($"@{property.Name}", value);
+                return _valueFactory(item);
             }
+
+            var mapped = _parameterMapper(item)?.ToArray() ?? Array.Empty<DatabaseParameter>();
+            if (mapped.Length != _mappings.Length)
+            {
+                throw new InvalidOperationException($"Custom parameter mapper for '{typeof(T).Name}' must return exactly {_mappings.Length} values to match the mapped columns.");
+            }
+
+            var values = new object?[_mappings.Length];
+            for (var i = 0; i < _mappings.Length; i++)
+            {
+                values[i] = mapped[i].Value;
+            }
+
+            return values;
         }
 
-        /// <summary>
-        /// Gets the column name for a property.
-        /// </summary>
-        /// <param name="property">The property.</param>
-        /// <returns>The column name.</returns>
-        private string GetColumnName(PropertyInfo property)
+        private static PropertyMapping[] BuildMappings()
+        {
+            return
+            [
+                .. typeof(T)
+                    .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                    .Where(p => p.CanWrite && !IsIgnored(p))
+                    .Select(p => new PropertyMapping(GetColumnName(p), BuildGetter(p)))
+            ];
+        }
+
+        private static bool IsIgnored(PropertyInfo property)
+        {
+            var columnAttribute = property.GetCustomAttribute<PostgresColumnAttribute>();
+            var ignoredByAttribute = columnAttribute?.Ignore == true;
+            var hasIgnoreMarker = property.IsDefined(typeof(PostgresIgnoreAttribute), inherit: true);
+            return ignoredByAttribute || hasIgnoreMarker;
+        }
+
+        private static string GetColumnName(PropertyInfo property)
         {
             var columnAttr = property.GetCustomAttribute<PostgresColumnAttribute>();
             return columnAttr?.Name ?? ToSnakeCase(property.Name);
         }
 
-        /// <summary>
-        /// Converts a PascalCase string to snake_case.
-        /// </summary>
-        /// <param name="str">The string to convert.</param>
-        /// <returns>The snake_case string.</returns>
+        private static Func<T, object?> BuildGetter(PropertyInfo property)
+        {
+            var instanceParam = Expression.Parameter(typeof(T), "item");
+            var propertyAccess = Expression.Property(instanceParam, property);
+            var convert = Expression.Convert(propertyAccess, typeof(object));
+            return Expression.Lambda<Func<T, object?>>(convert, instanceParam).Compile();
+        }
+
+        private static Func<T, object?[]> BuildValueFactory(IReadOnlyList<PropertyMapping> mappings)
+        {
+            return item =>
+            {
+                var values = new object?[mappings.Count];
+                for (var i = 0; i < mappings.Count; i++)
+                {
+                    values[i] = mappings[i].Getter(item);
+                }
+
+                return values;
+            };
+        }
+
+        private static string[] BuildParameterNames(int count)
+        {
+            var names = new string[count];
+            for (var i = 0; i < count; i++)
+            {
+                names[i] = $"@p{i}";
+            }
+
+            return names;
+        }
+
+        private string ValidateAndQuoteIdentifier(string identifier, string paramName)
+        {
+            if (_configuration.ValidateIdentifiers)
+            {
+                DatabaseIdentifierValidator.ValidateIdentifier(identifier, paramName);
+            }
+
+            return DatabaseIdentifierValidator.QuoteIdentifier(identifier);
+        }
+
         private static string ToSnakeCase(string str)
         {
             return string.Concat(str.Select((x, i) => i > 0 && char.IsUpper(x) ? "_" + x : x.ToString())).ToLowerInvariant();
         }
+
+        private sealed record PropertyMapping(string ColumnName, Func<T, object?> Getter);
 
         /// <summary>
         /// Disposes the writer.

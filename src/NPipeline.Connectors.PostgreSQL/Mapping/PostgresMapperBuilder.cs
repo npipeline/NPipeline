@@ -59,10 +59,17 @@ namespace NPipeline.Connectors.PostgreSQL.Mapping
             var hasColumnMethod = typeof(PostgresRow).GetMethod(nameof(PostgresRow.HasColumn))
                 ?? throw new InvalidOperationException("PostgresRow.HasColumn not found");
 
-            var getMethod = typeof(PostgresRow)
-                .GetMethod(nameof(PostgresRow.Get), [typeof(string), property.PropertyType])?
-                .MakeGenericMethod(property.PropertyType)
+            // Get the non-generic Get(string, T) method and make it generic for the property type
+            var getMethodBase = typeof(PostgresRow)
+                .GetMethods()
+                .FirstOrDefault(m => m.Name == nameof(PostgresRow.Get)
+                    && m.IsGenericMethodDefinition
+                    && m.GetGenericArguments().Length == 1
+                    && m.GetParameters().Length == 2
+                    && m.GetParameters()[0].ParameterType == typeof(string))
                 ?? throw new InvalidOperationException("PostgresRow.Get<T>(string, T) overload not found");
+
+            var getMethod = getMethodBase.MakeGenericMethod(property.PropertyType);
 
             var hasColumnCall = Expression.Call(rowParam, hasColumnMethod, Expression.Constant(columnName));
             var getCall = Expression.Call(rowParam, getMethod, Expression.Constant(columnName), Expression.Default(property.PropertyType));

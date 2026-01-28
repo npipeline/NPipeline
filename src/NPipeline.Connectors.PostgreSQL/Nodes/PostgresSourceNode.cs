@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Linq;
 using System.Reflection;
 using NPipeline.Connectors.Abstractions;
 using NPipeline.Connectors.Configuration;
@@ -14,14 +16,17 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
     /// <typeparam name="T">The type of objects emitted by source.</typeparam>
     public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     {
+        private static readonly ConcurrentDictionary<Type, Func<PostgresRow, T>> MapperCache = new();
+
         private readonly PostgresConfiguration _configuration;
         private readonly IPostgresConnectionPool _connectionPool;
         private readonly Func<PostgresRow, T>? _mapper;
+        private readonly Func<PostgresRow, T>? _cachedMapper;
         private readonly string _query;
         private readonly DatabaseParameter[] _parameters;
         private readonly bool _continueOnError;
         private readonly string? _connectionName;
-        private readonly PropertyInfo[] _writableProperties;
+        private readonly IReadOnlyList<PropertyBinding> _bindings;
 
         /// <summary>
         /// Gets whether to stream results.
@@ -77,7 +82,8 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
             _parameters = parameters ?? [];
             _continueOnError = continueOnError;
             _connectionName = null;
-            _writableProperties = GetWritableProperties();
+            _cachedMapper = ResolveDefaultMapper(mapper, _configuration, continueOnError);
+            _bindings = BuildBindings();
         }
 
         /// <summary>
@@ -114,7 +120,8 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
             _parameters = parameters ?? [];
             _continueOnError = continueOnError;
             _connectionName = string.IsNullOrWhiteSpace(connectionName) ? null : connectionName;
-            _writableProperties = GetWritableProperties();
+            _cachedMapper = ResolveDefaultMapper(mapper, _configuration, continueOnError);
+            _bindings = BuildBindings();
         }
 
         /// <summary>
@@ -162,7 +169,27 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
         {
             var postgresReader = (PostgresDatabaseReader)reader;
             var row = new PostgresRow(postgresReader.Reader, _configuration.CaseInsensitiveMapping);
-            return _mapper != null ? _mapper(row) : MapConventionBased(row);
+            if (_mapper != null)
+            {
+                return _mapper(row);
+            }
+
+            if (_cachedMapper != null)
+            {
+                try
+                {
+                    return _cachedMapper(row);
+                }
+                catch
+                {
+                    if (!_continueOnError)
+                    {
+                        throw;
+                    }
+                }
+            }
+
+            return MapConventionBased(row);
         }
 
         /// <summary>
@@ -173,18 +200,17 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
         protected virtual T MapConventionBased(PostgresRow row)
         {
             var instance = Activator.CreateInstance<T>();
-            foreach (var property in _writableProperties)
+            foreach (var binding in _bindings)
             {
-                var columnName = GetColumnName(property);
                 try
                 {
-                    var value = row.GetValue(columnName);
+                    var value = row.GetValue(binding.ColumnName);
                     if (value != null)
                     {
-                        var convertedValue = ConvertValue(value, property.PropertyType);
-                        if (convertedValue != null || property.PropertyType.IsClass || Nullable.GetUnderlyingType(property.PropertyType) != null)
+                        var convertedValue = ConvertValue(value, binding.Property.PropertyType);
+                        if (convertedValue != null || binding.Property.PropertyType.IsClass || Nullable.GetUnderlyingType(binding.Property.PropertyType) != null)
                         {
-                            property.SetValue(instance, convertedValue);
+                            binding.Property.SetValue(instance, convertedValue);
                         }
                     }
                 }
@@ -198,19 +224,6 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
             }
 
             return instance;
-        }
-
-        /// <summary>
-        /// Gets the column name for a property.
-        /// </summary>
-        /// <param name="property">The property.</param>
-        /// <returns>The column name.</returns>
-        protected virtual string GetColumnName(PropertyInfo property)
-        {
-            var columnAttr = property.GetCustomAttribute<PostgresColumnAttribute>();
-            return columnAttr?.Name is { Length: > 0 } name
-                ? name
-                : ToSnakeCase(property.Name);
         }
 
         /// <summary>
@@ -236,14 +249,40 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
                 : Convert.ChangeType(value, underlyingType);
         }
 
-        private static PropertyInfo[] GetWritableProperties()
+        private static IReadOnlyList<PropertyBinding> BuildBindings()
         {
             return
             [
                 .. typeof(T)
                     .GetProperties(BindingFlags.Public | BindingFlags.Instance)
                     .Where(p => p.CanWrite)
+                    .Select(p => new PropertyBinding(p, GetColumnName(p)))
             ];
         }
+
+        private static string GetColumnName(PropertyInfo property)
+        {
+            var columnAttr = property.GetCustomAttribute<PostgresColumnAttribute>();
+            return columnAttr?.Name is { Length: > 0 } name
+                ? name
+                : ToSnakeCase(property.Name);
+        }
+
+        private static Func<PostgresRow, T>? ResolveDefaultMapper(
+            Func<PostgresRow, T>? mapper,
+            PostgresConfiguration configuration,
+            bool continueOnError)
+        {
+            if (mapper != null || continueOnError)
+            {
+                return mapper;
+            }
+
+            return configuration.CacheMappingMetadata
+                ? MapperCache.GetOrAdd(typeof(T), _ => PostgresMapperBuilder.Build<T>())
+                : PostgresMapperBuilder.Build<T>();
+        }
+
+        private sealed record PropertyBinding(PropertyInfo Property, string ColumnName);
     }
 }

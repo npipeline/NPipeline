@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using NPipeline.Connectors.PostgreSQL.Connection;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 
@@ -20,15 +21,21 @@ namespace NPipeline.Connectors.PostgreSQL.DependencyInjection
             this IServiceCollection services,
             Action<PostgresOptions>? configure = null)
         {
-            var options = new PostgresOptions();
-            configure?.Invoke(options);
-
-            services.TryAddSingleton(options);
-            _ = services.AddSingleton<IPostgresConnectionPool>(sp =>
+            services.AddOptions<PostgresOptions>();
+            if (configure != null)
             {
-                var opts = sp.GetRequiredService<PostgresOptions>();
-                return new PostgresConnectionPool(opts.NamedConnections);
+                services.Configure(configure);
+            }
+
+            services.TryAddSingleton(sp => sp.GetRequiredService<IOptions<PostgresOptions>>().Value);
+            services.TryAddSingleton<IPostgresConnectionPool>(sp =>
+            {
+                var opts = sp.GetRequiredService<IOptions<PostgresOptions>>().Value;
+                return new PostgresConnectionPool(opts);
             });
+
+            services.TryAddSingleton<PostgresSourceNodeFactory>();
+            services.TryAddSingleton<PostgresSinkNodeFactory>();
 
             return services;
         }
@@ -45,10 +52,8 @@ namespace NPipeline.Connectors.PostgreSQL.DependencyInjection
             string name,
             string connectionString)
         {
-            var options = new PostgresOptions();
-            options.AddOrUpdateConnection(name, connectionString);
-
-            services.TryAddSingleton(options);
+            services.AddOptions<PostgresOptions>()
+                .Configure(o => o.AddOrUpdateConnection(name, connectionString));
 
             return services;
         }
@@ -63,12 +68,8 @@ namespace NPipeline.Connectors.PostgreSQL.DependencyInjection
             this IServiceCollection services,
             string connectionString)
         {
-            var options = new PostgresOptions
-            {
-                DefaultConnectionString = connectionString
-            };
-
-            services.TryAddSingleton(options);
+            services.AddOptions<PostgresOptions>()
+                .Configure(o => o.DefaultConnectionString = connectionString);
 
             return services;
         }

@@ -4,337 +4,135 @@ description: Read from and write to PostgreSQL databases with NPipeline using th
 sidebar_position: 2
 ---
 
-## PostgreSQL Connector
-
-The `NPipeline.Connectors.PostgreSQL` package provides specialized source and sink nodes for working with PostgreSQL databases. This allows you to easily integrate PostgreSQL data into your pipelines as an input source or an output destination.
-
-This connector uses the popular [Npgsql](https://www.npgsql.org/) library under the hood, providing a high-performance, fully-featured ADO.NET data provider for PostgreSQL.
+The `NPipeline.Connectors.PostgreSQL` package provides source and sink nodes backed by [Npgsql](https://www.npgsql.org/). The free connector focuses on reliable streaming reads and per-row/batch writes. A Pro connector will add binary `COPY`, upsert, and richer delivery semantics—those features are intentionally unavailable in the free build.
 
 ## Installation
-
-To use the PostgreSQL connector, install the `NPipeline.Connectors.PostgreSQL` NuGet package:
 
 ```bash
 dotnet add package NPipeline.Connectors.PostgreSQL
 ```
 
-For the core NPipeline package and other available extensions, see the [Installation Guide](../getting-started/installation.md).
+## Dependency injection
 
-## Dependency Injection Setup
-
-The PostgreSQL connector provides extension methods for easy integration with Microsoft's dependency injection container:
+Use `AddPostgresConnector` to register a shared connection pool and factories for creating nodes:
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Connectors.PostgreSQL.DependencyInjection;
 
-// Register PostgreSQL connector services
 var services = new ServiceCollection()
     .AddPostgresConnector(options =>
     {
-        options.DefaultConnectionString = "Host=localhost;Database=mydb;Username=myuser;Password=mypass";
-        options.DefaultCommandTimeout = 30;
-        options.DefaultUseSslMode = false;
+        options.DefaultConnectionString = "Host=localhost;Database=npipeline;Username=postgres;Password=postgres";
+        options.AddOrUpdateConnection("analytics", "Host=localhost;Database=analytics;Username=postgres;Password=postgres");
     })
     .BuildServiceProvider();
+
+var pool = services.GetRequiredService<IPostgresConnectionPool>();
+var sourceFactory = services.GetRequiredService<PostgresSourceNodeFactory>();
+var sinkFactory = services.GetRequiredService<PostgresSinkNodeFactory>();
 ```
 
-The `AddPostgresConnector()` extension method registers:
+- `DefaultConnectionString` is optional if you only use named connections.
+- `AddPostgresConnection`/`AddDefaultPostgresConnection` simply configure the same `PostgresOptions`; they no longer replace previously configured values.
 
-- `PostgresOptions` - Global options for PostgreSQL connector
-- `PostgresConnectionPool` - Manages PostgreSQL connections
-- `PostgresMapperFactory` - Creates type-safe mappers for database operations
-- `PostgresSourceNodeFactory` - Factory for creating source nodes
-- `PostgresSinkNodeFactory` - Factory for creating sink nodes
-- `PostgresCheckpointStorage` - Checkpoint storage for resume capability (requires connection string)
-- `NpgsqlDataSource` - Default data source if DefaultConnectionString is provided
+## Reading with `PostgresSourceNode<T>`
 
-### PostgresOptions Properties
-
-The `PostgresOptions` class provides global configuration for the PostgreSQL connector when using dependency injection:
-
-| Property | Type | Default | Description |
-| --- | --- | --- | --- |
-| `DefaultConnectionString` | `string?` | `null` | Default connection string to use when none is specified |
-| `DefaultCommandTimeout` | `int` | `30` | Default command timeout in seconds |
-| `DefaultUseSslMode` | `bool` | `false` | Whether to use SSL by default |
-| `NamedConnections` | `Dictionary<string, string>` | `new()` | Dictionary of named connection strings for multiple databases |
-
-### Named Connections
-
-You can register named connection strings for use with multiple databases:
+Construct a source with either a connection string or the shared pool:
 
 ```csharp
-var services = new ServiceCollection()
-    .AddPostgresConnector()
-    .AddPostgresConnection("source", "Host=localhost;Database=source;...")
-    .AddPostgresConnection("destination", "Host=localhost;Database=dest;...")
-    .BuildServiceProvider();
-```
-
-## `PostgresSourceNode<T>`
-
-The `PostgresSourceNode<T>` reads data from a PostgreSQL table and emits each row as an item of type `T`.
-
-### Source Configuration
-
-The source node uses the shared `PostgresConfiguration`. Key options for reads:
-
-- ConnectionString: PostgreSQL connection string used when no `NpgsqlDataSource` is supplied.
-- Schema: Default schema applied to unqualified table names (default `public`).
-- FetchSize: Number of rows per round-trip (default `1000`); retained for future use, current driver versions do not expose per-command fetch size.
-- StreamResults: Enables sequential, low-memory reads (default `true`).
-- CommandTimeout / ConnectionTimeout: Timeouts in seconds for queries and connections.
-- MinPoolSize / MaxPoolSize / ReadBufferSize: Connection pool and buffer tuning knobs.
-- CaseInsensitiveMapping / CacheMappingMetadata: Controls how column names are matched and cached.
-- MaxRetryAttempts / RetryDelay: Retries are only attempted before the first row is yielded.
-
-### Example: Reading from PostgreSQL
-
-```csharp
-using NPipeline;
-using NPipeline.Connectors.PostgreSQL;
-using NPipeline.DataFlow.DataPipes;
-using NPipeline.Execution;
-using NPipeline.Nodes;
-using NPipeline.Pipeline;
-using Npgsql;
-
-public sealed record Product(int Id, string Name, decimal Price);
-
-public sealed class ProductSourcePipeline : IPipelineDefinition
+var configuration = new PostgresConfiguration
 {
-    public void Define(PipelineBuilder builder, PipelineContext context)
-    {
-        // Option 1: Using connection string
-        var options = new PostgresConfiguration
-        {
-            ConnectionString = "Host=localhost;Database=mydb;Username=myuser;Password=mypass",
-            FetchSize = 500
-        };
-        
-        var sourceNode = new PostgresSourceNode<Product>("SELECT id, name, price FROM products", options);
-        
-        // Option 2: Using NpgsqlDataSource (for connection pooling)
-        var dataSource = NpgsqlDataSource.Create("Host=localhost;Database=mydb;Username=myuser;Password=mypass");
-        var sourceNodeWithDataSource = new PostgresSourceNode<Product>("SELECT id, name, price FROM products", dataSource);
-        
-        // Option 3: Using custom row mapper
-        var sourceNodeWithMapper = new PostgresSourceNode<Product>(
-            "SELECT id, name, price FROM products",
-            options,
-            row => new Product(
-                row.Get<int>("id"),
-                row.Get<string>("name"),
-                row.Get<decimal>("price")
-            )
-        );
-        
-        var source = builder.AddSource(sourceNode, "postgres_source");
-        var sink = builder.AddSink<ConsoleSinkNode<Product>, Product>("console_sink");
-
-        builder.Connect(source, sink);
-    }
-}
-
-public sealed class ConsoleSinkNode<T> : SinkNode<T>
-{
-    public override async Task ExecuteAsync(
-        IDataPipe<T> input,
-        PipelineContext context,
-        CancellationToken cancellationToken)
-    {
-        await foreach (var item in input.WithCancellation(cancellationToken))
-        {
-            Console.WriteLine($"Received: {item}");
-        }
-    }
-}
-
-### PostgresRow
-
-The `PostgresRow` class provides access to data from a PostgreSQL data reader:
-
-```csharp
-// Get value by column name
-int id = row.Get<int>("id");
-string name = row.Get<string>("name");
-decimal price = row.Get<decimal>("price");
-
-// Get nullable value
-int? optionalId = row.Get<int?>("optional_id");
-
-// Check if column exists
-bool hasColumn = row.HasColumn("name");
-
-// Get column names
-var columnNames = row.ColumnNames;
-```
-
-### Custom Query Example
-
-```csharp
-var options = new PostgresConfiguration
-{
-    ConnectionString = "Host=localhost;Database=mydb;Username=myuser;Password=mypass",
-    Query = "SELECT id, name, price FROM products WHERE active = true ORDER BY created_at DESC"
+    ConnectionString = "Host=localhost;Database=npipeline;Username=postgres;Password=postgres",
+    StreamResults = true,
+    FetchSize = 1_000,
+    MaxRetryAttempts = 3,
+    RetryDelay = TimeSpan.FromSeconds(2),
 };
 
-var sourceNode = new PostgresSourceNode<Product>(options);
+var source = new PostgresSourceNode<Order>(
+    connectionString: configuration.ConnectionString,
+    query: "SELECT id, total, status FROM orders ORDER BY id",
+    configuration: configuration);
+
+// Or reuse a shared pool with a named connection
+var pooledSource = new PostgresSourceNode<Order>(pool, "SELECT * FROM orders", connectionName: "analytics");
+
+// Custom mapper (skips the reflection-based mapper)
+var mappedSource = new PostgresSourceNode<Order>(
+    pool,
+    "SELECT id, total, status FROM orders",
+    row => new Order(row.Get<int>("id"), row.Get<decimal>("total"), row.Get<string>("status")));
 ```
 
-## `PostgresSinkNode<T>`
+### Source configuration highlights
 
-The `PostgresSinkNode<T>` writes items from the pipeline to a PostgreSQL table.
+- `StreamResults` + `FetchSize` keep memory usage low when reading large result sets.
+- `CaseInsensitiveMapping` and `CacheMappingMetadata` reduce column lookup overhead.
+- `MaxRetryAttempts` / `RetryDelay` only retry before the first row is yielded.
+- `ValidateIdentifiers` guards against SQL injection when dynamic identifiers are used.
+- `continueOnError` (constructor flag) swallows per-property mapping errors when you prefer partial results.
 
-### Sink Configuration
+## Writing with `PostgresSinkNode<T>`
 
-The same `PostgresConfiguration` type configures writes. Notable options:
-
-- WriteStrategy: `PerRow`, `Batch` (default), or `Copy` bulk loading.
-- BatchSize / MaxBatchSize: Bound batch sizes to prevent runaway memory usage.
-- UseTransaction: Wrap batches in a transaction (default `true`).
-- UseUpsert + UpsertConflictColumns + OnConflictAction: Control `ON CONFLICT` behavior for idempotent writes.
-- Schema: Prefixed automatically when the table name is unqualified.
-- UseBinaryCopy: Required for the `Copy` strategy; a misconfiguration now fails fast.
-- CopyTimeout: Dedicated timeout applied to COPY operations (default `300s`).
-- ContinueOnError / RowErrorHandler: Swallow or inspect row-level failures.
-- MaxRetryAttempts / RetryDelay: AtLeastOnce retries now replay buffered input to avoid silent drops; expect extra memory use when retries are enabled.
-
-### Write Strategies
-
-The PostgreSQL connector supports multiple write strategies:
-
-- **PerRow**: Write each item individually
-- **Batch**: Write items in batches for better performance
-- **Copy**: Uses the PostgreSQL COPY command for maximum throughput
-
-### Delivery Semantics Guide
-
-The connector supports different delivery semantics:
-
-- **AtLeastOnce**: Items may be processed multiple times
-- **ExactlyOnce**: Items are processed exactly once using transactions or idempotent operations
-
-### Example: Writing to PostgreSQL
+The sink supports per-row and batched inserts. The `Copy` strategy exists for Pro and throws in the free package.
 
 ```csharp
-using NPipeline;
-using NPipeline.Connectors.PostgreSQL;
-using NPipeline.Execution;
-using NPipeline.Nodes;
-using NPipeline.Pipeline;
-using Npgsql;
-
-public sealed record ProcessedProduct(int Id, string Name, decimal Price, string Status);
-
-public sealed class ProductSinkPipeline : IPipelineDefinition
+var sinkConfig = new PostgresConfiguration
 {
-    public void Define(PipelineBuilder builder, PipelineContext context)
-    {
-        // Option 1: Using connection string
-        var options = new PostgresConfiguration
-        {
-            ConnectionString = "Host=localhost;Database=mydb;Username=myuser;Password=mypass",
-            TableName = "processed_products",
-            WriteStrategy = PostgresWriteStrategy.Batch,
-            BatchSize = 500,
-            UseTransaction = true
-        };
-        
-        var sinkNode = new PostgresSinkNode<ProcessedProduct>("processed_products", options);
-        
-        // Option 2: Using NpgsqlDataSource (for connection pooling)
-        var dataSource = NpgsqlDataSource.Create("Host=localhost;Database=mydb;Username=myuser;Password=mypass");
-        var sinkNodeWithDataSource = new PostgresSinkNode<ProcessedProduct>(dataSource, "processed_products");
-        
-        var source = builder.AddSource<InMemorySourceNode<ProcessedProduct>, ProcessedProduct>("source");
-        var sink = builder.AddSink(sinkNode, "postgres_sink");
-
-        builder.Connect(source, sink);
-    }
-}
-```
-
-### Upsert Example
-
-```csharp
-var options = new PostgresSinkOptions
-{
-    ConnectionString = "Host=localhost;Database=mydb;Username=myuser;Password=mypass",
-    TableName = "products",
-    UseUpsert = true,
-    UpsertConflictColumns = new[] { "id" },
-    OnConflictAction = OnConflictAction.Update
+    ConnectionString = "Host=localhost;Database=npipeline;Username=postgres;Password=postgres",
+    BatchSize = 500,
+    MaxBatchSize = 5_000,
+    UseTransaction = true,
+    WriteStrategy = PostgresWriteStrategy.Batch
 };
 
-var sinkNode = new PostgresSinkNode<Product>(options);
+var sink = new PostgresSinkNode<Order>(pool, "orders", writeStrategy: PostgresWriteStrategy.Batch, configuration: sinkConfig);
+
+// Custom parameter mapper: return values in the same order as mapped columns
+Func<Order, IEnumerable<DatabaseParameter>> mapper = order => new[]
+{
+    new DatabaseParameter("id", order.Id),
+    new DatabaseParameter("customer_id", order.CustomerId),
+    new DatabaseParameter("total", order.Total)
+};
+
+var perRowSink = new PostgresSinkNode<Order>(
+    pool,
+    tableName: "orders",
+    writeStrategy: PostgresWriteStrategy.PerRow,
+    parameterMapper: mapper,
+    configuration: sinkConfig);
 ```
 
-## Attribute-Based Mapping
+### Sink configuration highlights
 
-The PostgreSQL connector supports attribute-based mapping for type-safe configuration:
+- `PostgresWriteStrategy.Batch` buffers rows and issues a single multi-value `INSERT`; parameter names now align with generated SQL to avoid binding errors.
+- `BatchSize` is clamped by `MaxBatchSize` to prevent runaway buffers.
+- `ValidateIdentifiers` validates schema/table/column identifiers before generating SQL.
+- Custom mappers must return values in column order; names are ignored and replaced with generated parameter names.
+- `PostgresWriteStrategy.Copy` is reserved for Pro (binary COPY); free builds throw immediately to avoid surprise partial writes.
 
-### PostgresTable Attribute
+## Mapping
+
+- Convention-based mapping converts property names to `snake_case` column names.
+- `[PostgresColumn("column_name")]` overrides the column name; set `Ignore = true` to skip a property.
+- `[PostgresIgnore]` skips a property entirely.
+- Mapping metadata is cached per type when `CacheMappingMetadata` is enabled (default).
 
 ```csharp
-[PostgresTable("products", Schema = "inventory")]
-public sealed record Product(int Id, string Name, decimal Price);
+public record Order(
+    [PostgresColumn("order_id", PrimaryKey = true)] int Id,
+    [PostgresColumn("customer_id")] int CustomerId,
+    decimal Total,
+    [PostgresIgnore] string? InternalNotes);
 ```
 
-- **`TableName`**: Table name (defaults to class name)
-- **`Schema`**: Schema name (default: "public")
+## Pro preview (planned)
 
-### PostgresColumn Attribute
+- Binary `COPY` write strategy with `UseBinaryCopy` and dedicated timeouts
+- Upsert support (`ON CONFLICT`) with configurable conflict targets
+- Enhanced delivery semantics (exactly-once modes)
+- Checkpointing and CDC helpers
 
-```csharp
-[PostgresTable("products")]
-public sealed record Product(
-    [PostgresColumn("product_id")] int Id,
-    [PostgresColumn("product_name")] string Name,
-    [PostgresColumn("unit_price")] decimal Price
-);
-```
-
-- **`ColumnName`**: Column name (defaults to property name)
-
-## Checkpointing
-
-The PostgreSQL connector includes `PostgresCheckpointStorage` for resume capability:
-
-```csharp
-using NPipeline.Connectors.PostgreSQL.Checkpointing;
-
-var checkpointStorage = new PostgresCheckpointStorage(
-    "Host=localhost;Database=mydb;Username=myuser;Password=mypass",
-    "pipeline_checkpoints",
-    "public"
-);
-
-// Or use DI to get registered instance
-var checkpointStorage = serviceProvider.GetRequiredService<ICheckpointStorage>();
-```
-
-## Advanced Topics
-
-### Error Handling
-
-The connector provides detailed error handling with PostgreSQL-specific exception mapping. See [PostgreSQL Error Handling](../postgresql-connector-error-handling.md) for more details.
-
-### Delivery Semantics
-
-Learn about different delivery semantics and when to use each in [PostgreSQL Delivery Semantics](../postgresql-connector-delivery-semantics.md).
-
-### Write Strategies Guide
-
-Understand the different write strategies and their performance characteristics in [PostgreSQL Write Strategies](../postgresql-connector-write-strategies.md).
-
-### Checkpointing Guide
-
-Learn about checkpointing and resume capability in [PostgreSQL Checkpointing](../postgresql-connector-checkpointing.md).
-
-## Related Topics
-
-- **[NPipeline Connectors Index](./index.md)**: Return to connectors overview.
-- **[Common Patterns](../core-concepts/common-patterns.md)**: See connectors in practical examples.
-- **[Installation](../getting-started/installation.md)**: Review installation options for connector packages.
+These remain out of the free connector to preserve a clear upgrade path.
