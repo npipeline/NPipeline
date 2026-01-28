@@ -4,7 +4,7 @@ description: Read from and write to PostgreSQL databases with NPipeline using th
 sidebar_position: 2
 ---
 
-The `NPipeline.Connectors.PostgreSQL` package provides source and sink nodes backed by [Npgsql](https://www.npgsql.org/). The free connector focuses on reliable streaming reads and per-row/batch writes. A Pro connector will add binary `COPY`, upsert, and richer delivery semantics—those features are intentionally unavailable in the free build.
+The `NPipeline.Connectors.PostgreSQL` package provides source and sink nodes backed by [Npgsql](https://www.npgsql.org/). The connector focuses on reliable streaming reads, per-row/batch writes, and in-memory checkpointing for transient recovery. An upcoming "pro" connector will add additional features and functionaliy like binary `COPY`, upsert, advanced checkpointing, and richer delivery semantics.
 
 ## Installation
 
@@ -71,11 +71,11 @@ var mappedSource = new PostgresSourceNode<Order>(
 - `CaseInsensitiveMapping` and `CacheMappingMetadata` reduce column lookup overhead.
 - `MaxRetryAttempts` / `RetryDelay` only retry before the first row is yielded.
 - `ValidateIdentifiers` guards against SQL injection when dynamic identifiers are used.
-- `continueOnError` (constructor flag) swallows per-property mapping errors when you prefer partial results.
+- `ContinueOnError` (configuration) or the `continueOnError` constructor flag can swallow per-property mapping errors when you prefer partial results.
 
 ## Writing with `PostgresSinkNode<T>`
 
-The sink supports per-row and batched inserts. The `Copy` strategy exists for Pro and throws in the free package.
+The sink supports per-row and batched inserts.
 
 ```csharp
 var sinkConfig = new PostgresConfiguration
@@ -111,7 +111,18 @@ var perRowSink = new PostgresSinkNode<Order>(
 - `BatchSize` is clamped by `MaxBatchSize` to prevent runaway buffers.
 - `ValidateIdentifiers` validates schema/table/column identifiers before generating SQL.
 - Custom mappers must return values in column order; names are ignored and replaced with generated parameter names.
-- `PostgresWriteStrategy.Copy` is reserved for Pro (binary COPY); free builds throw immediately to avoid surprise partial writes.
+
+## Checkpointing
+
+In-memory checkpointing helps recover from transient failures during a single process execution:
+
+```csharp
+var config = new PostgresConfiguration
+{
+    ConnectionString = "Host=localhost;Database=npipeline;Username=postgres;Password=postgres",
+    CheckpointStrategy = CheckpointStrategy.InMemory
+};
+```
 
 ## Mapping
 
@@ -127,12 +138,3 @@ public record Order(
     decimal Total,
     [PostgresIgnore] string? InternalNotes);
 ```
-
-## Pro preview (planned)
-
-- Binary `COPY` write strategy with `UseBinaryCopy` and dedicated timeouts
-- Upsert support (`ON CONFLICT`) with configurable conflict targets
-- Enhanced delivery semantics (exactly-once modes)
-- Checkpointing and CDC helpers
-
-These remain out of the free connector to preserve a clear upgrade path.

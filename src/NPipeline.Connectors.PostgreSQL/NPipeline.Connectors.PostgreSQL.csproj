@@ -33,6 +33,7 @@
     <ItemGroup>
         <Compile Remove="PostgresSourceNode.cs" />
         <Compile Remove="PostgresSinkNode.cs" />
+        <Compile Remove="Nodes/PostgresWriteStrategy.cs" />
     </ItemGroup>
 
     <ItemGroup>

@@ -1,7 +1,5 @@
 using System.Diagnostics;
 using System.Globalization;
-using NPipeline.Connectors.Configuration;
-using NPipeline.Connectors.PostgreSQL;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.Connectors.PostgreSQL.Mapping;
 using NPipeline.Connectors.PostgreSQL.Nodes;
@@ -42,10 +40,10 @@ public sealed class PostgreSQLConnectorPipeline
         1. Reading data from PostgreSQL using PostgresSourceNode<T>
         2. Writing data to PostgreSQL using PostgresSinkNode<T>
         3. Attribute-based mapping with PostgresTable and PostgresColumn attributes
-        4. Different write strategies (PerRow, Batch, Copy)
+        4. Different write strategies (PerRow, Batch)
         5. Error handling and recovery patterns
         6. Connection pooling and configuration
-        7. InMemory checkpoint strategy for recovery from transient failures
+        7. In-memory checkpointing for transient recovery
         
         Pipeline Flow:
         - Setup database tables and seed sample data
@@ -54,7 +52,6 @@ public sealed class PostgreSQLConnectorPipeline
         - Read orders with items
         - Transform and aggregate order data
         - Write order summaries to destination table
-        - Demonstrate InMemory checkpoint strategy with large dataset
         
         Models Used:
         - Customer: Customer information with convention-based mapping
@@ -62,7 +59,7 @@ public sealed class PostgreSQLConnectorPipeline
         - Order: Order header with foreign key relationships
         - OrderItem: Order line items
         - OrderSummary: Aggregated order data for reporting
-        - CheckpointTestRecord: Test record for checkpointing demonstration
+        - TestRecord: Test record for write strategy demonstration
         """;
     }
 
@@ -116,8 +113,8 @@ public sealed class PostgreSQLConnectorPipeline
             await DemonstrateWriteStrategiesAsync(cancellationToken);
             Console.WriteLine();
 
-            // Step 7: Demonstrate InMemory checkpoint strategy
-            Console.WriteLine("Step 7: Demonstrating InMemory checkpoint strategy...");
+            // Step 7: Demonstrate in-memory checkpointing
+            Console.WriteLine("Step 7: Demonstrating in-memory checkpointing...");
             await DemonstrateInMemoryCheckpointingAsync(cancellationToken);
             Console.WriteLine();
 
@@ -154,7 +151,7 @@ public sealed class PostgreSQLConnectorPipeline
         {
             "customers", "products", "orders", "order_items",
             "order_summaries", "customers_copy", "products_copy",
-            "write_test_perrow", "write_test_batch", "write_test_copy"
+            "write_test_perrow", "write_test_batch", "checkpoint_test"
         };
 
         foreach (var table in tables)
@@ -255,7 +252,7 @@ public sealed class PostgreSQLConnectorPipeline
             )";
         await ExecuteNonQueryAsync(createOrderSummaries, connection, cancellationToken);
 
-        // Create copy tables for write strategy demonstration
+        // Create tables for write strategy demonstration
         var createCopyTable = @"
             CREATE TABLE {0} (
                 id SERIAL PRIMARY KEY,
@@ -265,7 +262,7 @@ public sealed class PostgreSQLConnectorPipeline
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )";
 
-        foreach (var tableName in new[] { "customers_copy", "products_copy", "write_test_perrow", "write_test_batch", "write_test_copy" })
+        foreach (var tableName in new[] { "customers_copy", "products_copy", "write_test_perrow", "write_test_batch", "checkpoint_test" })
         {
             var sql = string.Format(CultureInfo.InvariantCulture, createCopyTable, tableName);
             await ExecuteNonQueryAsync(sql, connection, cancellationToken);
@@ -334,6 +331,24 @@ public sealed class PostgreSQLConnectorPipeline
             (6, 7, 1, 34.99, 0, 34.99)
         ";
         await ExecuteNonQueryAsync(insertOrderItems, connection, cancellationToken);
+
+        // Seed checkpoint test records
+        var insertCheckpointRecords = new System.Text.StringBuilder();
+        _ = insertCheckpointRecords.Append("INSERT INTO checkpoint_test (name, value, category, created_at) VALUES");
+
+        for (var i = 1; i <= 25; i++)
+        {
+            var category = i % 3 == 0 ? "A" : i % 3 == 1 ? "B" : "C";
+            var createdAt = DateTime.UtcNow.AddMinutes(-i).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+            var values = $"('Checkpoint Item {i}', {i * 2.5m:F2}, '{category}', '{createdAt}')";
+            _ = insertCheckpointRecords.Append(values);
+            if (i < 25)
+            {
+                _ = insertCheckpointRecords.Append(',');
+            }
+        }
+
+        await ExecuteNonQueryAsync(insertCheckpointRecords.ToString(), connection, cancellationToken);
     }
 
     /// <summary>
@@ -352,11 +367,11 @@ public sealed class PostgreSQLConnectorPipeline
         var sinkConfig = new PostgresConfiguration
         {
             ConnectionString = _connectionString,
-            WriteStrategy = NPipeline.Connectors.PostgreSQL.Configuration.PostgresWriteStrategy.Batch,
+            WriteStrategy = PostgresWriteStrategy.Batch,
             BatchSize = 100
         };
 
-        var sinkNode = new PostgresSinkNode<Customer>(_connectionString, "customers_copy", NPipeline.Connectors.PostgreSQL.Nodes.PostgresWriteStrategy.Batch, configuration: sinkConfig);
+        var sinkNode = new PostgresSinkNode<Customer>(_connectionString, "customers_copy", PostgresWriteStrategy.Batch, configuration: sinkConfig);
         var context = new PipelineContext();
 
         var count = 0;
@@ -385,11 +400,11 @@ public sealed class PostgreSQLConnectorPipeline
         var sinkConfig = new PostgresConfiguration
         {
             ConnectionString = _connectionString,
-            WriteStrategy = NPipeline.Connectors.PostgreSQL.Configuration.PostgresWriteStrategy.Batch,
+            WriteStrategy = PostgresWriteStrategy.Batch,
             BatchSize = 50
         };
 
-        var sinkNode = new PostgresSinkNode<Product>(_connectionString, "products_copy", NPipeline.Connectors.PostgreSQL.Nodes.PostgresWriteStrategy.Batch, configuration: sinkConfig);
+        var sinkNode = new PostgresSinkNode<Product>(_connectionString, "products_copy", PostgresWriteStrategy.Batch, configuration: sinkConfig);
         var context = new PipelineContext();
 
         var count = 0;
@@ -459,11 +474,11 @@ public sealed class PostgreSQLConnectorPipeline
         var sinkConfig = new PostgresConfiguration
         {
             ConnectionString = _connectionString,
-            WriteStrategy = NPipeline.Connectors.PostgreSQL.Configuration.PostgresWriteStrategy.Batch,
+            WriteStrategy = PostgresWriteStrategy.Batch,
             BatchSize = 10
         };
 
-        var sinkNode = new PostgresSinkNode<OrderSummary>(_connectionString, "order_summaries", NPipeline.Connectors.PostgreSQL.Nodes.PostgresWriteStrategy.Batch, configuration: sinkConfig);
+        var sinkNode = new PostgresSinkNode<OrderSummary>(_connectionString, "order_summaries", PostgresWriteStrategy.Batch, configuration: sinkConfig);
         var context = new PipelineContext();
 
         // Create a data pipe from the list
@@ -472,76 +487,6 @@ public sealed class PostgreSQLConnectorPipeline
         await sinkNode.ExecuteAsync(dataPipe, context, cancellationToken);
 
         return summaries.Count;
-    }
-
-    /// <summary>
-    /// Demonstrates InMemory checkpoint strategy for recovery from transient failures.
-    /// </summary>
-    private async Task DemonstrateInMemoryCheckpointingAsync(CancellationToken cancellationToken)
-    {
-        using var connection = new Npgsql.NpgsqlConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-
-        // Create a large test table for checkpointing demonstration
-        var createLargeTable = @"
-            CREATE TABLE IF NOT EXISTS checkpoint_test (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(100) NOT NULL,
-                value DECIMAL(10,2),
-                category VARCHAR(50),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )";
-        await ExecuteNonQueryAsync(createLargeTable, connection, cancellationToken);
-
-        // Clear existing data
-        await ExecuteNonQueryAsync("TRUNCATE TABLE checkpoint_test", connection, cancellationToken);
-
-        // Insert test data
-        var insertData = new System.Text.StringBuilder();
-        _ = insertData.Append("INSERT INTO checkpoint_test (name, value, category) VALUES");
-        for (var i = 1; i <= 1000; i++)
-        {
-            var category = i % 10 switch { 0 => 'A', 1 => 'B', 2 => 'C', 3 => 'D', 4 => 'E', 5 => 'F', 6 => 'G', 7 => 'H', 8 => 'I', _ => 'J' };
-            var values = $"('Test Item {i}', {i * 1.5m:F2}, '{category}')";
-            _ = insertData.Append(values);
-            if (i < 1000)
-            {
-                _ = insertData.Append(',');
-            }
-        }
-        await ExecuteNonQueryAsync(insertData.ToString(), connection, cancellationToken);
-
-        // Demonstrate with InMemory checkpoint strategy
-        var sourceConfig = new PostgresConfiguration
-        {
-            ConnectionString = _connectionString,
-            CheckpointStrategy = CheckpointStrategy.InMemory,
-            StreamResults = true,
-            MaxRetryAttempts = 2,
-            RetryDelay = TimeSpan.FromMilliseconds(100)
-        };
-
-        var sql = "SELECT id, name, value, category, created_at FROM checkpoint_test ORDER BY id";
-        var sourceNode = new PostgresSourceNode<CheckpointTestRecord>(_connectionString, sql, configuration: sourceConfig);
-
-        var context = new PipelineContext();
-        var count = 0;
-        var stopwatch = Stopwatch.StartNew();
-
-        Console.WriteLine("  Reading 1000 records with InMemory checkpointing...");
-        await foreach (var record in sourceNode.Initialize(context, cancellationToken))
-        {
-            count++;
-            if (count % 200 == 0)
-            {
-                Console.WriteLine($"    Processed {count} records...");
-            }
-        }
-
-        stopwatch.Stop();
-        Console.WriteLine($"  Completed: {count} records in {stopwatch.ElapsedMilliseconds} ms");
-        Console.WriteLine("  InMemory checkpointing enables recovery from transient failures");
-        Console.WriteLine("  Checkpoints are stored in memory and cleared on successful completion");
     }
 
     /// <summary>
@@ -569,27 +514,62 @@ public sealed class PostgreSQLConnectorPipeline
 
         await ExecuteNonQueryAsync(insertData.ToString(), connection, cancellationToken);
         await ExecuteNonQueryAsync(insertData.ToString().Replace("write_test_perrow", "write_test_batch"), connection, cancellationToken);
-        await ExecuteNonQueryAsync(insertData.ToString().Replace("write_test_perrow", "write_test_copy"), connection, cancellationToken);
 
         // Test PerRow strategy
-        var perRowTime = await TestWriteStrategyAsync("write_test_perrow", NPipeline.Connectors.PostgreSQL.Nodes.PostgresWriteStrategy.PerRow, 1, cancellationToken);
+        var perRowTime = await TestWriteStrategyAsync("write_test_perrow", PostgresWriteStrategy.PerRow, 1, cancellationToken);
         Console.WriteLine($"  PerRow strategy: {perRowTime} ms");
 
         // Test Batch strategy
-        var batchTime = await TestWriteStrategyAsync("write_test_batch", NPipeline.Connectors.PostgreSQL.Nodes.PostgresWriteStrategy.Batch, 25, cancellationToken);
+        var batchTime = await TestWriteStrategyAsync("write_test_batch", PostgresWriteStrategy.Batch, 25, cancellationToken);
         Console.WriteLine($"  Batch strategy (size 25): {batchTime} ms");
-
-        // Test Copy strategy
-        var copyTime = await TestWriteStrategyAsync("write_test_copy", NPipeline.Connectors.PostgreSQL.Nodes.PostgresWriteStrategy.Copy, 0, cancellationToken);
-        Console.WriteLine($"  Copy strategy: {copyTime} ms");
 
         Console.WriteLine($"  Performance improvement: Batch is {((double)perRowTime / batchTime):F2}x faster than PerRow");
     }
 
     /// <summary>
+    /// Demonstrates in-memory checkpointing for transient recovery.
+    /// </summary>
+    private async Task DemonstrateInMemoryCheckpointingAsync(CancellationToken cancellationToken)
+    {
+        var config = new PostgresConfiguration
+        {
+            ConnectionString = _connectionString,
+            CheckpointStrategy = NPipeline.Connectors.Configuration.CheckpointStrategy.InMemory,
+            StreamResults = true
+        };
+
+        var sql = "SELECT id, name, value, category, created_at FROM checkpoint_test ORDER BY id";
+
+        var interruptedContext = new PipelineContext();
+        var interruptedSource = new PostgresSourceNode<CheckpointTestRecord>(_connectionString, sql, configuration: config);
+
+        var interruptedCount = 0;
+        await foreach (var _ in interruptedSource.Initialize(interruptedContext, cancellationToken))
+        {
+            interruptedCount++;
+            if (interruptedCount == 5)
+            {
+                Console.WriteLine("  Simulating interruption after 5 rows...");
+                break;
+            }
+        }
+
+        var resumeContext = new PipelineContext();
+        var resumeSource = new PostgresSourceNode<CheckpointTestRecord>(_connectionString, sql, configuration: config);
+
+        var resumedCount = 0;
+        await foreach (var _ in resumeSource.Initialize(resumeContext, cancellationToken))
+        {
+            resumedCount++;
+        }
+
+        Console.WriteLine($"  Resumed and processed {resumedCount} remaining rows.");
+    }
+
+    /// <summary>
     /// Tests a specific write strategy.
     /// </summary>
-    private async Task<long> TestWriteStrategyAsync(string tableName, NPipeline.Connectors.PostgreSQL.Nodes.PostgresWriteStrategy strategy, int batchSize, CancellationToken cancellationToken)
+    private async Task<long> TestWriteStrategyAsync(string tableName, PostgresWriteStrategy strategy, int batchSize, CancellationToken cancellationToken)
     {
         var sourceConfig = new PostgresConfiguration
         {
@@ -602,7 +582,7 @@ public sealed class PostgreSQLConnectorPipeline
         var sinkConfig = new PostgresConfiguration
         {
             ConnectionString = _connectionString,
-            WriteStrategy = (NPipeline.Connectors.PostgreSQL.Configuration.PostgresWriteStrategy)strategy,
+            WriteStrategy = strategy,
             BatchSize = batchSize > 0 ? batchSize : 100
         };
 

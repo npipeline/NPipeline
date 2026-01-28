@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using Npgsql;
 using NPipeline.Connectors.Abstractions;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.Exceptions;
@@ -29,6 +30,8 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
         private readonly string? _connectionName;
         private readonly IReadOnlyList<PropertyBinding> _bindings;
         private readonly Func<T> _createInstance;
+        private PostgresRow? _cachedRow;
+        private NpgsqlDataReader? _cachedReader;
 
         /// <summary>
         /// Gets whether to stream results.
@@ -82,9 +85,9 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
             _mapper = mapper;
             _query = query;
             _parameters = parameters ?? [];
-            _continueOnError = continueOnError;
+            _continueOnError = continueOnError || _configuration.ContinueOnError;
             _connectionName = null;
-            _cachedMapper = ResolveDefaultMapper(mapper, _configuration, continueOnError);
+            _cachedMapper = ResolveDefaultMapper(mapper, _configuration, _continueOnError);
             _bindings = BuildBindings();
             _createInstance = BuildCreateInstanceDelegate();
         }
@@ -121,9 +124,9 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
             _mapper = mapper;
             _query = query;
             _parameters = parameters ?? [];
-            _continueOnError = continueOnError;
+            _continueOnError = continueOnError || _configuration.ContinueOnError;
             _connectionName = string.IsNullOrWhiteSpace(connectionName) ? null : connectionName;
-            _cachedMapper = ResolveDefaultMapper(mapper, _configuration, continueOnError);
+            _cachedMapper = ResolveDefaultMapper(mapper, _configuration, _continueOnError);
             _bindings = BuildBindings();
             _createInstance = BuildCreateInstanceDelegate();
         }
@@ -172,7 +175,14 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
         protected override T MapRow(IDatabaseReader reader)
         {
             var postgresReader = (PostgresDatabaseReader)reader;
-            var row = new PostgresRow(postgresReader.Reader, _configuration.CaseInsensitiveMapping);
+            var dataReader = postgresReader.Reader;
+            if (_cachedRow == null || !ReferenceEquals(_cachedReader, dataReader))
+            {
+                _cachedReader = dataReader;
+                _cachedRow = new PostgresRow(dataReader, _configuration.CaseInsensitiveMapping);
+            }
+
+            var row = _cachedRow;
             if (_mapper != null)
             {
                 return _mapper(row);
@@ -259,9 +269,17 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
             [
                 .. typeof(T)
                     .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                    .Where(p => p.CanWrite)
+                    .Where(p => p.CanWrite && !IsIgnored(p))
                     .Select(p => new PropertyBinding(p.PropertyType, GetColumnName(p), BuildSetter(p)))
             ];
+        }
+
+        private static bool IsIgnored(PropertyInfo property)
+        {
+            var columnAttribute = property.GetCustomAttribute<PostgresColumnAttribute>();
+            var ignoredByAttribute = columnAttribute?.Ignore == true;
+            var hasIgnoreMarker = property.IsDefined(typeof(PostgresIgnoreAttribute), inherit: true);
+            return ignoredByAttribute || hasIgnoreMarker;
         }
 
         private static Action<T, object?> BuildSetter(PropertyInfo property)

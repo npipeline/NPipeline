@@ -3,7 +3,7 @@ using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.Connectors.PostgreSQL.Mapping;
 using NPipeline.Connectors.PostgreSQL.Nodes;
 using NPipeline.Connectors.Exceptions;
-using WriteStrategy = NPipeline.Connectors.PostgreSQL.Nodes.PostgresWriteStrategy;
+using WriteStrategy = NPipeline.Connectors.PostgreSQL.Configuration.PostgresWriteStrategy;
 
 namespace NPipeline.Connectors.PostgreSQL.Tests.Integration;
 
