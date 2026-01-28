@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
+using System.Linq;
 using Npgsql;
+using NPipeline.Connectors.PostgreSQL.Configuration;
 
 namespace NPipeline.Connectors.PostgreSQL.Connection
 {
@@ -9,7 +11,7 @@ namespace NPipeline.Connectors.PostgreSQL.Connection
     /// </summary>
     public class PostgresConnectionPool : IPostgresConnectionPool
     {
-        private readonly NpgsqlDataSource _dataSource;
+        private readonly NpgsqlDataSource? _defaultDataSource;
         private readonly ConcurrentDictionary<string, NpgsqlDataSource> _namedDataSources;
 
         /// <summary>
@@ -17,42 +19,53 @@ namespace NPipeline.Connectors.PostgreSQL.Connection
         /// </summary>
         /// <param name="connectionString">The connection string for PostgreSQL.</param>
         public PostgresConnectionPool(string connectionString)
+            : this(new PostgresOptions { DefaultConnectionString = connectionString })
         {
-            if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                throw new ArgumentException("Connection string cannot be empty.", nameof(connectionString));
-            }
-
-            ConnectionString = connectionString;
-            _dataSource = new NpgsqlDataSourceBuilder(connectionString).Build();
-            _namedDataSources = new ConcurrentDictionary<string, NpgsqlDataSource>(StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>
-        /// Initializes a new instance of the PostgresConnectionPool with named connections.
+        /// Initializes a new instance of the PostgresConnectionPool with named connections only.
         /// </summary>
         /// <param name="namedConnections">Dictionary of named connection strings.</param>
         public PostgresConnectionPool(IDictionary<string, string> namedConnections)
+            : this(new PostgresOptions { NamedConnections = new Dictionary<string, string>(namedConnections, StringComparer.OrdinalIgnoreCase) })
         {
-            if (namedConnections == null || namedConnections.Count == 0)
-            {
-                throw new ArgumentException("Named connections cannot be null or empty.", nameof(namedConnections));
-            }
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the PostgresConnectionPool using configured options.
+        /// </summary>
+        /// <param name="options">The connector options.</param>
+        public PostgresConnectionPool(PostgresOptions options)
+        {
+            ArgumentNullException.ThrowIfNull(options);
 
             _namedDataSources = new ConcurrentDictionary<string, NpgsqlDataSource>(StringComparer.OrdinalIgnoreCase);
 
-            foreach (var kvp in namedConnections)
+            var hasDefault = !string.IsNullOrWhiteSpace(options.DefaultConnectionString);
+            if (hasDefault)
+            {
+                _defaultDataSource = new NpgsqlDataSourceBuilder(options.DefaultConnectionString).Build();
+                ConnectionString = options.DefaultConnectionString;
+            }
+
+            foreach (var kvp in options.NamedConnections)
             {
                 if (string.IsNullOrWhiteSpace(kvp.Value))
                 {
-                    throw new ArgumentException($"Connection string for '{kvp.Key}' cannot be empty.", nameof(namedConnections));
+                    throw new ArgumentException($"Connection string for '{kvp.Key}' cannot be empty.", nameof(options));
                 }
 
-                _ = _namedDataSources.TryAdd(kvp.Key, new NpgsqlDataSourceBuilder(kvp.Value).Build());
+                var dataSource = new NpgsqlDataSourceBuilder(kvp.Value).Build();
+                _ = _namedDataSources.TryAdd(kvp.Key, dataSource);
+                ConnectionString ??= kvp.Value;
+                _defaultDataSource ??= dataSource;
             }
 
-            _dataSource = _namedDataSources.Values.First();
-            ConnectionString = namedConnections.Values.First();
+            if (_defaultDataSource == null)
+            {
+                throw new ArgumentException("At least one PostgreSQL connection string must be configured via DefaultConnectionString or NamedConnections.", nameof(options));
+            }
         }
 
         /// <summary>
@@ -62,7 +75,8 @@ namespace NPipeline.Connectors.PostgreSQL.Connection
         /// <returns>An open NpgsqlConnection.</returns>
         public async Task<NpgsqlConnection> GetConnectionAsync(CancellationToken cancellationToken = default)
         {
-            var connection = await _dataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+            var dataSource = _defaultDataSource ?? throw new InvalidOperationException("No default PostgreSQL connection string configured.");
+            var connection = await dataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
             return connection;
         }
 
@@ -74,7 +88,7 @@ namespace NPipeline.Connectors.PostgreSQL.Connection
         public Task<NpgsqlDataSource> GetDataSourceAsync(CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return Task.FromResult(_dataSource);
+            return Task.FromResult(_defaultDataSource ?? throw new InvalidOperationException("No default PostgreSQL connection string configured."));
         }
 
         /// <summary>
@@ -113,7 +127,7 @@ namespace NPipeline.Connectors.PostgreSQL.Connection
         /// <summary>
         /// Gets the connection string used by this pool.
         /// </summary>
-        public string ConnectionString { get; }
+        public string? ConnectionString { get; private set; }
 
         /// <summary>
         /// Checks if a named connection exists.
@@ -139,10 +153,18 @@ namespace NPipeline.Connectors.PostgreSQL.Connection
         /// </summary>
         public async ValueTask DisposeAsync()
         {
-            await _dataSource.DisposeAsync().ConfigureAwait(false);
-
-            foreach (var dataSource in _namedDataSources.Values)
+            if (_defaultDataSource != null)
             {
+                await _defaultDataSource.DisposeAsync().ConfigureAwait(false);
+            }
+
+            foreach (var dataSource in _namedDataSources.Values.Distinct())
+            {
+                if (ReferenceEquals(dataSource, _defaultDataSource))
+                {
+                    continue;
+                }
+
                 await dataSource.DisposeAsync().ConfigureAwait(false);
             }
 

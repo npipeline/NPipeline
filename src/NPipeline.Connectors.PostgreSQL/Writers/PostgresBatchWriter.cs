@@ -1,9 +1,12 @@
+using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using NPipeline.Connectors.Abstractions;
 using NPipeline.Connectors.Exceptions;
 using NPipeline.Connectors.Utilities;
 using NPipeline.Connectors.PostgreSQL.Mapping;
 using NPipeline.Connectors.PostgreSQL.Configuration;
+using NPipeline.Connectors.PostgreSQL.Exceptions;
 
 namespace NPipeline.Connectors.PostgreSQL.Writers
 {
@@ -19,7 +22,11 @@ namespace NPipeline.Connectors.PostgreSQL.Writers
         private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
         private readonly PostgresConfiguration _configuration;
         private readonly string _insertSql;
-        private readonly List<DatabaseParameter> _batchParameters;
+        private readonly List<object?[]> _pendingRows;
+        private readonly PropertyMapping[] _mappings;
+        private readonly int _parameterCount;
+        private readonly Func<T, object?[]> _valueFactory;
+        private readonly int _flushThreshold;
 
         /// <summary>
         /// Initializes a new instance of <see cref="PostgresBatchWriter{T}"/> class.
@@ -40,8 +47,13 @@ namespace NPipeline.Connectors.PostgreSQL.Writers
             _schema = schema ?? throw new ArgumentNullException(nameof(schema));
             _tableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _configuration.Validate();
             _parameterMapper = parameterMapper;
-            _batchParameters = [];
+            _mappings = BuildMappings();
+            _parameterCount = _mappings.Length;
+            _valueFactory = BuildValueFactory(_mappings);
+            _flushThreshold = Math.Clamp(_configuration.BatchSize, 1, _configuration.MaxBatchSize);
+            _pendingRows = new List<object?[]>(_flushThreshold);
             _insertSql = BuildInsertSql();
         }
 
@@ -51,24 +63,17 @@ namespace NPipeline.Connectors.PostgreSQL.Writers
         /// <returns>The INSERT SQL statement.</returns>
         private string BuildInsertSql()
         {
-            var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanWrite && !p.IsDefined(typeof(PostgresIgnoreAttribute), false));
-
-            var columns = new List<string>();
-            foreach (var property in properties)
+            if (_parameterCount == 0)
             {
-                columns.Add(GetColumnName(property));
+                throw new InvalidOperationException($"Type '{typeof(T).Name}' does not expose any writable properties to persist.");
             }
 
             var quotedTableName = DatabaseIdentifierValidator.QuoteIdentifier($"{_schema}.{_tableName}");
-            var quotedColumnsList = new List<string>();
-            foreach (var column in columns)
-            {
-                quotedColumnsList.Add(DatabaseIdentifierValidator.QuoteIdentifier(column));
-            }
-            var quotedColumns = string.Join(", ", quotedColumnsList);
+            var quotedColumns = _mappings
+                .Select(m => ValidateAndQuoteIdentifier(m.ColumnName, nameof(m.ColumnName)))
+                .ToArray();
 
-            return $"INSERT INTO {quotedTableName} ({quotedColumns}) VALUES ";
+            return $"INSERT INTO {quotedTableName} ({string.Join(", ", quotedColumns)}) VALUES ";
         }
 
         /// <summary>
@@ -79,21 +84,11 @@ namespace NPipeline.Connectors.PostgreSQL.Writers
         /// <returns>A task representing the asynchronous operation.</returns>
         public async Task WriteAsync(T item, CancellationToken cancellationToken = default)
         {
-            var parameters = _parameterMapper?.Invoke(item) ?? GetParametersFromItem(item);
+            _pendingRows.Add(GetValues(item));
 
-            foreach (var param in parameters)
+            if (_pendingRows.Count >= _flushThreshold)
             {
-                _batchParameters.Add(param);
-            }
-
-            // Check if batch size is reached and flush
-            var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanWrite && !p.IsDefined(typeof(PostgresIgnoreAttribute), false));
-            var propertyCount = properties.Count();
-
-            if (_batchParameters.Count >= propertyCount * _configuration.BatchSize)
-            {
-                await FlushAsync(cancellationToken);
+                await FlushAsync(cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -107,13 +102,12 @@ namespace NPipeline.Connectors.PostgreSQL.Writers
         {
             foreach (var item in items)
             {
-                await WriteAsync(item, cancellationToken);
+                await WriteAsync(item, cancellationToken).ConfigureAwait(false);
             }
 
-            // Flush any remaining buffered items after writing all
-            if (_batchParameters.Count > 0)
+            if (_pendingRows.Count > 0)
             {
-                await FlushAsync(cancellationToken);
+                await FlushAsync(cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -124,41 +118,42 @@ namespace NPipeline.Connectors.PostgreSQL.Writers
         /// <returns>A task representing the asynchronous operation.</returns>
         public async Task FlushAsync(CancellationToken cancellationToken = default)
         {
-            if (_batchParameters.Count == 0)
+            if (_pendingRows.Count == 0)
             {
                 return;
             }
 
-            var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanWrite && !p.IsDefined(typeof(PostgresIgnoreAttribute), false));
 
-            var itemCount = _batchParameters.Count / properties.Count();
-            var valueClauses = new List<string>();
+
+
+
+
+            var valueClauses = new List<string>(_pendingRows.Count);
             var paramIndex = 0;
 
-            for (var i = 0; i < itemCount; i++)
-            {
-                var paramList = new List<string>();
-                foreach (var property in properties)
-                {
-                    paramList.Add($"@p{paramIndex}");
-                    paramIndex++;
-                }
-                valueClauses.Add($"({string.Join(", ", paramList)})");
-            }
-
-            await using var command = await _connection.CreateCommandAsync(cancellationToken);
-            command.CommandText = _insertSql + string.Join(", ", valueClauses);
+            await using var command = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false);
             command.CommandType = System.Data.CommandType.Text;
             command.CommandTimeout = _configuration.CommandTimeout;
 
-            foreach (var param in _batchParameters)
+            foreach (var row in _pendingRows)
             {
-                command.AddParameter(param.Name, param.Value);
+                EnsureValueCount(row);
+
+                var parameterNames = new string[_parameterCount];
+                for (var i = 0; i < _parameterCount; i++)
+                {
+                    var paramName = $"@p{paramIndex++}";
+                    parameterNames[i] = paramName;
+                    command.AddParameter(paramName, row[i] ?? DBNull.Value);
+                }
+
+                valueClauses.Add($"({string.Join(", ", parameterNames)})");
             }
 
-            _ = await command.ExecuteNonQueryAsync(cancellationToken);
-            _batchParameters.Clear();
+            command.CommandText = _insertSql + string.Join(", ", valueClauses);
+
+            _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            _pendingRows.Clear();
         }
 
         /// <summary>
@@ -166,38 +161,99 @@ namespace NPipeline.Connectors.PostgreSQL.Writers
         /// </summary>
         /// <param name="item">The item.</param>
         /// <returns>The parameters.</returns>
-        private IEnumerable<DatabaseParameter> GetParametersFromItem(T item)
+        private object?[] GetValues(T item)
         {
-            var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanWrite && !p.IsDefined(typeof(PostgresIgnoreAttribute), false));
-
-            foreach (var property in properties)
+            if (_parameterMapper == null)
             {
-                var value = property.GetValue(item);
-                yield return new DatabaseParameter($"@{property.Name}", value);
+                return _valueFactory(item);
             }
+
+            var mapped = _parameterMapper(item)?.ToArray() ?? Array.Empty<DatabaseParameter>();
+            if (mapped.Length != _parameterCount)
+            {
+                throw new InvalidOperationException($"Custom parameter mapper for '{typeof(T).Name}' must return exactly {_parameterCount} values to match the mapped columns.");
+            }
+
+            var values = new object?[_parameterCount];
+            for (var i = 0; i < _parameterCount; i++)
+            {
+                values[i] = mapped[i].Value;
+            }
+
+            return values;
         }
 
-        /// <summary>
-        /// Gets the column name for a property.
-        /// </summary>
-        /// <param name="property">The property.</param>
-        /// <returns>The column name.</returns>
-        private string GetColumnName(PropertyInfo property)
+        private static PropertyMapping[] BuildMappings()
+        {
+            return
+            [
+                .. typeof(T)
+                    .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                    .Where(p => p.CanWrite && !IsIgnored(p))
+                    .Select(p => new PropertyMapping(GetColumnName(p), BuildGetter(p)))
+            ];
+        }
+
+        private static bool IsIgnored(PropertyInfo property)
+        {
+            var columnAttribute = property.GetCustomAttribute<PostgresColumnAttribute>();
+            var ignoredByAttribute = columnAttribute?.Ignore == true;
+            var hasIgnoreMarker = property.IsDefined(typeof(PostgresIgnoreAttribute), inherit: true);
+            return ignoredByAttribute || hasIgnoreMarker;
+        }
+
+        private static string GetColumnName(PropertyInfo property)
         {
             var columnAttr = property.GetCustomAttribute<PostgresColumnAttribute>();
             return columnAttr?.Name ?? ToSnakeCase(property.Name);
         }
 
-        /// <summary>
-        /// Converts a PascalCase string to snake_case.
-        /// </summary>
-        /// <param name="str">The string to convert.</param>
-        /// <returns>The snake_case string.</returns>
+        private static Func<T, object?> BuildGetter(PropertyInfo property)
+        {
+            var instanceParam = Expression.Parameter(typeof(T), "item");
+            var propertyAccess = Expression.Property(instanceParam, property);
+            var convert = Expression.Convert(propertyAccess, typeof(object));
+            return Expression.Lambda<Func<T, object?>>(convert, instanceParam).Compile();
+        }
+
+        private static Func<T, object?[]> BuildValueFactory(IReadOnlyList<PropertyMapping> mappings)
+        {
+            return item =>
+            {
+                var values = new object?[mappings.Count];
+                for (var i = 0; i < mappings.Count; i++)
+                {
+                    values[i] = mappings[i].Getter(item);
+                }
+
+                return values;
+            };
+        }
+
+        private void EnsureValueCount(object?[] values)
+        {
+            if (values.Length != _parameterCount)
+            {
+                throw new PostgresException($"Expected {_parameterCount} values for table '{_tableName}' but received {values.Length}.");
+            }
+        }
+
+        private string ValidateAndQuoteIdentifier(string identifier, string paramName)
+        {
+            if (_configuration.ValidateIdentifiers)
+            {
+                DatabaseIdentifierValidator.ValidateIdentifier(identifier, paramName);
+            }
+
+            return DatabaseIdentifierValidator.QuoteIdentifier(identifier);
+        }
+
         private static string ToSnakeCase(string str)
         {
             return string.Concat(str.Select((x, i) => i > 0 && char.IsUpper(x) ? "_" + x : x.ToString())).ToLowerInvariant();
         }
+
+        private sealed record PropertyMapping(string ColumnName, Func<T, object?> Getter);
 
         /// <summary>
         /// Disposes the writer.

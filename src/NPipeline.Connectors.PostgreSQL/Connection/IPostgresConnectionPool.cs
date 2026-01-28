@@ -40,8 +40,9 @@ namespace NPipeline.Connectors.PostgreSQL.Connection
 
         /// <summary>
         /// Gets the connection string used by this pool.
+        /// Returns the default connection string, or null if no default connection is configured.
         /// </summary>
-        string ConnectionString { get; }
+        string? ConnectionString { get; }
 
         /// <summary>
         /// Checks if a named connection exists.
