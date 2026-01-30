@@ -1,17 +1,12 @@
 namespace NPipeline.Connectors.Exceptions;
 
 /// <summary>
-/// Exception thrown when a database mapping error occurs.
+///     Exception thrown when a database mapping error occurs.
 /// </summary>
 public class DatabaseMappingException : DatabaseExceptionBase
 {
     /// <summary>
-    /// Gets the property name that caused the mapping error.
-    /// </summary>
-    public string? PropertyName { get; }
-
-    /// <summary>
-    /// Initializes a new instance of the DatabaseMappingException.
+    ///     Initializes a new instance of the DatabaseMappingException.
     /// </summary>
     /// <param name="message">The error message.</param>
     public DatabaseMappingException(string message)
@@ -20,7 +15,7 @@ public class DatabaseMappingException : DatabaseExceptionBase
     }
 
     /// <summary>
-    /// Initializes a new instance of the DatabaseMappingException with an inner exception.
+    ///     Initializes a new instance of the DatabaseMappingException with an inner exception.
     /// </summary>
     /// <param name="message">The error message.</param>
     /// <param name="innerException">The inner exception.</param>
@@ -30,7 +25,7 @@ public class DatabaseMappingException : DatabaseExceptionBase
     }
 
     /// <summary>
-    /// Initializes a new instance of the DatabaseMappingException with a property name.
+    ///     Initializes a new instance of the DatabaseMappingException with a property name.
     /// </summary>
     /// <param name="message">The error message.</param>
     /// <param name="propertyName">The property name that caused the error.</param>
@@ -41,7 +36,7 @@ public class DatabaseMappingException : DatabaseExceptionBase
     }
 
     /// <summary>
-    /// Initializes a new instance of the DatabaseMappingException with a property name and inner exception.
+    ///     Initializes a new instance of the DatabaseMappingException with a property name and inner exception.
     /// </summary>
     /// <param name="message">The error message.</param>
     /// <param name="propertyName">The property name that caused the error.</param>
@@ -51,4 +46,9 @@ public class DatabaseMappingException : DatabaseExceptionBase
     {
         PropertyName = propertyName;
     }
+
+    /// <summary>
+    ///     Gets the property name that caused the mapping error.
+    /// </summary>
+    public string? PropertyName { get; }
 }

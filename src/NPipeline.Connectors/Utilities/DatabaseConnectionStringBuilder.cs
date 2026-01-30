@@ -3,12 +3,12 @@ using System.Text;
 namespace NPipeline.Connectors.Utilities;
 
 /// <summary>
-/// Builder for constructing database connection strings.
+///     Builder for constructing database connection strings.
 /// </summary>
 public static class DatabaseConnectionStringBuilder
 {
     /// <summary>
-    /// Builds connection string from parameters.
+    ///     Builds connection string from parameters.
     /// </summary>
     /// <param name="parameters">The connection parameters.</param>
     /// <returns>The connection string.</returns>
@@ -19,9 +19,7 @@ public static class DatabaseConnectionStringBuilder
         foreach (var kvp in parameters)
         {
             if (builder.Length > 0)
-            {
                 builder.Append(';');
-            }
 
             builder.Append($"{kvp.Key}={EscapeValue(kvp.Value)}");
         }
@@ -30,7 +28,7 @@ public static class DatabaseConnectionStringBuilder
     }
 
     /// <summary>
-    /// Parses connection string into parameters.
+    ///     Parses connection string into parameters.
     /// </summary>
     /// <param name="connectionString">The connection string.</param>
     /// <returns>The connection parameters.</returns>
@@ -41,6 +39,7 @@ public static class DatabaseConnectionStringBuilder
         foreach (var part in connectionString.Split(';'))
         {
             var idx = part.IndexOf('=');
+
             if (idx > 0)
             {
                 var key = part.Substring(0, idx).Trim();
@@ -53,7 +52,7 @@ public static class DatabaseConnectionStringBuilder
     }
 
     /// <summary>
-    /// Escapes value for connection string.
+    ///     Escapes value for connection string.
     /// </summary>
     /// <param name="value">The value to escape.</param>
     /// <returns>The escaped value.</returns>
@@ -64,7 +63,7 @@ public static class DatabaseConnectionStringBuilder
     }
 
     /// <summary>
-    /// Unescapes value from connection string.
+    ///     Unescapes value from connection string.
     /// </summary>
     /// <param name="value">The value to unescape.</param>
     /// <returns>The unescaped value.</returns>

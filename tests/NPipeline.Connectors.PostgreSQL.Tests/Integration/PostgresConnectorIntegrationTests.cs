@@ -1,8 +1,8 @@
 using Npgsql;
+using NPipeline.Connectors.Exceptions;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.Connectors.PostgreSQL.Mapping;
 using NPipeline.Connectors.PostgreSQL.Nodes;
-using NPipeline.Connectors.Exceptions;
 using NPipeline.Connectors.PostgreSQL.Tests.Fixtures;
 using WriteStrategy = NPipeline.Connectors.PostgreSQL.Configuration.PostgresWriteStrategy;
 
@@ -16,7 +16,10 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
     private async Task DropTableIfExists(string tableName, string? schema = null)
     {
         var connectionString = _fixture.ConnectionString;
-        var fullTableName = string.IsNullOrEmpty(schema) ? tableName : $"{schema}.{tableName}";
+
+        var fullTableName = string.IsNullOrEmpty(schema)
+            ? tableName
+            : $"{schema}.{tableName}";
 
         await using var conn = new NpgsqlConnection(connectionString);
         await conn.OpenAsync();
@@ -51,21 +54,22 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand(
-                    $"CREATE TABLE {sourceTable} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
+                                 $"CREATE TABLE {sourceTable} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
 
                 await using (var cmd = new NpgsqlCommand(
-                    $"INSERT INTO {sourceTable} (id, name, value) VALUES (1, 'Test 1', 10.5), (2, 'Test 2', 20.5), (3, 'Test 3', 30.5)", conn))
+                                 $"INSERT INTO {sourceTable} (id, name, value) VALUES (1, 'Test 1', 10.5), (2, 'Test 2', 20.5), (3, 'Test 3', 30.5)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
 
                 // Set up sink table
                 await using (var cmd = new NpgsqlCommand(
-                    $"CREATE TABLE {sinkTable} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
+                                 $"CREATE TABLE {sinkTable} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
@@ -83,6 +87,7 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand($"SELECT COUNT(*) FROM {sourceTable}", conn))
                 {
                     var count = (long)(await cmd.ExecuteScalarAsync())!;
@@ -109,14 +114,15 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand(
-                    $"CREATE TABLE {tableName} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
+                                 $"CREATE TABLE {tableName} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
 
                 await using (var cmd = new NpgsqlCommand(
-                    $"INSERT INTO {tableName} (id, name, value) VALUES (1, 'Test 1', 10.5)", conn))
+                                 $"INSERT INTO {tableName} (id, name, value) VALUES (1, 'Test 1', 10.5)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
@@ -128,7 +134,7 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             {
                 Id = row.Get<int>("id"),
                 Name = row.Get<string>("name"),
-                Value = row.Get<decimal>("value")
+                Value = row.Get<decimal>("value"),
             });
 
             var source = new PostgresSourceNode<TestRecord>(connectionString, query, mapper);
@@ -140,12 +146,13 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand(query, conn))
                 {
                     await using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         await reader.ReadAsync();
-                        var postgresRow = new PostgresRow(reader, caseInsensitive: false);
+                        var postgresRow = new PostgresRow(reader, false);
                         var record = mapper(postgresRow);
                         Assert.Equal(1, record.Id);
                         Assert.Equal("Test 1", record.Name);
@@ -173,8 +180,9 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand(
-                    $"CREATE TABLE {tableName} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
+                                 $"CREATE TABLE {tableName} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
@@ -204,8 +212,9 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand(
-                    $"CREATE TABLE {tableName} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
+                                 $"CREATE TABLE {tableName} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
@@ -214,7 +223,7 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
                 for (var i = 1; i <= 5000; i++)
                 {
                     await using (var insertCmd = new NpgsqlCommand(
-                        $"INSERT INTO {tableName} (id, name, value) VALUES ({i}, 'Test {i}', {i * 1.5})", conn))
+                                     $"INSERT INTO {tableName} (id, name, value) VALUES ({i}, 'Test {i}', {i * 1.5})", conn))
                     {
                         _ = await insertCmd.ExecuteNonQueryAsync();
                     }
@@ -231,6 +240,7 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand($"SELECT COUNT(*) FROM {tableName}", conn))
                 {
                     var count = (long)(await cmd.ExecuteScalarAsync())!;
@@ -256,14 +266,15 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand(
-                    $"CREATE TABLE {tableName} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
+                                 $"CREATE TABLE {tableName} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
 
                 await using (var cmd = new NpgsqlCommand(
-                    $"INSERT INTO {tableName} (id, name, value) VALUES (1, 'Test 1', 10.5), (2, 'Test 2', 20.5)", conn))
+                                 $"INSERT INTO {tableName} (id, name, value) VALUES (1, 'Test 1', 10.5), (2, 'Test 2', 20.5)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
@@ -281,9 +292,11 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("id", 1);
+
                     await using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         var hasData = await reader.ReadAsync();
@@ -313,14 +326,15 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand(
-                    $"CREATE TABLE {sourceTable} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
+                                 $"CREATE TABLE {sourceTable} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
 
                 await using (var cmd = new NpgsqlCommand(
-                    $"CREATE TABLE {sinkTable} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
+                                 $"CREATE TABLE {sinkTable} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
@@ -329,7 +343,7 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
                 for (var i = 1; i <= 10000; i++)
                 {
                     await using (var insertCmd = new NpgsqlCommand(
-                        $"INSERT INTO {sourceTable} (id, name, value) VALUES ({i}, 'Test {i}', {i * 1.5})", conn))
+                                     $"INSERT INTO {sourceTable} (id, name, value) VALUES ({i}, 'Test {i}', {i * 1.5})", conn))
                     {
                         _ = await insertCmd.ExecuteNonQueryAsync();
                     }
@@ -337,7 +351,7 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             }
 
             var source = new PostgresSourceNode<TestRecord>(connectionString, query);
-            var sink = new PostgresSinkNode<TestRecord>(connectionString, sinkTable, WriteStrategy.Batch);
+            var sink = new PostgresSinkNode<TestRecord>(connectionString, sinkTable);
 
             // Act & Assert - Verify nodes can be created
             Assert.NotNull(source);
@@ -347,6 +361,7 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand($"SELECT COUNT(*) FROM {sourceTable}", conn))
                 {
                     var count = (long)(await cmd.ExecuteScalarAsync())!;
@@ -374,13 +389,14 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand($"CREATE SCHEMA {schemaName}", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
 
                 await using (var cmd = new NpgsqlCommand(
-                    $"CREATE TABLE {schemaName}.{tableName} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
+                                 $"CREATE TABLE {schemaName}.{tableName} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
@@ -396,6 +412,7 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand($"SELECT COUNT(*) FROM {schemaName}.{tableName}", conn))
                 {
                     var count = (long)(await cmd.ExecuteScalarAsync())!;
@@ -421,14 +438,15 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand(
-                    $"CREATE TABLE {tableName} (ID INTEGER PRIMARY KEY, NAME TEXT, VALUE NUMERIC)", conn))
+                                 $"CREATE TABLE {tableName} (ID INTEGER PRIMARY KEY, NAME TEXT, VALUE NUMERIC)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
 
                 await using (var cmd = new NpgsqlCommand(
-                    $"INSERT INTO {tableName} (ID, NAME, VALUE) VALUES (1, 'Test 1', 10.5)", conn))
+                                 $"INSERT INTO {tableName} (ID, NAME, VALUE) VALUES (1, 'Test 1', 10.5)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
@@ -445,12 +463,13 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand(query, conn))
                 {
                     await using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         await reader.ReadAsync();
-                        var postgresRow = new PostgresRow(reader, caseInsensitive: true);
+                        var postgresRow = new PostgresRow(reader);
                         Assert.Equal(1, postgresRow.Get<int>("id")); // lowercase access
                         Assert.Equal("Test 1", postgresRow.Get<string>("name"));
                         Assert.Equal(10.5m, postgresRow.Get<decimal>("value"));
@@ -476,14 +495,15 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand(
-                    $"CREATE TABLE {tableName} (user_id INTEGER PRIMARY KEY, user_name TEXT, user_value NUMERIC)", conn))
+                                 $"CREATE TABLE {tableName} (user_id INTEGER PRIMARY KEY, user_name TEXT, user_value NUMERIC)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
 
                 await using (var cmd = new NpgsqlCommand(
-                    $"INSERT INTO {tableName} (user_id, user_name, user_value) VALUES (1, 'Test User', 100.5)", conn))
+                                 $"INSERT INTO {tableName} (user_id, user_name, user_value) VALUES (1, 'Test User', 100.5)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
@@ -500,12 +520,13 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand(query, conn))
                 {
                     await using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         await reader.ReadAsync();
-                        var postgresRow = new PostgresRow(reader, caseInsensitive: false);
+                        var postgresRow = new PostgresRow(reader, false);
                         Assert.Equal(1, postgresRow.Get<int>("user_id"));
                         Assert.Equal("Test User", postgresRow.Get<string>("user_name"));
                         Assert.Equal(100.5m, postgresRow.Get<decimal>("user_value"));
@@ -531,14 +552,15 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand(
-                    $"CREATE TABLE {tableName} (id INTEGER PRIMARY KEY, display_name TEXT, numeric_value NUMERIC)", conn))
+                                 $"CREATE TABLE {tableName} (id INTEGER PRIMARY KEY, display_name TEXT, numeric_value NUMERIC)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
 
                 await using (var cmd = new NpgsqlCommand(
-                    $"INSERT INTO {tableName} (id, display_name, numeric_value) VALUES (1, 'Display Name', 50.25)", conn))
+                                 $"INSERT INTO {tableName} (id, display_name, numeric_value) VALUES (1, 'Display Name', 50.25)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
@@ -555,12 +577,13 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand(query, conn))
                 {
                     await using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         await reader.ReadAsync();
-                        var postgresRow = new PostgresRow(reader, caseInsensitive: false);
+                        var postgresRow = new PostgresRow(reader, false);
                         Assert.Equal(1, postgresRow.Get<int>("id"));
                         Assert.Equal("Display Name", postgresRow.Get<string>("display_name"));
                         Assert.Equal(50.25m, postgresRow.Get<decimal>("numeric_value"));
@@ -586,14 +609,15 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand(
-                    $"CREATE TABLE {tableName} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
+                                 $"CREATE TABLE {tableName} (id INTEGER PRIMARY KEY, name TEXT, value NUMERIC)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
 
                 await using (var cmd = new NpgsqlCommand(
-                    $"INSERT INTO {tableName} (id, name, value) VALUES (1, 'Test 1', 10.5)", conn))
+                                 $"INSERT INTO {tableName} (id, name, value) VALUES (1, 'Test 1', 10.5)", conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
@@ -610,12 +634,13 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
             await using (var conn = new NpgsqlConnection(connectionString))
             {
                 await conn.OpenAsync();
+
                 await using (var cmd = new NpgsqlCommand(query, conn))
                 {
                     await using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         await reader.ReadAsync();
-                        var postgresRow = new PostgresRow(reader, caseInsensitive: false);
+                        var postgresRow = new PostgresRow(reader, false);
                         Assert.Equal(1, postgresRow.Get<int>("id"));
                         Assert.Equal("Test 1", postgresRow.Get<string>("name"));
                         Assert.Equal(10.5m, postgresRow.Get<decimal>("value"));

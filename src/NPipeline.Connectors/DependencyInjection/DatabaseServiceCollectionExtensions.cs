@@ -4,12 +4,12 @@ using NPipeline.Connectors.Configuration;
 namespace NPipeline.Connectors.DependencyInjection;
 
 /// <summary>
-/// Extension methods for configuring database services in the dependency injection container.
+///     Extension methods for configuring database services in the dependency injection container.
 /// </summary>
 public static class DatabaseServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds database options to the service collection.
+    ///     Adds database options to the service collection.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configure">An optional action to configure the database options.</param>

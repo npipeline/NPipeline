@@ -1,6 +1,7 @@
 # NPipeline.Connectors.PostgreSQL
 
-A PostgreSQL connector for NPipeline data pipelines. This connector provides source and sink nodes for reading from and writing to PostgreSQL databases, with support for convention-based mapping, custom mappers, connection pooling, and more.
+A PostgreSQL connector for NPipeline data pipelines. This connector provides source and sink nodes for reading from and writing to PostgreSQL databases, with
+support for convention-based mapping, custom mappers, connection pooling, and more.
 
 ## Installation
 
@@ -54,7 +55,8 @@ dotnet add package NPipeline.Connectors.PostgreSQL
 
 ### Checkpointing
 
-The free connector supports `CheckpointStrategy.None` and `CheckpointStrategy.InMemory` for transient, in-process recovery. Advanced checkpoint strategies and persistent storage options are reserved for the commercial connector.
+The free connector supports `CheckpointStrategy.None` and `CheckpointStrategy.InMemory` for transient, in-process recovery. Advanced checkpoint strategies and
+persistent storage options are reserved for the commercial connector.
 
 ```csharp
 var configuration = new PostgresConfiguration

@@ -1,12 +1,12 @@
 namespace NPipeline.Connectors.Exceptions;
 
 /// <summary>
-/// Generic database exception for general database errors.
+///     Generic database exception for general database errors.
 /// </summary>
 public class DatabaseException : DatabaseExceptionBase
 {
     /// <summary>
-    /// Initializes a new instance of the DatabaseException.
+    ///     Initializes a new instance of the DatabaseException.
     /// </summary>
     /// <param name="message">The error message.</param>
     public DatabaseException(string message)
@@ -15,7 +15,7 @@ public class DatabaseException : DatabaseExceptionBase
     }
 
     /// <summary>
-    /// Initializes a new instance of the DatabaseException with an inner exception.
+    ///     Initializes a new instance of the DatabaseException with an inner exception.
     /// </summary>
     /// <param name="message">The error message.</param>
     /// <param name="innerException">The inner exception.</param>
@@ -25,7 +25,7 @@ public class DatabaseException : DatabaseExceptionBase
     }
 
     /// <summary>
-    /// Initializes a new instance of the DatabaseException with error code and SQL state.
+    ///     Initializes a new instance of the DatabaseException with error code and SQL state.
     /// </summary>
     /// <param name="message">The error message.</param>
     /// <param name="errorCode">The database error code.</param>
@@ -36,7 +36,7 @@ public class DatabaseException : DatabaseExceptionBase
     }
 
     /// <summary>
-    /// Initializes a new instance of the DatabaseException with error code, SQL state, and inner exception.
+    ///     Initializes a new instance of the DatabaseException with error code, SQL state, and inner exception.
     /// </summary>
     /// <param name="message">The error message.</param>
     /// <param name="errorCode">The database error code.</param>

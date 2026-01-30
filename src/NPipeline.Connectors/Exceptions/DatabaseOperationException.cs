@@ -1,12 +1,12 @@
 namespace NPipeline.Connectors.Exceptions;
 
 /// <summary>
-/// Exception thrown when a database operation error occurs.
+///     Exception thrown when a database operation error occurs.
 /// </summary>
 public class DatabaseOperationException : DatabaseExceptionBase
 {
     /// <summary>
-    /// Initializes a new instance of the DatabaseOperationException.
+    ///     Initializes a new instance of the DatabaseOperationException.
     /// </summary>
     /// <param name="message">The error message.</param>
     public DatabaseOperationException(string message)
@@ -15,7 +15,7 @@ public class DatabaseOperationException : DatabaseExceptionBase
     }
 
     /// <summary>
-    /// Initializes a new instance of the DatabaseOperationException with an inner exception.
+    ///     Initializes a new instance of the DatabaseOperationException with an inner exception.
     /// </summary>
     /// <param name="message">The error message.</param>
     /// <param name="innerException">The inner exception.</param>
@@ -25,7 +25,7 @@ public class DatabaseOperationException : DatabaseExceptionBase
     }
 
     /// <summary>
-    /// Initializes a new instance of the DatabaseOperationException with error code and SQL state.
+    ///     Initializes a new instance of the DatabaseOperationException with error code and SQL state.
     /// </summary>
     /// <param name="message">The error message.</param>
     /// <param name="errorCode">The database error code.</param>
@@ -36,7 +36,7 @@ public class DatabaseOperationException : DatabaseExceptionBase
     }
 
     /// <summary>
-    /// Initializes a new instance of the DatabaseOperationException with error code, SQL state, and inner exception.
+    ///     Initializes a new instance of the DatabaseOperationException with error code, SQL state, and inner exception.
     /// </summary>
     /// <param name="message">The error message.</param>
     /// <param name="errorCode">The database error code.</param>

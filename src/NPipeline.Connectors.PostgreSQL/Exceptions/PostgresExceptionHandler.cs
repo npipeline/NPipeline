@@ -3,7 +3,7 @@ using Npgsql;
 namespace NPipeline.Connectors.PostgreSQL.Exceptions;
 
 /// <summary>
-/// Utility methods for translating and classifying PostgreSQL exceptions.
+///     Utility methods for translating and classifying PostgreSQL exceptions.
 /// </summary>
 public static class PostgresExceptionHandler
 {
@@ -34,7 +34,7 @@ public static class PostgresExceptionHandler
     };
 
     /// <summary>
-    /// Translates an exception into a <see cref="PostgresException"/> with context.
+    ///     Translates an exception into a <see cref="PostgresException" /> with context.
     /// </summary>
     public static PostgresException Translate(string message, Exception ex)
     {
@@ -50,12 +50,12 @@ public static class PostgresExceptionHandler
                     pgEx),
             PostgresException existing => existing,
             NpgsqlException npgsqlEx => new PostgresException(message, npgsqlEx),
-            _ => new PostgresException(message, ex)
+            _ => new PostgresException(message, ex),
         };
     }
 
     /// <summary>
-    /// Returns a human-readable description for a SQLSTATE code when available.
+    ///     Returns a human-readable description for a SQLSTATE code when available.
     /// </summary>
     public static string? GetErrorDescription(string? sqlState)
     {
@@ -67,7 +67,7 @@ public static class PostgresExceptionHandler
     }
 
     /// <summary>
-    /// Determines whether an exception is transient and can be retried.
+    ///     Determines whether an exception is transient and can be retried.
     /// </summary>
     public static bool IsTransient(Exception ex)
     {
@@ -76,12 +76,12 @@ public static class PostgresExceptionHandler
             PostgresException pipelinePgEx when pipelinePgEx.ErrorCode is not null => IsTransientSqlState(pipelinePgEx.ErrorCode),
             Npgsql.PostgresException pgEx => IsTransientSqlState(pgEx.SqlState),
             NpgsqlException => true,
-            _ => ex.InnerException != null && IsTransient(ex.InnerException)
+            _ => ex.InnerException != null && IsTransient(ex.InnerException),
         };
     }
 
     /// <summary>
-    /// Evaluates SQLSTATE codes for retryability.
+    ///     Evaluates SQLSTATE codes for retryability.
     /// </summary>
     public static bool IsTransientSqlState(string? sqlState)
     {

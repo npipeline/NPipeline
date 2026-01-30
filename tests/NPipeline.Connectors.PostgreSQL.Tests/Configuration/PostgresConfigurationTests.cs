@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 
 namespace NPipeline.Connectors.PostgreSQL.Tests.Configuration;
@@ -177,7 +178,7 @@ public sealed class PostgresConfigurationTests
         var config = new PostgresConfiguration
         {
             MinPoolSize = 100,
-            MaxPoolSize = 50
+            MaxPoolSize = 50,
         };
 
         // Act & Assert
@@ -251,7 +252,7 @@ public sealed class PostgresConfigurationTests
         var config = new PostgresConfiguration
         {
             BatchSize = 2000,
-            MaxBatchSize = 1000
+            MaxBatchSize = 1000,
         };
 
         // Act & Assert
@@ -284,7 +285,7 @@ public sealed class PostgresConfigurationTests
         // Arrange
         var config = new PostgresConfiguration
         {
-            UseUpsert = true
+            UseUpsert = true,
         };
 
         // Act & Assert
@@ -297,7 +298,7 @@ public sealed class PostgresConfigurationTests
         // Arrange
         var config = new PostgresConfiguration
         {
-            UseBinaryCopy = true
+            UseBinaryCopy = true,
         };
 
         // Act & Assert
@@ -310,7 +311,7 @@ public sealed class PostgresConfigurationTests
         // Arrange
         var config = new PostgresConfiguration
         {
-            WriteStrategy = PostgresWriteStrategy.Copy
+            WriteStrategy = PostgresWriteStrategy.Copy,
         };
 
         // Act & Assert
@@ -323,7 +324,7 @@ public sealed class PostgresConfigurationTests
         // Arrange
         var config = new PostgresConfiguration
         {
-            DeliverySemantic = NPipeline.Connectors.Configuration.DeliverySemantic.ExactlyOnce
+            DeliverySemantic = DeliverySemantic.ExactlyOnce,
         };
 
         // Act & Assert
@@ -336,7 +337,7 @@ public sealed class PostgresConfigurationTests
         // Arrange
         var config = new PostgresConfiguration
         {
-            CheckpointStrategy = NPipeline.Connectors.Configuration.CheckpointStrategy.Offset
+            CheckpointStrategy = CheckpointStrategy.Offset,
         };
 
         // Act & Assert
@@ -349,7 +350,7 @@ public sealed class PostgresConfigurationTests
         // Arrange
         var config = new PostgresConfiguration
         {
-            CheckpointStrategy = NPipeline.Connectors.Configuration.CheckpointStrategy.InMemory
+            CheckpointStrategy = CheckpointStrategy.InMemory,
         };
 
         // Act

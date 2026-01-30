@@ -1,23 +1,13 @@
 namespace NPipeline.Connectors.Exceptions;
 
 /// <summary>
-/// Base exception class for database-related errors.
-/// Designed to be inherited by database-specific exception classes.
+///     Base exception class for database-related errors.
+///     Designed to be inherited by database-specific exception classes.
 /// </summary>
 public abstract class DatabaseExceptionBase : Exception
 {
     /// <summary>
-    /// Gets the error code associated with this exception.
-    /// </summary>
-    public string? ErrorCode { get; }
-
-    /// <summary>
-    /// Gets the SQL state associated with this exception.
-    /// </summary>
-    public int? SqlState { get; }
-
-    /// <summary>
-    /// Initializes a new instance of the DatabaseExceptionBase.
+    ///     Initializes a new instance of the DatabaseExceptionBase.
     /// </summary>
     /// <param name="message">The error message.</param>
     protected DatabaseExceptionBase(string message)
@@ -26,7 +16,7 @@ public abstract class DatabaseExceptionBase : Exception
     }
 
     /// <summary>
-    /// Initializes a new instance of the DatabaseExceptionBase with an inner exception.
+    ///     Initializes a new instance of the DatabaseExceptionBase with an inner exception.
     /// </summary>
     /// <param name="message">The error message.</param>
     /// <param name="innerException">The inner exception.</param>
@@ -36,7 +26,7 @@ public abstract class DatabaseExceptionBase : Exception
     }
 
     /// <summary>
-    /// Initializes a new instance of the DatabaseExceptionBase with error code and SQL state.
+    ///     Initializes a new instance of the DatabaseExceptionBase with error code and SQL state.
     /// </summary>
     /// <param name="message">The error message.</param>
     /// <param name="errorCode">The database error code.</param>
@@ -49,7 +39,7 @@ public abstract class DatabaseExceptionBase : Exception
     }
 
     /// <summary>
-    /// Initializes a new instance of the DatabaseExceptionBase with error code, SQL state, and inner exception.
+    ///     Initializes a new instance of the DatabaseExceptionBase with error code, SQL state, and inner exception.
     /// </summary>
     /// <param name="message">The error message.</param>
     /// <param name="errorCode">The database error code.</param>
@@ -61,4 +51,14 @@ public abstract class DatabaseExceptionBase : Exception
         ErrorCode = errorCode;
         SqlState = sqlState;
     }
+
+    /// <summary>
+    ///     Gets the error code associated with this exception.
+    /// </summary>
+    public string? ErrorCode { get; }
+
+    /// <summary>
+    ///     Gets the SQL state associated with this exception.
+    /// </summary>
+    public int? SqlState { get; }
 }

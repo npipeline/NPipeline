@@ -1,15 +1,16 @@
+using System.Runtime.CompilerServices;
 using NPipeline.Connectors.Abstractions;
 using NPipeline.Connectors.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
-using NPipeline.Pipeline;
 using NPipeline.Nodes;
+using NPipeline.Pipeline;
 
 namespace NPipeline.Connectors.Nodes;
 
 /// <summary>
-/// Base class for database source nodes.
-/// Designed to be inherited by database-specific implementations.
+///     Base class for database source nodes.
+///     Designed to be inherited by database-specific implementations.
 /// </summary>
 /// <typeparam name="TReader">The type of database reader.</typeparam>
 /// <typeparam name="T">The type of objects emitted by source.</typeparam>
@@ -19,46 +20,46 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
     private static readonly Dictionary<string, long> _checkpoints = new();
 
     /// <summary>
-    /// Gets whether to stream results.
-    /// Virtual property for extensions.
+    ///     Gets whether to stream results.
+    ///     Virtual property for extensions.
     /// </summary>
     protected virtual bool StreamResults => false;
 
     /// <summary>
-    /// Gets fetch size for streaming.
-    /// Virtual property for extensions.
+    ///     Gets fetch size for streaming.
+    ///     Virtual property for extensions.
     /// </summary>
     protected virtual int FetchSize => 100;
 
     /// <summary>
-    /// Gets delivery semantic.
-    /// Virtual property for extensions.
+    ///     Gets delivery semantic.
+    ///     Virtual property for extensions.
     /// </summary>
     protected virtual DeliverySemantic DeliverySemantic => DeliverySemantic.AtLeastOnce;
 
     /// <summary>
-    /// Gets checkpoint strategy.
-    /// Virtual property for extensions.
+    ///     Gets checkpoint strategy.
+    ///     Virtual property for extensions.
     /// </summary>
     protected virtual CheckpointStrategy CheckpointStrategy => CheckpointStrategy.None;
 
     /// <summary>
-    /// Gets a unique identifier for this source node instance for checkpoint tracking.
-    /// Virtual property for extensions.
+    ///     Gets a unique identifier for this source node instance for checkpoint tracking.
+    ///     Virtual property for extensions.
     /// </summary>
     protected virtual string CheckpointId => GetType().FullName ?? GetType().Name;
 
     /// <summary>
-    /// Gets a database connection asynchronously.
-    /// Abstract method to be implemented by derived classes.
+    ///     Gets a database connection asynchronously.
+    ///     Abstract method to be implemented by derived classes.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     protected abstract Task<IDatabaseConnection> GetConnectionAsync(CancellationToken cancellationToken);
 
     /// <summary>
-    /// Executes query and returns a database reader.
-    /// Abstract method to be implemented by derived classes.
+    ///     Executes query and returns a database reader.
+    ///     Abstract method to be implemented by derived classes.
     /// </summary>
     /// <param name="connection">The database connection.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
@@ -66,15 +67,15 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
     protected abstract Task<TReader> ExecuteQueryAsync(IDatabaseConnection connection, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Maps a database row to an object.
-    /// Abstract method to be implemented by derived classes.
+    ///     Maps a database row to an object.
+    ///     Abstract method to be implemented by derived classes.
     /// </summary>
     /// <param name="reader">The database reader.</param>
     /// <returns>The mapped object.</returns>
     protected abstract T MapRow(TReader reader);
 
     /// <summary>
-    /// Initializes the source node and returns a data pipe.
+    ///     Initializes the source node and returns a data pipe.
     /// </summary>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
@@ -87,36 +88,37 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
             var stream = StreamDataAsync(cancellationToken);
             return new StreamingDataPipe<T>(stream, $"{GetType().Name}");
         }
-        else
-        {
-            // Buffer all data in memory
-            var items = BufferDataAsync(cancellationToken).GetAwaiter().GetResult();
-            return new InMemoryDataPipe<T>(items, $"{GetType().Name}");
-        }
+
+        // Buffer all data in memory
+        var items = BufferDataAsync(cancellationToken).GetAwaiter().GetResult();
+        return new InMemoryDataPipe<T>(items, $"{GetType().Name}");
     }
 
     /// <summary>
-    /// Streams data from the database asynchronously.
+    ///     Streams data from the database asynchronously.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>An async enumerable of data items.</returns>
-    private async IAsyncEnumerable<T> StreamDataAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+    private async IAsyncEnumerable<T> StreamDataAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await using var connection = await GetConnectionAsync(cancellationToken);
         await using var reader = await ExecuteQueryAsync(connection, cancellationToken);
 
         var checkpointId = CheckpointId;
-        var checkpoint = CheckpointStrategy == CheckpointStrategy.InMemory ? GetCheckpoint(checkpointId) : 0;
+
+        var checkpoint = CheckpointStrategy == CheckpointStrategy.InMemory
+            ? GetCheckpoint(checkpointId)
+            : 0;
+
         var currentRow = 0L;
 
         // Skip to checkpoint position
         while (checkpoint > 0 && await reader.ReadAsync(cancellationToken))
         {
             currentRow++;
+
             if (currentRow >= checkpoint)
-            {
                 break;
-            }
         }
 
         while (await reader.ReadAsync(cancellationToken))
@@ -126,20 +128,16 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
 
             // Update checkpoint
             if (CheckpointStrategy == CheckpointStrategy.InMemory)
-            {
                 SetCheckpoint(checkpointId, currentRow);
-            }
         }
 
         // Clear checkpoint on successful completion
         if (CheckpointStrategy == CheckpointStrategy.InMemory)
-        {
             ClearCheckpoint(checkpointId);
-        }
     }
 
     /// <summary>
-    /// Buffers all data from the database into memory.
+    ///     Buffers all data from the database into memory.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A list of data items.</returns>
@@ -151,17 +149,20 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
         await using var reader = await ExecuteQueryAsync(connection, cancellationToken);
 
         var checkpointId = CheckpointId;
-        var checkpoint = CheckpointStrategy == CheckpointStrategy.InMemory ? GetCheckpoint(checkpointId) : 0;
+
+        var checkpoint = CheckpointStrategy == CheckpointStrategy.InMemory
+            ? GetCheckpoint(checkpointId)
+            : 0;
+
         var currentRow = 0L;
 
         // Skip to checkpoint position
         while (checkpoint > 0 && await reader.ReadAsync(cancellationToken))
         {
             currentRow++;
+
             if (currentRow >= checkpoint)
-            {
                 break;
-            }
         }
 
         while (await reader.ReadAsync(cancellationToken))
@@ -171,22 +172,18 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
 
             // Update checkpoint periodically
             if (CheckpointStrategy == CheckpointStrategy.InMemory && currentRow % 100 == 0)
-            {
                 SetCheckpoint(checkpointId, currentRow);
-            }
         }
 
         // Clear checkpoint on successful completion
         if (CheckpointStrategy == CheckpointStrategy.InMemory)
-        {
             ClearCheckpoint(checkpointId);
-        }
 
         return items;
     }
 
     /// <summary>
-    /// Gets the checkpoint value for the specified checkpoint ID.
+    ///     Gets the checkpoint value for the specified checkpoint ID.
     /// </summary>
     /// <param name="checkpointId">The checkpoint identifier.</param>
     /// <returns>The checkpoint value (row number).</returns>
@@ -194,12 +191,14 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
     {
         lock (_checkpoints)
         {
-            return _checkpoints.TryGetValue(checkpointId, out var checkpoint) ? checkpoint : 0;
+            return _checkpoints.TryGetValue(checkpointId, out var checkpoint)
+                ? checkpoint
+                : 0;
         }
     }
 
     /// <summary>
-    /// Sets the checkpoint value for the specified checkpoint ID.
+    ///     Sets the checkpoint value for the specified checkpoint ID.
     /// </summary>
     /// <param name="checkpointId">The checkpoint identifier.</param>
     /// <param name="value">The checkpoint value (row number).</param>
@@ -212,7 +211,7 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
     }
 
     /// <summary>
-    /// Clears the checkpoint for the specified checkpoint ID.
+    ///     Clears the checkpoint for the specified checkpoint ID.
     /// </summary>
     /// <param name="checkpointId">The checkpoint identifier.</param>
     private static void ClearCheckpoint(string checkpointId)

@@ -136,7 +136,8 @@ if (metadata != null)
 
 ### Database Connector Abstractions
 
-NPipeline.Connectors also provides database-agnostic abstractions for implementing database connectors (PostgreSQL, SQL Server, MySQL, Oracle, etc.). These abstractions enable:
+NPipeline.Connectors also provides database-agnostic abstractions for implementing database connectors (PostgreSQL, SQL Server, MySQL, Oracle, etc.). These
+abstractions enable:
 
 - **Unified Database API**: Common interfaces for database operations across different database systems
 - **Extensible Base Classes**: Ready-to-use base classes for source and sink nodes
@@ -221,7 +222,7 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
     protected abstract Task<IDatabaseConnection> GetConnectionAsync(CancellationToken cancellationToken);
     protected abstract Task<TReader> ExecuteQueryAsync(IDatabaseConnection connection, CancellationToken cancellationToken);
     protected abstract T MapRow(TReader reader);
-    
+
     protected virtual bool StreamResults => false;
     protected virtual int FetchSize => 100;
     protected virtual DeliverySemantic DeliverySemantic => DeliverySemantic.AtLeastOnce;
@@ -236,7 +237,7 @@ public abstract class DatabaseSinkNode<T> : SinkNode<T>
 {
     protected abstract Task<IDatabaseConnection> GetConnectionAsync(CancellationToken cancellationToken);
     protected abstract Task<IDatabaseWriter<T>> CreateWriterAsync(IDatabaseConnection connection, CancellationToken cancellationToken);
-    
+
     protected virtual bool UseTransaction => false;
     protected virtual int BatchSize => 100;
     protected virtual DeliverySemantic DeliverySemantic => DeliverySemantic.AtLeastOnce;
@@ -258,7 +259,7 @@ public abstract class DatabaseConfigurationBase
     public bool ValidateIdentifiers { get; set; } = true;
     public DeliverySemantic DeliverySemantic { get; set; } = DeliverySemantic.AtLeastOnce;
     public CheckpointStrategy CheckpointStrategy { get; set; } = CheckpointStrategy.None;
-    
+
     public virtual void Validate();
 }
 ```
@@ -302,7 +303,7 @@ var retryPolicy = new DatabaseRetryPolicy
     ShouldRetry = ex => DatabaseErrorClassifier.IsTransientError(ex)
 };
 
-var result = await retryPolicy.ExecuteAsync(async ct => 
+var result = await retryPolicy.ExecuteAsync(async ct =>
     await ExecuteDatabaseOperation(ct));
 ```
 

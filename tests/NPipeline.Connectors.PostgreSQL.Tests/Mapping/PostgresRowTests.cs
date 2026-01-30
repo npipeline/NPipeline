@@ -1,6 +1,3 @@
-using AwesomeAssertions;
-using NPipeline.Connectors.PostgreSQL.Mapping;
-
 namespace NPipeline.Connectors.PostgreSQL.Tests.Mapping;
 
 public sealed class PostgresRowTests

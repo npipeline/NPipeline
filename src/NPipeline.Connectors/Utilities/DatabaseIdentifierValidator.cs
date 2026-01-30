@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace NPipeline.Connectors.Utilities;
 
 /// <summary>
-/// Provides validation for database identifiers.
+///     Provides validation for database identifiers.
 /// </summary>
 public static class DatabaseIdentifierValidator
 {
@@ -11,7 +11,7 @@ public static class DatabaseIdentifierValidator
         RegexOptions.Compiled);
 
     /// <summary>
-    /// Determines whether the specified identifier is valid.
+    ///     Determines whether the specified identifier is valid.
     /// </summary>
     /// <param name="identifier">The identifier to validate.</param>
     /// <returns>True if the identifier is valid; otherwise, false.</returns>
@@ -24,7 +24,7 @@ public static class DatabaseIdentifierValidator
     }
 
     /// <summary>
-    /// Validates the specified identifier and throws an exception if invalid.
+    ///     Validates the specified identifier and throws an exception if invalid.
     /// </summary>
     /// <param name="identifier">The identifier to validate.</param>
     /// <param name="paramName">The parameter name.</param>
@@ -41,7 +41,7 @@ public static class DatabaseIdentifierValidator
     }
 
     /// <summary>
-    /// Quotes the specified identifier with the specified quote character.
+    ///     Quotes the specified identifier with the specified quote character.
     /// </summary>
     /// <param name="identifier">The identifier to quote.</param>
     /// <param name="quoteChar">The quote character to use.</param>

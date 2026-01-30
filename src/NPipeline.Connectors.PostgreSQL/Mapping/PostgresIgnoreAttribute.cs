@@ -1,10 +1,9 @@
-namespace NPipeline.Connectors.PostgreSQL.Mapping
+namespace NPipeline.Connectors.PostgreSQL.Mapping;
+
+/// <summary>
+///     Specifies that a property should be ignored during convention-based mapping.
+/// </summary>
+[AttributeUsage(AttributeTargets.Property)]
+public sealed class PostgresIgnoreAttribute : Attribute
 {
-    /// <summary>
-    /// Specifies that a property should be ignored during convention-based mapping.
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
-    public sealed class PostgresIgnoreAttribute : Attribute
-    {
-    }
 }
