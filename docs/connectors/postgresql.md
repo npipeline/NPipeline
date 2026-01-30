@@ -4,7 +4,9 @@ description: Read from and write to PostgreSQL databases with NPipeline using th
 sidebar_position: 2
 ---
 
-The `NPipeline.Connectors.PostgreSQL` package provides source and sink nodes backed by [Npgsql](https://www.npgsql.org/). The connector focuses on reliable streaming reads, per-row/batch writes, and in-memory checkpointing for transient recovery. An upcoming "pro" connector will add additional features and functionality like binary `COPY`, upsert, advanced checkpointing, and richer delivery semantics.
+## PostgreSQL Connector
+
+The `NPipeline.Connectors.PostgreSQL` package provides source and sink nodes backed by [Npgsql](https://www.npgsql.org/). The connector focuses on reliable streaming reads, per-row/batch writes, and in-memory checkpointing for transient recovery.
 
 ## Installation
 
@@ -35,7 +37,7 @@ var sinkFactory = services.GetRequiredService<PostgresSinkNodeFactory>();
 
 - `DefaultConnectionString` is optional if you only use named connections.
 - `DefaultConfiguration` controls connection-level settings (timeouts, pool sizing, SSL) applied when the pool builds `NpgsqlDataSource` instances.
-- `AddPostgresConnection`/`AddDefaultPostgresConnection` simply configure the same `PostgresOptions`; they no longer replace previously configured values.
+- `AddPostgresConnection`/`AddDefaultPostgresConnection` configure the same `PostgresOptions` and do not replace previously configured values.
 
 ## Reading with `PostgresSourceNode<T>`
 
@@ -112,7 +114,6 @@ var perRowSink = new PostgresSinkNode<Order>(
 - `BatchSize` is clamped by `MaxBatchSize` to prevent runaway buffers.
 - `ValidateIdentifiers` validates schema/table/column identifiers before generating SQL.
 - Custom mappers must return values in column order; names are ignored and replaced with generated parameter names.
-- `PostgresWriteStrategy.Copy` and upsert semantics are reserved for the commercial connector.
 
 ## Checkpointing
 
