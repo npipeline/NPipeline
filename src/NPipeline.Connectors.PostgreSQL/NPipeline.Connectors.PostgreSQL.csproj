@@ -47,6 +47,7 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="NPipeline.Connectors.PostgreSQL.Tests"/>
+        <InternalsVisibleTo Include="NPipeline.Connectors.PostgreSQL.Pro"/>
     </ItemGroup>
 
 </Project>
