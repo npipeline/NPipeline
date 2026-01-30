@@ -24,7 +24,7 @@ internal static class PostgresParameterMapper
         var mappings = properties
             .Select(p => new
             {
-                ColumnName = p.Attribute?.Name ?? p.Property.Name,
+                ColumnName = p.Attribute?.Name ?? ToSnakeCase(p.Property.Name),
                 Getter = BuildGetter<T>(p.Property),
                 p.Attribute,
             })
@@ -93,7 +93,7 @@ internal static class PostgresParameterMapper
             .. typeof(T)
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p => p.CanRead && !IsIgnored(p))
-                .Select(p => p.GetCustomAttribute<PostgresColumnAttribute>()?.Name ?? p.Name),
+                .Select(p => p.GetCustomAttribute<PostgresColumnAttribute>()?.Name ?? ToSnakeCase(p.Name)),
         ];
     }
 
@@ -111,5 +111,12 @@ internal static class PostgresParameterMapper
         var propertyAccess = Expression.Property(instanceParam, property);
         var convert = Expression.Convert(propertyAccess, typeof(object));
         return Expression.Lambda<Func<T, object?>>(convert, instanceParam).Compile();
+    }
+
+    private static string ToSnakeCase(string str)
+    {
+        return string.Concat(str.Select((x, i) => i > 0 && char.IsUpper(x)
+            ? "_" + x
+            : x.ToString())).ToLowerInvariant();
     }
 }

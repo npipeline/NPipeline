@@ -183,26 +183,10 @@ public class PostgresConfiguration
         if (string.IsNullOrWhiteSpace(Schema))
             throw new ArgumentException("Schema cannot be empty.", nameof(Schema));
 
-        if (CommandTimeout <= 0)
-            throw new ArgumentException("CommandTimeout must be greater than zero.", nameof(CommandTimeout));
+        ValidateConnectionSettings();
 
         if (CopyTimeout <= 0)
             throw new ArgumentException("CopyTimeout must be greater than zero.", nameof(CopyTimeout));
-
-        if (ConnectionTimeout <= 0)
-            throw new ArgumentException("ConnectionTimeout must be greater than zero.", nameof(ConnectionTimeout));
-
-        if (MinPoolSize < 0)
-            throw new ArgumentException("MinPoolSize cannot be negative.", nameof(MinPoolSize));
-
-        if (MaxPoolSize <= 0)
-            throw new ArgumentException("MaxPoolSize must be greater than zero.", nameof(MaxPoolSize));
-
-        if (MinPoolSize > MaxPoolSize)
-            throw new ArgumentException("MinPoolSize cannot exceed MaxPoolSize.", nameof(MinPoolSize));
-
-        if (ReadBufferSize <= 0)
-            throw new ArgumentException("ReadBufferSize must be greater than zero.", nameof(ReadBufferSize));
 
         if (BatchSize <= 0)
             throw new ArgumentException("BatchSize must be greater than zero.", nameof(BatchSize));
@@ -223,6 +207,30 @@ public class PostgresConfiguration
 
         if (UseUpsert && (UpsertConflictColumns == null || UpsertConflictColumns.Length == 0))
             throw new ArgumentException("UpsertConflictColumns must be provided when UseUpsert is enabled.", nameof(UpsertConflictColumns));
+    }
+
+    /// <summary>
+    ///     Validates connection pool and transport-related settings.
+    /// </summary>
+    internal void ValidateConnectionSettings()
+    {
+        if (CommandTimeout <= 0)
+            throw new ArgumentException("CommandTimeout must be greater than zero.", nameof(CommandTimeout));
+
+        if (ConnectionTimeout <= 0)
+            throw new ArgumentException("ConnectionTimeout must be greater than zero.", nameof(ConnectionTimeout));
+
+        if (MinPoolSize < 0)
+            throw new ArgumentException("MinPoolSize cannot be negative.", nameof(MinPoolSize));
+
+        if (MaxPoolSize <= 0)
+            throw new ArgumentException("MaxPoolSize must be greater than zero.", nameof(MaxPoolSize));
+
+        if (MinPoolSize > MaxPoolSize)
+            throw new ArgumentException("MinPoolSize cannot exceed MaxPoolSize.", nameof(MinPoolSize));
+
+        if (ReadBufferSize <= 0)
+            throw new ArgumentException("ReadBufferSize must be greater than zero.", nameof(ReadBufferSize));
     }
 
     /// <summary>

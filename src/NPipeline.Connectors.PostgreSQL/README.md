@@ -45,7 +45,6 @@ dotnet add package NPipeline.Connectors.PostgreSQL
 ### Mapping Features
 
 - `PostgresMapperBuilder` for building complex mappers
-- `PostgresParameterMapper` for parameter mapping
 - `PostgresTableAttribute` for table name mapping
 - `PostgresColumnAttribute` for column name mapping
 - `PostgresIgnoreAttribute` for excluding properties
@@ -95,7 +94,6 @@ var configuration = new PostgresConfiguration
 - DI support with `PostgresOptions`
 - Schema configuration
 - SSL mode configuration
-- Prepared statement configuration
 
 ### Dependency Injection Features
 
@@ -112,7 +110,6 @@ var configuration = new PostgresConfiguration
 
 ### Performance
 
-- Prepared statements support
 - Connection pooling
 - Streaming for large result sets
 - Compiled delegates for mapping
@@ -211,7 +208,6 @@ var configuration = new PostgresConfiguration
     ReadBufferSize = 8192,
     UseSslMode = true,
     SslMode = Npgsql.SslMode.Require,
-    UsePreparedStatements = true,
     ValidateIdentifiers = true,
     DeliverySemantic = DeliverySemantic.AtLeastOnce,
     CheckpointStrategy = CheckpointStrategy.InMemory

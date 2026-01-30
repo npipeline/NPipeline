@@ -19,14 +19,14 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes;
 public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
 {
     private static readonly ConcurrentDictionary<Type, Func<PostgresRow, T>> MapperCache = new();
-    private readonly IReadOnlyList<PropertyBinding> _bindings;
+    private static readonly Lazy<IReadOnlyList<PropertyBinding>> CachedBindings = new(BuildBindings);
+    private static readonly Lazy<Func<T>> CachedCreateInstance = new(BuildCreateInstanceDelegate);
     private readonly Func<PostgresRow, T>? _cachedMapper;
 
     private readonly PostgresConfiguration _configuration;
     private readonly string? _connectionName;
     private readonly IPostgresConnectionPool _connectionPool;
     private readonly bool _continueOnError;
-    private readonly Func<T> _createInstance;
     private readonly Func<PostgresRow, T>? _mapper;
     private readonly DatabaseParameter[] _parameters;
     private readonly string _query;
@@ -62,11 +62,9 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
         _mapper = mapper;
         _query = query;
         _parameters = parameters ?? [];
-        _continueOnError = continueOnError || _configuration.ContinueOnError;
+        _continueOnError = continueOnError || _configuration.ContinueOnError || !_configuration.ThrowOnMappingError;
         _connectionName = null;
         _cachedMapper = ResolveDefaultMapper(mapper, _configuration, _continueOnError);
-        _bindings = BuildBindings();
-        _createInstance = BuildCreateInstanceDelegate();
     }
 
     /// <summary>
@@ -99,15 +97,13 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
         _mapper = mapper;
         _query = query;
         _parameters = parameters ?? [];
-        _continueOnError = continueOnError || _configuration.ContinueOnError;
+        _continueOnError = continueOnError || _configuration.ContinueOnError || !_configuration.ThrowOnMappingError;
 
         _connectionName = string.IsNullOrWhiteSpace(connectionName)
             ? null
             : connectionName;
 
         _cachedMapper = ResolveDefaultMapper(mapper, _configuration, _continueOnError);
-        _bindings = BuildBindings();
-        _createInstance = BuildCreateInstanceDelegate();
     }
 
     /// <summary>
@@ -211,9 +207,9 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     /// <returns>The mapped object.</returns>
     protected virtual T MapConventionBased(PostgresRow row)
     {
-        var instance = _createInstance();
+        var instance = CachedCreateInstance.Value();
 
-        foreach (var binding in _bindings)
+        foreach (var binding in CachedBindings.Value)
         {
             try
             {

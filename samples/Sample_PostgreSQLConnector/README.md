@@ -9,7 +9,7 @@ The PostgreSQL Connector sample implements a complete data processing pipeline t
 1. **Reads** customer, product, and order data from PostgreSQL tables using `PostgresSourceNode<T>`
 2. **Transforms** and aggregates order data into summaries
 3. **Writes** processed data to PostgreSQL tables using `PostgresSinkNode<T>`
-4. **Demonstrates** different write strategies (PerRow, Batch, Copy)
+4. **Demonstrates** different write strategies (PerRow, Batch)
 5. **Shows** attribute-based mapping with `PostgresTableAttribute` and `PostgresColumnAttribute`
 
 ## Key Concepts Demonstrated
@@ -31,7 +31,6 @@ The PostgreSQL Connector sample implements a complete data processing pipeline t
 
 - **PerRow**: Writes one row at a time (slowest, best for small batches)
 - **Batch**: Writes in batches (good balance of performance and memory)
-- **Copy**: Uses PostgreSQL COPY command (fastest for bulk imports)
 
 ### Data Models
 
@@ -158,7 +157,6 @@ Step 5: Processing orders and generating summaries...
 Step 6: Demonstrating write strategies...
   PerRow strategy: 150 ms
   Batch strategy (size 25): 45 ms
-  Copy strategy: 25 ms
   Performance improvement: Batch is 3.33x faster than PerRow
 
 === Pipeline Execution Summary ===
@@ -230,10 +228,10 @@ The sample demonstrates various configuration options:
 var config = new PostgresConfiguration
 {
     ConnectionString = "your_connection_string",
-  WriteStrategy = PostgresWriteStrategy.Batch,  // PerRow or Batch in the free connector
+    WriteStrategy = PostgresWriteStrategy.Batch,  // PerRow or Batch in the free connector
     BatchSize = 100,                            // For Batch strategy
     // Additional options available:
-  // CheckpointStrategy = CheckpointStrategy.InMemory,
+    // CheckpointStrategy = CheckpointStrategy.InMemory,
     // DeliverySemantic = DeliverySemantic.AtLeastOnce,
 };
 ```
@@ -244,7 +242,6 @@ var config = new PostgresConfiguration
 |----------|-------------|--------------|----------|
 | **PerRow** | Slowest | Lowest | Small batches, per-row error handling |
 | **Batch** | Good | Moderate | Most scenarios, balanced performance |
-| **Copy** | Fastest | Highest | Bulk imports, large datasets (Pro connector) |
 
 ## Code Examples
 
@@ -257,7 +254,7 @@ var config = new PostgresConfiguration
 };
 
 var sql = "SELECT customer_id, first_name, last_name, email FROM customers ORDER BY customer_id";
-var sourceNode = new PostgresSourceNode<Customer>(sql, config);
+var sourceNode = new PostgresSourceNode<Customer>(connectionString, sql, configuration: config);
 
 var context = new PipelineContext();
 await foreach (var customer in sourceNode.Initialize(context, cancellationToken))
@@ -276,7 +273,7 @@ var config = new PostgresConfiguration
     BatchSize = 100
 };
 
-var sinkNode = new PostgresSinkNode<Customer>("customers_copy", config);
+var sinkNode = new PostgresSinkNode<Customer>(connectionString, "customers_copy", configuration: config);
 var context = new PipelineContext();
 
 await sinkNode.ExecuteAsync(sourceNode.Initialize(context, cancellationToken), context, cancellationToken);
@@ -368,12 +365,6 @@ var batchConfig = new PostgresConfiguration
     BatchSize = 100
 };
 
-// Copy for bulk imports
-var copyConfig = new PostgresConfiguration
-{
-    ConnectionString = connectionString,
-    WriteStrategy = PostgresWriteStrategy.Copy
-};
 ```
 
 ## Troubleshooting
@@ -407,7 +398,7 @@ If you get permission errors:
 
 If performance is poor:
 
-1. Use Batch or Copy write strategies instead of PerRow
+1. Use Batch write strategy instead of PerRow
 2. Increase batch size for Batch strategy
 3. Add appropriate indexes on your tables
 4. Consider using connection pooling

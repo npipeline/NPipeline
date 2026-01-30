@@ -118,7 +118,7 @@ public sealed class PostgresParameterMapperTests
         // Assert
         _ = columnNames.Should().NotBeEmpty();
         _ = columnNames.Should().HaveCount(5);
-        _ = columnNames.Should().ContainInOrder("Id", "Name", "CreatedAt", "IsActive", "Amount");
+        _ = columnNames.Should().ContainInOrder("id", "name", "created_at", "is_active", "amount");
     }
 
     [Fact]
@@ -142,7 +142,7 @@ public sealed class PostgresParameterMapperTests
         // Assert
         _ = columnNames.Should().NotBeEmpty();
         _ = columnNames.Should().HaveCount(2);
-        _ = columnNames.Should().ContainInOrder("Id", "Name");
+        _ = columnNames.Should().ContainInOrder("id", "name");
         _ = columnNames.Should().NotContain("IgnoredProperty");
         _ = columnNames.Should().NotContain("AlsoIgnored");
     }
@@ -156,7 +156,7 @@ public sealed class PostgresParameterMapperTests
         // Assert
         _ = columnNames.Should().NotBeEmpty();
         _ = columnNames.Should().HaveCount(5);
-        _ = columnNames.Should().ContainInOrder("Id", "Name", "CreatedAt", "IsActive", "Amount");
+        _ = columnNames.Should().ContainInOrder("id", "name", "created_at", "is_active", "amount");
     }
 
     [Fact]
@@ -168,7 +168,7 @@ public sealed class PostgresParameterMapperTests
         // Assert
         _ = columnNames.Should().NotBeEmpty();
         _ = columnNames.Should().HaveCount(4);
-        _ = columnNames.Should().ContainInOrder("UserId", "FullName", "CreatedAt", "IsActive");
+        _ = columnNames.Should().ContainInOrder("user_id", "full_name", "created_at", "is_active");
     }
 
     [Fact]

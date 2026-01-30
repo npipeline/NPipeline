@@ -25,9 +25,9 @@ internal static class PostgresMapperBuilder
         var mappings = properties
             .Select(p => new
             {
-                ColumnName = p.Attribute?.Name ?? p.Property.Name,
+                ColumnName = p.Attribute?.Name ?? ToSnakeCase(p.Property.Name),
                 PropertyName = p.Property.Name,
-                Apply = BuildApplyDelegate<T>(p.Property, p.Attribute?.Name ?? p.Property.Name),
+                Apply = BuildApplyDelegate<T>(p.Property, p.Attribute?.Name ?? ToSnakeCase(p.Property.Name)),
             })
             .ToList();
 
@@ -100,5 +100,12 @@ internal static class PostgresMapperBuilder
         var ignoredByAttribute = columnAttribute?.Ignore == true;
         var hasIgnoreMarker = property.IsDefined(typeof(PostgresIgnoreAttribute), true);
         return ignoredByAttribute || hasIgnoreMarker;
+    }
+
+    private static string ToSnakeCase(string str)
+    {
+        return string.Concat(str.Select((x, i) => i > 0 && char.IsUpper(x)
+            ? "_" + x
+            : x.ToString())).ToLowerInvariant();
     }
 }

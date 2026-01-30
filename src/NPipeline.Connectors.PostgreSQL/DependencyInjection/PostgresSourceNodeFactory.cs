@@ -47,10 +47,9 @@ public class PostgresSourceNodeFactory
         if (!_connectionPool.HasNamedConnection(connectionName))
             throw new InvalidOperationException($"Named connection '{connectionName}' not found.");
 
-        var mapper = rowMapper ?? PostgresMapperBuilder.Build<T>();
         var config = configuration ?? new PostgresConfiguration();
 
-        return Task.FromResult(new PostgresSourceNode<T>(_connectionPool, query, mapper, config, null, config.ContinueOnError, connectionName));
+        return Task.FromResult(new PostgresSourceNode<T>(_connectionPool, query, rowMapper, config, null, config.ContinueOnError, connectionName));
     }
 
     /// <summary>

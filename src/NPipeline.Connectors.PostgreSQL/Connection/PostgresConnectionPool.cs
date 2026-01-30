@@ -40,12 +40,14 @@ public class PostgresConnectionPool : IPostgresConnectionPool
         ArgumentNullException.ThrowIfNull(options);
 
         _namedDataSources = new ConcurrentDictionary<string, NpgsqlDataSource>(StringComparer.OrdinalIgnoreCase);
+        var configuration = options.DefaultConfiguration ?? new PostgresConfiguration();
+        configuration.ValidateConnectionSettings();
 
         var hasDefault = !string.IsNullOrWhiteSpace(options.DefaultConnectionString);
 
         if (hasDefault)
         {
-            _defaultDataSource = new NpgsqlDataSourceBuilder(options.DefaultConnectionString).Build();
+            _defaultDataSource = BuildDataSource(options.DefaultConnectionString, configuration);
             ConnectionString = options.DefaultConnectionString;
         }
 
@@ -54,7 +56,7 @@ public class PostgresConnectionPool : IPostgresConnectionPool
             if (string.IsNullOrWhiteSpace(kvp.Value))
                 throw new ArgumentException($"Connection string for '{kvp.Key}' cannot be empty.", nameof(options));
 
-            var dataSource = new NpgsqlDataSourceBuilder(kvp.Value).Build();
+            var dataSource = BuildDataSource(kvp.Value, configuration);
             _ = _namedDataSources.TryAdd(kvp.Key, dataSource);
             ConnectionString ??= kvp.Value;
             _defaultDataSource ??= dataSource;
@@ -161,5 +163,28 @@ public class PostgresConnectionPool : IPostgresConnectionPool
         }
 
         GC.SuppressFinalize(this);
+    }
+
+    private static NpgsqlDataSource BuildDataSource(string connectionString, PostgresConfiguration configuration)
+    {
+        var builder = new NpgsqlConnectionStringBuilder(connectionString)
+        {
+            CommandTimeout = configuration.CommandTimeout,
+            Timeout = configuration.ConnectionTimeout,
+            MinPoolSize = configuration.MinPoolSize,
+            MaxPoolSize = configuration.MaxPoolSize,
+            ReadBufferSize = configuration.ReadBufferSize
+        };
+
+        if (configuration.UseSslMode && configuration.SslMode.HasValue)
+        {
+            builder.SslMode = configuration.SslMode.Value;
+        }
+        else if (configuration.SslMode.HasValue)
+        {
+            builder.SslMode = configuration.SslMode.Value;
+        }
+
+        return new NpgsqlDataSourceBuilder(builder.ConnectionString).Build();
     }
 }
