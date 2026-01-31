@@ -4,7 +4,8 @@ Comprehensive data lineage tracking and provenance capabilities for NPipeline pi
 
 ## Overview
 
-The `NPipeline.Extensions.Lineage` extension provides production-ready lineage tracking for data flowing through NPipeline pipelines. Track the complete journey of each data item from source to destination, enabling data governance, debugging, audit trails, and data discovery.
+The `NPipeline.Extensions.Lineage` extension provides production-ready lineage tracking for data flowing through NPipeline pipelines. Track the complete journey
+of each data item from source to destination, enabling data governance, debugging, audit trails, and data discovery.
 
 ## Key Features
 
@@ -78,7 +79,8 @@ Lineage tracking behavior is configurable through [`LineageOptions`](LineageOpti
 - **Metadata capture**: Configure which metadata to capture (timestamps, decisions, cardinality)
 - **Memory management**: Set materialization caps and overflow policies
 
-For detailed configuration options, see the [Configuration documentation](https://github.com/npipeline/NPipeline/tree/main/docs/extensions/lineage/configuration.md).
+For detailed configuration options, see
+the [Configuration documentation](https://github.com/npipeline/NPipeline/tree/main/docs/extensions/lineage/configuration.md).
 
 ## Dependency Injection
 
@@ -102,7 +104,8 @@ Custom sink types and factory delegates are supported. See the main documentatio
 
 ## Examples
 
-See the [Sample_LineageExtension](https://github.com/npipeline/NPipeline/tree/main/samples/Sample_LineageExtension/) project for complete working examples demonstrating:
+See the [Sample_LineageExtension](https://github.com/npipeline/NPipeline/tree/main/samples/Sample_LineageExtension/) project for complete working examples
+demonstrating:
 
 - Basic lineage tracking
 - Deterministic and random sampling

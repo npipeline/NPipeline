@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using NPipeline.Execution;
 using NPipeline.Graph;
 using NPipeline.Nodes;
@@ -89,9 +88,7 @@ public readonly struct NodeObservationScope(
     public void RecordItemCount(int itemsProcessed, int itemsEmitted)
     {
         if (AutoObservabilityScope != null)
-        {
             AutoObservabilityScope.RecordItemCount(itemsProcessed, itemsEmitted);
-        }
     }
 
     /// <summary>

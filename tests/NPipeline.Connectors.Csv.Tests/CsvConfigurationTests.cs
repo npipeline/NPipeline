@@ -1,6 +1,5 @@
 using System.Globalization;
 using AwesomeAssertions;
-using NPipeline.Connectors.Csv;
 
 namespace NPipeline.Connectors.Csv.Tests;
 

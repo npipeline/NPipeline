@@ -4,7 +4,9 @@ OpenTelemetry integration for NPipeline observability - provides seamless integr
 
 ## Overview
 
-This package enables NPipeline pipelines to export traces to OpenTelemetry-compatible backends such as Jaeger, Zipkin, Azure Monitor, AWS X-Ray, and others. It implements the `IPipelineTracer` interface using .NET's `System.Diagnostics.ActivitySource` and `Activity` APIs, following OpenTelemetry best practices for .NET applications.
+This package enables NPipeline pipelines to export traces to OpenTelemetry-compatible backends such as Jaeger, Zipkin, Azure Monitor, AWS X-Ray, and others. It
+implements the `IPipelineTracer` interface using .NET's `System.Diagnostics.ActivitySource` and `Activity` APIs, following OpenTelemetry best practices for .NET
+applications.
 
 ### Key Features
 
@@ -73,7 +75,8 @@ await runner.RunAsync<MyPipeline>(context);
 
 The main tracer implementation that creates `Activity` instances from an `ActivitySource`.
 
-**Why this design**: Using `ActivitySource` is the recommended OpenTelemetry pattern for .NET. It ensures activities are captured by providers configured with `AddSource(serviceName)`, providing automatic integration with all OpenTelemetry exporters.
+**Why this design**: Using `ActivitySource` is the recommended OpenTelemetry pattern for .NET. It ensures activities are captured by providers configured with
+`AddSource(serviceName)`, providing automatic integration with all OpenTelemetry exporters.
 
 ```csharp
 var tracer = new OpenTelemetryPipelineTracer("MyPipeline");
@@ -105,7 +108,8 @@ using var tracerProvider = new TracerProviderBuilder()
     .Build();
 ```
 
-**Why this is needed**: The service name used when creating `OpenTelemetryPipelineTracer` must match the source name added to the tracer provider. This extension ensures consistency and prevents configuration errors.
+**Why this is needed**: The service name used when creating `OpenTelemetryPipelineTracer` must match the source name added to the tracer provider. This
+extension ensures consistency and prevents configuration errors.
 
 #### AddNPipelineSources
 
@@ -235,7 +239,8 @@ If these don't match, traces won't be captured. The extension methods enforce th
 
 ### Null Activity Handling
 
-When OpenTelemetry sampling drops an activity (returns null from `StartActivity`), the tracer automatically falls back to `NullPipelineTracer.Instance`. This design choice:
+When OpenTelemetry sampling drops an activity (returns null from `StartActivity`), the tracer automatically falls back to `NullPipelineTracer.Instance`. This
+design choice:
 
 - **Prevents allocations**: No `PipelineActivity` wrapper is created for dropped activities
 - **Maintains consistency**: The null tracer provides the same interface without side effects
@@ -257,7 +262,7 @@ builder.AddNPipelineSource(ServiceName);
 
 ```csharp
 // Register the tracer as a singleton
-services.AddSingleton<IPipelineTracer>(sp => 
+services.AddSingleton<IPipelineTracer>(sp =>
     new OpenTelemetryPipelineTracer("MyPipeline"));
 ```
 

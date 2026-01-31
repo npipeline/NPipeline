@@ -103,10 +103,10 @@ namespace NPipeline.Pipeline;
 ///         var retryOptions = context.Items.TryGetValue(PipelineContextKeys.GlobalRetryOptions, out var options)
 ///             ? (PipelineRetryOptions)options
 ///             : null;
-///
+/// 
 ///         Safe: User-defined key with clear naming
 ///         context.Items["MyApp.CustomSetting"] = "value";
-///
+/// 
 ///         // Unsafe: Using reserved prefix - may conflict
 ///         context.Items["parallel.customFlag"] = true; // Avoid! Uses reserved prefix
 ///         </code>

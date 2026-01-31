@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using NPipeline.Connectors.Csv;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Pipeline;

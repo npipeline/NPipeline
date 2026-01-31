@@ -36,13 +36,13 @@
 
     <!-- Project references for analyzer and code fixes -->
     <ItemGroup>
-        <ProjectReference Include="..\NPipeline.Analyzers\NPipeline.Analyzers.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
-        <ProjectReference Include="..\NPipeline.CodeFixes\NPipeline.CodeFixes.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\NPipeline.Analyzers\NPipeline.Analyzers.csproj" PrivateAssets="all" ReferenceOutputAssembly="false"/>
+        <ProjectReference Include="..\NPipeline.CodeFixes\NPipeline.CodeFixes.csproj" PrivateAssets="all" ReferenceOutputAssembly="false"/>
     </ItemGroup>
 
     <!-- Include README in package -->
     <ItemGroup>
-        <None Include="README.md" Pack="true" PackagePath="\" />
+        <None Include="README.md" Pack="true" PackagePath="\"/>
     </ItemGroup>
 
     <!-- Custom target to include analyzer assemblies in the package -->

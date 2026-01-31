@@ -74,8 +74,7 @@ public class CustomerProcessingPipeline : IPipelineDefinition
             n => n
                 .Where(c => c.AccountBalance >= 0, _ => "Account balance cannot be negative")
                 .Where(c => !string.IsNullOrEmpty(c.Email), _ => "Email is required"),
-            "account-filter",
-            true);
+            "account-filter");
 
         // Sink: Output processed customers
         var sink = builder.AddSink<CustomerConsoleSink, CustomerRecord>("console-sink");

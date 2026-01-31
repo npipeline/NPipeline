@@ -28,10 +28,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="OpenTelemetry" Version="1.15.0" />
-        <PackageReference Include="OpenTelemetry.Api" Version="1.15.0" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.2" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.2" />
+        <PackageReference Include="OpenTelemetry" Version="1.15.0"/>
+        <PackageReference Include="OpenTelemetry.Api" Version="1.15.0"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.2"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.2"/>
     </ItemGroup>
 
     <ItemGroup>

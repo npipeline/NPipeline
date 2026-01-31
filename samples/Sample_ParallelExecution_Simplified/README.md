@@ -1,28 +1,32 @@
 # Sample_ParallelExecution_Simplified
 
-This sample demonstrates NPipeline's **simplified parallel execution API**, which makes it easier for new users to configure parallelism without deep knowledge of all the underlying options.
+This sample demonstrates NPipeline's **simplified parallel execution API**, which makes it easier for new users to configure parallelism without deep knowledge
+of all the underlying options.
 
 ## Overview
 
 NPipeline provides three complementary approaches to configure parallel execution for transform nodes:
 
 1. **Manual Configuration API** - Fully explicit control, requires specifying all parameters
-2. **Preset API** - Simple, opinionated defaults based on workload type characteristics  
+2. **Preset API** - Simple, opinionated defaults based on workload type characteristics
 3. **Builder API** - Flexible fluent configuration with sensible defaults
 
 ## Running the Sample
 
 ### Run with Manual Configuration API (default):
+
 ```bash
 dotnet run
 ```
 
 ### Run with Preset API:
+
 ```bash
 dotnet run preset
 ```
 
 ### Run with Builder API:
+
 ```bash
 dotnet run builder
 ```
@@ -30,6 +34,7 @@ dotnet run builder
 ## Code Comparison
 
 ### Manual configuration API
+
 ```csharp
 // Verbose - requires understanding all parameters
 builder
@@ -43,15 +48,18 @@ builder
 ```
 
 **Pros:**
+
 - Full control over every parameter
 - Explicit about what's happening
 
 **Cons:**
+
 - Verbose and hard for newcomers
 - Easy to make suboptimal choices
 - Must calculate parallelism manually
 
 ### Preset API
+
 ```csharp
 // Simple - just specify the workload type!
 builder
@@ -61,14 +69,17 @@ builder
 ```
 
 **Pros:**
+
 - One line to configure parallelism
 - Opinionated defaults based on workload characteristics
 - Perfect for the common case
 
 **Cons:**
+
 - Less flexible if you need customization
 
 ### Builder API
+
 ```csharp
 // Flexible - customize sensible defaults
 builder
@@ -81,11 +92,13 @@ builder
 ```
 
 **Pros:**
+
 - Fluent, chainable syntax
 - Override only what you need
 - Easy to read and understand
 
 **Cons:**
+
 - Slightly more verbose than presets
 
 ## Workload Types
@@ -93,6 +106,7 @@ builder
 The simplified API supports four workload type presets:
 
 ### `ParallelWorkloadType.General` (default)
+
 - Recommended for: Mixed CPU and I/O workloads
 - DOP: ProcessorCount × 2
 - Queue Length: ProcessorCount × 4
@@ -100,6 +114,7 @@ The simplified API supports four workload type presets:
 - Best for: Most scenarios, safe default choice
 
 ### `ParallelWorkloadType.CpuBound`
+
 - Recommended for: CPU-intensive operations
 - DOP: ProcessorCount (avoid oversubscription)
 - Queue Length: ProcessorCount × 2
@@ -107,6 +122,7 @@ The simplified API supports four workload type presets:
 - Best for: Pure computation, DSP, mathematical operations
 
 ### `ParallelWorkloadType.IoBound`
+
 - Recommended for: I/O-intensive operations (file, database, local calls)
 - DOP: ProcessorCount × 4 (hide I/O latency)
 - Queue Length: ProcessorCount × 8
@@ -114,6 +130,7 @@ The simplified API supports four workload type presets:
 - Best for: Database operations, file I/O, local service calls
 
 ### `ParallelWorkloadType.NetworkBound`
+
 - Recommended for: Network operations (high latency)
 - DOP: Min(ProcessorCount × 8, 100) (maximize throughput under high latency)
 - Queue Length: 200 (large buffer for network delays)
@@ -137,13 +154,13 @@ new ParallelOptionsBuilder()
 
 ## When to Use Each API
 
-| Scenario | Recommended API |
-|----------|-----------------|
-| New to NPipeline | Preset API with `ParallelWorkloadType` |
-| Common workload types | Preset API |
-| Need slight customization | Builder API |
-| Complex performance tuning | Manual API |
-| Testing/prototyping | Preset API |
+| Scenario                   | Recommended API                        |
+|----------------------------|----------------------------------------|
+| New to NPipeline           | Preset API with `ParallelWorkloadType` |
+| Common workload types      | Preset API                             |
+| Need slight customization  | Builder API                            |
+| Complex performance tuning | Manual API                             |
+| Testing/prototyping        | Preset API                             |
 
 ## Performance Characteristics
 

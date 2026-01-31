@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using NPipeline.Connectors.Excel;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Pipeline;

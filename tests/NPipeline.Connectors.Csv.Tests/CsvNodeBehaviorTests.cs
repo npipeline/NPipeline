@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using NPipeline.Connectors.Csv;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Pipeline;
@@ -16,6 +15,7 @@ public sealed class CsvNodeBehaviorTests
         try
         {
             var uri = StorageUri.FromFilePath(tempFile);
+
             var config = new CsvConfiguration
             {
                 HasHeaderRecord = true,
@@ -47,6 +47,7 @@ public sealed class CsvNodeBehaviorTests
             await File.WriteAllTextAsync(tempFile, "Id,Name\n1,Alice\nbad,Bob\n2,Charlie\n");
 
             var uri = StorageUri.FromFilePath(tempFile);
+
             var config = new CsvConfiguration
             {
                 HasHeaderRecord = true,
