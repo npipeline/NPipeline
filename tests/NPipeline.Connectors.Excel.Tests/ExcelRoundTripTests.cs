@@ -4,7 +4,7 @@ using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Pipeline;
 
-namespace NPipeline.Connectors.Tests.Excel;
+namespace NPipeline.Connectors.Excel.Tests;
 
 public sealed class ExcelRoundTripTests
 {

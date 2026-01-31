@@ -2,7 +2,7 @@ using System.Globalization;
 using AwesomeAssertions;
 using NPipeline.Connectors.Csv;
 
-namespace NPipeline.Connectors.Tests.Csv;
+namespace NPipeline.Connectors.Csv.Tests;
 
 public sealed class CsvConfigurationTests
 {
@@ -76,5 +76,46 @@ public sealed class CsvConfigurationTests
 
         // Assert
         helperConfig.Should().Be(config.HelperConfiguration);
+    }
+
+    [Fact]
+    public void HasHeaderRecord_ShouldMirrorHelperConfiguration()
+    {
+        // Arrange
+        var config = new CsvConfiguration();
+
+        // Act
+        config.HasHeaderRecord = false;
+
+        // Assert
+        config.HasHeaderRecord.Should().BeFalse();
+        config.HelperConfiguration.HasHeaderRecord.Should().BeFalse();
+    }
+
+    [Fact]
+    public void HeaderValidated_ShouldHaveDefaultValue()
+    {
+        // Arrange & Act
+        var config = new CsvConfiguration();
+
+        // Assert
+        // HeaderValidated has a default delegate from CsvHelper
+        config.HeaderValidated.Should().NotBeNull();
+        config.HelperConfiguration.HeaderValidated.Should().NotBeNull();
+        config.HeaderValidated.Should().Be(config.HelperConfiguration.HeaderValidated);
+    }
+
+    [Fact]
+    public void RowErrorHandler_ShouldBeConfigurable()
+    {
+        // Arrange
+        var config = new CsvConfiguration();
+        Func<Exception, CsvRow, bool> handler = (_, _) => true;
+
+        // Act
+        config.RowErrorHandler = handler;
+
+        // Assert
+        config.RowErrorHandler.Should().Be(handler);
     }
 }

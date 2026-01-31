@@ -2,7 +2,7 @@ using System.Text;
 using AwesomeAssertions;
 using NPipeline.Connectors.Excel;
 
-namespace NPipeline.Connectors.Tests.Excel;
+namespace NPipeline.Connectors.Excel.Tests;
 
 public sealed class ExcelConfigurationTests
 {
