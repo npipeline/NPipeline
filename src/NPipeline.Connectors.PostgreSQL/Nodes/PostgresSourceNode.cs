@@ -20,7 +20,8 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
 {
     private static readonly ConcurrentDictionary<Type, Func<PostgresRow, T>> MapperCache = new();
     private static readonly Lazy<IReadOnlyList<PropertyBinding>> CachedBindings = new(BuildBindings);
-    private static readonly Lazy<Func<T>> CachedCreateInstance = new(BuildCreateInstanceDelegate);
+    private static readonly Lazy<Func<T>> CachedCreateInstance = new(() => BuildCreateInstanceDelegate());
+
     private readonly Func<PostgresRow, T>? _cachedMapper;
 
     private readonly PostgresConfiguration _configuration;

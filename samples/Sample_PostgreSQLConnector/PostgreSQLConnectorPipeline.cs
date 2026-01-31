@@ -1,23 +1,27 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Text;
+using Npgsql;
+using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.Connectors.PostgreSQL.Mapping;
 using NPipeline.Connectors.PostgreSQL.Nodes;
+using NPipeline.DataFlow.DataPipes;
 using NPipeline.Pipeline;
 
 namespace Sample_PostgreSQLConnector;
 
 /// <summary>
-/// Main pipeline demonstrating PostgreSQL connector features.
-/// This pipeline shows reading from and writing to PostgreSQL tables,
-/// with various write strategies and error handling patterns.
+///     Main pipeline demonstrating PostgreSQL connector features.
+///     This pipeline shows reading from and writing to PostgreSQL tables,
+///     with various write strategies and error handling patterns.
 /// </summary>
 public sealed class PostgreSQLConnectorPipeline
 {
     private readonly string _connectionString;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="PostgreSQLConnectorPipeline"/> class.
+    ///     Initializes a new instance of the <see cref="PostgreSQLConnectorPipeline" /> class.
     /// </summary>
     /// <param name="connectionString">The PostgreSQL connection string.</param>
     public PostgreSQLConnectorPipeline(string connectionString)
@@ -26,45 +30,45 @@ public sealed class PostgreSQLConnectorPipeline
     }
 
     /// <summary>
-    /// Gets a description of this pipeline.
+    ///     Gets a description of this pipeline.
     /// </summary>
     /// <returns>A string describing the pipeline.</returns>
     public static string GetDescription()
     {
         return """
-        PostgreSQL Connector Sample Pipeline
-        ====================================
-        
-        This pipeline demonstrates of following PostgreSQL connector features:
-        
-        1. Reading data from PostgreSQL using PostgresSourceNode<T>
-        2. Writing data to PostgreSQL using PostgresSinkNode<T>
-        3. Attribute-based mapping with PostgresTable and PostgresColumn attributes
-        4. Different write strategies (PerRow, Batch)
-        5. Error handling and recovery patterns
-        6. Connection pooling and configuration
-        7. In-memory checkpointing for transient recovery
-        
-        Pipeline Flow:
-        - Setup database tables and seed sample data
-        - Read customers from source table
-        - Read products from catalog
-        - Read orders with items
-        - Transform and aggregate order data
-        - Write order summaries to destination table
-        
-        Models Used:
-        - Customer: Customer information with convention-based mapping
-        - Product: Product catalog with attribute-based mapping
-        - Order: Order header with foreign key relationships
-        - OrderItem: Order line items
-        - OrderSummary: Aggregated order data for reporting
-        - TestRecord: Test record for write strategy demonstration
-        """;
+               PostgreSQL Connector Sample Pipeline
+               ====================================
+
+               This pipeline demonstrates of following PostgreSQL connector features:
+
+               1. Reading data from PostgreSQL using PostgresSourceNode<T>
+               2. Writing data to PostgreSQL using PostgresSinkNode<T>
+               3. Attribute-based mapping with PostgresTable and PostgresColumn attributes
+               4. Different write strategies (PerRow, Batch)
+               5. Error handling and recovery patterns
+               6. Connection pooling and configuration
+               7. In-memory checkpointing for transient recovery
+
+               Pipeline Flow:
+               - Setup database tables and seed sample data
+               - Read customers from source table
+               - Read products from catalog
+               - Read orders with items
+               - Transform and aggregate order data
+               - Write order summaries to destination table
+
+               Models Used:
+               - Customer: Customer information with convention-based mapping
+               - Product: Product catalog with attribute-based mapping
+               - Order: Order header with foreign key relationships
+               - OrderItem: Order line items
+               - OrderSummary: Aggregated order data for reporting
+               - TestRecord: Test record for write strategy demonstration
+               """;
     }
 
     /// <summary>
-    /// Executes the pipeline.
+    ///     Executes the pipeline.
     /// </summary>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">A cancellation token.</param>
@@ -140,23 +144,23 @@ public sealed class PostgreSQLConnectorPipeline
     }
 
     /// <summary>
-    /// Sets up the database tables.
+    ///     Sets up the database tables.
     /// </summary>
     private async Task SetupTablesAsync(CancellationToken cancellationToken)
     {
-        using var connection = new Npgsql.NpgsqlConnection(_connectionString);
+        using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
 
         var tables = new[]
         {
             "customers", "products", "orders", "order_items",
             "order_summaries", "customers_copy", "products_copy",
-            "write_test_perrow", "write_test_batch", "checkpoint_test"
+            "write_test_perrow", "write_test_batch", "checkpoint_test",
         };
 
         foreach (var table in tables)
         {
-            var dropCmd = new Npgsql.NpgsqlCommand($"DROP TABLE IF EXISTS {table} CASCADE", connection);
+            var dropCmd = new NpgsqlCommand($"DROP TABLE IF EXISTS {table} CASCADE", connection);
             await dropCmd.ExecuteNonQueryAsync(cancellationToken);
         }
 
@@ -176,6 +180,7 @@ public sealed class PostgreSQLConnectorPipeline
                 registration_date DATE NOT NULL,
                 status VARCHAR(20) DEFAULT 'active'
             )";
+
         await ExecuteNonQueryAsync(createCustomers, connection, cancellationToken);
 
         // Create products table
@@ -194,6 +199,7 @@ public sealed class PostgreSQLConnectorPipeline
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )";
+
         await ExecuteNonQueryAsync(createProducts, connection, cancellationToken);
 
         // Create orders table
@@ -217,6 +223,7 @@ public sealed class PostgreSQLConnectorPipeline
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )";
+
         await ExecuteNonQueryAsync(createOrders, connection, cancellationToken);
 
         // Create order_items table
@@ -231,6 +238,7 @@ public sealed class PostgreSQLConnectorPipeline
                 line_total DECIMAL(12,2) NOT NULL CHECK (line_total >= 0),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )";
+
         await ExecuteNonQueryAsync(createOrderItems, connection, cancellationToken);
 
         // Create order_summaries table
@@ -250,6 +258,7 @@ public sealed class PostgreSQLConnectorPipeline
                 avg_item_price DECIMAL(10,2) NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )";
+
         await ExecuteNonQueryAsync(createOrderSummaries, connection, cancellationToken);
 
         // Create tables for write strategy demonstration
@@ -270,11 +279,11 @@ public sealed class PostgreSQLConnectorPipeline
     }
 
     /// <summary>
-    /// Seeds sample data into the database.
+    ///     Seeds sample data into the database.
     /// </summary>
     private async Task SeedSampleDataAsync(CancellationToken cancellationToken)
     {
-        using var connection = new Npgsql.NpgsqlConnection(_connectionString);
+        using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
 
         // Seed customers
@@ -286,6 +295,7 @@ public sealed class PostgreSQLConnectorPipeline
             ('Alice', 'Williams', 'alice.williams@example.com', '555-0104', '321 Elm St', 'Minneapolis', 'MN', '55401', 'USA', '2024-04-05', 'active'),
             ('Charlie', 'Brown', 'charlie.brown@example.com', '555-0105', '654 Maple Dr', 'Des Moines', 'IA', '50301', 'USA', '2024-05-18', 'active')
         ";
+
         await ExecuteNonQueryAsync(insertCustomers, connection, cancellationToken);
 
         // Seed products
@@ -300,6 +310,7 @@ public sealed class PostgreSQLConnectorPipeline
             ('Desk Lamp', 'LAMP-001', 'LED desk lamp with dimmer', 'Accessories', 34.99, 15.00, 120, 30, true),
             ('Cable Management Kit', 'CABLE-001', 'Velcro cable ties and organizer', 'Accessories', 19.99, 8.00, 300, 50, true)
         ";
+
         await ExecuteNonQueryAsync(insertProducts, connection, cancellationToken);
 
         // Seed orders
@@ -312,6 +323,7 @@ public sealed class PostgreSQLConnectorPipeline
             (4, '2024-06-06', 'completed', 229.98, 18.40, 7.99, 22.99, 233.38, '321 Elm St', 'Minneapolis', 'MN', '55401', 'USA'),
             (5, '2024-06-07', 'shipped', 34.99, 2.80, 4.99, 0, 42.78, '654 Maple Dr', 'Des Moines', 'IA', '50301', 'USA')
         ";
+
         await ExecuteNonQueryAsync(insertOrders, connection, cancellationToken);
 
         // Seed order items
@@ -330,51 +342,59 @@ public sealed class PostgreSQLConnectorPipeline
             (5, 2, 1, 29.99, 0, 29.99),
             (6, 7, 1, 34.99, 0, 34.99)
         ";
+
         await ExecuteNonQueryAsync(insertOrderItems, connection, cancellationToken);
 
         // Seed checkpoint test records
-        var insertCheckpointRecords = new System.Text.StringBuilder();
+        var insertCheckpointRecords = new StringBuilder();
         _ = insertCheckpointRecords.Append("INSERT INTO checkpoint_test (name, value, category, created_at) VALUES");
 
         for (var i = 1; i <= 25; i++)
         {
-            var category = i % 3 == 0 ? "A" : i % 3 == 1 ? "B" : "C";
+            var category = i % 3 == 0
+                ? "A"
+                : i % 3 == 1
+                    ? "B"
+                    : "C";
+
             var createdAt = DateTime.UtcNow.AddMinutes(-i).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
             var values = $"('Checkpoint Item {i}', {i * 2.5m:F2}, '{category}', '{createdAt}')";
             _ = insertCheckpointRecords.Append(values);
+
             if (i < 25)
-            {
                 _ = insertCheckpointRecords.Append(',');
-            }
         }
 
         await ExecuteNonQueryAsync(insertCheckpointRecords.ToString(), connection, cancellationToken);
     }
 
     /// <summary>
-    /// Processes customers by reading from source and writing to copy table.
+    ///     Processes customers by reading from source and writing to copy table.
     /// </summary>
     private async Task<int> ProcessCustomersAsync(CancellationToken cancellationToken)
     {
         var sourceConfig = new PostgresConfiguration
         {
-            ConnectionString = _connectionString
+            ConnectionString = _connectionString,
         };
 
-        var sql = "SELECT customer_id, first_name, last_name, email, phone, address, city, state, postal_code, country, registration_date, status FROM customers ORDER BY customer_id";
+        var sql =
+            "SELECT customer_id, first_name, last_name, email, phone, address, city, state, postal_code, country, registration_date, status FROM customers ORDER BY customer_id";
+
         var sourceNode = new PostgresSourceNode<Customer>(_connectionString, sql, configuration: sourceConfig);
 
         var sinkConfig = new PostgresConfiguration
         {
             ConnectionString = _connectionString,
             WriteStrategy = PostgresWriteStrategy.Batch,
-            BatchSize = 100
+            BatchSize = 100,
         };
 
-        var sinkNode = new PostgresSinkNode<Customer>(_connectionString, "customers_copy", PostgresWriteStrategy.Batch, configuration: sinkConfig);
+        var sinkNode = new PostgresSinkNode<Customer>(_connectionString, "customers_copy", configuration: sinkConfig);
         var context = new PipelineContext();
 
         var count = 0;
+
         await foreach (var customer in sourceNode.Initialize(context, cancellationToken))
         {
             count++;
@@ -385,29 +405,32 @@ public sealed class PostgreSQLConnectorPipeline
     }
 
     /// <summary>
-    /// Processes products by reading from source and writing to copy table.
+    ///     Processes products by reading from source and writing to copy table.
     /// </summary>
     private async Task<int> ProcessProductsAsync(CancellationToken cancellationToken)
     {
         var sourceConfig = new PostgresConfiguration
         {
-            ConnectionString = _connectionString
+            ConnectionString = _connectionString,
         };
 
-        var sql = "SELECT product_id, product_name, sku, description, category, price, cost, stock_quantity, reorder_level, is_active, created_at, updated_at FROM products ORDER BY product_id";
+        var sql =
+            "SELECT product_id, product_name, sku, description, category, price, cost, stock_quantity, reorder_level, is_active, created_at, updated_at FROM products ORDER BY product_id";
+
         var sourceNode = new PostgresSourceNode<Product>(_connectionString, sql, configuration: sourceConfig);
 
         var sinkConfig = new PostgresConfiguration
         {
             ConnectionString = _connectionString,
             WriteStrategy = PostgresWriteStrategy.Batch,
-            BatchSize = 50
+            BatchSize = 50,
         };
 
-        var sinkNode = new PostgresSinkNode<Product>(_connectionString, "products_copy", PostgresWriteStrategy.Batch, configuration: sinkConfig);
+        var sinkNode = new PostgresSinkNode<Product>(_connectionString, "products_copy", configuration: sinkConfig);
         var context = new PipelineContext();
 
         var count = 0;
+
         await foreach (var product in sourceNode.Initialize(context, cancellationToken))
         {
             count++;
@@ -418,11 +441,11 @@ public sealed class PostgreSQLConnectorPipeline
     }
 
     /// <summary>
-    /// Processes orders and generates order summaries.
+    ///     Processes orders and generates order summaries.
     /// </summary>
     private async Task<int> ProcessOrdersAsync(CancellationToken cancellationToken)
     {
-        using var connection = new Npgsql.NpgsqlConnection(_connectionString);
+        using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
 
         // Query to join orders with customers and order items
@@ -447,7 +470,7 @@ public sealed class PostgreSQLConnectorPipeline
 
         var summaries = new List<OrderSummary>();
 
-        await using var cmd = new Npgsql.NpgsqlCommand(query, connection);
+        await using var cmd = new NpgsqlCommand(query, connection);
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 
         while (await reader.ReadAsync(cancellationToken))
@@ -462,11 +485,14 @@ public sealed class PostgreSQLConnectorPipeline
                 TotalItems = reader.GetInt32(5),
                 TotalProducts = reader.GetInt32(6),
                 Subtotal = reader.GetDecimal(7),
-                TotalDiscount = reader.IsDBNull(8) ? 0 : reader.GetDecimal(8),
+                TotalDiscount = reader.IsDBNull(8)
+                    ? 0
+                    : reader.GetDecimal(8),
                 TotalAmount = reader.GetDecimal(9),
                 AverageItemPrice = reader.GetDecimal(10),
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
             };
+
             summaries.Add(summary);
         }
 
@@ -475,14 +501,14 @@ public sealed class PostgreSQLConnectorPipeline
         {
             ConnectionString = _connectionString,
             WriteStrategy = PostgresWriteStrategy.Batch,
-            BatchSize = 10
+            BatchSize = 10,
         };
 
-        var sinkNode = new PostgresSinkNode<OrderSummary>(_connectionString, "order_summaries", PostgresWriteStrategy.Batch, configuration: sinkConfig);
+        var sinkNode = new PostgresSinkNode<OrderSummary>(_connectionString, "order_summaries", configuration: sinkConfig);
         var context = new PipelineContext();
 
         // Create a data pipe from the list
-        var dataPipe = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<OrderSummary>(summaries);
+        var dataPipe = new InMemoryDataPipe<OrderSummary>(summaries);
 
         await sinkNode.ExecuteAsync(dataPipe, context, cancellationToken);
 
@@ -490,15 +516,15 @@ public sealed class PostgreSQLConnectorPipeline
     }
 
     /// <summary>
-    /// Demonstrates different write strategies.
+    ///     Demonstrates different write strategies.
     /// </summary>
     private async Task DemonstrateWriteStrategiesAsync(CancellationToken cancellationToken)
     {
-        using var connection = new Npgsql.NpgsqlConnection(_connectionString);
+        using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
 
         // Seed test data
-        var insertData = new System.Text.StringBuilder();
+        var insertData = new StringBuilder();
         _ = insertData.Append("INSERT INTO write_test_perrow (name, value, category) VALUES");
 
         for (var i = 1; i <= 100; i++)
@@ -506,10 +532,9 @@ public sealed class PostgreSQLConnectorPipeline
             var category = i % 5 switch { 0 => 'A', 1 => 'B', 2 => 'C', 3 => 'D', _ => 'E' };
             var values = $"('Test Item {i}', {i * 1.5m:F2}, '{category}')";
             _ = insertData.Append(values);
+
             if (i < 100)
-            {
                 _ = insertData.Append(',');
-            }
         }
 
         await ExecuteNonQueryAsync(insertData.ToString(), connection, cancellationToken);
@@ -523,19 +548,19 @@ public sealed class PostgreSQLConnectorPipeline
         var batchTime = await TestWriteStrategyAsync("write_test_batch", PostgresWriteStrategy.Batch, 25, cancellationToken);
         Console.WriteLine($"  Batch strategy (size 25): {batchTime} ms");
 
-        Console.WriteLine($"  Performance improvement: Batch is {((double)perRowTime / batchTime):F2}x faster than PerRow");
+        Console.WriteLine($"  Performance improvement: Batch is {(double)perRowTime / batchTime:F2}x faster than PerRow");
     }
 
     /// <summary>
-    /// Demonstrates in-memory checkpointing for transient recovery.
+    ///     Demonstrates in-memory checkpointing for transient recovery.
     /// </summary>
     private async Task DemonstrateInMemoryCheckpointingAsync(CancellationToken cancellationToken)
     {
         var config = new PostgresConfiguration
         {
             ConnectionString = _connectionString,
-            CheckpointStrategy = NPipeline.Connectors.Configuration.CheckpointStrategy.InMemory,
-            StreamResults = true
+            CheckpointStrategy = CheckpointStrategy.InMemory,
+            StreamResults = true,
         };
 
         var sql = "SELECT id, name, value, category, created_at FROM checkpoint_test ORDER BY id";
@@ -544,9 +569,11 @@ public sealed class PostgreSQLConnectorPipeline
         var interruptedSource = new PostgresSourceNode<CheckpointTestRecord>(_connectionString, sql, configuration: config);
 
         var interruptedCount = 0;
+
         await foreach (var _ in interruptedSource.Initialize(interruptedContext, cancellationToken))
         {
             interruptedCount++;
+
             if (interruptedCount == 5)
             {
                 Console.WriteLine("  Simulating interruption after 5 rows...");
@@ -558,6 +585,7 @@ public sealed class PostgreSQLConnectorPipeline
         var resumeSource = new PostgresSourceNode<CheckpointTestRecord>(_connectionString, sql, configuration: config);
 
         var resumedCount = 0;
+
         await foreach (var _ in resumeSource.Initialize(resumeContext, cancellationToken))
         {
             resumedCount++;
@@ -567,13 +595,13 @@ public sealed class PostgreSQLConnectorPipeline
     }
 
     /// <summary>
-    /// Tests a specific write strategy.
+    ///     Tests a specific write strategy.
     /// </summary>
     private async Task<long> TestWriteStrategyAsync(string tableName, PostgresWriteStrategy strategy, int batchSize, CancellationToken cancellationToken)
     {
         var sourceConfig = new PostgresConfiguration
         {
-            ConnectionString = _connectionString
+            ConnectionString = _connectionString,
         };
 
         var sql = $"SELECT id, name, value, category, created_at FROM {tableName} ORDER BY id";
@@ -583,7 +611,9 @@ public sealed class PostgreSQLConnectorPipeline
         {
             ConnectionString = _connectionString,
             WriteStrategy = strategy,
-            BatchSize = batchSize > 0 ? batchSize : 100
+            BatchSize = batchSize > 0
+                ? batchSize
+                : 100,
         };
 
         var sinkNode = new PostgresSinkNode<TestRecord>(_connectionString, tableName + "_result", strategy, configuration: sinkConfig);
@@ -597,16 +627,16 @@ public sealed class PostgreSQLConnectorPipeline
     }
 
     /// <summary>
-    /// Executes a non-query SQL command.
+    ///     Executes a non-query SQL command.
     /// </summary>
-    private static async Task ExecuteNonQueryAsync(string sql, Npgsql.NpgsqlConnection connection, CancellationToken cancellationToken)
+    private static async Task ExecuteNonQueryAsync(string sql, NpgsqlConnection connection, CancellationToken cancellationToken)
     {
-        await using var cmd = new Npgsql.NpgsqlCommand(sql, connection);
+        await using var cmd = new NpgsqlCommand(sql, connection);
         await cmd.ExecuteNonQueryAsync(cancellationToken);
     }
 
     /// <summary>
-    /// Test record for write strategy demonstration.
+    ///     Test record for write strategy demonstration.
     /// </summary>
     [PostgresTable("write_test")]
     private sealed class TestRecord

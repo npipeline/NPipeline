@@ -167,8 +167,10 @@ internal sealed class PostgresBatchWriter<T> : IDatabaseWriter<T>
         var mapped = _parameterMapper(item)?.ToArray() ?? Array.Empty<DatabaseParameter>();
 
         if (mapped.Length != _parameterCount)
+        {
             throw new InvalidOperationException(
                 $"Custom parameter mapper for '{typeof(T).Name}' must return exactly {_parameterCount} values to match the mapped columns.");
+        }
 
         var values = new object?[_parameterCount];
 

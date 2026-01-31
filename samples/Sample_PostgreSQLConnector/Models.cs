@@ -3,8 +3,8 @@ using NPipeline.Connectors.PostgreSQL.Mapping;
 namespace Sample_PostgreSQLConnector;
 
 /// <summary>
-/// Customer model representing a customer record in the database.
-/// Demonstrates convention-based mapping with snake_case column names.
+///     Customer model representing a customer record in the database.
+///     Demonstrates convention-based mapping with snake_case column names.
 /// </summary>
 [PostgresTable("customers")]
 public class Customer
@@ -62,8 +62,8 @@ public class Customer
 }
 
 /// <summary>
-/// Product model representing a product in the catalog.
-/// Demonstrates attribute-based mapping with custom column names.
+///     Product model representing a product in the catalog.
+///     Demonstrates attribute-based mapping with custom column names.
 /// </summary>
 [PostgresTable("products")]
 public class Product
@@ -117,12 +117,14 @@ public class Product
     public DateTime UpdatedAt { get; set; }
 
     /// <summary>Gets the profit margin.</summary>
-    public decimal ProfitMargin => Price > 0 ? ((Price - Cost) / Price) * 100 : 0;
+    public decimal ProfitMargin => Price > 0
+        ? (Price - Cost) / Price * 100
+        : 0;
 }
 
 /// <summary>
-/// Order model representing a customer order.
-/// Demonstrates relationship mapping with foreign keys.
+///     Order model representing a customer order.
+///     Demonstrates relationship mapping with foreign keys.
 /// </summary>
 [PostgresTable("orders")]
 public class Order
@@ -197,8 +199,8 @@ public class Order
 }
 
 /// <summary>
-/// OrderItem model representing items within an order.
-/// Demonstrates many-to-one relationship with orders and products.
+///     OrderItem model representing items within an order.
+///     Demonstrates many-to-one relationship with orders and products.
 /// </summary>
 [PostgresTable("order_items")]
 public class OrderItem
@@ -240,8 +242,8 @@ public class OrderItem
 }
 
 /// <summary>
-/// OrderSummary model for reporting and analytics.
-/// Demonstrates computed fields and aggregation patterns.
+///     OrderSummary model for reporting and analytics.
+///     Demonstrates computed fields and aggregation patterns.
 /// </summary>
 [PostgresTable("order_summaries")]
 public class OrderSummary
@@ -300,7 +302,7 @@ public class OrderSummary
 }
 
 /// <summary>
-/// CheckpointTestRecord model for demonstrating InMemory checkpoint strategy.
+///     CheckpointTestRecord model for demonstrating InMemory checkpoint strategy.
 /// </summary>
 public class CheckpointTestRecord
 {

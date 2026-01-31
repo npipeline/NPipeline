@@ -63,8 +63,10 @@ public class PostgresConnectionPool : IPostgresConnectionPool
         }
 
         if (_defaultDataSource == null)
+        {
             throw new ArgumentException("At least one PostgreSQL connection string must be configured via DefaultConnectionString or NamedConnections.",
                 nameof(options));
+        }
     }
 
     /// <summary>
@@ -173,17 +175,13 @@ public class PostgresConnectionPool : IPostgresConnectionPool
             Timeout = configuration.ConnectionTimeout,
             MinPoolSize = configuration.MinPoolSize,
             MaxPoolSize = configuration.MaxPoolSize,
-            ReadBufferSize = configuration.ReadBufferSize
+            ReadBufferSize = configuration.ReadBufferSize,
         };
 
         if (configuration.UseSslMode && configuration.SslMode.HasValue)
-        {
             builder.SslMode = configuration.SslMode.Value;
-        }
         else if (configuration.SslMode.HasValue)
-        {
             builder.SslMode = configuration.SslMode.Value;
-        }
 
         return new NpgsqlDataSourceBuilder(builder.ConnectionString).Build();
     }

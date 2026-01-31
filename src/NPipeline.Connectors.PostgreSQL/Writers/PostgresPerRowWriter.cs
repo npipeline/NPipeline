@@ -136,8 +136,10 @@ internal sealed class PostgresPerRowWriter<T> : IDatabaseWriter<T>
         var mapped = _parameterMapper(item)?.ToArray() ?? Array.Empty<DatabaseParameter>();
 
         if (mapped.Length != _mappings.Length)
+        {
             throw new InvalidOperationException(
                 $"Custom parameter mapper for '{typeof(T).Name}' must return exactly {_mappings.Length} values to match the mapped columns.");
+        }
 
         var values = new object?[_mappings.Length];
 

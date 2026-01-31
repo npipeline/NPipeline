@@ -1,6 +1,7 @@
 # Sample: PostgreSQL Connector
 
-This sample demonstrates comprehensive PostgreSQL data processing using NPipeline's PostgreSQL connector components. It shows how to read data from PostgreSQL tables, transform it, and write to PostgreSQL tables using various strategies and configurations.
+This sample demonstrates comprehensive PostgreSQL data processing using NPipeline's PostgreSQL connector components. It shows how to read data from PostgreSQL
+tables, transform it, and write to PostgreSQL tables using various strategies and configurations.
 
 ## Overview
 
@@ -174,41 +175,41 @@ Pipeline execution completed successfully!
 
 The sample includes 5 customers with complete contact information:
 
-| Customer ID | Name | Email | City | State | Country |
-|-------------|------|-------|------|-------|---------|
-| 1 | John Doe | <john.doe@example.com> | Springfield | IL | USA |
-| 2 | Jane Smith | <jane.smith@example.com> | Chicago | IL | USA |
-| 3 | Bob Johnson | <bob.johnson@example.com> | Milwaukee | WI | USA |
-| 4 | Alice Williams | <alice.williams@example.com> | Minneapolis | MN | USA |
-| 5 | Charlie Brown | <charlie.brown@example.com> | Des Moines | IA | USA |
+| Customer ID | Name           | Email                        | City        | State | Country |
+|-------------|----------------|------------------------------|-------------|-------|---------|
+| 1           | John Doe       | <john.doe@example.com>       | Springfield | IL    | USA     |
+| 2           | Jane Smith     | <jane.smith@example.com>     | Chicago     | IL    | USA     |
+| 3           | Bob Johnson    | <bob.johnson@example.com>    | Milwaukee   | WI    | USA     |
+| 4           | Alice Williams | <alice.williams@example.com> | Minneapolis | MN    | USA     |
+| 5           | Charlie Brown  | <charlie.brown@example.com>  | Des Moines  | IA    | USA     |
 
 ### Products
 
 The sample includes 8 products across categories:
 
-| Product ID | Name | SKU | Category | Price | Stock |
-|------------|------|-----|----------|-------|-------|
-| 1 | Laptop Computer | LAPTOP-001 | Electronics | $1,299.99 | 50 |
-| 2 | Wireless Mouse | MOUSE-001 | Electronics | $29.99 | 200 |
-| 3 | Mechanical Keyboard | KEYBOARD-001 | Electronics | $149.99 | 75 |
-| 4 | USB-C Hub | HUB-001 | Electronics | $49.99 | 150 |
-| 5 | Monitor Stand | STAND-001 | Accessories | $39.99 | 100 |
-| 6 | Webcam HD | CAM-001 | Electronics | $79.99 | 80 |
-| 7 | Desk Lamp | LAMP-001 | Accessories | $34.99 | 120 |
-| 8 | Cable Management Kit | CABLE-001 | Accessories | $19.99 | 300 |
+| Product ID | Name                 | SKU          | Category    | Price     | Stock |
+|------------|----------------------|--------------|-------------|-----------|-------|
+| 1          | Laptop Computer      | LAPTOP-001   | Electronics | $1,299.99 | 50    |
+| 2          | Wireless Mouse       | MOUSE-001    | Electronics | $29.99    | 200   |
+| 3          | Mechanical Keyboard  | KEYBOARD-001 | Electronics | $149.99   | 75    |
+| 4          | USB-C Hub            | HUB-001      | Electronics | $49.99    | 150   |
+| 5          | Monitor Stand        | STAND-001    | Accessories | $39.99    | 100   |
+| 6          | Webcam HD            | CAM-001      | Electronics | $79.99    | 80    |
+| 7          | Desk Lamp            | LAMP-001     | Accessories | $34.99    | 120   |
+| 8          | Cable Management Kit | CABLE-001    | Accessories | $19.99    | 300   |
 
 ### Orders
 
 The sample includes 6 orders with varying statuses:
 
-| Order ID | Customer | Date | Status | Total |
-|----------|----------|------|--------|-------|
-| 1 | John Doe | 2024-06-01 | completed | $1,500.37 |
-| 2 | Jane Smith | 2024-06-02 | shipped | $182.38 |
-| 3 | Bob Johnson | 2024-06-03 | processing | $1,348.98 |
-| 4 | John Doe | 2024-06-05 | pending | $58.98 |
-| 5 | Alice Williams | 2024-06-06 | completed | $233.38 |
-| 6 | Charlie Brown | 2024-06-07 | shipped | $42.78 |
+| Order ID | Customer       | Date       | Status     | Total     |
+|----------|----------------|------------|------------|-----------|
+| 1        | John Doe       | 2024-06-01 | completed  | $1,500.37 |
+| 2        | Jane Smith     | 2024-06-02 | shipped    | $182.38   |
+| 3        | Bob Johnson    | 2024-06-03 | processing | $1,348.98 |
+| 4        | John Doe       | 2024-06-05 | pending    | $58.98    |
+| 5        | Alice Williams | 2024-06-06 | completed  | $233.38   |
+| 6        | Charlie Brown  | 2024-06-07 | shipped    | $42.78    |
 
 ## Configuration
 
@@ -216,8 +217,8 @@ The sample includes 6 orders with varying statuses:
 
 The pipeline accepts the following parameters:
 
-| Parameter | Description | Default Value |
-|-----------|-------------|---------------|
+| Parameter          | Description                  | Default Value                                                                            |
+|--------------------|------------------------------|------------------------------------------------------------------------------------------|
 | `ConnectionString` | PostgreSQL connection string | `Host=localhost;Port=5432;Username=postgres;Password=postgres;Database=NPipelineSamples` |
 
 ### PostgresConfiguration Options
@@ -238,10 +239,10 @@ var config = new PostgresConfiguration
 
 ### Write Strategy Comparison
 
-| Strategy | Performance | Memory Usage | Best For |
-|----------|-------------|--------------|----------|
-| **PerRow** | Slowest | Lowest | Small batches, per-row error handling |
-| **Batch** | Good | Moderate | Most scenarios, balanced performance |
+| Strategy   | Performance | Memory Usage | Best For                              |
+|------------|-------------|--------------|---------------------------------------|
+| **PerRow** | Slowest     | Lowest       | Small batches, per-row error handling |
+| **Batch**  | Good        | Moderate     | Most scenarios, balanced performance  |
 
 ## Code Examples
 
@@ -334,12 +335,12 @@ private async IAsyncEnumerable<EnrichedOrder> EnrichOrders(IAsyncEnumerable<Orde
             // Copy fields
             OrderId = order.OrderId,
             CustomerId = order.CustomerId,
-            
+
             // Add computed fields
             Priority = CalculatePriority(order),
             ProcessingTime = CalculateProcessingTime(order)
         };
-        
+
         yield return enriched;
     }
 }

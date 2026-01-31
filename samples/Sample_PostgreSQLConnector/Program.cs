@@ -1,12 +1,14 @@
 using System.Reflection;
 using Microsoft.Extensions.Hosting;
+using Npgsql;
 using NPipeline.Extensions.DependencyInjection;
+using NPipeline.Pipeline;
 
 namespace Sample_PostgreSQLConnector;
 
 /// <summary>
-/// Entry point for the PostgreSQL Connector sample demonstrating PostgreSQL data processing with NPipeline.
-/// This sample shows how to read from PostgreSQL tables, transform data, and write to PostgreSQL tables.
+///     Entry point for the PostgreSQL Connector sample demonstrating PostgreSQL data processing with NPipeline.
+///     This sample shows how to read from PostgreSQL tables, transform data, and write to PostgreSQL tables.
 /// </summary>
 public sealed class Program
 {
@@ -29,6 +31,7 @@ public sealed class Program
 
             // Test database connection
             Console.WriteLine("Testing database connection...");
+
             if (!await TestConnectionAsync(connectionString))
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -67,7 +70,7 @@ public sealed class Program
             // Set up pipeline parameters
             var pipelineParameters = new Dictionary<string, object>
             {
-                ["ConnectionString"] = connectionString
+                ["ConnectionString"] = connectionString,
             };
 
             Console.WriteLine("Pipeline Parameters:");
@@ -79,7 +82,7 @@ public sealed class Program
             Console.WriteLine();
 
             var pipeline = new PostgreSQLConnectorPipeline(connectionString);
-            await pipeline.ExecuteAsync(new NPipeline.Pipeline.PipelineContext());
+            await pipeline.ExecuteAsync(new PipelineContext());
 
             Console.WriteLine();
             Console.WriteLine("Pipeline execution completed successfully!");
@@ -95,7 +98,7 @@ public sealed class Program
     }
 
     /// <summary>
-    /// Tests the database connection.
+    ///     Tests the database connection.
     /// </summary>
     /// <param name="connectionString">The connection string to test.</param>
     /// <returns>True if connection succeeds, false otherwise.</returns>
@@ -103,9 +106,9 @@ public sealed class Program
     {
         try
         {
-            using var connection = new Npgsql.NpgsqlConnection(connectionString);
+            using var connection = new NpgsqlConnection(connectionString);
             await connection.OpenAsync();
-            await using var cmd = new Npgsql.NpgsqlCommand("SELECT 1", connection);
+            await using var cmd = new NpgsqlCommand("SELECT 1", connection);
             var result = await cmd.ExecuteScalarAsync();
             return result != null && Convert.ToInt32(result) == 1;
         }
@@ -116,7 +119,7 @@ public sealed class Program
     }
 
     /// <summary>
-    /// Masks sensitive information in connection string for display.
+    ///     Masks sensitive information in connection string for display.
     /// </summary>
     /// <param name="connectionString">The connection string to mask.</param>
     /// <returns>A masked connection string.</returns>
@@ -134,6 +137,7 @@ public sealed class Program
                 continue;
 
             var keyValue = part.Split('=');
+
             if (keyValue.Length == 2)
             {
                 var key = keyValue[0].Trim();
@@ -141,18 +145,12 @@ public sealed class Program
 
                 // Mask password
                 if (key.Equals("Password", StringComparison.OrdinalIgnoreCase))
-                {
                     maskedParts.Add($"{key}=****");
-                }
                 else
-                {
                     maskedParts.Add($"{key}={value}");
-                }
             }
             else
-            {
                 maskedParts.Add(part);
-            }
         }
 
         return string.Join("; ", maskedParts);
