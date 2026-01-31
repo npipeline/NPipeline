@@ -18,13 +18,13 @@ public sealed class PostgresConfigurationTests
         config.CommandTimeout.Should().Be(30);
         config.CopyTimeout.Should().Be(300);
         config.ConnectionTimeout.Should().Be(15);
-        config.MinPoolSize.Should().Be(1);
-        config.MaxPoolSize.Should().Be(100);
+        config.MinPoolSize.Should().Be(5);
+        config.MaxPoolSize.Should().Be(50);
         config.UseSslMode.Should().BeFalse();
         config.ReadBufferSize.Should().Be(8192);
         config.WriteStrategy.Should().Be(PostgresWriteStrategy.Batch);
-        config.BatchSize.Should().Be(100);
-        config.MaxBatchSize.Should().Be(1000);
+        config.BatchSize.Should().Be(1000);
+        config.MaxBatchSize.Should().Be(5000);
         config.UseTransaction.Should().BeTrue();
         config.UseUpsert.Should().BeFalse();
         config.ContinueOnError.Should().BeFalse();

@@ -149,6 +149,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.Postgr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample_PostgreSQLConnector", "samples\Sample_PostgreSQLConnector\Sample_PostgreSQLConnector.csproj", "{FDBBC760-3317-4484-94FD-33DEB1C59FF8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.PostgreSQL.Analyzers", "src\NPipeline.Connectors.PostgreSQL.Analyzers\NPipeline.Connectors.PostgreSQL.Analyzers.csproj", "{3C91199F-86CD-464C-9995-F079CC5140BF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.PostgreSQL.Analyzers.Tests", "tests\NPipeline.Connectors.PostgreSQL.Analyzers.Tests\NPipeline.Connectors.PostgreSQL.Analyzers.Tests.csproj", "{A327910F-C2AD-48B1-B6D6-0A89B04EE39D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -427,6 +431,14 @@ Global
 		{FDBBC760-3317-4484-94FD-33DEB1C59FF8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FDBBC760-3317-4484-94FD-33DEB1C59FF8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FDBBC760-3317-4484-94FD-33DEB1C59FF8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3C91199F-86CD-464C-9995-F079CC5140BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3C91199F-86CD-464C-9995-F079CC5140BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3C91199F-86CD-464C-9995-F079CC5140BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3C91199F-86CD-464C-9995-F079CC5140BF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A327910F-C2AD-48B1-B6D6-0A89B04EE39D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A327910F-C2AD-48B1-B6D6-0A89B04EE39D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A327910F-C2AD-48B1-B6D6-0A89B04EE39D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A327910F-C2AD-48B1-B6D6-0A89B04EE39D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{C539C2BB-5FF5-45B1-9D16-C8E0F2FBDD41} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
@@ -497,5 +509,7 @@ Global
 		{7CB48E4C-D178-4319-866E-9AD1B7A99AC9} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
 		{09D52FE4-9FCD-4B12-A1A5-D7C546953752} = {E8263C69-F8DE-4319-B7BD-DED6BA0401B4}
 		{FDBBC760-3317-4484-94FD-33DEB1C59FF8} = {2117093A-CC66-4607-8DBC-F692E0642ADD}
+		{3C91199F-86CD-464C-9995-F079CC5140BF} = {A2046B33-9096-478D-BB1F-44671F6422A6}
+		{A327910F-C2AD-48B1-B6D6-0A89B04EE39D} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
 	EndGlobalSection
 EndGlobal

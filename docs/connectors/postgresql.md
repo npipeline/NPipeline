@@ -354,7 +354,7 @@ public sealed class PostgresWriterPipeline : IPipelineDefinition
             writeStrategy: PostgresWriteStrategy.Batch,
             configuration: new PostgresConfiguration
             {
-                BatchSize = 500,
+                BatchSize = 1_000,
                 MaxBatchSize = 5_000,
                 UseTransaction = true
             });
@@ -450,8 +450,8 @@ The `PostgresConfiguration` class provides comprehensive options for configuring
 | `ValidateIdentifiers` | `bool` | `true` | Validates SQL identifiers (schema, table, column names) to prevent SQL injection. |
 | `ContinueOnError` | `bool` | `false` | Continues processing when per-property mapping errors occur. Properties with errors are set to default values. |
 | `CheckpointStrategy` | `CheckpointStrategy` | `CheckpointStrategy.None` | Strategy for checkpointing to recover from transient failures. |
-| `BatchSize` | `int` | `100` | Target batch size for batch write operations. |
-| `MaxBatchSize` | `int` | `10_000` | Maximum batch size to prevent runaway buffers. `BatchSize` is clamped to this value. |
+| `BatchSize` | `int` | `1,000` | Target batch size for batch write operations. |
+| `MaxBatchSize` | `int` | `5,000` | Maximum batch size to prevent runaway buffers. `BatchSize` is clamped to this value. |
 | `UseTransaction` | `bool` | `true` | Wraps write operations in a transaction for atomicity. |
 | `CommandTimeout` | `int?` | `null` | Command timeout in seconds. When `null`, uses the default Npgsql timeout. |
 
@@ -638,7 +638,7 @@ public sealed class PostgresTransformPipeline : IPipelineDefinition
                 "Host=localhost;Database=npipeline;Username=postgres;Password=postgres",
                 "order_summary",
                 PostgresWriteStrategy.Batch,
-                configuration: new PostgresConfiguration { BatchSize = 500, UseTransaction = true }),
+                configuration: new PostgresConfiguration { BatchSize = 1_000, UseTransaction = true }),
             "postgres_sink");
 
         builder.Connect(source, transform);
@@ -804,7 +804,7 @@ var batchSink = new PostgresSinkNode<Order>(
     pool,
     "orders",
     PostgresWriteStrategy.Batch,
-    configuration: new PostgresConfiguration { BatchSize = 1_000 });
+    configuration: new PostgresConfiguration { BatchSize = 1_000, UseTransaction = true });
 
 // Per-row: Low latency
 var perRowSink = new PostgresSinkNode<Order>(
@@ -899,6 +899,39 @@ services.AddPostgresConnector(options =>
 - **No automatic failover**: Requires additional configuration for high availability
 - **No read replica support**: All operations go to the primary database
 
+## Prepared Statements
+
+The connector uses prepared statements by default (`UsePreparedStatements = true`). Prepared statements:
+
+- Reduce query parsing overhead on the database server
+- Improve performance for repeated query patterns (same query, different parameters)
+- Provide automatic SQL injection protection
+
+### When to Disable Prepared Statements
+
+Consider disabling `UsePreparedStatements` only for:
+
+- Ad-hoc queries that are dynamically generated and never repeated
+- Very complex queries that may not benefit from preparation
+- Testing scenarios where you need to debug query generation
+
+### Performance Impact
+
+| Scenario | Prepared Statements | Performance Impact |
+|----------|-------------------|-------------------|
+| Repeated inserts (same query pattern) | Enabled | 10-30% faster |
+| Ad-hoc queries (different each time) | Enabled | 5-10% overhead |
+| One-time bulk operations | Disabled | No impact |
+
+### Configuration
+
+```csharp
+var config = new PostgresConfiguration
+{
+    UsePreparedStatements = true  // Default, keep enabled for production
+};
+```
+
 ## Best Practices
 
 ### Configuration
@@ -909,6 +942,7 @@ services.AddPostgresConnector(options =>
 4. **Use batch writes for bulk operations**: `PostgresWriteStrategy.Batch` provides much better throughput
 5. **Validate identifiers**: Keep `ValidateIdentifiers = true` to prevent SQL injection
 6. **Cache mapping metadata**: Enable `CacheMappingMetadata` for better performance
+7. **Use prepared statements**: Keep `UsePreparedStatements = true` for repeated query patterns
 
 ### Data Modeling
 
@@ -1016,7 +1050,7 @@ public sealed class RoundTripPipeline : IPipelineDefinition
                 "processed_orders",
                 PostgresWriteStrategy.Batch,
                 connectionName: "warehouse",
-                configuration: new PostgresConfiguration { BatchSize = 500, UseTransaction = true }),
+                configuration: new PostgresConfiguration { BatchSize = 1_000, UseTransaction = true }),
             "processed_sink");
 
         builder.Connect(source, transform);

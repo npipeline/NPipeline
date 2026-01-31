@@ -9,14 +9,14 @@ namespace NPipeline.Connectors.PostgreSQL.Configuration;
 /// </summary>
 public class PostgresConfiguration
 {
-    private const int DefaultBatchSize = 100;
-    private const int DefaultMaxBatchSize = 1_000;
+    private const int DefaultBatchSize = 1_000;
+    private const int DefaultMaxBatchSize = 5_000;
     private const int DefaultCommandTimeoutSeconds = 30;
     private const int DefaultConnectionTimeoutSeconds = 15;
     private const int DefaultCopyTimeoutSeconds = 300;
     private const int DefaultReadBufferSize = 8_192;
-    private const int DefaultMinPoolSize = 1;
-    private const int DefaultMaxPoolSize = 100;
+    private const int DefaultMinPoolSize = 5;
+    private const int DefaultMaxPoolSize = 50;
 
     /// <summary>
     ///     Gets or sets the PostgreSQL connection string.

@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <IsPackable>true</IsPackable>
+        <RootNamespace>NPipeline.Connectors.PostgreSQL.Analyzers</RootNamespace>
+        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+
+        <!-- Package Configuration -->
+        <PackageId>NPipeline.Connectors.PostgreSQL.Analyzers</PackageId>
+        <Title>NPipeline PostgreSQL Connector Analyzers</Title>
+        <Description>PostgreSQL connector-specific analyzers for NPipeline, including checkpointing validation</Description>
+        <PackageTags>analyzers;roslyn;npipeline;diagnostics;postgresql;connector</PackageTags>
+        <Authors>NPipeline Team</Authors>
+        <Copyright>Copyright © NPipeline Team</Copyright>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageProjectUrl>https://github.com/npipeline/NPipeline</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/npipeline/NPipeline</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+
+        <!-- Analyzer Configuration -->
+        <DevelopmentDependency>true</DevelopmentDependency>
+        <!-- Suppress release tracking requirement as this is an internal analyzer -->
+        <NoWarn>$(NoWarn);RS2008</NoWarn>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <WarningsNotAsErrors>$(WarningsNotAsErrors);CS1591</WarningsNotAsErrors>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" PrivateAssets="all"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="NPipeline.Connectors.PostgreSQL.Analyzers.Tests"/>
+    </ItemGroup>
+
+    <!-- Include README in package -->
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\"/>
+    </ItemGroup>
+
+</Project>

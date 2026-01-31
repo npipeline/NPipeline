@@ -1,6 +1,7 @@
 # NPipeline.Connectors.PostgreSQL
 
-A PostgreSQL connector for NPipeline data pipelines. Provides source and sink nodes for reading from and writing to PostgreSQL databases with support for convention-based mapping, custom mappers, connection pooling, and streaming.
+A PostgreSQL connector for NPipeline data pipelines. Provides source and sink nodes for reading from and writing to PostgreSQL databases with support for
+convention-based mapping, custom mappers, connection pooling, and streaming.
 
 ## Installation
 
@@ -85,7 +86,7 @@ var configuration = new PostgresConfiguration
     ConnectionString = "Host=localhost;Database=mydb;Username=postgres;Password=password",
     StreamResults = true,
     FetchSize = 1_000,
-    BatchSize = 500,
+    BatchSize = 1_000,
     MaxBatchSize = 5_000,
     UseTransaction = true,
     MaxRetryAttempts = 3,
@@ -177,7 +178,7 @@ Buffers rows and issues a single multi-value `INSERT`. Best for:
 ```csharp
 var configuration = new PostgresConfiguration
 {
-    BatchSize = 500,
+    BatchSize = 1_000,
     MaxBatchSize = 5_000,
     UseTransaction = true
 };
@@ -207,7 +208,7 @@ var services = new ServiceCollection()
         {
             StreamResults = true,
             FetchSize = 1_000,
-            BatchSize = 500
+            BatchSize = 1_000
         };
     })
     .BuildServiceProvider();
@@ -245,7 +246,8 @@ var source = new PostgresSourceNode<Customer>(
 );
 ```
 
-**Why streaming matters:** Without streaming, the entire result set is loaded into memory. Streaming fetches rows in batches, allowing you to process millions of rows without memory issues.
+**Why streaming matters:** Without streaming, the entire result set is loaded into memory. Streaming fetches rows in batches, allowing you to process millions
+of rows without memory issues.
 
 ## Checkpointing
 
@@ -259,7 +261,8 @@ var configuration = new PostgresConfiguration
 };
 ```
 
-The connector tracks the last successfully processed row ID. If a transient failure occurs, processing resumes from the last checkpoint rather than restarting from the beginning.
+The connector tracks the last successfully processed row ID. If a transient failure occurs, processing resumes from the last checkpoint rather than restarting
+from the beginning.
 
 ## Error Handling
 
@@ -304,11 +307,35 @@ var configuration = new PostgresConfiguration
 
 Available SSL modes: `Disable`, `Allow`, `Prefer`, `Require`, `VerifyCa`, `VerifyFull`
 
+## Prepared Statements
+
+The connector uses prepared statements by default (`UsePreparedStatements = true`). Prepared statements:
+
+- Reduce query parsing overhead on the database server
+- Improve performance for repeated query patterns (same query, different parameters)
+- Provide automatic SQL injection protection
+
+### When to Disable Prepared Statements
+
+Consider disabling `UsePreparedStatements` only for:
+
+- Ad-hoc queries that are dynamically generated and never repeated
+- Very complex queries that may not benefit from preparation
+- Testing scenarios where you need to debug query generation
+
+### Performance Impact
+
+| Scenario                              | Prepared Statements | Performance Impact |
+|---------------------------------------|---------------------|--------------------|
+| Repeated inserts (same query pattern) | Enabled             | 10-30% faster      |
+| Ad-hoc queries (different each time)  | Enabled             | 5-10% overhead     |
+| One-time bulk operations              | Disabled            | No impact          |
+
 ## Performance Tips
 
 1. **Use batch writes** - 10-100x faster than per-row for bulk operations
 2. **Enable streaming** - Essential for large result sets
-3. **Tune batch size** - 500-1,000 provides good balance between throughput and latency
+3. **Tune batch size** - 1,000-5,000 provides good balance between throughput and latency
 4. **Adjust fetch size** - 1,000-5,000 rows works well for most workloads
 5. **Use connection pooling** - Leverage dependency injection for efficient connection management
 
@@ -320,7 +347,8 @@ Available SSL modes: `Disable`, `Allow`, `Prefer`, `Require`, `VerifyCa`, `Verif
 
 ## Documentation
 
-For comprehensive documentation including advanced scenarios, configuration reference, and best practices, see the [PostgreSQL Connector documentation](https://github.com/npipeline/NPipeline/blob/main/docs/connectors/postgresql.md).
+For comprehensive documentation including advanced scenarios, configuration reference, and best practices, see
+the [PostgreSQL Connector documentation](https://github.com/npipeline/NPipeline/blob/main/docs/connectors/postgresql.md).
 
 ## License
 
