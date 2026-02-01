@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.PostgreSQL.Mapping;
 
 namespace NPipeline.Connectors.PostgreSQL.Tests.Mapping;
@@ -42,7 +43,7 @@ public sealed class PostgresParameterMapperTests
     {
         public int Id { get; set; }
 
-        [PostgresIgnore]
+        [IgnoreColumn]
         public string IgnoredProperty { get; set; } = string.Empty;
 
         public string Name { get; set; } = string.Empty;
@@ -83,7 +84,7 @@ public sealed class PostgresParameterMapperTests
 
     private sealed class PocoWithNoMappableProperties
     {
-        [PostgresIgnore]
+        [IgnoreColumn]
         public string IgnoredProperty { get; set; } = string.Empty;
 
         [PostgresColumn("ignored", Ignore = true)]

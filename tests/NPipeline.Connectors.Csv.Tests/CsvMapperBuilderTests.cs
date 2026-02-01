@@ -1,7 +1,7 @@
 using System.Globalization;
 using AwesomeAssertions;
 using CsvHelper;
-using NPipeline.Connectors.Csv.Attributes;
+using NPipeline.Connectors.Attributes;
 
 namespace NPipeline.Connectors.Csv.Tests;
 
@@ -219,7 +219,7 @@ public sealed class CsvMapperBuilderTests
     private sealed class SimplePoco
     {
         public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
+        public string Name { get; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public bool IsActive { get; set; }
         public decimal Amount { get; set; }
@@ -227,19 +227,19 @@ public sealed class CsvMapperBuilderTests
 
     private sealed class PocoWithAttributes
     {
-        [CsvColumn("user_id")]
+        [Column("user_id")]
         public int Id { get; set; }
 
-        [CsvColumn("full_name")]
-        public string Name { get; set; } = string.Empty;
+        [Column("full_name")]
+        public string Name { get; } = string.Empty;
 
-        [CsvColumn("created_date")]
+        [Column("created_date")]
         public DateTime CreatedAt { get; set; }
 
-        [CsvColumn("is_active")]
+        [Column("is_active")]
         public bool IsActive { get; set; }
 
-        [CsvColumn("total_amount")]
+        [Column("total_amount")]
         public decimal Amount { get; set; }
     }
 
@@ -247,13 +247,13 @@ public sealed class CsvMapperBuilderTests
     {
         public int Id { get; set; }
 
-        [CsvIgnore]
-        public string IgnoredProperty { get; set; } = string.Empty;
+        [IgnoreColumn]
+        public string IgnoredProperty { get; } = string.Empty;
 
-        public string Name { get; set; } = string.Empty;
+        public string Name { get; } = string.Empty;
 
-        [CsvColumn("ignored", Ignore = true)]
-        public string AlsoIgnored { get; set; } = string.Empty;
+        [Column("ignored", Ignore = true)]
+        public string AlsoIgnored { get; } = string.Empty;
     }
 
     private sealed class PocoWithNullableTypes
@@ -268,7 +268,7 @@ public sealed class CsvMapperBuilderTests
     private sealed class PocoWithMixedCase
     {
         public int UserId { get; set; }
-        public string FullName { get; set; } = string.Empty;
+        public string FullName { get; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public bool IsActive { get; set; }
     }
@@ -279,10 +279,10 @@ public sealed class CsvMapperBuilderTests
 
     private sealed class PocoWithNoMappableProperties
     {
-        [CsvIgnore]
+        [IgnoreColumn]
         public string IgnoredProperty { get; set; } = string.Empty;
 
-        [CsvColumn("ignored", Ignore = true)]
+        [Column("ignored", Ignore = true)]
         public int AlsoIgnored { get; set; }
     }
 
@@ -294,7 +294,7 @@ public sealed class CsvMapperBuilderTests
         public double DoubleValue { get; set; }
         public float FloatValue { get; set; }
         public decimal DecimalValue { get; set; }
-        public string StringValue { get; set; } = string.Empty;
+        public string StringValue { get; } = string.Empty;
         public bool BoolValue { get; set; }
         public DateTime DateTimeValue { get; set; }
         public Guid GuidValue { get; set; }

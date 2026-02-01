@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
 using CsvHelper;
-using NPipeline.Connectors.Csv.Attributes;
+using NPipeline.Connectors.Attributes;
 
 namespace NPipeline.Connectors.Csv;
 
@@ -46,7 +46,7 @@ public static class CsvWriterMapperBuilder
             .Select(p => new
             {
                 Property = p,
-                Attribute = p.GetCustomAttribute<CsvColumnAttribute>(),
+                Attribute = p.GetCustomAttribute<ColumnAttribute>(),
             })
             .ToList();
 
@@ -75,15 +75,15 @@ public static class CsvWriterMapperBuilder
             .. typeof(T)
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p => p.CanRead && !IsIgnored(p))
-                .Select(p => p.GetCustomAttribute<CsvColumnAttribute>()?.Name ?? ToColumnNameConvention(p.Name)),
+                .Select(p => p.GetCustomAttribute<ColumnAttribute>()?.Name ?? ToColumnNameConvention(p.Name)),
         ];
     }
 
     private static bool IsIgnored(PropertyInfo property)
     {
-        var columnAttribute = property.GetCustomAttribute<CsvColumnAttribute>();
+        var columnAttribute = property.GetCustomAttribute<ColumnAttribute>();
         var ignoredByAttribute = columnAttribute?.Ignore == true;
-        var hasIgnoreMarker = property.IsDefined(typeof(CsvIgnoreAttribute), true);
+        var hasIgnoreMarker = property.IsDefined(typeof(IgnoreColumnAttribute), true);
         return ignoredByAttribute || hasIgnoreMarker;
     }
 

@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 using AwesomeAssertions;
 using CsvHelper;
-using NPipeline.Connectors.Csv.Attributes;
+using NPipeline.Connectors.Attributes;
 
 namespace NPipeline.Connectors.Csv.Tests;
 
@@ -62,19 +62,19 @@ public sealed class CsvWriterMapperBuilderTests
 
     private sealed class PocoWithAttributes
     {
-        [CsvColumn("user_id")]
+        [Column("user_id")]
         public int Id { get; set; }
 
-        [CsvColumn("full_name")]
+        [Column("full_name")]
         public string Name { get; set; } = string.Empty;
 
-        [CsvColumn("created_date")]
+        [Column("created_date")]
         public DateTime CreatedAt { get; set; }
 
-        [CsvColumn("is_active")]
+        [Column("is_active")]
         public bool IsActive { get; set; }
 
-        [CsvColumn("total_amount")]
+        [Column("total_amount")]
         public decimal Amount { get; set; }
     }
 
@@ -82,12 +82,12 @@ public sealed class CsvWriterMapperBuilderTests
     {
         public int Id { get; set; }
 
-        [CsvIgnore]
+        [IgnoreColumn]
         public string IgnoredProperty { get; set; } = string.Empty;
 
         public string Name { get; set; } = string.Empty;
 
-        [CsvColumn("ignored", Ignore = true)]
+        [Column("ignored", Ignore = true)]
         public string AlsoIgnored { get; set; } = string.Empty;
     }
 
@@ -114,10 +114,10 @@ public sealed class CsvWriterMapperBuilderTests
 
     private sealed class PocoWithNoMappableProperties
     {
-        [CsvIgnore]
+        [IgnoreColumn]
         public string IgnoredProperty { get; set; } = string.Empty;
 
-        [CsvColumn("ignored", Ignore = true)]
+        [Column("ignored", Ignore = true)]
         public int AlsoIgnored { get; set; }
     }
 

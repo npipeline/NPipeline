@@ -1,6 +1,6 @@
 using System.Globalization;
 using AwesomeAssertions;
-using NPipeline.Connectors.Csv.Attributes;
+using NPipeline.Connectors.Attributes;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Pipeline;
@@ -120,6 +120,293 @@ public sealed class CsvAttributeMappingTests
 
     #endregion
 
+    #region Common Attributes Tests
+
+    [Fact]
+    public async Task CsvSource_WithCommonColumnAttribute_ReadsDataCorrectly()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"np_{Guid.NewGuid():N}.csv");
+
+        try
+        {
+            // Arrange
+            var csvContent = "user_id,full_name,created_date,is_active,total_amount\n1,John Doe,2024-01-01,true,100.50\n2,Jane Doe,2024-01-02,false,200.75\n";
+            await File.WriteAllTextAsync(tempFile, csvContent);
+
+            var uri = StorageUri.FromFilePath(tempFile);
+
+            var config = new CsvConfiguration
+            {
+                HasHeaderRecord = true,
+            };
+
+            var resolver = StorageProviderFactory.CreateResolver();
+            var source = new CsvSourceNode<PocoWithCommonAttributes>(uri, resolver, config);
+
+            // Act
+            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var results = new List<PocoWithCommonAttributes>();
+
+            await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
+            {
+                results.Add(item);
+            }
+
+            // Assert
+            results.Should().HaveCount(2);
+            results[0].Id.Should().Be(1);
+            results[0].Name.Should().Be("John Doe");
+            results[0].CreatedAt.Should().Be(new DateTime(2024, 1, 1));
+            results[0].IsActive.Should().BeTrue();
+            results[0].Amount.Should().Be(100.50m);
+
+            results[1].Id.Should().Be(2);
+            results[1].Name.Should().Be("Jane Doe");
+            results[1].CreatedAt.Should().Be(new DateTime(2024, 1, 2));
+            results[1].IsActive.Should().BeFalse();
+            results[1].Amount.Should().Be(200.75m);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task CsvSink_WithCommonColumnAttribute_WritesDataCorrectly()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"np_{Guid.NewGuid():N}.csv");
+
+        try
+        {
+            // Arrange
+            var data = new[]
+            {
+                new PocoWithCommonAttributes { Id = 1, Name = "John Doe", CreatedAt = new DateTime(2024, 1, 1), IsActive = true, Amount = 100.50m },
+                new PocoWithCommonAttributes { Id = 2, Name = "Jane Doe", CreatedAt = new DateTime(2024, 1, 2), IsActive = false, Amount = 200.75m },
+            };
+
+            var uri = StorageUri.FromFilePath(tempFile);
+
+            var config = new CsvConfiguration
+            {
+                HasHeaderRecord = true,
+            };
+
+            var resolver = StorageProviderFactory.CreateResolver();
+            var sink = new CsvSinkNode<PocoWithCommonAttributes>(uri, resolver, config);
+            IDataPipe<PocoWithCommonAttributes> input = new StreamingDataPipe<PocoWithCommonAttributes>(data.ToAsyncEnumerable());
+
+            // Act
+            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+
+            // Assert
+            var lines = await File.ReadAllLinesAsync(tempFile);
+            lines.Should().HaveCount(3); // Header + 2 data rows
+            lines[0].Should().Be("user_id,full_name,created_date,is_active,total_amount");
+            lines[1].Should().Contain("1");
+            lines[1].Should().Contain("John Doe");
+            lines[2].Should().Contain("2");
+            lines[2].Should().Contain("Jane Doe");
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task CsvSource_WithCommonIgnoreColumnAttribute_ExcludesIgnoredProperties()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"np_{Guid.NewGuid():N}.csv");
+
+        try
+        {
+            // Arrange
+            var csvContent = "id,name\n1,John Doe\n2,Jane Doe\n";
+            await File.WriteAllTextAsync(tempFile, csvContent);
+
+            var uri = StorageUri.FromFilePath(tempFile);
+
+            var config = new CsvConfiguration
+            {
+                HasHeaderRecord = true,
+            };
+
+            var resolver = StorageProviderFactory.CreateResolver();
+            var source = new CsvSourceNode<PocoWithCommonIgnore>(uri, resolver, config);
+
+            // Act
+            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var results = new List<PocoWithCommonIgnore>();
+
+            await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
+            {
+                results.Add(item);
+            }
+
+            // Assert
+            results.Should().HaveCount(2);
+            results[0].Id.Should().Be(1);
+            results[0].Name.Should().Be("John Doe");
+            results[0].IgnoredProperty.Should().BeEmpty();
+            results[0].AlsoIgnored.Should().BeEmpty();
+
+            results[1].Id.Should().Be(2);
+            results[1].Name.Should().Be("Jane Doe");
+            results[1].IgnoredProperty.Should().BeEmpty();
+            results[1].AlsoIgnored.Should().BeEmpty();
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task CsvSink_WithCommonIgnoreColumnAttribute_ExcludesIgnoredProperties()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"np_{Guid.NewGuid():N}.csv");
+
+        try
+        {
+            // Arrange
+            var data = new[]
+            {
+                new PocoWithCommonIgnore { Id = 1, IgnoredProperty = "Should not appear", Name = "John Doe", AlsoIgnored = "Also should not appear" },
+                new PocoWithCommonIgnore { Id = 2, IgnoredProperty = "Should not appear", Name = "Jane Doe", AlsoIgnored = "Also should not appear" },
+            };
+
+            var uri = StorageUri.FromFilePath(tempFile);
+
+            var config = new CsvConfiguration
+            {
+                HasHeaderRecord = true,
+            };
+
+            var resolver = StorageProviderFactory.CreateResolver();
+            var sink = new CsvSinkNode<PocoWithCommonIgnore>(uri, resolver, config);
+            IDataPipe<PocoWithCommonIgnore> input = new StreamingDataPipe<PocoWithCommonIgnore>(data.ToAsyncEnumerable());
+
+            // Act
+            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+
+            // Assert
+            var lines = await File.ReadAllLinesAsync(tempFile);
+            lines.Should().HaveCount(3); // Header + 2 data rows
+            lines[0].Should().Be("id,name");
+            lines[1].Should().Be("1,John Doe");
+            lines[2].Should().Be("2,Jane Doe");
+            lines[1].Should().NotContain("Should not appear");
+            lines[2].Should().NotContain("Should not appear");
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task CsvSource_WithMixedAttributes_WorksCorrectly()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"np_{Guid.NewGuid():N}.csv");
+
+        try
+        {
+            // Arrange
+            var csvContent = "user_id,full_name,created_date,is_active,total_amount\n1,John Doe,2024-01-01,true,100.50\n2,Jane Doe,2024-01-02,false,200.75\n";
+            await File.WriteAllTextAsync(tempFile, csvContent);
+
+            var uri = StorageUri.FromFilePath(tempFile);
+
+            var config = new CsvConfiguration
+            {
+                HasHeaderRecord = true,
+            };
+
+            var resolver = StorageProviderFactory.CreateResolver();
+            var source = new CsvSourceNode<PocoWithMixedAttributes>(uri, resolver, config);
+
+            // Act
+            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var results = new List<PocoWithMixedAttributes>();
+
+            await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
+            {
+                results.Add(item);
+            }
+
+            // Assert
+            results.Should().HaveCount(2);
+            results[0].Id.Should().Be(1);
+            results[0].Name.Should().Be("John Doe");
+            results[0].CreatedAt.Should().Be(new DateTime(2024, 1, 1));
+            results[0].IsActive.Should().BeTrue();
+            results[0].Amount.Should().Be(100.50m);
+
+            results[1].Id.Should().Be(2);
+            results[1].Name.Should().Be("Jane Doe");
+            results[1].CreatedAt.Should().Be(new DateTime(2024, 1, 2));
+            results[1].IsActive.Should().BeFalse();
+            results[1].Amount.Should().Be(200.75m);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task CsvSink_WithMixedAttributes_WritesDataCorrectly()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"np_{Guid.NewGuid():N}.csv");
+
+        try
+        {
+            // Arrange
+            var data = new[]
+            {
+                new PocoWithMixedAttributes { Id = 1, Name = "John Doe", CreatedAt = new DateTime(2024, 1, 1), IsActive = true, Amount = 100.50m },
+                new PocoWithMixedAttributes { Id = 2, Name = "Jane Doe", CreatedAt = new DateTime(2024, 1, 2), IsActive = false, Amount = 200.75m },
+            };
+
+            var uri = StorageUri.FromFilePath(tempFile);
+
+            var config = new CsvConfiguration
+            {
+                HasHeaderRecord = true,
+            };
+
+            var resolver = StorageProviderFactory.CreateResolver();
+            var sink = new CsvSinkNode<PocoWithMixedAttributes>(uri, resolver, config);
+            IDataPipe<PocoWithMixedAttributes> input = new StreamingDataPipe<PocoWithMixedAttributes>(data.ToAsyncEnumerable());
+
+            // Act
+            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+
+            // Assert
+            var lines = await File.ReadAllLinesAsync(tempFile);
+            lines.Should().HaveCount(3); // Header + 2 data rows
+            lines[0].Should().Be("user_id,full_name,created_date,is_active,total_amount");
+            lines[1].Should().Contain("1");
+            lines[1].Should().Contain("John Doe");
+            lines[2].Should().Contain("2");
+            lines[2].Should().Contain("Jane Doe");
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+    }
+
+    #endregion
+
     #region Test Models
 
     private sealed class SimplePoco
@@ -133,19 +420,19 @@ public sealed class CsvAttributeMappingTests
 
     private sealed class PocoWithAttributes
     {
-        [CsvColumn("user_id")]
+        [Column("user_id")]
         public int Id { get; set; }
 
-        [CsvColumn("full_name")]
+        [Column("full_name")]
         public string Name { get; set; } = string.Empty;
 
-        [CsvColumn("created_date")]
+        [Column("created_date")]
         public DateTime CreatedAt { get; set; }
 
-        [CsvColumn("is_active")]
+        [Column("is_active")]
         public bool IsActive { get; set; }
 
-        [CsvColumn("total_amount")]
+        [Column("total_amount")]
         public decimal Amount { get; set; }
     }
 
@@ -153,13 +440,62 @@ public sealed class CsvAttributeMappingTests
     {
         public int Id { get; set; }
 
-        [CsvIgnore]
+        [IgnoreColumn]
         public string IgnoredProperty { get; set; } = string.Empty;
 
         public string Name { get; set; } = string.Empty;
 
-        [CsvColumn("ignored", Ignore = true)]
+        [Column("ignored", Ignore = true)]
         public string AlsoIgnored { get; set; } = string.Empty;
+    }
+
+    private sealed class PocoWithCommonAttributes
+    {
+        [Column("user_id")]
+        public int Id { get; set; }
+
+        [Column("full_name")]
+        public string Name { get; set; } = string.Empty;
+
+        [Column("created_date")]
+        public DateTime CreatedAt { get; set; }
+
+        [Column("is_active")]
+        public bool IsActive { get; set; }
+
+        [Column("total_amount")]
+        public decimal Amount { get; set; }
+    }
+
+    private sealed class PocoWithCommonIgnore
+    {
+        public int Id { get; set; }
+
+        [IgnoreColumn]
+        public string IgnoredProperty { get; set; } = string.Empty;
+
+        public string Name { get; set; } = string.Empty;
+
+        [Column("ignored", Ignore = true)]
+        public string AlsoIgnored { get; set; } = string.Empty;
+    }
+
+    private sealed class PocoWithMixedAttributes
+    {
+        [Column("user_id")]
+        public int Id { get; set; }
+
+        [Column("full_name")]
+        public string Name { get; set; } = string.Empty;
+
+        [Column("created_date")]
+        public DateTime CreatedAt { get; set; }
+
+        [Column("is_active")]
+        public bool IsActive { get; set; }
+
+        [Column("total_amount")]
+        public decimal Amount { get; set; }
     }
 
     private sealed class PocoWithNullableTypes

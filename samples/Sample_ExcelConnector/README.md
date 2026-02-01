@@ -507,6 +507,116 @@ Attribute mapping uses compiled expression tree delegates for optimal performanc
 - **Type safety** with compile-time checking of property mappings
 - **Caching** ensures mappers are compiled only once per type
 
+## Common Attributes
+
+NPipeline now supports **common attributes** that work across all connectors (CSV, Excel, PostgreSQL, etc.). This allows you to use the same attributes for
+different data sources, making your code more portable and maintainable.
+
+### What Are Common Attributes?
+
+Common attributes are defined in `NPipeline.Connectors.Attributes` namespace and provide a unified way to specify column mappings across all connectors:
+
+- **`ColumnAttribute`**: Specifies the column name for a property
+- **`IgnoreColumnAttribute`**: Excludes a property from mapping
+
+### Using Common Attributes
+
+To use common attributes, add a reference to `NPipeline.Connectors` and import the namespace:
+
+```csharp
+using NPipeline.Connectors.Attributes;
+
+public class CustomerWithCommonAttributes
+{
+    [Column("CustomerID")]
+    public int Id { get; set; }
+
+    [Column("First Name")]
+    public string FirstName { get; set; } = string.Empty;
+
+    [Column("Last Name")]
+    public string LastName { get; set; } = string.Empty;
+
+    [Column("Email Address")]
+    public string Email { get; set; } = string.Empty;
+
+    [IgnoreColumn]
+    public string InternalNotes { get; set; } = string.Empty;
+
+    [IgnoreColumn]
+    public string FullName => $"{FirstName} {LastName}";
+}
+```
+
+### Benefits of Common Attributes
+
+- **Cross-connector compatibility**: Same attributes work with CSV, Excel, PostgreSQL, etc.
+- **Simplified code**: Use one set of attributes across different data sources
+- **Future-proof**: New connectors will automatically support common attributes
+- **Easier migration**: Move data between different sources without changing attribute definitions
+
+### Common vs Connector-Specific Attributes
+
+Both common and connector-specific attributes are fully supported. Choose based on your needs:
+
+| Scenario                                | Recommended Approach                                                |
+|-----------------------------------------|---------------------------------------------------------------------|
+| Simple column mapping                   | Common attributes (`Column`, `IgnoreColumn`)                        |
+| Cross-connector compatibility           | Common attributes (`Column`, `IgnoreColumn`)                        |
+| Database-specific features (PostgreSQL) | Connector-specific (`PostgresColumn` with DbType, Size, PrimaryKey) |
+| Legacy code with specific attributes    | Keep existing connector-specific attributes                         |
+
+**Example: Using Common Attributes**
+
+```csharp
+using NPipeline.Connectors.Attributes;
+
+public class Customer
+{
+    [Column("CustomerID")]
+    public int Id { get; set; }
+
+    [Column("First Name")]
+    public string FirstName { get; set; }
+}
+```
+
+**Example: Using Connector-Specific Attributes (Excel)**
+
+```csharp
+using NPipeline.Connectors.Excel.Attributes;
+
+public class Customer
+{
+    [ExcelColumn("CustomerID")]
+    public int Id { get; set; }
+
+    [ExcelColumn("First Name")]
+    public string FirstName { get; set; }
+
+    [ExcelIgnore]
+    public string InternalNotes { get; set; }
+}
+```
+
+### Backward Compatibility
+
+Connector-specific attributes (`ExcelColumn`, `ExcelIgnore`, `CsvColumn`, `CsvIgnore`, `PostgresColumn`, `PostgresIgnore`) continue to work exactly as before.
+You can:
+
+- Keep existing code using connector-specific attributes
+- Mix common and connector-specific attributes in the same project
+- Gradually migrate to common attributes at your own pace
+
+### Sample Code
+
+This sample includes both approaches:
+
+- **`Customer`**: Uses convention-based mapping (no attributes required)
+- **`CustomerWithCommonAttributes`**: Demonstrates common attributes with detailed comments
+
+Both classes work identically with the Excel connector. The choice of which to use depends on your specific requirements.
+
 ## Extending the Sample
 
 ### Adding New Validation Rules

@@ -2,7 +2,7 @@ using System.Reflection;
 using AwesomeAssertions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Spreadsheet;
-using NPipeline.Connectors.Excel.Attributes;
+using NPipeline.Connectors.Attributes;
 
 namespace NPipeline.Connectors.Excel.Tests;
 
@@ -61,19 +61,19 @@ public sealed class ExcelWriterMapperBuilderTests
 
     private sealed class PocoWithAttributes
     {
-        [ExcelColumn("user_id")]
+        [Column("user_id")]
         public int Id { get; set; }
 
-        [ExcelColumn("full_name")]
+        [Column("full_name")]
         public string Name { get; set; } = string.Empty;
 
-        [ExcelColumn("created_date")]
+        [Column("created_date")]
         public DateTime CreatedAt { get; set; }
 
-        [ExcelColumn("is_active")]
+        [Column("is_active")]
         public bool IsActive { get; set; }
 
-        [ExcelColumn("total_amount")]
+        [Column("total_amount")]
         public decimal Amount { get; set; }
     }
 
@@ -81,12 +81,12 @@ public sealed class ExcelWriterMapperBuilderTests
     {
         public int Id { get; set; }
 
-        [ExcelIgnore]
+        [IgnoreColumn]
         public string IgnoredProperty { get; set; } = string.Empty;
 
         public string Name { get; set; } = string.Empty;
 
-        [ExcelColumn("ignored", Ignore = true)]
+        [Column("ignored", Ignore = true)]
         public string AlsoIgnored { get; set; } = string.Empty;
     }
 
@@ -113,10 +113,10 @@ public sealed class ExcelWriterMapperBuilderTests
 
     private sealed class PocoWithNoMappableProperties
     {
-        [ExcelIgnore]
+        [IgnoreColumn]
         public string IgnoredProperty { get; set; } = string.Empty;
 
-        [ExcelColumn("ignored", Ignore = true)]
+        [Column("ignored", Ignore = true)]
         public int AlsoIgnored { get; set; }
     }
 

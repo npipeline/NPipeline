@@ -1,16 +1,17 @@
-namespace NPipeline.Connectors.Csv.Attributes;
+namespace NPipeline.Connectors.Attributes;
 
 /// <summary>
-///     Specifies the CSV column mapping for a property or field.
+///     Specifies the column mapping for a property or field.
+///     This is the base attribute for connector-specific column attributes.
 /// </summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
-public sealed class CsvColumnAttribute : Attribute
+public class ColumnAttribute : Attribute
 {
     /// <summary>
-    ///     Initializes a new instance of the <see cref="CsvColumnAttribute" /> class.
+    ///     Initializes a new instance of the <see cref="ColumnAttribute" /> class.
     /// </summary>
     /// <param name="name">The column name.</param>
-    public CsvColumnAttribute(string name)
+    public ColumnAttribute(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Column name cannot be empty.", nameof(name));

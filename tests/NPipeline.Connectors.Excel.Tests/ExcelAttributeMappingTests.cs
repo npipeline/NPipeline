@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using NPipeline.Connectors.Excel.Attributes;
+using NPipeline.Connectors.Attributes;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Pipeline;
@@ -459,6 +459,346 @@ public sealed class ExcelAttributeMappingTests
 
     #endregion
 
+    #region Common Attributes Tests
+
+    [Fact]
+    public async Task ExcelSource_WithCommonColumnAttribute_ReadsDataCorrectly()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"np_{Guid.NewGuid():N}.xlsx");
+
+        try
+        {
+            // Arrange
+            var data = new[]
+            {
+                new PocoWithCommonAttributes { Id = 1, Name = "John Doe", CreatedAt = new DateTime(2024, 1, 1), IsActive = true, Amount = 100.50m },
+                new PocoWithCommonAttributes { Id = 2, Name = "Jane Doe", CreatedAt = new DateTime(2024, 1, 2), IsActive = false, Amount = 200.75m },
+            };
+
+            var uri = StorageUri.FromFilePath(tempFile);
+
+            var config = new ExcelConfiguration
+            {
+                FirstRowIsHeader = true,
+            };
+
+            var resolver = StorageProviderFactory.CreateResolver();
+
+            // Write
+            var sink = new ExcelSinkNode<PocoWithCommonAttributes>(uri, resolver, config);
+            IDataPipe<PocoWithCommonAttributes> input = new StreamingDataPipe<PocoWithCommonAttributes>(data.ToAsyncEnumerable());
+            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+
+            // Read
+            var source = new ExcelSourceNode<PocoWithCommonAttributes>(uri, resolver, config);
+            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var results = new List<PocoWithCommonAttributes>();
+
+            await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
+            {
+                results.Add(item);
+            }
+
+            // Assert
+            results.Should().HaveCount(2);
+            results[0].Id.Should().Be(1);
+            results[0].Name.Should().Be("John Doe");
+            results[0].CreatedAt.Should().Be(new DateTime(2024, 1, 1));
+            results[0].IsActive.Should().BeTrue();
+            results[0].Amount.Should().Be(100.50m);
+
+            results[1].Id.Should().Be(2);
+            results[1].Name.Should().Be("Jane Doe");
+            results[1].CreatedAt.Should().Be(new DateTime(2024, 1, 2));
+            results[1].IsActive.Should().BeFalse();
+            results[1].Amount.Should().Be(200.75m);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task ExcelSink_WithCommonColumnAttribute_WritesDataCorrectly()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"np_{Guid.NewGuid():N}.xlsx");
+
+        try
+        {
+            // Arrange
+            var data = new[]
+            {
+                new PocoWithCommonAttributes { Id = 1, Name = "John Doe", CreatedAt = new DateTime(2024, 1, 1), IsActive = true, Amount = 100.50m },
+                new PocoWithCommonAttributes { Id = 2, Name = "Jane Doe", CreatedAt = new DateTime(2024, 1, 2), IsActive = false, Amount = 200.75m },
+            };
+
+            var uri = StorageUri.FromFilePath(tempFile);
+
+            var config = new ExcelConfiguration
+            {
+                FirstRowIsHeader = true,
+            };
+
+            var resolver = StorageProviderFactory.CreateResolver();
+            var sink = new ExcelSinkNode<PocoWithCommonAttributes>(uri, resolver, config);
+            IDataPipe<PocoWithCommonAttributes> input = new StreamingDataPipe<PocoWithCommonAttributes>(data.ToAsyncEnumerable());
+
+            // Act
+            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+
+            // Read back to verify
+            var source = new ExcelSourceNode<PocoWithCommonAttributes>(uri, resolver, config);
+            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var results = new List<PocoWithCommonAttributes>();
+
+            await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
+            {
+                results.Add(item);
+            }
+
+            // Assert
+            results.Should().HaveCount(2);
+            results[0].Id.Should().Be(1);
+            results[0].Name.Should().Be("John Doe");
+            results[1].Id.Should().Be(2);
+            results[1].Name.Should().Be("Jane Doe");
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task ExcelSource_WithCommonIgnoreColumnAttribute_ExcludesIgnoredProperties()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"np_{Guid.NewGuid():N}.xlsx");
+
+        try
+        {
+            // Arrange
+            var data = new[]
+            {
+                new PocoWithCommonIgnore { Id = 1, IgnoredProperty = "Should not appear", Name = "John Doe", AlsoIgnored = "Also should not appear" },
+                new PocoWithCommonIgnore { Id = 2, IgnoredProperty = "Should not appear", Name = "Jane Doe", AlsoIgnored = "Also should not appear" },
+            };
+
+            var uri = StorageUri.FromFilePath(tempFile);
+
+            var config = new ExcelConfiguration
+            {
+                FirstRowIsHeader = true,
+            };
+
+            var resolver = StorageProviderFactory.CreateResolver();
+
+            // Write
+            var sink = new ExcelSinkNode<PocoWithCommonIgnore>(uri, resolver, config);
+            IDataPipe<PocoWithCommonIgnore> input = new StreamingDataPipe<PocoWithCommonIgnore>(data.ToAsyncEnumerable());
+            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+
+            // Read
+            var source = new ExcelSourceNode<PocoWithCommonIgnore>(uri, resolver, config);
+            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var results = new List<PocoWithCommonIgnore>();
+
+            await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
+            {
+                results.Add(item);
+            }
+
+            // Assert
+            results.Should().HaveCount(2);
+            results[0].Id.Should().Be(1);
+            results[0].Name.Should().Be("John Doe");
+            results[0].IgnoredProperty.Should().BeEmpty();
+            results[0].AlsoIgnored.Should().BeEmpty();
+
+            results[1].Id.Should().Be(2);
+            results[1].Name.Should().Be("Jane Doe");
+            results[1].IgnoredProperty.Should().BeEmpty();
+            results[1].AlsoIgnored.Should().BeEmpty();
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task ExcelSink_WithCommonIgnoreColumnAttribute_ExcludesIgnoredProperties()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"np_{Guid.NewGuid():N}.xlsx");
+
+        try
+        {
+            // Arrange
+            var data = new[]
+            {
+                new PocoWithCommonIgnore { Id = 1, IgnoredProperty = "Should not appear", Name = "John Doe", AlsoIgnored = "Also should not appear" },
+                new PocoWithCommonIgnore { Id = 2, IgnoredProperty = "Should not appear", Name = "Jane Doe", AlsoIgnored = "Also should not appear" },
+            };
+
+            var uri = StorageUri.FromFilePath(tempFile);
+
+            var config = new ExcelConfiguration
+            {
+                FirstRowIsHeader = true,
+            };
+
+            var resolver = StorageProviderFactory.CreateResolver();
+            var sink = new ExcelSinkNode<PocoWithCommonIgnore>(uri, resolver, config);
+            IDataPipe<PocoWithCommonIgnore> input = new StreamingDataPipe<PocoWithCommonIgnore>(data.ToAsyncEnumerable());
+
+            // Act
+            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+
+            // Read back to verify
+            var source = new ExcelSourceNode<PocoWithCommonIgnore>(uri, resolver, config);
+            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var results = new List<PocoWithCommonIgnore>();
+
+            await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
+            {
+                results.Add(item);
+            }
+
+            // Assert
+            results.Should().HaveCount(2);
+            results[0].Id.Should().Be(1);
+            results[0].Name.Should().Be("John Doe");
+            results[0].IgnoredProperty.Should().BeEmpty();
+            results[0].AlsoIgnored.Should().BeEmpty();
+
+            results[1].Id.Should().Be(2);
+            results[1].Name.Should().Be("Jane Doe");
+            results[1].IgnoredProperty.Should().BeEmpty();
+            results[1].AlsoIgnored.Should().BeEmpty();
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task ExcelSource_WithMixedAttributes_WorksCorrectly()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"np_{Guid.NewGuid():N}.xlsx");
+
+        try
+        {
+            // Arrange
+            var data = new[]
+            {
+                new PocoWithMixedAttributes { Id = 1, Name = "John Doe", CreatedAt = new DateTime(2024, 1, 1), IsActive = true, Amount = 100.50m },
+                new PocoWithMixedAttributes { Id = 2, Name = "Jane Doe", CreatedAt = new DateTime(2024, 1, 2), IsActive = false, Amount = 200.75m },
+            };
+
+            var uri = StorageUri.FromFilePath(tempFile);
+
+            var config = new ExcelConfiguration
+            {
+                FirstRowIsHeader = true,
+            };
+
+            var resolver = StorageProviderFactory.CreateResolver();
+
+            // Write
+            var sink = new ExcelSinkNode<PocoWithMixedAttributes>(uri, resolver, config);
+            IDataPipe<PocoWithMixedAttributes> input = new StreamingDataPipe<PocoWithMixedAttributes>(data.ToAsyncEnumerable());
+            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+
+            // Read
+            var source = new ExcelSourceNode<PocoWithMixedAttributes>(uri, resolver, config);
+            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var results = new List<PocoWithMixedAttributes>();
+
+            await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
+            {
+                results.Add(item);
+            }
+
+            // Assert
+            results.Should().HaveCount(2);
+            results[0].Id.Should().Be(1);
+            results[0].Name.Should().Be("John Doe");
+            results[0].CreatedAt.Should().Be(new DateTime(2024, 1, 1));
+            results[0].IsActive.Should().BeTrue();
+            results[0].Amount.Should().Be(100.50m);
+
+            results[1].Id.Should().Be(2);
+            results[1].Name.Should().Be("Jane Doe");
+            results[1].CreatedAt.Should().Be(new DateTime(2024, 1, 2));
+            results[1].IsActive.Should().BeFalse();
+            results[1].Amount.Should().Be(200.75m);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task ExcelSink_WithMixedAttributes_WritesDataCorrectly()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"np_{Guid.NewGuid():N}.xlsx");
+
+        try
+        {
+            // Arrange
+            var data = new[]
+            {
+                new PocoWithMixedAttributes { Id = 1, Name = "John Doe", CreatedAt = new DateTime(2024, 1, 1), IsActive = true, Amount = 100.50m },
+                new PocoWithMixedAttributes { Id = 2, Name = "Jane Doe", CreatedAt = new DateTime(2024, 1, 2), IsActive = false, Amount = 200.75m },
+            };
+
+            var uri = StorageUri.FromFilePath(tempFile);
+
+            var config = new ExcelConfiguration
+            {
+                FirstRowIsHeader = true,
+            };
+
+            var resolver = StorageProviderFactory.CreateResolver();
+            var sink = new ExcelSinkNode<PocoWithMixedAttributes>(uri, resolver, config);
+            IDataPipe<PocoWithMixedAttributes> input = new StreamingDataPipe<PocoWithMixedAttributes>(data.ToAsyncEnumerable());
+
+            // Act
+            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+
+            // Read back to verify
+            var source = new ExcelSourceNode<PocoWithMixedAttributes>(uri, resolver, config);
+            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var results = new List<PocoWithMixedAttributes>();
+
+            await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
+            {
+                results.Add(item);
+            }
+
+            // Assert
+            results.Should().HaveCount(2);
+            results[0].Id.Should().Be(1);
+            results[0].Name.Should().Be("John Doe");
+            results[1].Id.Should().Be(2);
+            results[1].Name.Should().Be("Jane Doe");
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+    }
+
+    #endregion
+
     #region Test Models
 
     private sealed class SimplePoco
@@ -472,19 +812,19 @@ public sealed class ExcelAttributeMappingTests
 
     private sealed class PocoWithAttributes
     {
-        [ExcelColumn("user_id")]
+        [Column("user_id")]
         public int Id { get; set; }
 
-        [ExcelColumn("full_name")]
+        [Column("full_name")]
         public string Name { get; set; } = string.Empty;
 
-        [ExcelColumn("created_date")]
+        [Column("created_date")]
         public DateTime CreatedAt { get; set; }
 
-        [ExcelColumn("is_active")]
+        [Column("is_active")]
         public bool IsActive { get; set; }
 
-        [ExcelColumn("total_amount")]
+        [Column("total_amount")]
         public decimal Amount { get; set; }
     }
 
@@ -492,13 +832,62 @@ public sealed class ExcelAttributeMappingTests
     {
         public int Id { get; set; }
 
-        [ExcelIgnore]
+        [IgnoreColumn]
         public string IgnoredProperty { get; set; } = string.Empty;
 
         public string Name { get; set; } = string.Empty;
 
-        [ExcelColumn("ignored", Ignore = true)]
+        [Column("ignored", Ignore = true)]
         public string AlsoIgnored { get; set; } = string.Empty;
+    }
+
+    private sealed class PocoWithCommonAttributes
+    {
+        [Column("user_id")]
+        public int Id { get; set; }
+
+        [Column("full_name")]
+        public string Name { get; set; } = string.Empty;
+
+        [Column("created_date")]
+        public DateTime CreatedAt { get; set; }
+
+        [Column("is_active")]
+        public bool IsActive { get; set; }
+
+        [Column("total_amount")]
+        public decimal Amount { get; set; }
+    }
+
+    private sealed class PocoWithCommonIgnore
+    {
+        public int Id { get; set; }
+
+        [IgnoreColumn]
+        public string IgnoredProperty { get; set; } = string.Empty;
+
+        public string Name { get; set; } = string.Empty;
+
+        [Column("ignored", Ignore = true)]
+        public string AlsoIgnored { get; set; } = string.Empty;
+    }
+
+    private sealed class PocoWithMixedAttributes
+    {
+        [Column("user_id")]
+        public int Id { get; set; }
+
+        [Column("full_name")]
+        public string Name { get; set; } = string.Empty;
+
+        [Column("created_date")]
+        public DateTime CreatedAt { get; set; }
+
+        [Column("is_active")]
+        public bool IsActive { get; set; }
+
+        [Column("total_amount")]
+        public decimal Amount { get; set; }
     }
 
     private sealed class PocoWithNullableTypes

@@ -2,6 +2,7 @@ using System.Data;
 using System.Linq.Expressions;
 using System.Reflection;
 using NPipeline.Connectors.Abstractions;
+using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.Exceptions;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.Connectors.PostgreSQL.Mapping;
@@ -166,7 +167,7 @@ internal sealed class PostgresPerRowWriter<T> : IDatabaseWriter<T>
     {
         var columnAttribute = property.GetCustomAttribute<PostgresColumnAttribute>();
         var ignoredByAttribute = columnAttribute?.Ignore == true;
-        var hasIgnoreMarker = property.IsDefined(typeof(PostgresIgnoreAttribute), true);
+        var hasIgnoreMarker = property.IsDefined(typeof(IgnoreColumnAttribute), true);
         return ignoredByAttribute || hasIgnoreMarker;
     }
 

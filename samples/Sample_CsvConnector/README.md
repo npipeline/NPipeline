@@ -239,6 +239,113 @@ The mapper is automatically built using [`CsvMapperBuilder<T>`](../../src/NPipel
 | Complex transformation logic     | Custom mapper function                                                                      |
 | Type conversion beyond defaults  | Custom mapper function                                                                      |
 
+## Common Attributes
+
+NPipeline now supports **common attributes** that work across all connectors (CSV, Excel, PostgreSQL, etc.). This allows you to use the same attributes for
+different data sources, making your code more portable and maintainable.
+
+### What Are Common Attributes?
+
+Common attributes are defined in `NPipeline.Connectors.Attributes` namespace and provide a unified way to specify column mappings across all connectors:
+
+- **`ColumnAttribute`**: Specifies the column name for a property
+- **`IgnoreColumnAttribute`**: Excludes a property from mapping
+
+### Using Common Attributes
+
+To use common attributes, add a reference to `NPipeline.Connectors` and import the namespace:
+
+```csharp
+using NPipeline.Connectors.Attributes;
+
+public class CustomerWithCommonAttributes
+{
+    [Column("Id")]
+    public int Id { get; set; }
+
+    [Column("FirstName")]
+    public string FirstName { get; set; } = string.Empty;
+
+    [Column("LastName")]
+    public string LastName { get; set; } = string.Empty;
+
+    [Column("Email")]
+    public string Email { get; set; } = string.Empty;
+
+    [IgnoreColumn]
+    public string InternalNotes { get; set; } = string.Empty;
+
+    [IgnoreColumn]
+    public string FullName => $"{FirstName} {LastName}";
+}
+```
+
+### Benefits of Common Attributes
+
+- **Cross-connector compatibility**: Same attributes work with CSV, Excel, PostgreSQL, etc.
+- **Simplified code**: Use one set of attributes across different data sources
+- **Future-proof**: New connectors will automatically support common attributes
+- **Easier migration**: Move data between different sources without changing attribute definitions
+
+### Common vs Connector-Specific Attributes
+
+Both common and connector-specific attributes are fully supported. Choose based on your needs:
+
+| Scenario                                | Recommended Approach                                                |
+|-----------------------------------------|---------------------------------------------------------------------|
+| Simple column mapping                   | Common attributes (`Column`, `IgnoreColumn`)                        |
+| Cross-connector compatibility           | Common attributes (`Column`, `IgnoreColumn`)                        |
+| Database-specific features (PostgreSQL) | Connector-specific (`PostgresColumn` with DbType, Size, PrimaryKey) |
+| Legacy code with specific attributes    | Keep existing connector-specific attributes                         |
+
+**Example: Using Common Attributes**
+
+```csharp
+using NPipeline.Connectors.Attributes;
+
+public class Customer
+{
+    [Column("customer_id")]
+    public int Id { get; set; }
+
+    [Column("first_name")]
+    public string FirstName { get; set; }
+}
+```
+
+**Example: Using Connector-Specific Attributes (PostgreSQL)**
+
+```csharp
+using NPipeline.Connectors.PostgreSQL.Mapping;
+
+public class Customer
+{
+    [PostgresColumn("customer_id", PrimaryKey = true, DbType = NpgsqlDbType.Integer)]
+    public int Id { get; set; }
+
+    [PostgresColumn("first_name", DbType = NpgsqlDbType.Varchar, Size = 100)]
+    public string FirstName { get; set; }
+}
+```
+
+### Backward Compatibility
+
+Connector-specific attributes (`CsvColumn`, `CsvIgnore`, `ExcelColumn`, `ExcelIgnore`, `PostgresColumn`, `PostgresIgnore`) continue to work exactly as before.
+You can:
+
+- Keep existing code using connector-specific attributes
+- Mix common and connector-specific attributes in the same project
+- Gradually migrate to common attributes at your own pace
+
+### Sample Code
+
+This sample includes both approaches:
+
+- **`Customer`**: Uses `CsvColumn` and `CsvIgnore` attributes (connector-specific)
+- **`CustomerWithCommonAttributes`**: Demonstrates common attributes with detailed comments
+
+Both classes work identically with the CSV connector. The choice of which to use depends on your specific requirements.
+
 ## Project Structure
 
 ```

@@ -3,6 +3,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using Npgsql;
 using NPipeline.Connectors.Abstractions;
+using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.Exceptions;
 using NPipeline.Connectors.Nodes;
@@ -273,7 +274,7 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     {
         var columnAttribute = property.GetCustomAttribute<PostgresColumnAttribute>();
         var ignoredByAttribute = columnAttribute?.Ignore == true;
-        var hasIgnoreMarker = property.IsDefined(typeof(PostgresIgnoreAttribute), true);
+        var hasIgnoreMarker = property.IsDefined(typeof(IgnoreColumnAttribute), true);
         return ignoredByAttribute || hasIgnoreMarker;
     }
 

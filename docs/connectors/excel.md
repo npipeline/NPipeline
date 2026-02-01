@@ -93,6 +93,59 @@ var source = new ExcelSourceNode<Product>(
 );
 ```
 
+## Common Attributes
+
+The Excel connector supports common attributes from `NPipeline.Connectors.Attributes` that work across all connectors.
+
+### `[Column]` Attribute
+
+The `[Column]` attribute (from `NPipeline.Connectors.Attributes`) is a common attribute that allows you to specify column names and control property mapping across all connectors. It provides:
+
+- **`Name`**: The column name in the data source
+- **`Ignore`**: When `true`, skips mapping this property
+
+This attribute is recommended for all scenarios where you need to specify column names or exclude properties.
+
+```csharp
+using NPipeline.Connectors.Attributes;
+
+public class Product
+{
+    [Column("product_id")]
+    public int Id { get; set; }
+
+    [Column("product_name")]
+    public string Name { get; set; } = string.Empty;
+
+    [Column("unit_price")]
+    public decimal Price { get; set; }
+
+    [IgnoreColumn]
+    public string DisplayName => $"{Name} (${Price:F2})";
+}
+```
+
+### `[IgnoreColumn]` Attribute
+
+The `[IgnoreColumn]` attribute (from `NPipeline.Connectors.Attributes`) is a marker attribute that excludes a property from mapping entirely. This is useful for computed properties or fields that should not be persisted.
+
+```csharp
+using NPipeline.Connectors.Attributes;
+
+public class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+
+    [IgnoreColumn]
+    public string DisplayName => $"{Name} (${Price:F2})";
+
+    [IgnoreColumn]
+    public bool IsExpensive => Price > 100;
+}
+```
+
 ## `ExcelSourceNode<T>`
 
 The `ExcelSourceNode<T>` reads data from an Excel file and emits each row as an item of type `T`.

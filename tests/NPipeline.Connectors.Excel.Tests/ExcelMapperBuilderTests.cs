@@ -1,7 +1,7 @@
 using System.Data;
 using System.Reflection;
 using AwesomeAssertions;
-using NPipeline.Connectors.Excel.Attributes;
+using NPipeline.Connectors.Attributes;
 
 namespace NPipeline.Connectors.Excel.Tests;
 
@@ -171,7 +171,7 @@ public sealed class ExcelMapperBuilderTests
     private sealed class SimplePoco
     {
         public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
+        public string Name { get; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public bool IsActive { get; set; }
         public decimal Amount { get; set; }
@@ -179,19 +179,19 @@ public sealed class ExcelMapperBuilderTests
 
     private sealed class PocoWithAttributes
     {
-        [ExcelColumn("user_id")]
+        [Column("user_id")]
         public int Id { get; set; }
 
-        [ExcelColumn("full_name")]
-        public string Name { get; set; } = string.Empty;
+        [Column("full_name")]
+        public string Name { get; } = string.Empty;
 
-        [ExcelColumn("created_date")]
+        [Column("created_date")]
         public DateTime CreatedAt { get; set; }
 
-        [ExcelColumn("is_active")]
+        [Column("is_active")]
         public bool IsActive { get; set; }
 
-        [ExcelColumn("total_amount")]
+        [Column("total_amount")]
         public decimal Amount { get; set; }
     }
 
@@ -199,13 +199,13 @@ public sealed class ExcelMapperBuilderTests
     {
         public int Id { get; set; }
 
-        [ExcelIgnore]
-        public string IgnoredProperty { get; set; } = string.Empty;
+        [IgnoreColumn]
+        public string IgnoredProperty { get; } = string.Empty;
 
-        public string Name { get; set; } = string.Empty;
+        public string Name { get; } = string.Empty;
 
-        [ExcelColumn("ignored", Ignore = true)]
-        public string AlsoIgnored { get; set; } = string.Empty;
+        [Column("ignored", Ignore = true)]
+        public string AlsoIgnored { get; } = string.Empty;
     }
 
     private sealed class PocoWithNullableTypes
@@ -220,7 +220,7 @@ public sealed class ExcelMapperBuilderTests
     private sealed class PocoWithMixedCase
     {
         public int UserId { get; set; }
-        public string FullName { get; set; } = string.Empty;
+        public string FullName { get; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public bool IsActive { get; set; }
     }
@@ -231,10 +231,10 @@ public sealed class ExcelMapperBuilderTests
 
     private sealed class PocoWithNoMappableProperties
     {
-        [ExcelIgnore]
+        [IgnoreColumn]
         public string IgnoredProperty { get; set; } = string.Empty;
 
-        [ExcelColumn("ignored", Ignore = true)]
+        [Column("ignored", Ignore = true)]
         public int AlsoIgnored { get; set; }
     }
 
@@ -246,7 +246,7 @@ public sealed class ExcelMapperBuilderTests
         public double DoubleValue { get; set; }
         public float FloatValue { get; set; }
         public decimal DecimalValue { get; set; }
-        public string StringValue { get; set; } = string.Empty;
+        public string StringValue { get; } = string.Empty;
         public bool BoolValue { get; set; }
         public DateTime DateTimeValue { get; set; }
         public Guid GuidValue { get; set; }

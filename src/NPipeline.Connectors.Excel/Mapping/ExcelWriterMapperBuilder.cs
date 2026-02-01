@@ -4,7 +4,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Spreadsheet;
-using NPipeline.Connectors.Excel.Attributes;
+using NPipeline.Connectors.Attributes;
 
 namespace NPipeline.Connectors.Excel;
 
@@ -76,7 +76,7 @@ public static class ExcelWriterMapperBuilder
             .Select(p => new
             {
                 Property = p,
-                Attribute = p.GetCustomAttribute<ExcelColumnAttribute>(),
+                Attribute = p.GetCustomAttribute<ColumnAttribute>(),
             })
             .ToList();
 
@@ -115,15 +115,15 @@ public static class ExcelWriterMapperBuilder
             .. typeof(T)
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p => p.CanRead && !IsIgnored(p))
-                .Select(p => p.GetCustomAttribute<ExcelColumnAttribute>()?.Name ?? ToColumnNameConvention(p.Name)),
+                .Select(p => p.GetCustomAttribute<ColumnAttribute>()?.Name ?? ToColumnNameConvention(p.Name)),
         ];
     }
 
     private static bool IsIgnored(PropertyInfo property)
     {
-        var columnAttribute = property.GetCustomAttribute<ExcelColumnAttribute>();
+        var columnAttribute = property.GetCustomAttribute<ColumnAttribute>();
         var ignoredByAttribute = columnAttribute?.Ignore == true;
-        var hasIgnoreMarker = property.IsDefined(typeof(ExcelIgnoreAttribute), true);
+        var hasIgnoreMarker = property.IsDefined(typeof(IgnoreColumnAttribute), true);
         return ignoredByAttribute || hasIgnoreMarker;
     }
 

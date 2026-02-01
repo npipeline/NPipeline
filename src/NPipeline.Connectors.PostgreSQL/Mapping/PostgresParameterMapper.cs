@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using Npgsql;
+using NPipeline.Connectors.Attributes;
 
 namespace NPipeline.Connectors.PostgreSQL.Mapping;
 
@@ -101,7 +102,7 @@ internal static class PostgresParameterMapper
     {
         var columnAttribute = property.GetCustomAttribute<PostgresColumnAttribute>();
         var ignoredByAttribute = columnAttribute?.Ignore == true;
-        var hasIgnoreMarker = property.IsDefined(typeof(PostgresIgnoreAttribute), true);
+        var hasIgnoreMarker = property.IsDefined(typeof(IgnoreColumnAttribute), true);
         return ignoredByAttribute || hasIgnoreMarker;
     }
 

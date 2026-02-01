@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
-using NPipeline.Connectors.Csv.Attributes;
+using NPipeline.Connectors.Attributes;
 
 namespace NPipeline.Connectors.Csv;
 
@@ -33,7 +33,7 @@ public static class CsvMapperBuilder
             .Select(p => new
             {
                 Property = p,
-                Attribute = p.GetCustomAttribute<CsvColumnAttribute>(),
+                Attribute = p.GetCustomAttribute<ColumnAttribute>(),
             })
             .ToList();
 
@@ -111,9 +111,9 @@ public static class CsvMapperBuilder
 
     private static bool IsIgnored(PropertyInfo property)
     {
-        var columnAttribute = property.GetCustomAttribute<CsvColumnAttribute>();
+        var columnAttribute = property.GetCustomAttribute<ColumnAttribute>();
         var ignoredByAttribute = columnAttribute?.Ignore == true;
-        var hasIgnoreMarker = property.IsDefined(typeof(CsvIgnoreAttribute), true);
+        var hasIgnoreMarker = property.IsDefined(typeof(IgnoreColumnAttribute), true);
         return ignoredByAttribute || hasIgnoreMarker;
     }
 

@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using System.Reflection;
+using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.PostgreSQL.Exceptions;
 
 namespace NPipeline.Connectors.PostgreSQL.Mapping;
@@ -18,7 +19,7 @@ internal static class PostgresMapperBuilder
             .Select(p => new
             {
                 Property = p,
-                Attribute = p.GetCustomAttribute<PostgresColumnAttribute>(),
+                Attribute = p.GetCustomAttribute<ColumnAttribute>() ?? p.GetCustomAttribute<PostgresColumnAttribute>(),
             })
             .ToList();
 
@@ -96,9 +97,10 @@ internal static class PostgresMapperBuilder
 
     private static bool IsIgnored(PropertyInfo property)
     {
-        var columnAttribute = property.GetCustomAttribute<PostgresColumnAttribute>();
-        var ignoredByAttribute = columnAttribute?.Ignore == true;
-        var hasIgnoreMarker = property.IsDefined(typeof(PostgresIgnoreAttribute), true);
+        var columnAttribute = property.GetCustomAttribute<ColumnAttribute>();
+        var postgresAttribute = property.GetCustomAttribute<PostgresColumnAttribute>();
+        var ignoredByAttribute = columnAttribute?.Ignore == true || postgresAttribute?.Ignore == true;
+        var hasIgnoreMarker = property.IsDefined(typeof(IgnoreColumnAttribute), true);
         return ignoredByAttribute || hasIgnoreMarker;
     }
 

@@ -22,6 +22,15 @@ All connectors work through the `IStorageProvider` abstraction, which enables th
   - Unified API for read, write, delete, list, and metadata operations
   - Built-in support for filesystem with resilient directory traversal
 
+### Common Attributes
+
+All connectors support common attributes from `NPipeline.Connectors.Attributes` that provide a unified way to map properties across different data sources:
+
+- **`[Column]`**: Specify column names and control property mapping
+- **`[IgnoreColumn]`**: Exclude properties from mapping
+
+These common attributes work across all connectors (CSV, Excel, PostgreSQL, etc.) and are recommended for new code. Each connector also provides connector-specific attributes for backward compatibility and advanced features. See individual connector documentation for details and examples.
+
 ## Available Connectors
 
 The following connectors are available:

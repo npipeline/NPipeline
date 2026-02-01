@@ -1,4 +1,5 @@
 using Npgsql;
+using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.Exceptions;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.Connectors.PostgreSQL.Mapping;
@@ -687,6 +688,6 @@ public record RecordWithIgnore
     public string? Name { get; init; }
     public decimal Value { get; init; }
 
-    [PostgresIgnore]
+    [IgnoreColumn]
     public string? InternalField { get; init; }
 }

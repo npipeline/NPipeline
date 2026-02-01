@@ -1,75 +1,75 @@
 using System.Globalization;
-using NPipeline.Connectors.Csv.Attributes;
+using NPipeline.Connectors.Attributes;
 
 namespace Sample_CsvConnector;
 
 /// <summary>
 ///     Represents a customer record from the CSV file.
-///     Uses CsvColumn attributes for explicit column mapping.
+///     Uses Column attributes for explicit column mapping.
 /// </summary>
 public class Customer
 {
     /// <summary>
     ///     Gets or sets the customer ID.
     /// </summary>
-    [CsvColumn("Id")]
+    [Column("Id")]
     public int Id { get; set; }
 
     /// <summary>
     ///     Gets or sets the customer's first name.
     /// </summary>
-    [CsvColumn("FirstName")]
+    [Column("FirstName")]
     public string FirstName { get; set; } = string.Empty;
 
     /// <summary>
     ///     Gets or sets the customer's last name.
     /// </summary>
-    [CsvColumn("LastName")]
+    [Column("LastName")]
     public string LastName { get; set; } = string.Empty;
 
     /// <summary>
     ///     Gets or sets the customer's email address.
     /// </summary>
-    [CsvColumn("Email")]
+    [Column("Email")]
     public string Email { get; set; } = string.Empty;
 
     /// <summary>
     ///     Gets or sets the customer's age.
     /// </summary>
-    [CsvColumn("Age")]
+    [Column("Age")]
     public int Age { get; set; }
 
     /// <summary>
     ///     Gets or sets the registration date.
     /// </summary>
-    [CsvColumn("RegistrationDate")]
+    [Column("RegistrationDate")]
     public DateTime RegistrationDate { get; set; }
 
     /// <summary>
     ///     Gets or sets the customer's country.
     /// </summary>
-    [CsvColumn("Country")]
+    [Column("Country")]
     public string Country { get; set; } = string.Empty;
 
     /// <summary>
     ///     Gets the full name of the customer.
     ///     This computed property is excluded from CSV mapping.
     /// </summary>
-    [CsvIgnore]
+    [IgnoreColumn]
     public string FullName => $"{FirstName} {LastName}";
 
     /// <summary>
     ///     Gets a value indicating whether the customer is an adult (18+).
     ///     This computed property is excluded from CSV mapping.
     /// </summary>
-    [CsvIgnore]
+    [IgnoreColumn]
     public bool IsAdult => Age >= 18;
 
     /// <summary>
     ///     Gets the age category of the customer.
     ///     This computed property is excluded from CSV mapping.
     /// </summary>
-    [CsvIgnore]
+    [IgnoreColumn]
     public string AgeCategory => Age switch
     {
         < 18 => "Minor",
@@ -83,7 +83,7 @@ public class Customer
     ///     Gets the normalized country name.
     ///     This computed property is excluded from CSV mapping.
     /// </summary>
-    [CsvIgnore]
+    [IgnoreColumn]
     public string NormalizedCountry => Country.ToUpperInvariant() switch
     {
         "USA" or "UNITED STATES" => "United States",

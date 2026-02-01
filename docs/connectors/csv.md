@@ -91,6 +91,60 @@ var source = new CsvSourceNode<User>(
 );
 ```
 
+## Common Attributes
+
+The CSV connector supports common attributes from `NPipeline.Connectors.Attributes` that work across all connectors.
+
+### `[Column]` Attribute
+
+The `[Column]` attribute (from `NPipeline.Connectors.Attributes`) is a common attribute that allows you to specify column names and control property mapping across all connectors. It provides:
+
+- **`Name`**: The column name in the data source
+- **`Ignore`**: When `true`, skips mapping this property
+
+This attribute is recommended for all scenarios where you need to specify column names or exclude properties.
+
+```csharp
+using NPipeline.Connectors.Attributes;
+
+public class Customer
+{
+    [Column("customer_id")]
+    public int Id { get; set; }
+
+    [Column("first_name")]
+    public string FirstName { get; set; } = string.Empty;
+
+    [Column("last_name")]
+    public string LastName { get; set; } = string.Empty;
+
+    [IgnoreColumn]
+    public string FullName => $"{FirstName} {LastName}";
+}
+```
+
+### `[IgnoreColumn]` Attribute
+
+The `[IgnoreColumn]` attribute (from `NPipeline.Connectors.Attributes`) is a marker attribute that excludes a property from mapping entirely. This is useful for computed properties or fields that should not be persisted.
+
+```csharp
+using NPipeline.Connectors.Attributes;
+
+public class Customer
+{
+    public int Id { get; set; }
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public int Age { get; set; }
+
+    [IgnoreColumn]
+    public string FullName => $"{FirstName} {LastName}";
+
+    [IgnoreColumn]
+    public bool IsAdult => Age >= 18;
+}
+```
+
 ## `CsvSourceNode<T>`
 
 The `CsvSourceNode<T>` reads data from a CSV file and emits each row as an item of type `T`.

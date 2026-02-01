@@ -1,13 +1,14 @@
-1,John,Doe,john.doe@example.com,28,01/15/2023 00:00:00,United States,John Doe,True,Young Adult,United States
-2,Jane,Smith,jane.smith@example.com,34,02/20/2023 00:00:00,Canada,Jane Smith,True,Adult,Canada
-3,Bob,Johnson,bob.johnson@example.com,45,03/10/2023 00:00:00,United Kingdom,Bob Johnson,True,Adult,United Kingdom
-4,Alice,Williams,alice.williams@example.com,29,04/05/2023 00:00:00,Australia,Alice Williams,True,Young Adult,Australia
-5,Charlie,Brown,charlie.brown@example.com,52,05/12/2023 00:00:00,United States,Charlie Brown,True,Middle Aged,United States
-6,Diana,Miller,diana.miller@example.com,31,06/18/2023 00:00:00,Germany,Diana Miller,True,Adult,Germany
-7,Eva,Davis,eva.davis@example.com,27,07/22/2023 00:00:00,France,Eva Davis,True,Young Adult,France
-8,Frank,Wilson,frank.wilson@example.com,38,08/30/2023 00:00:00,Canada,Frank Wilson,True,Adult,Canada
-9,Grace,Moore,grace.moore@example.com,26,09/14/2023 00:00:00,United Kingdom,Grace Moore,True,Young Adult,United Kingdom
-10,Henry,Taylor,henry.taylor@example.com,41,10/08/2023 00:00:00,United States,Henry Taylor,True,Adult,United States
-11,Invalid,Customer,invalid.customer@example.com,150,11/01/2023 00:00:00,Invalidcountry,Invalid Customer,True,Senior,Invalidcountry
-12,Young,User,young.user@example.com,16,12/15/2023 00:00:00,United States,Young User,False,Minor,United States
-13,Old,User,old.user@example.com,95,01/05/2023 00:00:00,Canada,Old User,True,Senior,Canada
+Id,FirstName,LastName,Email,Age,RegistrationDate,Country
+1,John,Doe,john.doe@example.com,28,01/15/2023 00:00:00,United States
+2,Jane,Smith,jane.smith@example.com,34,02/20/2023 00:00:00,Canada
+3,Bob,Johnson,bob.johnson@example.com,45,03/10/2023 00:00:00,United Kingdom
+4,Alice,Williams,alice.williams@example.com,29,04/05/2023 00:00:00,Australia
+5,Charlie,Brown,charlie.brown@example.com,52,05/12/2023 00:00:00,United States
+6,Diana,Miller,diana.miller@example.com,31,06/18/2023 00:00:00,Germany
+7,Eva,Davis,eva.davis@example.com,27,07/22/2023 00:00:00,France
+8,Frank,Wilson,frank.wilson@example.com,38,08/30/2023 00:00:00,Canada
+9,Grace,Moore,grace.moore@example.com,26,09/14/2023 00:00:00,United Kingdom
+10,Henry,Taylor,henry.taylor@example.com,41,10/08/2023 00:00:00,United States
+11,Invalid,Customer,invalid.customer@example.com,150,11/01/2023 00:00:00,Invalidcountry
+12,Young,User,young.user@example.com,16,12/15/2023 00:00:00,United States
+13,Old,User,old.user@example.com,95,01/05/2023 00:00:00,Canada
