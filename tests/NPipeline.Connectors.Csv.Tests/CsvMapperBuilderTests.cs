@@ -219,7 +219,7 @@ public sealed class CsvMapperBuilderTests
     private sealed class SimplePoco
     {
         public int Id { get; set; }
-        public string Name { get; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public bool IsActive { get; set; }
         public decimal Amount { get; set; }
@@ -231,7 +231,7 @@ public sealed class CsvMapperBuilderTests
         public int Id { get; set; }
 
         [Column("full_name")]
-        public string Name { get; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
         [Column("created_date")]
         public DateTime CreatedAt { get; set; }
@@ -248,12 +248,12 @@ public sealed class CsvMapperBuilderTests
         public int Id { get; set; }
 
         [IgnoreColumn]
-        public string IgnoredProperty { get; } = string.Empty;
+        public string IgnoredProperty { get; set; } = string.Empty;
 
-        public string Name { get; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
         [Column("ignored", Ignore = true)]
-        public string AlsoIgnored { get; } = string.Empty;
+        public string AlsoIgnored { get; set; } = string.Empty;
     }
 
     private sealed class PocoWithNullableTypes
@@ -268,7 +268,7 @@ public sealed class CsvMapperBuilderTests
     private sealed class PocoWithMixedCase
     {
         public int UserId { get; set; }
-        public string FullName { get; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public bool IsActive { get; set; }
     }
@@ -294,7 +294,7 @@ public sealed class CsvMapperBuilderTests
         public double DoubleValue { get; set; }
         public float FloatValue { get; set; }
         public decimal DecimalValue { get; set; }
-        public string StringValue { get; } = string.Empty;
+        public string StringValue { get; set; } = string.Empty;
         public bool BoolValue { get; set; }
         public DateTime DateTimeValue { get; set; }
         public Guid GuidValue { get; set; }
