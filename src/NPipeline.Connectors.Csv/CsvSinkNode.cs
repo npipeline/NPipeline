@@ -23,40 +23,45 @@ public sealed class CsvSinkNode<T> : SinkNode<T>
     private readonly IStorageProvider? _provider;
     private readonly IStorageResolver? _resolver;
     private readonly StorageUri _uri;
+    private readonly Action<CsvWriter, T>? _writerMapper;
 
     private CsvSinkNode(
         StorageUri uri,
         CsvConfiguration? configuration,
-        Encoding? encoding)
+        Encoding? encoding,
+        Action<CsvWriter, T>? writerMapper = null)
     {
         ArgumentNullException.ThrowIfNull(uri);
         _uri = uri;
         _csvConfiguration = configuration ?? new CsvConfiguration(CultureInfo.InvariantCulture);
         _encoding = encoding ?? new UTF8Encoding(false);
+        _writerMapper = writerMapper;
     }
 
     /// <summary>
-    ///     Construct a CSV sink node that resolves a storage provider from a resolver at execution time.
+    ///     Construct a CSV sink node that uses attribute-based mapping.
+    ///     Properties are mapped using CsvColumnAttribute or convention (PascalCase to lowercase).
     /// </summary>
     public CsvSinkNode(
         StorageUri uri,
         IStorageResolver? resolver = null,
         CsvConfiguration? configuration = null,
         Encoding? encoding = null)
-        : this(uri, configuration, encoding)
+        : this(uri, configuration, encoding, CsvWriterMapperBuilder.Build<T>())
     {
         _resolver = resolver ?? DefaultResolver.Value;
     }
 
     /// <summary>
-    ///     Construct a CSV sink node that uses a specific storage provider instance.
+    ///     Construct a CSV sink node that uses a specific storage provider with attribute-based mapping.
+    ///     Properties are mapped using CsvColumnAttribute or convention (PascalCase to lowercase).
     /// </summary>
     public CsvSinkNode(
         IStorageProvider provider,
         StorageUri uri,
         CsvConfiguration? configuration = null,
         Encoding? encoding = null)
-        : this(uri, configuration, encoding)
+        : this(uri, configuration, encoding, CsvWriterMapperBuilder.Build<T>())
     {
         ArgumentNullException.ThrowIfNull(provider);
         _provider = provider;
@@ -86,10 +91,27 @@ public sealed class CsvSinkNode<T> : SinkNode<T>
         var shouldWriteHeader = _csvConfiguration.HelperConfiguration.HasHeaderRecord
                                 && ShouldWriteHeader(type);
 
+        // For primitive types, use CsvHelper's built-in WriteRecord instead of the mapper
+        var useMapper = _writerMapper is not null && !type.IsPrimitive && type != typeof(string);
+
         if (shouldWriteHeader)
         {
-            csv.WriteHeader(type);
-            await csv.NextRecordAsync();
+            if (useMapper)
+            {
+                var columnNames = CsvWriterMapperBuilder.GetColumnNames<T>();
+
+                foreach (var columnName in columnNames)
+                {
+                    csv.WriteField(columnName);
+                }
+
+                await csv.NextRecordAsync();
+            }
+            else
+            {
+                csv.WriteHeader(type);
+                await csv.NextRecordAsync();
+            }
         }
 
         await foreach (var item in input.WithCancellation(cancellationToken))
@@ -97,7 +119,11 @@ public sealed class CsvSinkNode<T> : SinkNode<T>
             if (item is null)
                 continue;
 
-            csv.WriteRecord(item);
+            if (useMapper)
+                _writerMapper!(csv, item);
+            else
+                csv.WriteRecord(item);
+
             await csv.NextRecordAsync();
         }
 

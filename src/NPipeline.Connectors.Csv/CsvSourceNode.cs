@@ -48,6 +48,43 @@ public sealed class CsvSourceNode<T> : SourceNode<T>
     }
 
     /// <summary>
+    ///     Construct a CSV source that uses attribute-based mapping.
+    ///     Properties are mapped using CsvColumnAttribute or convention (PascalCase to lowercase).
+    /// </summary>
+    /// <param name="uri">The URI of the CSV file to read from.</param>
+    /// <param name="resolver">
+    ///     The storage resolver used to obtain the storage provider. If <c>null</c>, a default resolver
+    ///     created by <see cref="StorageProviderFactory.CreateResolver" /> is used.
+    /// </param>
+    /// <param name="configuration">Optional configuration for CSV reading. If <c>null</c>, default configuration is used.</param>
+    /// <param name="encoding">Optional text encoding. If <c>null</c>, UTF-8 without BOM is used.</param>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="uri" /> is <c>null</c>.</exception>
+    public CsvSourceNode(
+        StorageUri uri,
+        IStorageResolver? resolver = null,
+        CsvConfiguration? configuration = null,
+        Encoding? encoding = null)
+        : this(uri, configuration, encoding, CsvMapperBuilder.Build<T>())
+    {
+        _resolver = resolver;
+    }
+
+    /// <summary>
+    ///     Construct a CSV source that uses a specific storage provider with attribute-based mapping.
+    ///     Properties are mapped using CsvColumnAttribute or convention (PascalCase to lowercase).
+    /// </summary>
+    public CsvSourceNode(
+        IStorageProvider provider,
+        StorageUri uri,
+        CsvConfiguration? configuration = null,
+        Encoding? encoding = null)
+        : this(uri, configuration, encoding, CsvMapperBuilder.Build<T>())
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+        _provider = provider;
+    }
+
+    /// <summary>
     ///     Construct a CSV source that resolves a storage provider from a resolver at execution time.
     /// </summary>
     /// <param name="uri">The URI of the CSV file to read from.</param>
@@ -157,90 +194,6 @@ public sealed class CsvSourceNode<T> : SourceNode<T>
 
             if (record is not null)
                 yield return record;
-        }
-    }
-}
-
-/// <summary>
-///     Represents the current CSV row and provides typed accessors.
-/// </summary>
-/// <param name="reader">The CSV reader used to access field values.</param>
-/// <param name="headers">Header lookup map.</param>
-/// <param name="hasHeaders">Whether header records are present.</param>
-public readonly struct CsvRow(
-    CsvReader reader,
-    IReadOnlyDictionary<string, int> headers,
-    bool hasHeaders)
-{
-    private readonly CsvReader _reader = reader;
-    private readonly IReadOnlyDictionary<string, int> _headers = headers;
-    private readonly bool _hasHeaders = hasHeaders;
-
-    /// <summary>
-    ///     Try to read a field by header name and convert it to <typeparamref name="T" />.
-    /// </summary>
-    /// <param name="name">Header name.</param>
-    /// <param name="value">Converted value or <paramref name="defaultValue" />.</param>
-    /// <param name="defaultValue">Value used when the field is missing or conversion fails.</param>
-    /// <typeparam name="T">Target type.</typeparam>
-    /// <returns><c>true</c> when a value is present and converted; otherwise <c>false</c>.</returns>
-    public bool TryGet<T>(string name, out T value, T defaultValue = default!)
-    {
-        value = defaultValue!;
-
-        if (!_hasHeaders || !_headers.TryGetValue(name, out _))
-            return false;
-
-        try
-        {
-            var field = _reader.GetField<T>(name);
-
-            if (field is null)
-                return false;
-
-            value = field;
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    /// <summary>
-    ///     Read a field by header name and return a converted value or <paramref name="defaultValue" />.
-    /// </summary>
-    /// <param name="name">Header name.</param>
-    /// <param name="defaultValue">Value used when the field is missing or conversion fails.</param>
-    /// <typeparam name="T">Target type.</typeparam>
-    /// <returns>Converted value or <paramref name="defaultValue" />.</returns>
-    public T Get<T>(string name, T defaultValue = default!)
-    {
-        return TryGet(name, out var value, defaultValue)
-            ? value
-            : defaultValue;
-    }
-
-    /// <summary>
-    ///     Read a field by index and return a converted value or <paramref name="defaultValue" />.
-    /// </summary>
-    /// <param name="index">Field index.</param>
-    /// <param name="defaultValue">Value used when the field is missing or conversion fails.</param>
-    /// <typeparam name="T">Target type.</typeparam>
-    /// <returns>Converted value or <paramref name="defaultValue" />.</returns>
-    public T GetByIndex<T>(int index, T defaultValue = default!)
-    {
-        try
-        {
-            var field = _reader.GetField<T>(index);
-
-            return field is null
-                ? defaultValue
-                : field;
-        }
-        catch
-        {
-            return defaultValue;
         }
     }
 }

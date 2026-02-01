@@ -195,6 +195,249 @@ var excelSink = new ExcelSinkNode<ProcessedRecord>(
 );
 ```
 
+## Mapping
+
+### Convention-Based Mapping
+
+Properties are automatically mapped to Excel columns using lowercase conversion:
+
+```csharp
+public class Customer
+{
+    public int CustomerId,      // Maps to customerid
+    public string FirstName,     // Maps to firstname
+    public string EmailAddress    // Maps to emailaddress
+}
+```
+
+**Why convention-based mapping:** The default lowercase convention provides a simple, predictable mapping for most Excel files while avoiding the complexity of
+configuration.
+
+### Attribute-Based Mapping
+
+Override default mapping with attributes:
+
+```csharp
+using NPipeline.Connectors.Excel.Attributes;
+
+public class Customer
+{
+    [ExcelColumn("cust_id")]
+    public int Id { get; set; }
+
+    [ExcelColumn("full_name")]
+    public string Name { get; set; }
+
+    [ExcelIgnore]
+    public string TemporaryField { get; set; }
+}
+```
+
+The [`ExcelColumnAttribute`](Attributes/ExcelColumnAttribute.cs:7) allows you to:
+
+- Specify the exact Excel column name for a property
+- Override the default lowercase convention
+- Handle column names that don't follow naming conventions
+
+The [`ExcelIgnoreAttribute`](Attributes/ExcelIgnoreAttribute.cs:7) excludes properties from Excel mapping entirely.
+
+### Reading with Attribute Mapping
+
+When using [`ExcelSourceNode<T>`](ExcelSourceNode.cs) with attributes, the mapper is automatically applied:
+
+```csharp
+using NPipeline.Connectors.Excel.Attributes;
+
+public class Customer
+{
+    [ExcelColumn("CustomerID")]
+    public int Id { get; set; }
+
+    [ExcelColumn("FirstName")]
+    public string FirstName { get; set; }
+
+    [ExcelColumn("LastName")]
+    public string LastName { get; set; }
+
+    [ExcelColumn("EmailAddress")]
+    public string Email { get; set; }
+}
+
+// The mapper is built automatically using ExcelMapperBuilder<T>
+var resolver = StorageProviderFactory.CreateResolver();
+var excelSource = new ExcelSourceNode<Customer>(
+    StorageUri.FromFilePath("customers.xlsx"),
+    resolver
+);
+```
+
+**How it works:** The [`ExcelMapperBuilder<T>`](Mapping/ExcelMapperBuilder.cs:13) uses compiled expression tree delegates to map Excel rows to objects. This
+approach provides:
+
+- **Performance:** Compiled delegates are significantly faster than reflection-based mapping
+- **Type safety:** Compile-time checking of property mappings
+- **Caching:** Mappers are cached per type to avoid repeated compilation
+
+### Writing with Attribute Mapping
+
+When using [`ExcelSinkNode<T>`](ExcelSinkNode.cs) with attributes, column names are determined from attributes:
+
+```csharp
+using NPipeline.Connectors.Excel.Attributes;
+
+public class Customer
+{
+    [ExcelColumn("CustomerID")]
+    public int Id { get; set; }
+
+    [ExcelColumn("FirstName")]
+    public string FirstName { get; set; }
+
+    [ExcelColumn("LastName")]
+    public string LastName { get; set; }
+
+    [ExcelColumn("EmailAddress")]
+    public string Email { get; set; }
+
+    [ExcelIgnore]
+    public string InternalNotes { get; set; }  // Not written to Excel
+}
+
+// The writer mapper is built automatically using ExcelWriterMapperBuilder<T>
+var resolver = StorageProviderFactory.CreateResolver();
+var excelSink = new ExcelSinkNode<Customer>(
+    StorageUri.FromFilePath("output.xlsx"),
+    resolver
+);
+```
+
+The [`ExcelWriterMapperBuilder<T>`](Mapping/ExcelWriterMapperBuilder.cs:12) determines column order and names based on property order and attributes.
+
+### Advanced Scenarios
+
+#### Mixed Mapping Strategies
+
+You can combine convention-based and attribute-based mapping:
+
+```csharp
+public class Customer
+{
+    // Uses attribute mapping
+    [ExcelColumn("cust_id")]
+    public int Id { get; set; }
+
+    // Uses convention-based mapping (maps to "firstname")
+    public string FirstName { get; set; }
+
+    // Ignored from Excel
+    [ExcelIgnore]
+    public string InternalId { get; set; }
+}
+```
+
+#### Nullable Types
+
+Nullable types are handled automatically:
+
+```csharp
+public class Customer
+{
+    [ExcelColumn("customer_id")]
+    public int? Id { get; set; }
+
+    [ExcelColumn("phone_number")]
+    public string? PhoneNumber { get; set; }
+
+    [ExcelColumn("last_order_date")]
+    public DateTime? LastOrderDate { get; set; }
+}
+```
+
+When an Excel column is missing or empty, nullable properties receive `null` instead of throwing an exception.
+
+#### Case-Insensitive Matching
+
+The mapper performs case-insensitive column matching when attributes are used:
+
+```csharp
+public class Customer
+{
+    // Matches "CustomerID", "customerid", "CUSTOMERID", etc.
+    [ExcelColumn("CustomerID")]
+    public int Id { get; set; }
+}
+```
+
+This flexibility accommodates variations in Excel header casing without requiring exact matches.
+
+#### Performance Considerations
+
+The attribute mapping system uses compiled expression trees for optimal performance:
+
+| Mapping Approach       | Performance   | Use Case                                        |
+|------------------------|---------------|-------------------------------------------------|
+| Convention-based       | Fast          | Simple Excel structures                         |
+| Attribute-based        | Fast (cached) | Complex or non-standard Excel structures        |
+| Custom mapper function | Variable      | Maximum control, requires manual implementation |
+
+Mappers are cached per type using `ConcurrentDictionary<Type, Delegate>`, ensuring that compilation overhead occurs only once per type.
+
+### Complete Pipeline Example with Attributes
+
+```csharp
+using NPipeline.Connectors.Excel;
+using NPipeline.Connectors.Excel.Attributes;
+using NPipeline.Connectors;
+using NPipeline.Pipeline;
+
+public class Customer
+{
+    [ExcelColumn("CustomerID")]
+    public int Id { get; set; }
+
+    [ExcelColumn("FirstName")]
+    public string FirstName { get; set; } = string.Empty;
+
+    [ExcelColumn("LastName")]
+    public string LastName { get; set; } = string.Empty;
+
+    [ExcelColumn("EmailAddress")]
+    public string Email { get; set; } = string.Empty;
+
+    [ExcelIgnore]
+    public string InternalNotes { get; set; } = string.Empty;
+}
+
+public class ExcelProcessingPipeline : IPipelineDefinition
+{
+    public void Define(PipelineBuilder builder, PipelineContext context)
+    {
+        var resolver = StorageProviderFactory.CreateResolver();
+
+        // Source uses attribute-based mapping automatically
+        var source = builder.AddSource(
+            new ExcelSourceNode<Customer>(
+                StorageUri.FromFilePath("customers.xlsx"),
+                resolver),
+            "excel-source");
+
+        // Add transforms as needed
+        var transform = builder.AddTransform<CustomerTransform, Customer, Customer>("transform");
+
+        // Sink writes columns in attribute-defined order
+        var sink = builder.AddSink(
+            new ExcelSinkNode<Customer>(
+                StorageUri.FromFilePath("output.xlsx"),
+                resolver),
+            "excel-sink");
+
+        // Connect nodes
+        builder.Connect(source, transform);
+        builder.Connect(transform, sink);
+    }
+}
+```
+
 ## Configuration Reference
 
 ### ExcelConfiguration Properties

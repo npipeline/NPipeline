@@ -36,9 +36,9 @@ public class CsvConnectorPipeline : IPipelineDefinition
         var sourcePath = GetSourcePath();
         var targetPath = GetTargetPath();
 
-        // Create the CSV source node - reads customer data from the input file
-        // Resolver is optional; defaults to file system provider for local files
-        var sourceNode = new CsvSourceNode<Customer>(
+        // OPTION 1: Traditional approach with manual mapper function
+        // This gives you full control over the mapping logic
+        var sourceNodeManual = new CsvSourceNode<Customer>(
             StorageUri.FromFilePath(sourcePath),
             row => new Customer
             {
@@ -51,6 +51,14 @@ public class CsvConnectorPipeline : IPipelineDefinition
                 Country = row.Get("Country", string.Empty),
             });
 
+        // OPTION 2: Attribute-based mapping (recommended for most scenarios)
+        // When Customer class has CsvColumn attributes, the mapper is built automatically
+        // using CsvMapperBuilder<T> with compiled expression tree delegates for optimal performance
+        // Uncomment the line below to use attribute-based mapping instead:
+        // var sourceNode = new CsvSourceNode<Customer>(StorageUri.FromFilePath(sourcePath));
+
+        // For this sample, we use the manual mapper to demonstrate both approaches
+        var sourceNode = sourceNodeManual;
         var source = builder.AddSource(sourceNode, "csv-source");
 
         // Add validation transform to filter invalid records
@@ -60,6 +68,8 @@ public class CsvConnectorPipeline : IPipelineDefinition
         var transform = builder.AddTransform<DataTransform, Customer, Customer>("data-transform");
 
         // Create the CSV sink node - writes processed customer data to the output file
+        // With attribute-based mapping, columns are written in the order defined by attributes
+        // Computed properties marked with [CsvIgnore] are automatically excluded
         var sinkNode = new CsvSinkNode<Customer>(StorageUri.FromFilePath(targetPath));
         var sink = builder.AddSink(sinkNode, "csv-sink");
 

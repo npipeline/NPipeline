@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Reflection;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
@@ -24,7 +23,7 @@ namespace NPipeline.Connectors.Excel;
 ///         The node supports multiple constructor patterns:
 ///         <list type="bullet">
 ///             <item>
-///                 <description>Using the default <see cref="IStorageResolver" /> (recommended for simplicity)</description>
+///                 <description>Using default <see cref="IStorageResolver" /> (recommended for simplicity)</description>
 ///             </item>
 ///             <item>
 ///                 <description>Using a custom <see cref="IStorageResolver" /> for resolver-based provider resolution at execution time</description>
@@ -35,8 +34,8 @@ namespace NPipeline.Connectors.Excel;
 ///         </list>
 ///     </para>
 ///     <para>
-///         Data mapping is performed using reflection to map properties of type <typeparamref name="T" /> to Excel columns.
-///         When <see cref="ExcelConfiguration.FirstRowIsHeader" /> is <c>true</c>, property names are written as the header row.
+///         Data mapping is performed using compiled delegates to map properties of type <typeparamref name="T" /> to Excel columns.
+///         When <see cref="ExcelConfiguration.FirstRowIsHeader" /> is <c>true</c>, column names are written as header row.
 ///     </para>
 ///     <para>
 ///         <note type="important">
@@ -65,9 +64,10 @@ public sealed class ExcelSinkNode<T> : SinkNode<T>
 
     /// <summary>
     ///     Construct an Excel sink node that resolves a storage provider from a resolver at execution time.
+    ///     Uses attribute-based mapping for automatic property-to-column mapping.
     /// </summary>
-    /// <param name="uri">The URI of the Excel file to write to.</param>
-    /// <param name="resolver">The storage resolver used to obtain the storage provider. If <c>null</c>, a default resolver is used.</param>
+    /// <param name="uri">The URI of Excel file to write to.</param>
+    /// <param name="resolver">The storage resolver used to obtain storage provider. If <c>null</c>, a default resolver is used.</param>
     /// <param name="configuration">Optional configuration for Excel writing. If <c>null</c>, default configuration is used.</param>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="uri" /> is <c>null</c>.</exception>
     public ExcelSinkNode(
@@ -81,9 +81,10 @@ public sealed class ExcelSinkNode<T> : SinkNode<T>
 
     /// <summary>
     ///     Construct an Excel sink node that uses a specific storage provider instance.
+    ///     Uses attribute-based mapping for automatic property-to-column mapping.
     /// </summary>
-    /// <param name="provider">The storage provider to use for writing the Excel file.</param>
-    /// <param name="uri">The URI of the Excel file to write to.</param>
+    /// <param name="provider">The storage provider to use for writing Excel file.</param>
+    /// <param name="uri">The URI of Excel file to write to.</param>
     /// <param name="configuration">Optional configuration for Excel writing. If <c>null</c>, default configuration is used.</param>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="provider" /> or <paramref name="uri" /> is <c>null</c>.</exception>
     public ExcelSinkNode(
@@ -124,7 +125,7 @@ public sealed class ExcelSinkNode<T> : SinkNode<T>
         var targetStream = stream;
         var requiresCopyBack = !stream.CanRead || !stream.CanSeek;
 
-        // OpenXML packaging requires a readable, seekable stream. If the provider only supplies a write-only stream,
+        // OpenXML packaging requires a readable, seekable stream. If provider only supplies a write-only stream,
         // fall back to a temporary buffer and copy the result back to the original stream once complete.
         if (requiresCopyBack)
             targetStream = new MemoryStream();
@@ -144,15 +145,21 @@ public sealed class ExcelSinkNode<T> : SinkNode<T>
                 var type = typeof(T);
                 var isComplexType = type.IsClass && type != typeof(string);
 
-                var properties = isComplexType
-                    ? type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.CanRead).ToArray()
-                    : Array.Empty<PropertyInfo>();
+                var valueGetters = isComplexType
+                    ? ExcelWriterMapperBuilder.GetValueGetters<T>()
+                    : Array.Empty<Func<T, object?>>();
+
+                var columnNames = isComplexType
+                    ? ExcelWriterMapperBuilder.GetColumnNames<T>()
+                    : Array.Empty<string>();
+
+                var useMapper = isComplexType && valueGetters.Length > 0;
 
                 uint rowIndex = 1;
 
-                if (config.FirstRowIsHeader && isComplexType && properties.Length > 0)
+                if (config.FirstRowIsHeader && useMapper)
                 {
-                    WriteHeaderRow(writer, properties, rowIndex);
+                    WriteHeaderRow(writer, columnNames, rowIndex);
                     rowIndex++;
                 }
 
@@ -161,7 +168,7 @@ public sealed class ExcelSinkNode<T> : SinkNode<T>
                     if (item is null)
                         continue;
 
-                    WriteDataRow(writer, item, properties, isComplexType, rowIndex);
+                    WriteDataRow(writer, item, valueGetters, useMapper, rowIndex);
                     rowIndex++;
                 }
 
@@ -189,13 +196,13 @@ public sealed class ExcelSinkNode<T> : SinkNode<T>
         }
     }
 
-    private static void WriteHeaderRow(OpenXmlWriter writer, IReadOnlyList<PropertyInfo> properties, uint rowIndex)
+    private static void WriteHeaderRow(OpenXmlWriter writer, IReadOnlyList<string> columnNames, uint rowIndex)
     {
         writer.WriteStartElement(new Row { RowIndex = rowIndex });
 
-        for (var i = 0; i < properties.Count; i++)
+        for (var i = 0; i < columnNames.Count; i++)
         {
-            WriteInlineStringCell(writer, properties[i].Name, rowIndex, (uint)(i + 1));
+            WriteInlineStringCell(writer, columnNames[i], rowIndex, (uint)(i + 1));
         }
 
         writer.WriteEndElement();
@@ -204,17 +211,17 @@ public sealed class ExcelSinkNode<T> : SinkNode<T>
     private static void WriteDataRow(
         OpenXmlWriter writer,
         T item,
-        IReadOnlyList<PropertyInfo> properties,
-        bool isComplexType,
+        Func<T, object?>[] valueGetters,
+        bool useMapper,
         uint rowIndex)
     {
         writer.WriteStartElement(new Row { RowIndex = rowIndex });
 
-        if (isComplexType && properties.Count > 0)
+        if (useMapper)
         {
-            for (var i = 0; i < properties.Count; i++)
+            for (var i = 0; i < valueGetters.Length; i++)
             {
-                var value = properties[i].GetValue(item, null);
+                var value = valueGetters[i](item);
                 WriteCell(writer, value, rowIndex, (uint)(i + 1));
             }
         }

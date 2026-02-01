@@ -38,6 +38,207 @@ The CSV Connector sample implements a complete data processing pipeline that:
 - Pipeline-level error capture and reporting
 - Configurable error handling strategies
 
+## Attribute-Based Mapping
+
+The CSV connector supports attribute-based mapping, allowing you to control how properties map to CSV columns without writing custom mapper functions.
+
+### Without Attributes (Convention-Based)
+
+By default, properties are mapped using lowercase conversion:
+
+```csharp
+public class Customer
+{
+    public int Id { get; set; }              // Maps to "id"
+    public string FirstName { get; set; }    // Maps to "firstname"
+    public string LastName { get; set; }     // Maps to "lastname"
+    public string Email { get; set; }        // Maps to "email"
+}
+```
+
+**CSV file headers:** `id,firstname,lastname,email`
+
+### With Attributes (Explicit Mapping)
+
+Use attributes to specify exact column names or exclude properties:
+
+```csharp
+using NPipeline.Connectors.Csv.Attributes;
+
+public class Customer
+{
+    [CsvColumn("CustomerID")]
+    public int Id { get; set; }
+
+    [CsvColumn("FirstName")]
+    public string FirstName { get; set; }
+
+    [CsvColumn("LastName")]
+    public string LastName { get; set; }
+
+    [CsvColumn("EmailAddress")]
+    public string Email { get; set; }
+
+    [CsvIgnore]
+    public string InternalNotes { get; set; }  // Not written to CSV
+}
+```
+
+**CSV file headers:** `CustomerID,FirstName,LastName,EmailAddress`
+
+### Practical Use Cases
+
+#### Use Case 1: Legacy CSV Files with Non-Standard Headers
+
+When working with legacy CSV files that have non-standard column names:
+
+```csharp
+public class LegacyCustomer
+{
+    [CsvColumn("cust_id")]
+    public int Id { get; set; }
+
+    [CsvColumn("cust_first_nm")]
+    public string FirstName { get; set; }
+
+    [CsvColumn("cust_last_nm")]
+    public string LastName { get; set; }
+
+    [CsvColumn("email_addr")]
+    public string Email { get; set; }
+}
+```
+
+**Why this matters:** Legacy systems often use abbreviated or non-standard column names. Attributes allow you to maintain clean, readable property names in your
+code while mapping to the actual CSV headers.
+
+#### Use Case 2: Excluding Internal Fields
+
+Prevent internal or computed properties from being written to CSV:
+
+```csharp
+public class Customer
+{
+    [CsvColumn("CustomerID")]
+    public int Id { get; set; }
+
+    [CsvColumn("FirstName")]
+    public string FirstName { get; set; }
+
+    // Computed property - not in CSV
+    [CsvIgnore]
+    public string FullName => $"{FirstName} {LastName}";
+
+    // Internal tracking field - not in CSV
+    [CsvIgnore]
+    public string InternalId { get; set; }
+}
+```
+
+#### Use Case 3: Mixed Mapping Strategies
+
+Combine convention-based and attribute-based mapping:
+
+```csharp
+public class Customer
+{
+    // Explicit mapping for non-standard columns
+    [CsvColumn("cust_id")]
+    public int Id { get; set; }
+
+    [CsvColumn("full_name")]
+    public string Name { get; set; }
+
+    // Convention-based mapping for standard columns
+    public string Email { get; set; }        // Maps to "email"
+    public string Phone { get; set; }        // Maps to "phone"
+
+    // Excluded from CSV
+    [CsvIgnore]
+    public string InternalNotes { get; set; }
+}
+```
+
+### Performance Benefits
+
+The attribute mapping system uses compiled expression tree delegates for optimal performance:
+
+- **Caching:** Mappers are compiled once per type and cached
+- **Type safety:** Compile-time checking of property mappings
+- **No reflection overhead:** Compiled delegates are significantly faster than reflection-based mapping
+
+### Updating the Sample to Use Attributes
+
+To modify this sample to use attribute-based mapping:
+
+1. Update the `Customer` class with attributes:
+
+```csharp
+using NPipeline.Connectors.Csv.Attributes;
+
+public class Customer
+{
+    [CsvColumn("Id")]
+    public int Id { get; set; }
+
+    [CsvColumn("FirstName")]
+    public string FirstName { get; set; } = string.Empty;
+
+    [CsvColumn("LastName")]
+    public string LastName { get; set; } = string.Empty;
+
+    [CsvColumn("Email")]
+    public string Email { get; set; } = string.Empty;
+
+    [CsvColumn("Age")]
+    public int Age { get; set; }
+
+    [CsvColumn("RegistrationDate")]
+    public DateTime RegistrationDate { get; set; }
+
+    [CsvColumn("Country")]
+    public string Country { get; set; } = string.Empty;
+
+    [CsvIgnore]
+    public string InternalNotes { get; set; } = string.Empty;
+}
+```
+
+1. Simplify the pipeline definition (no need for custom mapper function):
+
+```csharp
+// Before: With custom mapper function
+var sourceNode = new CsvSourceNode<Customer>(
+    StorageUri.FromFilePath(sourcePath),
+    row => new Customer
+    {
+        Id = row.Get("Id", 0),
+        FirstName = row.Get("FirstName", string.Empty),
+        LastName = row.Get("LastName", string.Empty),
+        Email = row.Get("Email", string.Empty),
+        Age = row.Get("Age", 0),
+        RegistrationDate = row.Get("RegistrationDate", default(DateTime)),
+        Country = row.Get("Country", string.Empty),
+    });
+
+// After: With attribute-based mapping (automatic)
+var sourceNode = new CsvSourceNode<Customer>(
+    StorageUri.FromFilePath(sourcePath)
+);
+```
+
+The mapper is automatically built using [`CsvMapperBuilder<T>`](../../src/NPipeline.Connectors.Csv/Mapping/CsvMapperBuilder.cs) based on the attributes.
+
+### When to Use Attributes vs Custom Mappers
+
+| Scenario                         | Recommended Approach                                                                        |
+|----------------------------------|---------------------------------------------------------------------------------------------|
+| Simple CSV with standard headers | Convention-based (no attributes needed)                                                     |
+| CSV with non-standard headers    | [`CsvColumnAttribute`](../../src/NPipeline.Connectors.Csv/Attributes/CsvColumnAttribute.cs) |
+| Need to exclude properties       | [`CsvIgnoreAttribute`](../../src/NPipeline.Connectors.Csv/Attributes/CsvIgnoreAttribute.cs) |
+| Complex transformation logic     | Custom mapper function                                                                      |
+| Type conversion beyond defaults  | Custom mapper function                                                                      |
+
 ## Project Structure
 
 ```
@@ -59,17 +260,19 @@ Sample_CsvConnector/
 
 ### Prerequisites
 
-- .NET 8.0, 9.0, or 10.0 SDK
+- .NET 10.0 SDK
 - The NPipeline solution built
 
 ### Execution
 
 1. Navigate to the sample directory:
+
    ```bash
    cd samples/Sample_CsvConnector
    ```
 
 2. Build and run the sample:
+
    ```bash
    dotnet run
    ```

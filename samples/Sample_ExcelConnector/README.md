@@ -61,17 +61,19 @@ Sample_ExcelConnector/
 
 ### Prerequisites
 
-- .NET 8.0, 9.0, or 10.0 SDK
+- .NET 10.0 SDK
 - The NPipeline solution built
 
 ### Execution
 
 1. Navigate to the sample directory:
+
    ```bash
    cd samples/Sample_ExcelConnector
    ```
 
 2. Build and run the sample:
+
    ```bash
    dotnet run
    ```
@@ -173,6 +175,337 @@ The `DataTransform` applies these transformations:
 - **Country Normalization**: Expands abbreviations to full names (USA → United States, UK → United Kingdom)
 - **Data Trimming**: Removes whitespace from all string fields
 - **Discount Normalization**: Ensures discount is within valid bounds (0-100)
+
+## Attribute Mapping
+
+The Excel connector supports attribute-based mapping for precise control over column mappings. This feature allows you to map properties to specific Excel
+column names and exclude properties from mapping.
+
+### Convention-Based Mapping (Default)
+
+By default, properties are mapped to Excel columns using lowercase conversion:
+
+```csharp
+public class Customer
+{
+    public int Id,              // Maps to "id"
+    public string FirstName,    // Maps to "firstname"
+    public string LastName,     // Maps to "lastname"
+    public string Email         // Maps to "email"
+}
+```
+
+### Attribute-Based Mapping
+
+Use attributes to override default mappings:
+
+```csharp
+using NPipeline.Connectors.Excel.Attributes;
+
+public class Customer
+{
+    [ExcelColumn("CustomerID")]
+    public int Id { get; set; }
+
+    [ExcelColumn("First Name")]
+    public string FirstName { get; set; }
+
+    [ExcelColumn("Last Name")]
+    public string LastName { get; set; }
+
+    [ExcelColumn("Email Address")]
+    public string Email { get; set; }
+
+    [ExcelIgnore]
+    public string InternalNotes { get; set; }
+}
+```
+
+### Before and After Comparison
+
+#### Without Attributes (Convention-Based)
+
+```csharp
+// Model
+public class Customer
+{
+    public int Id { get; set; }
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+}
+
+// Pipeline usage
+var sourceNode = new ExcelSourceNode<Customer>(
+    StorageUri.FromFilePath(sourcePath),
+    row => new Customer
+    {
+        Id = row.Get("Id", 0),
+        FirstName = row.Get("FirstName", string.Empty) ?? string.Empty,
+        LastName = row.Get("LastName", string.Empty) ?? string.Empty,
+    });
+```
+
+**Excel headers must be:** `id`, `firstname`, `lastname`
+
+#### With Attributes (Attribute-Based)
+
+```csharp
+// Model with attributes
+using NPipeline.Connectors.Excel.Attributes;
+
+public class Customer
+{
+    [ExcelColumn("CustomerID")]
+    public int Id { get; set; }
+
+    [ExcelColumn("First Name")]
+    public string FirstName { get; set; }
+
+    [ExcelColumn("Last Name")]
+    public string LastName { get; set; }
+
+    [ExcelIgnore]
+    public string InternalNotes { get; set; }
+}
+
+// Pipeline usage - mapper is automatic
+var sourceNode = new ExcelSourceNode<Customer>(
+    StorageUri.FromFilePath(sourcePath),
+    StorageProviderFactory.CreateResolver()
+);
+```
+
+**Excel headers can be:** `CustomerID`, `First Name`, `Last Name` (any casing)
+
+### Practical Use Cases
+
+#### Use Case 1: Non-Standard Column Names
+
+When Excel files use column names that don't match your property naming conventions:
+
+```csharp
+public class Customer
+{
+    [ExcelColumn("CUST_ID")]
+    public int Id { get; set; }
+
+    [ExcelColumn("FNAME")]
+    public string FirstName { get; set; }
+
+    [ExcelColumn("LNAME")]
+    public string LastName { get; set; }
+}
+```
+
+#### Use Case 2: Column Names with Spaces
+
+Excel headers often contain spaces that don't match C# property names:
+
+```csharp
+public class Customer
+{
+    [ExcelColumn("Customer ID")]
+    public int Id { get; set; }
+
+    [ExcelColumn("Email Address")]
+    public string Email { get; set; }
+
+    [ExcelColumn("Account Balance")]
+    public decimal AccountBalance { get; set; }
+}
+```
+
+#### Use Case 3: Excluding Computed Properties
+
+Exclude properties that shouldn't be read from or written to Excel:
+
+```csharp
+public class Customer
+{
+    [ExcelColumn("Id")]
+    public int Id { get; set; }
+
+    [ExcelColumn("FirstName")]
+    public string FirstName { get; set; }
+
+    [ExcelColumn("LastName")]
+    public string LastName { get; set; }
+
+    // Computed property - not mapped to Excel
+    [ExcelIgnore]
+    public string FullName => $"{FirstName} {LastName}";
+}
+```
+
+#### Use Case 4: Mixed Mapping Strategies
+
+Combine convention-based and attribute-based mapping:
+
+```csharp
+public class Customer
+{
+    // Attribute mapping for non-standard columns
+    [ExcelColumn("CUST_ID")]
+    public int Id { get; set; }
+
+    // Convention mapping for standard columns
+    public string FirstName { get; set; }  // Maps to "firstname"
+    public string LastName { get; set; }   // Maps to "lastname"
+
+    // Excluded from mapping
+    [ExcelIgnore]
+    public string InternalId { get; set; }
+}
+```
+
+### Complete Example with Attributes
+
+```csharp
+using NPipeline.Connectors.Excel;
+using NPipeline.Connectors.Excel.Attributes;
+using NPipeline.Connectors;
+
+// Model with attribute mapping
+public class Customer
+{
+    [ExcelColumn("CustomerID")]
+    public int Id { get; set; }
+
+    [ExcelColumn("First Name")]
+    public string FirstName { get; set; } = string.Empty;
+
+    [ExcelColumn("Last Name")]
+    public string LastName { get; set; } = string.Empty;
+
+    [ExcelColumn("Email Address")]
+    public string Email { get; set; } = string.Empty;
+
+    [ExcelColumn("Age")]
+    public int Age { get; set; }
+
+    [ExcelColumn("Registration Date")]
+    public DateTime RegistrationDate { get; set; }
+
+    [ExcelColumn("Country")]
+    public string Country { get; set; } = string.Empty;
+
+    [ExcelColumn("Account Balance")]
+    public decimal AccountBalance { get; set; }
+
+    [ExcelColumn("Is Premium")]
+    public bool IsPremiumMember { get; set; }
+
+    [ExcelColumn("Discount %")]
+    public double DiscountPercentage { get; set; }
+
+    [ExcelColumn("Loyalty Points")]
+    public long LoyaltyPoints { get; set; }
+
+    [ExcelIgnore]
+    public string InternalNotes { get; set; } = string.Empty;
+}
+
+// Pipeline with attribute-based mapping
+public class ExcelConnectorPipeline : IPipelineDefinition
+{
+    public void Define(PipelineBuilder builder, PipelineContext context)
+    {
+        var resolver = StorageProviderFactory.CreateResolver();
+        var sourcePath = GetSourcePath();
+        var targetPath = GetTargetPath();
+
+        // Source uses attribute-based mapping automatically
+        var sourceNode = new ExcelSourceNode<Customer>(
+            StorageUri.FromFilePath(sourcePath),
+            resolver
+        );
+
+        var source = builder.AddSource(sourceNode, "excel-source");
+
+        // Add validation and transform nodes
+        var validation = builder.AddTransform<ValidationTransform, Customer, Customer>("validation-transform");
+        var transform = builder.AddTransform<DataTransform, Customer, Customer>("data-transform");
+
+        // Sink writes columns in attribute-defined order
+        var sinkNode = new ExcelSinkNode<Customer>(
+            StorageUri.FromFilePath(targetPath),
+            resolver
+        );
+
+        var sink = builder.AddSink(sinkNode, "excel-sink");
+
+        // Connect nodes
+        builder.Connect(source, validation);
+        builder.Connect(validation, transform);
+        builder.Connect(transform, sink);
+    }
+
+    private static string GetSourcePath()
+    {
+        var projectDir = FindProjectDirectory(Directory.GetCurrentDirectory());
+        return Path.Combine(projectDir, "Data", "customers.xlsx");
+    }
+
+    private static string GetTargetPath()
+    {
+        var projectDir = FindProjectDirectory(Directory.GetCurrentDirectory());
+        return Path.Combine(projectDir, "Data", "processed_customers.xlsx");
+    }
+
+    private static string FindProjectDirectory(string startDirectory)
+    {
+        var directory = new DirectoryInfo(startDirectory);
+        while (directory != null)
+        {
+            if (directory.GetFiles("*.csproj").FirstOrDefault() != null)
+                return directory.FullName;
+            directory = directory.Parent;
+        }
+        return startDirectory;
+    }
+}
+```
+
+### Advanced Features
+
+#### Case-Insensitive Matching
+
+Attribute-based mapping performs case-insensitive column matching:
+
+```csharp
+[ExcelColumn("CustomerID")]
+public int Id { get; set; }
+```
+
+This matches: `CustomerID`, `customerid`, `CUSTOMERID`, `CuStOmErId`, etc.
+
+#### Nullable Types
+
+Nullable types are handled automatically:
+
+```csharp
+public class Customer
+{
+    [ExcelColumn("customer_id")]
+    public int? Id { get; set; }
+
+    [ExcelColumn("phone_number")]
+    public string? PhoneNumber { get; set; }
+
+    [ExcelColumn("last_order_date")]
+    public DateTime? LastOrderDate { get; set; }
+}
+```
+
+When an Excel column is missing or empty, nullable properties receive `null`.
+
+#### Performance Benefits
+
+Attribute mapping uses compiled expression tree delegates for optimal performance:
+
+- **Compiled delegates** are significantly faster than reflection-based mapping
+- **Type safety** with compile-time checking of property mappings
+- **Caching** ensures mappers are compiled only once per type
 
 ## Extending the Sample
 
