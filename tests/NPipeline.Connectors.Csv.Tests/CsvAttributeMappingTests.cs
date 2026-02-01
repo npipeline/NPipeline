@@ -174,9 +174,15 @@ public sealed class CsvAttributeMappingTests
     private sealed class PocoWithMixedCase
     {
         public int UserId { get; set; }
-        public string FullName { get; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public bool IsActive { get; set; }
+
+        public string FullNameSetter
+        {
+            get => FullName;
+            set => FullName = value;
+        }
     }
 
     private sealed class PocoWithVariousTypes
