@@ -13,6 +13,11 @@ public static class CsvMapperBuilder
 {
     private static readonly ConcurrentDictionary<Type, Delegate> MapperCache = new();
 
+    /// <summary>
+    ///     Builds or retrieves a cached mapping delegate from <see cref="CsvRow" /> to type <typeparamref name="T" />.
+    /// </summary>
+    /// <typeparam name="T">The target type to map CSV rows to.</typeparam>
+    /// <returns>A delegate that maps a CSV row to an instance of type <typeparamref name="T" />.</returns>
     public static Func<CsvRow, T> Build<T>()
     {
         var type = typeof(T);

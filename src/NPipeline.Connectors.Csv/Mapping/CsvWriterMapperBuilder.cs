@@ -14,6 +14,11 @@ public static class CsvWriterMapperBuilder
     private static readonly ConcurrentDictionary<Type, Delegate> MapperCache = new();
     private static readonly ConcurrentDictionary<Type, string[]> ColumnNamesCache = new();
 
+    /// <summary>
+    ///     Builds or retrieves a cached mapping delegate from type <typeparamref name="T" /> to <see cref="CsvWriter" />.
+    /// </summary>
+    /// <typeparam name="T">The source type to map to CSV rows.</typeparam>
+    /// <returns>A delegate that writes an instance of type <typeparamref name="T" /> to a CSV row.</returns>
     public static Action<CsvWriter, T> Build<T>()
     {
         var type = typeof(T);
@@ -26,6 +31,11 @@ public static class CsvWriterMapperBuilder
         return mapper;
     }
 
+    /// <summary>
+    ///     Gets the CSV column names for properties of type <typeparamref name="T" />.
+    /// </summary>
+    /// <typeparam name="T">The type to get column names for.</typeparam>
+    /// <returns>An array of column names corresponding to the properties of type <typeparamref name="T" />.</returns>
     public static string[] GetColumnNames<T>()
     {
         var type = typeof(T);
