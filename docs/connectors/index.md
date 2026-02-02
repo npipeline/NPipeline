@@ -29,7 +29,7 @@ All connectors support common attributes from `NPipeline.Connectors.Attributes` 
 - **`[Column]`**: Specify column names and control property mapping
 - **`[IgnoreColumn]`**: Exclude properties from mapping
 
-These common attributes work across all connectors (CSV, Excel, PostgreSQL, etc.) and are recommended for new code. Each connector also provides connector-specific attributes for backward compatibility and advanced features. See individual connector documentation for details and examples.
+These common attributes work across all connectors (CSV, Excel, PostgreSQL, SQL Server, etc.) and are recommended for new code. Each connector also provides connector-specific attributes for backward compatibility and advanced features. See individual connector documentation for details and examples.
 
 ## Available Connectors
 
@@ -41,6 +41,13 @@ The following connectors are available:
   - Supports both legacy XLS (binary) and modern XLSX (Open XML) formats
   - Configurable sheet selection, header handling, and type detection
   - Works with any storage backend via the `IStorageProvider` abstraction
+- **[PostgreSQL](./postgresql.md)**: Read from and write to PostgreSQL databases.
+  - Supports streaming reads, per-row and batched writes, and in-memory checkpointing
+  - Uses Npgsql library for reliable database operations
+- **[SQL Server](./sqlserver.md)**: Read from and write to Microsoft SQL Server databases.
+  - Supports streaming reads, per-row and batched writes, and in-memory checkpointing
+  - Uses Microsoft.Data.SqlClient for reliable database operations
+  - Supports Windows Authentication and SQL Server Authentication
 
 ## General Usage Pattern
 
@@ -73,5 +80,7 @@ Explore the documentation for each specific connector to learn about its install
 
 - **[CSV Connector](csv.md)**: Learn how to read from and write to CSV files
 - **[Excel Connector](excel.md)**: Learn how to read from and write to Excel files (XLS and XLSX)
+- **[PostgreSQL Connector](postgresql.md)**: Learn how to read from and write to PostgreSQL databases
+- **[SQL Server Connector](sqlserver.md)**: Learn how to read from and write to Microsoft SQL Server databases
 - **[Common Patterns](../core-concepts/common-patterns.md)**: See connectors in practical examples
 - **[Installation](../getting-started/installation.md)**: Review installation options for connector packages
