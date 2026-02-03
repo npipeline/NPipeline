@@ -83,12 +83,6 @@ Additionally, install the Analyzer package to enable Roslyn analyzers that provi
 dotnet add package NPipeline.Analyzers
 ```
 
-For data lineage tracking and governance, install the Lineage extension:
-
-```bash
-dotnet add package NPipeline.Extensions.Lineage
-```
-
 ## Simple Example
 
 Here's a basic pipeline that processes customer orders:
@@ -155,29 +149,38 @@ await services.RunPipelineAsync<OrderPipeline>();
 
 NPipeline is modular - install only what you need.
 
-While the core NPipeline library provides a powerful foundation for streaming data pipelines, the available extensions and connectors provide enhanced opt-in
-functionality and features like data lineage tracking, observability with metrics and tracing, enhanced parallelism, simplifying testing workflows, and
-connecting to external systems with minimal friction.
+### Core Packages
 
-| Package                                              | Purpose                                                                                                                    |
-|------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| **NPipeline**                                        | Core streaming pipeline functionality (zero dependencies)                                                                  |
-| **NPipeline.Analyzers**                              | Roslyn analyzers for compile-time validation, style guidance, and developer guardrails                                     |
-| **NPipeline.Extensions.Composition**                 | Pipeline composition for treating entire pipelines as nodes within larger pipelines                                        |
-| **NPipeline.Extensions.DependencyInjection**         | Integration with Microsoft DI container                                                                                    |
-| **NPipeline.Extensions.Lineage**                     | Data lineage tracking and provenance for governance, auditing, and debugging                                               |
-| **NPipeline.Extensions.Nodes**                       | Ready-made, granular nodes for common data processing tasks (cleansing, validation, transformation, enrichment, filtering) |
-| **NPipeline.Extensions.Observability**               | Observability and telemetry support for pipeline monitoring                                                                |
-| **NPipeline.Extensions.Observability.OpenTelemetry** | OpenTelemetry integration for distributed tracing and metrics                                                              |
-| **NPipeline.Extensions.Parallelism**                 | Parallel processing with TPL Dataflow and configurable backpressure strategies                                             |
-| **NPipeline.Extensions.Testing**                     | Core testing utilities with in-memory nodes, test harness, and assertion helpers                                           |
-| **NPipeline.Extensions.Testing.FluentAssertions**    | FluentAssertions extensions for pipeline testing                                                                           |
-| **NPipeline.Extensions.Testing.AwesomeAssertions**   | AwesomeAssertions extensions for pipeline testing                                                                          |
-| **NPipeline.Connectors**                             | Core abstractions for data format/storage decoupling                                                                       |
-| **NPipeline.Connectors.Csv**                         | CSV source and sink nodes                                                                                                  |
-| **NPipeline.Connectors.Excel**                       | Excel source and sink nodes for XLS and XLSX files                                                                         |
+| Package | Purpose |
+|---------|---------|
+| **NPipeline** | Core streaming pipeline functionality (zero dependencies) |
+| **NPipeline.Analyzers** | Roslyn analyzers for compile-time validation, style guidance, and developer guardrails |
+| **NPipeline.Extensions.DependencyInjection** | Integration with Microsoft DI container |
+| **NPipeline.Extensions.Testing** | Core testing utilities with in-memory nodes, test harness, and assertion helpers |
 
-... and more to come.
+### Key Extensions
+
+| Package | Purpose |
+|---------|---------|
+| **NPipeline.Extensions.Composition** | Pipeline composition for treating entire pipelines as nodes within larger pipelines |
+| **NPipeline.Extensions.Lineage** | Data lineage tracking and provenance for governance, auditing, and debugging |
+| **NPipeline.Extensions.Nodes** | Ready-made, granular nodes for common data processing tasks (cleansing, validation, transformation, enrichment, filtering) |
+| **NPipeline.Extensions.Observability** | Observability and telemetry support for pipeline monitoring |
+| **NPipeline.Extensions.Parallelism** | Parallel processing with TPL Dataflow and configurable backpressure strategies |
+
+### Connectors
+
+| Package | Purpose |
+|---------|---------|
+| **NPipeline.Connectors** | Core abstractions for data format/storage decoupling |
+| **NPipeline.Connectors.Csv** | CSV source and sink nodes |
+| **NPipeline.Connectors.Excel** | Excel source and sink nodes for XLS and XLSX files |
+| **NPipeline.Connectors.PostgreSQL** | PostgreSQL database source and sink nodes |
+| **NPipeline.Connectors.SqlServer** | SQL Server database source and sink nodes |
+
+### Complete Package List
+
+For the complete list of all available packages including assertion library integrations (FluentAssertions, AwesomeAssertions) and OpenTelemetry support, see the [Extensions Documentation](https://www.npipeline.dev/docs/extensions) and [Connectors Documentation](https://www.npipeline.dev/docs/connectors).
 
 ## What's Next?
 
