@@ -1,4 +1,5 @@
 using NPipeline.Connectors.Configuration;
+using NPipeline.Connectors.SqlServer.Mapping;
 
 namespace NPipeline.Connectors.SqlServer.Configuration;
 
@@ -164,7 +165,7 @@ public class SqlServerConfiguration
     /// <summary>
     ///     Gets or sets a handler for row-level errors. Return true to swallow the exception.
     /// </summary>
-    public Func<Exception, Mapping.SqlServerRow?, bool>? RowErrorHandler { get; set; }
+    public Func<Exception, SqlServerRow?, bool>? RowErrorHandler { get; set; }
 
     // Mapping Options
 

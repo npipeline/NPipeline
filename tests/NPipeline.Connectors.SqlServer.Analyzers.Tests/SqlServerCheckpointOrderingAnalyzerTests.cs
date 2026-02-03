@@ -2,7 +2,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using NPipeline.Connectors.Configuration;
-using NPipeline.Connectors.SqlServer.Configuration;
 using NPipeline.Connectors.SqlServer.Nodes;
 using NPipeline.Nodes;
 
@@ -604,8 +603,8 @@ public sealed class SqlServerCheckpointOrderingAnalyzerTests
                        {
                            var source = new SqlServerSourceNode<MyRecord>(
                                "Server=localhost;Database=test",
-                               @"SELECT id, name 
-                                 FROM my_table 
+                               @"SELECT id, name
+                                 FROM my_table
                                  ORDER BY id",
                                configuration: new SqlServerConfiguration
                                {
@@ -745,7 +744,9 @@ public sealed class SqlServerCheckpointOrderingAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         var hasDiagnostic = diagnostics.Any(d => d.Id == SqlServerCheckpointOrderingAnalyzer.SqlServerCheckpointOrderingId);
-        Assert.False(hasDiagnostic, "Analyzer should not trigger when ORDER BY only appears in string literal (simple regex limitation - this is expected behavior)");
+
+        Assert.False(hasDiagnostic,
+            "Analyzer should not trigger when ORDER BY only appears in string literal (simple regex limitation - this is expected behavior)");
     }
 
     [Fact]
