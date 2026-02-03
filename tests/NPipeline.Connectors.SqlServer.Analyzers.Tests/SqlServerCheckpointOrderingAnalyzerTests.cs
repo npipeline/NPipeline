@@ -1,6 +1,5 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.SqlServer.Configuration;
@@ -41,14 +40,6 @@ public sealed class SqlServerCheckpointOrderingAnalyzerTests
                    """;
 
         var diagnostics = GetDiagnostics(code);
-
-        // Debug: print all diagnostics
-        Console.WriteLine($"Total diagnostics: {diagnostics.Count()}");
-
-        foreach (var d in diagnostics)
-        {
-            Console.WriteLine($"Diagnostic: {d.Id} - {d.GetMessage()}");
-        }
 
         var hasDiagnostic = diagnostics.Any(d => d.Id == SqlServerCheckpointOrderingAnalyzer.SqlServerCheckpointOrderingId);
         Assert.True(hasDiagnostic, "Analyzer should detect missing ORDER BY clause with checkpointing enabled");
@@ -363,14 +354,6 @@ public sealed class SqlServerCheckpointOrderingAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        // Debug: print all diagnostics
-        Console.WriteLine($"Total diagnostics: {diagnostics.Count()}");
-
-        foreach (var d in diagnostics)
-        {
-            Console.WriteLine($"Diagnostic: {d.Id} - {d.GetMessage()}");
-        }
-
         var hasDiagnostic = diagnostics.Any(d => d.Id == SqlServerCheckpointOrderingAnalyzer.SqlServerCheckpointOrderingId);
         Assert.True(hasDiagnostic, "Analyzer should detect missing ORDER BY with Offset checkpointing");
     }
@@ -491,7 +474,7 @@ public sealed class SqlServerCheckpointOrderingAnalyzerTests
                            var source = new SqlServerSourceNode<MyRecord>(
                                "Server=localhost;Database=test",
                                "SELECT id, name FROM my_table",
-                               (row) => new MyRecord { Id = row.GetInt32(0), Name = row.GetString(1) },
+                               (row) => new MyRecord { Id = row.Get<int>(0), Name = row.Get<string>(1) },
                                configuration: new SqlServerConfiguration
                                {
                                    CheckpointStrategy = CheckpointStrategy.Offset
@@ -525,7 +508,7 @@ public sealed class SqlServerCheckpointOrderingAnalyzerTests
                            var source = new SqlServerSourceNode<MyRecord>(
                                "Server=localhost;Database=test",
                                "SELECT id, name FROM my_table ORDER BY id",
-                               (row) => new MyRecord { Id = row.GetInt32(0), Name = row.GetString(1) },
+                               (row) => new MyRecord { Id = row.Get<int>(0), Name = row.Get<string>(1) },
                                configuration: new SqlServerConfiguration
                                {
                                    CheckpointStrategy = CheckpointStrategy.Offset
@@ -853,26 +836,6 @@ public sealed class SqlServerCheckpointOrderingAnalyzerTests
         var compilation = CSharpCompilation.Create("TestAssembly")
             .AddReferences(references)
             .AddSyntaxTrees(syntaxTree);
-
-        // Check for compilation errors
-        var compilationDiagnostics = compilation.GetDiagnostics();
-
-        foreach (var d in compilationDiagnostics)
-        {
-            Console.WriteLine($"Compilation: {d.Severity} {d.Id} - {d.GetMessage()} at {d.Location}");
-        }
-
-        // Debug: Check what types the semantic model can find
-        var semanticModel = compilation.GetSemanticModel(syntaxTree);
-        var objectCreations = syntaxTree.GetRoot().DescendantNodes().OfType<ObjectCreationExpressionSyntax>();
-
-        foreach (var oc in objectCreations)
-        {
-            var typeInfo = semanticModel.GetTypeInfo(oc);
-
-            Console.WriteLine(
-                $"Object creation: {oc.Type} - Type: {typeInfo.Type} - Type name: {typeInfo.Type?.Name} - Namespace: {typeInfo.Type?.ContainingNamespace}");
-        }
 
         var analyzer = new SqlServerCheckpointOrderingAnalyzer();
         var compilation2 = compilation.WithAnalyzers([analyzer]);
