@@ -41,14 +41,6 @@ public sealed class PostgresCheckpointOrderingAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        // Debug: print all diagnostics
-        Console.WriteLine($"Total diagnostics: {diagnostics.Count()}");
-
-        foreach (var d in diagnostics)
-        {
-            Console.WriteLine($"Diagnostic: {d.Id} - {d.GetMessage()}");
-        }
-
         var hasDiagnostic = diagnostics.Any(d => d.Id == PostgresCheckpointOrderingAnalyzer.PostgresCheckpointOrderingId);
         Assert.True(hasDiagnostic, "Analyzer should detect missing ORDER BY clause with checkpointing enabled");
     }
@@ -362,14 +354,6 @@ public sealed class PostgresCheckpointOrderingAnalyzerTests
 
         var diagnostics = GetDiagnostics(code);
 
-        // Debug: print all diagnostics
-        Console.WriteLine($"Total diagnostics: {diagnostics.Count()}");
-
-        foreach (var d in diagnostics)
-        {
-            Console.WriteLine($"Diagnostic: {d.Id} - {d.GetMessage()}");
-        }
-
         var hasDiagnostic = diagnostics.Any(d => d.Id == PostgresCheckpointOrderingAnalyzer.PostgresCheckpointOrderingId);
         Assert.True(hasDiagnostic, "Analyzer should detect missing ORDER BY with Offset checkpointing");
     }
@@ -436,22 +420,9 @@ public sealed class PostgresCheckpointOrderingAnalyzerTests
         // Check for compilation errors
         var compilationDiagnostics = compilation.GetDiagnostics();
 
-        foreach (var d in compilationDiagnostics)
-        {
-            Console.WriteLine($"Compilation: {d.Severity} {d.Id} - {d.GetMessage()} at {d.Location}");
-        }
-
         // Debug: Check what types the semantic model can find
         var semanticModel = compilation.GetSemanticModel(syntaxTree);
         var objectCreations = syntaxTree.GetRoot().DescendantNodes().OfType<ObjectCreationExpressionSyntax>();
-
-        foreach (var oc in objectCreations)
-        {
-            var typeInfo = semanticModel.GetTypeInfo(oc);
-
-            Console.WriteLine(
-                $"Object creation: {oc.Type} - Type: {typeInfo.Type} - Type name: {typeInfo.Type?.Name} - Namespace: {typeInfo.Type?.ContainingNamespace}");
-        }
 
         var analyzer = new PostgresCheckpointOrderingAnalyzer();
         var compilation2 = compilation.WithAnalyzers([analyzer]);

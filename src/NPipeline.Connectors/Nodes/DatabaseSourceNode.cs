@@ -75,6 +75,19 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
     protected abstract T MapRow(TReader reader);
 
     /// <summary>
+    ///     Attempts to map a database row to an object.
+    ///     Override to skip rows on errors or apply custom row-level handling.
+    /// </summary>
+    /// <param name="reader">The database reader.</param>
+    /// <param name="item">The mapped item.</param>
+    /// <returns>True when the row should be emitted; otherwise false to skip.</returns>
+    protected virtual bool TryMapRow(TReader reader, out T item)
+    {
+        item = MapRow(reader);
+        return true;
+    }
+
+    /// <summary>
     ///     Initializes the source node and returns a data pipe.
     /// </summary>
     /// <param name="context">The pipeline context.</param>
@@ -124,7 +137,8 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
         while (await reader.ReadAsync(cancellationToken))
         {
             currentRow++;
-            yield return MapRow(reader);
+            if (TryMapRow(reader, out var item))
+                yield return item;
 
             // Update checkpoint
             if (CheckpointStrategy == CheckpointStrategy.InMemory)
@@ -168,7 +182,8 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
         while (await reader.ReadAsync(cancellationToken))
         {
             currentRow++;
-            items.Add(MapRow(reader));
+            if (TryMapRow(reader, out var item))
+                items.Add(item);
 
             // Update checkpoint periodically
             if (CheckpointStrategy == CheckpointStrategy.InMemory && currentRow % 100 == 0)

@@ -153,6 +153,16 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.Postgr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.PostgreSQL.Analyzers.Tests", "tests\NPipeline.Connectors.PostgreSQL.Analyzers.Tests\NPipeline.Connectors.PostgreSQL.Analyzers.Tests.csproj", "{A327910F-C2AD-48B1-B6D6-0A89B04EE39D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.SqlServer", "src\NPipeline.Connectors.SqlServer\NPipeline.Connectors.SqlServer.csproj", "{B167552B-A80C-4339-A258-24B893AA2043}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.SqlServer.Tests", "tests\NPipeline.Connectors.SqlServer.Tests\NPipeline.Connectors.SqlServer.Tests.csproj", "{1C1DF0B2-D64A-42E4-9308-BA98CDB2110F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample_SqlServerConnector", "samples\Sample_SqlServerConnector\Sample_SqlServerConnector.csproj", "{96322DB5-222A-4FFE-A31E-32F5A044C61D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.SqlServer.Analyzers", "src\NPipeline.Connectors.SqlServer.Analyzers\NPipeline.Connectors.SqlServer.Analyzers.csproj", "{BF9A4039-C488-4B4E-B20B-7489766A7D1F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.SqlServer.Analyzers.Tests", "tests\NPipeline.Connectors.SqlServer.Analyzers.Tests\NPipeline.Connectors.SqlServer.Analyzers.Tests.csproj", "{269BF906-C843-435F-A04F-1CB340156918}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -439,6 +449,26 @@ Global
 		{A327910F-C2AD-48B1-B6D6-0A89B04EE39D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A327910F-C2AD-48B1-B6D6-0A89B04EE39D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A327910F-C2AD-48B1-B6D6-0A89B04EE39D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B167552B-A80C-4339-A258-24B893AA2043}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B167552B-A80C-4339-A258-24B893AA2043}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B167552B-A80C-4339-A258-24B893AA2043}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B167552B-A80C-4339-A258-24B893AA2043}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1C1DF0B2-D64A-42E4-9308-BA98CDB2110F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C1DF0B2-D64A-42E4-9308-BA98CDB2110F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1C1DF0B2-D64A-42E4-9308-BA98CDB2110F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1C1DF0B2-D64A-42E4-9308-BA98CDB2110F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{96322DB5-222A-4FFE-A31E-32F5A044C61D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{96322DB5-222A-4FFE-A31E-32F5A044C61D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{96322DB5-222A-4FFE-A31E-32F5A044C61D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{96322DB5-222A-4FFE-A31E-32F5A044C61D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BF9A4039-C488-4B4E-B20B-7489766A7D1F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BF9A4039-C488-4B4E-B20B-7489766A7D1F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BF9A4039-C488-4B4E-B20B-7489766A7D1F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BF9A4039-C488-4B4E-B20B-7489766A7D1F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{269BF906-C843-435F-A04F-1CB340156918}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{269BF906-C843-435F-A04F-1CB340156918}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{269BF906-C843-435F-A04F-1CB340156918}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{269BF906-C843-435F-A04F-1CB340156918}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{C539C2BB-5FF5-45B1-9D16-C8E0F2FBDD41} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
@@ -511,5 +541,10 @@ Global
 		{FDBBC760-3317-4484-94FD-33DEB1C59FF8} = {2117093A-CC66-4607-8DBC-F692E0642ADD}
 		{3C91199F-86CD-464C-9995-F079CC5140BF} = {A2046B33-9096-478D-BB1F-44671F6422A6}
 		{A327910F-C2AD-48B1-B6D6-0A89B04EE39D} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
+		{B167552B-A80C-4339-A258-24B893AA2043} = {E8263C69-F8DE-4319-B7BD-DED6BA0401B4}
+		{1C1DF0B2-D64A-42E4-9308-BA98CDB2110F} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
+		{96322DB5-222A-4FFE-A31E-32F5A044C61D} = {2117093A-CC66-4607-8DBC-F692E0642ADD}
+		{BF9A4039-C488-4B4E-B20B-7489766A7D1F} = {A2046B33-9096-478D-BB1F-44671F6422A6}
+		{269BF906-C843-435F-A04F-1CB340156918} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
 	EndGlobalSection
 EndGlobal
