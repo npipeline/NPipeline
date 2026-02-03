@@ -282,6 +282,67 @@ var configuration = new SqlServerConfiguration
 The connector tracks the last successfully processed row ID. If a transient failure occurs, processing resumes from the last checkpoint rather than restarting
 from the beginning.
 
+## Analyzers
+
+The SQL Server connector includes a companion analyzer package that provides compile-time diagnostics to help prevent common mistakes when using checkpointing.
+
+### Installation
+
+```bash
+dotnet add package NPipeline.Connectors.SqlServer.Analyzers
+```
+
+### NP9502: Checkpointing requires ORDER BY clause
+
+**Category:** Reliability  
+**Default Severity:** Warning
+
+When using checkpointing with SQL Server source nodes, the SQL query must include an `ORDER BY` clause on a unique, monotonically increasing column. This ensures consistent row ordering across checkpoint restarts. Without proper ordering, checkpointing may skip rows or process duplicates.
+
+#### Example
+
+```csharp
+// ❌ Warning: Missing ORDER BY clause
+var source = new SqlServerSourceNode<MyRecord>(
+    connectionString,
+    "SELECT id, name, created_at FROM my_table",
+    configuration: new SqlServerConfiguration
+    {
+        CheckpointStrategy = CheckpointStrategy.Offset
+    }
+);
+
+// ✅ Correct: Includes ORDER BY clause
+var source = new SqlServerSourceNode<MyRecord>(
+    connectionString,
+    "SELECT id, name, created_at FROM my_table ORDER BY id",
+    configuration: new SqlServerConfiguration
+    {
+        CheckpointStrategy = CheckpointStrategy.Offset
+    }
+);
+```
+
+#### Why This Matters
+
+Checkpointing tracks the position of processed rows to enable recovery from failures. Without a consistent `ORDER BY` clause:
+
+- **Data Loss:** Rows may be skipped during recovery
+- **Data Duplication:** Rows may be processed multiple times
+- **Inconsistent State:** Checkpoint positions become unreliable
+
+#### Recommended Ordering Columns
+
+Use a unique, monotonically increasing column such as:
+
+- `id` (primary key)
+- `created_at` (timestamp)
+- `updated_at` (timestamp)
+- `timestamp` (timestamp column)
+- Any auto-incrementing or sequential column
+
+For more details, see the [SQL Server Analyzer documentation](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Connectors.SqlServer.Analyzers/README.md).
+
 ## Error Handling
 
 ### Retry Configuration
