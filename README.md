@@ -92,7 +92,7 @@ Here's a basic pipeline that processes customer orders:
 public record Order(int Id, string Customer, decimal Amount);
 public record ProcessedOrder(int Id, string Customer, decimal Amount, decimal Tax, decimal Total);
 
-// 2. Create pipeline nodes
+// 2. Create source, transform and sink nodes
 public class OrderSource : SourceNode<Order>
 {
     public override IDataPipe<Order> Initialize(PipelineContext context, CancellationToken cancellationToken)

@@ -48,10 +48,10 @@ CodeCoverage/
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
 
-# NUnit
+# xUnit test Results
 *.VisualState.xml
 TestResult.xml
-nunit-*.xml
+xunit-*.xml
 
 # Jetbrains Rider
 .idea/
