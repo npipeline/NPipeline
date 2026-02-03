@@ -296,7 +296,42 @@ var configuration = new SqlServerConfiguration
 };
 ```
 
-### Custom Exception Handling
+### Row-Level Error Handling
+
+Handle mapping errors at the row level by providing a custom error handler:
+
+```csharp
+var configuration = new SqlServerConfiguration
+{
+    RowErrorHandler = (exception, row) =>
+    {
+        // Log the error with row context
+        logger.LogWarning(exception, "Failed to map row");
+        
+        // Return true to skip the row and continue processing
+        return true;
+    }
+};
+
+var source = new SqlServerSourceNode<Customer>(
+    connectionString,
+    "SELECT * FROM customers",
+    configuration: configuration
+);
+```
+
+Alternatively, use `ContinueOnError` for a simpler approach that skips all rows with errors:
+
+```csharp
+var configuration = new SqlServerConfiguration
+{
+    ContinueOnError = true  // Skip rows with any mapping errors
+};
+```
+
+### Connection-Level Error Handling
+
+Handle transient connection and execution errors:
 
 ```csharp
 try
@@ -305,7 +340,7 @@ try
 }
 catch (SqlException ex) when (SqlServerTransientErrorDetector.IsTransient(ex))
 {
-    // Retry operation
+    // Retry operation for transient failures
     await Task.Delay(TimeSpan.FromSeconds(5));
     await pipeline.RunAsync();
 }

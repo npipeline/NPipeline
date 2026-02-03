@@ -163,9 +163,8 @@ public class SqlServerConfiguration
 
     /// <summary>
     ///     Gets or sets a handler for row-level errors. Return true to swallow the exception.
-    ///     The row parameter will be provided as an object until SqlServerRow is implemented.
     /// </summary>
-    public Func<Exception, object?, bool>? RowErrorHandler { get; set; }
+    public Func<Exception, Mapping.SqlServerRow?, bool>? RowErrorHandler { get; set; }
 
     // Mapping Options
 

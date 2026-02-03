@@ -589,6 +589,7 @@ The `SqlServerConfiguration` class provides comprehensive options for configurin
 | `CacheMappingMetadata` | `bool` | `true` | Caches mapping metadata per type to improve performance. Disable if mapping changes at runtime. |
 | `ValidateIdentifiers` | `bool` | `true` | Validates SQL identifiers (schema, table, column names) to prevent SQL injection. |
 | `ContinueOnError` | `bool` | `false` | Continues processing when per-property mapping errors occur. Properties with errors are set to default values. |
+| `RowErrorHandler` | `Func<Exception, Mapping.SqlServerRow?, bool>?` | `null` | Custom row error handler for row-level error handling and filtering. Return `true` to skip the row, `false` to re-throw the exception. |
 | `CheckpointStrategy` | `CheckpointStrategy` | `CheckpointStrategy.None` | Strategy for checkpointing to recover from transient failures. |
 | `BatchSize` | `int` | `100` | Target batch size for batch write operations. Effective size is capped by `MaxBatchSize` and SQL Server's 2,100 parameter limit. |
 | `MaxBatchSize` | `int` | `1,000` | Maximum batch size to prevent runaway buffers. `BatchSize` is clamped to this value. |
@@ -752,6 +753,42 @@ var config = new SqlServerConfiguration
 - Execute multiple commands on a single connection simultaneously
 - Read while writing
 - Improved concurrency in complex pipelines
+
+### Row-Level Error Handling
+
+For granular control over row-level mapping errors, use the `RowErrorHandler` property to intercept exceptions and decide whether to skip rows or propagate errors:
+
+```csharp
+var config = new SqlServerConfiguration
+{
+    RowErrorHandler = (exception, row) =>
+    {
+        // Log the error with row information
+        Console.WriteLine($"Error processing row ID {row?.Get<int>("OrderId")}: {exception.Message}");
+        
+        // Return true to skip this row, false to re-throw the exception
+        return exception is FormatException; // Skip format errors, fail on others
+    }
+};
+
+var source = new SqlServerSourceNode<Order>(
+    connectionString,
+    "SELECT OrderId, CustomerId, Total, Status FROM Orders",
+    configuration: config);
+```
+
+**Key Behaviors:**
+
+- **Return `true`**: Skips the row and continues processing
+- **Return `false`**: Re-throws the exception, which may be caught by `ContinueOnError`
+- **Null row**: Occurs if the error happens before the row is fully populated
+
+This provides fine-grained control for scenarios like:
+
+- Logging problematic rows separately
+- Skipping rows with specific data issues
+- Collecting statistics on failed rows
+- Implementing custom retry logic per row
 
 ### Example: Transforming and Writing to SQL Server
 

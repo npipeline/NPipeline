@@ -233,34 +233,55 @@ public class SqlServerSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     /// <returns>The mapped object.</returns>
     protected override T MapRow(IDatabaseReader reader)
     {
-        var sqlServerReader = (SqlServerDatabaseReader)reader;
-        var dataReader = sqlServerReader.Reader;
-
-        if (_cachedRow == null || !ReferenceEquals(_cachedReader, dataReader))
-        {
-            _cachedReader = dataReader;
-            _cachedRow = new SqlServerRow(reader, _configuration.CaseInsensitiveMapping);
-        }
-
-        var row = _cachedRow;
+        var row = GetRow(reader);
 
         if (_mapper != null)
             return _mapper(row);
 
         if (_cachedMapper != null)
-        {
-            try
-            {
-                return _cachedMapper(row);
-            }
-            catch
-            {
-                if (!_continueOnError)
-                    throw;
-            }
-        }
+            return _cachedMapper(row);
 
         return MapConventionBased(row);
+    }
+
+    /// <summary>
+    ///     Attempts to map a database row to an object.
+    ///     Uses row-level error handling when configured.
+    /// </summary>
+    /// <param name="reader">The database reader.</param>
+    /// <param name="item">The mapped item.</param>
+    /// <returns>True when the row should be emitted; otherwise false.</returns>
+    protected override bool TryMapRow(IDatabaseReader reader, out T item)
+    {
+        var row = GetRow(reader);
+
+        try
+        {
+            if (_mapper != null)
+            {
+                item = _mapper(row);
+                return true;
+            }
+
+            if (_cachedMapper != null)
+            {
+                item = _cachedMapper(row);
+                return true;
+            }
+
+            item = MapConventionBased(row);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            if (_configuration.RowErrorHandler?.Invoke(ex, row) == true || _continueOnError)
+            {
+                item = default!;
+                return false;
+            }
+
+            throw;
+        }
     }
 
     /// <summary>
@@ -294,6 +315,20 @@ public class SqlServerSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
         }
 
         return instance;
+    }
+
+    private SqlServerRow GetRow(IDatabaseReader reader)
+    {
+        var sqlServerReader = (SqlServerDatabaseReader)reader;
+        var dataReader = sqlServerReader.Reader;
+
+        if (_cachedRow == null || !ReferenceEquals(_cachedReader, dataReader))
+        {
+            _cachedReader = dataReader;
+            _cachedRow = new SqlServerRow(reader, _configuration.CaseInsensitiveMapping);
+        }
+
+        return _cachedRow;
     }
 
     private static object? ConvertValue(object? value, Type targetType)
