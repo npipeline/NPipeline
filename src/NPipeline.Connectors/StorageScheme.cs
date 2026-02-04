@@ -62,6 +62,11 @@ public readonly record struct StorageScheme
     public static StorageScheme SqlServer => new("sqlserver");
 
     /// <summary>
+    ///     Gets a <see cref="StorageScheme" /> instance representing the "s3" scheme.
+    /// </summary>
+    public static StorageScheme S3 => new("s3");
+
+    /// <summary>
     ///     Attempts to parse the specified string into a <see cref="StorageScheme" /> instance.
     /// </summary>
     /// <param name="value">The string to parse.</param>
