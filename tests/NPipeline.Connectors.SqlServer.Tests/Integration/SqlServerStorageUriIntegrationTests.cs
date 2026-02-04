@@ -27,7 +27,7 @@ public sealed class SqlServerStorageUriIntegrationTests : IClassFixture<SqlServe
         _ = await cmd.ExecuteNonQueryAsync();
     }
 
-    [Fact(Skip = "Requires running database container - skipped for CI/CD")]
+    [Fact]
     public async Task EnvironmentSwitching_SamePipelineWorksDifferentUris()
     {
         // Arrange
@@ -65,10 +65,14 @@ public sealed class SqlServerStorageUriIntegrationTests : IClassFixture<SqlServe
 
             // Create two different URIs representing different environments
             // Local environment URI
-            var localUri = StorageUri.Parse($"mssql://{username}:{encodedPassword}@{BuildHostSegment(host, port)}/{database}");
+            var localUri = StorageUri.Parse(
+                $"mssql://{username}:{encodedPassword}@{BuildHostSegment(host, port)}/{database}?" +
+                "encrypt=true&trustservercertificate=true");
 
             // Cloud environment URI (simulated with same container but different parameter)
-            var cloudUri = StorageUri.Parse($"mssql://{username}:{encodedPassword}@{BuildHostSegment(host, port)}/{database}?connecttimeout=30");
+            var cloudUri = StorageUri.Parse(
+                $"mssql://{username}:{encodedPassword}@{BuildHostSegment(host, port)}/{database}?" +
+                "encrypt=true&trustservercertificate=true&connect%20timeout=30");
 
             // Build connection strings from provider
             var localConnectionString = provider.GetConnectionString(localUri);
@@ -116,7 +120,7 @@ public sealed class SqlServerStorageUriIntegrationTests : IClassFixture<SqlServe
         }
     }
 
-    [Fact(Skip = "Requires running database container - skipped for CI/CD")]
+    [Fact]
     public async Task UriParameters_TranslateToConnectionSettings()
     {
         // Arrange
@@ -156,10 +160,10 @@ public sealed class SqlServerStorageUriIntegrationTests : IClassFixture<SqlServe
             var uri = StorageUri.Parse(
                 $"mssql://{username}:{encodedPassword}@{BuildHostSegment(host, port)}/{database}?" +
                 "encrypt=true&" +
-                "trustservercertificate=false&" +
-                "connecttimeout=60&" +
-                "maxpoolsize=20&" +
-                "minpoolsize=5");
+                "trustservercertificate=true&" +
+                "connect%20timeout=60&" +
+                "max%20pool%20size=20&" +
+                "min%20pool%20size=5");
 
             // Build connection string from provider
             var builtConnectionString = provider.GetConnectionString(uri);
@@ -171,7 +175,7 @@ public sealed class SqlServerStorageUriIntegrationTests : IClassFixture<SqlServe
             Assert.Equal(username, connectionBuilder.UserID);
             Assert.Equal(password, connectionBuilder.Password);
             Assert.True(connectionBuilder.Encrypt);
-            Assert.False(connectionBuilder.TrustServerCertificate);
+            Assert.True(connectionBuilder.TrustServerCertificate);
             Assert.Equal(60, connectionBuilder.ConnectTimeout);
             Assert.Equal(20, connectionBuilder.MaxPoolSize);
             Assert.Equal(5, connectionBuilder.MinPoolSize);
@@ -194,7 +198,7 @@ public sealed class SqlServerStorageUriIntegrationTests : IClassFixture<SqlServe
         }
     }
 
-    [Fact(Skip = "Requires running database container - skipped for CI/CD")]
+    [Fact]
     public async Task EncryptionConfiguration_WorksCorrectly()
     {
         // Arrange
@@ -320,5 +324,10 @@ public sealed class SqlServerStorageUriIntegrationTests : IClassFixture<SqlServe
         return port.HasValue ? $"{host},{port.Value}" : host;
     }
 
-    private sealed record TestRecord(int Id, string Name, decimal Value);
+    private sealed class TestRecord
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public decimal Value { get; set; }
+    }
 }

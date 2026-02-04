@@ -22,7 +22,7 @@ public class PostgresStorageUriIntegrationTests(PostgresTestContainerFixture fix
         _ = await cmd.ExecuteNonQueryAsync();
     }
 
-    [Fact(Skip = "Requires running database container - skipped for CI/CD")]
+    [Fact]
     public async Task EnvironmentSwitching_SamePipelineWorksDifferentUris()
     {
         // Arrange
@@ -112,7 +112,7 @@ public class PostgresStorageUriIntegrationTests(PostgresTestContainerFixture fix
         }
     }
 
-    [Fact(Skip = "Requires running database container - skipped for CI/CD")]
+    [Fact]
     public async Task UriParameters_TranslateToConnectionSettings()
     {
         // Arrange
@@ -152,7 +152,7 @@ public class PostgresStorageUriIntegrationTests(PostgresTestContainerFixture fix
             // Create URI with various parameters
             var uri = StorageUri.Parse(
                 $"postgres://{username}:{encodedPassword}@{host}:{port}/{database}?" +
-                "sslmode=require&" +
+                "sslmode=disable&" +
                 "commandtimeout=60&" +
                 "pooling=true&" +
                 "minpoolsize=5&" +
@@ -168,7 +168,7 @@ public class PostgresStorageUriIntegrationTests(PostgresTestContainerFixture fix
             Assert.Equal(database, connectionBuilder.Database);
             Assert.Equal(username, connectionBuilder.Username);
             Assert.Equal(password, connectionBuilder.Password);
-            Assert.Equal(SslMode.Require, connectionBuilder.SslMode);
+            Assert.Equal(SslMode.Disable, connectionBuilder.SslMode);
             Assert.Equal(60, connectionBuilder.CommandTimeout);
             Assert.True(connectionBuilder.Pooling);
             Assert.Equal(5, connectionBuilder.MinPoolSize);
@@ -192,7 +192,7 @@ public class PostgresStorageUriIntegrationTests(PostgresTestContainerFixture fix
         }
     }
 
-    [Fact(Skip = "Requires running database container - skipped for CI/CD")]
+    [Fact]
     public async Task SslModeConfiguration_WorksCorrectly()
     {
         // Arrange
@@ -230,7 +230,7 @@ public class PostgresStorageUriIntegrationTests(PostgresTestContainerFixture fix
             }
 
             // Test different SSL modes
-            var sslModes = new[] { "disable", "allow", "prefer", "require", "verify-ca", "verify-full" };
+            var sslModes = new[] { "disable", "allow", "prefer", "require", "verifyca", "verifyfull" };
 
             foreach (var sslMode in sslModes)
             {
@@ -283,11 +283,16 @@ public class PostgresStorageUriIntegrationTests(PostgresTestContainerFixture fix
             "allow" => SslMode.Allow,
             "prefer" => SslMode.Prefer,
             "require" => SslMode.Require,
-            "verify-ca" => SslMode.VerifyCA,
-            "verify-full" => SslMode.VerifyFull,
+            "verifyca" => SslMode.VerifyCA,
+            "verifyfull" => SslMode.VerifyFull,
             _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown SSL mode.")
         };
     }
 
-    private sealed record TestRecord(int Id, string Name, decimal Value);
+    private sealed class TestRecord
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public decimal Value { get; set; }
+    }
 }

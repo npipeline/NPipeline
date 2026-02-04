@@ -5,7 +5,8 @@ using Xunit;
 
 namespace NPipeline.Connectors.SqlServer.Tests;
 
-public sealed class SqlServerDatabaseStorageProviderTests : IClassFixture<SqlServerTestContainerFixture>
+[Collection("SqlServer")]
+public sealed class SqlServerDatabaseStorageProviderTests
 {
     private readonly SqlServerDatabaseStorageProvider _provider;
     private readonly SqlServerTestContainerFixture _fixture;
@@ -205,7 +206,7 @@ public sealed class SqlServerDatabaseStorageProviderTests : IClassFixture<SqlSer
 
     // Integration Tests
 
-    [Fact(Skip = "Requires running SQL Server container - skipped for CI/CD")]
+    [Fact]
     public async Task GetConnectionAsync_WithValidUri_ConnectsSuccessfully()
     {
         // Arrange - Parse the fixture's connection string using SqlConnectionStringBuilder
@@ -223,7 +224,9 @@ public sealed class SqlServerDatabaseStorageProviderTests : IClassFixture<SqlSer
         // Build a URI using query parameters for credentials
         // URL-encode the password to handle special characters
         var encodedPassword = Uri.EscapeDataString(password);
-        var uri = StorageUri.Parse($"mssql://{host}:{port}/{database}?username={username}&password={encodedPassword}");
+        var uri = StorageUri.Parse(
+            $"mssql://{host}:{port}/{database}?username={username}&password={encodedPassword}" +
+            "&encrypt=true&trustservercertificate=true");
 
         // Act
         var connection = await _provider.GetConnectionAsync(uri);

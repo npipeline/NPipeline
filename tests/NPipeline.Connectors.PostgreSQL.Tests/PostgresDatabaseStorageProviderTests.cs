@@ -6,7 +6,8 @@ using Xunit;
 
 namespace NPipeline.Connectors.PostgreSQL.Tests;
 
-public sealed class PostgresDatabaseStorageProviderTests : IClassFixture<PostgresTestContainerFixture>
+[Collection("PostgresTestCollection")]
+public sealed class PostgresDatabaseStorageProviderTests
 {
     private readonly PostgresDatabaseStorageProvider _provider;
     private readonly PostgresTestContainerFixture _fixture;
