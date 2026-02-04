@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Data;
 using System.Runtime.CompilerServices;
 using Npgsql;
+using NPipeline.Connectors.Abstractions;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Nodes;
@@ -24,6 +25,13 @@ namespace NPipeline.Connectors.PostgreSQL
         private readonly string _sql;
         private readonly Func<PostgresRow, T>? _rowMapper;
         private readonly NpgsqlDataSource? _dataSource;
+        private string? _resolvedConnectionString;
+        private readonly StorageUri? _storageUri;
+        private readonly IStorageProvider? _storageProvider;
+        private readonly IStorageResolver? _storageResolver;
+        private static readonly Lazy<IStorageResolver> DefaultResolver = new(
+            () => PostgresStorageResolverFactory.CreateResolver(),
+            LazyThreadSafetyMode.ExecutionAndPublication);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PostgresSourceNode{T}"/> class.
@@ -56,6 +64,62 @@ namespace NPipeline.Connectors.PostgreSQL
             _dataSource = dataSource ?? throw new ArgumentNullException(nameof(dataSource));
             _rowMapper = rowMapper;
             _configuration = new PostgresConfiguration(); // Default config if none provided with data source
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PostgresSourceNode{T}"/> class using a <see cref="StorageUri"/>.
+        /// </summary>
+        /// <param name="uri">The storage URI containing PostgreSQL connection information.</param>
+        /// <param name="query">The SQL query to execute.</param>
+        /// <param name="resolver">
+        /// The storage resolver used to obtain the storage provider. If <c>null</c>, a default resolver
+        /// created by <see cref="PostgresStorageResolverFactory.CreateResolver" /> is used.
+        /// </param>
+        /// <param name="rowMapper">The optional custom row mapper.</param>
+        /// <param name="configuration">Optional configuration. If <c>null</c>, default configuration is used.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="uri" /> is <c>null</c>.</exception>
+        public PostgresSourceNode(
+            StorageUri uri,
+            string query,
+            IStorageResolver? resolver = null,
+            Func<PostgresRow, T>? rowMapper = null,
+            PostgresConfiguration? configuration = null)
+        {
+            ArgumentNullException.ThrowIfNull(uri);
+            ArgumentNullException.ThrowIfNull(query);
+
+            _storageUri = uri;
+            _storageResolver = resolver;
+            _rowMapper = rowMapper;
+            _sql = query;
+            _configuration = configuration ?? new PostgresConfiguration();
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PostgresSourceNode{T}"/> class using a specific storage provider.
+        /// </summary>
+        /// <param name="provider">The storage provider.</param>
+        /// <param name="uri">The storage URI containing PostgreSQL connection information.</param>
+        /// <param name="query">The SQL query to execute.</param>
+        /// <param name="rowMapper">The optional custom row mapper.</param>
+        /// <param name="configuration">Optional configuration. If <c>null</c>, default configuration is used.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="provider" /> or <paramref name="uri" /> is <c>null</c>.</exception>
+        public PostgresSourceNode(
+            IStorageProvider provider,
+            StorageUri uri,
+            string query,
+            Func<PostgresRow, T>? rowMapper = null,
+            PostgresConfiguration? configuration = null)
+        {
+            ArgumentNullException.ThrowIfNull(provider);
+            ArgumentNullException.ThrowIfNull(uri);
+            ArgumentNullException.ThrowIfNull(query);
+
+            _storageProvider = provider;
+            _storageUri = uri;
+            _rowMapper = rowMapper;
+            _sql = query;
+            _configuration = configuration ?? new PostgresConfiguration();
         }
 
         /// <inheritdoc />
@@ -200,14 +264,16 @@ namespace NPipeline.Connectors.PostgreSQL
 
         private NpgsqlDataSource CreateDataSource()
         {
-            if (string.IsNullOrWhiteSpace(_configuration.ConnectionString))
+            var connectionString = ResolveConnectionString();
+
+            if (string.IsNullOrWhiteSpace(connectionString))
             {
-                throw new PostgresConnectionException("Connection string is required when no data source is provided.", _configuration.ConnectionString);
+                throw new PostgresConnectionException("Connection string is required when no data source is provided.", connectionString ?? string.Empty);
             }
 
             try
             {
-                var builder = new NpgsqlConnectionStringBuilder(_configuration.ConnectionString)
+                var builder = new NpgsqlConnectionStringBuilder(connectionString)
                 {
                     CommandTimeout = _configuration.CommandTimeout,
                     Timeout = _configuration.ConnectionTimeout,
@@ -229,8 +295,39 @@ namespace NPipeline.Connectors.PostgreSQL
             }
             catch (Exception ex)
             {
-                throw new PostgresConnectionException("Failed to create PostgreSQL data source.", _configuration.ConnectionString, ex);
+                throw new PostgresConnectionException("Failed to create PostgreSQL data source.", connectionString ?? string.Empty, ex);
             }
+        }
+
+        private string ResolveConnectionString()
+        {
+            if (!string.IsNullOrWhiteSpace(_resolvedConnectionString))
+            {
+                return _resolvedConnectionString;
+            }
+
+            if (!string.IsNullOrWhiteSpace(_configuration.ConnectionString))
+            {
+                _resolvedConnectionString = _configuration.ConnectionString;
+                return _resolvedConnectionString;
+            }
+
+            if (_storageUri != null)
+            {
+                var provider = _storageProvider ?? StorageProviderFactory.GetProviderOrThrow(
+                    _storageResolver ?? DefaultResolver.Value,
+                    _storageUri);
+
+                if (provider is not IDatabaseStorageProvider databaseProvider)
+                {
+                    throw new InvalidOperationException($"Storage provider must implement {nameof(IDatabaseStorageProvider)} to use StorageUri.");
+                }
+
+                _resolvedConnectionString = databaseProvider.GetConnectionString(_storageUri);
+                return _resolvedConnectionString;
+            }
+
+            return string.Empty;
         }
     }
 }

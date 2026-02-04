@@ -70,6 +70,62 @@ var pipeline = new PipelineBuilder()
 await pipeline.RunAsync();
 ```
 
+## Using StorageUri for Environment-Aware Configuration
+
+The SQL Server connector supports URI-based configuration through `StorageUri`, enabling seamless environment switching without code changes.
+
+### Basic Usage
+
+```csharp
+using NPipeline.Connectors;
+using NPipeline.Connectors.SqlServer;
+
+var uri = StorageUri.Parse("mssql://localhost:1433/mydb?username=sa&password=password");
+var source = new SqlServerSourceNode<Customer>(uri, "SELECT * FROM customers");
+
+var sink = new SqlServerSinkNode<Customer>(uri, "customers");
+```
+
+### Environment Switching Example
+
+```csharp
+// Development (local database)
+var devUri = StorageUri.Parse("mssql://localhost:1433/mydb?username=sa&password=devpass");
+
+// Production (Azure SQL)
+var prodUri = StorageUri.Parse("mssql://myserver.database.windows.net:1433/mydb?username=produser&password=${DB_PASSWORD}");
+
+// Same pipeline code works in both environments
+var uri = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production" ? prodUri : devUri;
+var source = new SqlServerSourceNode<Customer>(uri, "SELECT * FROM customers");
+```
+
+### URI Parameters
+
+Supported query parameters for SQL Server URIs:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `username` | string | Database username |
+| `password` | string | Database password |
+| `encrypt` | bool | Enable encryption (`true`/`false`) |
+| `trustServerCertificate` | bool | Trust server certificate (`true`/`false`) |
+| `timeout` | int | Connection timeout in seconds |
+
+### Using the Resolver Factory
+
+```csharp
+using NPipeline.Connectors.Abstractions;
+using NPipeline.Connectors.SqlServer;
+
+var resolver = SqlServerStorageResolverFactory.CreateResolver();
+var uri = StorageUri.Parse("mssql://localhost:1433/mydb?username=sa&password=password");
+
+// Provider is resolved automatically
+var provider = resolver.ResolveProvider(uri);
+var connectionString = ((IDatabaseStorageProvider)provider).GetConnectionString(uri);
+```
+
 ## Key Features
 
 - **Streaming reads** - Process large result sets with minimal memory usage

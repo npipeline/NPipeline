@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using NPipeline.Connectors;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.Connectors.PostgreSQL.Nodes;
 using WriteStrategy = NPipeline.Connectors.PostgreSQL.Configuration.PostgresWriteStrategy;
@@ -101,6 +102,35 @@ public class PostgresSinkNodeTests
 
         // Act & Assert
         _ = Assert.Throws<ArgumentException>(() => new PostgresSinkNode<TestRecord>(connectionString, tableName, schema: schema, configuration: configuration));
+    }
+
+    [Fact]
+    public void Constructor_WithStorageUri_CreatesNode()
+    {
+        // Arrange
+        var uri = StorageUri.Parse("postgres://localhost:5432/testdb");
+        var tableName = "test_table";
+
+        // Act
+        var node = new PostgresSinkNode<TestRecord>(uri, tableName);
+
+        // Assert
+        _ = node.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Constructor_WithStorageUriAndResolver_CreatesNode()
+    {
+        // Arrange
+        var uri = StorageUri.Parse("postgres://localhost:5432/testdb");
+        var tableName = "test_table";
+        var resolver = PostgresStorageResolverFactory.CreateResolver();
+
+        // Act
+        var node = new PostgresSinkNode<TestRecord>(uri, tableName, resolver: resolver);
+
+        // Assert
+        _ = node.Should().NotBeNull();
     }
 
     public class TestRecord

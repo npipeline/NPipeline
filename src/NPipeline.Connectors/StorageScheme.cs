@@ -42,6 +42,26 @@ public readonly record struct StorageScheme
     public static StorageScheme File => new("file");
 
     /// <summary>
+    ///     Gets a <see cref="StorageScheme" /> instance representing the "postgres" scheme.
+    /// </summary>
+    public static StorageScheme Postgres => new("postgres");
+
+    /// <summary>
+    ///     Gets a <see cref="StorageScheme" /> instance representing the "postgresql" scheme.
+    /// </summary>
+    public static StorageScheme Postgresql => new("postgresql");
+
+    /// <summary>
+    ///     Gets a <see cref="StorageScheme" /> instance representing the "mssql" scheme.
+    /// </summary>
+    public static StorageScheme Mssql => new("mssql");
+
+    /// <summary>
+    ///     Gets a <see cref="StorageScheme" /> instance representing the "sqlserver" scheme.
+    /// </summary>
+    public static StorageScheme SqlServer => new("sqlserver");
+
+    /// <summary>
     ///     Attempts to parse the specified string into a <see cref="StorageScheme" /> instance.
     /// </summary>
     /// <param name="value">The string to parse.</param>

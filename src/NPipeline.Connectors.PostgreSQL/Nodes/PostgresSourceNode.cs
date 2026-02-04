@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
-using Npgsql;
 using NPipeline.Connectors.Abstractions;
 using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.Configuration;
@@ -10,6 +9,7 @@ using NPipeline.Connectors.Nodes;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.Connectors.PostgreSQL.Connection;
 using NPipeline.Connectors.PostgreSQL.Mapping;
+using Npgsql;
 
 namespace NPipeline.Connectors.PostgreSQL.Nodes;
 
@@ -27,11 +27,17 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
 
     private readonly PostgresConfiguration _configuration;
     private readonly string? _connectionName;
-    private readonly IPostgresConnectionPool _connectionPool;
+    private readonly IPostgresConnectionPool? _connectionPool;
     private readonly bool _continueOnError;
     private readonly Func<PostgresRow, T>? _mapper;
     private readonly DatabaseParameter[] _parameters;
     private readonly string _query;
+    private readonly StorageUri? _storageUri;
+    private readonly IStorageProvider? _storageProvider;
+    private readonly IStorageResolver? _storageResolver;
+    private static readonly Lazy<IStorageResolver> DefaultResolver = new(
+        () => PostgresStorageResolverFactory.CreateResolver(),
+        LazyThreadSafetyMode.ExecutionAndPublication);
     private NpgsqlDataReader? _cachedReader;
     private PostgresRow? _cachedRow;
 
@@ -53,10 +59,14 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
         bool continueOnError = false)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
+        {
             throw new ArgumentNullException(nameof(connectionString));
+        }
 
         if (string.IsNullOrWhiteSpace(query))
+        {
             throw new ArgumentNullException(nameof(query));
+        }
 
         _configuration = configuration ?? new PostgresConfiguration();
         _configuration.Validate();
@@ -91,7 +101,9 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
         ArgumentNullException.ThrowIfNull(connectionPool);
 
         if (string.IsNullOrWhiteSpace(query))
+        {
             throw new ArgumentNullException(nameof(query));
+        }
 
         _configuration = configuration ?? new PostgresConfiguration();
         _configuration.Validate();
@@ -105,6 +117,80 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
             ? null
             : connectionName;
 
+        _cachedMapper = ResolveDefaultMapper(mapper, _configuration, _continueOnError);
+    }
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="PostgresSourceNode{T}" /> class using a <see cref="StorageUri"/>.
+    /// </summary>
+    /// <param name="uri">The storage URI containing PostgreSQL connection information.</param>
+    /// <param name="query">The SQL query.</param>
+    /// <param name="resolver">
+    /// The storage resolver used to obtain storage provider. If <c>null</c>, a default resolver
+    /// created by <see cref="PostgresStorageResolverFactory.CreateResolver" /> is used.
+    /// </param>
+    /// <param name="mapper">Optional custom mapper function.</param>
+    /// <param name="configuration">Optional configuration.</param>
+    /// <param name="parameters">Optional query parameters.</param>
+    /// <param name="continueOnError">Whether to continue on row-level errors.</param>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="uri" /> is <c>null</c>.</exception>
+    public PostgresSourceNode(
+        StorageUri uri,
+        string query,
+        IStorageResolver? resolver = null,
+        Func<PostgresRow, T>? mapper = null,
+        PostgresConfiguration? configuration = null,
+        DatabaseParameter[]? parameters = null,
+        bool continueOnError = false)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+        ArgumentNullException.ThrowIfNull(query);
+
+        _storageUri = uri;
+        _storageResolver = resolver;
+        _mapper = mapper;
+        _query = query;
+        _parameters = parameters ?? [];
+        _configuration = configuration ?? new PostgresConfiguration();
+        _configuration.Validate();
+        _continueOnError = continueOnError || _configuration.ContinueOnError || !_configuration.ThrowOnMappingError;
+        _connectionName = null;
+        _cachedMapper = ResolveDefaultMapper(mapper, _configuration, _continueOnError);
+    }
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="PostgresSourceNode{T}" /> class using a specific storage provider.
+    /// </summary>
+    /// <param name="provider">The storage provider.</param>
+    /// <param name="uri">The storage URI containing PostgreSQL connection information.</param>
+    /// <param name="query">The SQL query.</param>
+    /// <param name="mapper">Optional custom mapper function.</param>
+    /// <param name="configuration">Optional configuration.</param>
+    /// <param name="parameters">Optional query parameters.</param>
+    /// <param name="continueOnError">Whether to continue on row-level errors.</param>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="provider" /> or <paramref name="uri" /> is <c>null</c>.</exception>
+    public PostgresSourceNode(
+        IStorageProvider provider,
+        StorageUri uri,
+        string query,
+        Func<PostgresRow, T>? mapper = null,
+        PostgresConfiguration? configuration = null,
+        DatabaseParameter[]? parameters = null,
+        bool continueOnError = false)
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+        ArgumentNullException.ThrowIfNull(uri);
+        ArgumentNullException.ThrowIfNull(query);
+
+        _storageProvider = provider;
+        _storageUri = uri;
+        _mapper = mapper;
+        _query = query;
+        _parameters = parameters ?? [];
+        _configuration = configuration ?? new PostgresConfiguration();
+        _configuration.Validate();
+        _continueOnError = continueOnError || _configuration.ContinueOnError || !_configuration.ThrowOnMappingError;
+        _connectionName = null;
         _cachedMapper = ResolveDefaultMapper(mapper, _configuration, _continueOnError);
     }
 
@@ -135,9 +221,25 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     /// <returns>A task representing the asynchronous operation.</returns>
     protected override async Task<IDatabaseConnection> GetConnectionAsync(CancellationToken cancellationToken)
     {
+        // If using StorageUri-based construction, get connection from database storage provider
+        if (_storageUri != null)
+        {
+            var provider = _storageProvider ?? StorageProviderFactory.GetProviderOrThrow(
+                _storageResolver ?? DefaultResolver.Value,
+                _storageUri);
+
+            if (provider is IDatabaseStorageProvider databaseProvider)
+            {
+                return await databaseProvider.GetConnectionAsync(_storageUri, cancellationToken);
+            }
+
+            throw new InvalidOperationException($"Storage provider must implement {nameof(IDatabaseStorageProvider)} to use StorageUri.");
+        }
+
+        // Original connection pool logic
         var connection = _connectionName is { Length: > 0 }
-            ? await _connectionPool.GetConnectionAsync(_connectionName, cancellationToken)
-            : await _connectionPool.GetConnectionAsync(cancellationToken);
+            ? await _connectionPool!.GetConnectionAsync(_connectionName, cancellationToken)
+            : await _connectionPool!.GetConnectionAsync(cancellationToken);
 
         return new PostgresDatabaseConnection(connection);
     }
@@ -184,7 +286,9 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
         var row = _cachedRow;
 
         if (_mapper != null)
+        {
             return _mapper(row);
+        }
 
         if (_cachedMapper != null)
         {
@@ -195,7 +299,9 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
             catch
             {
                 if (!_continueOnError)
+                {
                     throw;
+                }
             }
         }
 
@@ -222,13 +328,17 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
                     var convertedValue = ConvertValue(value, binding.PropertyType);
 
                     if (convertedValue != null || binding.PropertyType.IsClass || Nullable.GetUnderlyingType(binding.PropertyType) != null)
+                    {
                         binding.Setter(instance, convertedValue);
+                    }
                 }
             }
             catch
             {
                 if (!_continueOnError)
+                {
                     throw;
+                }
             }
         }
 
@@ -250,7 +360,9 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     private static object? ConvertValue(object? value, Type targetType)
     {
         if (value is null)
+        {
             return null;
+        }
 
         var underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
 
@@ -292,7 +404,9 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     private static Func<T> BuildCreateInstanceDelegate()
     {
         if (typeof(T).IsValueType)
+        {
             return Expression.Lambda<Func<T>>(Expression.Default(typeof(T))).Compile();
+        }
 
         var ctor = typeof(T).GetConstructor(Type.EmptyTypes)
                    ?? throw new InvalidOperationException($"Type '{typeof(T).FullName}' does not have a parameterless constructor");
@@ -315,7 +429,9 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
         bool continueOnError)
     {
         if (mapper != null || continueOnError)
+        {
             return mapper;
+        }
 
         return configuration.CacheMappingMetadata
             ? MapperCache.GetOrAdd(typeof(T), _ => PostgresMapperBuilder.Build<T>())

@@ -13,7 +13,7 @@ public sealed record StorageUri
     private static readonly StringComparer KeyComparer = StringComparer.OrdinalIgnoreCase;
 
     [SetsRequiredMembers]
-    private StorageUri(StorageScheme scheme, string? host, string path, IReadOnlyDictionary<string, string>? parameters = null)
+    private StorageUri(StorageScheme scheme, string? host, string path, int? port, string? userInfo, IReadOnlyDictionary<string, string>? parameters = null)
     {
         Scheme = scheme;
 
@@ -22,6 +22,9 @@ public sealed record StorageUri
             : host;
 
         Path = NormalizePath(path);
+
+        Port = port;
+        UserInfo = userInfo;
 
         Parameters = parameters is null
             ? new Dictionary<string, string>(KeyComparer)
@@ -36,6 +39,12 @@ public sealed record StorageUri
 
     /// <summary>Normalized, absolute-style path beginning with '/'.</summary>
     public required string Path { get; init; }
+
+    /// <summary>Optional port number (e.g., 5432 for PostgreSQL, 1433 for SQL Server).</summary>
+    public int? Port { get; init; }
+
+    /// <summary>Optional user information (e.g., "username:password").</summary>
+    public string? UserInfo { get; init; }
 
     /// <summary>Query parameters providing additional configuration.</summary>
     public IReadOnlyDictionary<string, string> Parameters { get; init; } =
@@ -77,7 +86,15 @@ public sealed record StorageUri
             var path = NormalizePath(uri.AbsolutePath);
             var parameters = ParseQuery(uri.Query);
 
-            result = new StorageUri(scheme, host, path, parameters);
+            // Extract port from URI (Uri.Port returns -1 if not specified)
+            int? port = uri.Port > 0 ? uri.Port : null;
+
+            // Extract user info from URI
+            string? userInfo = string.IsNullOrWhiteSpace(uri.UserInfo)
+                ? null
+                : Uri.UnescapeDataString(uri.UserInfo);
+
+            result = new StorageUri(scheme, host, path, port, userInfo, parameters);
             return true;
         }
 
@@ -109,18 +126,45 @@ public sealed record StorageUri
 
         // For UNC paths (\\server\share\path), GetFullPath preserves backslashes.
         // NormalizePath will convert to "/server/share/path". No host distinction is required for file scheme.
-        return new StorageUri(StorageScheme.File, null, normalized);
+        return new StorageUri(StorageScheme.File, null, normalized, null, null);
     }
 
     /// <summary>Returns a URI-like string representation including query parameters.</summary>
     public override string ToString()
     {
-        var authority = Host is { Length: > 0 }
-            ? $"//{Host}"
-            : "//";
-
+        var authority = BuildAuthority();
         var query = SerializeQuery(Parameters);
         return $"{Scheme}:{authority}{Path}{query}";
+    }
+
+    private string BuildAuthority()
+    {
+        var parts = new List<string>();
+
+        // Add user info if present
+        if (!string.IsNullOrWhiteSpace(UserInfo))
+        {
+            parts.Add(Uri.EscapeDataString(UserInfo));
+            parts.Add("@");
+        }
+
+        // Add host
+        if (Host is { Length: > 0 })
+        {
+            parts.Add(Host);
+        }
+        else
+        {
+            parts.Add(string.Empty);
+        }
+
+        // Add port if present
+        if (Port.HasValue)
+        {
+            parts.Add($":{Port.Value}");
+        }
+
+        return "//" + string.Join(string.Empty, parts);
     }
 
     private static string NormalizePath(string path)

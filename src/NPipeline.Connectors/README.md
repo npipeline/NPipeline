@@ -387,6 +387,52 @@ services.AddDatabaseOptions(options =>
 services.AddDatabaseOptions<MyDatabaseOptions>("Database");
 ```
 
+## Database Storage Providers
+
+NPipeline.Connectors ecosystem includes database storage providers that enable environment-aware configuration through URI-based connections. This approach allows seamless switching between local development databases and cloud-hosted databases (e.g., AWS RDS, Azure SQL) by simply changing a URI.
+
+### PostgreSQL URI Format
+
+```
+postgres://user:pass@host:port/database?sslmode=require
+```
+
+### SQL Server URI Format
+
+```
+mssql://user:pass@host:port/database?encrypt=true
+```
+
+### Environment Switching Example
+
+```csharp
+// Development environment
+var devUri = StorageUri.Parse("postgres://localhost:5432/mydb?username=postgres&password=devpass");
+
+// Production environment (AWS RDS)
+var prodUri = StorageUri.Parse("postgres://mydb.prod.ap-southeast-2.rds.amazonaws.com:5432/mydb?username=produser&password=${DB_PASSWORD}");
+
+// Same pipeline code works in both environments
+var source = new PostgresSourceNode<Customer>(uri: devUri, query: "SELECT * FROM customers");
+
+// Switch to production by changing the URI
+var prodSource = new PostgresSourceNode<Customer>(uri: prodUri, query: "SELECT * FROM customers");
+```
+
+### Benefits
+
+- **Environment-Aware Configuration**: Store database URIs in configuration files (appsettings.json, environment variables)
+- **Easy Switching**: Change environments without code modifications
+- **Unified API**: Consistent interface across different database systems
+- **Secure Credential Management**: Use environment variable expansion for passwords
+
+### Connector-Specific Documentation
+
+For detailed URI parameters and usage examples specific to each database connector, see:
+
+- [PostgreSQL Connector README](../NPipeline.Connectors.PostgreSQL/README.md)
+- [SQL Server Connector README](../NPipeline.Connectors.SqlServer/README.md)
+
 ## Supported Storage Schemes
 
 NPipeline.Connectors supports an extensible set of storage schemes through its provider architecture:
@@ -394,9 +440,9 @@ NPipeline.Connectors supports an extensible set of storage schemes through its p
 ### Built-in Schemes
 
 - **file** - Local file system access (Windows, Linux, macOS)
-    - Supports absolute paths: `file:///C:/data/input.csv`
-    - Supports relative paths: `file://./data/input.csv`
-    - Supports UNC paths: `file://server/share/data/input.csv`
+  - Supports absolute paths: `file:///C:/data/input.csv`
+  - Supports relative paths: `file://./data/input.csv`
+  - Supports UNC paths: `file://server/share/data/input.csv`
 
 ### Extensible Scheme Support
 

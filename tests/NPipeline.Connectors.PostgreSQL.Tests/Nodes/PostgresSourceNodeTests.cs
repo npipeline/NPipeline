@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using FakeItEasy;
+using NPipeline.Connectors;
 using NPipeline.Connectors.Exceptions;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.Connectors.PostgreSQL.Connection;
@@ -119,6 +120,35 @@ public class PostgresSourceNodeTests
 
         // Act
         var node = new PostgresSourceNode<TestRecord>(connectionPool, query, connectionName: connectionName);
+
+        // Assert
+        _ = node.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Constructor_WithStorageUri_CreatesNode()
+    {
+        // Arrange
+        var uri = StorageUri.Parse("postgres://localhost:5432/testdb");
+        const string query = "SELECT * FROM test_table";
+
+        // Act
+        var node = new PostgresSourceNode<TestRecord>(uri, query);
+
+        // Assert
+        _ = node.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Constructor_WithStorageUriAndResolver_CreatesNode()
+    {
+        // Arrange
+        var uri = StorageUri.Parse("postgres://localhost:5432/testdb");
+        const string query = "SELECT * FROM test_table";
+        var resolver = PostgresStorageResolverFactory.CreateResolver();
+
+        // Act
+        var node = new PostgresSourceNode<TestRecord>(uri, query, resolver);
 
         // Assert
         _ = node.Should().NotBeNull();

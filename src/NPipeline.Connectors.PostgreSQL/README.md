@@ -62,6 +62,62 @@ var pipeline = new PipelineBuilder()
 await pipeline.RunAsync();
 ```
 
+## Using StorageUri for Environment-Aware Configuration
+
+The PostgreSQL connector supports URI-based configuration through `StorageUri`, enabling seamless environment switching without code changes.
+
+### Basic Usage
+
+```csharp
+using NPipeline.Connectors;
+using NPipeline.Connectors.PostgreSQL;
+
+var uri = StorageUri.Parse("postgres://localhost:5432/mydb?username=postgres&password=password");
+var source = new PostgresSourceNode<Customer>(uri, "SELECT * FROM customers");
+
+var sink = new PostgresSinkNode<Customer>(uri, "customers");
+```
+
+### Environment Switching Example
+
+```csharp
+// Development (local database)
+var devUri = StorageUri.Parse("postgres://localhost:5432/mydb?username=postgres&password=devpass");
+
+// Production (AWS RDS)
+var prodUri = StorageUri.Parse("postgres://mydb.prod.ap-southeast-2.rds.amazonaws.com:5432/mydb?username=produser&password=${DB_PASSWORD}");
+
+// Same pipeline code works in both environments
+var uri = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production" ? prodUri : devUri;
+var source = new PostgresSourceNode<Customer>(uri, "SELECT * FROM customers");
+```
+
+### URI Parameters
+
+Supported query parameters for PostgreSQL URIs:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `username` | string | Database username |
+| `password` | string | Database password |
+| `sslmode` | string | SSL mode: `disable`, `allow`, `prefer`, `require`, `verify-ca`, `verify-full` |
+| `timeout` | int | Connection timeout in seconds |
+| `pooling` | bool | Enable connection pooling (`true`/`false`) |
+
+### Using the Resolver Factory
+
+```csharp
+using NPipeline.Connectors.Abstractions;
+using NPipeline.Connectors.PostgreSQL;
+
+var resolver = PostgresStorageResolverFactory.CreateResolver();
+var uri = StorageUri.Parse("postgres://localhost:5432/mydb?username=postgres&password=password");
+
+// Provider is resolved automatically
+var provider = resolver.ResolveProvider(uri);
+var connectionString = ((IDatabaseStorageProvider)provider).GetConnectionString(uri);
+```
+
 ## Key Features
 
 - **Streaming reads** - Process large result sets with minimal memory usage
