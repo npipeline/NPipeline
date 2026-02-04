@@ -1,5 +1,3 @@
-using NPipeline.Connectors.Abstractions;
-
 namespace NPipeline.Connectors.SqlServer;
 
 /// <summary>

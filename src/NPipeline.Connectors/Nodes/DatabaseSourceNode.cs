@@ -137,6 +137,7 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
         while (await reader.ReadAsync(cancellationToken))
         {
             currentRow++;
+
             if (TryMapRow(reader, out var item))
                 yield return item;
 
@@ -182,6 +183,7 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
         while (await reader.ReadAsync(cancellationToken))
         {
             currentRow++;
+
             if (TryMapRow(reader, out var item))
                 items.Add(item);
 

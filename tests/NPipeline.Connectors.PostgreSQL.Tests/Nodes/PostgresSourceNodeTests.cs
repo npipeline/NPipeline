@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using FakeItEasy;
-using NPipeline.Connectors;
 using NPipeline.Connectors.Exceptions;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.Connectors.PostgreSQL.Connection;

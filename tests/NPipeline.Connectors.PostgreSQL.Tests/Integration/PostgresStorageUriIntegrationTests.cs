@@ -1,8 +1,6 @@
-using NPipeline.Connectors;
-using NPipeline.Connectors.PostgreSQL;
+using Npgsql;
 using NPipeline.Connectors.PostgreSQL.Nodes;
 using NPipeline.Connectors.PostgreSQL.Tests.Fixtures;
-using Npgsql;
 
 namespace NPipeline.Connectors.PostgreSQL.Tests.Integration;
 
@@ -285,7 +283,7 @@ public class PostgresStorageUriIntegrationTests(PostgresTestContainerFixture fix
             "require" => SslMode.Require,
             "verifyca" => SslMode.VerifyCA,
             "verifyfull" => SslMode.VerifyFull,
-            _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown SSL mode.")
+            _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown SSL mode."),
         };
     }
 

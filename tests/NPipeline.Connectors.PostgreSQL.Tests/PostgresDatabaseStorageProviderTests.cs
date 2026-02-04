@@ -1,16 +1,14 @@
-using NPipeline.Connectors;
-using NPipeline.Connectors.PostgreSQL.Tests.Fixtures;
-using NPipeline.Connectors.Utilities;
 using Npgsql;
-using Xunit;
+using NPipeline.Connectors.Exceptions;
+using NPipeline.Connectors.PostgreSQL.Tests.Fixtures;
 
 namespace NPipeline.Connectors.PostgreSQL.Tests;
 
 [Collection("PostgresTestCollection")]
 public sealed class PostgresDatabaseStorageProviderTests
 {
-    private readonly PostgresDatabaseStorageProvider _provider;
     private readonly PostgresTestContainerFixture _fixture;
+    private readonly PostgresDatabaseStorageProvider _provider;
 
     public PostgresDatabaseStorageProviderTests(PostgresTestContainerFixture fixture)
     {
@@ -235,8 +233,7 @@ public sealed class PostgresDatabaseStorageProviderTests
         var uri = StorageUri.Parse("postgres://invalidhost:9999/invaliddb?username=invaliduser&password=invalidpass");
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<NPipeline.Connectors.Exceptions.DatabaseConnectionException>(
-            () => _provider.GetConnectionAsync(uri));
+        var exception = await Assert.ThrowsAsync<DatabaseConnectionException>(() => _provider.GetConnectionAsync(uri));
         Assert.Contains("Failed to establish PostgreSQL connection", exception.Message);
     }
 }

@@ -389,7 +389,8 @@ services.AddDatabaseOptions<MyDatabaseOptions>("Database");
 
 ## Database Storage Providers
 
-NPipeline.Connectors ecosystem includes database storage providers that enable environment-aware configuration through URI-based connections. This approach allows seamless switching between local development databases and cloud-hosted databases (e.g., AWS RDS, Azure SQL) by simply changing a URI.
+NPipeline.Connectors ecosystem includes database storage providers that enable environment-aware configuration through URI-based connections. This approach
+allows seamless switching between local development databases and cloud-hosted databases (e.g., AWS RDS, Azure SQL) by simply changing a URI.
 
 ### PostgreSQL URI Format
 
@@ -440,9 +441,9 @@ NPipeline.Connectors supports an extensible set of storage schemes through its p
 ### Built-in Schemes
 
 - **file** - Local file system access (Windows, Linux, macOS)
-  - Supports absolute paths: `file:///C:/data/input.csv`
-  - Supports relative paths: `file://./data/input.csv`
-  - Supports UNC paths: `file://server/share/data/input.csv`
+    - Supports absolute paths: `file:///C:/data/input.csv`
+    - Supports relative paths: `file://./data/input.csv`
+    - Supports UNC paths: `file://server/share/data/input.csv`
 
 ### Extensible Scheme Support
 

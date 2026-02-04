@@ -1,5 +1,6 @@
 using Microsoft.Data.SqlClient;
 using NPipeline.Connectors.Abstractions;
+using NPipeline.Connectors.Exceptions;
 using NPipeline.Connectors.SqlServer.Connection;
 using NPipeline.Connectors.Utilities;
 
@@ -26,7 +27,7 @@ public sealed class SqlServerDatabaseStorageProvider : IDatabaseStorageProvider,
         SupportsDelete = false,
         SupportsListing = false,
         SupportsMetadata = false,
-        SupportsHierarchy = false
+        SupportsHierarchy = false,
     };
 
     /// <summary>
@@ -68,18 +69,14 @@ public sealed class SqlServerDatabaseStorageProvider : IDatabaseStorageProvider,
             DataSource = info.Port.HasValue
                 ? $"{info.Host},{info.Port.Value}"
                 : info.Host,
-            InitialCatalog = info.Database
+            InitialCatalog = info.Database,
         };
 
         if (!string.IsNullOrWhiteSpace(info.Username))
-        {
             builder.UserID = info.Username;
-        }
 
         if (!string.IsNullOrWhiteSpace(info.Password))
-        {
             builder.Password = info.Password;
-        }
 
         // Add additional parameters from the URI
         foreach (var kvp in info.Parameters)
@@ -123,7 +120,8 @@ public sealed class SqlServerDatabaseStorageProvider : IDatabaseStorageProvider,
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             await connection.DisposeAsync().ConfigureAwait(false);
-            throw new NPipeline.Connectors.Exceptions.DatabaseConnectionException(
+
+            throw new DatabaseConnectionException(
                 $"Failed to establish SQL Server connection to {uri.Host}/{uri.Path.TrimStart('/')}.", ex);
         }
 
@@ -182,7 +180,10 @@ public sealed class SqlServerDatabaseStorageProvider : IDatabaseStorageProvider,
     ///     Returns metadata describing the provider's capabilities and supported schemes.
     /// </summary>
     /// <returns>A <see cref="StorageProviderMetadata" /> instance describing the provider.</returns>
-    public StorageProviderMetadata GetMetadata() => Metadata;
+    public StorageProviderMetadata GetMetadata()
+    {
+        return Metadata;
+    }
 
     private static bool IsHandledParameter(string key)
     {
@@ -191,7 +192,7 @@ public sealed class SqlServerDatabaseStorageProvider : IDatabaseStorageProvider,
             "server", "data source", "addr", "address", "network address",
             "database", "initial catalog",
             "user id", "uid", "user", "username",
-            "password", "pwd"
+            "password", "pwd",
         };
 
         return handledKeys.Contains(key);

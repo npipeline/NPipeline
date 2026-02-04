@@ -23,6 +23,10 @@ public class SqlServerSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     private static readonly Lazy<IReadOnlyList<PropertyBinding>> CachedBindings = new(BuildBindings);
     private static readonly Lazy<Func<T>> CachedCreateInstance = new(() => BuildCreateInstanceDelegate());
 
+    private static readonly Lazy<IStorageResolver> DefaultResolver = new(
+        () => SqlServerStorageResolverFactory.CreateResolver(),
+        LazyThreadSafetyMode.ExecutionAndPublication);
+
     private readonly Func<SqlServerRow, T>? _cachedMapper;
 
     private readonly SqlServerConfiguration _configuration;
@@ -32,12 +36,9 @@ public class SqlServerSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     private readonly Func<SqlServerRow, T>? _mapper;
     private readonly DatabaseParameter[] _parameters;
     private readonly string _query;
-    private readonly StorageUri? _storageUri;
     private readonly IStorageProvider? _storageProvider;
     private readonly IStorageResolver? _storageResolver;
-    private static readonly Lazy<IStorageResolver> DefaultResolver = new(
-        () => SqlServerStorageResolverFactory.CreateResolver(),
-        LazyThreadSafetyMode.ExecutionAndPublication);
+    private readonly StorageUri? _storageUri;
     private SqlDataReader? _cachedReader;
     private SqlServerRow? _cachedRow;
 
@@ -176,13 +177,13 @@ public class SqlServerSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     }
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="SqlServerSourceNode{T}" /> class using a <see cref="StorageUri"/>.
+    ///     Initializes a new instance of the <see cref="SqlServerSourceNode{T}" /> class using a <see cref="StorageUri" />.
     /// </summary>
     /// <param name="uri">The storage URI containing SQL Server connection information.</param>
     /// <param name="query">The SQL query.</param>
     /// <param name="resolver">
-    /// The storage resolver used to obtain storage provider. If <c>null</c>, a default resolver
-    /// created by <see cref="SqlServerStorageResolverFactory.CreateResolver" /> is used.
+    ///     The storage resolver used to obtain storage provider. If <c>null</c>, a default resolver
+    ///     created by <see cref="SqlServerStorageResolverFactory.CreateResolver" /> is used.
     /// </param>
     /// <param name="customMapper">Optional custom mapper function.</param>
     /// <param name="configuration">Optional configuration.</param>
@@ -284,9 +285,7 @@ public class SqlServerSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
                 _storageUri);
 
             if (provider is IDatabaseStorageProvider databaseProvider)
-            {
                 return await databaseProvider.GetConnectionAsync(_storageUri, cancellationToken);
-            }
 
             throw new InvalidOperationException($"Storage provider must implement {nameof(IDatabaseStorageProvider)} to use StorageUri.");
         }

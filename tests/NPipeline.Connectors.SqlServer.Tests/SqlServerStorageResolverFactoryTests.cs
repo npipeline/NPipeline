@@ -1,7 +1,3 @@
-using NPipeline.Connectors;
-using NPipeline.Connectors.SqlServer;
-using Xunit;
-
 namespace NPipeline.Connectors.SqlServer.Tests;
 
 /// <summary>

@@ -1,8 +1,6 @@
 using AwesomeAssertions;
-using NPipeline.Connectors;
 using NPipeline.Connectors.SqlServer.Configuration;
 using NPipeline.Connectors.SqlServer.Nodes;
-using WriteStrategy = NPipeline.Connectors.SqlServer.Configuration.SqlServerWriteStrategy;
 
 namespace NPipeline.Connectors.SqlServer.Tests.Nodes;
 

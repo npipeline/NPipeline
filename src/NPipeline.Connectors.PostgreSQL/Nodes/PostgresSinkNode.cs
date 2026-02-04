@@ -14,19 +14,20 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes;
 /// <typeparam name="T">The type of objects consumed by sink.</typeparam>
 public class PostgresSinkNode<T> : DatabaseSinkNode<T>
 {
+    private static readonly Lazy<IStorageResolver> DefaultResolver = new(
+        () => PostgresStorageResolverFactory.CreateResolver(),
+        LazyThreadSafetyMode.ExecutionAndPublication);
+
     private readonly PostgresConfiguration _configuration;
     private readonly string? _connectionName;
     private readonly IPostgresConnectionPool? _connectionPool;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
     private readonly string _schema;
-    private readonly string _tableName;
-    private readonly PostgresWriteStrategy _writeStrategy;
-    private readonly StorageUri? _storageUri;
     private readonly IStorageProvider? _storageProvider;
     private readonly IStorageResolver? _storageResolver;
-    private static readonly Lazy<IStorageResolver> DefaultResolver = new(
-        () => PostgresStorageResolverFactory.CreateResolver(),
-        System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
+    private readonly StorageUri? _storageUri;
+    private readonly string _tableName;
+    private readonly PostgresWriteStrategy _writeStrategy;
 
     /// <summary>
     ///     Initializes a new instance of <see cref="PostgresSinkNode{T}" /> class.
@@ -108,14 +109,14 @@ public class PostgresSinkNode<T> : DatabaseSinkNode<T>
     }
 
     /// <summary>
-    ///     Initializes a new instance of <see cref="PostgresSinkNode{T}" /> class using a <see cref="StorageUri"/>.
+    ///     Initializes a new instance of <see cref="PostgresSinkNode{T}" /> class using a <see cref="StorageUri" />.
     /// </summary>
     /// <param name="uri">The storage URI containing PostgreSQL connection information.</param>
     /// <param name="tableName">The table name.</param>
     /// <param name="writeStrategy">The write strategy.</param>
     /// <param name="resolver">
-    /// The storage resolver used to obtain storage provider. If <c>null</c>, a default resolver
-    /// created by <see cref="PostgresStorageResolverFactory.CreateResolver" /> is used.
+    ///     The storage resolver used to obtain storage provider. If <c>null</c>, a default resolver
+    ///     created by <see cref="PostgresStorageResolverFactory.CreateResolver" /> is used.
     /// </param>
     /// <param name="parameterMapper">Optional parameter mapper function.</param>
     /// <param name="configuration">Optional configuration.</param>
@@ -206,9 +207,7 @@ public class PostgresSinkNode<T> : DatabaseSinkNode<T>
                 _storageUri);
 
             if (provider is IDatabaseStorageProvider databaseProvider)
-            {
                 return await databaseProvider.GetConnectionAsync(_storageUri, cancellationToken);
-            }
 
             throw new InvalidOperationException($"Storage provider must implement {nameof(IDatabaseStorageProvider)} to use StorageUri.");
         }

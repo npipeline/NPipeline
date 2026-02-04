@@ -1,6 +1,4 @@
 using Microsoft.Data.SqlClient;
-using NPipeline.Connectors;
-using NPipeline.Connectors.SqlServer;
 using NPipeline.Connectors.SqlServer.Nodes;
 using NPipeline.Connectors.SqlServer.Tests.Fixtures;
 
@@ -239,7 +237,7 @@ public sealed class SqlServerStorageUriIntegrationTests : IClassFixture<SqlServe
             {
                 (encrypt: "true", trustServerCertificate: "false"),
                 (encrypt: "true", trustServerCertificate: "true"),
-                (encrypt: "false", trustServerCertificate: "false")
+                (encrypt: "false", trustServerCertificate: "false"),
             };
 
             foreach (var (encrypt, trustServerCertificate) in encryptionConfigs)
@@ -296,32 +294,31 @@ public sealed class SqlServerStorageUriIntegrationTests : IClassFixture<SqlServe
     private static (string Host, int? Port) ParseDataSource(string dataSource)
     {
         if (string.IsNullOrWhiteSpace(dataSource))
-        {
             return (dataSource, null);
-        }
 
         var parts = dataSource.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
         if (parts.Length == 1)
-        {
             return (parts[0], null);
-        }
 
         if (parts.Length >= 2 && int.TryParse(parts[1], out var port))
-        {
             return (parts[0], port);
-        }
 
         return (parts[0], null);
     }
 
     private static string BuildHostSegment(string host, int? port)
     {
-        return port.HasValue ? $"{host}:{port.Value}" : host;
+        return port.HasValue
+            ? $"{host}:{port.Value}"
+            : host;
     }
 
     private static string BuildDataSource(string host, int? port)
     {
-        return port.HasValue ? $"{host},{port.Value}" : host;
+        return port.HasValue
+            ? $"{host},{port.Value}"
+            : host;
     }
 
     private sealed class TestRecord

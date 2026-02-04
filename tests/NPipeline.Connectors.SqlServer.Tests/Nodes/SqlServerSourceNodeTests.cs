@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using FakeItEasy;
-using NPipeline.Connectors;
 using NPipeline.Connectors.SqlServer.Configuration;
 using NPipeline.Connectors.SqlServer.Connection;
 using NPipeline.Connectors.SqlServer.Mapping;

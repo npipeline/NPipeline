@@ -87,10 +87,12 @@ public sealed record StorageUri
             var parameters = ParseQuery(uri.Query);
 
             // Extract port from URI (Uri.Port returns -1 if not specified)
-            int? port = uri.Port > 0 ? uri.Port : null;
+            int? port = uri.Port > 0
+                ? uri.Port
+                : null;
 
             // Extract user info from URI
-            string? userInfo = string.IsNullOrWhiteSpace(uri.UserInfo)
+            var userInfo = string.IsNullOrWhiteSpace(uri.UserInfo)
                 ? null
                 : Uri.UnescapeDataString(uri.UserInfo);
 
@@ -150,19 +152,13 @@ public sealed record StorageUri
 
         // Add host
         if (Host is { Length: > 0 })
-        {
             parts.Add(Host);
-        }
         else
-        {
             parts.Add(string.Empty);
-        }
 
         // Add port if present
         if (Port.HasValue)
-        {
             parts.Add($":{Port.Value}");
-        }
 
         return "//" + string.Join(string.Empty, parts);
     }

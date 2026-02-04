@@ -432,7 +432,7 @@ public sealed class SqlServerRowTests
         A.CallTo(() => reader.IsDBNull(0)).Returns(false);
         A.CallTo(() => reader.GetFieldValue<int>(0)).Returns(42);
 
-        var row = new SqlServerRow(reader, true);
+        var row = new SqlServerRow(reader);
 
         // Act
         var value1 = row.Get<int>("Id");

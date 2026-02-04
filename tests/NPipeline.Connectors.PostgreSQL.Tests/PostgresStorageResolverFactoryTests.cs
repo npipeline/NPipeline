@@ -1,7 +1,3 @@
-using NPipeline.Connectors;
-using NPipeline.Connectors.PostgreSQL;
-using Xunit;
-
 namespace NPipeline.Connectors.PostgreSQL.Tests;
 
 /// <summary>

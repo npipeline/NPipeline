@@ -1,15 +1,13 @@
 using Microsoft.Data.SqlClient;
-using NPipeline.Connectors;
 using NPipeline.Connectors.SqlServer.Tests.Fixtures;
-using Xunit;
 
 namespace NPipeline.Connectors.SqlServer.Tests;
 
 [Collection("SqlServer")]
 public sealed class SqlServerDatabaseStorageProviderTests
 {
-    private readonly SqlServerDatabaseStorageProvider _provider;
     private readonly SqlServerTestContainerFixture _fixture;
+    private readonly SqlServerDatabaseStorageProvider _provider;
 
     public SqlServerDatabaseStorageProviderTests(SqlServerTestContainerFixture fixture)
     {
@@ -219,11 +217,15 @@ public sealed class SqlServerDatabaseStorageProviderTests
         // Parse host and port from DataSource (format: host,port)
         var hostPortParts = dataSource.Split(',');
         var host = hostPortParts[0];
-        var port = hostPortParts.Length > 1 ? int.Parse(hostPortParts[1]) : 1433;
+
+        var port = hostPortParts.Length > 1
+            ? int.Parse(hostPortParts[1])
+            : 1433;
 
         // Build a URI using query parameters for credentials
         // URL-encode the password to handle special characters
         var encodedPassword = Uri.EscapeDataString(password);
+
         var uri = StorageUri.Parse(
             $"mssql://{host}:{port}/{database}?username={username}&password={encodedPassword}" +
             "&encrypt=true&trustservercertificate=true");

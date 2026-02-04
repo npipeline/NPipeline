@@ -1,7 +1,8 @@
+using Npgsql;
 using NPipeline.Connectors.Abstractions;
+using NPipeline.Connectors.Exceptions;
 using NPipeline.Connectors.PostgreSQL.Connection;
 using NPipeline.Connectors.Utilities;
-using Npgsql;
 
 namespace NPipeline.Connectors.PostgreSQL;
 
@@ -26,7 +27,7 @@ public sealed class PostgresDatabaseStorageProvider : IDatabaseStorageProvider, 
         SupportsDelete = false,
         SupportsListing = false,
         SupportsMetadata = false,
-        SupportsHierarchy = false
+        SupportsHierarchy = false,
     };
 
     /// <summary>
@@ -66,23 +67,17 @@ public sealed class PostgresDatabaseStorageProvider : IDatabaseStorageProvider, 
         var builder = new NpgsqlConnectionStringBuilder
         {
             Host = info.Host,
-            Database = info.Database
+            Database = info.Database,
         };
 
         if (info.Port.HasValue)
-        {
             builder.Port = info.Port.Value;
-        }
 
         if (!string.IsNullOrWhiteSpace(info.Username))
-        {
             builder.Username = info.Username;
-        }
 
         if (!string.IsNullOrWhiteSpace(info.Password))
-        {
             builder.Password = info.Password;
-        }
 
         // Add additional parameters from the URI
         foreach (var kvp in info.Parameters)
@@ -126,7 +121,8 @@ public sealed class PostgresDatabaseStorageProvider : IDatabaseStorageProvider, 
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             await connection.DisposeAsync().ConfigureAwait(false);
-            throw new NPipeline.Connectors.Exceptions.DatabaseConnectionException(
+
+            throw new DatabaseConnectionException(
                 $"Failed to establish PostgreSQL connection to {uri.Host}/{uri.Path.TrimStart('/')}.", ex);
         }
 
@@ -185,13 +181,16 @@ public sealed class PostgresDatabaseStorageProvider : IDatabaseStorageProvider, 
     ///     Returns metadata describing the provider's capabilities and supported schemes.
     /// </summary>
     /// <returns>A <see cref="StorageProviderMetadata" /> instance describing the provider.</returns>
-    public StorageProviderMetadata GetMetadata() => Metadata;
+    public StorageProviderMetadata GetMetadata()
+    {
+        return Metadata;
+    }
 
     private static bool IsHandledParameter(string key)
     {
         var handledKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "host", "port", "database", "username", "user", "password", "pwd"
+            "host", "port", "database", "username", "user", "password", "pwd",
         };
 
         return handledKeys.Contains(key);

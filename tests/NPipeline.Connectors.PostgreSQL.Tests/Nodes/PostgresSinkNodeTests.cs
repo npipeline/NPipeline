@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using NPipeline.Connectors;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.Connectors.PostgreSQL.Nodes;
 using WriteStrategy = NPipeline.Connectors.PostgreSQL.Configuration.PostgresWriteStrategy;

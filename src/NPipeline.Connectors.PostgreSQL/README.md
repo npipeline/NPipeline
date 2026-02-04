@@ -96,13 +96,13 @@ var source = new PostgresSourceNode<Customer>(uri, "SELECT * FROM customers");
 
 Supported query parameters for PostgreSQL URIs:
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `username` | string | Database username |
-| `password` | string | Database password |
-| `sslmode` | string | SSL mode: `disable`, `allow`, `prefer`, `require`, `verify-ca`, `verify-full` |
-| `timeout` | int | Connection timeout in seconds |
-| `pooling` | bool | Enable connection pooling (`true`/`false`) |
+| Parameter  | Type   | Description                                                                   |
+|------------|--------|-------------------------------------------------------------------------------|
+| `username` | string | Database username                                                             |
+| `password` | string | Database password                                                             |
+| `sslmode`  | string | SSL mode: `disable`, `allow`, `prefer`, `require`, `verify-ca`, `verify-full` |
+| `timeout`  | int    | Connection timeout in seconds                                                 |
+| `pooling`  | bool   | Enable connection pooling (`true`/`false`)                                    |
 
 ### Using the Resolver Factory
 
@@ -332,10 +332,11 @@ dotnet add package NPipeline.Connectors.PostgreSQL.Analyzers
 
 ### NP9501: Checkpointing requires ORDER BY clause
 
-**Category:** Reliability  
+**Category:** Reliability
 **Default Severity:** Warning
 
-When using checkpointing with PostgreSQL source nodes, the SQL query must include an `ORDER BY` clause on a unique, monotonically increasing column. This ensures consistent row ordering across checkpoint restarts. Without proper ordering, checkpointing may skip rows or process duplicates.
+When using checkpointing with PostgreSQL source nodes, the SQL query must include an `ORDER BY` clause on a unique, monotonically increasing column. This
+ensures consistent row ordering across checkpoint restarts. Without proper ordering, checkpointing may skip rows or process duplicates.
 
 #### Example
 
@@ -379,7 +380,8 @@ Use a unique, monotonically increasing column such as:
 - `timestamp` (timestamp column)
 - Any auto-incrementing or sequential column
 
-For more details, see the [PostgreSQL Analyzer documentation](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Connectors.PostgreSQL.Analyzers/README.md).
+For more details, see
+the [PostgreSQL Analyzer documentation](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Connectors.PostgreSQL.Analyzers/README.md).
 
 ## Error Handling
 

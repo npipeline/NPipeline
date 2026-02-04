@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
+using Npgsql;
 using NPipeline.Connectors.Abstractions;
 using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.Configuration;
@@ -9,7 +10,6 @@ using NPipeline.Connectors.Nodes;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.Connectors.PostgreSQL.Connection;
 using NPipeline.Connectors.PostgreSQL.Mapping;
-using Npgsql;
 
 namespace NPipeline.Connectors.PostgreSQL.Nodes;
 
@@ -23,6 +23,10 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     private static readonly Lazy<IReadOnlyList<PropertyBinding>> CachedBindings = new(BuildBindings);
     private static readonly Lazy<Func<T>> CachedCreateInstance = new(() => BuildCreateInstanceDelegate());
 
+    private static readonly Lazy<IStorageResolver> DefaultResolver = new(
+        () => PostgresStorageResolverFactory.CreateResolver(),
+        LazyThreadSafetyMode.ExecutionAndPublication);
+
     private readonly Func<PostgresRow, T>? _cachedMapper;
 
     private readonly PostgresConfiguration _configuration;
@@ -32,12 +36,9 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     private readonly Func<PostgresRow, T>? _mapper;
     private readonly DatabaseParameter[] _parameters;
     private readonly string _query;
-    private readonly StorageUri? _storageUri;
     private readonly IStorageProvider? _storageProvider;
     private readonly IStorageResolver? _storageResolver;
-    private static readonly Lazy<IStorageResolver> DefaultResolver = new(
-        () => PostgresStorageResolverFactory.CreateResolver(),
-        LazyThreadSafetyMode.ExecutionAndPublication);
+    private readonly StorageUri? _storageUri;
     private NpgsqlDataReader? _cachedReader;
     private PostgresRow? _cachedRow;
 
@@ -59,14 +60,10 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
         bool continueOnError = false)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
-        {
             throw new ArgumentNullException(nameof(connectionString));
-        }
 
         if (string.IsNullOrWhiteSpace(query))
-        {
             throw new ArgumentNullException(nameof(query));
-        }
 
         _configuration = configuration ?? new PostgresConfiguration();
         _configuration.Validate();
@@ -101,9 +98,7 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
         ArgumentNullException.ThrowIfNull(connectionPool);
 
         if (string.IsNullOrWhiteSpace(query))
-        {
             throw new ArgumentNullException(nameof(query));
-        }
 
         _configuration = configuration ?? new PostgresConfiguration();
         _configuration.Validate();
@@ -121,13 +116,13 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     }
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="PostgresSourceNode{T}" /> class using a <see cref="StorageUri"/>.
+    ///     Initializes a new instance of the <see cref="PostgresSourceNode{T}" /> class using a <see cref="StorageUri" />.
     /// </summary>
     /// <param name="uri">The storage URI containing PostgreSQL connection information.</param>
     /// <param name="query">The SQL query.</param>
     /// <param name="resolver">
-    /// The storage resolver used to obtain storage provider. If <c>null</c>, a default resolver
-    /// created by <see cref="PostgresStorageResolverFactory.CreateResolver" /> is used.
+    ///     The storage resolver used to obtain storage provider. If <c>null</c>, a default resolver
+    ///     created by <see cref="PostgresStorageResolverFactory.CreateResolver" /> is used.
     /// </param>
     /// <param name="mapper">Optional custom mapper function.</param>
     /// <param name="configuration">Optional configuration.</param>
@@ -229,9 +224,7 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
                 _storageUri);
 
             if (provider is IDatabaseStorageProvider databaseProvider)
-            {
                 return await databaseProvider.GetConnectionAsync(_storageUri, cancellationToken);
-            }
 
             throw new InvalidOperationException($"Storage provider must implement {nameof(IDatabaseStorageProvider)} to use StorageUri.");
         }
@@ -286,9 +279,7 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
         var row = _cachedRow;
 
         if (_mapper != null)
-        {
             return _mapper(row);
-        }
 
         if (_cachedMapper != null)
         {
@@ -299,9 +290,7 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
             catch
             {
                 if (!_continueOnError)
-                {
                     throw;
-                }
             }
         }
 
@@ -328,17 +317,13 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
                     var convertedValue = ConvertValue(value, binding.PropertyType);
 
                     if (convertedValue != null || binding.PropertyType.IsClass || Nullable.GetUnderlyingType(binding.PropertyType) != null)
-                    {
                         binding.Setter(instance, convertedValue);
-                    }
                 }
             }
             catch
             {
                 if (!_continueOnError)
-                {
                     throw;
-                }
             }
         }
 
@@ -360,9 +345,7 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     private static object? ConvertValue(object? value, Type targetType)
     {
         if (value is null)
-        {
             return null;
-        }
 
         var underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
 
@@ -404,9 +387,7 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     private static Func<T> BuildCreateInstanceDelegate()
     {
         if (typeof(T).IsValueType)
-        {
             return Expression.Lambda<Func<T>>(Expression.Default(typeof(T))).Compile();
-        }
 
         var ctor = typeof(T).GetConstructor(Type.EmptyTypes)
                    ?? throw new InvalidOperationException($"Type '{typeof(T).FullName}' does not have a parameterless constructor");
@@ -429,9 +410,7 @@ public class PostgresSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
         bool continueOnError)
     {
         if (mapper != null || continueOnError)
-        {
             return mapper;
-        }
 
         return configuration.CacheMappingMetadata
             ? MapperCache.GetOrAdd(typeof(T), _ => PostgresMapperBuilder.Build<T>())

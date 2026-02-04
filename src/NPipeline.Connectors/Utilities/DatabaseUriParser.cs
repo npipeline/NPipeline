@@ -25,7 +25,7 @@ public record DatabaseConnectionInfo(
 ///     Parsing logic:
 ///     - Database name is extracted from <see cref="StorageUri.Path" /> by trimming the leading '/'.
 ///     - Username and password are preferred from query parameters ("username"/"user" and "password"/"pwd"),
-///       falling back to <see cref="StorageUri.UserInfo" />.
+///     falling back to <see cref="StorageUri.UserInfo" />.
 ///     - Port is preferred from <see cref="StorageUri.Port" />, falling back to the "port" query parameter.
 ///     - Host is required and must be specified in <see cref="StorageUri.Host" />.
 /// </remarks>
@@ -48,16 +48,13 @@ public static class DatabaseUriParser
 
         // Validate required components
         if (string.IsNullOrWhiteSpace(uri.Host))
-        {
             throw new ArgumentException("Database URI must specify a host.", nameof(uri));
-        }
 
         // Extract database name from path (trim leading '/')
         var database = ExtractDatabaseName(uri.Path);
+
         if (string.IsNullOrWhiteSpace(database))
-        {
             throw new ArgumentException("Database URI must specify a database name in the path.", nameof(uri));
-        }
 
         // Extract username and password
         var (username, password) = ExtractCredentials(uri);
@@ -66,12 +63,12 @@ public static class DatabaseUriParser
         var port = ExtractPort(uri);
 
         return new DatabaseConnectionInfo(
-            Host: uri.Host,
-            Port: port,
-            Database: database,
-            Username: username,
-            Password: password,
-            Parameters: uri.Parameters);
+            uri.Host,
+            port,
+            database,
+            username,
+            password,
+            uri.Parameters);
     }
 
     /// <summary>
@@ -89,23 +86,17 @@ public static class DatabaseUriParser
         var parts = new List<string>
         {
             $"Host={info.Host}",
-            $"Database={info.Database}"
+            $"Database={info.Database}",
         };
 
         if (info.Port.HasValue)
-        {
             parts.Add($"Port={info.Port.Value}");
-        }
 
         if (!string.IsNullOrWhiteSpace(info.Username))
-        {
             parts.Add($"Username={info.Username}");
-        }
 
         if (!string.IsNullOrWhiteSpace(info.Password))
-        {
             parts.Add($"Password={info.Password}");
-        }
 
         // Add additional parameters
         foreach (var kvp in info.Parameters)
@@ -141,10 +132,9 @@ public static class DatabaseUriParser
             // UserInfo is in the format "username:password"
             var parts = uri.UserInfo.Split(':', 2);
             username = parts[0];
+
             if (parts.Length > 1)
-            {
                 password = parts[1];
-            }
         }
 
         return (username, password);
@@ -157,10 +147,9 @@ public static class DatabaseUriParser
             return uri.Port.Value;
 
         var portParam = GetParameter(uri, "port");
+
         if (!string.IsNullOrWhiteSpace(portParam) && int.TryParse(portParam, out var port))
-        {
             return port;
-        }
 
         return null;
     }
@@ -177,7 +166,7 @@ public static class DatabaseUriParser
     {
         var handledKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "username", "user", "password", "pwd", "port"
+            "username", "user", "password", "pwd", "port",
         };
 
         return handledKeys.Contains(key);
