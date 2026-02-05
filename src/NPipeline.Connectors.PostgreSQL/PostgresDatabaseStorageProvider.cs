@@ -1,8 +1,9 @@
 using Npgsql;
-using NPipeline.Connectors.Abstractions;
-using NPipeline.Connectors.Exceptions;
 using NPipeline.Connectors.PostgreSQL.Connection;
-using NPipeline.Connectors.Utilities;
+using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.Exceptions;
+using NPipeline.StorageProviders.Models;
+using NPipeline.StorageProviders.Utilities;
 
 namespace NPipeline.Connectors.PostgreSQL;
 
@@ -104,7 +105,7 @@ public sealed class PostgresDatabaseStorageProvider : IDatabaseStorageProvider, 
     /// <exception cref="ArgumentException">
     ///     If the URI is missing required components (e.g., host or database name).
     /// </exception>
-    /// <exception cref="NPipeline.Connectors.Exceptions.DatabaseConnectionException">
+    /// <exception cref="DatabaseConnectionException">
     ///     If the connection cannot be established due to network, authentication, or other database-specific errors.
     /// </exception>
     public async Task<IDatabaseConnection> GetConnectionAsync(StorageUri uri, CancellationToken cancellationToken = default)

@@ -6,7 +6,7 @@ using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Spreadsheet;
 using NPipeline.Connectors.Attributes;
 
-namespace NPipeline.Connectors.Excel;
+namespace NPipeline.Connectors.Excel.Mapping;
 
 /// <summary>
 ///     Builds property mapping delegates for writing objects to Excel rows.

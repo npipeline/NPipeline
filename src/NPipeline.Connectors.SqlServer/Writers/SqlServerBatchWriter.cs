@@ -1,12 +1,13 @@
 using System.Data;
 using System.Linq.Expressions;
 using System.Reflection;
-using NPipeline.Connectors.Abstractions;
-using NPipeline.Connectors.Attributes;
-using NPipeline.Connectors.Exceptions;
 using NPipeline.Connectors.SqlServer.Configuration;
 using NPipeline.Connectors.SqlServer.Exceptions;
 using NPipeline.Connectors.SqlServer.Mapping;
+using NPipeline.StorageProviders.Abstractions;
+using NPipeline.Connectors.Attributes;
+using NPipeline.StorageProviders.Exceptions;
+using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.SqlServer.Writers;
 

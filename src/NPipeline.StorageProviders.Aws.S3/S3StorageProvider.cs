@@ -1,8 +1,8 @@
 using System.Runtime.CompilerServices;
 using Amazon.S3;
 using Amazon.S3.Model;
-using NPipeline.Connectors;
-using NPipeline.Connectors.Abstractions;
+using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.StorageProviders.Aws.S3;
 
@@ -300,11 +300,20 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
 
                 var objectKey = s3Object.Key;
                 var itemUri = StorageUri.Parse($"s3://{bucket}/{objectKey}");
+                var size = s3Object.Size ?? 0;
+
+#if DEBUG
+                if (s3Object.Size is null)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"S3 object '{bucket}/{objectKey}' returned without size metadata; defaulting to 0.");
+                }
+#endif
 
                 yield return new StorageItem
                 {
                     Uri = itemUri,
-                    Size = s3Object.Size,
+                    Size = size,
                     LastModified = NormalizeDateTime(s3Object.LastModified),
                     IsDirectory = false
                 };

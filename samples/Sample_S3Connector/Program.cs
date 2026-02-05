@@ -2,8 +2,8 @@ using System.Text;
 using Amazon;
 using Amazon.Runtime;
 using Microsoft.Extensions.DependencyInjection;
-using NPipeline.Connectors;
-using NPipeline.Connectors.Abstractions;
+using NPipeline.StorageProviders;
+using NPipeline.StorageProviders.Models;
 using NPipeline.StorageProviders.Aws.S3;
 
 namespace Sample_S3Connector;

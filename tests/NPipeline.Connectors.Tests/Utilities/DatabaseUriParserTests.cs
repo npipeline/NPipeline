@@ -1,4 +1,5 @@
-using NPipeline.Connectors.Utilities;
+using NPipeline.StorageProviders.Models;
+using NPipeline.StorageProviders.Utilities;
 
 namespace NPipeline.Connectors.Tests.Utilities;
 

@@ -31,6 +31,44 @@ Use the S3 storage provider when your application needs to:
 - Leverage S3's scalability and durability for data storage
 - Handle large files through streaming and multipart uploads
 
+## Dependencies
+
+The S3 storage provider depends on the following packages:
+
+- `AWSSDK.S3` - AWS SDK for S3 operations
+- `NPipeline.StorageProviders` - Core storage abstractions (IStorageProvider, StorageUri, StorageItem, StorageMetadata, StorageProviderMetadata, StorageResolverOptions, StorageProviderFactory)
+- `NPipeline.Connectors` - Core connectors for using storage providers with connectors
+
+### Key Storage Types
+
+- **`IStorageProvider`** - Core storage provider interface
+  - Location: `NPipeline.StorageProviders.Abstractions.IStorageProvider`
+  - Defines methods for reading, writing, listing, and checking existence of storage objects
+
+- **`StorageUri`** - URI type for storage resources
+  - Location: `NPipeline.StorageProviders.StorageUri`
+  - Represents a URI for storage resources with scheme, host, path, and parameters
+
+- **`StorageItem`** - Represents a storage item (file or directory)
+  - Location: `NPipeline.StorageProviders.StorageItem`
+  - Contains URI, size, last modified date, and directory flag
+
+- **`StorageMetadata`** - Metadata for storage objects
+  - Location: `NPipeline.StorageProviders.StorageMetadata`
+  - Contains size, content type, last modified date, ETag, and custom metadata
+
+- **`StorageProviderMetadata`** - Metadata about a storage provider's capabilities
+  - Location: `NPipeline.StorageProviders.StorageProviderMetadata`
+  - Contains capability flags and supported schemes
+
+- **`StorageResolverOptions`** - Configuration options for creating storage resolvers
+  - Location: `NPipeline.StorageProviders.StorageResolverOptions`
+  - Controls which providers are included in the resolver
+
+- **`StorageProviderFactory`** - Factory for creating storage resolvers
+  - Location: `NPipeline.StorageProviders.StorageProviderFactory`
+  - Provides methods for creating resolvers with custom providers
+
 ## Installation
 
 ### Prerequisites
@@ -552,19 +590,19 @@ To use the S3 storage provider, your AWS credentials must have appropriate IAM p
 ### Core Interfaces and Types
 
 - **`IStorageProvider`** - Core storage provider interface
-  - Location: [`NPipeline.Connectors.Abstractions.IStorageProvider`](../../src/NPipeline.Connectors/Abstractions/IStorageProvider.cs)
+  - Location: [`NPipeline.StorageProviders.Abstractions.IStorageProvider`](../../src/NPipeline.StorageProviders.Abstractions/IStorageProvider.cs)
   - Defines methods for reading, writing, listing, and checking existence of storage objects
 
 - **`StorageUri`** - URI type for storage resources
-  - Location: [`NPipeline.Connectors.StorageUri`](../../src/NPipeline.Connectors/StorageUri.cs)
+  - Location: [`NPipeline.StorageProviders.StorageUri`](../../src/NPipeline.StorageProviders/StorageUri.cs)
   - Represents a URI for storage resources with scheme, host, path, and parameters
 
 - **`StorageItem`** - Represents a storage item (file or directory)
-  - Location: [`NPipeline.Connectors.StorageItem`](../../src/NPipeline.Connectors/StorageItem.cs)
+  - Location: [`NPipeline.StorageProviders.StorageItem`](../../src/NPipeline.StorageProviders/StorageItem.cs)
   - Contains URI, size, last modified date, and directory flag
 
 - **`StorageMetadata`** - Metadata for storage objects
-  - Location: [`NPipeline.Connectors.StorageMetadata`](../../src/NPipeline.Connectors/StorageMetadata.cs)
+  - Location: [`NPipeline.StorageProviders.StorageMetadata`](../../src/NPipeline.StorageProviders/StorageMetadata.cs)
   - Contains size, content type, last modified date, ETag, and custom metadata
 
 ### S3-Specific Types
@@ -616,7 +654,7 @@ The S3 storage provider has the following limitations:
 ## Related Topics
 
 - **[Storage Providers Overview](./index.md)**: Return to the storage providers overview
-- **[Storage Provider Interface](../connectors/storage-provider.md)**: Learn about the storage abstraction layer
+- **[Storage Provider Interface](./storage-provider.md)**: Learn about the storage abstraction layer
 - **[CSV Connector](../connectors/csv.md)**: See storage providers in action with CSV files
 - **[Excel Connector](../connectors/excel.md)**: See storage providers in action with Excel files
 

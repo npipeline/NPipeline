@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using NPipeline.Connectors.Abstractions;
-using NPipeline.Connectors.Configuration;
+using NPipeline.StorageProviders;
+using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.Configuration;
 
 namespace NPipeline.Connectors.DependencyInjection;
 
@@ -34,13 +35,14 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    ///     Registers the default <see cref="FileSystemStorageProvider" /> for handling 'file' schemes.
+    ///     Registers the default FileSystemStorageProvider for handling 'file' schemes.
     /// </summary>
     /// <param name="services">The service collection to add the provider to.</param>
     /// <returns>The same service collection for chaining.</returns>
     public static IServiceCollection AddDefaultFileStorageProvider(this IServiceCollection services)
     {
-        return services.AddStorageProvider<FileSystemStorageProvider>();
+        services.AddTransient<IStorageProvider, FileSystemStorageProvider>();
+        return services;
     }
 
     /// <summary>
@@ -75,7 +77,7 @@ public static class ServiceCollectionExtensions
     ///     Registers the default <see cref="StorageResolver" /> to resolve providers based on URI schemes.
     /// </summary>
     /// <param name="services">The service collection to add the resolver to.</param>
-    /// <param name="includeFileSystem">If true, automatically includes the <see cref="FileSystemStorageProvider" />.</param>
+    /// <param name="includeFileSystem">If true, automatically includes the FileSystemStorageProvider.</param>
     /// <returns>The same service collection for chaining.</returns>
     public static IServiceCollection AddStorageResolver(this IServiceCollection services, bool includeFileSystem = true)
     {

@@ -1,13 +1,14 @@
 using System.Data;
 using System.Linq.Expressions;
 using System.Reflection;
-using NPipeline.Connectors.Abstractions;
-using NPipeline.Connectors.Attributes;
-using NPipeline.Connectors.Exceptions;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.Connectors.PostgreSQL.Exceptions;
 using NPipeline.Connectors.PostgreSQL.Mapping;
-using NPipeline.Connectors.Utilities;
+using NPipeline.StorageProviders.Abstractions;
+using NPipeline.Connectors.Attributes;
+using NPipeline.StorageProviders.Exceptions;
+using NPipeline.StorageProviders.Models;
+using NPipeline.StorageProviders.Utilities;
 
 namespace NPipeline.Connectors.PostgreSQL.Writers;
 

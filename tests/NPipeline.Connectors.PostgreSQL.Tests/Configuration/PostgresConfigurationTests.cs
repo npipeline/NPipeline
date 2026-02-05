@@ -1,6 +1,7 @@
 using AwesomeAssertions;
-using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.PostgreSQL.Configuration;
+using NPipeline.StorageProviders.Configuration;
+using NPipeline.Connectors.Configuration;
 
 namespace NPipeline.Connectors.PostgreSQL.Tests.Configuration;
 

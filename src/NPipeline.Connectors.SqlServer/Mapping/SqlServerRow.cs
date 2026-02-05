@@ -1,4 +1,4 @@
-using NPipeline.Connectors.Abstractions;
+using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.Connectors.SqlServer.Mapping;
 

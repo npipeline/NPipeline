@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using FakeItEasy;
-using NPipeline.Connectors.Abstractions;
+using NPipeline.StorageProviders.Abstractions;
 using NPipeline.Connectors.SqlServer.Mapping;
 
 namespace NPipeline.Connectors.SqlServer.Tests.Mapping;

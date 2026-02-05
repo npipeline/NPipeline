@@ -1,10 +1,11 @@
 using AwesomeAssertions;
 using FakeItEasy;
-using NPipeline.Connectors.Exceptions;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.Connectors.PostgreSQL.Connection;
 using NPipeline.Connectors.PostgreSQL.Mapping;
 using NPipeline.Connectors.PostgreSQL.Nodes;
+using NPipeline.StorageProviders.Exceptions;
+using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.PostgreSQL.Tests.Nodes;
 

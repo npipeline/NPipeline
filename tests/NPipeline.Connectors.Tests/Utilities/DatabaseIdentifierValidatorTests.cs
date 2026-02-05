@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using NPipeline.Connectors.Utilities;
+using NPipeline.StorageProviders.Utilities;
 
 namespace NPipeline.Connectors.Tests.Utilities;
 

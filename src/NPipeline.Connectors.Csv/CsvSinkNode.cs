@@ -1,11 +1,14 @@
 using System.Globalization;
 using System.Text;
 using CsvHelper;
-using NPipeline.Connectors.Abstractions;
-using NPipeline.Connectors.Exceptions;
+using NPipeline.Connectors.Csv.Mapping;
 using NPipeline.DataFlow;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.StorageProviders;
+using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.Exceptions;
+using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.Csv;
 

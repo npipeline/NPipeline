@@ -1,6 +1,6 @@
 using System.Data;
 using Microsoft.Data.SqlClient;
-using NPipeline.Connectors.Abstractions;
+using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.Connectors.SqlServer.Connection;
 

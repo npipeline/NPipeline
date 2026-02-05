@@ -3,6 +3,8 @@ using NPipeline.Connectors.Attributes;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Pipeline;
+using NPipeline.StorageProviders;
+using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.Excel.Tests;
 

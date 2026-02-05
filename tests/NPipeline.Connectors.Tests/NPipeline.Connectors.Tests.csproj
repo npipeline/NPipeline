@@ -36,6 +36,7 @@
         <ProjectReference Include="..\..\src\NPipeline.Extensions.DependencyInjection\NPipeline.Extensions.DependencyInjection.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline\NPipeline.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Connectors\NPipeline.Connectors.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.StorageProviders\NPipeline.StorageProviders.csproj"/>
     </ItemGroup>
 
 </Project>

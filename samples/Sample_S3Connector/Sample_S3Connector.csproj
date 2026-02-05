@@ -13,8 +13,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\NPipeline.Connectors\NPipeline.Connectors.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.StorageProviders\NPipeline.StorageProviders.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.StorageProviders.Aws.S3\NPipeline.StorageProviders.Aws.S3.csproj"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.2"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.2"/>
     </ItemGroup>
 
 </Project>

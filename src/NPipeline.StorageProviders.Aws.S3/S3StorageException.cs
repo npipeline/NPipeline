@@ -1,5 +1,5 @@
 using Amazon.S3;
-using NPipeline.Connectors.Exceptions;
+using NPipeline.StorageProviders.Exceptions;
 
 namespace NPipeline.StorageProviders.Aws.S3;
 

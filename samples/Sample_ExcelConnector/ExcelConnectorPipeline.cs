@@ -2,6 +2,7 @@ using NPipeline.Connectors;
 using NPipeline.Connectors.Excel;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
+using NPipeline.StorageProviders.Models;
 using Sample_ExcelConnector.Nodes;
 
 namespace Sample_ExcelConnector;

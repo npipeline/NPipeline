@@ -2,6 +2,8 @@ using NPipeline.Connectors;
 using NPipeline.Connectors.Csv;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
+using NPipeline.StorageProviders;
+using NPipeline.StorageProviders.Models;
 using Sample_CsvConnector.Nodes;
 
 namespace Sample_CsvConnector;

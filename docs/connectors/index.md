@@ -15,12 +15,15 @@ Using connectors, you can quickly assemble pipelines that integrate with your ex
 
 ### Storage Abstraction
 
-All connectors work through the `IStorageProvider` abstraction, which enables them to work with multiple backend systems:
+All connectors work through the `IStorageProvider` abstraction from the `NPipeline.StorageProviders` project, which enables them to work with multiple backend systems:
 
-- **[Storage Provider Interface](./storage-provider.md)** - Learn about the abstraction layer that powers connectors
+- **[Storage Provider Interface](../storage-providers/storage-provider.md)** - Learn about the abstraction layer that powers connectors
+  - Storage provider abstractions are now in the `NPipeline.StorageProviders` namespace/assembly
   - Works with filesystems, cloud storage (S3, Azure), databases, and custom backends
   - Unified API for read, write, delete, list, and metadata operations
   - Built-in support for filesystem with resilient directory traversal
+
+> **Note:** Connectors depend on `NPipeline.StorageProviders` for storage abstractions. The storage provider interfaces and implementations have been extracted from `NPipeline.Connectors` into a separate `NPipeline.StorageProviders` project.
 
 ### Common Attributes
 
@@ -36,11 +39,11 @@ These common attributes work across all connectors (CSV, Excel, PostgreSQL, SQL 
 The following connectors are available:
 
 - **[CSV](./csv.md)**: Read from and write to Comma-Separated Values (CSV) files.
-  - Works with any storage backend via the `IStorageProvider` abstraction
+  - Works with any storage backend via the `IStorageProvider` abstraction from `NPipeline.StorageProviders`
 - **[Excel](./excel.md)**: Read from and write to Excel files (XLS and XLSX formats).
   - Supports both legacy XLS (binary) and modern XLSX (Open XML) formats
   - Configurable sheet selection, header handling, and type detection
-  - Works with any storage backend via the `IStorageProvider` abstraction
+  - Works with any storage backend via the `IStorageProvider` abstraction from `NPipeline.StorageProviders`
 - **[PostgreSQL](./postgresql.md)**: Read from and write to PostgreSQL databases.
   - Supports streaming reads, per-row and batched writes, and in-memory checkpointing
   - Uses Npgsql library for reliable database operations
@@ -72,7 +75,7 @@ var pipeline = new PipelineBuilder()
   .Build();
 ```
 
-> **Note:** NPipeline uses a storage abstraction layer that requires `StorageUri` objects instead of plain file paths. Use `StorageUri.FromFilePath()` for local files or `StorageUri.Parse()` for absolute URIs (e.g., "s3://bucket/key"). For local files, the resolver is optional. For custom providers or cloud storage, create a resolver via `StorageProviderFactory.CreateResolver()` and pass it explicitly.
+> **Note:** NPipeline uses a storage abstraction layer from `NPipeline.StorageProviders` that requires `StorageUri` objects instead of plain file paths. Use `StorageUri.FromFilePath()` for local files or `StorageUri.Parse()` for absolute URIs (e.g., "s3://bucket/key"). For local files, the resolver is optional. For custom providers or cloud storage, create a resolver via `StorageProviderFactory.CreateResolver()` and pass it explicitly.
 
 Explore the documentation for each specific connector to learn about its installation, configuration options, and usage examples.
 

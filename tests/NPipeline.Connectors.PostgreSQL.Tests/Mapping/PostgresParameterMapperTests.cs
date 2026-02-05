@@ -1,6 +1,6 @@
 using AwesomeAssertions;
-using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.PostgreSQL.Mapping;
+using NPipeline.Connectors.Attributes;
 
 namespace NPipeline.Connectors.PostgreSQL.Tests.Mapping;
 

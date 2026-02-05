@@ -4,7 +4,7 @@ using System.Reflection;
 using CsvHelper;
 using NPipeline.Connectors.Attributes;
 
-namespace NPipeline.Connectors.Csv;
+namespace NPipeline.Connectors.Csv.Mapping;
 
 /// <summary>
 ///     Builds property mapping delegates for writing objects to CSV rows.

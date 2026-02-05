@@ -1,6 +1,6 @@
 using Npgsql;
-using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.PostgreSQL.Mapping;
+using NPipeline.Connectors.Configuration;
 
 namespace NPipeline.Connectors.PostgreSQL.Configuration;
 

@@ -1,6 +1,7 @@
 using Npgsql;
-using NPipeline.Connectors.Exceptions;
 using NPipeline.Connectors.PostgreSQL.Tests.Fixtures;
+using NPipeline.StorageProviders.Exceptions;
+using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.PostgreSQL.Tests;
 

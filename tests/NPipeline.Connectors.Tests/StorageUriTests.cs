@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.Tests;
 

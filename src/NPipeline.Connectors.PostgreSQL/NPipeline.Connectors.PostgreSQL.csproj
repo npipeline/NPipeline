@@ -28,6 +28,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\NPipeline.Connectors\NPipeline.Connectors.csproj"/>
+        <ProjectReference Include="..\NPipeline.StorageProviders\NPipeline.StorageProviders.csproj"/>
     </ItemGroup>
 
     <ItemGroup>

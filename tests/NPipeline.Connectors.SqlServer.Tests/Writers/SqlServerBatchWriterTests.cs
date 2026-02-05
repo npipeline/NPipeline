@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using FakeItEasy;
-using NPipeline.Connectors.Abstractions;
-using NPipeline.Connectors.Exceptions;
+using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.Models;
 using NPipeline.Connectors.SqlServer.Configuration;
 using NPipeline.Connectors.SqlServer.Writers;
 

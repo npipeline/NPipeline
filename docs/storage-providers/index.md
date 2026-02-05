@@ -1,13 +1,15 @@
 ---
 title: Storage Providers Overview
-description: An overview of the available storage providers for NPipeline connectors.
+description: An overview of the available storage providers for NPipeline.
 sidebar_position: 1
 slug: /storage-providers
 ---
 
 ## Storage Providers Overview
 
-Storage providers are the underlying abstraction layer that enables NPipeline connectors to work with different storage backends. All connectors (CSV, Excel, PostgreSQL, SQL Server, etc.) use the `IStorageProvider` interface to read from and write to various storage systems.
+Storage providers are the underlying abstraction layer that enables NPipeline connectors to work with different storage backends. All connectors (CSV, Excel, PostgreSQL, SQL Server, etc.) use the `IStorageProvider` interface from the `NPipeline.StorageProviders` namespace to read from and write to various storage systems.
+
+> **Note:** Storage provider abstractions are now located in the `NPipeline.StorageProviders` namespace/assembly. Connectors depend on this project for storage operations.
 
 This abstraction allows you to:
 
@@ -19,7 +21,7 @@ This abstraction allows you to:
 
 ### IStorageProvider Interface
 
-The `IStorageProvider` interface defines a unified API for storage operations:
+The `IStorageProvider` interface (from `NPipeline.StorageProviders`) defines a unified API for storage operations:
 
 - **Read Operations**: Open streams for reading data
 - **Write Operations**: Open streams for writing data
@@ -29,7 +31,7 @@ The `IStorageProvider` interface defines a unified API for storage operations:
 
 ### StorageUri
 
-The `StorageUri` class represents a normalized storage location URI. It supports:
+The `StorageUri` class (from `NPipeline.StorageProviders`) represents a normalized storage location URI. It supports:
 
 - **Local files**: `file:///path/to/file` or via `StorageUri.FromFilePath()`
 - **Cloud storage**: `s3://bucket/key`, `azure://container/blob`, etc.
@@ -37,7 +39,7 @@ The `StorageUri` class represents a normalized storage location URI. It supports
 
 ### IStorageResolver
 
-The `IStorageResolver` interface is responsible for discovering and resolving storage providers capable of handling a given `StorageUri`. The resolver:
+The `IStorageResolver` interface (from `NPipeline.StorageProviders`) is responsible for discovering and resolving storage providers capable of handling a given `StorageUri`. The resolver:
 
 - Examines the URI scheme
 - Returns the appropriate provider instance
@@ -47,6 +49,10 @@ The `IStorageResolver` interface is responsible for discovering and resolving st
 
 The following storage providers are available:
 
+- **[Storage Provider Interface](./storage-provider.md)**: Learn about the storage abstraction layer that powers connectors
+  - Works with filesystems, cloud storage (S3, Azure), databases, and custom backends
+  - Unified API for read, write, delete, list, and metadata operations
+  - Built-in support for filesystem with resilient directory traversal
 - **[AWS S3](./aws-s3.md)**: Read from and write to Amazon S3 and S3-compatible storage services.
   - Supports AWS S3, MinIO, LocalStack, and other S3-compatible services
   - Stream-based I/O for efficient handling of large files
@@ -105,9 +111,11 @@ var provider = serviceProvider.GetRequiredService<S3StorageProvider>();
 
 ## Creating Custom Storage Providers
 
-You can implement custom storage providers by implementing the `IStorageProvider` interface:
+You can implement custom storage providers by implementing the `IStorageProvider` interface from `NPipeline.StorageProviders`:
 
 ```csharp
+using NPipeline.StorageProviders;
+
 public class CustomStorageProvider : IStorageProvider
 {
     public async Task<Stream> OpenReadAsync(StorageUri uri, CancellationToken cancellationToken = default)
@@ -126,7 +134,7 @@ public class CustomStorageProvider : IStorageProvider
 
 ## Next Steps
 
-- **[AWS S3 Storage Provider](aws-s3.md)**: Learn how to use the S3 storage provider
-- **[Storage Provider Interface](../connectors/storage-provider.md)**: Learn about the storage abstraction layer
+- **[Storage Provider Interface](./storage-provider.md)**: Learn about the storage abstraction layer
+- **[AWS S3 Storage Provider](./aws-s3.md)**: Learn how to use the S3 storage provider
 - **[CSV Connector](../connectors/csv.md)**: See storage providers in action with CSV files
 - **[Installation](../getting-started/installation.md)**: Review installation options for storage provider packages

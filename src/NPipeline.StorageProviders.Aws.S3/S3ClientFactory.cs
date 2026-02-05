@@ -1,7 +1,7 @@
 using Amazon;
 using Amazon.Runtime;
 using Amazon.S3;
-using NPipeline.Connectors;
+using NPipeline.StorageProviders.Models;
 using System.Collections.Concurrent;
 using System.Linq;
 
