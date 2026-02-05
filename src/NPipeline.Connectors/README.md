@@ -443,9 +443,9 @@ NPipeline.Connectors supports an extensible set of storage schemes through its p
 ### Built-in Schemes
 
 - **file** - Local file system access (Windows, Linux, macOS)
-  - Supports absolute paths: `file:///C:/data/input.csv`
-  - Supports relative paths: `file://./data/input.csv`
-  - Supports UNC paths: `file://server/share/data/input.csv`
+    - Supports absolute paths: `file:///C:/data/input.csv`
+    - Supports relative paths: `file://./data/input.csv`
+    - Supports UNC paths: `file://server/share/data/input.csv`
 
 ### Extensible Scheme Support
 

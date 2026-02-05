@@ -1,5 +1,5 @@
-using NPipeline.Connectors.SqlServer.Mapping;
 using NPipeline.Connectors.Configuration;
+using NPipeline.Connectors.SqlServer.Mapping;
 
 namespace NPipeline.Connectors.SqlServer.Configuration;
 

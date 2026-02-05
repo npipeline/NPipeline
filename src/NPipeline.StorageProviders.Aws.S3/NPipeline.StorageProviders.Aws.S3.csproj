@@ -8,14 +8,14 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="AWSSDK.S3" Version="4.0.0" />
-        <PackageReference Include="AWSSDK.Core" Version="4.0.0" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+        <PackageReference Include="AWSSDK.S3" Version="4.0.0"/>
+        <PackageReference Include="AWSSDK.Core" Version="4.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0"/>
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\NPipeline.StorageProviders\NPipeline.StorageProviders.csproj" />
-        <ProjectReference Include="..\NPipeline\NPipeline.csproj" />
+        <ProjectReference Include="..\NPipeline.StorageProviders\NPipeline.StorageProviders.csproj"/>
+        <ProjectReference Include="..\NPipeline\NPipeline.csproj"/>
     </ItemGroup>
 
 </Project>

@@ -1,10 +1,12 @@
 # NPipeline.StorageProviders
 
-Core storage provider abstractions for NPipeline connectors, enabling unified access to filesystems, cloud storage, and custom backends through a common interface.
+Core storage provider abstractions for NPipeline connectors, enabling unified access to filesystems, cloud storage, and custom backends through a common
+interface.
 
 ## Overview
 
-`NPipeline.StorageProviders` provides the foundational abstractions that all NPipeline connectors depend on for storage operations. This separation allows connectors to work with any storage backend without code changes.
+`NPipeline.StorageProviders` provides the foundational abstractions that all NPipeline connectors depend on for storage operations. This separation allows
+connectors to work with any storage backend without code changes.
 
 ### Key Features
 

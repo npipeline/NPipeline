@@ -1,5 +1,3 @@
-using NPipeline.Connectors.Configuration;
-
 namespace NPipeline.Connectors.Configuration;
 
 /// <summary>

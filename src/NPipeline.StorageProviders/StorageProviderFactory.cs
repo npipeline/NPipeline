@@ -12,6 +12,7 @@ namespace NPipeline.StorageProviders;
 public static class StorageProviderFactory
 {
     private const string FileSystemProviderTypeName = "NPipeline.StorageProviders.FileSystemStorageProvider, NPipeline.StorageProviders";
+
     private static readonly IReadOnlyDictionary<string, IReadOnlyList<string>> EmptyErrorMap =
         new ReadOnlyDictionary<string, IReadOnlyList<string>>(new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase));
 
@@ -259,7 +260,7 @@ public static class StorageProviderFactory
             {
                 errors["FileSystem"] =
                 [
-                    $"Type '{type.FullName}' does not implement {nameof(IStorageProvider)}."
+                    $"Type '{type.FullName}' does not implement {nameof(IStorageProvider)}.",
                 ];
             }
 

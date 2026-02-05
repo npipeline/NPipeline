@@ -2,8 +2,7 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using FluentAssertions;
 using FakeItEasy;
-using NPipeline.Connectors;
-using System.IO;
+using NPipeline.StorageProviders.Models;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Aws.S3.Tests;

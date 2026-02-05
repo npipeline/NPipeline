@@ -21,10 +21,10 @@ The `Sample_S3Connector` application showcases the following S3 storage provider
 1. **AWS Account**: You need an active AWS account with S3 access
 2. **S3 Bucket**: Create an S3 bucket to use for testing
 3. **IAM Permissions**: Ensure your AWS credentials have the following permissions:
-   - `s3:GetObject` - Read objects
-   - `s3:PutObject` - Write objects
-   - `s3:ListBucket` - List bucket contents
-   - `s3:GetObjectMetadata` - Get object metadata
+    - `s3:GetObject` - Read objects
+    - `s3:PutObject` - Write objects
+    - `s3:ListBucket` - List bucket contents
+    - `s3:GetObjectMetadata` - Get object metadata
 
 ### AWS Credentials
 
@@ -79,7 +79,8 @@ private const string SecretAccessKey = "your-secret-access-key";
 private const string Region = "us-east-1";
 ```
 
-**Important**: If you're using the default AWS credential chain (environment variables or AWS credentials file), you can leave `AccessKeyId` and `SecretAccessKey` as placeholder values and set `UseDefaultCredentialChain = true` in the options.
+**Important**: If you're using the default AWS credential chain (environment variables or AWS credentials file), you can leave `AccessKeyId` and
+`SecretAccessKey` as placeholder values and set `UseDefaultCredentialChain = true` in the options.
 
 ### 2. Create Test Data (Optional)
 
@@ -252,14 +253,14 @@ var options = new S3StorageProviderOptions
 
 ### S3StorageProviderOptions
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `DefaultRegion` | `RegionEndpoint?` | `null` | Default AWS region endpoint |
-| `DefaultCredentials` | `AWSCredentials?` | `null` | Default AWS credentials |
-| `UseDefaultCredentialChain` | `bool` | `true` | Use the default AWS credential chain |
-| `ServiceUrl` | `Uri?` | `null` | Service URL for S3-compatible endpoints |
-| `ForcePathStyle` | `bool` | `false` | Force path-style addressing |
-| `MultipartUploadThresholdBytes` | `long` | `64 MB` | Threshold for multipart upload |
+| Option                          | Type              | Default | Description                             |
+|---------------------------------|-------------------|---------|-----------------------------------------|
+| `DefaultRegion`                 | `RegionEndpoint?` | `null`  | Default AWS region endpoint             |
+| `DefaultCredentials`            | `AWSCredentials?` | `null`  | Default AWS credentials                 |
+| `UseDefaultCredentialChain`     | `bool`            | `true`  | Use the default AWS credential chain    |
+| `ServiceUrl`                    | `Uri?`            | `null`  | Service URL for S3-compatible endpoints |
+| `ForcePathStyle`                | `bool`            | `false` | Force path-style addressing             |
+| `MultipartUploadThresholdBytes` | `long`            | `64 MB` | Threshold for multipart upload          |
 
 ### URI Format
 
@@ -333,12 +334,12 @@ var options = new S3StorageProviderOptions
 
 The S3 storage provider translates AWS S3 exceptions into .NET exceptions:
 
-| AWS Error Code | .NET Exception Type |
-|----------------|-------------------|
+| AWS Error Code                                                | .NET Exception Type           |
+|---------------------------------------------------------------|-------------------------------|
 | `AccessDenied`, `InvalidAccessKeyId`, `SignatureDoesNotMatch` | `UnauthorizedAccessException` |
-| `InvalidBucketName`, `InvalidKey` | `ArgumentException` |
-| `NoSuchBucket`, `NotFound` | `FileNotFoundException` |
-| Other errors | `IOException` |
+| `InvalidBucketName`, `InvalidKey`                             | `ArgumentException`           |
+| `NoSuchBucket`, `NotFound`                                    | `FileNotFoundException`       |
+| Other errors                                                  | `IOException`                 |
 
 **Example:**
 

@@ -1,6 +1,7 @@
 # AWS S3 Storage Provider
 
-The AWS S3 storage provider enables NPipeline applications to read from and write to Amazon S3 buckets using a unified storage abstraction. This provider implements the `IStorageProvider` interface and supports the `s3://` URI scheme.
+The AWS S3 storage provider enables NPipeline applications to read from and write to Amazon S3 buckets using a unified storage abstraction. This provider
+implements the `IStorageProvider` interface and supports the `s3://` URI scheme.
 
 ## Overview
 
@@ -86,14 +87,14 @@ var provider = serviceProvider.GetRequiredService<S3StorageProvider>();
 
 The `S3StorageProviderOptions` class provides configuration options for the S3 storage provider:
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `DefaultRegion` | `RegionEndpoint?` | `null` | Default AWS region endpoint. If not specified, defaults to US East 1. |
-| `DefaultCredentials` | `AWSCredentials?` | `null` | Default AWS credentials. If not specified, the default AWS credential chain is used. |
-| `UseDefaultCredentialChain` | `bool` | `true` | Whether to use the default AWS credential chain (environment variables, ~/.aws/credentials, IAM roles). |
-| `ServiceUrl` | `Uri?` | `null` | Optional service URL for S3-compatible endpoints (e.g., MinIO, LocalStack). If not specified, uses the AWS S3 endpoint. |
-| `ForcePathStyle` | `bool` | `false` | Whether to force path-style addressing. Path-style addressing is required for some S3-compatible services. Default is virtual-hosted-style addressing. |
-| `MultipartUploadThresholdBytes` | `long` | `64 * 1024 * 1024` (64 MB) | Threshold in bytes for using multipart upload when writing files. |
+| Property                        | Type              | Default                    | Description                                                                                                                                            |
+|---------------------------------|-------------------|----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `DefaultRegion`                 | `RegionEndpoint?` | `null`                     | Default AWS region endpoint. If not specified, defaults to US East 1.                                                                                  |
+| `DefaultCredentials`            | `AWSCredentials?` | `null`                     | Default AWS credentials. If not specified, the default AWS credential chain is used.                                                                   |
+| `UseDefaultCredentialChain`     | `bool`            | `true`                     | Whether to use the default AWS credential chain (environment variables, ~/.aws/credentials, IAM roles).                                                |
+| `ServiceUrl`                    | `Uri?`            | `null`                     | Optional service URL for S3-compatible endpoints (e.g., MinIO, LocalStack). If not specified, uses the AWS S3 endpoint.                                |
+| `ForcePathStyle`                | `bool`            | `false`                    | Whether to force path-style addressing. Path-style addressing is required for some S3-compatible services. Default is virtual-hosted-style addressing. |
+| `MultipartUploadThresholdBytes` | `long`            | `64 * 1024 * 1024` (64 MB) | Threshold in bytes for using multipart upload when writing files.                                                                                      |
 
 ### Configuration Examples
 
@@ -188,14 +189,14 @@ s3://bucket-name/path/to/file.csv?contentType=text/csv
 
 ### Complete Parameter Table
 
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `region` | AWS region name (e.g., us-east-1, ap-southeast-2) | `region=ap-southeast-2` |
-| `accessKey` | AWS access key ID (for explicit credentials) | `accessKey=AKIAIOSFODNN7EXAMPLE` |
-| `secretKey` | AWS secret access key (for explicit credentials) | `secretKey=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
-| `serviceUrl` | Custom service URL for S3-compatible endpoints | `serviceUrl=http://localhost:9000` |
-| `pathStyle` | Force path-style addressing (true/false) | `pathStyle=true` |
-| `contentType` | Content type for the object when writing | `contentType=application/json` |
+| Parameter     | Description                                       | Example                                              |
+|---------------|---------------------------------------------------|------------------------------------------------------|
+| `region`      | AWS region name (e.g., us-east-1, ap-southeast-2) | `region=ap-southeast-2`                              |
+| `accessKey`   | AWS access key ID (for explicit credentials)      | `accessKey=AKIAIOSFODNN7EXAMPLE`                     |
+| `secretKey`   | AWS secret access key (for explicit credentials)  | `secretKey=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
+| `serviceUrl`  | Custom service URL for S3-compatible endpoints    | `serviceUrl=http://localhost:9000`                   |
+| `pathStyle`   | Force path-style addressing (true/false)          | `pathStyle=true`                                     |
+| `contentType` | Content type for the object when writing          | `contentType=application/json`                       |
 
 ### URI Examples
 
@@ -257,7 +258,8 @@ var uri = StorageUri.Parse(
 );
 ```
 
-⚠️ **Security Warning:** Avoid passing credentials in URIs in production code. URIs may be logged, displayed in error messages, or stored in configuration files. Use the credential chain instead.
+⚠️ **Security Warning:** Avoid passing credentials in URIs in production code. URIs may be logged, displayed in error messages, or stored in configuration
+files. Use the credential chain instead.
 
 ### 3. Default Credentials via S3StorageProviderOptions
 
@@ -440,7 +442,7 @@ if (metadata != null)
     Console.WriteLine($"Content Type: {metadata.ContentType}");
     Console.WriteLine($"Last Modified: {metadata.LastModified}");
     Console.WriteLine($"ETag: {metadata.ETag}");
-    
+
     foreach (var (key, value) in metadata.CustomMetadata)
     {
         Console.WriteLine($"  {key}: {value}");
@@ -469,7 +471,7 @@ try
 {
     using var stream = await provider.OpenReadAsync(uri, cts.Token);
     using var reader = new StreamReader(stream);
-    
+
     string? line;
     while ((line = await reader.ReadLineAsync(cts.Token)) != null)
     {
@@ -488,24 +490,24 @@ The S3 storage provider supports the following operations:
 
 ### Read Operations
 
-| Operation | Method | Description |
-|-----------|--------|-------------|
-| Open Read | `OpenReadAsync` | Opens a readable stream for an S3 object |
-| Check Existence | `ExistsAsync` | Checks if an S3 object exists |
-| List Objects | `ListAsync` | Lists objects in a bucket with optional recursion |
-| Get Metadata | `GetMetadataAsync` | Retrieves metadata for an S3 object |
+| Operation       | Method             | Description                                       |
+|-----------------|--------------------|---------------------------------------------------|
+| Open Read       | `OpenReadAsync`    | Opens a readable stream for an S3 object          |
+| Check Existence | `ExistsAsync`      | Checks if an S3 object exists                     |
+| List Objects    | `ListAsync`        | Lists objects in a bucket with optional recursion |
+| Get Metadata    | `GetMetadataAsync` | Retrieves metadata for an S3 object               |
 
 ### Write Operations
 
-| Operation | Method | Description |
-|-----------|--------|-------------|
+| Operation  | Method           | Description                              |
+|------------|------------------|------------------------------------------|
 | Open Write | `OpenWriteAsync` | Opens a writable stream for an S3 object |
 
 ### Unsupported Operations
 
-| Operation | Method | Reason |
-|-----------|--------|--------|
-| Delete | `DeleteAsync` | Not supported by design - throws `NotSupportedException` |
+| Operation | Method        | Reason                                                   |
+|-----------|---------------|----------------------------------------------------------|
+| Delete    | `DeleteAsync` | Not supported by design - throws `NotSupportedException` |
 
 ## Error Handling
 
@@ -513,16 +515,17 @@ The S3 storage provider translates AWS S3 exceptions into standard .NET exceptio
 
 ### Exception Mapping
 
-| S3 Error Code | .NET Exception | Description |
-|---------------|----------------|-------------|
+| S3 Error Code                                                 | .NET Exception                | Description                             |
+|---------------------------------------------------------------|-------------------------------|-----------------------------------------|
 | `AccessDenied`, `InvalidAccessKeyId`, `SignatureDoesNotMatch` | `UnauthorizedAccessException` | Authentication or authorization failure |
-| `InvalidBucketName`, `InvalidKey` | `ArgumentException` | Invalid bucket name or object key |
-| `NoSuchBucket`, `NotFound` | `FileNotFoundException` | Bucket or object not found |
-| Other `AmazonS3Exception` | `IOException` | General S3 access failure |
+| `InvalidBucketName`, `InvalidKey`                             | `ArgumentException`           | Invalid bucket name or object key       |
+| `NoSuchBucket`, `NotFound`                                    | `FileNotFoundException`       | Bucket or object not found              |
+| Other `AmazonS3Exception`                                     | `IOException`                 | General S3 access failure               |
 
 ### Custom S3StorageException
 
-The provider uses a custom `S3StorageException` that includes context about the bucket and key being accessed. This exception wraps the original `AmazonS3Exception` for detailed debugging.
+The provider uses a custom `S3StorageException` that includes context about the bucket and key being accessed. This exception wraps the original
+`AmazonS3Exception` for detailed debugging.
 
 ### Error Handling Example
 
@@ -562,13 +565,13 @@ To use the S3 storage provider, your AWS credentials must have appropriate IAM p
 
 ### Required Permissions by Operation
 
-| Operation | Required Permission |
-|-----------|---------------------|
-| Read (OpenReadAsync) | `s3:GetObject` |
-| Write (OpenWriteAsync) | `s3:PutObject` |
-| List (ListAsync) | `s3:ListBucket` |
-| Metadata (GetMetadataAsync) | `s3:GetObject` |
-| Existence (ExistsAsync) | `s3:GetObject` |
+| Operation                   | Required Permission |
+|-----------------------------|---------------------|
+| Read (OpenReadAsync)        | `s3:GetObject`      |
+| Write (OpenWriteAsync)      | `s3:PutObject`      |
+| List (ListAsync)            | `s3:ListBucket`     |
+| Metadata (GetMetadataAsync) | `s3:GetObject`      |
+| Existence (ExistsAsync)     | `s3:GetObject`      |
 
 ### Example IAM Policy
 
@@ -846,68 +849,68 @@ catch (Exception ex)
 
 ### Error Message Interpretation
 
-| Error Message | Likely Cause | Action |
-|---------------|--------------|--------|
-| "Access denied to S3 bucket" | Insufficient permissions | Check IAM permissions and bucket policies |
-| "Invalid S3 bucket or key" | Invalid bucket name or key format | Validate bucket name and key format |
-| "S3 bucket or key not found" | Bucket or object doesn't exist | Verify bucket and object existence |
-| "Failed to access S3 bucket" | Network or service issue | Check network connectivity and service status |
+| Error Message                | Likely Cause                      | Action                                        |
+|------------------------------|-----------------------------------|-----------------------------------------------|
+| "Access denied to S3 bucket" | Insufficient permissions          | Check IAM permissions and bucket policies     |
+| "Invalid S3 bucket or key"   | Invalid bucket name or key format | Validate bucket name and key format           |
+| "S3 bucket or key not found" | Bucket or object doesn't exist    | Verify bucket and object existence            |
+| "Failed to access S3 bucket" | Network or service issue          | Check network connectivity and service status |
 
 ## API Reference
 
 ### Core Interfaces and Types
 
 - **`IStorageProvider`** - Core storage provider interface
-  - Location: [`NPipeline.Connectors.Abstractions.IStorageProvider`](../NPipeline.Connectors/Abstractions/IStorageProvider.cs)
-  - Defines methods for reading, writing, listing, and checking existence of storage objects
+    - Location: [`NPipeline.Connectors.Abstractions.IStorageProvider`](../NPipeline.Connectors/Abstractions/IStorageProvider.cs)
+    - Defines methods for reading, writing, listing, and checking existence of storage objects
 
 - **`StorageUri`** - URI type for storage resources
-  - Location: [`NPipeline.Connectors.StorageUri`](../NPipeline.Connectors/StorageUri.cs)
-  - Represents a URI for storage resources with scheme, host, path, and parameters
+    - Location: [`NPipeline.Connectors.StorageUri`](../NPipeline.Connectors/StorageUri.cs)
+    - Represents a URI for storage resources with scheme, host, path, and parameters
 
 - **`StorageScheme`** - Type alias for storage scheme
-  - Location: [`NPipeline.Connectors.StorageScheme`](../NPipeline.Connectors/StorageScheme.cs)
-  - Represents the scheme component of a storage URI (e.g., "s3", "file")
+    - Location: [`NPipeline.Connectors.StorageScheme`](../NPipeline.Connectors/StorageScheme.cs)
+    - Represents the scheme component of a storage URI (e.g., "s3", "file")
 
 - **`StorageItem`** - Represents a storage item (file or directory)
-  - Location: [`NPipeline.Connectors.StorageItem`](../NPipeline.Connectors/StorageItem.cs)
-  - Contains URI, size, last modified date, and directory flag
+    - Location: [`NPipeline.Connectors.StorageItem`](../NPipeline.Connectors/StorageItem.cs)
+    - Contains URI, size, last modified date, and directory flag
 
 - **`StorageMetadata`** - Metadata for storage objects
-  - Location: [`NPipeline.Connectors.StorageMetadata`](../NPipeline.Connectors/StorageMetadata.cs)
-  - Contains size, content type, last modified date, ETag, and custom metadata
+    - Location: [`NPipeline.Connectors.StorageMetadata`](../NPipeline.Connectors/StorageMetadata.cs)
+    - Contains size, content type, last modified date, ETag, and custom metadata
 
 - **`StorageProviderMetadata`** - Metadata describing a storage provider
-  - Location: [`NPipeline.Connectors.StorageProviderMetadata`](../NPipeline.Connectors/StorageProviderMetadata.cs)
-  - Contains provider name, supported schemes, and capabilities
+    - Location: [`NPipeline.Connectors.StorageProviderMetadata`](../NPipeline.Connectors/StorageProviderMetadata.cs)
+    - Contains provider name, supported schemes, and capabilities
 
 ### S3-Specific Types
 
 - **`S3StorageProvider`** - S3 storage provider implementation
-  - Location: [`S3StorageProvider.cs`](S3StorageProvider.cs)
-  - Implements `IStorageProvider` and `IStorageProviderMetadataProvider`
+    - Location: [`S3StorageProvider.cs`](S3StorageProvider.cs)
+    - Implements `IStorageProvider` and `IStorageProviderMetadataProvider`
 
 - **`S3StorageProviderOptions`** - Configuration options
-  - Location: [`S3StorageProviderOptions.cs`](S3StorageProviderOptions.cs)
-  - Contains region, credentials, service URL, and other settings
+    - Location: [`S3StorageProviderOptions.cs`](S3StorageProviderOptions.cs)
+    - Contains region, credentials, service URL, and other settings
 
 - **`S3ClientFactory`** - Factory for creating S3 clients
-  - Location: [`S3ClientFactory.cs`](S3ClientFactory.cs)
-  - Creates and caches `AmazonS3Client` instances
+    - Location: [`S3ClientFactory.cs`](S3ClientFactory.cs)
+    - Creates and caches `AmazonS3Client` instances
 
 - **`S3WriteStream`** - Stream for writing to S3
-  - Location: [`S3WriteStream.cs`](S3WriteStream.cs)
-  - Implements multipart upload for large files
+    - Location: [`S3WriteStream.cs`](S3WriteStream.cs)
+    - Implements multipart upload for large files
 
 - **`S3StorageException`** - Custom exception for S3 errors
-  - Location: [`S3StorageException.cs`](S3StorageException.cs)
-  - Wraps `AmazonS3Exception` with bucket/key context
+    - Location: [`S3StorageException.cs`](S3StorageException.cs)
+    - Wraps `AmazonS3Exception` with bucket/key context
 
 ### Extension Methods
 
 - **`ServiceCollectionExtensions.AddS3StorageProvider`**
-  - Location: [`ServiceCollectionExtensions.cs`](ServiceCollectionExtensions.cs)
-  - Extension method for registering S3 storage provider in DI container
+    - Location: [`ServiceCollectionExtensions.cs`](ServiceCollectionExtensions.cs)
+    - Extension method for registering S3 storage provider in DI container
 
 ## Additional Resources
 

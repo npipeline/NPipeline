@@ -1,8 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
-using NPipeline.Connectors.PostgreSQL.Exceptions;
-using NPipeline.Connectors.PostgreSQL.Mapping;
 using NPipeline.Connectors.Attributes;
+using NPipeline.Connectors.PostgreSQL.Exceptions;
 
 namespace NPipeline.Connectors.PostgreSQL.Mapping;
 

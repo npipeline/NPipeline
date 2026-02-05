@@ -158,6 +158,7 @@ public sealed record StorageUri
 
         var basePath = Path.TrimEnd('/');
         var segment = relativePath.Trim('/');
+
         var combined = string.IsNullOrEmpty(basePath)
             ? "/" + segment
             : $"{basePath}/{segment}";

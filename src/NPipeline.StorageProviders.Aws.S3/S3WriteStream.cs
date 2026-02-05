@@ -4,21 +4,21 @@ using Amazon.S3.Model;
 namespace NPipeline.StorageProviders.Aws.S3;
 
 /// <summary>
-/// A stream that buffers writes and uploads to S3 on disposal or flush.
+///     A stream that buffers writes and uploads to S3 on disposal or flush.
 /// </summary>
 public sealed class S3WriteStream : Stream
 {
-    private readonly IAmazonS3 _s3Client;
     private readonly string _bucket;
-    private readonly string _key;
     private readonly string? _contentType;
+    private readonly string _key;
+    private readonly IAmazonS3 _s3Client;
     private readonly string _tempFilePath;
-    private FileStream? _tempFileStream;
     private bool _disposed;
+    private FileStream? _tempFileStream;
     private bool _uploaded;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="S3WriteStream"/> class.
+    ///     Initializes a new instance of the <see cref="S3WriteStream" /> class.
     /// </summary>
     /// <param name="s3Client">The Amazon S3 client.</param>
     /// <param name="bucket">The S3 bucket name.</param>
@@ -38,12 +38,13 @@ public sealed class S3WriteStream : Stream
         _contentType = contentType;
         _ = multipartUploadThreshold; // Reserved for future multipart upload support
         _tempFilePath = Path.Combine(Path.GetTempPath(), $"s3-upload-{Guid.NewGuid()}.tmp");
+
         _tempFileStream = new FileStream(
             _tempFilePath,
             FileMode.Create,
             FileAccess.ReadWrite,
             FileShare.None,
-            bufferSize: 81920,
+            81920,
             FileOptions.DeleteOnClose | FileOptions.Asynchronous);
     }
 
@@ -119,10 +120,9 @@ public sealed class S3WriteStream : Stream
         CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+
         if (_tempFileStream is null)
-        {
             ObjectDisposedException.ThrowIf(true, this);
-        }
 
         await _tempFileStream.WriteAsync(new ReadOnlyMemory<byte>(buffer, offset, count), cancellationToken).ConfigureAwait(false);
     }
@@ -133,10 +133,9 @@ public sealed class S3WriteStream : Stream
         CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+
         if (_tempFileStream is null)
-        {
             ObjectDisposedException.ThrowIf(true, this);
-        }
 
         await _tempFileStream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
     }
@@ -145,9 +144,7 @@ public sealed class S3WriteStream : Stream
     protected override void Dispose(bool disposing)
     {
         if (_disposed)
-        {
             return;
-        }
 
         _disposed = true;
 
@@ -181,9 +178,7 @@ public sealed class S3WriteStream : Stream
     public override async ValueTask DisposeAsync()
     {
         if (_disposed)
-        {
             return;
-        }
 
         _disposed = true;
 
@@ -214,15 +209,13 @@ public sealed class S3WriteStream : Stream
     }
 
     /// <summary>
-    /// Uploads the buffered data to S3.
+    ///     Uploads the buffered data to S3.
     /// </summary>
     /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
     private async Task UploadAsync(CancellationToken cancellationToken)
     {
         if (_tempFileStream is null || _uploaded)
-        {
             return;
-        }
 
         _uploaded = true;
 
@@ -232,13 +225,11 @@ public sealed class S3WriteStream : Stream
             Key = _key,
             InputStream = _tempFileStream,
             AutoCloseStream = false,
-            UseChunkEncoding = false
+            UseChunkEncoding = false,
         };
 
         if (!string.IsNullOrEmpty(_contentType))
-        {
             request.ContentType = _contentType;
-        }
 
         try
         {
@@ -265,7 +256,7 @@ public sealed class S3WriteStream : Stream
                     $"S3 bucket '{bucket}' or key '{key}' not found.", ex),
             _
                 => new IOException(
-                    $"Failed to upload to S3 bucket '{bucket}' and key '{key}'. {ex.Message}", ex)
+                    $"Failed to upload to S3 bucket '{bucket}' and key '{key}'. {ex.Message}", ex),
         };
     }
 }

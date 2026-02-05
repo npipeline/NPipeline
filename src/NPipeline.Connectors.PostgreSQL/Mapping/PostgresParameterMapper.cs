@@ -1,7 +1,6 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using Npgsql;
-using NPipeline.Connectors.PostgreSQL.Mapping;
 using NPipeline.Connectors.Attributes;
 
 namespace NPipeline.Connectors.PostgreSQL.Mapping;

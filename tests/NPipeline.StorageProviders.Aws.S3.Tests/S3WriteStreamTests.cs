@@ -2,7 +2,6 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using FluentAssertions;
 using FakeItEasy;
-using System.IO;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Aws.S3.Tests;

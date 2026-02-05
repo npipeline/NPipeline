@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Net;
 using System.Runtime.CompilerServices;
 using Amazon.S3;
 using Amazon.S3.Model;
@@ -7,16 +9,16 @@ using NPipeline.StorageProviders.Models;
 namespace NPipeline.StorageProviders.Aws.S3;
 
 /// <summary>
-/// Storage provider for AWS S3 that implements the <see cref="IStorageProvider"/> interface.
-/// Handles "s3" scheme URIs and supports reading, writing, listing, and metadata operations.
+///     Storage provider for AWS S3 that implements the <see cref="IStorageProvider" /> interface.
+///     Handles "s3" scheme URIs and supports reading, writing, listing, and metadata operations.
 /// </summary>
 /// <remarks>
-/// - Async-first API design
-/// - Stream-based I/O for scalability
-/// - Proper error handling and exception translation
-/// - Cancellation token support throughout
-/// - Thread-safe implementation
-/// - Consistent with existing FileSystemStorageProvider patterns
+///     - Async-first API design
+///     - Stream-based I/O for scalability
+///     - Proper error handling and exception translation
+///     - Cancellation token support throughout
+///     - Thread-safe implementation
+///     - Consistent with existing FileSystemStorageProvider patterns
 /// </remarks>
 public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetadataProvider
 {
@@ -24,7 +26,7 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
     private readonly S3StorageProviderOptions _options;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="S3StorageProvider"/> class.
+    ///     Initializes a new instance of the <see cref="S3StorageProvider" /> class.
     /// </summary>
     /// <param name="clientFactory">The S3 client factory.</param>
     /// <param name="options">The S3 storage provider options.</param>
@@ -35,12 +37,12 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
     }
 
     /// <summary>
-    /// Gets the storage scheme supported by this provider.
+    ///     Gets the storage scheme supported by this provider.
     /// </summary>
     public StorageScheme Scheme => StorageScheme.S3;
 
     /// <summary>
-    /// Determines whether this provider can handle the specified storage URI.
+    ///     Determines whether this provider can handle the specified storage URI.
     /// </summary>
     /// <param name="uri">The storage URI to check.</param>
     /// <returns>True if the URI scheme matches "s3"; otherwise false.</returns>
@@ -51,7 +53,7 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
     }
 
     /// <summary>
-    /// Opens a readable stream for the specified S3 object.
+    ///     Opens a readable stream for the specified S3 object.
     /// </summary>
     /// <param name="uri">The storage URI pointing to the S3 object.</param>
     /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
@@ -68,7 +70,7 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
             var request = new GetObjectRequest
             {
                 BucketName = bucket,
-                Key = key
+                Key = key,
             };
 
             var response = await client.GetObjectAsync(request, cancellationToken).ConfigureAwait(false);
@@ -81,7 +83,7 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
     }
 
     /// <summary>
-    /// Opens a writable stream for the specified S3 object.
+    ///     Opens a writable stream for the specified S3 object.
     /// </summary>
     /// <param name="uri">The storage URI pointing to the S3 object.</param>
     /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
@@ -101,7 +103,7 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
     }
 
     /// <summary>
-    /// Checks whether an S3 object exists at the specified URI.
+    ///     Checks whether an S3 object exists at the specified URI.
     /// </summary>
     /// <param name="uri">The storage URI to check.</param>
     /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
@@ -118,13 +120,13 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
             var request = new GetObjectMetadataRequest
             {
                 BucketName = bucket,
-                Key = key
+                Key = key,
             };
 
             _ = await client.GetObjectMetadataAsync(request, cancellationToken).ConfigureAwait(false);
             return true;
         }
-        catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
             return false;
         }
@@ -135,8 +137,8 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
     }
 
     /// <summary>
-    /// Deletes the S3 object at the specified URI.
-    /// Delete operations are not supported by this provider.
+    ///     Deletes the S3 object at the specified URI.
+    ///     Delete operations are not supported by this provider.
     /// </summary>
     /// <param name="uri">The storage URI of the S3 object to delete.</param>
     /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
@@ -147,12 +149,12 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
     }
 
     /// <summary>
-    /// Lists S3 objects at the specified prefix.
+    ///     Lists S3 objects at the specified prefix.
     /// </summary>
     /// <param name="prefix">The URI prefix to list.</param>
     /// <param name="recursive">If true, recursively lists all objects; if false, lists only objects in the specified prefix.</param>
     /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>An async enumerable of <see cref="StorageItem"/> representing S3 objects.</returns>
+    /// <returns>An async enumerable of <see cref="StorageItem" /> representing S3 objects.</returns>
     public IAsyncEnumerable<StorageItem> ListAsync(
         StorageUri prefix,
         bool recursive = false,
@@ -163,11 +165,11 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
     }
 
     /// <summary>
-    /// Retrieves metadata for the S3 object at the specified URI.
+    ///     Retrieves metadata for the S3 object at the specified URI.
     /// </summary>
     /// <param name="uri">The storage URI pointing to the S3 object.</param>
     /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing <see cref="StorageMetadata"/> if the object exists; otherwise null.</returns>
+    /// <returns>A task producing <see cref="StorageMetadata" /> if the object exists; otherwise null.</returns>
     public async Task<StorageMetadata?> GetMetadataAsync(StorageUri uri, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(uri);
@@ -180,7 +182,7 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
             var request = new GetObjectMetadataRequest
             {
                 BucketName = bucket,
-                Key = key
+                Key = key,
             };
 
             var response = await client.GetObjectMetadataAsync(request, cancellationToken).ConfigureAwait(false);
@@ -200,12 +202,12 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
                 ContentType = response.Headers.ContentType,
                 ETag = response.ETag,
                 CustomMetadata = customMetadata,
-                IsDirectory = false
+                IsDirectory = false,
             };
 
             return metadata;
         }
-        catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
             return null;
         }
@@ -216,9 +218,9 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
     }
 
     /// <summary>
-    /// Gets metadata describing this storage provider's capabilities.
+    ///     Gets metadata describing this storage provider's capabilities.
     /// </summary>
-    /// <returns>A <see cref="StorageProviderMetadata"/> object containing information about the provider's supported features.</returns>
+    /// <returns>A <see cref="StorageProviderMetadata" /> object containing information about the provider's supported features.</returns>
     public StorageProviderMetadata GetMetadata()
     {
         return new StorageProviderMetadata
@@ -235,18 +237,17 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
             {
                 ["multipartUploadThresholdBytes"] = _options.MultipartUploadThresholdBytes,
                 ["supportsPathStyle"] = true,
-                ["supportsServiceUrl"] = true
-            }
+                ["supportsServiceUrl"] = true,
+            },
         };
     }
 
     private static (string bucket, string key) GetBucketAndKey(StorageUri uri)
     {
         var bucket = uri.Host;
+
         if (string.IsNullOrEmpty(bucket))
-        {
             throw new ArgumentException("S3 URI must specify a bucket name in the host component.", nameof(uri));
-        }
 
         var key = uri.Path.TrimStart('/');
         return (bucket, key);
@@ -264,7 +265,9 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
         {
             BucketName = bucket,
             Prefix = key,
-            Delimiter = recursive ? string.Empty : "/"
+            Delimiter = recursive
+                ? string.Empty
+                : "/",
         };
 
         string? continuationToken = null;
@@ -274,16 +277,15 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
             cancellationToken.ThrowIfCancellationRequested();
 
             if (continuationToken != null)
-            {
                 request.ContinuationToken = continuationToken;
-            }
 
             ListObjectsV2Response response;
+
             try
             {
                 response = await client.ListObjectsV2Async(request, cancellationToken).ConfigureAwait(false);
             }
-            catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
                 // Bucket doesn't exist, return empty
                 yield break;
@@ -305,7 +307,7 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
 #if DEBUG
                 if (s3Object.Size is null)
                 {
-                    System.Diagnostics.Debug.WriteLine(
+                    Debug.WriteLine(
                         $"S3 object '{bucket}/{objectKey}' returned without size metadata; defaulting to 0.");
                 }
 #endif
@@ -315,7 +317,7 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
                     Uri = itemUri,
                     Size = size,
                     LastModified = NormalizeDateTime(s3Object.LastModified),
-                    IsDirectory = false
+                    IsDirectory = false,
                 };
             }
 
@@ -334,14 +336,13 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
                         Uri = itemUri,
                         Size = 0,
                         LastModified = DateTimeOffset.UtcNow,
-                        IsDirectory = true
+                        IsDirectory = true,
                     };
                 }
             }
 
             continuationToken = response.NextContinuationToken;
-        }
-        while (!string.IsNullOrEmpty(continuationToken));
+        } while (!string.IsNullOrEmpty(continuationToken));
     }
 
     private static Exception TranslateS3Exception(AmazonS3Exception ex, string bucket, string key)
@@ -359,13 +360,14 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
                     $"S3 bucket '{bucket}' or key '{key}' not found.", ex),
             _
                 => new IOException(
-                    $"Failed to access S3 bucket '{bucket}' and key '{key}'. {ex.Message}", ex)
+                    $"Failed to access S3 bucket '{bucket}' and key '{key}'. {ex.Message}", ex),
         };
     }
 
     private static DateTimeOffset NormalizeDateTime(DateTime? value)
     {
         var actual = value ?? DateTime.UtcNow;
+
         var utc = actual.Kind == DateTimeKind.Unspecified
             ? DateTime.SpecifyKind(actual, DateTimeKind.Utc)
             : actual.ToUniversalTime();
@@ -375,8 +377,8 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
 
     private sealed class S3ResponseStream : Stream
     {
-        private readonly GetObjectResponse _response;
         private readonly Stream _inner;
+        private readonly GetObjectResponse _response;
 
         public S3ResponseStream(GetObjectResponse response)
         {
@@ -395,40 +397,70 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
             set => _inner.Position = value;
         }
 
-        public override void Flush() => _inner.Flush();
+        public override void Flush()
+        {
+            _inner.Flush();
+        }
 
-        public override Task FlushAsync(CancellationToken cancellationToken) => _inner.FlushAsync(cancellationToken);
+        public override Task FlushAsync(CancellationToken cancellationToken)
+        {
+            return _inner.FlushAsync(cancellationToken);
+        }
 
-        public override int Read(byte[] buffer, int offset, int count) => _inner.Read(buffer, offset, count);
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            return _inner.Read(buffer, offset, count);
+        }
 
-        public override int Read(Span<byte> buffer) => _inner.Read(buffer);
+        public override int Read(Span<byte> buffer)
+        {
+            return _inner.Read(buffer);
+        }
 
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            => _inner.ReadAsync(buffer, offset, count, cancellationToken);
+        {
+            return _inner.ReadAsync(buffer, offset, count, cancellationToken);
+        }
 
         public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
-            => _inner.ReadAsync(buffer, cancellationToken);
+        {
+            return _inner.ReadAsync(buffer, cancellationToken);
+        }
 
-        public override long Seek(long offset, SeekOrigin origin) => _inner.Seek(offset, origin);
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            return _inner.Seek(offset, origin);
+        }
 
-        public override void SetLength(long value) => _inner.SetLength(value);
+        public override void SetLength(long value)
+        {
+            _inner.SetLength(value);
+        }
 
-        public override void Write(byte[] buffer, int offset, int count) => _inner.Write(buffer, offset, count);
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            _inner.Write(buffer, offset, count);
+        }
 
-        public override void Write(ReadOnlySpan<byte> buffer) => _inner.Write(buffer);
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            _inner.Write(buffer);
+        }
 
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            => _inner.WriteAsync(buffer, offset, count, cancellationToken);
+        {
+            return _inner.WriteAsync(buffer, offset, count, cancellationToken);
+        }
 
         public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
-            => _inner.WriteAsync(buffer, cancellationToken);
+        {
+            return _inner.WriteAsync(buffer, cancellationToken);
+        }
 
         protected override void Dispose(bool disposing)
         {
             if (disposing)
-            {
                 _response.Dispose();
-            }
 
             base.Dispose(disposing);
         }

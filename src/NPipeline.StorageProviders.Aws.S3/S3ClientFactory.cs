@@ -1,22 +1,21 @@
+using System.Collections.Concurrent;
 using Amazon;
 using Amazon.Runtime;
 using Amazon.S3;
 using NPipeline.StorageProviders.Models;
-using System.Collections.Concurrent;
-using System.Linq;
 
 namespace NPipeline.StorageProviders.Aws.S3;
 
 /// <summary>
-/// Factory for creating and caching Amazon S3 clients with flexible authentication options.
+///     Factory for creating and caching Amazon S3 clients with flexible authentication options.
 /// </summary>
 public class S3ClientFactory
 {
-    private readonly S3StorageProviderOptions _options;
     private readonly ConcurrentDictionary<string, IAmazonS3> _clientCache = new();
+    private readonly S3StorageProviderOptions _options;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="S3ClientFactory"/> class.
+    ///     Initializes a new instance of the <see cref="S3ClientFactory" /> class.
     /// </summary>
     /// <param name="options">The S3 storage provider options.</param>
     public S3ClientFactory(S3StorageProviderOptions options)
@@ -25,11 +24,11 @@ public class S3ClientFactory
     }
 
     /// <summary>
-    /// Gets or creates an Amazon S3 client for the specified storage URI.
+    ///     Gets or creates an Amazon S3 client for the specified storage URI.
     /// </summary>
     /// <param name="uri">The storage URI containing bucket, region, and optional credentials.</param>
     /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing an <see cref="IAmazonS3"/> client.</returns>
+    /// <returns>A task producing an <see cref="IAmazonS3" /> client.</returns>
     public virtual Task<IAmazonS3> GetClientAsync(StorageUri uri, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -42,14 +41,14 @@ public class S3ClientFactory
     }
 
     /// <summary>
-    /// Gets or creates an Amazon S3 client with the specified configuration.
+    ///     Gets or creates an Amazon S3 client with the specified configuration.
     /// </summary>
     /// <param name="credentials">The AWS credentials to use.</param>
     /// <param name="region">The AWS region endpoint.</param>
     /// <param name="serviceUrl">Optional service URL for S3-compatible endpoints.</param>
     /// <param name="forcePathStyle">Whether to force path-style addressing.</param>
     /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing an <see cref="IAmazonS3"/> client.</returns>
+    /// <returns>A task producing an <see cref="IAmazonS3" /> client.</returns>
     public virtual Task<IAmazonS3> GetClientAsync(
         AWSCredentials? credentials,
         RegionEndpoint region,
@@ -66,7 +65,7 @@ public class S3ClientFactory
             {
                 RegionEndpoint = region,
                 ServiceURL = serviceUrl?.ToString(),
-                ForcePathStyle = forcePathStyle
+                ForcePathStyle = forcePathStyle,
             };
 
             return credentials is null
@@ -78,7 +77,7 @@ public class S3ClientFactory
     }
 
     /// <summary>
-    /// Extracts AWS credentials from the storage URI or returns default credentials.
+    ///     Extracts AWS credentials from the storage URI or returns default credentials.
     /// </summary>
     /// <param name="uri">The storage URI.</param>
     /// <returns>The AWS credentials, or null if using default credential chain.</returns>
@@ -91,9 +90,7 @@ public class S3ClientFactory
         if (hasAccessKey || hasSecretKey || hasSessionToken)
         {
             if (!hasAccessKey || !hasSecretKey)
-            {
                 throw new ArgumentException("Both accessKey and secretKey must be provided for explicit S3 credentials.", nameof(uri));
-            }
 
             return hasSessionToken
                 ? new SessionAWSCredentials(accessKey!, secretKey!, sessionToken!)
@@ -101,9 +98,7 @@ public class S3ClientFactory
         }
 
         if (_options.DefaultCredentials is not null)
-        {
             return _options.DefaultCredentials;
-        }
 
         if (!_options.UseDefaultCredentialChain)
         {
@@ -115,7 +110,7 @@ public class S3ClientFactory
     }
 
     /// <summary>
-    /// Extracts the AWS region from the storage URI or returns the default region.
+    ///     Extracts the AWS region from the storage URI or returns the default region.
     /// </summary>
     /// <param name="uri">The storage URI.</param>
     /// <returns>The AWS region endpoint.</returns>
@@ -125,13 +120,12 @@ public class S3ClientFactory
             !string.IsNullOrEmpty(regionString))
         {
             var normalized = regionString.Trim();
+
             var match = RegionEndpoint.EnumerableAllRegions
                 .FirstOrDefault(r => string.Equals(r.SystemName, normalized, StringComparison.OrdinalIgnoreCase));
 
             if (match is null)
-            {
                 throw new ArgumentException($"Invalid AWS region: {regionString}", nameof(uri));
-            }
 
             return match;
         }
@@ -140,7 +134,7 @@ public class S3ClientFactory
     }
 
     /// <summary>
-    /// Extracts the service URL from the storage URI or returns the default service URL.
+    ///     Extracts the service URL from the storage URI or returns the default service URL.
     /// </summary>
     /// <param name="uri">The storage URI.</param>
     /// <returns>The service URL, or null if using AWS S3.</returns>
@@ -150,10 +144,9 @@ public class S3ClientFactory
             !string.IsNullOrEmpty(serviceUrlString))
         {
             var decoded = Uri.UnescapeDataString(serviceUrlString);
+
             if (Uri.TryCreate(decoded, UriKind.Absolute, out var serviceUrl))
-            {
                 return serviceUrl;
-            }
 
             throw new ArgumentException($"Invalid service URL: {serviceUrlString}", nameof(uri));
         }
@@ -162,7 +155,7 @@ public class S3ClientFactory
     }
 
     /// <summary>
-    /// Determines whether to force path-style addressing from the storage URI or options.
+    ///     Determines whether to force path-style addressing from the storage URI or options.
     /// </summary>
     /// <param name="uri">The storage URI.</param>
     /// <returns>True if path-style addressing should be forced; otherwise false.</returns>
@@ -172,9 +165,7 @@ public class S3ClientFactory
             !string.IsNullOrEmpty(pathStyleString))
         {
             if (bool.TryParse(pathStyleString, out var pathStyle))
-            {
                 return pathStyle;
-            }
 
             throw new ArgumentException($"Invalid pathStyle value: {pathStyleString}. Must be 'true' or 'false'.", nameof(uri));
         }
@@ -183,7 +174,7 @@ public class S3ClientFactory
     }
 
     /// <summary>
-    /// Builds a cache key for the client configuration.
+    ///     Builds a cache key for the client configuration.
     /// </summary>
     private static string BuildCacheKey(
         AWSCredentials? credentials,
@@ -195,10 +186,12 @@ public class S3ClientFactory
         {
             region.SystemName,
             forcePathStyle.ToString(),
-            serviceUrl?.ToString() ?? "default"
+            serviceUrl?.ToString() ?? "default",
         };
 
-        parts.Add(credentials is null ? "default" : BuildCredentialsKey(credentials));
+        parts.Add(credentials is null
+            ? "default"
+            : BuildCredentialsKey(credentials));
 
         return string.Join("|", parts);
     }
@@ -206,6 +199,7 @@ public class S3ClientFactory
     private static string BuildCredentialsKey(AWSCredentials credentials)
     {
         var immutable = credentials.GetCredentials();
+
         var hash = HashCode.Combine(
             credentials.GetType().FullName,
             immutable.AccessKey,

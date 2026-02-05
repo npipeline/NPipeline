@@ -1,15 +1,13 @@
-using System.Text;
-using Amazon;
+﻿using Amazon;
 using Amazon.Runtime;
 using Microsoft.Extensions.DependencyInjection;
-using NPipeline.StorageProviders;
-using NPipeline.StorageProviders.Models;
 using NPipeline.StorageProviders.Aws.S3;
+using NPipeline.StorageProviders.Models;
 
-namespace Sample_S3Connector;
+namespace Sample_S3StorageProvider;
 
 /// <summary>
-///     Entry point for S3 Connector sample demonstrating AWS S3 storage provider usage.
+///     Entry point for S3 Storage Provider sample demonstrating AWS S3 storage provider usage.
 ///     This sample shows how to read, write, list, and manage files in AWS S3 using the NPipeline storage provider.
 /// </summary>
 public sealed class Program
@@ -19,22 +17,22 @@ public sealed class Program
     // ========================================================================
 
     /// <summary>
-    /// Your AWS S3 bucket name. Replace with your actual bucket name.
+    ///     Your AWS S3 bucket name. Replace with your actual bucket name.
     /// </summary>
     private const string BucketName = "your-bucket-name-here";
 
     /// <summary>
-    /// Your AWS access key ID. Replace with your actual credentials or use the default credential chain.
+    ///     Your AWS access key ID. Replace with your actual credentials or use the default credential chain.
     /// </summary>
     private const string AccessKeyId = "your-access-key-id";
 
     /// <summary>
-    /// Your AWS secret access key. Replace with your actual credentials or use the default credential chain.
+    ///     Your AWS secret access key. Replace with your actual credentials or use the default credential chain.
     /// </summary>
     private const string SecretAccessKey = "your-secret-access-key";
 
     /// <summary>
-    /// Your AWS region. Replace with your actual region.
+    ///     Your AWS region. Replace with your actual region.
     /// </summary>
     private const string Region = "us-east-1";
 
@@ -73,7 +71,7 @@ public sealed class Program
             await Example4_CheckFileExistence();
             await Example5_GetFileMetadata();
             await Example6_UsingDependencyInjection();
-            await Example7_S3CompatibleEndpoints();
+            Example7_S3CompatibleEndpoints();
 
             Console.WriteLine();
             Console.WriteLine("=== All examples completed successfully! ===");
@@ -98,7 +96,7 @@ public sealed class Program
     // ========================================================================
 
     /// <summary>
-    /// Example 1: Demonstrates reading a CSV file from S3.
+    ///     Example 1: Demonstrates reading a CSV file from S3.
     /// </summary>
     private static async Task Example1_BasicReadFromS3()
     {
@@ -112,7 +110,7 @@ public sealed class Program
         {
             DefaultRegion = RegionEndpoint.GetBySystemName(Region),
             DefaultCredentials = new BasicAWSCredentials(AccessKeyId, SecretAccessKey),
-            UseDefaultCredentialChain = false
+            UseDefaultCredentialChain = false,
         };
 
         var clientFactory = new S3ClientFactory(options);
@@ -163,7 +161,7 @@ public sealed class Program
     // ========================================================================
 
     /// <summary>
-    /// Example 2: Demonstrates writing data to S3.
+    ///     Example 2: Demonstrates writing data to S3.
     /// </summary>
     private static async Task Example2_BasicWriteToS3()
     {
@@ -177,7 +175,7 @@ public sealed class Program
         {
             DefaultRegion = RegionEndpoint.GetBySystemName(Region),
             DefaultCredentials = new BasicAWSCredentials(AccessKeyId, SecretAccessKey),
-            UseDefaultCredentialChain = false
+            UseDefaultCredentialChain = false,
         };
 
         var clientFactory = new S3ClientFactory(options);
@@ -212,14 +210,11 @@ public sealed class Program
 
             // Verify the write succeeded by checking if the file exists
             var exists = await provider.ExistsAsync(fileUri);
+
             if (exists)
-            {
                 Console.WriteLine("✓ Successfully wrote file to S3!");
-            }
             else
-            {
                 Console.WriteLine("✗ File write verification failed - file not found.");
-            }
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -239,7 +234,7 @@ public sealed class Program
     // ========================================================================
 
     /// <summary>
-    /// Example 3: Demonstrates listing objects in an S3 bucket.
+    ///     Example 3: Demonstrates listing objects in an S3 bucket.
     /// </summary>
     private static async Task Example3_ListS3Objects()
     {
@@ -253,7 +248,7 @@ public sealed class Program
         {
             DefaultRegion = RegionEndpoint.GetBySystemName(Region),
             DefaultCredentials = new BasicAWSCredentials(AccessKeyId, SecretAccessKey),
-            UseDefaultCredentialChain = false
+            UseDefaultCredentialChain = false,
         };
 
         var clientFactory = new S3ClientFactory(options);
@@ -272,10 +267,17 @@ public sealed class Program
             Console.WriteLine("─────────────────────────────────────────────────────────────");
 
             var count = 0;
-            await foreach (var item in provider.ListAsync(prefixUri, recursive: false))
+
+            await foreach (var item in provider.ListAsync(prefixUri, false))
             {
-                var type = item.IsDirectory ? "[DIR]" : "[FILE]";
-                var size = item.IsDirectory ? "-" : FormatBytes(item.Size);
+                var type = item.IsDirectory
+                    ? "[DIR]"
+                    : "[FILE]";
+
+                var size = item.IsDirectory
+                    ? "-"
+                    : FormatBytes(item.Size);
+
                 var modified = item.LastModified.ToString("yyyy-MM-dd HH:mm:ss");
 
                 Console.WriteLine($"{type} {item.Uri.Path.PadRight(40)} | Size: {size.PadRight(12)} | Modified: {modified}");
@@ -291,10 +293,17 @@ public sealed class Program
             Console.WriteLine("─────────────────────────────────────────────────────────────");
 
             count = 0;
-            await foreach (var item in provider.ListAsync(prefixUri, recursive: true))
+
+            await foreach (var item in provider.ListAsync(prefixUri, true))
             {
-                var type = item.IsDirectory ? "[DIR]" : "[FILE]";
-                var size = item.IsDirectory ? "-" : FormatBytes(item.Size);
+                var type = item.IsDirectory
+                    ? "[DIR]"
+                    : "[FILE]";
+
+                var size = item.IsDirectory
+                    ? "-"
+                    : FormatBytes(item.Size);
+
                 var modified = item.LastModified.ToString("yyyy-MM-dd HH:mm:ss");
 
                 Console.WriteLine($"{type} {item.Uri.Path.PadRight(40)} | Size: {size.PadRight(12)} | Modified: {modified}");
@@ -324,7 +333,7 @@ public sealed class Program
     // ========================================================================
 
     /// <summary>
-    /// Example 4: Demonstrates checking if a file exists in S3.
+    ///     Example 4: Demonstrates checking if a file exists in S3.
     /// </summary>
     private static async Task Example4_CheckFileExistence()
     {
@@ -338,7 +347,7 @@ public sealed class Program
         {
             DefaultRegion = RegionEndpoint.GetBySystemName(Region),
             DefaultCredentials = new BasicAWSCredentials(AccessKeyId, SecretAccessKey),
-            UseDefaultCredentialChain = false
+            UseDefaultCredentialChain = false,
         };
 
         var clientFactory = new S3ClientFactory(options);
@@ -367,7 +376,7 @@ public sealed class Program
     // ========================================================================
 
     /// <summary>
-    /// Example 5: Demonstrates retrieving metadata for a file in S3.
+    ///     Example 5: Demonstrates retrieving metadata for a file in S3.
     /// </summary>
     private static async Task Example5_GetFileMetadata()
     {
@@ -381,7 +390,7 @@ public sealed class Program
         {
             DefaultRegion = RegionEndpoint.GetBySystemName(Region),
             DefaultCredentials = new BasicAWSCredentials(AccessKeyId, SecretAccessKey),
-            UseDefaultCredentialChain = false
+            UseDefaultCredentialChain = false,
         };
 
         var clientFactory = new S3ClientFactory(options);
@@ -416,6 +425,7 @@ public sealed class Program
             {
                 Console.WriteLine();
                 Console.WriteLine("  Custom Metadata:");
+
                 foreach (var kvp in metadata.CustomMetadata)
                 {
                     Console.WriteLine($"    {kvp.Key}: {kvp.Value}");
@@ -444,7 +454,7 @@ public sealed class Program
     // ========================================================================
 
     /// <summary>
-    /// Example 6: Demonstrates using S3 storage provider with dependency injection.
+    ///     Example 6: Demonstrates using S3 storage provider with dependency injection.
     /// </summary>
     private static async Task Example6_UsingDependencyInjection()
     {
@@ -494,6 +504,7 @@ public sealed class Program
             {
                 Console.WriteLine();
                 Console.WriteLine("  Capabilities:");
+
                 foreach (var kvp in providerMetadata.Capabilities)
                 {
                     Console.WriteLine($"    {kvp.Key}: {kvp.Value}");
@@ -507,7 +518,7 @@ public sealed class Program
         finally
         {
             // Dispose the service provider
-            await ((IAsyncDisposable)serviceProvider).DisposeAsync();
+            await serviceProvider.DisposeAsync();
         }
 
         Console.WriteLine();
@@ -518,9 +529,9 @@ public sealed class Program
     // ========================================================================
 
     /// <summary>
-    /// Example 7: Demonstrates configuration for S3-compatible endpoints like MinIO or LocalStack.
+    ///     Example 7: Demonstrates configuration for S3-compatible endpoints like MinIO or LocalStack.
     /// </summary>
-    private static async Task Example7_S3CompatibleEndpoints()
+    private static void Example7_S3CompatibleEndpoints()
     {
         Console.WriteLine("─────────────────────────────────────────────────────────────");
         Console.WriteLine("Example 7: S3-Compatible Endpoints (MinIO, LocalStack)");
@@ -541,7 +552,7 @@ public sealed class Program
             ForcePathStyle = true, // Required for MinIO
             DefaultRegion = RegionEndpoint.USEast1,
             DefaultCredentials = new BasicAWSCredentials("minioadmin", "minioadmin"),
-            UseDefaultCredentialChain = false
+            UseDefaultCredentialChain = false,
         };
 
         Console.WriteLine("  Service URL:      http://localhost:9000");
@@ -560,7 +571,7 @@ public sealed class Program
             ServiceUrl = new Uri("http://localhost:4566"), // LocalStack default endpoint
             ForcePathStyle = true, // Required for LocalStack
             DefaultRegion = RegionEndpoint.USEast1,
-            UseDefaultCredentialChain = true // LocalStack accepts any credentials
+            UseDefaultCredentialChain = true, // LocalStack accepts any credentials
         };
 
         Console.WriteLine("  Service URL:      http://localhost:4566");
@@ -592,7 +603,7 @@ public sealed class Program
     // ========================================================================
 
     /// <summary>
-    /// Formats a byte count into a human-readable string.
+    ///     Formats a byte count into a human-readable string.
     /// </summary>
     /// <param name="bytes">The number of bytes to format.</param>
     /// <returns>A human-readable string representation.</returns>
@@ -600,7 +611,7 @@ public sealed class Program
     {
         string[] sizes = ["B", "KB", "MB", "GB", "TB"];
         double len = bytes;
-        int order = 0;
+        var order = 0;
 
         while (len >= 1024 && order < sizes.Length - 1)
         {

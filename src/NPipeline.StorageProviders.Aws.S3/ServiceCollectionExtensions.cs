@@ -3,12 +3,12 @@ using Microsoft.Extensions.DependencyInjection;
 namespace NPipeline.StorageProviders.Aws.S3;
 
 /// <summary>
-/// Extension methods for configuring S3 storage provider in dependency injection.
+///     Extension methods for configuring S3 storage provider in dependency injection.
 /// </summary>
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds S3 storage provider to the service collection.
+    ///     Adds S3 storage provider to the service collection.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configure">Optional configuration action for S3 storage provider options.</param>
@@ -34,7 +34,7 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Adds S3 storage provider to the service collection with pre-configured options.
+    ///     Adds S3 storage provider to the service collection with pre-configured options.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="options">The S3 storage provider options.</param>
