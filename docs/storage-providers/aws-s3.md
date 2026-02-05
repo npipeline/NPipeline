@@ -660,8 +660,6 @@ The S3 storage provider has the following limitations:
 
 ## Additional Resources
 
-For more detailed information, see the [AWS S3 Storage Provider README](../../src/NPipeline.StorageProviders.Aws.S3/README.md).
-
 - [AWS S3 Documentation](https://docs.aws.amazon.com/s3/)
 - [AWS SDK for .NET Documentation](https://docs.aws.amazon.com/sdk-for-net/)
 - [MinIO Documentation](https://docs.min.io/)
