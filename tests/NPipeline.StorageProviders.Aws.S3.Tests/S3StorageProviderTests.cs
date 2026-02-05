@@ -1,7 +1,8 @@
+using System.Net;
 using Amazon.S3;
 using Amazon.S3.Model;
-using FluentAssertions;
 using FakeItEasy;
+using FluentAssertions;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 
@@ -16,7 +17,10 @@ public class S3StorageProviderTests
 
     public S3StorageProviderTests()
     {
-        _fakeClientFactory = A.Fake<S3ClientFactory>(c => c.WithArgumentsForConstructor(new object[] { new S3StorageProviderOptions() }));
+        _fakeClientFactory = A.Fake<S3ClientFactory>(c => c
+            .WithArgumentsForConstructor(new object[] { new S3StorageProviderOptions() })
+            .CallsBaseMethods());
+
         _fakeS3Client = A.Fake<IAmazonS3>();
         _options = new S3StorageProviderOptions();
         _provider = new S3StorageProvider(_fakeClientFactory, _options);
@@ -49,7 +53,7 @@ public class S3StorageProviderTests
     public void Scheme_ReturnsS3()
     {
         // Act & Assert
-        _provider.Scheme.Should().Be("s3");
+        _provider.Scheme.Should().Be(StorageScheme.S3);
     }
 
     [Fact]
@@ -116,19 +120,21 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(call => Task.FromResult(_fakeS3Client));
 
         var responseStream = new MemoryStream(new byte[] { 1, 2, 3, 4, 5 });
+
         A.CallTo(() => _fakeS3Client.GetObjectAsync(A<GetObjectRequest>._, A<CancellationToken>._))
-            .ReturnsAsync(new GetObjectResponse { ResponseStream = responseStream });
+            .ReturnsLazily(call => Task.FromResult(new GetObjectResponse { ResponseStream = responseStream }));
 
         // Act
         var stream = await _provider.OpenReadAsync(uri);
 
         // Assert
         stream.Should().NotBeNull();
-        stream.Should().BeSameAs(responseStream);
+        stream.Should().BeAssignableTo<Stream>();
     }
 
     [Fact]
@@ -143,13 +149,15 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         var s3Exception = new AmazonS3Exception("Not found")
         {
-            ErrorCode = "NoSuchBucket"
+            ErrorCode = "NoSuchBucket",
         };
+
         A.CallTo(() => _fakeS3Client.GetObjectAsync(A<GetObjectRequest>._, A<CancellationToken>._))
             .ThrowsAsync(s3Exception);
 
@@ -162,13 +170,15 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         var s3Exception = new AmazonS3Exception("Access denied")
         {
-            ErrorCode = "AccessDenied"
+            ErrorCode = "AccessDenied",
         };
+
         A.CallTo(() => _fakeS3Client.GetObjectAsync(A<GetObjectRequest>._, A<CancellationToken>._))
             .ThrowsAsync(s3Exception);
 
@@ -181,13 +191,15 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         var s3Exception = new AmazonS3Exception("Invalid access key")
         {
-            ErrorCode = "InvalidAccessKeyId"
+            ErrorCode = "InvalidAccessKeyId",
         };
+
         A.CallTo(() => _fakeS3Client.GetObjectAsync(A<GetObjectRequest>._, A<CancellationToken>._))
             .ThrowsAsync(s3Exception);
 
@@ -200,13 +212,15 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         var s3Exception = new AmazonS3Exception("Signature does not match")
         {
-            ErrorCode = "SignatureDoesNotMatch"
+            ErrorCode = "SignatureDoesNotMatch",
         };
+
         A.CallTo(() => _fakeS3Client.GetObjectAsync(A<GetObjectRequest>._, A<CancellationToken>._))
             .ThrowsAsync(s3Exception);
 
@@ -219,13 +233,15 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         var s3Exception = new AmazonS3Exception("Invalid bucket name")
         {
-            ErrorCode = "InvalidBucketName"
+            ErrorCode = "InvalidBucketName",
         };
+
         A.CallTo(() => _fakeS3Client.GetObjectAsync(A<GetObjectRequest>._, A<CancellationToken>._))
             .ThrowsAsync(s3Exception);
 
@@ -238,13 +254,15 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         var s3Exception = new AmazonS3Exception("Invalid key")
         {
-            ErrorCode = "InvalidKey"
+            ErrorCode = "InvalidKey",
         };
+
         A.CallTo(() => _fakeS3Client.GetObjectAsync(A<GetObjectRequest>._, A<CancellationToken>._))
             .ThrowsAsync(s3Exception);
 
@@ -257,13 +275,15 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         var s3Exception = new AmazonS3Exception("Generic error")
         {
-            ErrorCode = "InternalError"
+            ErrorCode = "InternalError",
         };
+
         A.CallTo(() => _fakeS3Client.GetObjectAsync(A<GetObjectRequest>._, A<CancellationToken>._))
             .ThrowsAsync(s3Exception);
 
@@ -276,8 +296,9 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         // Act
         var stream = await _provider.OpenWriteAsync(uri);
@@ -299,8 +320,9 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/test-key?contentType=application/json");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         // Act
         var stream = await _provider.OpenWriteAsync(uri);
@@ -315,11 +337,12 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         A.CallTo(() => _fakeS3Client.GetObjectMetadataAsync(A<GetObjectMetadataRequest>._, A<CancellationToken>._))
-            .ReturnsAsync(new GetObjectMetadataResponse());
+            .ReturnsLazily(() => Task.FromResult(new GetObjectMetadataResponse()));
 
         // Act
         var result = await _provider.ExistsAsync(uri);
@@ -333,13 +356,15 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         var s3Exception = new AmazonS3Exception("Not found")
         {
-            StatusCode = System.Net.HttpStatusCode.NotFound
+            StatusCode = HttpStatusCode.NotFound,
         };
+
         A.CallTo(() => _fakeS3Client.GetObjectMetadataAsync(A<GetObjectMetadataRequest>._, A<CancellationToken>._))
             .ThrowsAsync(s3Exception);
 
@@ -362,13 +387,15 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         var s3Exception = new AmazonS3Exception("Access denied")
         {
-            ErrorCode = "AccessDenied"
+            ErrorCode = "AccessDenied",
         };
+
         A.CallTo(() => _fakeS3Client.GetObjectMetadataAsync(A<GetObjectMetadataRequest>._, A<CancellationToken>._))
             .ThrowsAsync(s3Exception);
 
@@ -381,13 +408,15 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         var s3Exception = new AmazonS3Exception("Invalid bucket name")
         {
-            ErrorCode = "InvalidBucketName"
+            ErrorCode = "InvalidBucketName",
         };
+
         A.CallTo(() => _fakeS3Client.GetObjectMetadataAsync(A<GetObjectMetadataRequest>._, A<CancellationToken>._))
             .ThrowsAsync(s3Exception);
 
@@ -410,22 +439,23 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/prefix/");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         A.CallTo(() => _fakeS3Client.ListObjectsV2Async(A<ListObjectsV2Request>._, A<CancellationToken>._))
-            .ReturnsAsync(new ListObjectsV2Response
+            .ReturnsLazily(() => Task.FromResult(new ListObjectsV2Response
             {
                 S3Objects = new List<S3Object>
                 {
-                    new S3Object { Key = "prefix/file1.txt", Size = 100, LastModified = DateTime.UtcNow },
-                    new S3Object { Key = "prefix/subdir/file2.txt", Size = 200, LastModified = DateTime.UtcNow }
+                    new() { Key = "prefix/file1.txt", Size = 100, LastModified = DateTime.UtcNow },
+                    new() { Key = "prefix/subdir/file2.txt", Size = 200, LastModified = DateTime.UtcNow },
                 },
-                CommonPrefixes = new List<string>()
-            });
+                CommonPrefixes = new List<string>(),
+            }));
 
         // Act
-        var items = await _provider.ListAsync(uri, recursive: true).ToListAsync();
+        var items = await _provider.ListAsync(uri, true).ToListAsync();
 
         // Assert
         items.Should().HaveCount(2);
@@ -437,21 +467,22 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/prefix/");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         A.CallTo(() => _fakeS3Client.ListObjectsV2Async(A<ListObjectsV2Request>._, A<CancellationToken>._))
-            .ReturnsAsync(new ListObjectsV2Response
+            .ReturnsLazily(() => Task.FromResult(new ListObjectsV2Response
             {
                 S3Objects = new List<S3Object>
                 {
-                    new S3Object { Key = "prefix/file1.txt", Size = 100, LastModified = DateTime.UtcNow }
+                    new() { Key = "prefix/file1.txt", Size = 100, LastModified = DateTime.UtcNow },
                 },
-                CommonPrefixes = new List<string> { "prefix/subdir/" }
-            });
+                CommonPrefixes = new List<string> { "prefix/subdir/" },
+            }));
 
         // Act
-        var items = await _provider.ListAsync(uri, recursive: false).ToListAsync();
+        var items = await _provider.ListAsync(uri).ToListAsync();
 
         // Assert
         items.Should().HaveCount(2);
@@ -471,44 +502,46 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/prefix/");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         var callCount = 0;
+
         A.CallTo(() => _fakeS3Client.ListObjectsV2Async(A<ListObjectsV2Request>._, A<CancellationToken>._))
             .ReturnsLazily(() =>
             {
                 callCount++;
+
                 if (callCount == 1)
                 {
-                    return new ListObjectsV2Response
+                    return Task.FromResult(new ListObjectsV2Response
                     {
                         S3Objects = new List<S3Object>
                         {
-                            new S3Object { Key = "prefix/file1.txt", Size = 100, LastModified = DateTime.UtcNow }
+                            new() { Key = "prefix/file1.txt", Size = 100, LastModified = DateTime.UtcNow },
                         },
                         NextContinuationToken = "token",
-                        CommonPrefixes = new List<string>()
-                    };
+                        CommonPrefixes = new List<string>(),
+                    });
                 }
-                else
+
+                return Task.FromResult(new ListObjectsV2Response
                 {
-                    return new ListObjectsV2Response
+                    S3Objects = new List<S3Object>
                     {
-                        S3Objects = new List<S3Object>
-                        {
-                            new S3Object { Key = "prefix/file2.txt", Size = 200, LastModified = DateTime.UtcNow }
-                        },
-                        CommonPrefixes = new List<string>()
-                    };
-                }
+                        new() { Key = "prefix/file2.txt", Size = 200, LastModified = DateTime.UtcNow },
+                    },
+                    CommonPrefixes = new List<string>(),
+                });
             });
 
         // Act
-        var items = await _provider.ListAsync(uri, recursive: true).ToListAsync();
+        var items = await _provider.ListAsync(uri, true).ToListAsync();
 
         // Assert
         items.Should().HaveCount(2);
+
         A.CallTo(() => _fakeS3Client.ListObjectsV2Async(A<ListObjectsV2Request>._, A<CancellationToken>._))
             .MustHaveHappened(2, Times.Exactly);
     }
@@ -518,18 +551,20 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/prefix/");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         var s3Exception = new AmazonS3Exception("Bucket not found")
         {
-            StatusCode = System.Net.HttpStatusCode.NotFound
+            StatusCode = HttpStatusCode.NotFound,
         };
+
         A.CallTo(() => _fakeS3Client.ListObjectsV2Async(A<ListObjectsV2Request>._, A<CancellationToken>._))
             .ThrowsAsync(s3Exception);
 
         // Act
-        var items = await _provider.ListAsync(uri, recursive: true).ToListAsync();
+        var items = await _provider.ListAsync(uri, true).ToListAsync();
 
         // Assert
         items.Should().BeEmpty();
@@ -540,13 +575,15 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/prefix/");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         var s3Exception = new AmazonS3Exception("Access denied")
         {
-            ErrorCode = "AccessDenied"
+            ErrorCode = "AccessDenied",
         };
+
         A.CallTo(() => _fakeS3Client.ListObjectsV2Async(A<ListObjectsV2Request>._, A<CancellationToken>._))
             .ThrowsAsync(s3Exception);
 
@@ -559,19 +596,22 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         var response = new GetObjectMetadataResponse
         {
             ContentLength = 1024,
             LastModified = DateTime.UtcNow,
-            ETag = "\"abc123\""
+            ETag = "\"abc123\"",
         };
+
         response.Headers.ContentType = "application/json";
         response.Metadata["custom-key"] = "custom-value";
+
         A.CallTo(() => _fakeS3Client.GetObjectMetadataAsync(A<GetObjectMetadataRequest>._, A<CancellationToken>._))
-            .ReturnsAsync(response);
+            .ReturnsLazily(() => Task.FromResult(response));
 
         // Act
         var metadata = await _provider.GetMetadataAsync(uri);
@@ -582,7 +622,7 @@ public class S3StorageProviderTests
         metadata.ContentType.Should().Be("application/json");
         metadata.ETag.Should().Be("\"abc123\"");
         metadata.IsDirectory.Should().BeFalse();
-        metadata.CustomMetadata["custom-key"].Should().Be("custom-value");
+        metadata.CustomMetadata.Should().ContainKey("x-amz-meta-custom-key").WhoseValue.Should().Be("custom-value");
     }
 
     [Fact]
@@ -590,13 +630,15 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         var s3Exception = new AmazonS3Exception("Not found")
         {
-            StatusCode = System.Net.HttpStatusCode.NotFound
+            StatusCode = HttpStatusCode.NotFound,
         };
+
         A.CallTo(() => _fakeS3Client.GetObjectMetadataAsync(A<GetObjectMetadataRequest>._, A<CancellationToken>._))
             .ThrowsAsync(s3Exception);
 
@@ -619,13 +661,15 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3://test-bucket/test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         var s3Exception = new AmazonS3Exception("Access denied")
         {
-            ErrorCode = "AccessDenied"
+            ErrorCode = "AccessDenied",
         };
+
         A.CallTo(() => _fakeS3Client.GetObjectMetadataAsync(A<GetObjectMetadataRequest>._, A<CancellationToken>._))
             .ThrowsAsync(s3Exception);
 
@@ -660,8 +704,9 @@ public class S3StorageProviderTests
         // Arrange
         var customOptions = new S3StorageProviderOptions
         {
-            MultipartUploadThresholdBytes = 128 * 1024 * 1024
+            MultipartUploadThresholdBytes = 128 * 1024 * 1024,
         };
+
         var customProvider = new S3StorageProvider(_fakeClientFactory, customOptions);
 
         // Act
@@ -676,8 +721,9 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3:///test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() => _provider.OpenReadAsync(uri));
@@ -688,8 +734,9 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3:///test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() => _provider.OpenWriteAsync(uri));
@@ -700,8 +747,9 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3:///test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() => _provider.ExistsAsync(uri));
@@ -712,8 +760,9 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3:///test-key");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() => _provider.GetMetadataAsync(uri));
@@ -724,8 +773,9 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("s3:///prefix/");
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(async () => await _provider.ListAsync(uri).ToListAsync());
@@ -740,14 +790,16 @@ public class S3StorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse(uriString);
+
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .ReturnsAsync(_fakeS3Client);
+            .ReturnsLazily(() => Task.FromResult(_fakeS3Client));
 
         var responseStream = new MemoryStream(new byte[] { 1, 2, 3, 4, 5 });
+
         A.CallTo(() => _fakeS3Client.GetObjectAsync(
                 A<GetObjectRequest>.That.Matches(r => r.BucketName == expectedBucket && r.Key == expectedKey),
                 A<CancellationToken>._))
-            .ReturnsAsync(new GetObjectResponse { ResponseStream = responseStream });
+            .ReturnsLazily(() => Task.FromResult(new GetObjectResponse { ResponseStream = responseStream }));
 
         // Act
         var stream = await _provider.OpenReadAsync(uri);

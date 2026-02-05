@@ -18,6 +18,8 @@ public static class DatabaseServiceCollectionExtensions
         this IServiceCollection services,
         Action<DatabaseOptions>? configure = null)
     {
+        ArgumentNullException.ThrowIfNull(services);
+
         var options = new DatabaseOptions();
         configure?.Invoke(options);
 

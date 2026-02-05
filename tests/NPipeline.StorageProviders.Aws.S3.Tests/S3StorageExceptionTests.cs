@@ -1,5 +1,6 @@
 using Amazon.S3;
 using FluentAssertions;
+using NPipeline.StorageProviders.Exceptions;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Aws.S3.Tests;
@@ -101,6 +102,7 @@ public class S3StorageExceptionTests
 
         // Act & Assert
         exception.Bucket.Should().Be("bucket");
+
         // Note: In C#, properties are not truly read-only at runtime,
         // but we can verify the value is set correctly
     }
@@ -163,7 +165,7 @@ public class S3StorageExceptionTests
         var exception = new S3StorageException("message", "bucket", "key");
 
         // Act & Assert
-        exception.Should().BeAssignableTo<NPipeline.Connectors.Exceptions.ConnectorException>();
+        exception.Should().BeAssignableTo<ConnectorException>();
     }
 
     [Fact]

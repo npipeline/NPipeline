@@ -96,7 +96,7 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
                         // Drop the incoming item (newest)
                         metrics.IncrementDroppedNewest();
 
-                        observer?.OnDrop(new QueueDropEvent(nodeId, BoundedQueuePolicy.DropNewest.ToString(),
+                        observer?.OnDrop(new QueueDropEvent(nodeId, nameof(BoundedQueuePolicy.DropNewest),
                             QueueDropKind.Newest, boundedCapacity, queue.Reader.Count,
                             (int)metrics.DroppedNewest, (int)metrics.DroppedOldest, (int)metrics.Enqueued));
                     }
@@ -105,7 +105,7 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
                     {
                         lastMetricsEmit = DateTimeOffset.UtcNow;
 
-                        observer?.OnQueueMetrics(new QueueMetricsEvent(nodeId, BoundedQueuePolicy.DropNewest.ToString(), boundedCapacity,
+                        observer?.OnQueueMetrics(new QueueMetricsEvent(nodeId, nameof(BoundedQueuePolicy.DropNewest), boundedCapacity,
                             queue.Reader.Count, (int)metrics.DroppedNewest, (int)metrics.DroppedOldest, (int)metrics.Enqueued, lastMetricsEmit));
                     }
                 }

@@ -328,7 +328,7 @@ public class S3StorageProviderOptionsTests
         // Arrange
         var options = new S3StorageProviderOptions
         {
-            DefaultRegion = RegionEndpoint.USEast1
+            DefaultRegion = RegionEndpoint.USEast1,
         };
 
         // Act
@@ -344,7 +344,7 @@ public class S3StorageProviderOptionsTests
         // Arrange
         var options = new S3StorageProviderOptions
         {
-            DefaultCredentials = new BasicAWSCredentials("key", "secret")
+            DefaultCredentials = new BasicAWSCredentials("key", "secret"),
         };
 
         // Act
@@ -360,7 +360,7 @@ public class S3StorageProviderOptionsTests
         // Arrange
         var options = new S3StorageProviderOptions
         {
-            ServiceUrl = new Uri("http://localhost:9000")
+            ServiceUrl = new Uri("http://localhost:9000"),
         };
 
         // Act
