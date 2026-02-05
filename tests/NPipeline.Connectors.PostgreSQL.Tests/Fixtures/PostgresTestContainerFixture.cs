@@ -8,8 +8,7 @@ public class PostgresTestContainerFixture : IAsyncLifetime
 
     public PostgresTestContainerFixture()
     {
-        _container = new PostgreSqlBuilder()
-            .WithImage("postgres:16-alpine")
+        _container = new PostgreSqlBuilder("postgres:16-alpine")
             .WithDatabase("testdb")
             .WithUsername("testuser")
             .WithPassword("testpass")
