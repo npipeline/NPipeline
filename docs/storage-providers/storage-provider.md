@@ -398,62 +398,58 @@ public sealed class MyCustomStorageProvider : IStorageProvider, IStorageProvider
 
 2. **Document Recursion Semantics**: Clearly explain how `recursive` works in your implementation:
 
-   ```csharp
+```csharp
+/// <remarks>
+/// With recursive=false, returns objects matching the prefix with "/" delimiter applied.
+/// With recursive=true, returns all objects with the prefix (flat list).
+/// </remarks>
+```
 
-  /// <remarks>
-  /// With recursive=false, returns objects matching the prefix with "/" delimiter applied.
-  /// With recursive=true, returns all objects with the prefix (flat list).
-  /// </remarks>
+1. **Implement Capabilities Accurately**: Set capability flags to match actual implementation:
 
-  ```
-
-3. **Implement Capabilities Accurately**: Set capability flags to match actual implementation:
-
-   ```csharp
-  public StorageProviderMetadata GetMetadata()
-  {
-      return new StorageProviderMetadata
-      {
-          SupportsRead = true,
-          SupportsWrite = false,    // This provider is read-only
-          SupportsDelete = false,
-          SupportsListing = true,
-          SupportsHierarchy = false // No directory concept
-      };
-  }
-  ```
+```csharp
+public StorageProviderMetadata GetMetadata()
+{
+    return new StorageProviderMetadata
+    {
+        SupportsRead = true,
+        SupportsWrite = false,    // This provider is read-only
+        SupportsDelete = false,
+        SupportsListing = true,
+        SupportsHierarchy = false // No directory concept
+    };
+}
+```
 
 1. **Respect Cancellation**: Always check the `CancellationToken` during enumeration:
 
-   ```csharp
+```csharp
+public async IAsyncEnumerable<StorageItem> ListAsync(
+    StorageUri prefix,
+    bool recursive = false,
+    [EnumeratorCancellation] CancellationToken cancellationToken = default)
+{
+    foreach (var item in GetItems(prefix))
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        yield return item;
+    }
+}
+```
 
-  public async IAsyncEnumerable<StorageItem> ListAsync(
-      StorageUri prefix,
-      bool recursive = false,
-      [EnumeratorCancellation] CancellationToken cancellationToken = default)
-  {
-      foreach (var item in GetItems(prefix))
-      {
-          cancellationToken.ThrowIfCancellationRequested();
-          yield return item;
-      }
-  }
+1. **Populate Metadata Fields**: Provide all available metadata:
 
-  ```
-
-5. **Populate Metadata Fields**: Provide all available metadata:
-
-   ```csharp
-  return new StorageMetadata
-  {
-      Size = contentLength,
-      LastModified = dateModified,
-      ContentType = "application/json",        // If available
-      CustomMetadata = objectTags,             // If available
-      ETag = response.ETag,                    // If available
-      IsDirectory = false
-  };
-  ```
+```csharp
+return new StorageMetadata
+{
+    Size = contentLength,
+    LastModified = dateModified,
+    ContentType = "application/json",        // If available
+    CustomMetadata = objectTags,             // If available
+    ETag = response.ETag,                    // If available
+    IsDirectory = false
+};
+```
 
 ## Using Custom Providers
 
