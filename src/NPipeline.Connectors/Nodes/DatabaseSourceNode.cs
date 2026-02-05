@@ -1,10 +1,10 @@
 using System.Runtime.CompilerServices;
-using NPipeline.Connectors.Abstractions;
 using NPipeline.Connectors.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.Connectors.Nodes;
 

@@ -1,6 +1,7 @@
 using Npgsql;
 using NPipeline.Connectors.PostgreSQL.Nodes;
 using NPipeline.Connectors.PostgreSQL.Tests.Fixtures;
+using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.PostgreSQL.Tests.Integration;
 

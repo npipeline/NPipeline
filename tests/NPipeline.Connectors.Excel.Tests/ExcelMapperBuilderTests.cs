@@ -2,6 +2,7 @@ using System.Data;
 using System.Reflection;
 using AwesomeAssertions;
 using NPipeline.Connectors.Attributes;
+using NPipeline.Connectors.Excel.Mapping;
 
 namespace NPipeline.Connectors.Excel.Tests;
 

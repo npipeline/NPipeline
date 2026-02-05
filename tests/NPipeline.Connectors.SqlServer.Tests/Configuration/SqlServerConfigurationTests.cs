@@ -1,6 +1,7 @@
 using AwesomeAssertions;
-using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.SqlServer.Configuration;
+using NPipeline.Connectors.Configuration;
+using NPipeline.StorageProviders.Configuration;
 
 namespace NPipeline.Connectors.SqlServer.Tests.Configuration;
 

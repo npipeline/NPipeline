@@ -3,7 +3,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using NPipeline.Connectors.Attributes;
 
-namespace NPipeline.Connectors.Excel;
+namespace NPipeline.Connectors.Excel.Mapping;
 
 /// <summary>
 ///     Builds cached mapping delegates from <see cref="ExcelRow" /> to CLR types using attributes.

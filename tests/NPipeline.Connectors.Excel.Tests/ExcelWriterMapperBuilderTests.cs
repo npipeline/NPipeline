@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Spreadsheet;
 using NPipeline.Connectors.Attributes;
+using NPipeline.Connectors.Excel.Mapping;
 
 namespace NPipeline.Connectors.Excel.Tests;
 

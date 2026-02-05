@@ -1,3 +1,5 @@
+using NPipeline.StorageProviders.Models;
+
 namespace NPipeline.Connectors.SqlServer.Tests;
 
 /// <summary>

@@ -2,6 +2,8 @@ using AwesomeAssertions;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Pipeline;
+using NPipeline.StorageProviders;
+using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.Csv.Tests;
 

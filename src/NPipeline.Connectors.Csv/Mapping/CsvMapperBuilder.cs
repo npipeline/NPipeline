@@ -3,7 +3,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using NPipeline.Connectors.Attributes;
 
-namespace NPipeline.Connectors.Csv;
+namespace NPipeline.Connectors.Csv.Mapping;
 
 /// <summary>
 ///     Builds cached mapping delegates from <see cref="CsvRow" /> to CLR types using attributes.

@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Data;
 using System.Runtime.CompilerServices;
 using Npgsql;
-using NPipeline.Connectors.Abstractions;
+using NPipeline.StorageProviders.Abstractions;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Nodes;

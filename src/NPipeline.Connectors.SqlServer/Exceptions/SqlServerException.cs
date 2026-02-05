@@ -1,4 +1,4 @@
-using NPipeline.Connectors.Exceptions;
+using NPipeline.StorageProviders.Exceptions;
 
 namespace NPipeline.Connectors.SqlServer.Exceptions;
 

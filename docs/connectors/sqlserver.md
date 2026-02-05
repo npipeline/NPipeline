@@ -892,7 +892,7 @@ public record Order(
     [SqlServerColumn("OrderID", PrimaryKey = true, Identity = true)] int OrderId,
     [SqlServerColumn("CustomerID")] int CustomerId,
     [SqlServerColumn("OrderTotal", DbType = SqlDbType.Decimal)] decimal Total,
-    string Status);
+    [SqlServerColumn("OrderStatus")] string Status);
 ```
 
 Parameters:
@@ -1465,7 +1465,7 @@ var config = new PostgresConfiguration
 // SQL Server
 var config = new SqlServerConfiguration
 {
-    Schema = "dbo",              // Default schema is dbo instead of public
+    Schema = "Sales",              // Default schema is dbo instead of public
     WriteStrategy = SqlServerWriteStrategy.Batch,
     StreamResults = true,
     FetchSize = 1_000
@@ -1694,6 +1694,6 @@ If you encounter issues not covered here:
 - **[NPipeline Extensions Index](../.)**: Return to the extensions overview.
 - **[CSV Connector](./csv.md)**: Learn about working with CSV files.
 - **[Excel Connector](./excel.md)**: Learn about working with Excel files.
-- **[PostgreSQL Connector](./postgresql.md)**: Learn about the PostgreSQL connector for comparison.
-- **[Storage Provider Interface](./storage-provider.md)**: Understand the storage layer architecture.
+- **[PostgreSQL Connector](./postgresql.md)**: Learn about PostgreSQL connector for comparison.
+- **[Storage Provider Interface](../storage-providers/storage-provider.md)**: Understand the storage layer architecture.
 - **[Microsoft.Data.SqlClient Documentation](https://learn.microsoft.com/en-us/dotnet/api/microsoft.data.sqlclient)**: Detailed documentation for the underlying SQL Server driver.

@@ -1,6 +1,6 @@
 using System.Data;
 using Npgsql;
-using NPipeline.Connectors.Abstractions;
+using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.Connectors.PostgreSQL.Connection;
 

@@ -1,7 +1,7 @@
-using NPipeline.Connectors.Exceptions;
 using NPipeline.Connectors.SqlServer.Configuration;
 using NPipeline.Connectors.SqlServer.Connection;
 using NPipeline.Connectors.SqlServer.Nodes;
+using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.SqlServer.DependencyInjection;
 

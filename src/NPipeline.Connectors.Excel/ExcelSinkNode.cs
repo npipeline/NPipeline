@@ -2,11 +2,14 @@ using System.Globalization;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
-using NPipeline.Connectors.Abstractions;
-using NPipeline.Connectors.Exceptions;
+using NPipeline.Connectors.Excel.Mapping;
 using NPipeline.DataFlow;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.StorageProviders;
+using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.Exceptions;
+using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.Excel;
 

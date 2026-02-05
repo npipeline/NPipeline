@@ -1,3 +1,5 @@
+using NPipeline.StorageProviders;
+
 namespace NPipeline.Connectors.PostgreSQL;
 
 /// <summary>

@@ -36,6 +36,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\NPipeline\NPipeline.csproj"/>
+        <ProjectReference Include="..\NPipeline.StorageProviders\NPipeline.StorageProviders.csproj"/>
     </ItemGroup>
 
     <ItemGroup>

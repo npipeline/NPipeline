@@ -107,6 +107,8 @@ var providers = resolver.GetAvailableProviders();
 The built-in `FileSystemStorageProvider` handles local file system operations with the "file" scheme:
 
 ```csharp
+using NPipeline.StorageProviders;
+
 var provider = new FileSystemStorageProvider();
 var fileUri = StorageUri.FromFilePath("./data/output.csv");
 
@@ -463,6 +465,7 @@ Additional schemes can be supported by implementing custom storage providers:
 
 ```csharp
 using NPipeline.Connectors;
+using NPipeline.StorageProviders;
 
 // Create a file URI from a path
 var inputUri = StorageUri.FromFilePath("./data/input.csv");

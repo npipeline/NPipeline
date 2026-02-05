@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using NPipeline.Connectors.Abstractions;
-using NPipeline.Connectors.Configuration;
+using NPipeline.StorageProviders;
+using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.Configuration;
 
 namespace NPipeline.Connectors.DependencyInjection;
 
@@ -18,6 +19,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddStorageProvider<TProvider>(this IServiceCollection services)
         where TProvider : class, IStorageProvider
     {
+        ArgumentNullException.ThrowIfNull(services);
         return services.AddTransient<IStorageProvider, TProvider>();
     }
 
@@ -29,18 +31,21 @@ public static class ServiceCollectionExtensions
     /// <returns>The same service collection for chaining.</returns>
     public static IServiceCollection AddStorageProvider(this IServiceCollection services, IStorageProvider instance)
     {
+        ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(instance);
         return services.AddSingleton(instance);
     }
 
     /// <summary>
-    ///     Registers the default <see cref="FileSystemStorageProvider" /> for handling 'file' schemes.
+    ///     Registers the default FileSystemStorageProvider for handling 'file' schemes.
     /// </summary>
     /// <param name="services">The service collection to add the provider to.</param>
     /// <returns>The same service collection for chaining.</returns>
     public static IServiceCollection AddDefaultFileStorageProvider(this IServiceCollection services)
     {
-        return services.AddStorageProvider<FileSystemStorageProvider>();
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddTransient<IStorageProvider, FileSystemStorageProvider>();
+        return services;
     }
 
     /// <summary>
@@ -53,6 +58,9 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         Action<ConnectorConfiguration> configure)
     {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configure);
+
         var config = new ConnectorConfiguration();
         configure(config);
 
@@ -75,10 +83,12 @@ public static class ServiceCollectionExtensions
     ///     Registers the default <see cref="StorageResolver" /> to resolve providers based on URI schemes.
     /// </summary>
     /// <param name="services">The service collection to add the resolver to.</param>
-    /// <param name="includeFileSystem">If true, automatically includes the <see cref="FileSystemStorageProvider" />.</param>
+    /// <param name="includeFileSystem">If true, automatically includes the FileSystemStorageProvider.</param>
     /// <returns>The same service collection for chaining.</returns>
     public static IServiceCollection AddStorageResolver(this IServiceCollection services, bool includeFileSystem = true)
     {
+        ArgumentNullException.ThrowIfNull(services);
+
         services.AddSingleton<IStorageResolver, StorageResolver>();
 
         if (includeFileSystem)
@@ -97,6 +107,9 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         Action<ConnectorConfiguration> configure)
     {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configure);
+
         return services
             .AddStorageProvidersFromConfiguration(configure)
             .AddStorageResolver(false); // don't auto-add file system, should be configured

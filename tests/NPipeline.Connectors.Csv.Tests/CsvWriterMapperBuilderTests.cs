@@ -3,6 +3,7 @@ using System.Text;
 using AwesomeAssertions;
 using CsvHelper;
 using NPipeline.Connectors.Attributes;
+using NPipeline.Connectors.Csv.Mapping;
 
 namespace NPipeline.Connectors.Csv.Tests;
 

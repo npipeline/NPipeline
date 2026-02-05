@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using NPipeline.StorageProviders.Models;
 using NPipeline.Connectors.SqlServer.Configuration;
 using NPipeline.Connectors.SqlServer.Nodes;
 

@@ -1,12 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
     <PropertyGroup>
-        <TargetFrameworks>net10.0</TargetFrameworks>
+        <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
-        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <IsTestProject>true</IsTestProject>
+        <!-- <NoWarn>$(NoWarn);NU1901;CA1835;CA2012;CS1591;CA1852;CA2263</NoWarn> -->
     </PropertyGroup>
+
 
     <PropertyGroup>
         <NoWarn>$(NoWarn);CS1591</NoWarn>
@@ -14,28 +15,26 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="coverlet.collector" Version="6.0.4">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-        <PackageReference Include="FakeItEasy" Version="9.0.1"/>
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1"/>
         <PackageReference Include="xunit" Version="2.9.3"/>
         <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
-            <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
         </PackageReference>
+        <PackageReference Include="coverlet.collector" Version="6.0.4">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="FakeItEasy" Version="9.0.1"/>
+        <PackageReference Include="FluentAssertions" Version="7.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.0"/>
     </ItemGroup>
 
     <ItemGroup>
-        <Using Include="Xunit"/>
-    </ItemGroup>
-
-    <ItemGroup>
-        <ProjectReference Include="..\..\src\NPipeline.Extensions.Testing.AwesomeAssertions\NPipeline.Extensions.Testing.AwesomeAssertions.csproj"/>
-        <ProjectReference Include="..\..\src\NPipeline.Extensions.DependencyInjection\NPipeline.Extensions.DependencyInjection.csproj"/>
-        <ProjectReference Include="..\..\src\NPipeline\NPipeline.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Connectors\NPipeline.Connectors.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.StorageProviders\NPipeline.StorageProviders.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.Extensions.Testing.AwesomeAssertions\NPipeline.Extensions.Testing.AwesomeAssertions.csproj"/>
     </ItemGroup>
 
 </Project>

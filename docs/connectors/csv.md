@@ -24,6 +24,8 @@ For the core NPipeline package and other available extensions, see the [Installa
 
 The CSV connector uses NPipeline's storage abstraction layer, which provides a unified way to work with different storage systems. This layer allows you to work with local files, cloud storage (like S3 or Azure Blob), and other storage systems using the same API.
 
+> **Note:** The storage abstraction layer is provided by the `NPipeline.StorageProviders` namespace/assembly.
+
 ### StorageUri
 
 The `StorageUri` class represents a normalized storage location URI. It supports both absolute URIs (e.g., "s3://bucket/key") and local file paths. For local files, use the `StorageUri.FromFilePath()` method:
@@ -51,6 +53,8 @@ The `IStorageResolver` interface is responsible for discovering and resolving st
 To create a custom resolver:
 
 ```csharp
+using NPipeline.StorageProviders;
+
 var resolver = StorageProviderFactory.CreateResolver();
 ```
 
