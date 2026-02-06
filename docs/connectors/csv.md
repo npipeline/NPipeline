@@ -483,7 +483,3 @@ Bob,example.com
 ```
 
 For more advanced configuration, refer to the [CsvHelper documentation](https://joshclose.github.io/CsvHelper/getting-started/).
-
-## Related Topics
-
-- **[NPipeline Extensions Index](../.)**: Return to the extensions overview.

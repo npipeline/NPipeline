@@ -201,27 +201,6 @@ var withCustomMerge = nodeDefinition with {
 };
 ```
 
-## Migrated Delegate Types
-
-The following delegate types have been moved to the `NPipeline.Graph.PipelineDelegates` namespace:
-
-- `CustomMergeDelegate`: For custom merge logic in join nodes
-- `SinkLineageUnwrapDelegate`: For unwrapping lineage in sink nodes
-- `LineageAdapterDelegate`: For transforming lineage data
-- `JoinKeySelectorDelegate`: For extracting join keys
-
-When using these delegates, ensure you import the correct namespace:
-
-```csharp
-using NPipeline.Graph.PipelineDelegates;
-
-// Now you can use the delegates
-CustomMergeDelegate? myCustomMerge = (node, dataPipes, cancellationToken) => {
-    // Custom merge implementation
-    return mergedDataPipe;
-};
-```
-
 ## See Also
 
 - [Defining Pipelines](defining-pipelines.md) - Learn how to define pipelines with both fluent and class-based approaches

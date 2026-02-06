@@ -18,7 +18,6 @@ Using connectors, you can quickly assemble pipelines that integrate with your ex
 All connectors work through the `IStorageProvider` abstraction from the `NPipeline.StorageProviders` project, which enables them to work with multiple backend systems:
 
 - **[Storage Provider Interface](../storage-providers/storage-provider.md)** - Learn about the abstraction layer that powers connectors
-  - Storage provider abstractions are now in the `NPipeline.StorageProviders` namespace/assembly
   - Works with filesystems, cloud storage (S3, Azure), databases, and custom backends
   - Unified API for read, write, delete, list, and metadata operations
   - Built-in support for filesystem with resilient directory traversal

@@ -220,10 +220,10 @@ For delay strategies and advanced configuration patterns, see [Retry Delay Strat
 
 ## See Also
 
-- [Error Handling](error-handling.md) - Configure what happens on errors (retry, skip, dead-letter)
-- [Retry Delay Strategies](retry-delays.md) - Configure delays between retry attempts
-- [Circuit Breakers](circuit-breakers.md) - Prevent cascading failures
-- [Getting Started with Resilience](getting-started.md) - Quick guide to resilience features
+* [Error Handling](error-handling.md) - Configure what happens on errors (retry, skip, dead-letter)
+* [Retry Delay Strategies](retry-delays.md) - Configure delays between retry attempts
+* [Circuit Breakers](circuit-breakers.md) - Prevent cascading failures
+* [Getting Started with Resilience](getting-started.md) - Quick guide to resilience features
 
 ### Why Backoff and Jitter Matter
 
@@ -258,9 +258,9 @@ var exponentialBackoff = BackoffStrategies.ExponentialBackoff(
 **Delay progression:** 1s → 2s → 4s → 8s → 16s → 32s → 60s (capped)
 
 **Use cases:**
-- Web API calls with transient network failures
-- Database connections during temporary overload
-- Microservice communication during partial outages
+* Web API calls with transient network failures
+* Database connections during temporary overload
+* Microservice communication during partial outages
 
 #### Linear Backoff
 
@@ -289,8 +289,8 @@ var linearBackoff = BackoffStrategies.LinearBackoff(
 **Delay progression:** 1s → 3s → 5s → 7s → 9s → ... → 30s (capped)
 
 **Use cases:**
-- File processing with temporary resource contention
-- Batch operations with predictable recovery patterns
+* File processing with temporary resource contention
+* Batch operations with predictable recovery patterns
 
 #### Fixed Delay
 
@@ -313,12 +313,10 @@ var fixedBackoff = BackoffStrategies.FixedDelay(
 **Delay progression:** 5s → 5s → 5s → 5s → ...
 
 **Use cases:**
-- Testing and debugging scenarios
-- Known recovery times
+* Testing and debugging scenarios
+* Known recovery times
 
 ### Available Jitter Strategies
-
-Jitter strategies are now implemented as delegates rather than interfaces, providing a more streamlined API:
 
 ```csharp
 // Jitter strategy delegate type
@@ -360,6 +358,7 @@ var noJitter = JitterStrategies.NoJitter();
 ### Recommended Strategy Combinations
 
 **Web APIs (Recommended):**
+
 ```csharp
 context.UseExponentialBackoffDelay(
     baseDelay: TimeSpan.FromSeconds(1),
@@ -373,6 +372,7 @@ var jitter = JitterStrategies.FullJitter();
 ```
 
 **Database Operations:**
+
 ```csharp
 context.UseLinearBackoffDelay(
     baseDelay: TimeSpan.FromMilliseconds(100),
@@ -387,6 +387,7 @@ var backoff = BackoffStrategies.LinearBackoff(
 ```
 
 **File Processing:**
+
 ```csharp
 context.UseFixedDelay(
     delay: TimeSpan.FromSeconds(2));
@@ -438,4 +439,3 @@ For delay strategies and advanced configuration patterns, see [Retry Delay Strat
 * **[Circuit Breakers](circuit-breakers.md)**: Configure circuit breaker patterns.
 * **[Dead-Letter Queues](dead-letter-queues.md)**: Implement dead-letter queues for problematic items.
 * **[Error Handling Overview](error-handling.md)**: Return to the error handling overview.
-

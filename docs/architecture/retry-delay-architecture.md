@@ -64,11 +64,13 @@ graph TD
 ```
 
 Each configuration:
+
 - Defines parameters for delay calculation
 - Implements validation to ensure valid parameters
 - Can be serialized/deserialized for persistence
 
 **Key Characteristics:**
+
 - Immutable (uses `init` properties)
 - Validated on creation
 - Deterministic (same input produces same output)
@@ -120,6 +122,7 @@ graph TD
 ```
 
 **Benefits of Jitter:**
+
 - Prevents "thundering herd" problem
 - Spreads retry load over time
 - Improves system stability
@@ -141,8 +144,6 @@ JitterStrategy (Delegate)
 └── JitterStrategies.NoJitter()
 ```
 
-These implement the mathematical formulas for delay calculation. Both backoff and jitter strategies are now implemented as static methods that return delegates, providing a more streamlined API while maintaining the same functionality.
-
 ### 4. Composite Strategy
 
 ```
@@ -154,6 +155,7 @@ IRetryDelayStrategy
 ```
 
 The composite strategy:
+
 - Orchestrates backoff and jitter
 - Manages async execution with `ValueTask`
 - Respects cancellation tokens
@@ -169,6 +171,7 @@ DefaultRetryDelayStrategyFactory
 ```
 
 The factory:
+
 - Handles configuration validation
 - Creates appropriate strategy instances
 - Manages strategy lifecycle
@@ -186,6 +189,7 @@ PipelineContextRetryDelayExtensions
 ```
 
 **Integration Features:**
+
 - Caches strategies to avoid recreation
 - Supports runtime configuration
 - Integrates with resilient execution strategy
@@ -345,6 +349,7 @@ RetryDelayStrategyConfiguration
 ```
 
 **Validation Timing:**
+
 - Configuration creation: Optional (deferred)
 - Factory creation: Mandatory (immediate)
 - Strategy usage: Pre-validated

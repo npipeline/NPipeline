@@ -808,9 +808,3 @@ var source = new ExcelSourceNode<MixedDataRecord>(
     configuration: mixedDataConfig
 );
 ```
-
-## Related Topics
-
-- **[NPipeline Extensions Index](../.)**: Return to the extensions overview.
-- **[CSV Connector](./csv.md)**: Learn about working with CSV files.
-- **[Storage Provider Interface](../storage-providers/storage-provider.md)**: Understand the storage layer architecture.
