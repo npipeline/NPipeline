@@ -175,6 +175,7 @@ NPipeline is modular - install only what you need.
 | **NPipeline.Connectors** | Core abstractions for data format/storage decoupling |
 | **NPipeline.Connectors.Csv** | CSV source and sink nodes |
 | **NPipeline.Connectors.Excel** | Excel source and sink nodes for XLS and XLSX files |
+| **NPipeline.Connectors.Json** | JSON source and sink nodes for JSON array and NDJSON formats |
 | **NPipeline.Connectors.PostgreSQL** | PostgreSQL database source and sink nodes |
 | **NPipeline.Connectors.SqlServer** | SQL Server database source and sink nodes |
 

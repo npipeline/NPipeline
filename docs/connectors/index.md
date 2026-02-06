@@ -44,6 +44,11 @@ The following connectors are available:
   - Supports both legacy XLS (binary) and modern XLSX (Open XML) formats
   - Configurable sheet selection, header handling, and type detection
   - Works with any storage backend via the `IStorageProvider` abstraction from `NPipeline.StorageProviders`
+- **[JSON](./json.md)**: Read from and write to JSON files (Array and NDJSON formats).
+  - Supports both JSON array and newline-delimited JSON (NDJSON) formats
+  - Configurable property naming policies, indentation, and error handling
+  - Uses System.Text.Json for efficient streaming with minimal dependencies
+  - Works with any storage backend via the `IStorageProvider` abstraction from `NPipeline.StorageProviders`
 - **[PostgreSQL](./postgresql.md)**: Read from and write to PostgreSQL databases.
   - Supports streaming reads, per-row and batched writes, and in-memory checkpointing
   - Uses Npgsql library for reliable database operations
@@ -83,6 +88,7 @@ Explore the documentation for each specific connector to learn about its install
 
 - **[CSV Connector](csv.md)**: Learn how to read from and write to CSV files
 - **[Excel Connector](excel.md)**: Learn how to read from and write to Excel files (XLS and XLSX)
+- **[JSON Connector](json.md)**: Learn how to read from and write to JSON files (Array and NDJSON)
 - **[PostgreSQL Connector](postgresql.md)**: Learn how to read from and write to PostgreSQL databases
 - **[SQL Server Connector](sqlserver.md)**: Learn how to read from and write to Microsoft SQL Server databases
 - **[Common Patterns](../core-concepts/common-patterns.md)**: See connectors in practical examples
