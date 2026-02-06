@@ -1,0 +1,13 @@
+{"id": 1, "firstName": "John", "lastName": "Doe", "email": "john.doe@example.com", "age": 28, "registrationDate": "2023-01-15T00:00:00Z", "country": "USA", "isActive": true}
+{"id": 2, "firstName": "Jane", "lastName": "Smith", "email": "jane.smith@example.com", "age": 34, "registrationDate": "2023-02-20T00:00:00Z", "country": "Canada", "isActive": true}
+{"id": 3, "firstName": "Bob", "lastName": "Johnson", "email": "bob.johnson@example.com", "age": 45, "registrationDate": "2023-03-10T00:00:00Z", "country": "UK", "isActive": false}
+{"id": 4, "firstName": "Alice", "lastName": "Williams", "email": "alice.williams@example.com", "age": 29, "registrationDate": "2023-04-05T00:00:00Z", "country": "Australia", "isActive": true}
+{"id": 5, "firstName": "Charlie", "lastName": "Brown", "email": "charlie.brown@example.com", "age": 52, "registrationDate": "2023-05-12T00:00:00Z", "country": "United States", "isActive": true}
+{"id": 6, "firstName": "Diana", "lastName": "Prince", "email": "diana.prince@example.com", "age": 31, "registrationDate": "2023-06-18T00:00:00Z", "country": "USA", "isActive": true}
+{"id": 7, "firstName": "Edward", "lastName": "Stark", "email": "edward.stark@example.com", "age": 38, "registrationDate": "2023-07-22T00:00:00Z", "country": "UK", "isActive": false}
+{"id": 8, "firstName": "Fiona", "lastName": "Gallagher", "email": "fiona.gallagher@example.com", "age": 27, "registrationDate": "2023-08-30T00:00:00Z", "country": "Ireland", "isActive": true}
+{"id": 9, "firstName": "George", "lastName": "Miller", "email": "george.miller@example.com", "age": 41, "registrationDate": "2023-09-14T00:00:00Z", "country": "New Zealand", "isActive": true}
+{"id": 10, "firstName": "Hannah", "lastName": "Anderson", "email": "hannah.anderson@example.com", "age": 33, "registrationDate": "2023-10-25T00:00:00Z", "country": "Canada", "isActive": true}
+{"id": 0, "firstName": "Invalid", "lastName": "Record", "email": "invalid.email", "age": -5, "registrationDate": "2025-01-01T00:00:00Z", "country": "", "isActive": true}
+{"id": 12, "firstName": "", "lastName": "Missing", "email": "missing.name@example.com", "age": 25, "registrationDate": "2023-11-05T00:00:00Z", "country": "USA", "isActive": true}
+{"id": 13, "firstName": "No", "lastName": "Email", "email": "", "age": 30, "registrationDate": "2023-12-10T00:00:00Z", "country": "UK", "isActive": false}

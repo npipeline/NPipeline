@@ -18,7 +18,6 @@ Using connectors, you can quickly assemble pipelines that integrate with your ex
 All connectors work through the `IStorageProvider` abstraction from the `NPipeline.StorageProviders` project, which enables them to work with multiple backend systems:
 
 - **[Storage Provider Interface](../storage-providers/storage-provider.md)** - Learn about the abstraction layer that powers connectors
-  - Storage provider abstractions are now in the `NPipeline.StorageProviders` namespace/assembly
   - Works with filesystems, cloud storage (S3, Azure), databases, and custom backends
   - Unified API for read, write, delete, list, and metadata operations
   - Built-in support for filesystem with resilient directory traversal
@@ -43,6 +42,11 @@ The following connectors are available:
 - **[Excel](./excel.md)**: Read from and write to Excel files (XLS and XLSX formats).
   - Supports both legacy XLS (binary) and modern XLSX (Open XML) formats
   - Configurable sheet selection, header handling, and type detection
+  - Works with any storage backend via the `IStorageProvider` abstraction from `NPipeline.StorageProviders`
+- **[JSON](./json.md)**: Read from and write to JSON files (Array and NDJSON formats).
+  - Supports both JSON array and newline-delimited JSON (NDJSON) formats
+  - Configurable property naming policies, indentation, and error handling
+  - Uses System.Text.Json for efficient streaming with minimal dependencies
   - Works with any storage backend via the `IStorageProvider` abstraction from `NPipeline.StorageProviders`
 - **[PostgreSQL](./postgresql.md)**: Read from and write to PostgreSQL databases.
   - Supports streaming reads, per-row and batched writes, and in-memory checkpointing
@@ -83,6 +87,7 @@ Explore the documentation for each specific connector to learn about its install
 
 - **[CSV Connector](csv.md)**: Learn how to read from and write to CSV files
 - **[Excel Connector](excel.md)**: Learn how to read from and write to Excel files (XLS and XLSX)
+- **[JSON Connector](json.md)**: Learn how to read from and write to JSON files (Array and NDJSON)
 - **[PostgreSQL Connector](postgresql.md)**: Learn how to read from and write to PostgreSQL databases
 - **[SQL Server Connector](sqlserver.md)**: Learn how to read from and write to Microsoft SQL Server databases
 - **[Common Patterns](../core-concepts/common-patterns.md)**: See connectors in practical examples

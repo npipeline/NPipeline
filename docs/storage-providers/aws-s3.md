@@ -651,13 +651,6 @@ The S3 storage provider has the following limitations:
 - The threshold is configurable via `S3StorageProviderOptions`
 - For very large files, ensure sufficient memory and network bandwidth
 
-## Related Topics
-
-- **[Storage Providers Overview](./index.md)**: Return to the storage providers overview
-- **[Storage Provider Interface](./storage-provider.md)**: Learn about the storage abstraction layer
-- **[CSV Connector](../connectors/csv.md)**: See storage providers in action with CSV files
-- **[Excel Connector](../connectors/excel.md)**: See storage providers in action with Excel files
-
 ## Additional Resources
 
 - [AWS S3 Documentation](https://docs.aws.amazon.com/s3/)

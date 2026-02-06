@@ -9,8 +9,6 @@ slug: /storage-providers
 
 Storage providers are the underlying abstraction layer that enables NPipeline connectors to work with different storage backends. All connectors (CSV, Excel, PostgreSQL, SQL Server, etc.) use the `IStorageProvider` interface from the `NPipeline.StorageProviders` namespace to read from and write to various storage systems.
 
-> **Note:** Storage provider abstractions are now located in the `NPipeline.StorageProviders` namespace/assembly. Connectors depend on this project for storage operations.
-
 This abstraction allows you to:
 
 - Use the same connector code with different storage backends

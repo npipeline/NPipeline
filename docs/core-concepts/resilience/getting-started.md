@@ -31,7 +31,7 @@ Enable these in your `.editorconfig` to make them blocking errors in your build 
 >
 > Node restart is a powerful resilience feature that requires **three mandatory prerequisites**. The system validates these at runtime and throws clear exceptions if any are missing.
 >
-> If you've experienced mysterious pipeline failures where restart seemed enabled but didn't work, one of these requirements was missing. The improved runtime validation now provides immediate, actionable feedback when configuration is incomplete.
+> If you've experienced mysterious pipeline failures where restart seemed enabled but didn't work, one of these requirements was missing. Runtime validation provides immediate, actionable feedback when configuration is incomplete via the included Roslyn analyzers.
 
 ---
 

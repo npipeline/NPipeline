@@ -83,6 +83,13 @@ Provides Excel specific connectors for reading and writing XLS and XLSX files.
 dotnet add package NPipeline.Connectors.Excel
 ```
 
+**10. NPipeline.Connectors.Json (Optional)**
+Provides JSON specific connectors for reading and writing JSON array and NDJSON files.
+
+```bash
+dotnet add package NPipeline.Connectors.Json
+```
+
 ### Using Visual Studio NuGet Package Manager
 
 1. Right-click on your project in the Solution Explorer and select "Manage NuGet Packages...".
@@ -100,6 +107,7 @@ The following table shows the dependencies for each NPipeline package:
 | NPipeline.Connectors | Microsoft.Extensions.DependencyInjection.Abstractions |
 | NPipeline.Connectors.Csv | CsvHelper |
 | NPipeline.Connectors.Excel | ExcelDataReader, DocumentFormat.OpenXml |
+| NPipeline.Connectors.Json | System.Text.Json |
 | NPipeline.Extensions.Parallelism | System.Threading.Tasks.DataFlow |
 
 ## Setting Up Dependency Injection

@@ -1250,11 +1250,3 @@ public sealed class ResilientPostgresSourceNode<T> : PostgresSourceNode<T>
     }
 }
 ```
-
-## Related Topics
-
-- **[NPipeline Extensions Index](../.)**: Return to the extensions overview.
-- **[CSV Connector](./csv.md)**: Learn about working with CSV files.
-- **[Excel Connector](./excel.md)**: Learn about working with Excel files.
-- **[Storage Provider Interface](../storage-providers/storage-provider.md)**: Understand the storage layer architecture.
-- **[Npgsql Documentation](https://www.npgsql.org/doc/)**: Detailed documentation for the underlying PostgreSQL driver.

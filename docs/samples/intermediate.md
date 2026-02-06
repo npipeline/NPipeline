@@ -63,38 +63,39 @@ These samples demonstrate real-world patterns and techniques for building practi
 
 ---
 
-## Sample 09: AggregateNode
+## Sample 09: JSON Connector
 
 **Concepts demonstrated:**
 
-- `AggregateNode<TIn, TKey, TResult>` for time-based aggregations
-- Tumbling and sliding window strategies
-- Key-based aggregation by different dimensions
-- Event-time processing with watermarks
-- Real-time analytics dashboard patterns
-- Multi-dimensional aggregations with identical accumulator and result types
+- JSON source and sink nodes with `JsonSourceNode<T>` and `JsonSinkNode<T>`
+- JSON array and NDJSON (newline-delimited JSON) format support
+- StorageUri abstraction for file system access
+- Attribute-based mapping with ColumnAttribute
+- Manual mapper functions for custom mapping logic
+- Configurable property naming policies (lowercase, camelCase, snakeCase, PascalCase)
+- Data transformation and validation patterns
+- Error handling for malformed JSON data
 
-**What it does:** Implements a real-time analytics dashboard that processes user interaction events (page views, clicks, purchases) and generates aggregated metrics using tumbling windows for event counting and sliding windows for value summation. The sample demonstrates filtering irrelevant events and displaying formatted metrics in a console dashboard.
+**What it does:** Implements a comprehensive JSON data processing pipeline that reads customer data from JSON files (supporting both JSON array and NDJSON formats), validates it against business rules, transforms and enriches the data, and writes processed results to output JSON files. The sample demonstrates both attribute-based mapping using ColumnAttribute and manual mapper functions for custom scenarios. It also showcases different JSON output formats and property naming policies.
 
-**Key takeaways:** Building real-time analytics systems with simple aggregations where accumulator and result types are identical. Understanding windowing patterns and key-based grouping for streaming analytics scenarios.
+**Key takeaways:** Building flexible JSON processing pipelines with support for multiple JSON formats, configurable naming conventions, and robust error handling using NPipeline's JSON connector components. Understanding how to work with both JSON arrays and NDJSON formats for different use cases.
 
 ---
 
-## Sample 10: BranchNode
+## Sample 10: AggregateNode
 
 **Concepts demonstrated:**
 
-- BranchNode for fanning out data to multiple downstream pathways
-- Parallel processing strategies with concurrent execution
-- Data duplication patterns where each item is sent to all connected nodes
-- Error isolation between branches to prevent cascading failures
-- Type preservation with different output types per branch
-- Real-world e-commerce scenario with inventory, analytics, and notifications
-- Multi-stream processing with independent business logic per branch
+- AggregateNode for aggregating data from multiple sources
+- Windowing and grouping strategies
+- Aggregation functions (sum, count, average, etc.)
+- State management and checkpointing
+- Error handling and recovery for partial data
+- Real-world analytics and reporting scenario
 
-**What it does:** Implements an e-commerce order processing pipeline that demonstrates how BranchNode can distribute order events to multiple parallel processing paths simultaneously. The pipeline processes orders through inventory management, business analytics, and customer notifications while maintaining the main order flow. Each branch operates independently with its own business logic, error handling, and output types.
+**What it does:** Implements a data aggregation pipeline that reads data from multiple sources, applies windowing and grouping strategies, performs aggregation functions, and writes the results to a sink. The sample demonstrates how to handle partial data, manage state, and recover from errors during the aggregation process.
 
-**Key takeaways:** Building complex data distribution patterns with BranchNode for parallel processing while maintaining error isolation and type safety. Understanding how to implement real-world scenarios requiring multiple concurrent processing paths for the same data.
+**Key takeaways:** Building scalable and fault-tolerant data aggregation pipelines. Understanding how to implement windowing, grouping, and aggregation functions, and how to manage state and checkpoints for long-running processes.
 
 ---
 

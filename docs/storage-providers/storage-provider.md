@@ -10,8 +10,6 @@ sidebar_position: 2
 
 The `IStorageProvider` interface is a foundational abstraction that enables NPipeline connectors to work with multiple storage backends—from local filesystems to cloud services and databases. This document explains the core concepts, capabilities, and patterns for working with storage providers.
 
-> **Note:** Storage provider abstractions are now located in the `NPipeline.StorageProviders` namespace/assembly. Connectors depend on this project for storage operations.
-
 ## Core Interface
 
 `IStorageProvider` defines the following operations:
@@ -614,8 +612,3 @@ For filesystem, these are automatically handled by the built-in provider.
 - Consider pagination for large datasets
 - Minimize allocations in hot paths
 - Cache provider metadata during pipeline lifetime
-
-## Related Documentation
-
-- **[CSV Connector](../connectors/csv.md)** - Example using the filesystem storage provider
-- **[AWS S3 Storage Provider](./aws-s3.md)** - Learn about the S3 storage provider implementation

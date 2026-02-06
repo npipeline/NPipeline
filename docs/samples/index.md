@@ -39,7 +39,8 @@ Jump directly to samples by topic:
 
 - [File Processing](./basic.md#sample-02-file-processing)
 - [CSV Processing](./intermediate.md#sample-08-csv-connector)
-- [Real-time Analytics](./intermediate.md#sample-09-aggregatenode)
+- [JSON Processing](./intermediate.md#sample-09-json-connector)
+- [Real-time Analytics](./intermediate.md#sample-10-aggregatenode)
 - [Custom Node Implementation](./advanced.md)
 - [Extension Samples](./extensions.md)
 
@@ -67,15 +68,16 @@ Perfect for learning NPipeline fundamentals:
 
 **→ [View all Basic Samples](./basic.md)**
 
-### Intermediate Samples (6-10)
+### Intermediate Samples (6-11)
 
 Building real-world features:
 
 - **Sample 06: Advanced Error Handling** - Production resilience patterns
 - **Sample 07: LookupNode** - Data enrichment from external sources
 - **Sample 08: CSV Connector** - CSV processing pipelines
-- **Sample 09: AggregateNode** - Real-time analytics with windowing
-- **Sample 10: BranchNode** - Parallel data distribution
+- **Sample 09: JSON Connector** - JSON array and NDJSON processing pipelines
+- **Sample 10: AggregateNode** - Real-time analytics with windowing
+- **Sample 11: BranchNode** - Parallel data distribution
 
 **→ [View all Intermediate Samples](./intermediate.md)**
 
@@ -120,15 +122,18 @@ Build a solid understanding:
 
 - All Basic Samples (1-5)
 - Sample 06: Advanced Error Handling
-- Sample 09: AggregateNode
+- Sample 07: LookupNode
+- Sample 08: CSV Connector
+- Sample 09: JSON Connector
+- Sample 10: AggregateNode
 
 ### Comprehensive Path (8+ hours)
 
 Master all patterns:
 
 - All Basic Samples (1-5)
-- All Intermediate Samples (6-10)
-- All Advanced Samples (11-23)
+- All Intermediate Samples (6-11)
+- All Advanced Samples (12-23)
 - All Extension Samples
 
 ### Extension-Focused Path (3-4 hours)
@@ -136,8 +141,11 @@ Master all patterns:
 Master extension packages:
 
 - All Basic Samples (1-5)
+- Sample 06: Advanced Error Handling
+- Sample 07: LookupNode
+- Sample 08: CSV Connector
+- Sample 09: JSON Connector
 - All Extension Samples
-- Sample 23: Complex Data Transformations
 
 ## Related Documentation
 
