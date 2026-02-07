@@ -81,7 +81,9 @@ public sealed class SqsSourceNode<T> : SourceNode<SqsMessage<T>>
 
                 if (response.Messages.Count == 0)
                 {
-                    // No messages available, continue polling until cancelled
+                    // No messages available, wait before polling again
+                    if (_configuration.PollingIntervalMs > 0)
+                        await Task.Delay(_configuration.PollingIntervalMs, cancellationToken).ConfigureAwait(false);
                     continue;
                 }
 
@@ -117,9 +119,13 @@ public sealed class SqsSourceNode<T> : SourceNode<SqsMessage<T>>
             if (messagesToYield != null)
             {
                 // If we received messages but filtered them all out (e.g., invalid JSON with ContinueOnError),
-                // end the stream so callers observing MoveNextAsync get a completed false instead of hanging.
+                // continue polling for new messages.
                 if (messagesToYield.Count == 0)
-                    yield break;
+                {
+                    if (_configuration.PollingIntervalMs > 0)
+                        await Task.Delay(_configuration.PollingIntervalMs, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
 
                 foreach (var message in messagesToYield)
                 {

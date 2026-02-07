@@ -574,7 +574,7 @@ public class SqsSourceNodeTests
             var sqsClientFake = A.Fake<IAmazonSQS>();
             var node = new SqsSourceNode<TestModel>(sqsClientFake, configuration);
             var context = new PipelineContext();
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
 
             var invalidMessage = new Message
             {
@@ -597,13 +597,18 @@ public class SqsSourceNodeTests
             var dataPipe = node.Initialize(context, cts.Token);
             var enumerator = dataPipe.GetAsyncEnumerator(cts.Token);
 
-            // Should not throw when continue on error is true
-            var hasMessage = await enumerator.MoveNextAsync();
+            // Should not yield a message; cancellation ends the poll.
+            var moveNextTask = enumerator.MoveNextAsync().AsTask();
 
-            // Assert
-            hasMessage.Should().BeFalse(); // No valid messages
-
-            await cts.CancelAsync();
+            try
+            {
+                var hasMessage = await moveNextTask;
+                hasMessage.Should().BeFalse();
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected once cancellation fires
+            }
         }
 
         [Fact]

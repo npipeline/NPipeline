@@ -240,7 +240,8 @@ public class SqsConfiguration
 
         if (EnableParallelProcessing && MaxDegreeOfParallelism < 2)
         {
-            // Warn that parallel processing won't be effective with MaxDegreeOfParallelism < 2
+            throw new InvalidOperationException(
+                "MaxDegreeOfParallelism must be at least 2 when EnableParallelProcessing is true.");
         }
     }
 }

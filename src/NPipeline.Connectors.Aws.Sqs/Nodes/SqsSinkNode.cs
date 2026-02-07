@@ -24,6 +24,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
     private readonly AcknowledgmentStrategy _acknowledgmentStrategy;
     private readonly AcknowledgmentBatcher _batcher;
     private readonly BatchAcknowledgmentOptions _batchOptions;
+    private IPipelineLogger _logger = NullPipelineLogger.Instance;
 
     private readonly SqsConfiguration _configuration;
     private readonly List<Task> _delayedAcknowledgmentTasks = [];
@@ -64,6 +65,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
     public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
         var logger = context.LoggerFactory.CreateLogger(nameof(SqsSinkNode<T>));
+        _logger = logger;
         _batcher.SetLogger(logger);
 
         if (_configuration.EnableParallelProcessing && _configuration.MaxDegreeOfParallelism > 1)
@@ -438,7 +440,14 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
     public override async ValueTask DisposeAsync()
     {
         await _batcher.DisposeAsync().ConfigureAwait(false);
-        await Task.WhenAll(_delayedAcknowledgmentTasks).ConfigureAwait(false);
+        try
+        {
+            await Task.WhenAll(_delayedAcknowledgmentTasks).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.Log(LogLevel.Warning, ex, "One or more delayed acknowledgment tasks failed during disposal");
+        }
         await base.DisposeAsync().ConfigureAwait(false);
     }
 
@@ -508,7 +517,23 @@ internal sealed class AcknowledgmentBatcher : IDisposable, IAsyncDisposable
 
     public void Dispose()
     {
-        DisposeAsync().AsTask().GetAwaiter().GetResult();
+        if (_disposed)
+            return;
+
+        try
+        {
+            _flushTimer.Change(Timeout.Infinite, Timeout.Infinite);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Ignore if already disposed
+        }
+        finally
+        {
+            _flushTimer.Dispose();
+            _semaphore.Dispose();
+            _disposed = true;
+        }
     }
 
     public async ValueTask DisposeAsync()
