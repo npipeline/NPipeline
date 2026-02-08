@@ -55,6 +55,11 @@ The following connectors are available:
   - Supports streaming reads, per-row and batched writes, and in-memory checkpointing
   - Uses Microsoft.Data.SqlClient for reliable database operations
   - Supports Windows Authentication and SQL Server Authentication
+- **[AWS SQS](./aws-sqs.md)**: Read from and write to Amazon Simple Queue Service (SQS).
+  - Supports multiple acknowledgment strategies (AutoOnSinkSuccess, Manual, Delayed, None)
+  - Includes batch acknowledgment for performance optimization
+  - Configurable long polling, parallel processing, and retry logic
+  - Uses AWSSDK.SQS for reliable SQS operations
 
 ## General Usage Pattern
 
@@ -90,5 +95,6 @@ Explore the documentation for each specific connector to learn about its install
 - **[JSON Connector](json.md)**: Learn how to read from and write to JSON files (Array and NDJSON)
 - **[PostgreSQL Connector](postgresql.md)**: Learn how to read from and write to PostgreSQL databases
 - **[SQL Server Connector](sqlserver.md)**: Learn how to read from and write to Microsoft SQL Server databases
+- **[AWS SQS Connector](aws-sqs.md)**: Learn how to read from and write to Amazon SQS queues
 - **[Common Patterns](../core-concepts/common-patterns.md)**: See connectors in practical examples
 - **[Installation](../getting-started/installation.md)**: Review installation options for connector packages

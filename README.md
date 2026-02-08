@@ -178,6 +178,7 @@ NPipeline is modular - install only what you need.
 | **NPipeline.Connectors.Json** | JSON source and sink nodes for JSON array and NDJSON formats |
 | **NPipeline.Connectors.PostgreSQL** | PostgreSQL database source and sink nodes |
 | **NPipeline.Connectors.SqlServer** | SQL Server database source and sink nodes |
+| **NPipeline.Connectors.Aws.Sqs** | AWS SQS source and sink nodes for message queue processing |
 
 ### Complete Package List
 
