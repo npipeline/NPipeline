@@ -19,6 +19,7 @@ public sealed class SqsMessage<T> : IAcknowledgableMessage<T>, IAwsSqsAcknowledg
     private readonly object _ackLock = new();
     private readonly Func<CancellationToken, Task> _acknowledgeCallback;
     private readonly Dictionary<string, object> _metadata;
+    private Task? _ackTask;
     private volatile bool _isAcknowledged;
 
     /// <summary>
@@ -105,20 +106,36 @@ public sealed class SqsMessage<T> : IAcknowledgableMessage<T>, IAwsSqsAcknowledg
     /// </summary>
     public async Task AcknowledgeAsync(CancellationToken cancellationToken = default)
     {
-        if (_isAcknowledged)
-            return;
+        Task ackTask;
 
         lock (_ackLock)
         {
             if (_isAcknowledged)
                 return;
+
+            _ackTask ??= _acknowledgeCallback(cancellationToken);
+            ackTask = _ackTask;
         }
 
-        await _acknowledgeCallback(cancellationToken).ConfigureAwait(false);
-
-        lock (_ackLock)
+        try
         {
-            _isAcknowledged = true;
+            await ackTask.ConfigureAwait(false);
+
+            lock (_ackLock)
+            {
+                _isAcknowledged = true;
+                _ackTask = Task.CompletedTask;
+            }
+        }
+        catch
+        {
+            lock (_ackLock)
+            {
+                if (ReferenceEquals(_ackTask, ackTask))
+                    _ackTask = null;
+            }
+
+            throw;
         }
     }
 
@@ -127,6 +144,7 @@ public sealed class SqsMessage<T> : IAcknowledgableMessage<T>, IAwsSqsAcknowledg
         lock (_ackLock)
         {
             _isAcknowledged = true;
+            _ackTask = Task.CompletedTask;
         }
     }
 

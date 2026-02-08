@@ -11,6 +11,10 @@ namespace Sample_SqsConnector;
 /// </summary>
 public sealed class Program
 {
+    /// <summary>
+    /// Runs the SQS connector sample.
+    /// </summary>
+    /// <param name="args">Command-line arguments.</param>
     public static async Task Main(string[] args)
     {
         Console.WriteLine("=== NPipeline Sample: SQS Connector for Order Processing ===");

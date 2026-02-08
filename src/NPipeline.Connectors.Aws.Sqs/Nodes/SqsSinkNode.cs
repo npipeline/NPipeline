@@ -206,10 +206,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
                         }
                     }, cancellationToken);
 
-                    lock (_delayedAcknowledgmentTasks)
-                    {
-                        _delayedAcknowledgmentTasks.Add(delayedTask);
-                    }
+                    TrackDelayedAcknowledgmentTask(delayedTask);
                 }
 
                 break;
@@ -244,10 +241,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
                     }
                 }, cancellationToken);
 
-                lock (_delayedAcknowledgmentTasks)
-                {
-                    _delayedAcknowledgmentTasks.Add(delayedTask);
-                }
+                TrackDelayedAcknowledgmentTask(delayedTask);
 
                 break;
             case AcknowledgmentStrategy.None:
@@ -440,15 +434,38 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
     public override async ValueTask DisposeAsync()
     {
         await _batcher.DisposeAsync().ConfigureAwait(false);
+        List<Task> delayedTasks;
+
+        lock (_delayedAcknowledgmentTasks)
+        {
+            delayedTasks = _delayedAcknowledgmentTasks.ToList();
+        }
+
         try
         {
-            await Task.WhenAll(_delayedAcknowledgmentTasks).ConfigureAwait(false);
+            await Task.WhenAll(delayedTasks).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             _logger.Log(LogLevel.Warning, ex, "One or more delayed acknowledgment tasks failed during disposal");
         }
+        finally
+        {
+            lock (_delayedAcknowledgmentTasks)
+            {
+                _delayedAcknowledgmentTasks.RemoveAll(task => task.IsCompleted);
+            }
+        }
         await base.DisposeAsync().ConfigureAwait(false);
+    }
+
+    private void TrackDelayedAcknowledgmentTask(Task delayedTask)
+    {
+        lock (_delayedAcknowledgmentTasks)
+        {
+            _delayedAcknowledgmentTasks.Add(delayedTask);
+            _delayedAcknowledgmentTasks.RemoveAll(task => task.IsCompleted);
+        }
     }
 
     private sealed record OutgoingMessage(object Payload, IAcknowledgableMessage? AckMessage);
@@ -598,10 +615,16 @@ internal sealed class AcknowledgmentBatcher : IDisposable, IAsyncDisposable
 
     private void FlushCallback(object? state)
     {
+        if (_disposed)
+            return;
+
         _ = Task.Run(async () =>
         {
             try
             {
+                if (_disposed)
+                    return;
+
                 await FlushAsync(CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception ex)

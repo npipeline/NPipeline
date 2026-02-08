@@ -1,3 +1,4 @@
+using NPipeline.Connectors.Abstractions;
 using NPipeline.Connectors.AwsSqs.Configuration;
 using NPipeline.Connectors.AwsSqs.Models;
 using NPipeline.Connectors.AwsSqs.Nodes;
@@ -80,12 +81,12 @@ namespace Sample_SqsConnector
                 name: "SqsOrderSource");
 
             // Add transform node to process orders
-            // Takes SqsMessage<Order> and outputs SqsMessage<ProcessedOrder>
-            var transformNode = builder.AddTransform<OrderProcessor, SqsMessage<Order>, SqsMessage<ProcessedOrder>>(
+            // Takes SqsMessage<Order> and outputs IAcknowledgableMessage<ProcessedOrder>
+            var transformNode = builder.AddTransform<OrderProcessor, SqsMessage<Order>, IAcknowledgableMessage<ProcessedOrder>>(
                 name: "OrderProcessor");
 
             // Add SQS sink node to publish processed orders to output queue
-            var sinkNode = builder.AddSink<SqsSinkNode<SqsMessage<ProcessedOrder>>, SqsMessage<ProcessedOrder>>(
+            var sinkNode = builder.AddSink<SqsSinkNode<IAcknowledgableMessage<ProcessedOrder>>, IAcknowledgableMessage<ProcessedOrder>>(
                 name: "SqsProcessedOrderSink");
 
             // Connect the nodes to form the pipeline
@@ -101,10 +102,10 @@ namespace Sample_SqsConnector
     /// This node extracts the Order from the SqsMessage envelope,
     /// validates it, and returns a ProcessedOrder with the result.
     /// </remarks>
-    public sealed class OrderProcessor : TransformNode<SqsMessage<Order>, SqsMessage<ProcessedOrder>>
+    public sealed class OrderProcessor : TransformNode<SqsMessage<Order>, IAcknowledgableMessage<ProcessedOrder>>
     {
         /// <inheritdoc />
-        public override async Task<SqsMessage<ProcessedOrder>> ExecuteAsync(
+        public override async Task<IAcknowledgableMessage<ProcessedOrder>> ExecuteAsync(
             SqsMessage<Order> input,
             PipelineContext context,
             CancellationToken cancellationToken)
