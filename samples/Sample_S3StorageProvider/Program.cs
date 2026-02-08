@@ -1,7 +1,7 @@
 ﻿using Amazon;
 using Amazon.Runtime;
 using Microsoft.Extensions.DependencyInjection;
-using NPipeline.StorageProviders.Aws.S3;
+using NPipeline.StorageProviders.Aws;
 using NPipeline.StorageProviders.Models;
 
 namespace Sample_S3StorageProvider;

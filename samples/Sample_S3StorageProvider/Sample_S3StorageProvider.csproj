@@ -13,7 +13,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\NPipeline.StorageProviders.Aws.S3\NPipeline.StorageProviders.Aws.S3.csproj"/>
+      <ProjectReference Include="..\..\src\NPipeline.StorageProviders.Aws\NPipeline.StorageProviders.Aws.csproj" />
     </ItemGroup>
 
 </Project>

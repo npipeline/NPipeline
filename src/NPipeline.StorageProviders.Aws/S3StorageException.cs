@@ -1,7 +1,7 @@
 using Amazon.S3;
 using NPipeline.StorageProviders.Exceptions;
 
-namespace NPipeline.StorageProviders.Aws.S3;
+namespace NPipeline.StorageProviders.Aws;
 
 /// <summary>
 ///     Exception thrown when an S3 storage operation fails.

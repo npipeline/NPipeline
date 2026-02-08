@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 
-namespace NPipeline.StorageProviders.Aws.S3;
+namespace NPipeline.StorageProviders.Aws;
 
 /// <summary>
 ///     Extension methods for configuring S3 storage provider in dependency injection.

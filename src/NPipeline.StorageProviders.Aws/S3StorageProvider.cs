@@ -6,7 +6,7 @@ using Amazon.S3.Model;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
-namespace NPipeline.StorageProviders.Aws.S3;
+namespace NPipeline.StorageProviders.Aws;
 
 /// <summary>
 ///     Storage provider for AWS S3 that implements the <see cref="IStorageProvider" /> interface.

@@ -1,7 +1,7 @@
 using Amazon.S3;
 using Amazon.S3.Model;
 
-namespace NPipeline.StorageProviders.Aws.S3;
+namespace NPipeline.StorageProviders.Aws;
 
 /// <summary>
 ///     A stream that buffers writes and uploads to S3 on disposal or flush.

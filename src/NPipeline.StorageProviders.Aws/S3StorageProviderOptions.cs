@@ -1,7 +1,7 @@
 using Amazon;
 using Amazon.Runtime;
 
-namespace NPipeline.StorageProviders.Aws.S3;
+namespace NPipeline.StorageProviders.Aws;
 
 /// <summary>
 ///     Configuration options for the S3 storage provider.

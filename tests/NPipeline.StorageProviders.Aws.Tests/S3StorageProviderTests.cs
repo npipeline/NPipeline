@@ -6,7 +6,7 @@ using FluentAssertions;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 
-namespace NPipeline.StorageProviders.Aws.S3.Tests;
+namespace NPipeline.StorageProviders.Aws.Tests;
 
 public class S3StorageProviderTests
 {

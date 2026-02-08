@@ -4,7 +4,7 @@ using Amazon.Runtime;
 using Amazon.S3;
 using NPipeline.StorageProviders.Models;
 
-namespace NPipeline.StorageProviders.Aws.S3;
+namespace NPipeline.StorageProviders.Aws;
 
 /// <summary>
 ///     Factory for creating and caching Amazon S3 clients with flexible authentication options.
