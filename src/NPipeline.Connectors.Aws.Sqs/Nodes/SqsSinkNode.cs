@@ -4,15 +4,15 @@ using Amazon.Runtime.CredentialManagement;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using NPipeline.Connectors.Abstractions;
-using NPipeline.Connectors.AwsSqs.Configuration;
-using NPipeline.Connectors.AwsSqs.Models;
+using NPipeline.Connectors.Aws.Sqs.Configuration;
+using NPipeline.Connectors.Aws.Sqs.Models;
 using NPipeline.Connectors.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.Nodes;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
 
-namespace NPipeline.Connectors.AwsSqs.Nodes;
+namespace NPipeline.Connectors.Aws.Sqs.Nodes;
 
 /// <summary>
 ///     Sink node that publishes messages to an SQS queue with automatic acknowledgment support.
@@ -24,12 +24,12 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
     private readonly AcknowledgmentStrategy _acknowledgmentStrategy;
     private readonly AcknowledgmentBatcher _batcher;
     private readonly BatchAcknowledgmentOptions _batchOptions;
-    private IPipelineLogger _logger = NullPipelineLogger.Instance;
 
     private readonly SqsConfiguration _configuration;
     private readonly List<Task> _delayedAcknowledgmentTasks = [];
     private readonly JsonSerializerOptions _serializerOptions;
     private readonly IAmazonSQS _sqsClient;
+    private IPipelineLogger _logger = NullPipelineLogger.Instance;
 
     /// <summary>
     ///     Creates a new SqsSinkNode with the specified configuration.
@@ -456,6 +456,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
                 _delayedAcknowledgmentTasks.RemoveAll(task => task.IsCompleted);
             }
         }
+
         await base.DisposeAsync().ConfigureAwait(false);
     }
 
@@ -504,13 +505,13 @@ internal sealed class AcknowledgmentBatcher : IDisposable, IAsyncDisposable
 {
     private readonly List<IAcknowledgableMessageWrapper> _batch;
     private readonly Timer _flushTimer;
-    private IPipelineLogger _logger;
     private readonly object _lock = new();
     private readonly BatchAcknowledgmentOptions _options;
     private readonly string _queueUrl;
     private readonly SemaphoreSlim _semaphore;
     private readonly IAmazonSQS _sqsClient;
     private bool _disposed;
+    private IPipelineLogger _logger;
 
     public AcknowledgmentBatcher(
         BatchAcknowledgmentOptions options,
@@ -525,32 +526,6 @@ internal sealed class AcknowledgmentBatcher : IDisposable, IAsyncDisposable
         _semaphore = new SemaphoreSlim(options.MaxConcurrentBatches, options.MaxConcurrentBatches);
         _batch = new List<IAcknowledgableMessageWrapper>(options.BatchSize);
         _flushTimer = new Timer(FlushCallback, null, options.FlushTimeoutMs, options.FlushTimeoutMs);
-    }
-
-    public void SetLogger(IPipelineLogger logger)
-    {
-        _logger = logger ?? NullPipelineLogger.Instance;
-    }
-
-    public void Dispose()
-    {
-        if (_disposed)
-            return;
-
-        try
-        {
-            _flushTimer.Change(Timeout.Infinite, Timeout.Infinite);
-        }
-        catch (ObjectDisposedException)
-        {
-            // Ignore if already disposed
-        }
-        finally
-        {
-            _flushTimer.Dispose();
-            _semaphore.Dispose();
-            _disposed = true;
-        }
     }
 
     public async ValueTask DisposeAsync()
@@ -574,6 +549,32 @@ internal sealed class AcknowledgmentBatcher : IDisposable, IAsyncDisposable
 
         _semaphore.Dispose();
         _disposed = true;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        try
+        {
+            _flushTimer.Change(Timeout.Infinite, Timeout.Infinite);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Ignore if already disposed
+        }
+        finally
+        {
+            _flushTimer.Dispose();
+            _semaphore.Dispose();
+            _disposed = true;
+        }
+    }
+
+    public void SetLogger(IPipelineLogger logger)
+    {
+        _logger = logger ?? NullPipelineLogger.Instance;
     }
 
     public async Task AddAsync(IAcknowledgableMessage message, CancellationToken cancellationToken)

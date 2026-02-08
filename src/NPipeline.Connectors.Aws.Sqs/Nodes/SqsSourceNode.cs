@@ -5,14 +5,14 @@ using Amazon;
 using Amazon.Runtime.CredentialManagement;
 using Amazon.SQS;
 using Amazon.SQS.Model;
-using NPipeline.Connectors.AwsSqs.Configuration;
-using NPipeline.Connectors.AwsSqs.Models;
+using NPipeline.Connectors.Aws.Sqs.Configuration;
+using NPipeline.Connectors.Aws.Sqs.Models;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
-namespace NPipeline.Connectors.AwsSqs.Nodes;
+namespace NPipeline.Connectors.Aws.Sqs.Nodes;
 
 /// <summary>
 ///     Source node that continuously polls an SQS queue and yields messages.
@@ -84,6 +84,7 @@ public sealed class SqsSourceNode<T> : SourceNode<SqsMessage<T>>
                     // No messages available, wait before polling again
                     if (_configuration.PollingIntervalMs > 0)
                         await Task.Delay(_configuration.PollingIntervalMs, cancellationToken).ConfigureAwait(false);
+
                     continue;
                 }
 
@@ -93,7 +94,7 @@ public sealed class SqsSourceNode<T> : SourceNode<SqsMessage<T>>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var sqsMessage = await CreateSqsMessageAsync(message, cancellationToken).ConfigureAwait(false);
+                    var sqsMessage = CreateSqsMessage(message);
 
                     if (sqsMessage != null)
                         messagesToYield.Add(sqsMessage);
@@ -124,6 +125,7 @@ public sealed class SqsSourceNode<T> : SourceNode<SqsMessage<T>>
                 {
                     if (_configuration.PollingIntervalMs > 0)
                         await Task.Delay(_configuration.PollingIntervalMs, cancellationToken).ConfigureAwait(false);
+
                     continue;
                 }
 
@@ -135,7 +137,7 @@ public sealed class SqsSourceNode<T> : SourceNode<SqsMessage<T>>
         }
     }
 
-    private async Task<SqsMessage<T>?> CreateSqsMessageAsync(Message sqsMessage, CancellationToken cancellationToken)
+    private SqsMessage<T>? CreateSqsMessage(Message sqsMessage)
     {
         try
         {

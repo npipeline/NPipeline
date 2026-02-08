@@ -2,7 +2,7 @@ using Amazon.SQS;
 using Amazon.SQS.Model;
 using NPipeline.Connectors.Abstractions;
 
-namespace NPipeline.Connectors.AwsSqs.Models;
+namespace NPipeline.Connectors.Aws.Sqs.Models;
 
 internal interface IAwsSqsAcknowledgableMessage
 {
@@ -139,6 +139,23 @@ public sealed class SqsMessage<T> : IAcknowledgableMessage<T>, IAwsSqsAcknowledg
         }
     }
 
+    /// <summary>
+    ///     Creates a new SqsMessage with the provided body while preserving acknowledgment behavior.
+    /// </summary>
+    /// <typeparam name="TNew">The new body type.</typeparam>
+    /// <param name="body">The new message body.</param>
+    /// <returns>A new SqsMessage with the same acknowledgment callback.</returns>
+    public IAcknowledgableMessage<TNew> WithBody<TNew>(TNew body)
+    {
+        return new SqsMessage<TNew>(
+            body,
+            MessageId,
+            ReceiptHandle,
+            Attributes,
+            Timestamp,
+            _acknowledgeCallback);
+    }
+
     void IAwsSqsAcknowledgableMessage.MarkAcknowledged()
     {
         lock (_ackLock)
@@ -158,23 +175,6 @@ public sealed class SqsMessage<T> : IAcknowledgableMessage<T>, IAwsSqsAcknowledg
             queueUrl,
             receiptHandle,
             cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    ///     Creates a new SqsMessage with the provided body while preserving acknowledgment behavior.
-    /// </summary>
-    /// <typeparam name="TNew">The new body type.</typeparam>
-    /// <param name="body">The new message body.</param>
-    /// <returns>A new SqsMessage with the same acknowledgment callback.</returns>
-    public IAcknowledgableMessage<TNew> WithBody<TNew>(TNew body)
-    {
-        return new SqsMessage<TNew>(
-            body,
-            MessageId,
-            ReceiptHandle,
-            Attributes,
-            Timestamp,
-            _acknowledgeCallback);
     }
 
     private Dictionary<string, object> BuildMetadata()

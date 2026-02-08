@@ -1,4 +1,4 @@
-namespace NPipeline.Connectors.AwsSqs.Configuration;
+namespace NPipeline.Connectors.Aws.Sqs.Configuration;
 
 /// <summary>
 ///     Specifies the naming policy for JSON property names when reading or writing.

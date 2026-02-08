@@ -2,7 +2,7 @@ using System.Reflection;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using FakeItEasy;
-using NPipeline.Connectors.AwsSqs.Models;
+using NPipeline.Connectors.Aws.Sqs.Models;
 
 namespace NPipeline.Connectors.Aws.Sqs.Tests.Models;
 

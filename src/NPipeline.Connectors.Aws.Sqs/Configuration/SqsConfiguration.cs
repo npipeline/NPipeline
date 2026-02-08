@@ -1,8 +1,8 @@
 using Amazon.SQS.Model;
-using NPipeline.Connectors.AwsSqs.Models;
+using NPipeline.Connectors.Aws.Sqs.Models;
 using NPipeline.Connectors.Configuration;
 
-namespace NPipeline.Connectors.AwsSqs.Configuration;
+namespace NPipeline.Connectors.Aws.Sqs.Configuration;
 
 /// <summary>
 ///     Configuration for AWS SQS connector operations with enhanced acknowledgment support.

@@ -1,7 +1,7 @@
-using NPipeline.Connectors.AwsSqs.Configuration;
+using NPipeline.Connectors.Aws.Sqs.Configuration;
 using NPipeline.Connectors.Configuration;
 
-namespace NPipeline.Connectors.AwsSqs.Tests.Configuration;
+namespace NPipeline.Connectors.Aws.Sqs.Tests.Configuration;
 
 public class SqsConfigurationTests
 {

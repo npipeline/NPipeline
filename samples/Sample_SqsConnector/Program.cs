@@ -6,13 +6,13 @@ using NPipeline.Extensions.DependencyInjection;
 namespace Sample_SqsConnector;
 
 /// <summary>
-/// Entry point for SQS Connector sample demonstrating message processing with SQS queues.
-/// This sample shows how to use SqsSourceNode and SqsSinkNode for reliable message processing.
+///     Entry point for SQS Connector sample demonstrating message processing with SQS queues.
+///     This sample shows how to use SqsSourceNode and SqsSinkNode for reliable message processing.
 /// </summary>
 public sealed class Program
 {
     /// <summary>
-    /// Runs the SQS connector sample.
+    ///     Runs the SQS connector sample.
     /// </summary>
     /// <param name="args">Command-line arguments.</param>
     public static async Task Main(string[] args)
@@ -64,4 +64,3 @@ public sealed class Program
         }
     }
 }
-

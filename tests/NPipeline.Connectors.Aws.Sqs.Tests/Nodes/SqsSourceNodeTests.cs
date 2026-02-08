@@ -4,8 +4,8 @@ using Amazon.Runtime;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using FakeItEasy;
-using NPipeline.Connectors.AwsSqs.Configuration;
-using NPipeline.Connectors.AwsSqs.Nodes;
+using NPipeline.Connectors.Aws.Sqs.Configuration;
+using NPipeline.Connectors.Aws.Sqs.Nodes;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Connectors.Aws.Sqs.Tests.Nodes;
@@ -319,7 +319,7 @@ public class SqsSourceNodeTests
         }
 
         [Fact]
-        public async Task Initialize_WithCancelledToken_CanBeCancelled()
+        public void Initialize_WithCancelledToken_CanBeCancelled()
         {
             // Arrange
             var configuration = CreateValidConfiguration();
@@ -680,7 +680,9 @@ public class SqsSourceNodeTests
             var pollTask = enumerator.MoveNextAsync().AsTask();
 
             for (var i = 0; i < 10 && capturedRequest == null; i++)
+            {
                 await Task.Delay(10);
+            }
 
             await cts.CancelAsync();
 

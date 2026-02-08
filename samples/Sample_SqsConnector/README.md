@@ -41,12 +41,12 @@ Input SQS Queue              Order Processing          Output SQS Queue
 Create two SQS queues:
 
 1. **Input Queue**: `input-orders-queue`
-   - Standard queue type
-   - Messages contain JSON order data
+    - Standard queue type
+    - Messages contain JSON order data
 
 2. **Output Queue**: `processed-orders-queue`
-   - Standard queue type
-   - Receives processed order results
+    - Standard queue type
+    - Receives processed order results
 
 ### AWS Credentials
 
@@ -104,14 +104,14 @@ Replace:
 
 The sample uses the following [`SqsConfiguration`](../..//src/NPipeline.Connectors.Aws.Sqs/Configuration/SqsConfiguration.cs) settings:
 
-| Property | Value | Description |
-|----------|--------|-------------|
-| `SourceQueueUrl` | Input queue URL | Queue to consume messages from |
-| `SinkQueueUrl` | Output queue URL | Queue to publish processed messages to |
-| `MaxNumberOfMessages` | 10 | Maximum messages per poll (1-10) |
-| `WaitTimeSeconds` | 20 | Long polling wait time (0-20 seconds) |
-| `VisibilityTimeout` | 30 | Message visibility timeout in seconds |
-| `AcknowledgmentStrategy` | `AutoOnSinkSuccess` | Auto-acknowledge on successful sink |
+| Property                 | Value               | Description                            |
+|--------------------------|---------------------|----------------------------------------|
+| `SourceQueueUrl`         | Input queue URL     | Queue to consume messages from         |
+| `SinkQueueUrl`           | Output queue URL    | Queue to publish processed messages to |
+| `MaxNumberOfMessages`    | 10                  | Maximum messages per poll (1-10)       |
+| `WaitTimeSeconds`        | 20                  | Long polling wait time (0-20 seconds)  |
+| `VisibilityTimeout`      | 30                  | Message visibility timeout in seconds  |
+| `AcknowledgmentStrategy` | `AutoOnSinkSuccess` | Auto-acknowledge on successful sink    |
 
 ## Running the Sample
 
