@@ -21,14 +21,14 @@
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
         <PackageReference Include="FakeItEasy" Version="9.0.1"/>
-        <PackageReference Include="AWSSDK.S3" Version="4.0.18.3" />
-        <PackageReference Include="AWSSDK.Core" Version="4.0.3.12" />
+        <PackageReference Include="AWSSDK.S3" Version="4.0.18.3"/>
+        <PackageReference Include="AWSSDK.Core" Version="4.0.3.12"/>
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\NPipeline.Extensions.Testing.AwesomeAssertions\NPipeline.Extensions.Testing.AwesomeAssertions.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Extensions.DependencyInjection\NPipeline.Extensions.DependencyInjection.csproj"/>
-        <ProjectReference Include="..\..\src\NPipeline.StorageProviders.Aws\NPipeline.StorageProviders.Aws.csproj" />
+        <ProjectReference Include="..\..\src\NPipeline.StorageProviders.Aws\NPipeline.StorageProviders.Aws.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline\NPipeline.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.StorageProviders\NPipeline.StorageProviders.csproj"/>
     </ItemGroup>

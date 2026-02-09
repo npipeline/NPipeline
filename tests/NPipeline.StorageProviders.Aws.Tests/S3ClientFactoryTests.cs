@@ -1,7 +1,7 @@
 using Amazon.Runtime;
 using Amazon.S3;
-using FakeItEasy;
 using AwesomeAssertions;
+using FakeItEasy;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 

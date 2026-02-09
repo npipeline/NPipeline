@@ -2,9 +2,9 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.PostgreSQL.Nodes;
 using NPipeline.Nodes;
-using NPipeline.Connectors.Configuration;
 
 namespace NPipeline.Connectors.PostgreSQL.Analyzers.Tests;
 

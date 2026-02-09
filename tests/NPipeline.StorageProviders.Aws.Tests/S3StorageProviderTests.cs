@@ -1,8 +1,8 @@
 using System.Net;
 using Amazon.S3;
 using Amazon.S3.Model;
-using FakeItEasy;
 using AwesomeAssertions;
+using FakeItEasy;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 

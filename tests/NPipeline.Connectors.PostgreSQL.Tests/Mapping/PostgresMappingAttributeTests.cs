@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using NpgsqlTypes;
-using NPipeline.Connectors.PostgreSQL.Mapping;
 using NPipeline.Connectors.Attributes;
+using NPipeline.Connectors.PostgreSQL.Mapping;
 
 namespace NPipeline.Connectors.PostgreSQL.Tests.Mapping;
 

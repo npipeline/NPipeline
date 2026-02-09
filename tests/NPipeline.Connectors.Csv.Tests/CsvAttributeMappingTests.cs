@@ -1,11 +1,11 @@
 using System.Globalization;
 using AwesomeAssertions;
-using NPipeline.StorageProviders;
-using NPipeline.StorageProviders.Models;
+using NPipeline.Connectors.Attributes;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Pipeline;
-using NPipeline.Connectors.Attributes;
+using NPipeline.StorageProviders;
+using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.Csv.Tests;
 

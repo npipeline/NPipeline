@@ -1,6 +1,6 @@
 using Microsoft.Data.SqlClient;
-using NPipeline.StorageProviders.Models;
 using NPipeline.Connectors.SqlServer.Tests.Fixtures;
+using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.SqlServer.Tests;
 

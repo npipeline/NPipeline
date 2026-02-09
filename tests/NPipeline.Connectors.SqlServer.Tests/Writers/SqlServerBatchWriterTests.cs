@@ -1,9 +1,9 @@
 using AwesomeAssertions;
 using FakeItEasy;
-using NPipeline.StorageProviders.Abstractions;
-using NPipeline.StorageProviders.Models;
 using NPipeline.Connectors.SqlServer.Configuration;
 using NPipeline.Connectors.SqlServer.Writers;
+using NPipeline.StorageProviders.Abstractions;
+using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.SqlServer.Tests.Writers;
 

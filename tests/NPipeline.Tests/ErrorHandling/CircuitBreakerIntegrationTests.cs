@@ -1,5 +1,5 @@
-using FakeItEasy;
 using AwesomeAssertions;
+using FakeItEasy;
 using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution.CircuitBreaking;
