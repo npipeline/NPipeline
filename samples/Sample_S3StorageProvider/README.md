@@ -64,7 +64,7 @@ If running on EC2 or ECS, you can use an IAM role with appropriate S3 permission
 The sample references the following projects:
 
 - `NPipeline.Connectors` - Core storage abstractions
-- `NPipeline.StorageProviders.Aws.S3` - AWS S3 storage provider implementation
+- `NPipeline.StorageProviders.Aws` - AWS storage provider implementation
 
 ## Setup
 

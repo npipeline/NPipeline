@@ -65,7 +65,7 @@ For cloud storage or custom providers, you need to create a custom resolver:
 
 ```csharp
 using NPipeline.Connectors;
-using NPipeline.StorageProviders.Aws.S3;
+using NPipeline.StorageProviders.Aws;
 
 // Create a resolver with S3 support
 var resolver = StorageProviderFactory.CreateResolver(
@@ -93,7 +93,7 @@ Storage providers can be configured through dependency injection for cleaner app
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
-using NPipeline.StorageProviders.Aws.S3;
+using NPipeline.StorageProviders.Aws;
 
 var services = new ServiceCollection();
 

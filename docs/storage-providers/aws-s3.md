@@ -82,14 +82,14 @@ The S3 storage provider depends on the following packages:
 Add the project reference to your solution:
 
 ```bash
-dotnet add src/NPipeline.StorageProviders.Aws.S3/NPipeline.StorageProviders.Aws.S3.csproj
+dotnet add src/NPipeline.StorageProviders.Aws/NPipeline.StorageProviders.Aws.csproj
 ```
 
 Or add it to your `.csproj` file:
 
 ```xml
 <ItemGroup>
-  <ProjectReference Include="..\NPipeline.StorageProviders.Aws.S3\NPipeline.StorageProviders.Aws.S3.csproj" />
+  <ProjectReference Include="..\NPipeline.StorageProviders.Aws\NPipeline.StorageProviders.Aws.csproj" />
 </ItemGroup>
 ```
 
@@ -112,7 +112,7 @@ The S3 storage provider works seamlessly with all NPipeline connectors. Here's a
 using NPipeline;
 using NPipeline.Connectors;
 using NPipeline.Connectors.Csv;
-using NPipeline.StorageProviders.Aws.S3;
+using NPipeline.StorageProviders.Aws;
 using Amazon;
 
 // Create a resolver with S3 support
@@ -161,7 +161,7 @@ The recommended way to configure the S3 storage provider is through dependency i
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
-using NPipeline.StorageProviders.Aws.S3;
+using NPipeline.StorageProviders.Aws;
 using Amazon;
 
 var services = new ServiceCollection();
@@ -380,7 +380,7 @@ var uri = StorageUri.Parse("s3://local-bucket/data/file.csv?serviceUrl=http://lo
 
 ```csharp
 using NPipeline.Connectors;
-using NPipeline.StorageProviders.Aws.S3;
+using NPipeline.StorageProviders.Aws;
 
 var provider = new S3StorageProvider(new S3ClientFactory(new S3StorageProviderOptions()), new S3StorageProviderOptions());
 var uri = new StorageUri("s3://my-bucket/data.csv");
@@ -608,25 +608,25 @@ To use the S3 storage provider, your AWS credentials must have appropriate IAM p
 ### S3-Specific Types
 
 - **`S3StorageProvider`** - S3 storage provider implementation
-  - Location: [`S3StorageProvider.cs`](../../src/NPipeline.StorageProviders.Aws.S3/S3StorageProvider.cs)
+  - Location: [`S3StorageProvider.cs`](../../src/NPipeline.StorageProviders.Aws/S3StorageProvider.cs)
   - Implements `IStorageProvider` and `IStorageProviderMetadataProvider`
 
 - **`S3StorageProviderOptions`** - Configuration options
-  - Location: [`S3StorageProviderOptions.cs`](../../src/NPipeline.StorageProviders.Aws.S3/S3StorageProviderOptions.cs)
+  - Location: [`S3StorageProviderOptions.cs`](../../src/NPipeline.StorageProviders.Aws/S3StorageProviderOptions.cs)
   - Contains region, credentials, service URL, and other settings
 
 - **`S3ClientFactory`** - Factory for creating S3 clients
-  - Location: [`S3ClientFactory.cs`](../../src/NPipeline.StorageProviders.Aws.S3/S3ClientFactory.cs)
+  - Location: [`S3ClientFactory.cs`](../../src/NPipeline.StorageProviders.Aws/S3ClientFactory.cs)
   - Creates and caches `AmazonS3Client` instances
 
 - **`S3StorageException`** - Custom exception for S3 errors
-  - Location: [`S3StorageException.cs`](../../src/NPipeline.StorageProviders.Aws.S3/S3StorageException.cs)
+  - Location: [`S3StorageException.cs`](../../src/NPipeline.StorageProviders.Aws/S3StorageException.cs)
   - Wraps `AmazonS3Exception` with bucket/key context
 
 ### Extension Methods
 
 - **`ServiceCollectionExtensions.AddS3StorageProvider`**
-  - Location: [`ServiceCollectionExtensions.cs`](../../src/NPipeline.StorageProviders.Aws.S3/ServiceCollectionExtensions.cs)
+  - Location: [`ServiceCollectionExtensions.cs`](../../src/NPipeline.StorageProviders.Aws/ServiceCollectionExtensions.cs)
   - Extension method for registering S3 storage provider in DI container
 
 ## Limitations

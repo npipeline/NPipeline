@@ -176,7 +176,7 @@ This design enables:
 ## Supported Providers
 
 - **FileSystem**: Built-in support for local and network file systems
-- **AWS S3**: Available via [`NPipeline.StorageProviders.Aws.S3`](../NPipeline.StorageProviders.Aws.S3/)
+- **AWS S3**: Available via [`NPipeline.StorageProviders.Aws`](../NPipeline.StorageProviders.Aws/)
 - **Custom**: Implement [`IStorageProvider`](./Abstractions/IStorageProvider.cs) for any backend
 
 ## Documentation
