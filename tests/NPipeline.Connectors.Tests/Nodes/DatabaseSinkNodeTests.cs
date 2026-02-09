@@ -1,5 +1,5 @@
 using System.Data;
-using FluentAssertions;
+using AwesomeAssertions;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.Nodes;
 using NPipeline.DataFlow.DataPipes;

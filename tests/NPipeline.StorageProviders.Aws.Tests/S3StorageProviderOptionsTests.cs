@@ -1,6 +1,6 @@
 using Amazon;
 using Amazon.Runtime;
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Aws.Tests;

@@ -16,12 +16,13 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
-        <PackageReference Include="FluentAssertions" Version="8.8.0"/>
+        <PackageReference Include="AwesomeAssertions" Version="9.3.0"/>
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\NPipeline\NPipeline.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Extensions.Composition\NPipeline.Extensions.Composition.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.Extensions.Testing.AwesomeAssertions\NPipeline.Extensions.Testing.AwesomeAssertions.csproj"/>
     </ItemGroup>
 
 </Project>

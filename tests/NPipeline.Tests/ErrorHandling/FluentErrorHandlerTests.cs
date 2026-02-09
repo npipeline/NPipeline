@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;

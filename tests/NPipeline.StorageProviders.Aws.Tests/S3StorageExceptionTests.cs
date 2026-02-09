@@ -1,5 +1,5 @@
 using Amazon.S3;
-using FluentAssertions;
+using AwesomeAssertions;
 using NPipeline.StorageProviders.Exceptions;
 using Xunit;
 

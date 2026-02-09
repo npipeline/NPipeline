@@ -1,6 +1,6 @@
 using System.Data;
 using System.Reflection;
-using FluentAssertions;
+using AwesomeAssertions;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.Nodes;
 using NPipeline.DataFlow.DataPipes;

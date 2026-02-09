@@ -5,7 +5,7 @@ namespace NPipeline.Extensions.Testing;
 /// </summary>
 /// <remarks>
 ///     These helpers provide convenient methods for common test assertions on pipeline execution results.
-///     They integrate well with assertion libraries like FluentAssertions.
+///     They integrate well with assertion libraries like AwesomeAssertions.
 /// </remarks>
 public static class PipelineExecutionResultExtensions
 {

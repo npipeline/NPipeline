@@ -21,7 +21,6 @@
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
         <PackageReference Include="FakeItEasy" Version="9.0.1"/>
-        <PackageReference Include="FluentAssertions" Version="8.8.0" />
         <PackageReference Include="AWSSDK.S3" Version="4.0.18.3" />
         <PackageReference Include="AWSSDK.Core" Version="4.0.3.12" />
     </ItemGroup>

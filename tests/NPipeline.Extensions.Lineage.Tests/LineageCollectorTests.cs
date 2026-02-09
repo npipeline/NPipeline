@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using NPipeline.Configuration;
 using NPipeline.Lineage;
 

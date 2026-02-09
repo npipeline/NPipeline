@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Tests.Pipeline;

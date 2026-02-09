@@ -2,7 +2,7 @@ using System.Net;
 using Amazon.S3;
 using Amazon.S3.Model;
 using FakeItEasy;
-using FluentAssertions;
+using AwesomeAssertions;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 

@@ -17,7 +17,7 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
-        <PackageReference Include="FluentAssertions" Version="8.8.0"/>
+        <PackageReference Include="AwesomeAssertions" Version="9.3.0"/>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.2"/>
         <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.2"/>
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.2"/>
@@ -30,6 +30,7 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\NPipeline\NPipeline.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Extensions.Lineage\NPipeline.Extensions.Lineage.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.Extensions.Testing.AwesomeAssertions\NPipeline.Extensions.Testing.AwesomeAssertions.csproj"/>
     </ItemGroup>
 
 </Project>

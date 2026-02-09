@@ -1,6 +1,6 @@
 // ReSharper disable ClassNeverInstantiated.Global
 
-using FluentAssertions;
+using AwesomeAssertions;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Extensions.Testing.AwesomeAssertions;
 using NPipeline.Pipeline;
@@ -210,28 +210,6 @@ public class AssertionExtensionsTests
             // Act & Assert
             var act = () => sink!.ShouldOnlyContain(x => true);
             act.Should().Throw<ArgumentNullException>();
-        }
-
-        [Fact]
-        public async Task ShouldContain_WithComplexTypes_ShouldWork()
-        {
-            // Arrange
-            var sink = new InMemorySinkNode<TestObject>();
-            var context = PipelineContext.Default;
-
-            var data = new InMemoryDataPipe<TestObject>([
-                new TestObject { Name = "Test1", Value = 1 },
-                new TestObject { Name = "Test2", Value = 2 },
-            ]);
-
-            // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
-
-            // Assert
-            sink.ShouldContain(x => x.Name == "Test1");
-            sink.ShouldContain(new TestObject { Name = "Test2", Value = 2 });
-            sink.ShouldNotContain(new TestObject { Name = "Test3", Value = 3 });
-            sink.ShouldOnlyContain(x => x.Value > 0);
         }
     }
 

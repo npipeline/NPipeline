@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using NPipeline.Observability.Logging;
 
 namespace NPipeline.Extensions.Testing.Tests;

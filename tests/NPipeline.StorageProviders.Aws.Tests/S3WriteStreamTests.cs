@@ -1,7 +1,7 @@
 using Amazon.S3;
 using Amazon.S3.Model;
 using FakeItEasy;
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Aws.Tests;
