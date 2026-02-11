@@ -1,7 +1,7 @@
 ---
 title: Azure Blob Storage Provider
 description: Read from and write to Azure Blob Storage using the Azure Blob Storage provider.
-sidebar_position: 2
+sidebar_position: 4
 ---
 
 ## Azure Blob Storage Provider
@@ -93,16 +93,6 @@ Or add it to your `.csproj` file:
   <ProjectReference Include="..\NPipeline.StorageProviders.Azure\NPipeline.StorageProviders.Azure.csproj" />
 </ItemGroup>
 ```
-
-### Required Dependencies
-
-The Azure Blob Storage provider depends on:
-
-- `Azure.Storage.Blobs` - Azure SDK for Blob Storage operations
-- `Azure.Identity` - Azure SDK for authentication
-- `NPipeline.Connectors` - Core storage abstractions
-
-These dependencies are automatically resolved when adding the project reference.
 
 ## Quick Start
 
@@ -433,7 +423,7 @@ using NPipeline.StorageProviders.Azure;
 var provider = new AzureBlobStorageProvider(
     new AzureBlobClientFactory(new AzureBlobStorageProviderOptions()),
     new AzureBlobStorageProviderOptions());
-var uri = new StorageUri("azure://my-container/data.csv");
+var uri = StorageUri.Parse("azure://my-container/data.csv");
 
 using var stream = await provider.OpenReadAsync(uri);
 using var reader = new StreamReader(stream);
@@ -446,7 +436,7 @@ var content = await reader.ReadToEndAsync();
 var provider = new AzureBlobStorageProvider(
     new AzureBlobClientFactory(new AzureBlobStorageProviderOptions()),
     new AzureBlobStorageProviderOptions());
-var uri = new StorageUri("azure://my-container/output.csv");
+var uri = StorageUri.Parse("azure://my-container/output.csv");
 
 using var stream = await provider.OpenWriteAsync(uri);
 using var writer = new StreamWriter(stream);
@@ -460,7 +450,7 @@ await writer.WriteLineAsync("1,Item A,100");
 var provider = new AzureBlobStorageProvider(
     new AzureBlobClientFactory(new AzureBlobStorageProviderOptions()),
     new AzureBlobStorageProviderOptions());
-var uri = new StorageUri("azure://my-container/data/");
+var uri = StorageUri.Parse("azure://my-container/data/");
 
 // List all files recursively
 await foreach (var item in provider.ListAsync(uri, recursive: true))
@@ -482,7 +472,7 @@ await foreach (var item in provider.ListAsync(uri, recursive: false))
 var provider = new AzureBlobStorageProvider(
     new AzureBlobClientFactory(new AzureBlobStorageProviderOptions()),
     new AzureBlobStorageProviderOptions());
-var uri = new StorageUri("azure://my-container/data.csv");
+var uri = StorageUri.Parse("azure://my-container/data.csv");
 
 var exists = await provider.ExistsAsync(uri);
 if (exists)
@@ -501,7 +491,7 @@ else
 var provider = new AzureBlobStorageProvider(
     new AzureBlobClientFactory(new AzureBlobStorageProviderOptions()),
     new AzureBlobStorageProviderOptions());
-var uri = new StorageUri("azure://my-container/data.csv");
+var uri = StorageUri.Parse("azure://my-container/data.csv");
 
 await provider.DeleteAsync(uri);
 Console.WriteLine("Blob deleted successfully.");
@@ -515,7 +505,7 @@ Console.WriteLine("Blob deleted successfully.");
 var provider = new AzureBlobStorageProvider(
     new AzureBlobClientFactory(new AzureBlobStorageProviderOptions()),
     new AzureBlobStorageProviderOptions());
-var uri = new StorageUri("azure://my-container/data.csv");
+var uri = StorageUri.Parse("azure://my-container/data.csv");
 
 var metadata = await provider.GetMetadataAsync(uri);
 if (metadata != null)
@@ -668,6 +658,12 @@ Assign the `Storage Blob Data Contributor` role for full read/write/delete acces
 ## Limitations
 
 The Azure Blob Storage provider has the following limitations:
+
+### Delete Operations
+
+- `DeleteAsync` is **supported** and uses `DeleteIfExistsAsync` internally
+- It does not throw an exception if the blob does not exist
+- Full delete access requires appropriate Azure Storage permissions
 
 ### Flat Storage Model
 

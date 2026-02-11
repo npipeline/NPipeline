@@ -1,6 +1,7 @@
 # Azure Blob Storage Provider
 
-The Azure Blob Storage Provider enables NPipeline applications to read from and write to Azure Blob Storage using a unified storage abstraction. This provider implements the `IStorageProvider` interface and supports the `azure://` URI scheme.
+The Azure Blob Storage Provider enables NPipeline applications to read from and write to Azure Blob Storage using a unified storage abstraction. This provider
+implements the `IStorageProvider` interface and supports the `azure://` URI scheme.
 
 ## Overview
 
@@ -37,14 +38,14 @@ Use the Azure Blob Storage Provider when your application needs to:
 
 ### Supported Operations
 
-| Operation | Method | Description |
-|------------|----------|-------------|
-| Read | `OpenReadAsync` | Opens a readable stream for a blob |
-| Write | `OpenWriteAsync` | Opens a writable stream for a blob |
-| Exists | `ExistsAsync` | Checks if a blob exists |
-| Delete | `DeleteAsync` | Deletes a blob |
-| List | `ListAsync` | Lists blobs with optional recursion |
-| Metadata | `GetMetadataAsync` | Retrieves blob metadata |
+| Operation | Method             | Description                         |
+|-----------|--------------------|-------------------------------------|
+| Read      | `OpenReadAsync`    | Opens a readable stream for a blob  |
+| Write     | `OpenWriteAsync`   | Opens a writable stream for a blob  |
+| Exists    | `ExistsAsync`      | Checks if a blob exists             |
+| Delete    | `DeleteAsync`      | Deletes a blob                      |
+| List      | `ListAsync`        | Lists blobs with optional recursion |
+| Metadata  | `GetMetadataAsync` | Retrieves blob metadata             |
 
 ## Installation
 
@@ -200,15 +201,15 @@ services.AddAzureBlobStorageProvider(options);
 
 ### Configuration Options (AzureBlobStorageProviderOptions)
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `DefaultCredential` | `TokenCredential?` | `null` | Default Azure credential for authentication. If not specified, uses `DefaultAzureCredential` chain when `UseDefaultCredentialChain` is true. |
-| `DefaultConnectionString` | `string?` | `null` | Default connection string for Azure Storage. Takes precedence over `DefaultCredential` if specified. |
-| `UseDefaultCredentialChain` | `bool` | `true` | Whether to use the default Azure credential chain (environment variables, managed identity, Visual Studio, Azure CLI). |
-| `ServiceUrl` | `Uri?` | `null` | Optional service URL for Azure Storage-compatible endpoints (e.g., Azurite). If not specified, uses the Azure Blob Storage endpoint. |
-| `BlockBlobUploadThresholdBytes` | `long` | `64 * 1024 * 1024` (64 MB) | Threshold in bytes for using block blob upload when writing files. |
-| `UploadMaximumConcurrency` | `int?` | `null` | Maximum concurrent upload requests for large blobs. If not specified, uses SDK default. |
-| `UploadMaximumTransferSizeBytes` | `int?` | `null` | Maximum transfer size in bytes for each upload chunk. If not specified, uses SDK default. |
+| Property                         | Type               | Default                    | Description                                                                                                                                  |
+|----------------------------------|--------------------|----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| `DefaultCredential`              | `TokenCredential?` | `null`                     | Default Azure credential for authentication. If not specified, uses `DefaultAzureCredential` chain when `UseDefaultCredentialChain` is true. |
+| `DefaultConnectionString`        | `string?`          | `null`                     | Default connection string for Azure Storage. Takes precedence over `DefaultCredential` if specified.                                         |
+| `UseDefaultCredentialChain`      | `bool`             | `true`                     | Whether to use the default Azure credential chain (environment variables, managed identity, Visual Studio, Azure CLI).                       |
+| `ServiceUrl`                     | `Uri?`             | `null`                     | Optional service URL for Azure Storage-compatible endpoints (e.g., Azurite). If not specified, uses the Azure Blob Storage endpoint.         |
+| `BlockBlobUploadThresholdBytes`  | `long`             | `64 * 1024 * 1024` (64 MB) | Threshold in bytes for using block blob upload when writing files.                                                                           |
+| `UploadMaximumConcurrency`       | `int?`             | `null`                     | Maximum concurrent upload requests for large blobs. If not specified, uses SDK default.                                                      |
+| `UploadMaximumTransferSizeBytes` | `int?`             | `null`                     | Maximum transfer size in bytes for each upload chunk. If not specified, uses SDK default.                                                    |
 
 ### Default Configuration
 
@@ -375,13 +376,13 @@ services.AddAzureBlobStorageProvider(options =>
 
 ### When to Use Each Method
 
-| Method | Best For | Security Level |
-|---------|-----------|---------------|
-| **Connection String** | Development, testing, simple scenarios | Medium |
-| **Account Key** | Legacy applications, explicit credential management | Low |
-| **SAS Token** | Time-limited access, sharing resources | High |
-| **Default Credential Chain** | Production, Azure-hosted applications | Very High |
-| **Custom TokenCredential** | Service principals, specific auth scenarios | High |
+| Method                       | Best For                                            | Security Level |
+|------------------------------|-----------------------------------------------------|----------------|
+| **Connection String**        | Development, testing, simple scenarios              | Medium         |
+| **Account Key**              | Legacy applications, explicit credential management | Low            |
+| **SAS Token**                | Time-limited access, sharing resources              | High           |
+| **Default Credential Chain** | Production, Azure-hosted applications               | Very High      |
+| **Custom TokenCredential**   | Service principals, specific auth scenarios         | High           |
 
 > **Recommendation:** Use the default credential chain with managed identity for production applications running on Azure.
 
@@ -397,23 +398,23 @@ azure://container-name/path/to/blob.csv?parameter1=value1&parameter2=value2
 
 ### URI Components
 
-| Component | Description | Example |
-|------------|-------------|---------|
-| **Scheme** | URI scheme, must be `azure` | `azure` |
-| **Host** | Container name | `my-container` |
-| **Path** | Blob name (can include "/" for virtual directories) | `data/input.csv` |
+| Component      | Description                                                    | Example                          |
+|----------------|----------------------------------------------------------------|----------------------------------|
+| **Scheme**     | URI scheme, must be `azure`                                    | `azure`                          |
+| **Host**       | Container name                                                 | `my-container`                   |
+| **Path**       | Blob name (can include "/" for virtual directories)            | `data/input.csv`                 |
 | **Parameters** | Optional query parameters for authentication and configuration | `accountName=xxx&accountKey=yyy` |
 
 ### Supported Parameters
 
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `accountName` | Azure storage account name | `accountName=mystorageaccount` |
-| `accountKey` | Azure storage account key | `accountKey=mykey` |
-| `sasToken` | Shared Access Signature token (URL-encoded) | `sasToken=sp%3Dr%26st%3D2023-01-01` |
-| `connectionString` | Full connection string | `connectionString=DefaultEndpointsProtocol=https;AccountName=xxx;AccountKey=yyy` |
-| `serviceUrl` | Custom service URL (e.g., Azurite) | `serviceUrl=http://localhost:10000/devstoreaccount1` |
-| `contentType` | Content type for uploads | `contentType=application/json` |
+| Parameter          | Description                                 | Example                                                                          |
+|--------------------|---------------------------------------------|----------------------------------------------------------------------------------|
+| `accountName`      | Azure storage account name                  | `accountName=mystorageaccount`                                                   |
+| `accountKey`       | Azure storage account key                   | `accountKey=mykey`                                                               |
+| `sasToken`         | Shared Access Signature token (URL-encoded) | `sasToken=sp%3Dr%26st%3D2023-01-01`                                              |
+| `connectionString` | Full connection string                      | `connectionString=DefaultEndpointsProtocol=https;AccountName=xxx;AccountKey=yyy` |
+| `serviceUrl`       | Custom service URL (e.g., Azurite)          | `serviceUrl=http://localhost:10000/devstoreaccount1`                             |
+| `contentType`      | Content type for uploads                    | `contentType=application/json`                                                   |
 
 ### URI Examples
 
@@ -576,7 +577,7 @@ if (metadata != null)
     Console.WriteLine($"Content Type: {metadata.ContentType}");
     Console.WriteLine($"Last Modified: {metadata.LastModified}");
     Console.WriteLine($"ETag: {metadata.ETag}");
-    
+
     if (metadata.CustomMetadata != null && metadata.CustomMetadata.Count > 0)
     {
         Console.WriteLine("Custom Metadata:");
@@ -762,7 +763,7 @@ if (metadata != null)
     Console.WriteLine($"Content Type: {metadata.ContentType}");
     Console.WriteLine($"Last Modified: {metadata.LastModified}");
     Console.WriteLine($"ETag: {metadata.ETag}");
-    
+
     // Custom metadata
     if (metadata.CustomMetadata != null)
     {
@@ -780,25 +781,25 @@ The Azure Blob Storage Provider translates Azure SDK exceptions to standard .NET
 
 ### Exception Types Thrown
 
-| Exception Type | When Thrown |
-|----------------|--------------|
-| `ArgumentNullException` | When a required argument is null |
-| `ArgumentException` | When URI format is invalid or container/blob name is invalid |
-| `UnauthorizedAccessException` | When authentication or authorization fails |
-| `FileNotFoundException` | When the blob or container is not found |
-| `IOException` | For general Azure storage access failures |
+| Exception Type                | When Thrown                                                  |
+|-------------------------------|--------------------------------------------------------------|
+| `ArgumentNullException`       | When a required argument is null                             |
+| `ArgumentException`           | When URI format is invalid or container/blob name is invalid |
+| `UnauthorizedAccessException` | When authentication or authorization fails                   |
+| `FileNotFoundException`       | When the blob or container is not found                      |
+| `IOException`                 | For general Azure storage access failures                    |
 
 ### Exception Translation (Azure to .NET Exceptions)
 
-| Azure Error Code | HTTP Status | .NET Exception |
-|------------------|--------------|------------------|
-| `AuthenticationFailed` | 401 | `UnauthorizedAccessException` |
-| `AuthorizationFailed` | 403 | `UnauthorizedAccessException` |
-| `ContainerNotFound` | 404 | `FileNotFoundException` |
-| `BlobNotFound` | 404 | `FileNotFoundException` |
-| `InvalidQueryParameterValue` | 400 | `ArgumentException` |
-| `InvalidResourceName` | 400 | `ArgumentException` |
-| Other | Various | `IOException` |
+| Azure Error Code             | HTTP Status | .NET Exception                |
+|------------------------------|-------------|-------------------------------|
+| `AuthenticationFailed`       | 401         | `UnauthorizedAccessException` |
+| `AuthorizationFailed`        | 403         | `UnauthorizedAccessException` |
+| `ContainerNotFound`          | 404         | `FileNotFoundException`       |
+| `BlobNotFound`               | 404         | `FileNotFoundException`       |
+| `InvalidQueryParameterValue` | 400         | `ArgumentException`           |
+| `InvalidResourceName`        | 400         | `ArgumentException`           |
+| Other                        | Various     | `IOException`                 |
 
 ### Common Error Scenarios
 
@@ -1449,22 +1450,22 @@ Main storage provider implementation for Azure Blob Storage.
 
 **Properties:**
 
-| Property | Type | Description |
-|----------|------|-------------|
+| Property | Type            | Description                   |
+|----------|-----------------|-------------------------------|
 | `Scheme` | `StorageScheme` | Returns `StorageScheme.Azure` |
 
 **Methods:**
 
-| Method | Return Type | Description |
-|---------|--------------|-------------|
-| `CanHandle(StorageUri uri)` | `bool` | Determines if provider can handle the URI (returns true for `azure://` scheme) |
-| `OpenReadAsync(StorageUri uri, CancellationToken ct)` | `Task<Stream>` | Opens a readable stream for the specified blob |
-| `OpenWriteAsync(StorageUri uri, CancellationToken ct)` | `Task<Stream>` | Opens a writable stream for the specified blob |
-| `ExistsAsync(StorageUri uri, CancellationToken ct)` | `Task<bool>` | Checks if the blob exists |
-| `DeleteAsync(StorageUri uri, CancellationToken ct)` | `Task` | Deletes the blob |
-| `ListAsync(StorageUri prefix, bool recursive, CancellationToken ct)` | `IAsyncEnumerable<StorageItem>` | Lists blobs at the specified prefix |
-| `GetMetadataAsync(StorageUri uri, CancellationToken ct)` | `Task<StorageMetadata?>` | Retrieves metadata for the blob |
-| `GetMetadata()` | `StorageProviderMetadata` | Returns provider capability metadata |
+| Method                                                               | Return Type                     | Description                                                                    |
+|----------------------------------------------------------------------|---------------------------------|--------------------------------------------------------------------------------|
+| `CanHandle(StorageUri uri)`                                          | `bool`                          | Determines if provider can handle the URI (returns true for `azure://` scheme) |
+| `OpenReadAsync(StorageUri uri, CancellationToken ct)`                | `Task<Stream>`                  | Opens a readable stream for the specified blob                                 |
+| `OpenWriteAsync(StorageUri uri, CancellationToken ct)`               | `Task<Stream>`                  | Opens a writable stream for the specified blob                                 |
+| `ExistsAsync(StorageUri uri, CancellationToken ct)`                  | `Task<bool>`                    | Checks if the blob exists                                                      |
+| `DeleteAsync(StorageUri uri, CancellationToken ct)`                  | `Task`                          | Deletes the blob                                                               |
+| `ListAsync(StorageUri prefix, bool recursive, CancellationToken ct)` | `IAsyncEnumerable<StorageItem>` | Lists blobs at the specified prefix                                            |
+| `GetMetadataAsync(StorageUri uri, CancellationToken ct)`             | `Task<StorageMetadata?>`        | Retrieves metadata for the blob                                                |
+| `GetMetadata()`                                                      | `StorageProviderMetadata`       | Returns provider capability metadata                                           |
 
 ### AzureBlobStorageProviderOptions
 
@@ -1474,15 +1475,15 @@ Configuration options for the Azure Blob Storage Provider.
 
 **Properties:**
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `DefaultCredential` | `TokenCredential?` | `null` | Default Azure credential for authentication |
-| `DefaultConnectionString` | `string?` | `null` | Default connection string for Azure Storage |
-| `UseDefaultCredentialChain` | `bool` | `true` | Whether to use the default Azure credential chain |
-| `ServiceUrl` | `Uri?` | `null` | Optional service URL for Azure Storage-compatible endpoints |
-| `BlockBlobUploadThresholdBytes` | `long` | `64 * 1024 * 1024` | Threshold in bytes for using block blob upload |
-| `UploadMaximumConcurrency` | `int?` | `null` | Maximum concurrent upload requests for large blobs |
-| `UploadMaximumTransferSizeBytes` | `int?` | `null` | Maximum transfer size in bytes for each upload chunk |
+| Property                         | Type               | Default            | Description                                                 |
+|----------------------------------|--------------------|--------------------|-------------------------------------------------------------|
+| `DefaultCredential`              | `TokenCredential?` | `null`             | Default Azure credential for authentication                 |
+| `DefaultConnectionString`        | `string?`          | `null`             | Default connection string for Azure Storage                 |
+| `UseDefaultCredentialChain`      | `bool`             | `true`             | Whether to use the default Azure credential chain           |
+| `ServiceUrl`                     | `Uri?`             | `null`             | Optional service URL for Azure Storage-compatible endpoints |
+| `BlockBlobUploadThresholdBytes`  | `long`             | `64 * 1024 * 1024` | Threshold in bytes for using block blob upload              |
+| `UploadMaximumConcurrency`       | `int?`             | `null`             | Maximum concurrent upload requests for large blobs          |
+| `UploadMaximumTransferSizeBytes` | `int?`             | `null`             | Maximum transfer size in bytes for each upload chunk        |
 
 ### AzureStorageException
 
@@ -1492,10 +1493,10 @@ Exception thrown when an Azure storage operation fails.
 
 **Properties:**
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `Container` | `string` | The Azure container name |
-| `Blob` | `string` | The Azure blob name |
+| Property              | Type                      | Description                   |
+|-----------------------|---------------------------|-------------------------------|
+| `Container`           | `string`                  | The Azure container name      |
+| `Blob`                | `string`                  | The Azure blob name           |
 | `InnerAzureException` | `RequestFailedException?` | The inner Azure SDK exception |
 
 **Constructors:**
