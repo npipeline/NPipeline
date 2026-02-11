@@ -1,8 +1,6 @@
-using Azure.Core;
-using Azure.Identity;
-using Azure.Storage;
-using Azure.Storage.Blobs;
 using AwesomeAssertions;
+using Azure.Core;
+using Azure.Storage.Blobs;
 using FakeItEasy;
 using NPipeline.StorageProviders.Models;
 using Xunit;
@@ -11,8 +9,8 @@ namespace NPipeline.StorageProviders.Azure.Tests;
 
 public class AzureBlobClientFactoryTests
 {
-    private readonly AzureBlobClientFactory _fakeClientFactory;
     private readonly BlobServiceClient _fakeBlobServiceClient;
+    private readonly AzureBlobClientFactory _fakeClientFactory;
 
     public AzureBlobClientFactoryTests()
     {
@@ -48,7 +46,8 @@ public class AzureBlobClientFactoryTests
         A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(_fakeBlobServiceClient));
 
-        var uri = StorageUri.Parse("azure://container/blob?connectionString=DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net");
+        var uri = StorageUri.Parse(
+            "azure://container/blob?connectionString=DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net");
 
         // Act
         var client = await _fakeClientFactory.GetClientAsync(uri);
@@ -82,7 +81,8 @@ public class AzureBlobClientFactoryTests
         A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(_fakeBlobServiceClient));
 
-        var uri = StorageUri.Parse("azure://container/blob?accountName=testaccount&sasToken=sv=2021-01-01&ss=b&srt=sco&sp=rwdlac&se=2021-01-02T00:00:00Z&st=2021-01-01T00:00:00Z&spr=https&sig=test");
+        var uri = StorageUri.Parse(
+            "azure://container/blob?accountName=testaccount&sasToken=sv=2021-01-01&ss=b&srt=sco&sp=rwdlac&se=2021-01-02T00:00:00Z&st=2021-01-01T00:00:00Z&spr=https&sig=test");
 
         // Act
         var client = await _fakeClientFactory.GetClientAsync(uri);
@@ -97,6 +97,7 @@ public class AzureBlobClientFactoryTests
     {
         // Arrange
         var tokenCredential = A.Fake<TokenCredential>();
+
         var options = new AzureBlobStorageProviderOptions
         {
             DefaultCredential = tokenCredential,
@@ -199,7 +200,10 @@ public class AzureBlobClientFactoryTests
             .ReturnsLazily(() =>
             {
                 callCount++;
-                return Task.FromResult(callCount == 1 ? client1 : client2);
+
+                return Task.FromResult(callCount == 1
+                    ? client1
+                    : client2);
             });
 
         var uri1 = StorageUri.Parse("azure://container/blob?accountName=testaccount&accountKey=dGVzdGtleTE=");
@@ -225,7 +229,10 @@ public class AzureBlobClientFactoryTests
             .ReturnsLazily(() =>
             {
                 callCount++;
-                return Task.FromResult(callCount == 1 ? client1 : client2);
+
+                return Task.FromResult(callCount == 1
+                    ? client1
+                    : client2);
             });
 
         var uri1 = StorageUri.Parse("azure://container/blob?accountName=testaccount&sasToken=token1");
@@ -251,7 +258,10 @@ public class AzureBlobClientFactoryTests
             .ReturnsLazily(() =>
             {
                 callCount++;
-                return Task.FromResult(callCount == 1 ? client1 : client2);
+
+                return Task.FromResult(callCount == 1
+                    ? client1
+                    : client2);
             });
 
         var uri1 = StorageUri.Parse("azure://container/blob?serviceUrl=https://localhost:10000");
@@ -270,6 +280,7 @@ public class AzureBlobClientFactoryTests
     {
         // Arrange
         var connectionString = "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net";
+
         var options = new AzureBlobStorageProviderOptions
         {
             DefaultConnectionString = connectionString,
@@ -397,7 +408,8 @@ public class AzureBlobClientFactoryTests
             .Returns(Task.FromResult(_fakeBlobServiceClient));
 
         // Connection string should take precedence over other parameters
-        var uri = StorageUri.Parse("azure://container/blob?connectionString=DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test&accountName=otheraccount&accountKey=otherkey");
+        var uri = StorageUri.Parse(
+            "azure://container/blob?connectionString=DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test&accountName=otheraccount&accountKey=otherkey");
 
         // Act
         var client = await _fakeClientFactory.GetClientAsync(uri);

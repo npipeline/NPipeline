@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Azure;
-using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
@@ -23,6 +22,11 @@ namespace NPipeline.StorageProviders.Azure;
 /// </remarks>
 public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProviderMetadataProvider
 {
+    private static readonly Regex ContainerNameRegex = new(
+        "^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant,
+        TimeSpan.FromMilliseconds(250));
+
     private readonly AzureBlobClientFactory _clientFactory;
     private readonly AzureBlobStorageProviderOptions _options;
 
@@ -63,7 +67,7 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
     {
         ArgumentNullException.ThrowIfNull(uri);
 
-        var (container, blob) = GetContainerAndBlob(uri, requireBlob: true);
+        var (container, blob) = GetContainerAndBlob(uri, true);
         var blobServiceClient = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
         var blobClient = blobServiceClient.GetBlobContainerClient(container).GetBlobClient(blob);
 
@@ -89,7 +93,7 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
     {
         ArgumentNullException.ThrowIfNull(uri);
 
-        var (container, blob) = GetContainerAndBlob(uri, requireBlob: true);
+        var (container, blob) = GetContainerAndBlob(uri, true);
         var blobServiceClient = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
 
         var contentType = uri.Parameters.TryGetValue("contentType", out var ct) && !string.IsNullOrEmpty(ct)
@@ -117,7 +121,7 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
     {
         ArgumentNullException.ThrowIfNull(uri);
 
-        var (container, blob) = GetContainerAndBlob(uri, requireBlob: true);
+        var (container, blob) = GetContainerAndBlob(uri, true);
         var blobServiceClient = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
         var blobClient = blobServiceClient.GetBlobContainerClient(container).GetBlobClient(blob);
 
@@ -144,7 +148,7 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
     {
         ArgumentNullException.ThrowIfNull(uri);
 
-        var (container, blob) = GetContainerAndBlob(uri, requireBlob: true);
+        var (container, blob) = GetContainerAndBlob(uri, true);
         var blobServiceClient = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
         var blobClient = blobServiceClient.GetBlobContainerClient(container).GetBlobClient(blob);
 
@@ -184,7 +188,7 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
     {
         ArgumentNullException.ThrowIfNull(uri);
 
-        var (container, blob) = GetContainerAndBlob(uri, requireBlob: true);
+        var (container, blob) = GetContainerAndBlob(uri, true);
         var blobServiceClient = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
         var blobClient = blobServiceClient.GetBlobContainerClient(container).GetBlobClient(blob);
 
@@ -250,11 +254,6 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
         };
     }
 
-    private static readonly Regex ContainerNameRegex = new(
-        pattern: "^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$",
-        options: RegexOptions.Compiled | RegexOptions.CultureInvariant,
-        matchTimeout: TimeSpan.FromMilliseconds(250));
-
     private static (string container, string blob) GetContainerAndBlob(StorageUri uri, bool requireBlob = false)
     {
         var container = uri.Host ?? string.Empty;
@@ -285,10 +284,10 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
         if (recursive)
         {
             await foreach (var blobItem in containerClient.GetBlobsAsync(
-                traits: BlobTraits.Metadata,
-                states: BlobStates.None,
-                prefix: blobPrefix,
-                cancellationToken: cancellationToken).ConfigureAwait(false))
+                               BlobTraits.Metadata,
+                               BlobStates.None,
+                               blobPrefix,
+                               cancellationToken).ConfigureAwait(false))
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -307,11 +306,11 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
         else
         {
             await foreach (var blobItem in containerClient.GetBlobsByHierarchyAsync(
-                traits: BlobTraits.Metadata,
-                states: BlobStates.None,
-                prefix: blobPrefix,
-                delimiter: "/",
-                cancellationToken: cancellationToken).ConfigureAwait(false))
+                               BlobTraits.Metadata,
+                               BlobStates.None,
+                               prefix: blobPrefix,
+                               delimiter: "/",
+                               cancellationToken: cancellationToken).ConfigureAwait(false))
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -338,38 +337,28 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
     private static void ValidateContainerName(string container, string paramName)
     {
         if (string.IsNullOrWhiteSpace(container))
-        {
             throw new ArgumentException("Azure URI must specify a container name in the host component.", paramName);
-        }
 
         // Azure container naming rules (lowercase letters, numbers, hyphen; 3-63 chars; no leading/trailing hyphen)
         if (container.Length is < 3 or > 63 || !ContainerNameRegex.IsMatch(container))
-        {
             throw new ArgumentException($"Invalid Azure container name '{container}'.", paramName);
-        }
     }
 
     private static void ValidateBlobName(string blob, bool requireBlob, string paramName)
     {
         if (!requireBlob && string.IsNullOrEmpty(blob))
-        {
             return;
-        }
 
         if (string.IsNullOrWhiteSpace(blob))
         {
             if (requireBlob)
-            {
                 throw new ArgumentException("Azure URI must specify a blob path.", paramName);
-            }
 
             return;
         }
 
         if (blob.Length > 1024 || blob.Contains('\\') || blob.Contains('?'))
-        {
             throw new ArgumentException($"Invalid Azure blob name '{blob}'.", paramName);
-        }
     }
 
     private static Exception TranslateAzureException(RequestFailedException ex, string container, string blob)

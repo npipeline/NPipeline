@@ -5,7 +5,6 @@ using Azure.Storage.Blobs.Models;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using FluentAssertions;
-using NPipeline.StorageProviders.Azure;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 
@@ -19,11 +18,11 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
 {
     private const string AzuriteAccountName = "devstoreaccount1";
     private const string AzuriteAccountKey = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
+    private readonly List<string> _testContainers = [];
 
     private IContainer? _azuriteContainer;
-    private AzureBlobStorageProvider? _provider;
     private AzureBlobStorageProviderOptions? _options;
-    private readonly List<string> _testContainers = [];
+    private AzureBlobStorageProvider? _provider;
 
     /// <summary>
     ///     Initializes Azurite container and Azure provider before all tests.
@@ -48,7 +47,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
             BlockBlobUploadThresholdBytes = 8 * 1024 * 1024, // 8 MB for faster tests
             UploadMaximumConcurrency = 4,
             UploadMaximumTransferSizeBytes = 4 * 1024 * 1024, //4 MB
-            UseDefaultCredentialChain = false
+            UseDefaultCredentialChain = false,
         };
 
         // Create provider instance
@@ -101,19 +100,19 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
     /// </summary>
     private async Task CreateTestBlobAsync(string containerName, string blobName, string content, string? contentType = null)
     {
-        var connectionString = $"DefaultEndpointsProtocol=http;AccountName={AzuriteAccountName};AccountKey={AzuriteAccountKey};BlobEndpoint=http://localhost:10000/{AzuriteAccountName};";
+        var connectionString =
+            $"DefaultEndpointsProtocol=http;AccountName={AzuriteAccountName};AccountKey={AzuriteAccountKey};BlobEndpoint=http://localhost:10000/{AzuriteAccountName};";
+
         var blobServiceClient = new BlobServiceClient(connectionString);
         var containerClient = blobServiceClient.GetBlobContainerClient(containerName);
         _ = await containerClient.CreateIfNotExistsAsync();
 
         var blobClient = containerClient.GetBlobClient(blobName);
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
-        _ = await blobClient.UploadAsync(stream, overwrite: true);
+        _ = await blobClient.UploadAsync(stream, true);
 
         if (contentType != null)
-        {
             _ = await blobClient.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = contentType });
-        }
     }
 
     #region Read Operations Tests
@@ -162,14 +161,16 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         var largeContent = new byte[16 * 1024 * 1024]; // 16 MB
         new Random().NextBytes(largeContent);
 
-        var connectionString = $"DefaultEndpointsProtocol=http;AccountName={AzuriteAccountName};AccountKey={AzuriteAccountKey};BlobEndpoint=http://localhost:10000/{AzuriteAccountName};";
+        var connectionString =
+            $"DefaultEndpointsProtocol=http;AccountName={AzuriteAccountName};AccountKey={AzuriteAccountKey};BlobEndpoint=http://localhost:10000/{AzuriteAccountName};";
+
         var blobServiceClient = new BlobServiceClient(connectionString);
         var containerClient = blobServiceClient.GetBlobContainerClient(containerName);
         await containerClient.CreateIfNotExistsAsync();
 
         var blobClient = containerClient.GetBlobClient(blobName);
         using var uploadStream = new MemoryStream(largeContent);
-        await blobClient.UploadAsync(uploadStream, overwrite: true);
+        await blobClient.UploadAsync(uploadStream, true);
 
         var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
 
@@ -178,6 +179,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         var actualContent = new byte[largeContent.Length];
         var bytesRead = 0;
         int readResult;
+
         do
         {
             readResult = await stream.ReadAsync(actualContent, bytesRead, actualContent.Length - bytesRead);
@@ -269,7 +271,9 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         var containerName = GetUniqueContainerName();
         var blobName = "json-file.json";
         var content = JsonSerializer.Serialize(new { test = "data" });
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}&contentType=application/json");
+
+        var uri = StorageUri.Parse(
+            $"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}&contentType=application/json");
 
         // Act
         using (var writeStream = await _provider!.OpenWriteAsync(uri))
@@ -326,6 +330,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         var actualContent = new byte[largeContent.Length];
         var bytesRead = 0;
         int readResult;
+
         do
         {
             readResult = await readStream.ReadAsync(actualContent, bytesRead, actualContent.Length - bytesRead);
@@ -352,8 +357,9 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
             BlockBlobUploadThresholdBytes = 8 * 1024 * 1024,
             UploadMaximumConcurrency = 8,
             UploadMaximumTransferSizeBytes = 8 * 1024 * 1024, // 8 MB
-            UseDefaultCredentialChain = false
+            UseDefaultCredentialChain = false,
         };
+
         var clientFactory = new AzureBlobClientFactory(customOptions);
         var customProvider = new AzureBlobStorageProvider(clientFactory, customOptions);
 
@@ -370,6 +376,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         var actualContent = new byte[largeContent.Length];
         var bytesRead = 0;
         int readResult;
+
         do
         {
             readResult = await readStream.ReadAsync(actualContent, bytesRead, actualContent.Length - bytesRead);
@@ -504,7 +511,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         var prefixUri = StorageUri.Parse($"azure://{containerName}/?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
 
         // Act
-        var items = await _provider!.ListAsync(prefixUri, recursive: true).ToListAsync();
+        var items = await _provider!.ListAsync(prefixUri, true).ToListAsync();
 
         // Assert
         items.Should().HaveCount(3);
@@ -525,7 +532,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         var prefixUri = StorageUri.Parse($"azure://{containerName}/?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
 
         // Act
-        var items = await _provider!.ListAsync(prefixUri, recursive: false).ToListAsync();
+        var items = await _provider!.ListAsync(prefixUri, false).ToListAsync();
 
         // Assert
         items.Should().HaveCount(1);
@@ -544,7 +551,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         var prefixUri = StorageUri.Parse($"azure://{containerName}/data/?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
 
         // Act
-        var items = await _provider!.ListAsync(prefixUri, recursive: true).ToListAsync();
+        var items = await _provider!.ListAsync(prefixUri, true).ToListAsync();
 
         // Assert
         items.Should().HaveCount(2);
@@ -561,7 +568,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         var prefixUri = StorageUri.Parse($"azure://{containerName}/?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
 
         // Act
-        var items = await _provider!.ListAsync(prefixUri, recursive: true).ToListAsync();
+        var items = await _provider!.ListAsync(prefixUri, true).ToListAsync();
 
         // Assert
         items.Should().BeEmpty();
@@ -580,7 +587,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         var prefixUri = StorageUri.Parse($"azure://{containerName}/?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
 
         // Act
-        var items = await _provider!.ListAsync(prefixUri, recursive: true).ToListAsync();
+        var items = await _provider!.ListAsync(prefixUri, true).ToListAsync();
 
         // Assert
         items.Should().HaveCount(4);
@@ -638,18 +645,21 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         var containerName = GetUniqueContainerName();
         var blobName = "custom-metadata-file.txt";
 
-        var connectionString = $"DefaultEndpointsProtocol=http;AccountName={AzuriteAccountName};AccountKey={AzuriteAccountKey};BlobEndpoint=http://localhost:10000/{AzuriteAccountName};";
+        var connectionString =
+            $"DefaultEndpointsProtocol=http;AccountName={AzuriteAccountName};AccountKey={AzuriteAccountKey};BlobEndpoint=http://localhost:10000/{AzuriteAccountName};";
+
         var blobServiceClient = new BlobServiceClient(connectionString);
         var containerClient = blobServiceClient.GetBlobContainerClient(containerName);
         await containerClient.CreateIfNotExistsAsync();
 
         var blobClient = containerClient.GetBlobClient(blobName);
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes("Content"));
-        await blobClient.UploadAsync(stream, overwrite: true);
+        await blobClient.UploadAsync(stream, true);
+
         await blobClient.SetMetadataAsync(new Dictionary<string, string>
         {
             ["custom_key_1"] = "custom-value-1",
-            ["custom_key_2"] = "custom-value-2"
+            ["custom_key_2"] = "custom-value-2",
         });
 
         var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
@@ -699,13 +709,16 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         // Arrange
         var containerName = GetUniqueContainerName();
         var blobName = "connection-string-test.txt";
-        var connectionString = $"DefaultEndpointsProtocol=http;AccountName={AzuriteAccountName};AccountKey={AzuriteAccountKey};BlobEndpoint=http://localhost:10000/{AzuriteAccountName};";
+
+        var connectionString =
+            $"DefaultEndpointsProtocol=http;AccountName={AzuriteAccountName};AccountKey={AzuriteAccountKey};BlobEndpoint=http://localhost:10000/{AzuriteAccountName};";
 
         var options = new AzureBlobStorageProviderOptions
         {
             DefaultConnectionString = connectionString,
-            UseDefaultCredentialChain = false
+            UseDefaultCredentialChain = false,
         };
+
         var clientFactory = new AzureBlobClientFactory(options);
         var provider = new AzureBlobStorageProvider(clientFactory, options);
 
@@ -761,9 +774,12 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         // Arrange
         var containerName = GetUniqueContainerName();
         var blobName = "unauthorized-file.txt";
+
         // Use a valid base64 string that represents invalid credentials
         // The key must be at least 64 bytes for Azure SDK validation to pass
-        var invalidKey = "dGVzdGtleWZvcmF6dXJpdGVzdGluZ3VudGhvcml6ZWRhY2Nlc3NleGNlcHRpb250ZXN0aW5nd2l0aHZhbGlkYmFzZTY0ZW5jb2Rpbmd0aGF0cGFzc2VzdmFsaWRhdGlvbididXRmYWlsc2F1dGhlbnRpY2F0aW9u";
+        var invalidKey =
+            "dGVzdGtleWZvcmF6dXJpdGVzdGluZ3VudGhvcml6ZWRhY2Nlc3NleGNlcHRpb250ZXN0aW5nd2l0aHZhbGlkYmFzZTY0ZW5jb2Rpbmd0aGF0cGFzc2VzdmFsaWRhdGlvbididXRmYWlsc2F1dGhlbnRpY2F0aW9u";
+
         var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={invalidKey}");
 
         // Act
@@ -838,6 +854,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
     {
         // Arrange
         var containerName = GetUniqueContainerName();
+
         var uris = Enumerable.Range(0, 10)
             .Select(i => StorageUri.Parse($"azure://{containerName}/file-{i}.txt?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}"))
             .ToArray();

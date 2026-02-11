@@ -49,10 +49,9 @@ public class SensorData
     public static SensorData FromCsv(string csvLine)
     {
         var parts = csvLine.Split(',');
+
         if (parts.Length != 5)
-        {
             throw new FormatException($"CSV line must have 5 fields: {csvLine}");
-        }
 
         return new SensorData
         {
@@ -60,7 +59,7 @@ public class SensorData
             Timestamp = DateTime.ParseExact(parts[1].Trim(), "yyyy-MM-dd HH:mm:ss", null),
             Temperature = double.Parse(parts[2].Trim()),
             Humidity = double.Parse(parts[3].Trim()),
-            Location = parts[4].Trim()
+            Location = parts[4].Trim(),
         };
     }
 

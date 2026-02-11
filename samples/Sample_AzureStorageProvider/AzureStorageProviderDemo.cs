@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using NPipeline.StorageProviders.Azure;
 using NPipeline.StorageProviders.Models;
@@ -11,8 +12,8 @@ namespace Sample_AzureStorageProvider;
 /// </summary>
 public class AzureStorageProviderDemo
 {
-    private readonly AzureBlobStorageProvider _provider;
     private readonly string _containerName;
+    private readonly AzureBlobStorageProvider _provider;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="AzureStorageProviderDemo" /> class.
@@ -99,6 +100,7 @@ public class AzureStorageProviderDemo
         if (metadata.Capabilities != null && metadata.Capabilities.Count > 0)
         {
             Console.WriteLine("  Capabilities:");
+
             foreach (var capability in metadata.Capabilities)
             {
                 Console.WriteLine($"    - {capability.Key}: {capability.Value}");
@@ -126,19 +128,22 @@ public class AzureStorageProviderDemo
         {
             // Write content to blob
             Console.WriteLine($"  Writing to: {uri}");
+
             await using (var writeStream = await _provider.OpenWriteAsync(uri, cancellationToken))
             {
                 await writeStream.WriteAsync(Encoding.UTF8.GetBytes(content), cancellationToken);
             }
+
             Console.WriteLine("  ✓ Write successful");
 
             // Read content back
             Console.WriteLine($"  Reading from: {uri}");
+
             await using (var readStream = await _provider.OpenReadAsync(uri, cancellationToken))
             using (var reader = new StreamReader(readStream))
             {
                 var readContent = await reader.ReadToEndAsync(cancellationToken);
-                Console.WriteLine($"  ✓ Read successful");
+                Console.WriteLine("  ✓ Read successful");
                 Console.WriteLine($"  Content: {readContent}");
             }
 
@@ -184,12 +189,13 @@ public class AzureStorageProviderDemo
                 new() { SensorId = "S002", Timestamp = DateTime.Now.AddHours(-2), Temperature = 24.1, Humidity = 62.8, Location = "Data Center" },
                 new() { SensorId = "S003", Timestamp = DateTime.Now.AddHours(-1), Temperature = 22.8, Humidity = 68.5, Location = "Server Room" },
                 new() { SensorId = "S004", Timestamp = DateTime.Now, Temperature = 25.3, Humidity = 60.1, Location = "Data Center" },
-                new() { SensorId = "S005", Timestamp = DateTime.Now.AddMinutes(-30), Temperature = 23.9, Humidity = 64.7, Location = "Office" }
+                new() { SensorId = "S005", Timestamp = DateTime.Now.AddMinutes(-30), Temperature = 23.9, Humidity = 64.7, Location = "Office" },
             };
 
             // Create CSV content
             var csvContent = new StringBuilder();
             csvContent.AppendLine("SensorId,Timestamp,Temperature,Humidity,Location");
+
             foreach (var data in sensorDataList)
             {
                 csvContent.AppendLine(data.ToCsv());
@@ -197,14 +203,17 @@ public class AzureStorageProviderDemo
 
             // Upload CSV to blob storage
             Console.WriteLine($"  Uploading CSV to: {csvUri}");
+
             await using (var writeStream = await _provider.OpenWriteAsync(csvUri, cancellationToken))
             {
                 await writeStream.WriteAsync(Encoding.UTF8.GetBytes(csvContent.ToString()), cancellationToken);
             }
+
             Console.WriteLine("  ✓ CSV uploaded successfully");
 
             // Read and process the CSV
             Console.WriteLine($"  Reading and processing CSV from: {csvUri}");
+
             await using (var readStream = await _provider.OpenReadAsync(csvUri, cancellationToken))
             using (var reader = new StreamReader(readStream))
             {
@@ -214,7 +223,9 @@ public class AzureStorageProviderDemo
                 while (await reader.ReadLineAsync(cancellationToken) is { } line)
                 {
                     lineCount++;
-                    if (lineCount == 1) continue; // Skip header
+
+                    if (lineCount == 1)
+                        continue; // Skip header
 
                     var sensorData = SensorData.FromCsv(line);
                     Console.WriteLine($"    - {sensorData}");
@@ -233,9 +244,13 @@ public class AzureStorageProviderDemo
             Console.WriteLine($"  Writing processed data to: {outputUri}");
             var processedCsvContent = new StringBuilder();
             processedCsvContent.AppendLine("SensorId,Timestamp,Temperature,Humidity,Location,Status");
+
             foreach (var data in filteredData)
             {
-                var status = data.Temperature > 24.0 ? "HIGH" : "NORMAL";
+                var status = data.Temperature > 24.0
+                    ? "HIGH"
+                    : "NORMAL";
+
                 processedCsvContent.AppendLine($"{data.ToCsv()},{status}");
             }
 
@@ -243,6 +258,7 @@ public class AzureStorageProviderDemo
             {
                 await writeStream.WriteAsync(Encoding.UTF8.GetBytes(processedCsvContent.ToString()), cancellationToken);
             }
+
             Console.WriteLine("  ✓ Processed data written successfully");
 
             // Clean up
@@ -284,7 +300,7 @@ public class AzureStorageProviderDemo
 
             // Upload large file
             Console.WriteLine($"  Uploading large file to: {uri}");
-            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var stopwatch = Stopwatch.StartNew();
 
             await using (var writeStream = await _provider.OpenWriteAsync(uri, cancellationToken))
             {
@@ -297,15 +313,17 @@ public class AzureStorageProviderDemo
 
             // Verify the blob exists and get metadata
             var metadata = await _provider.GetMetadataAsync(uri, cancellationToken);
+
             if (metadata != null)
             {
-                Console.WriteLine($"  ✓ Blob verified");
+                Console.WriteLine("  ✓ Blob verified");
                 Console.WriteLine($"    Size: {metadata.Size / (1024.0 * 1024.0):F2} MB");
                 Console.WriteLine($"    Last Modified: {metadata.LastModified:yyyy-MM-dd HH:mm:ss}");
             }
 
             // Read back a portion to verify
             Console.WriteLine($"  Reading first 1KB from: {uri}");
+
             await using (var readStream = await _provider.OpenReadAsync(uri, cancellationToken))
             {
                 var readBuffer = new byte[1024];
@@ -347,73 +365,86 @@ public class AzureStorageProviderDemo
                 "demo/data/archive/file3.txt",
                 "demo/logs/app.log",
                 "demo/logs/error.log",
-                "demo/config/settings.json"
+                "demo/config/settings.json",
             };
 
             Console.WriteLine("  Uploading test files...");
+
             foreach (var file in files)
             {
                 var uri = StorageUri.Parse($"azure://{_containerName}/{file}");
                 var content = $"Content of {file}";
+
                 await using (var writeStream = await _provider.OpenWriteAsync(uri, cancellationToken))
                 {
                     await writeStream.WriteAsync(Encoding.UTF8.GetBytes(content), cancellationToken);
                 }
             }
+
             Console.WriteLine($"  ✓ Uploaded {files.Length} files");
 
             // List all blobs recursively
             Console.WriteLine();
             Console.WriteLine("  Listing all blobs (recursive):");
             var prefix = StorageUri.Parse($"azure://{_containerName}/demo/");
-            var allBlobs = await _provider.ListAsync(prefix, recursive: true, cancellationToken).ToListAsync(cancellationToken);
+            var allBlobs = await _provider.ListAsync(prefix, true, cancellationToken).ToListAsync(cancellationToken);
+
             foreach (var blob in allBlobs)
             {
                 Console.WriteLine($"    - {blob.Uri.Path} ({blob.Size} bytes)");
             }
+
             Console.WriteLine($"  ✓ Found {allBlobs.Count} blobs");
 
             // List blobs with prefix filter
             Console.WriteLine();
             Console.WriteLine("  Listing blobs with prefix 'demo/data/':");
             var dataPrefix = StorageUri.Parse($"azure://{_containerName}/demo/data/");
-            var dataBlobs = await _provider.ListAsync(dataPrefix, recursive: true, cancellationToken).ToListAsync(cancellationToken);
+            var dataBlobs = await _provider.ListAsync(dataPrefix, true, cancellationToken).ToListAsync(cancellationToken);
+
             foreach (var blob in dataBlobs)
             {
                 Console.WriteLine($"    - {blob.Uri.Path}");
             }
+
             Console.WriteLine($"  ✓ Found {dataBlobs.Count} blobs");
 
             // List blobs non-recursively
             Console.WriteLine();
             Console.WriteLine("  Listing blobs non-recursively (demo/):");
             var demoPrefix = StorageUri.Parse($"azure://{_containerName}/demo/");
-            var nonRecursiveBlobs = await _provider.ListAsync(demoPrefix, recursive: false, cancellationToken).ToListAsync(cancellationToken);
+            var nonRecursiveBlobs = await _provider.ListAsync(demoPrefix, false, cancellationToken).ToListAsync(cancellationToken);
+
             foreach (var blob in nonRecursiveBlobs)
             {
                 Console.WriteLine($"    - {blob.Uri.Path}");
             }
+
             Console.WriteLine($"  ✓ Found {nonRecursiveBlobs.Count} blobs at top level");
 
             // List blobs with logs prefix
             Console.WriteLine();
             Console.WriteLine("  Listing blobs with prefix 'demo/logs/':");
             var logsPrefix = StorageUri.Parse($"azure://{_containerName}/demo/logs/");
-            var logsBlobs = await _provider.ListAsync(logsPrefix, recursive: true, cancellationToken).ToListAsync(cancellationToken);
+            var logsBlobs = await _provider.ListAsync(logsPrefix, true, cancellationToken).ToListAsync(cancellationToken);
+
             foreach (var blob in logsBlobs)
             {
                 Console.WriteLine($"    - {blob.Uri.Path}");
             }
+
             Console.WriteLine($"  ✓ Found {logsBlobs.Count} log files");
 
             // Clean up
             Console.WriteLine();
             Console.WriteLine("  Cleaning up test files...");
+
             foreach (var file in files)
             {
                 var uri = StorageUri.Parse($"azure://{_containerName}/{file}");
                 await _provider.DeleteAsync(uri, cancellationToken);
             }
+
             Console.WriteLine("  ✓ All test files deleted");
         }
         catch (Exception ex)
@@ -445,16 +476,19 @@ public class AzureStorageProviderDemo
             // Upload blob with content type
             Console.WriteLine($"  Uploading blob with content type: {uri}");
             var contentTypeUri = StorageUri.Parse($"azure://{_containerName}/{blobPath}?contentType=text/plain");
+
             await using (var writeStream = await _provider.OpenWriteAsync(contentTypeUri, cancellationToken))
             {
                 await writeStream.WriteAsync(Encoding.UTF8.GetBytes(content), cancellationToken);
             }
+
             Console.WriteLine("  ✓ Blob uploaded with content type");
 
             // Retrieve and display metadata
             Console.WriteLine();
             Console.WriteLine("  Retrieving metadata:");
             var metadata = await _provider.GetMetadataAsync(uri, cancellationToken);
+
             if (metadata != null)
             {
                 Console.WriteLine($"    Size: {metadata.Size} bytes");
@@ -466,12 +500,14 @@ public class AzureStorageProviderDemo
                 if (metadata.CustomMetadata != null && metadata.CustomMetadata.Count > 0)
                 {
                     Console.WriteLine("    Custom Metadata:");
+
                     foreach (var kvp in metadata.CustomMetadata)
                     {
                         Console.WriteLine($"      {kvp.Key}: {kvp.Value}");
                     }
                 }
             }
+
             Console.WriteLine("  ✓ Metadata retrieved successfully");
 
             // Check blob existence
@@ -511,6 +547,7 @@ public class AzureStorageProviderDemo
         // Scenario 1: Try to read non-existent blob
         Console.WriteLine("  Scenario 1: Reading non-existent blob");
         var nonExistentUri = StorageUri.Parse($"azure://{_containerName}/demo/non-existent-file.txt");
+
         try
         {
             await using var stream = await _provider.OpenReadAsync(nonExistentUri, cancellationToken);
@@ -532,6 +569,7 @@ public class AzureStorageProviderDemo
         // Scenario 2: Try to delete non-existent blob (should not throw)
         Console.WriteLine();
         Console.WriteLine("  Scenario 2: Deleting non-existent blob (DeleteIfExists)");
+
         try
         {
             await _provider.DeleteAsync(nonExistentUri, cancellationToken);
@@ -547,9 +585,11 @@ public class AzureStorageProviderDemo
         // Scenario 3: Try to get metadata for non-existent blob
         Console.WriteLine();
         Console.WriteLine("  Scenario 3: Getting metadata for non-existent blob");
+
         try
         {
             var metadata = await _provider.GetMetadataAsync(nonExistentUri, cancellationToken);
+
             if (metadata == null)
             {
                 Console.ForegroundColor = ConsoleColor.Green;
@@ -566,6 +606,7 @@ public class AzureStorageProviderDemo
         Console.WriteLine();
         Console.WriteLine("  Scenario 4: Accessing invalid container name");
         var invalidUri = StorageUri.Parse("azure://invalid-container-name-with-invalid-chars!/file.txt");
+
         try
         {
             await using var stream = await _provider.OpenReadAsync(invalidUri, cancellationToken);
@@ -587,6 +628,7 @@ public class AzureStorageProviderDemo
         // Scenario 5: Try to use null URI
         Console.WriteLine();
         Console.WriteLine("  Scenario 5: Using null URI");
+
         try
         {
             await _provider.ExistsAsync(null!, cancellationToken);

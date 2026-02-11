@@ -1,9 +1,10 @@
+using AwesomeAssertions;
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using AwesomeAssertions;
 using FakeItEasy;
 using Xunit;
+
 #pragma warning disable IDE0058 // Expression value is never used (assertion helpers return values)
 #pragma warning disable IDE0160 // Convert to block-scoped namespace
 #pragma warning disable IDE0161 // Convert to file-scoped namespace

@@ -49,7 +49,7 @@ public sealed class Program
             Console.WriteLine("║   ERROR                                                        ║");
             Console.WriteLine("╚════════════════════════════════════════════════════════════════╝");
             Console.WriteLine();
-            Console.WriteLine($"An error occurred while running the sample:");
+            Console.WriteLine("An error occurred while running the sample:");
             Console.WriteLine($"  Message: {ex.Message}");
             Console.WriteLine();
             Console.WriteLine("Full error details:");
@@ -73,7 +73,7 @@ public sealed class Program
     {
         return new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+            .AddJsonFile("appsettings.json", true, true)
             .AddEnvironmentVariables()
             .Build();
     }
@@ -95,17 +95,16 @@ public sealed class Program
         {
             // Try to get connection string from configuration
             var connectionString = configuration["AzureStorage:DefaultConnectionString"]
-                ?? configuration["AZURE_STORAGE_CONNECTION_STRING"]
-                ?? "UseDevelopmentStorage=true";
+                                   ?? configuration["AZURE_STORAGE_CONNECTION_STRING"]
+                                   ?? "UseDevelopmentStorage=true";
 
             options.DefaultConnectionString = connectionString;
 
             // Try to get service URL from configuration (for Azurite)
             var serviceUrl = configuration["AzureStorage:ServiceUrl"];
+
             if (!string.IsNullOrEmpty(serviceUrl))
-            {
                 options.ServiceUrl = new Uri(serviceUrl);
-            }
 
             // Configure upload options
             options.BlockBlobUploadThresholdBytes = 64 * 1024 * 1024; // 64MB
@@ -134,8 +133,8 @@ public sealed class Program
         Console.WriteLine();
 
         var connectionString = configuration["AzureStorage:DefaultConnectionString"]
-            ?? configuration["AZURE_STORAGE_CONNECTION_STRING"]
-            ?? "UseDevelopmentStorage=true";
+                               ?? configuration["AZURE_STORAGE_CONNECTION_STRING"]
+                               ?? "UseDevelopmentStorage=true";
 
         var serviceUrl = configuration["AzureStorage:ServiceUrl"];
 
@@ -143,19 +142,15 @@ public sealed class Program
         Console.WriteLine($"    Connection String: {MaskConnectionString(connectionString)}");
 
         if (!string.IsNullOrEmpty(serviceUrl))
-        {
             Console.WriteLine($"    Service URL: {serviceUrl}");
-        }
         else
-        {
-            Console.WriteLine($"    Service URL: Default (Azure Blob Storage endpoint)");
-        }
+            Console.WriteLine("    Service URL: Default (Azure Blob Storage endpoint)");
 
         Console.WriteLine();
         Console.WriteLine("  Upload Configuration:");
-        Console.WriteLine($"    Block Blob Threshold: 64 MB");
-        Console.WriteLine($"    Max Concurrency: 4");
-        Console.WriteLine($"    Max Transfer Size: 4 MB");
+        Console.WriteLine("    Block Blob Threshold: 64 MB");
+        Console.WriteLine("    Max Concurrency: 4");
+        Console.WriteLine("    Max Transfer Size: 4 MB");
         Console.WriteLine();
 
         // Check if Azurite is being used
@@ -186,34 +181,33 @@ public sealed class Program
     private static string MaskConnectionString(string connectionString)
     {
         if (string.IsNullOrEmpty(connectionString))
-        {
             return "(empty)";
-        }
 
         // For Azurite development storage, show as-is
         if (connectionString.Equals("UseDevelopmentStorage=true", StringComparison.OrdinalIgnoreCase))
-        {
             return "UseDevelopmentStorage=true";
-        }
 
         // Mask account keys in connection strings
         var masked = connectionString;
         var keyIndex = masked.IndexOf("AccountKey=", StringComparison.OrdinalIgnoreCase);
+
         if (keyIndex >= 0)
         {
             var keyStart = keyIndex + "AccountKey=".Length;
             var semicolonIndex = masked.IndexOf(';', keyStart);
-            var keyEnd = semicolonIndex >= 0 ? semicolonIndex : masked.Length;
+
+            var keyEnd = semicolonIndex >= 0
+                ? semicolonIndex
+                : masked.Length;
 
             masked = string.Concat(masked.AsSpan(0, keyStart), "*****", masked.AsSpan(keyEnd));
         }
 
         // Mask SAS tokens
         var sasIndex = masked.IndexOf("?sv=", StringComparison.OrdinalIgnoreCase);
+
         if (sasIndex >= 0)
-        {
             masked = string.Concat(masked.AsSpan(0, sasIndex), "?sv=*****");
-        }
 
         return masked;
     }

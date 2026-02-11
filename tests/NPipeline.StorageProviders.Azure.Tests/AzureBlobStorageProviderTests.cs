@@ -1,5 +1,3 @@
-using System.Linq;
-using System.IO;
 #pragma warning disable IDE0005 // Unnecessary using directives
 #pragma warning disable IDE0058 // Expression value is never used (assertion helpers return values)
 #pragma warning disable IDE0060 // Unused parameter (test helper signatures)
@@ -8,17 +6,11 @@ using System.IO;
 #pragma warning disable IDE0290 // Use primary constructor
 #pragma warning disable IDE0300 // Method can be made synchronous
 using Azure;
-using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using FakeItEasy;
 using FluentAssertions;
-using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Models;
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Azure.Tests;
@@ -43,10 +35,12 @@ internal sealed class TestAsyncPageable<T> : AsyncPageable<T> where T : notnull
         _ = continuationToken;
         _ = pageSizeHint;
         var items = new List<T>();
+
         await foreach (var item in _items)
         {
             items.Add(item);
         }
+
         yield return Page<T>.FromValues(items, null, A.Fake<Response>());
     }
 
@@ -57,7 +51,7 @@ internal sealed class TestAsyncPageable<T> : AsyncPageable<T> where T : notnull
 }
 
 /// <summary>
-/// Simple async enumerable that yields items from a list
+///     Simple async enumerable that yields items from a list
 /// </summary>
 internal sealed class SimpleAsyncEnumerable<T> : IAsyncEnumerable<T>
 {
@@ -75,12 +69,12 @@ internal sealed class SimpleAsyncEnumerable<T> : IAsyncEnumerable<T>
 }
 
 /// <summary>
-/// Simple async enumerator that yields items from a list
+///     Simple async enumerator that yields items from a list
 /// </summary>
 internal sealed class SimpleAsyncEnumerator<T> : IAsyncEnumerator<T>
 {
-    private readonly List<T> _items;
     private readonly CancellationToken _cancellationToken;
+    private readonly List<T> _items;
     private int _index = -1;
 
     public SimpleAsyncEnumerator(List<T> items, CancellationToken cancellationToken)
@@ -106,7 +100,7 @@ internal sealed class SimpleAsyncEnumerator<T> : IAsyncEnumerator<T>
 }
 
 /// <summary>
-/// Simple wrapper to make a list enumerable as IAsyncEnumerable for testing
+///     Simple wrapper to make a list enumerable as IAsyncEnumerable for testing
 /// </summary>
 internal sealed class AsyncEnumerableWrapper<T> : IAsyncEnumerable<T>
 {
@@ -124,12 +118,12 @@ internal sealed class AsyncEnumerableWrapper<T> : IAsyncEnumerable<T>
 }
 
 /// <summary>
-/// Simple wrapper to make a synchronous enumerator work as async enumerator for testing
+///     Simple wrapper to make a synchronous enumerator work as async enumerator for testing
 /// </summary>
 internal sealed class AsyncEnumeratorWrapper<T> : IAsyncEnumerator<T>
 {
-    private readonly IEnumerator<T> _enumerator;
     private readonly CancellationToken _cancellationToken;
+    private readonly IEnumerator<T> _enumerator;
 
     public AsyncEnumeratorWrapper(IEnumerator<T> enumerator, CancellationToken cancellationToken)
     {
@@ -153,7 +147,7 @@ internal sealed class AsyncEnumeratorWrapper<T> : IAsyncEnumerator<T>
 }
 
 /// <summary>
-/// Custom async enumerable that yields a single page with items
+///     Custom async enumerable that yields a single page with items
 /// </summary>
 internal sealed class PageAsyncEnumerable<T> : IAsyncEnumerable<Page<T>> where T : notnull
 {
@@ -171,12 +165,12 @@ internal sealed class PageAsyncEnumerable<T> : IAsyncEnumerable<Page<T>> where T
 }
 
 /// <summary>
-/// Custom async enumerator that yields a single page
+///     Custom async enumerator that yields a single page
 /// </summary>
 internal sealed class PageAsyncEnumerator<T> : IAsyncEnumerator<Page<T>> where T : notnull
 {
-    private readonly List<T> _items;
     private readonly CancellationToken _cancellationToken;
+    private readonly List<T> _items;
     private bool _hasYielded;
 
     public PageAsyncEnumerator(List<T> items, CancellationToken cancellationToken)
@@ -185,15 +179,17 @@ internal sealed class PageAsyncEnumerator<T> : IAsyncEnumerator<Page<T>> where T
         _cancellationToken = cancellationToken;
     }
 
-    public Page<T> Current => !_hasYielded ? throw new InvalidOperationException() : Page<T>.FromValues(_items, null, A.Fake<Response>());
+    public Page<T> Current => !_hasYielded
+        ? throw new InvalidOperationException()
+        : Page<T>.FromValues(_items, null, A.Fake<Response>());
 
     public ValueTask<bool> MoveNextAsync()
     {
         _cancellationToken.ThrowIfCancellationRequested();
+
         if (_hasYielded)
-        {
             return new ValueTask<bool>(false);
-        }
+
         _hasYielded = true;
         return new ValueTask<bool>(true);
     }
@@ -206,10 +202,10 @@ internal sealed class PageAsyncEnumerator<T> : IAsyncEnumerator<Page<T>> where T
 
 public class AzureBlobStorageProviderTests
 {
-    private readonly AzureBlobClientFactory _fakeClientFactory;
-    private readonly BlobServiceClient _fakeBlobServiceClient;
-    private readonly BlobContainerClient _fakeContainerClient;
     private readonly BlobClient _fakeBlobClient;
+    private readonly BlobServiceClient _fakeBlobServiceClient;
+    private readonly AzureBlobClientFactory _fakeClientFactory;
+    private readonly BlobContainerClient _fakeContainerClient;
     private readonly AzureBlobStorageProviderOptions _options;
     private readonly AzureBlobStorageProvider _provider;
 
@@ -414,7 +410,9 @@ public class AzureBlobStorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("azure://test-container/test-blob");
-        var exception = new RequestFailedException(400, "InvalidQueryParameterValue", "Value for one of the query parameters specified in the request URI is invalid.", null);
+
+        var exception = new RequestFailedException(400, "InvalidQueryParameterValue",
+            "Value for one of the query parameters specified in the request URI is invalid.", null);
 
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
             .Returns(Task.FromResult(_fakeBlobServiceClient));
@@ -717,10 +715,11 @@ public class AzureBlobStorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("azure://test-container/prefix/");
+
         var blobItems = new List<BlobItem>
         {
             BlobItemBuilder("prefix/file1.txt", 100),
-            BlobItemBuilder("prefix/subdir/file2.txt", 200)
+            BlobItemBuilder("prefix/subdir/file2.txt", 200),
         };
 
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
@@ -734,11 +733,12 @@ public class AzureBlobStorageProviderTests
 
         // Create a custom AsyncPageable that properly yields items
         var asyncPageable = new TestBlobItemAsyncPageable(blobItems);
+
         A.CallTo(() => _fakeContainerClient.GetBlobsAsync(
-            A<BlobTraits>._,
-            A<BlobStates>._,
-            "prefix/",
-            A<CancellationToken>._))
+                A<BlobTraits>._,
+                A<BlobStates>._,
+                "prefix/",
+                A<CancellationToken>._))
             .Returns(asyncPageable);
 
         // Act
@@ -767,23 +767,23 @@ public class AzureBlobStorageProviderTests
 
         // Create a BlobHierarchyItem with a blob (not a prefix)
         var blobHierarchyItem = BlobsModelFactory.BlobHierarchyItem(
-            prefix: null,
-            blob: blobItem);
+            null,
+            blobItem);
 
         // Create a custom AsyncPageable that properly yields items
         var asyncPageable = new TestBlobHierarchyItemAsyncPageable([blobHierarchyItem]);
 
         // Use more permissive matcher for call
         A.CallTo(() => _fakeContainerClient.GetBlobsByHierarchyAsync(
-            A<BlobTraits>._,
-            A<BlobStates>._,
-            A<string>._,
-            A<string>._,
-            A<CancellationToken>._))
+                A<BlobTraits>._,
+                A<BlobStates>._,
+                A<string>._,
+                A<string>._,
+                A<CancellationToken>._))
             .Returns(asyncPageable);
 
         // Act
-        var items = await _provider.ListAsync(uri, false).ToListAsync();
+        var items = await _provider.ListAsync(uri).ToListAsync();
 
         // Assert
         items.Should().HaveCount(1);
@@ -836,10 +836,10 @@ public class AzureBlobStorageProviderTests
             .Returns(Task.FromResult(Response.FromValue(true, A.Fake<Response>())));
 
         A.CallTo(() => _fakeContainerClient.GetBlobsAsync(
-            A<BlobTraits>._,
-            A<BlobStates>._,
-            "prefix/",
-            A<CancellationToken>._))
+                A<BlobTraits>._,
+                A<BlobStates>._,
+                "prefix/",
+                A<CancellationToken>._))
             .Throws(exception);
 
         // Act & Assert
@@ -851,13 +851,14 @@ public class AzureBlobStorageProviderTests
     {
         // Arrange
         var uri = StorageUri.Parse("azure://test-container/test-blob");
+
         var properties = BlobsModelFactory.BlobProperties(
             contentLength: 1024,
             lastModified: DateTimeOffset.UtcNow,
             contentType: "application/json",
             metadata: new Dictionary<string, string>
             {
-                ["custom-key"] = "custom-value"
+                ["custom-key"] = "custom-value",
             });
 
         var response = A.Fake<Response<BlobProperties>>();
@@ -1079,8 +1080,10 @@ public class AzureBlobStorageProviderTests
 
         // Assert
         stream.Should().NotBeNull();
+
         A.CallTo(() => _fakeBlobServiceClient.GetBlobContainerClient(expectedContainer))
             .MustHaveHappenedOnceExactly();
+
         A.CallTo(() => _fakeContainerClient.GetBlobClient(expectedBlob))
             .MustHaveHappenedOnceExactly();
     }
@@ -1098,16 +1101,16 @@ public class AzureBlobStorageProviderTests
     private static BlobItem BlobItemBuilder(string name, long contentLength)
     {
         var properties = BlobsModelFactory.BlobItemProperties(
-            accessTierInferred: false,
+            false,
             contentLength: contentLength);
 
         return BlobsModelFactory.BlobItem(
-            name: name,
+            name,
             properties: properties);
     }
 
     /// <summary>
-    /// Custom AsyncPageable for BlobItem that properly yields items
+    ///     Custom AsyncPageable for BlobItem that properly yields items
     /// </summary>
     internal sealed class TestBlobItemAsyncPageable : AsyncPageable<BlobItem>
     {
@@ -1139,12 +1142,12 @@ public class AzureBlobStorageProviderTests
     }
 
     /// <summary>
-    /// Custom async enumerator for BlobItem
+    ///     Custom async enumerator for BlobItem
     /// </summary>
     internal sealed class TestBlobItemAsyncEnumerator : IAsyncEnumerator<BlobItem>
     {
-        private readonly IEnumerator<BlobItem> _enumerator;
         private readonly CancellationToken _cancellationToken;
+        private readonly IEnumerator<BlobItem> _enumerator;
 
         public TestBlobItemAsyncEnumerator(IEnumerable<BlobItem> items, CancellationToken cancellationToken)
         {
@@ -1168,7 +1171,7 @@ public class AzureBlobStorageProviderTests
     }
 
     /// <summary>
-    /// Custom AsyncPageable for BlobHierarchyItem that properly yields items
+    ///     Custom AsyncPageable for BlobHierarchyItem that properly yields items
     /// </summary>
     internal sealed class TestBlobHierarchyItemAsyncPageable : AsyncPageable<BlobHierarchyItem>
     {
@@ -1200,12 +1203,12 @@ public class AzureBlobStorageProviderTests
     }
 
     /// <summary>
-    /// Custom async enumerator for BlobHierarchyItem
+    ///     Custom async enumerator for BlobHierarchyItem
     /// </summary>
     internal sealed class TestBlobHierarchyItemAsyncEnumerator : IAsyncEnumerator<BlobHierarchyItem>
     {
-        private readonly IEnumerator<BlobHierarchyItem> _enumerator;
         private readonly CancellationToken _cancellationToken;
+        private readonly IEnumerator<BlobHierarchyItem> _enumerator;
 
         public TestBlobHierarchyItemAsyncEnumerator(IEnumerable<BlobHierarchyItem> items, CancellationToken cancellationToken)
         {

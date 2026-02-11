@@ -1,6 +1,7 @@
 # Azure Blob Storage Provider Sample
 
-This sample demonstrates comprehensive usage of the Azure Blob Storage Provider in NPipeline. It showcases all key features of the provider including reading, writing, listing, metadata operations, and error handling.
+This sample demonstrates comprehensive usage of the Azure Blob Storage Provider in NPipeline. It showcases all key features of the provider including reading,
+writing, listing, metadata operations, and error handling.
 
 ## What This Sample Demonstrates
 

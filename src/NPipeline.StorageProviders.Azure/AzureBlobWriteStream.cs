@@ -1,9 +1,8 @@
+using System.Runtime.ExceptionServices;
 using Azure;
 using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using System.Runtime.ExceptionServices;
-using System.Threading;
 
 namespace NPipeline.StorageProviders.Azure;
 
@@ -12,21 +11,19 @@ namespace NPipeline.StorageProviders.Azure;
 /// </summary>
 public sealed class AzureBlobWriteStream : Stream
 {
+    private static readonly TimeSpan UploadDisposeTimeout = TimeSpan.FromMinutes(5);
     private readonly string _blob;
+    private readonly BlobServiceClient _blobServiceClient;
     private readonly long _blockBlobUploadThreshold;
     private readonly string _container;
     private readonly string? _contentType;
-    private readonly BlobServiceClient _blobServiceClient;
     private readonly CancellationToken _disposeCancellationToken;
     private readonly int? _maximumConcurrency;
     private readonly int? _maximumTransferSizeBytes;
     private readonly string _tempFilePath;
-    private static readonly TimeSpan UploadDisposeTimeout = TimeSpan.FromMinutes(5);
     private int _disposeState; // 0 = not disposed, 1 = disposing, 2 = disposed
     private FileStream? _tempFileStream;
     private bool _uploaded;
-
-    private bool IsDisposed => Volatile.Read(ref _disposeState) != 0;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="AzureBlobWriteStream" /> class.
@@ -67,6 +64,8 @@ public sealed class AzureBlobWriteStream : Stream
             81920,
             FileOptions.Asynchronous | FileOptions.DeleteOnClose);
     }
+
+    private bool IsDisposed => Volatile.Read(ref _disposeState) != 0;
 
     /// <inheritdoc />
     public override bool CanRead => false;
@@ -142,9 +141,7 @@ public sealed class AzureBlobWriteStream : Stream
         ObjectDisposedException.ThrowIf(IsDisposed, this);
 
         if (_tempFileStream is null)
-        {
             ObjectDisposedException.ThrowIf(true, this);
-        }
 
         await _tempFileStream.WriteAsync(new ReadOnlyMemory<byte>(buffer, offset, count), cancellationToken).ConfigureAwait(false);
     }
@@ -157,9 +154,7 @@ public sealed class AzureBlobWriteStream : Stream
         ObjectDisposedException.ThrowIf(IsDisposed, this);
 
         if (_tempFileStream is null)
-        {
             ObjectDisposedException.ThrowIf(true, this);
-        }
 
         await _tempFileStream.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
     }
@@ -169,9 +164,7 @@ public sealed class AzureBlobWriteStream : Stream
     {
         // Ensure only one disposing path executes
         if (Interlocked.CompareExchange(ref _disposeState, 1, 0) != 0)
-        {
             return;
-        }
 
         ExceptionDispatchInfo? capturedException = null;
 
@@ -195,9 +188,7 @@ public sealed class AzureBlobWriteStream : Stream
             catch (Exception ex)
             {
                 if (ex is OperationCanceledException)
-                {
                     throw;
-                }
 
                 capturedException = ExceptionDispatchInfo.Capture(ex);
             }
@@ -222,9 +213,7 @@ public sealed class AzureBlobWriteStream : Stream
     {
         // Ensure only one async disposing path executes
         if (Interlocked.CompareExchange(ref _disposeState, 1, 0) != 0)
-        {
             return;
-        }
 
         ExceptionDispatchInfo? capturedException = null;
 
@@ -278,9 +267,7 @@ public sealed class AzureBlobWriteStream : Stream
         cancellationToken.ThrowIfCancellationRequested();
 
         if (_tempFileStream is null || _uploaded)
-        {
             return;
-        }
 
         var blobClient = _blobServiceClient.GetBlobContainerClient(_container).GetBlobClient(_blob);
 
@@ -318,16 +305,12 @@ public sealed class AzureBlobWriteStream : Stream
     private void TryDeleteTempFileOnSuccess()
     {
         if (!_uploaded)
-        {
             return;
-        }
 
         try
         {
             if (File.Exists(_tempFilePath))
-            {
                 File.Delete(_tempFilePath);
-            }
         }
         catch
         {
@@ -381,14 +364,10 @@ public sealed class AzureBlobWriteStream : Stream
             var transferOptions = new StorageTransferOptions();
 
             if (_maximumConcurrency.HasValue)
-            {
                 transferOptions.MaximumConcurrency = _maximumConcurrency.Value;
-            }
 
             if (_maximumTransferSizeBytes.HasValue)
-            {
                 transferOptions.MaximumTransferSize = _maximumTransferSizeBytes.Value;
-            }
 
             options.TransferOptions = transferOptions;
         }

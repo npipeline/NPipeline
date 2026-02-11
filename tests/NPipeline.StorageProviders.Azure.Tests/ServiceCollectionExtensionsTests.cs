@@ -1,7 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.StorageProviders.Abstractions;
-using NPipeline.StorageProviders.Azure;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Azure.Tests;
@@ -91,6 +90,7 @@ public class ServiceCollectionExtensionsTests
     {
         // Arrange
         var services = new ServiceCollection();
+
         var options = new AzureBlobStorageProviderOptions
         {
             DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net",
@@ -111,6 +111,7 @@ public class ServiceCollectionExtensionsTests
     {
         // Arrange
         var services = new ServiceCollection();
+
         var options = new AzureBlobStorageProviderOptions
         {
             DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net",
@@ -131,6 +132,7 @@ public class ServiceCollectionExtensionsTests
     {
         // Arrange
         var services = new ServiceCollection();
+
         var options = new AzureBlobStorageProviderOptions
         {
             DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net",
@@ -151,6 +153,7 @@ public class ServiceCollectionExtensionsTests
     {
         // Arrange
         var services = new ServiceCollection();
+
         var options = new AzureBlobStorageProviderOptions
         {
             DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net",
@@ -176,10 +179,7 @@ public class ServiceCollectionExtensionsTests
         var connectionString = "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net";
 
         // Act
-        services.AddAzureBlobStorageProvider(options =>
-        {
-            options.DefaultConnectionString = connectionString;
-        });
+        services.AddAzureBlobStorageProvider(options => { options.DefaultConnectionString = connectionString; });
 
         // Assert
         var provider = services.BuildServiceProvider();
@@ -194,10 +194,7 @@ public class ServiceCollectionExtensionsTests
         var services = new ServiceCollection();
 
         // Act
-        services.AddAzureBlobStorageProvider(options =>
-        {
-            options.ServiceUrl = new Uri("https://testaccount.blob.core.windows.net");
-        });
+        services.AddAzureBlobStorageProvider(options => { options.ServiceUrl = new Uri("https://testaccount.blob.core.windows.net"); });
 
         // Assert
         var provider = services.BuildServiceProvider();
@@ -234,10 +231,7 @@ public class ServiceCollectionExtensionsTests
         var services = new ServiceCollection();
 
         // Act
-        services.AddAzureBlobStorageProvider(options =>
-        {
-            options.UseDefaultCredentialChain = false;
-        });
+        services.AddAzureBlobStorageProvider(options => { options.UseDefaultCredentialChain = false; });
 
         // Assert
         var provider = services.BuildServiceProvider();
@@ -312,6 +306,7 @@ public class ServiceCollectionExtensionsTests
         {
             options.DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=test1;AccountKey=test1;EndpointSuffix=core.windows.net";
         });
+
         services.AddAzureBlobStorageProvider(options =>
         {
             options.DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=test2;AccountKey=test2;EndpointSuffix=core.windows.net";

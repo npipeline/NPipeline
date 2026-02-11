@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using Azure;
 using Azure.Core;
-using Azure.Identity;
 using Azure.Storage;
 using Azure.Storage.Blobs;
 using NPipeline.StorageProviders.Models;
@@ -70,9 +69,7 @@ public class AzureBlobClientFactory
             // even when a connection string exists. This mirrors S3 behavior where URI parameters can override defaults
             // and avoids parsing potentially placeholder connection strings in tests.
             if (serviceUrl is null && !string.IsNullOrEmpty(connectionString))
-            {
                 return new BlobServiceClient(connectionString);
-            }
 
             // Build service URL if not provided
             var effectiveServiceUrl = serviceUrl ?? BuildDefaultServiceUrl(accountName ?? credentialInfo?.AccountName);
@@ -93,9 +90,7 @@ public class AzureBlobClientFactory
 
             // Handle token credential (DefaultAzureCredential or custom TokenCredential)
             if (credentialInfo?.TokenCredential is not null)
-            {
                 return new BlobServiceClient(effectiveServiceUrl, credentialInfo.TokenCredential);
-            }
 
             // No credentials provided - use anonymous access
             return new BlobServiceClient(effectiveServiceUrl);
@@ -115,9 +110,7 @@ public class AzureBlobClientFactory
     {
         if (uri.Parameters.TryGetValue("connectionString", out var connectionString) &&
             !string.IsNullOrWhiteSpace(connectionString))
-        {
             return Uri.UnescapeDataString(connectionString);
-        }
 
         return _options.DefaultConnectionString;
     }
@@ -132,9 +125,7 @@ public class AzureBlobClientFactory
     {
         // Check for explicit connection string first (takes precedence)
         if (uri.Parameters.ContainsKey("connectionString") || !string.IsNullOrEmpty(_options.DefaultConnectionString))
-        {
             return null;
-        }
 
         // Check for SAS token
         if (uri.Parameters.TryGetValue("sasToken", out var sasToken) && !string.IsNullOrWhiteSpace(sasToken))
@@ -142,7 +133,7 @@ public class AzureBlobClientFactory
             return new CredentialInfo
             {
                 SasToken = Uri.UnescapeDataString(sasToken),
-                AccountName = accountName
+                AccountName = accountName,
             };
         }
 
@@ -150,14 +141,12 @@ public class AzureBlobClientFactory
         if (uri.Parameters.TryGetValue("accountKey", out var accountKey) && !string.IsNullOrWhiteSpace(accountKey))
         {
             if (string.IsNullOrWhiteSpace(accountName))
-            {
                 throw new ArgumentException("accountName must be provided when using accountKey.", nameof(uri));
-            }
 
             return new CredentialInfo
             {
                 AccountKey = Uri.UnescapeDataString(accountKey),
-                AccountName = accountName
+                AccountName = accountName,
             };
         }
 
@@ -167,7 +156,7 @@ public class AzureBlobClientFactory
             return new CredentialInfo
             {
                 TokenCredential = _options.DefaultCredential,
-                AccountName = accountName
+                AccountName = accountName,
             };
         }
 
@@ -177,7 +166,7 @@ public class AzureBlobClientFactory
             return new CredentialInfo
             {
                 TokenCredential = _options.DefaultCredentialChain,
-                AccountName = accountName
+                AccountName = accountName,
             };
         }
 
@@ -192,9 +181,7 @@ public class AzureBlobClientFactory
     private string? GetAccountName(StorageUri uri)
     {
         if (uri.Parameters.TryGetValue("accountName", out var accountName) && !string.IsNullOrWhiteSpace(accountName))
-        {
             return Uri.UnescapeDataString(accountName);
-        }
 
         return null;
     }
@@ -212,9 +199,7 @@ public class AzureBlobClientFactory
             var decoded = Uri.UnescapeDataString(serviceUrlString);
 
             if (Uri.TryCreate(decoded, UriKind.Absolute, out var serviceUrl))
-            {
                 return serviceUrl;
-            }
 
             throw new ArgumentException($"Invalid service URL: {serviceUrlString}", nameof(uri));
         }
@@ -230,9 +215,7 @@ public class AzureBlobClientFactory
     private static Uri BuildDefaultServiceUrl(string? accountName)
     {
         if (string.IsNullOrEmpty(accountName))
-        {
             throw new InvalidOperationException("Account name must be provided when not using connection string or custom service URL.");
-        }
 
         return new Uri($"https://{accountName}.blob.core.windows.net");
     }
@@ -248,15 +231,16 @@ public class AzureBlobClientFactory
     {
         // When a connection string is provided we ignore serviceUrl for caching purposes
         if (!string.IsNullOrEmpty(connectionString))
-        {
             return $"connection-string|{connectionString}";
-        }
 
         var endpointKey = serviceUrl?.ToString() ?? "default";
 
         if (credentialInfo is null)
         {
-            var accountKey = string.IsNullOrEmpty(accountName) ? "default" : $"account:{accountName}";
+            var accountKey = string.IsNullOrEmpty(accountName)
+                ? "default"
+                : $"account:{accountName}";
+
             return string.Join("|", endpointKey, accountKey);
         }
 
@@ -278,24 +262,16 @@ public class AzureBlobClientFactory
         var components = new List<string>();
 
         if (credentialInfo.TokenCredential is not null)
-        {
             components.Add($"token:{credentialInfo.TokenCredential.GetType().FullName}");
-        }
 
         if (credentialInfo.SasToken is not null)
-        {
             components.Add($"sas:{credentialInfo.SasToken[..Math.Min(10, credentialInfo.SasToken.Length)]}...");
-        }
 
         if (credentialInfo.AccountKey is not null)
-        {
             components.Add($"key:{credentialInfo.AccountKey[..Math.Min(10, credentialInfo.AccountKey.Length)]}...");
-        }
 
         if (credentialInfo.AccountName is not null)
-        {
             components.Add($"account:{credentialInfo.AccountName}");
-        }
 
         return string.Join(";", components);
     }
