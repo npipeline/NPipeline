@@ -293,8 +293,11 @@ public sealed class PipelineContext
                 catch (Exception ex)
                 {
                     // Log but don't propagate - we're already past disposal
-                    LoggerFactory.CreateLogger("PipelineContext")
-                        .Log(LogLevel.Warning, "Late-registration disposal failed: {Message}", ex.Message);
+                    var logger = LoggerFactory.CreateLogger("PipelineContext");
+                    if (logger.IsEnabled(LogLevel.Warning))
+                    {
+                        logger.Log(LogLevel.Warning, "Late-registration disposal failed: {Message}", ex.Message);
+                    }
                 }
             });
 

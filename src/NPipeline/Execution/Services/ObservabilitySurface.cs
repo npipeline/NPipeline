@@ -103,7 +103,10 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         var activity = tracer.StartActivity($"Node.Execute: {nodeDef.Id}");
         activity.SetTag("node.id", nodeDef.Id);
         activity.SetTag("node.type", nodeInstance.GetType().Name);
-        logger.Log(LogLevel.Information, "Executing node {NodeId} of type {NodeType}", nodeDef.Id, nodeInstance.GetType().Name);
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.Log(LogLevel.Information, "Executing node {NodeId} of type {NodeType}", nodeDef.Id, nodeInstance.GetType().Name);
+        }
 
         var observer = context.ExecutionObserver;
 

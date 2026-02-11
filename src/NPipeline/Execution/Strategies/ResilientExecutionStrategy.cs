@@ -385,7 +385,10 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                             nodeId, failures, consecutiveFailures, effectiveRetries.MaxNodeRestartAttempts);
 
                         var retryEx = new RetryExhaustedException(nodeId, effectiveRetries.MaxNodeRestartAttempts, ex);
-                        logger.Log(LogLevel.Debug, "Created RetryExhaustedException with message: {ExceptionMessage}", retryEx.Message);
+                        if (logger.IsEnabled(LogLevel.Debug))
+                        {
+                            logger.Log(LogLevel.Debug, "Created RetryExhaustedException with message: {ExceptionMessage}", retryEx.Message);
+                        }
                         throw retryEx;
                     }
 

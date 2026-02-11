@@ -124,8 +124,11 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
 
                         if (dropAttempts >= maxDropAttempts)
                         {
-                            logger.Log(LogLevel.Warning, "Node {NodeId}, Failed to enqueue item {Item} after {MaxAttempts} drop attempts",
-                                nodeId, item?.ToString() ?? "null", maxDropAttempts);
+                            if (logger.IsEnabled(LogLevel.Warning))
+                            {
+                                logger.Log(LogLevel.Warning, "Node {NodeId}, Failed to enqueue item {Item} after {MaxAttempts} drop attempts",
+                                    nodeId, item?.ToString() ?? "null", maxDropAttempts);
+                            }
                         }
                     }
 

@@ -157,13 +157,19 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
         // Check if this is an acknowledgable message
         if (item is IAcknowledgableMessage acknowledgableMessage)
         {
-            logger.Log(LogLevel.Debug, "Processing IAcknowledgableMessage, MessageType={MessageType}", item?.GetType().Name ?? "null");
+            if (logger.IsEnabled(LogLevel.Debug))
+            {
+                logger.Log(LogLevel.Debug, "Processing IAcknowledgableMessage, MessageType={MessageType}", item?.GetType().Name ?? "null");
+            }
             await ProcessAcknowledgableMessageAsync(acknowledgableMessage, logger, cancellationToken).ConfigureAwait(false);
         }
         else
         {
             // Regular message, just send to sink queue
-            logger.Log(LogLevel.Debug, "Processing regular message, MessageType={MessageType}", item?.GetType().Name ?? "null");
+            if (logger.IsEnabled(LogLevel.Debug))
+            {
+                logger.Log(LogLevel.Debug, "Processing regular message, MessageType={MessageType}", item?.GetType().Name ?? "null");
+            }
             await SendMessageAsync(item!, logger, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -270,7 +276,10 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
     {
         try
         {
-            logger.Log(LogLevel.Debug, "Sending message, ItemType={ItemType}", item.GetType().Name);
+            if (logger.IsEnabled(LogLevel.Debug))
+            {
+                logger.Log(LogLevel.Debug, "Sending message, ItemType={ItemType}", item.GetType().Name);
+            }
             var jsonBody = JsonSerializer.Serialize(item, _serializerOptions);
 
             var request = new SendMessageRequest
@@ -365,7 +374,10 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
             {
                 foreach (var failed in response.Failed!)
                 {
-                    logger.Log(LogLevel.Warning, "Failed to send message {Id} to SQS: {Message}", failed.Id, failed.Message);
+                    if (logger.IsEnabled(LogLevel.Warning))
+                    {
+                        logger.Log(LogLevel.Warning, "Failed to send message {Id} to SQS: {Message}", failed.Id, failed.Message);
+                    }
                 }
             }
 
@@ -704,7 +716,10 @@ internal sealed class AcknowledgmentBatcher : IDisposable, IAsyncDisposable
         {
             foreach (var failed in response.Failed)
             {
-                _logger.Log(LogLevel.Warning, "Failed to delete message {MessageId}: {ErrorMessage}", failed.Id, failed.Message);
+                if (_logger.IsEnabled(LogLevel.Warning))
+                {
+                    _logger.Log(LogLevel.Warning, "Failed to delete message {MessageId}: {ErrorMessage}", failed.Id, failed.Message);
+                }
             }
         }
     }
