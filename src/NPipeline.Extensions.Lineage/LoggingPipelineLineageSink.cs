@@ -39,17 +39,23 @@ public sealed class LoggingPipelineLineageSink : IPipelineLineageSink
         if (report == null)
             return Task.CompletedTask;
 
+        // Early exit if logging is disabled
+        if (!_logger.IsEnabled(LogLevel.Information))
+        {
+            return Task.CompletedTask;
+        }
+
         try
         {
             var json = JsonSerializer.Serialize(report, _jsonOptions);
 
             using (_logger.BeginScope(new Dictionary<string, object?>
-                   {
-                       ["Pipeline"] = report.Pipeline,
-                       ["RunId"] = report.RunId,
-                       ["NodeCount"] = report.Nodes.Count,
-                       ["EdgeCount"] = report.Edges.Count,
-                   }))
+            {
+                ["Pipeline"] = report.Pipeline,
+                ["RunId"] = report.RunId,
+                ["NodeCount"] = report.Nodes.Count,
+                ["EdgeCount"] = report.Edges.Count,
+            }))
             {
                 _logger.LogInformation(
                     "Pipeline lineage report for {Pipeline} (RunId: {RunId}): {LineageReport}",
