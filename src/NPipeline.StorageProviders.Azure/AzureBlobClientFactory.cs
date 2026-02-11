@@ -14,6 +14,7 @@ namespace NPipeline.StorageProviders.Azure;
 public class AzureBlobClientFactory
 {
     private readonly ConcurrentDictionary<string, BlobServiceClient> _clientCache = new();
+    private readonly ConcurrentQueue<string> _clientKeyQueue = new();
     private readonly AzureBlobStorageProviderOptions _options;
 
     /// <summary>
@@ -63,6 +64,8 @@ public class AzureBlobClientFactory
 
         var client = _clientCache.GetOrAdd(cacheKey, _ =>
         {
+            _clientKeyQueue.Enqueue(cacheKey);
+
             // If a serviceUrl override is provided, prefer building the client with that endpoint and credentials,
             // even when a connection string exists. This mirrors S3 behavior where URI parameters can override defaults
             // and avoids parsing potentially placeholder connection strings in tests.
@@ -97,6 +100,8 @@ public class AzureBlobClientFactory
             // No credentials provided - use anonymous access
             return new BlobServiceClient(effectiveServiceUrl);
         });
+
+        EnforceCacheLimit();
 
         return Task.FromResult(client);
     }
@@ -256,6 +261,16 @@ public class AzureBlobClientFactory
         }
 
         return string.Join("|", endpointKey, BuildCredentialKey(credentialInfo));
+    }
+
+    private void EnforceCacheLimit()
+    {
+        var limit = _options.ClientCacheSizeLimit;
+
+        while (_clientCache.Count > limit && _clientKeyQueue.TryDequeue(out var staleKey))
+        {
+            _clientCache.TryRemove(staleKey, out _);
+        }
     }
 
     private static string BuildCredentialKey(CredentialInfo credentialInfo)

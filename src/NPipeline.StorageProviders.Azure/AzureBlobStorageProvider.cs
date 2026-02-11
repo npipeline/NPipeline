@@ -103,7 +103,8 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
             contentType,
             _options.BlockBlobUploadThresholdBytes,
             _options.UploadMaximumConcurrency,
-            _options.UploadMaximumTransferSizeBytes);
+            _options.UploadMaximumTransferSizeBytes,
+            cancellationToken);
     }
 
     /// <summary>

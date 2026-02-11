@@ -7,6 +7,9 @@ namespace NPipeline.StorageProviders.Azure;
 /// </summary>
 public class AzureBlobStorageProviderOptions
 {
+    private long _blockBlobUploadThresholdBytes = 64 * 1024 * 1024;
+    private int _clientCacheSizeLimit = 100;
+
     /// <summary>
     ///     Gets or sets the default Azure credential for authentication.
     ///     If not specified, uses DefaultAzureCredential chain when UseDefaultCredentialChain is true.
@@ -36,7 +39,13 @@ public class AzureBlobStorageProviderOptions
     ///     Gets or sets the threshold in bytes for using block blob upload.
     ///     Default is 64 MB.
     /// </summary>
-    public long BlockBlobUploadThresholdBytes { get; set; } = 64 * 1024 * 1024;
+    public long BlockBlobUploadThresholdBytes
+    {
+        get => _blockBlobUploadThresholdBytes;
+        set => _blockBlobUploadThresholdBytes = value > 0
+            ? value
+            : throw new ArgumentOutOfRangeException(nameof(value), "Block blob upload threshold must be positive.");
+    }
 
     /// <summary>
     ///     Gets or sets the maximum concurrent upload requests for large blobs.
@@ -47,4 +56,16 @@ public class AzureBlobStorageProviderOptions
     ///     Gets or sets the maximum transfer size in bytes for each upload chunk.
     /// </summary>
     public int? UploadMaximumTransferSizeBytes { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the maximum number of cached clients before eviction occurs.
+    ///     Default is 100. Set to a positive value to enable eviction.
+    /// </summary>
+    public int ClientCacheSizeLimit
+    {
+        get => _clientCacheSizeLimit;
+        set => _clientCacheSizeLimit = value > 0
+            ? value
+            : throw new ArgumentOutOfRangeException(nameof(value), "Client cache size limit must be positive.");
+    }
 }

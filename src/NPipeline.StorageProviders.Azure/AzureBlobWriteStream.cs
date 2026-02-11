@@ -2,6 +2,7 @@ using Azure;
 using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using System.Runtime.ExceptionServices;
 
 namespace NPipeline.StorageProviders.Azure;
 
@@ -15,9 +16,11 @@ public sealed class AzureBlobWriteStream : Stream
     private readonly string _container;
     private readonly string? _contentType;
     private readonly BlobServiceClient _blobServiceClient;
+    private readonly CancellationToken _disposeCancellationToken;
     private readonly int? _maximumConcurrency;
     private readonly int? _maximumTransferSizeBytes;
     private readonly string _tempFilePath;
+    private static readonly TimeSpan UploadDisposeTimeout = TimeSpan.FromMinutes(5);
     private bool _disposed;
     private FileStream? _tempFileStream;
     private bool _uploaded;
@@ -32,6 +35,7 @@ public sealed class AzureBlobWriteStream : Stream
     /// <param name="blockBlobUploadThreshold">Threshold in bytes for using block blob upload.</param>
     /// <param name="maximumConcurrency">Maximum concurrent upload requests for large blobs.</param>
     /// <param name="maximumTransferSizeBytes">Maximum transfer size in bytes for each upload chunk.</param>
+    /// <param name="disposeCancellationToken">Cancellation token to observe while disposing the stream.</param>
     public AzureBlobWriteStream(
         BlobServiceClient blobServiceClient,
         string container,
@@ -39,7 +43,8 @@ public sealed class AzureBlobWriteStream : Stream
         string? contentType = null,
         long blockBlobUploadThreshold = 64 * 1024 * 1024,
         int? maximumConcurrency = null,
-        int? maximumTransferSizeBytes = null)
+        int? maximumTransferSizeBytes = null,
+        CancellationToken disposeCancellationToken = default)
     {
         _blobServiceClient = blobServiceClient ?? throw new ArgumentNullException(nameof(blobServiceClient));
         _container = container ?? throw new ArgumentNullException(nameof(container));
@@ -49,6 +54,7 @@ public sealed class AzureBlobWriteStream : Stream
         _maximumConcurrency = maximumConcurrency;
         _maximumTransferSizeBytes = maximumTransferSizeBytes;
         _tempFilePath = Path.Combine(Path.GetTempPath(), $"azure-upload-{Guid.NewGuid()}.tmp");
+        _disposeCancellationToken = disposeCancellationToken;
 
         _tempFileStream = new FileStream(
             _tempFilePath,
@@ -56,7 +62,7 @@ public sealed class AzureBlobWriteStream : Stream
             FileAccess.ReadWrite,
             FileShare.None,
             81920,
-            FileOptions.DeleteOnClose | FileOptions.Asynchronous);
+            FileOptions.Asynchronous);
     }
 
     /// <inheritdoc />
@@ -167,6 +173,8 @@ public sealed class AzureBlobWriteStream : Stream
 
         if (disposing)
         {
+            ExceptionDispatchInfo? capturedException = null;
+
             try
             {
                 if (!_uploaded && _tempFileStream is not null)
@@ -178,14 +186,28 @@ public sealed class AzureBlobWriteStream : Stream
                     _tempFileStream.Position = 0;
 
                     // Upload to Azure Blob Storage
-                    UploadAsync(CancellationToken.None).GetAwaiter().GetResult();
+                    using var cts = CreateLinkedUploadCts();
+                    UploadAsync(cts.Token).GetAwaiter().GetResult();
                 }
+            }
+            catch (Exception ex)
+            {
+                if (ex is OperationCanceledException)
+                {
+                    throw;
+                }
+
+                capturedException = ExceptionDispatchInfo.Capture(ex);
             }
             finally
             {
                 _tempFileStream?.Dispose();
                 _tempFileStream = null;
+
+                TryDeleteTempFileOnSuccess();
             }
+
+            capturedException?.Throw();
         }
 
         base.Dispose(disposing);
@@ -201,6 +223,8 @@ public sealed class AzureBlobWriteStream : Stream
 
         _disposed = true;
 
+        ExceptionDispatchInfo? capturedException = null;
+
         try
         {
             if (!_uploaded && _tempFileStream is not null)
@@ -212,8 +236,17 @@ public sealed class AzureBlobWriteStream : Stream
                 _tempFileStream.Position = 0;
 
                 // Upload to Azure Blob Storage
-                await UploadAsync(CancellationToken.None).ConfigureAwait(false);
+                using var cts = CreateLinkedUploadCts();
+                await UploadAsync(cts.Token).ConfigureAwait(false);
             }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            capturedException = ExceptionDispatchInfo.Capture(ex);
         }
         finally
         {
@@ -222,9 +255,13 @@ public sealed class AzureBlobWriteStream : Stream
                 await _tempFileStream.DisposeAsync().ConfigureAwait(false);
                 _tempFileStream = null;
             }
+
+            TryDeleteTempFileOnSuccess();
         }
 
         await base.DisposeAsync();
+
+        capturedException?.Throw();
     }
 
     /// <summary>
@@ -263,6 +300,33 @@ public sealed class AzureBlobWriteStream : Stream
         catch (RequestFailedException ex)
         {
             throw TranslateAzureException(ex, _container, _blob);
+        }
+    }
+
+    private CancellationTokenSource CreateLinkedUploadCts()
+    {
+        var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(_disposeCancellationToken);
+        linkedSource.CancelAfter(UploadDisposeTimeout);
+        return linkedSource;
+    }
+
+    private void TryDeleteTempFileOnSuccess()
+    {
+        if (!_uploaded)
+        {
+            return;
+        }
+
+        try
+        {
+            if (File.Exists(_tempFilePath))
+            {
+                File.Delete(_tempFilePath);
+            }
+        }
+        catch
+        {
+            // Best-effort cleanup; ignore failures to delete the temporary file.
         }
     }
 
