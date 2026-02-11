@@ -1,4 +1,6 @@
+using System;
 using Azure.Core;
+using Azure.Identity;
 
 namespace NPipeline.StorageProviders.Azure;
 
@@ -9,6 +11,7 @@ public class AzureBlobStorageProviderOptions
 {
     private long _blockBlobUploadThresholdBytes = 64 * 1024 * 1024;
     private int _clientCacheSizeLimit = 100;
+    private readonly Lazy<TokenCredential> _defaultCredentialChain = new(() => new DefaultAzureCredential());
 
     /// <summary>
     ///     Gets or sets the default Azure credential for authentication.
@@ -27,6 +30,11 @@ public class AzureBlobStorageProviderOptions
     ///     Default is true.
     /// </summary>
     public bool UseDefaultCredentialChain { get; set; } = true;
+
+    /// <summary>
+    ///     Gets a cached instance of the default Azure credential chain. Uses DefaultAzureCredential.
+    /// </summary>
+    public TokenCredential DefaultCredentialChain => _defaultCredentialChain.Value;
 
     /// <summary>
     ///     Gets or sets the optional service URL for Azure Storage-compatible endpoints

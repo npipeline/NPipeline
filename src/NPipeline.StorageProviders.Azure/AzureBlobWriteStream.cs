@@ -65,7 +65,7 @@ public sealed class AzureBlobWriteStream : Stream
             FileAccess.ReadWrite,
             FileShare.None,
             81920,
-            FileOptions.Asynchronous);
+            FileOptions.Asynchronous | FileOptions.DeleteOnClose);
     }
 
     /// <inheritdoc />

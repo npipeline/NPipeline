@@ -176,7 +176,7 @@ public class AzureBlobClientFactory
         {
             return new CredentialInfo
             {
-                TokenCredential = new DefaultAzureCredential(),
+                TokenCredential = _options.DefaultCredentialChain,
                 AccountName = accountName
             };
         }
