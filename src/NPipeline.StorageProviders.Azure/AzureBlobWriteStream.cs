@@ -3,6 +3,7 @@ using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using System.Runtime.ExceptionServices;
+using System.Threading;
 
 namespace NPipeline.StorageProviders.Azure;
 
@@ -21,9 +22,11 @@ public sealed class AzureBlobWriteStream : Stream
     private readonly int? _maximumTransferSizeBytes;
     private readonly string _tempFilePath;
     private static readonly TimeSpan UploadDisposeTimeout = TimeSpan.FromMinutes(5);
-    private bool _disposed;
+    private int _disposeState; // 0 = not disposed, 1 = disposing, 2 = disposed
     private FileStream? _tempFileStream;
     private bool _uploaded;
+
+    private bool IsDisposed => Volatile.Read(ref _disposeState) != 0;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="AzureBlobWriteStream" /> class.
@@ -79,7 +82,7 @@ public sealed class AzureBlobWriteStream : Stream
     {
         get
         {
-            ObjectDisposedException.ThrowIf(_disposed, this);
+            ObjectDisposedException.ThrowIf(IsDisposed, this);
             return _tempFileStream?.Length ?? 0;
         }
     }
@@ -125,7 +128,7 @@ public sealed class AzureBlobWriteStream : Stream
     /// <inheritdoc />
     public override void Write(byte[] buffer, int offset, int count)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(IsDisposed, this);
         _tempFileStream?.Write(buffer, offset, count);
     }
 
@@ -136,7 +139,7 @@ public sealed class AzureBlobWriteStream : Stream
         int count,
         CancellationToken cancellationToken)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(IsDisposed, this);
 
         if (_tempFileStream is null)
         {
@@ -151,7 +154,7 @@ public sealed class AzureBlobWriteStream : Stream
         ReadOnlyMemory<byte> buffer,
         CancellationToken cancellationToken = default)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        ObjectDisposedException.ThrowIf(IsDisposed, this);
 
         if (_tempFileStream is null)
         {
@@ -164,17 +167,16 @@ public sealed class AzureBlobWriteStream : Stream
     /// <inheritdoc />
     protected override void Dispose(bool disposing)
     {
-        if (_disposed)
+        // Ensure only one disposing path executes
+        if (Interlocked.CompareExchange(ref _disposeState, 1, 0) != 0)
         {
             return;
         }
 
-        _disposed = true;
+        ExceptionDispatchInfo? capturedException = null;
 
         if (disposing)
         {
-            ExceptionDispatchInfo? capturedException = null;
-
             try
             {
                 if (!_uploaded && _tempFileStream is not null)
@@ -206,9 +208,11 @@ public sealed class AzureBlobWriteStream : Stream
 
                 TryDeleteTempFileOnSuccess();
             }
-
-            capturedException?.Throw();
         }
+
+        Interlocked.Exchange(ref _disposeState, 2);
+
+        capturedException?.Throw();
 
         base.Dispose(disposing);
     }
@@ -216,12 +220,11 @@ public sealed class AzureBlobWriteStream : Stream
     /// <inheritdoc />
     public override async ValueTask DisposeAsync()
     {
-        if (_disposed)
+        // Ensure only one async disposing path executes
+        if (Interlocked.CompareExchange(ref _disposeState, 1, 0) != 0)
         {
             return;
         }
-
-        _disposed = true;
 
         ExceptionDispatchInfo? capturedException = null;
 
@@ -257,6 +260,8 @@ public sealed class AzureBlobWriteStream : Stream
             }
 
             TryDeleteTempFileOnSuccess();
+
+            Interlocked.Exchange(ref _disposeState, 2);
         }
 
         await base.DisposeAsync();
