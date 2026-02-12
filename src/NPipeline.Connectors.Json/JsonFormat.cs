@@ -39,5 +39,5 @@ public enum JsonFormat
     ///     where each line contains a separate JSON object.
     ///     Example: <c>{"name": "John"}\n{"name": "Jane"}</c>
     /// </summary>
-    NewlineDelimited
+    NewlineDelimited,
 }

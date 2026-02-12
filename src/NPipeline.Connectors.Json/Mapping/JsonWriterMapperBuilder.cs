@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text;
 using System.Text.Json.Serialization;
 using NPipeline.Connectors.Attributes;
 
@@ -102,19 +103,16 @@ public static class JsonWriterMapperBuilder
         return Expression.Lambda<Func<T, object?>>(convert, instanceParam).Compile();
     }
 
-    private static string GetJsonPropertyName(PropertyInfo property, ColumnAttribute? columnAttribute, JsonPropertyNameAttribute? jsonPropertyNameAttribute, JsonPropertyNamingPolicy namingPolicy)
+    private static string GetJsonPropertyName(PropertyInfo property, ColumnAttribute? columnAttribute, JsonPropertyNameAttribute? jsonPropertyNameAttribute,
+        JsonPropertyNamingPolicy namingPolicy)
     {
         // ColumnAttribute takes precedence over JsonPropertyName for consistency with CSV/Excel
         if (columnAttribute?.Ignore == false && !string.IsNullOrWhiteSpace(columnAttribute.Name))
-        {
             return columnAttribute.Name;
-        }
 
         // Next, check JsonPropertyNameAttribute
         if (jsonPropertyNameAttribute is not null && !string.IsNullOrWhiteSpace(jsonPropertyNameAttribute.Name))
-        {
             return jsonPropertyNameAttribute.Name;
-        }
 
         // Finally, apply naming policy to the property name
         return ApplyNamingPolicy(property.Name, namingPolicy);
@@ -149,23 +147,23 @@ public static class JsonWriterMapperBuilder
         if (string.IsNullOrEmpty(str))
             return str;
 
-        var result = new System.Text.StringBuilder();
-        for (int i = 0; i < str.Length; i++)
+        var result = new StringBuilder();
+
+        for (var i = 0; i < str.Length; i++)
         {
             var c = str[i];
+
             if (char.IsUpper(c))
             {
                 if (i > 0 && !char.IsUpper(str[i - 1]))
-                {
                     result.Append('_');
-                }
+
                 result.Append(char.ToLowerInvariant(c));
             }
             else
-            {
                 result.Append(c);
-            }
         }
+
         return result.ToString();
     }
 }

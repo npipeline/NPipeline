@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using NPipeline.Observability.Logging;
 
 namespace NPipeline.ErrorHandling;
@@ -8,15 +9,15 @@ namespace NPipeline.ErrorHandling;
 /// </summary>
 public sealed class DefaultErrorHandlerFactory : IErrorHandlerFactory
 {
-    private readonly IPipelineLogger _logger;
+    private readonly ILogger _logger;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="DefaultErrorHandlerFactory" /> class.
     /// </summary>
-    /// <param name="loggerFactory">Optional logger factory for diagnostic logging. Defaults to NullPipelineLoggerFactory if not provided.</param>
-    public DefaultErrorHandlerFactory(IPipelineLoggerFactory? loggerFactory = null)
+    /// <param name="loggerFactory">Optional logger factory for diagnostic logging. Defaults to a no-op logger if not provided.</param>
+    public DefaultErrorHandlerFactory(ILoggerFactory? loggerFactory = null)
     {
-        var factory = loggerFactory ?? NullPipelineLoggerFactory.Instance;
+        var factory = loggerFactory ?? NullLoggerFactory.Instance;
         _logger = factory.CreateLogger(nameof(DefaultErrorHandlerFactory));
     }
 
@@ -82,13 +83,7 @@ public sealed class DefaultErrorHandlerFactory : IErrorHandlerFactory
         if (instance is not null)
             return instance;
 
-        _logger.Log(
-            LogLevel.Warning,
-            "{Factory}.{Method}: Failed to create instance of {Type}: {Message}",
-            nameof(DefaultErrorHandlerFactory),
-            methodName,
-            type?.FullName ?? "null",
-            error ?? "unknown error");
+        DefaultErrorHandlerFactoryLogMessages.ErrorHandlerCreationFailed(_logger, type?.FullName ?? "null");
 
         return null;
     }

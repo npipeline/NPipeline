@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using System.Threading.Channels;
 using AwesomeAssertions;
+using Microsoft.Extensions.Logging;
 using NPipeline.Nodes;
-using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
 using Xunit.Abstractions;
 
@@ -78,20 +78,15 @@ public sealed class BatchingTests(ITestOutputHelper output)
 
     #region Helper Classes
 
-    private sealed class NoOpLogger : IPipelineLogger
+    private sealed class NoOpLogger : ILogger
     {
-        public void Log(LogLevel logLevel, string message, params object[] args)
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
         }
 
-        public void Log(LogLevel logLevel, Exception exception, string message, params object[] args)
-        {
-        }
+        public bool IsEnabled(LogLevel logLevel) => false;
 
-        public bool IsEnabled(LogLevel logLevel)
-        {
-            return false;
-        }
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
     }
 
     #endregion

@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using AwesomeAssertions;
 using FakeItEasy;
+using Microsoft.Extensions.Logging;
 using NPipeline.Configuration;
 using NPipeline.Execution.CircuitBreaking;
-using NPipeline.Observability.Logging;
 
 namespace NPipeline.Tests.ErrorHandling;
 
@@ -14,11 +14,11 @@ namespace NPipeline.Tests.ErrorHandling;
 public sealed class CircuitBreakerUnitTests : IDisposable
 {
     private readonly PipelineCircuitBreakerOptions _defaultOptions;
-    private readonly IPipelineLogger _logger;
+    private readonly ILogger _logger;
 
     public CircuitBreakerUnitTests()
     {
-        _logger = A.Fake<IPipelineLogger>();
+        _logger = A.Fake<ILogger>();
 
         _defaultOptions = new PipelineCircuitBreakerOptions(
             3,

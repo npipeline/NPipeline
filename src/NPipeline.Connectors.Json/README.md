@@ -1,10 +1,13 @@
 # NPipeline JSON Connector
 
-NPipeline JSON Connector provides source and sink nodes for reading and writing JSON files using System.Text.Json. This package enables seamless integration of JSON data processing into your NPipeline workflows with configurable parsing options and type-safe operations.
+NPipeline JSON Connector provides source and sink nodes for reading and writing JSON files using System.Text.Json. This package enables seamless integration of
+JSON data processing into your NPipeline workflows with configurable parsing options and type-safe operations.
 
 ## About NPipeline
 
-NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for resilience patterns and error handling.
+NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based
+applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for
+resilience patterns and error handling.
 
 ## Installation
 
@@ -36,14 +39,14 @@ dotnet add package NPipeline.Connectors.Json
 
 The [`JsonConfiguration`](JsonConfiguration.cs:18) class provides configuration options for JSON operations:
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `BufferSize` | `int` | `4096` | Buffer size for stream operations |
-| `Format` | `JsonFormat` | `Array` | JSON format (Array or NewlineDelimited) |
-| `WriteIndented` | `bool` | `false` | Whether to format JSON output with indentation |
-| `PropertyNameCaseInsensitive` | `bool` | `true` | Whether property name comparison is case-insensitive |
-| `PropertyNamingPolicy` | `JsonPropertyNamingPolicy` | `LowerCase` | Naming policy for JSON property names |
-| `RowErrorHandler` | `Func<Exception, JsonRow, bool>?` | `null` | Handler for row mapping errors |
+| Property                      | Type                              | Default     | Description                                          |
+|-------------------------------|-----------------------------------|-------------|------------------------------------------------------|
+| `BufferSize`                  | `int`                             | `4096`      | Buffer size for stream operations                    |
+| `Format`                      | `JsonFormat`                      | `Array`     | JSON format (Array or NewlineDelimited)              |
+| `WriteIndented`               | `bool`                            | `false`     | Whether to format JSON output with indentation       |
+| `PropertyNameCaseInsensitive` | `bool`                            | `true`      | Whether property name comparison is case-insensitive |
+| `PropertyNamingPolicy`        | `JsonPropertyNamingPolicy`        | `LowerCase` | Naming policy for JSON property names                |
+| `RowErrorHandler`             | `Func<Exception, JsonRow, bool>?` | `null`      | Handler for row mapping errors                       |
 
 ### JsonFormat
 

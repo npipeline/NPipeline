@@ -190,6 +190,7 @@ public readonly struct JsonRow
                     value = (T?)(object?)element.GetString();
                     return true;
                 }
+
                 value = (T?)(object?)element.ToString();
                 return true;
             }
@@ -202,17 +203,20 @@ public readonly struct JsonRow
                     value = (T?)(object?)element.GetBoolean();
                     return true;
                 }
+
                 if (kind == JsonValueKind.String && bool.TryParse(element.GetString(), out var boolValue))
                 {
                     value = (T?)(object?)boolValue;
                     return true;
                 }
+
                 if (kind == JsonValueKind.Number)
                 {
                     var numValue = element.GetInt32();
                     value = (T?)(object?)(numValue != 0);
                     return true;
                 }
+
                 return false;
             }
 
@@ -224,11 +228,13 @@ public readonly struct JsonRow
                     value = (T?)(object?)element.GetInt32();
                     return true;
                 }
+
                 if (kind == JsonValueKind.String && int.TryParse(element.GetString(), out var intValue))
                 {
                     value = (T?)(object?)intValue;
                     return true;
                 }
+
                 return false;
             }
 
@@ -239,11 +245,13 @@ public readonly struct JsonRow
                     value = (T?)(object?)element.GetInt64();
                     return true;
                 }
+
                 if (kind == JsonValueKind.String && long.TryParse(element.GetString(), out var longValue))
                 {
                     value = (T?)(object?)longValue;
                     return true;
                 }
+
                 return false;
             }
 
@@ -254,11 +262,13 @@ public readonly struct JsonRow
                     value = (T?)(object?)element.GetInt16();
                     return true;
                 }
+
                 if (kind == JsonValueKind.String && short.TryParse(element.GetString(), out var shortValue))
                 {
                     value = (T?)(object?)shortValue;
                     return true;
                 }
+
                 return false;
             }
 
@@ -270,11 +280,13 @@ public readonly struct JsonRow
                     value = (T?)(object?)element.GetSingle();
                     return true;
                 }
+
                 if (kind == JsonValueKind.String && float.TryParse(element.GetString(), out var floatValue))
                 {
                     value = (T?)(object?)floatValue;
                     return true;
                 }
+
                 return false;
             }
 
@@ -285,11 +297,13 @@ public readonly struct JsonRow
                     value = (T?)(object?)element.GetDouble();
                     return true;
                 }
+
                 if (kind == JsonValueKind.String && double.TryParse(element.GetString(), out var doubleValue))
                 {
                     value = (T?)(object?)doubleValue;
                     return true;
                 }
+
                 return false;
             }
 
@@ -300,11 +314,13 @@ public readonly struct JsonRow
                     value = (T?)(object?)element.GetDecimal();
                     return true;
                 }
+
                 if (kind == JsonValueKind.String && decimal.TryParse(element.GetString(), out var decimalValue))
                 {
                     value = (T?)(object?)decimalValue;
                     return true;
                 }
+
                 return false;
             }
 
@@ -312,13 +328,14 @@ public readonly struct JsonRow
             if (underlyingType == typeof(DateTime))
             {
                 if (kind == JsonValueKind.String && DateTime.TryParse(element.GetString(),
-                    CultureInfo.InvariantCulture,
-                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-                    out var dateTimeValue))
+                        CultureInfo.InvariantCulture,
+                        DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                        out var dateTimeValue))
                 {
                     value = (T?)(object?)dateTimeValue;
                     return true;
                 }
+
                 return false;
             }
 
@@ -330,12 +347,14 @@ public readonly struct JsonRow
                     value = (T?)(object?)guidValue;
                     return true;
                 }
+
                 return false;
             }
 
             // Fallback to JsonSerializer.Deserialize
             var json = element.GetRawText();
             var deserialized = JsonSerializer.Deserialize(json, targetType);
+
             if (deserialized is not null)
             {
                 value = (T?)deserialized;
@@ -362,6 +381,7 @@ public readonly struct JsonRow
             if (property.Name == name)
                 return property;
         }
+
         return null;
     }
 
@@ -377,6 +397,7 @@ public readonly struct JsonRow
             if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
                 return property;
         }
+
         return null;
     }
 }

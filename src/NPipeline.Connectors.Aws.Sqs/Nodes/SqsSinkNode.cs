@@ -3,13 +3,13 @@ using Amazon;
 using Amazon.Runtime.CredentialManagement;
 using Amazon.SQS;
 using Amazon.SQS.Model;
+using Microsoft.Extensions.Logging;
 using NPipeline.Connectors.Abstractions;
 using NPipeline.Connectors.Aws.Sqs.Configuration;
 using NPipeline.Connectors.Aws.Sqs.Models;
 using NPipeline.Connectors.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.Nodes;
-using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Connectors.Aws.Sqs.Nodes;
@@ -29,7 +29,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
     private readonly List<Task> _delayedAcknowledgmentTasks = [];
     private readonly JsonSerializerOptions _serializerOptions;
     private readonly IAmazonSQS _sqsClient;
-    private IPipelineLogger _logger = NullPipelineLogger.Instance;
+    private ILogger _logger = NullLogger.Instance;
 
     /// <summary>
     ///     Creates a new SqsSinkNode with the specified configuration.
@@ -43,7 +43,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
         _serializerOptions = CreateSerializerOptions(configuration);
         _acknowledgmentStrategy = configuration.AcknowledgmentStrategy;
         _batchOptions = configuration.BatchAcknowledgment ?? new BatchAcknowledgmentOptions();
-        _batcher = new AcknowledgmentBatcher(_batchOptions, _sqsClient, configuration.SourceQueueUrl, NullPipelineLogger.Instance);
+        _batcher = new AcknowledgmentBatcher(_batchOptions, _sqsClient, configuration.SourceQueueUrl, NullLogger.Instance);
     }
 
     /// <summary>
@@ -58,7 +58,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
         _serializerOptions = CreateSerializerOptions(configuration);
         _acknowledgmentStrategy = configuration.AcknowledgmentStrategy;
         _batchOptions = configuration.BatchAcknowledgment ?? new BatchAcknowledgmentOptions();
-        _batcher = new AcknowledgmentBatcher(_batchOptions, _sqsClient, configuration.SourceQueueUrl, NullPipelineLogger.Instance);
+        _batcher = new AcknowledgmentBatcher(_batchOptions, _sqsClient, configuration.SourceQueueUrl, NullLogger.Instance);
     }
 
     /// <inheritdoc />
@@ -74,7 +74,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
             await ExecuteSequentialAsync(input, logger, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task ExecuteSequentialAsync(IDataPipe<T> input, IPipelineLogger logger, CancellationToken cancellationToken)
+    private async Task ExecuteSequentialAsync(IDataPipe<T> input, ILogger logger, CancellationToken cancellationToken)
     {
         if (_configuration.BatchSize <= 1)
         {
@@ -108,7 +108,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
         await _batcher.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task ExecuteParallelAsync(IDataPipe<T> input, IPipelineLogger logger, CancellationToken cancellationToken)
+    private async Task ExecuteParallelAsync(IDataPipe<T> input, ILogger logger, CancellationToken cancellationToken)
     {
         var options = new ParallelOptions
         {
@@ -131,7 +131,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
         return new OutgoingMessage(item!, null);
     }
 
-    private async Task SendBatchAndAcknowledgeAsync(List<OutgoingMessage> batch, IPipelineLogger logger, CancellationToken cancellationToken)
+    private async Task SendBatchAndAcknowledgeAsync(List<OutgoingMessage> batch, ILogger logger, CancellationToken cancellationToken)
     {
         if (batch.Count == 1)
         {
@@ -152,29 +152,23 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
         }
     }
 
-    private async Task ProcessItemAsync(T item, IPipelineLogger logger, CancellationToken cancellationToken)
+    private async Task ProcessItemAsync(T item, ILogger logger, CancellationToken cancellationToken)
     {
         // Check if this is an acknowledgable message
         if (item is IAcknowledgableMessage acknowledgableMessage)
         {
-            if (logger.IsEnabled(LogLevel.Debug))
-            {
-                logger.Log(LogLevel.Debug, "Processing IAcknowledgableMessage, MessageType={MessageType}", item?.GetType().Name ?? "null");
-            }
+            SqsSinkNodeLogMessages.ProcessingAcknowledgableMessage(logger, item?.GetType().Name);
             await ProcessAcknowledgableMessageAsync(acknowledgableMessage, logger, cancellationToken).ConfigureAwait(false);
         }
         else
         {
             // Regular message, just send to sink queue
-            if (logger.IsEnabled(LogLevel.Debug))
-            {
-                logger.Log(LogLevel.Debug, "Processing regular message, MessageType={MessageType}", item?.GetType().Name ?? "null");
-            }
+            SqsSinkNodeLogMessages.ProcessingRegularMessage(logger, item?.GetType().Name);
             await SendMessageAsync(item!, logger, cancellationToken).ConfigureAwait(false);
         }
     }
 
-    private async Task ProcessAcknowledgableMessageAsync(IAcknowledgableMessage message, IPipelineLogger logger, CancellationToken cancellationToken)
+    private async Task ProcessAcknowledgableMessageAsync(IAcknowledgableMessage message, ILogger logger, CancellationToken cancellationToken)
     {
         switch (_acknowledgmentStrategy)
         {
@@ -272,14 +266,11 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
         }
     }
 
-    private async Task<bool> SendMessageAsync(object item, IPipelineLogger logger, CancellationToken cancellationToken)
+    private async Task<bool> SendMessageAsync(object item, ILogger logger, CancellationToken cancellationToken)
     {
         try
         {
-            if (logger.IsEnabled(LogLevel.Debug))
-            {
-                logger.Log(LogLevel.Debug, "Sending message, ItemType={ItemType}", item.GetType().Name);
-            }
+            SqsSinkNodeLogMessages.SendingMessage(logger, item.GetType().Name);
             var jsonBody = JsonSerializer.Serialize(item, _serializerOptions);
 
             var request = new SendMessageRequest
@@ -301,19 +292,19 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
             }
 
             await _sqsClient.SendMessageAsync(request, cancellationToken).ConfigureAwait(false);
-            logger.Log(LogLevel.Debug, "Message sent successfully");
+            SqsSinkNodeLogMessages.MessageSent(logger);
             return true;
         }
         catch (Exception ex) when (_configuration.ContinueOnError)
         {
-            logger.Log(LogLevel.Warning, ex, "Failed to send message to SQS. Continuing due to ContinueOnError setting.");
+            SqsSinkNodeLogMessages.SendMessageFailed(logger, ex);
             return false;
         }
     }
 
     private async Task<IReadOnlyList<IAcknowledgableMessage>> SendMessageBatchAsync(
         IReadOnlyList<OutgoingMessage> items,
-        IPipelineLogger logger,
+        ILogger logger,
         CancellationToken cancellationToken)
     {
         var entries = new List<SendMessageBatchRequestEntry>(items.Count);
@@ -351,7 +342,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
             }
             catch (Exception ex) when (_configuration.ContinueOnError)
             {
-                logger.Log(LogLevel.Warning, ex, "Failed to serialize message for batch. Skipping.");
+                SqsSinkNodeLogMessages.BatchSerializationFailed(logger, ex);
             }
         }
 
@@ -374,10 +365,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
             {
                 foreach (var failed in response.Failed!)
                 {
-                    if (logger.IsEnabled(LogLevel.Warning))
-                    {
-                        logger.Log(LogLevel.Warning, "Failed to send message {Id} to SQS: {Message}", failed.Id, failed.Message);
-                    }
+                    SqsSinkNodeLogMessages.BatchMessageFailed(logger, failed.Id, failed.Message);
                 }
             }
 
@@ -390,7 +378,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
         }
         catch (AmazonSQSException ex) when (_configuration.ContinueOnError)
         {
-            logger.Log(LogLevel.Warning, ex, "Failed to send message batch to SQS. Continuing due to ContinueOnError setting.");
+            SqsSinkNodeLogMessages.SendMessageBatchFailed(logger, ex);
             return [];
         }
     }
@@ -459,7 +447,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
         }
         catch (Exception ex)
         {
-            _logger.Log(LogLevel.Warning, ex, "One or more delayed acknowledgment tasks failed during disposal");
+            SqsSinkNodeLogMessages.DelayedAcknowledgmentFailed(_logger, ex);
         }
         finally
         {
@@ -523,18 +511,18 @@ internal sealed class AcknowledgmentBatcher : IDisposable, IAsyncDisposable
     private readonly SemaphoreSlim _semaphore;
     private readonly IAmazonSQS _sqsClient;
     private bool _disposed;
-    private IPipelineLogger _logger;
+    private ILogger _logger;
 
     public AcknowledgmentBatcher(
         BatchAcknowledgmentOptions options,
         IAmazonSQS sqsClient,
         string queueUrl,
-        IPipelineLogger? logger = null)
+        ILogger? logger = null)
     {
         _options = options;
         _sqsClient = sqsClient;
         _queueUrl = queueUrl;
-        _logger = logger ?? NullPipelineLogger.Instance;
+        _logger = logger ?? NullLogger.Instance;
         _semaphore = new SemaphoreSlim(options.MaxConcurrentBatches, options.MaxConcurrentBatches);
         _batch = new List<IAcknowledgableMessageWrapper>(options.BatchSize);
         _flushTimer = new Timer(FlushCallback, null, options.FlushTimeoutMs, options.FlushTimeoutMs);
@@ -552,7 +540,7 @@ internal sealed class AcknowledgmentBatcher : IDisposable, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            _logger.Log(LogLevel.Error, ex, "Error flushing acknowledgment batch on dispose");
+            SqsSinkNodeLogMessages.FlushBatchOnDisposeFailed(_logger, ex);
         }
         finally
         {
@@ -584,9 +572,9 @@ internal sealed class AcknowledgmentBatcher : IDisposable, IAsyncDisposable
         }
     }
 
-    public void SetLogger(IPipelineLogger logger)
+    public void SetLogger(ILogger logger)
     {
-        _logger = logger ?? NullPipelineLogger.Instance;
+        _logger = logger ?? NullLogger.Instance;
     }
 
     public async Task AddAsync(IAcknowledgableMessage message, CancellationToken cancellationToken)
@@ -642,7 +630,7 @@ internal sealed class AcknowledgmentBatcher : IDisposable, IAsyncDisposable
             }
             catch (Exception ex)
             {
-                _logger.Log(LogLevel.Error, ex, "Error flushing acknowledgment batch");
+                SqsSinkNodeLogMessages.FlushBatchFailed(_logger, ex);
             }
         });
     }
@@ -716,10 +704,7 @@ internal sealed class AcknowledgmentBatcher : IDisposable, IAsyncDisposable
         {
             foreach (var failed in response.Failed)
             {
-                if (_logger.IsEnabled(LogLevel.Warning))
-                {
-                    _logger.Log(LogLevel.Warning, "Failed to delete message {MessageId}: {ErrorMessage}", failed.Id, failed.Message);
-                }
+                SqsSinkNodeLogMessages.DeleteMessageFailed(_logger, failed.Id, failed.Message);
             }
         }
     }
@@ -749,5 +734,27 @@ internal sealed class AcknowledgmentBatcher : IDisposable, IAsyncDisposable
             if (_inner is IAwsSqsAcknowledgableMessage awsMessage)
                 awsMessage.MarkAcknowledged();
         }
+    }
+}
+
+/// <summary>
+///     Null logger implementation for default no-op logging.
+/// </summary>
+internal sealed class NullLogger : ILogger
+{
+    public static readonly NullLogger Instance = new();
+
+    public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+    {
+        return null;
+    }
+
+    public bool IsEnabled(LogLevel logLevel)
+    {
+        return false;
+    }
+
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+    {
     }
 }

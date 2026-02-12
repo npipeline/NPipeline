@@ -242,11 +242,23 @@ public sealed class BranchNode<T> : TransformNode<T, T>
     {
         var logger = context.LoggerFactory.CreateLogger(typeof(BranchNode<T>).FullName ?? typeof(BranchNode<T>).Name);
 
-        var message = additionalMessage is not null
-            ? $"Exception in branch handler {branchException.BranchIndex} for node '{context.CurrentNodeId}'. {additionalMessage}"
-            : $"Exception in branch handler {branchException.BranchIndex} for node '{context.CurrentNodeId}'.";
-
-        logger.Log(LogLevel.Warning, branchException.InnerException!, message);
+        if (additionalMessage is not null)
+        {
+            BranchNodeLogMessages.BranchHandlerExceptionWithMessage(
+                logger,
+                branchException.InnerException!,
+                branchException.BranchIndex,
+                context.CurrentNodeId,
+                additionalMessage);
+        }
+        else
+        {
+            BranchNodeLogMessages.BranchHandlerException(
+                logger,
+                branchException.InnerException!,
+                branchException.BranchIndex,
+                context.CurrentNodeId);
+        }
     }
 
     /// <inheritdoc />

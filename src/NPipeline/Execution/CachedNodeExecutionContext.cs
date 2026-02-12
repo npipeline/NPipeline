@@ -176,7 +176,7 @@ public readonly struct CachedNodeExecutionContext
         var tracingEnabled = context.Tracer is not NullPipelineTracer;
 
         // Determine if logging is enabled by checking if logger factory is not the null implementation
-        var loggingEnabled = context.LoggerFactory is not NullPipelineLoggerFactory;
+        var loggingEnabled = context.LoggerFactory is not NullLoggerFactory;
 
         return new CachedNodeExecutionContext(
             nodeId,
@@ -208,7 +208,7 @@ public readonly struct CachedNodeExecutionContext
         ArgumentNullException.ThrowIfNull(preResolvedRetryOptions);
 
         var tracingEnabled = context.Tracer is not NullPipelineTracer;
-        var loggingEnabled = context.LoggerFactory is not NullPipelineLoggerFactory;
+        var loggingEnabled = context.LoggerFactory is not NullLoggerFactory;
 
         return new CachedNodeExecutionContext(
             nodeId,

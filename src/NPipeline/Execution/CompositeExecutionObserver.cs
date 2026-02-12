@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using NPipeline.Observability.Logging;
 
 namespace NPipeline.Execution;
@@ -14,7 +15,7 @@ namespace NPipeline.Execution;
 /// </remarks>
 public sealed class CompositeExecutionObserver : IExecutionObserver
 {
-    private readonly IPipelineLogger _logger;
+    private readonly ILogger _logger;
     private readonly IExecutionObserver[] _observers;
 
     /// <summary>
@@ -31,14 +32,14 @@ public sealed class CompositeExecutionObserver : IExecutionObserver
     /// </summary>
     /// <param name="loggerFactory">Optional logger factory used for diagnostics.</param>
     /// <param name="observers">The observers to aggregate. Null entries are filtered out.</param>
-    public CompositeExecutionObserver(IPipelineLoggerFactory? loggerFactory, params IExecutionObserver[] observers)
+    public CompositeExecutionObserver(ILoggerFactory? loggerFactory, params IExecutionObserver[] observers)
     {
         // Filter out null entries to ensure we never try to invoke null references
         _observers = (observers ?? Array.Empty<IExecutionObserver>())
             .Where(o => o is not null)
             .ToArray();
 
-        _logger = (loggerFactory ?? NullPipelineLoggerFactory.Instance).CreateLogger(nameof(CompositeExecutionObserver));
+        _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger(nameof(CompositeExecutionObserver));
     }
 
     /// <summary>
@@ -138,11 +139,6 @@ public sealed class CompositeExecutionObserver : IExecutionObserver
     /// </summary>
     private void LogObserverFailure(IExecutionObserver observer, string methodName, Exception ex)
     {
-        _logger.Log(
-            LogLevel.Warning,
-            ex,
-            "Execution observer {Observer}.{Method} threw an exception and will be skipped.",
-            observer.GetType().Name,
-            methodName);
+        CompositeExecutionObserverLogMessages.ObserverFailure(_logger, observer.GetType().Name, methodName, ex);
     }
 }

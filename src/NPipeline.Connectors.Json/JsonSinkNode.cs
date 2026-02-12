@@ -163,12 +163,14 @@ public sealed class JsonSinkNode<T> : SinkNode<T>
 
         // Write start array for JSON Array format
         Utf8JsonWriter? jsonWriter = null;
+
         if (config.Format == JsonFormat.Array)
         {
             jsonWriter = new Utf8JsonWriter(writer, new JsonWriterOptions
             {
-                Indented = config.WriteIndented
+                Indented = config.WriteIndented,
             });
+
             jsonWriter.WriteStartArray();
         }
 
@@ -182,16 +184,15 @@ public sealed class JsonSinkNode<T> : SinkNode<T>
                 // For NDJSON, create a new writer for each item
                 await using var ndjsonWriter = new Utf8JsonWriter(writer, new JsonWriterOptions
                 {
-                    Indented = false
+                    Indented = false,
                 });
+
                 WriteItem(ndjsonWriter, item, valueGetters, propertyNames, useMapper);
                 await ndjsonWriter.FlushAsync(cancellationToken).ConfigureAwait(false);
                 await writer.WriteAsync(utf8Encoding.GetBytes("\n"), cancellationToken).ConfigureAwait(false);
             }
             else
-            {
                 WriteItem(jsonWriter!, item, valueGetters, propertyNames, useMapper);
-            }
         }
 
         // Write end array for JSON Array format

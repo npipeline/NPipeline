@@ -861,56 +861,56 @@ catch (Exception ex)
 ### Core Interfaces and Types
 
 - **`IStorageProvider`** - Core storage provider interface
-  - Location: [`NPipeline.Connectors.Abstractions.IStorageProvider`](../NPipeline.Connectors/Abstractions/IStorageProvider.cs)
-  - Defines methods for reading, writing, listing, and checking existence of storage objects
+    - Location: [`NPipeline.Connectors.Abstractions.IStorageProvider`](../NPipeline.Connectors/Abstractions/IStorageProvider.cs)
+    - Defines methods for reading, writing, listing, and checking existence of storage objects
 
 - **`StorageUri`** - URI type for storage resources
-  - Location: [`NPipeline.Connectors.StorageUri`](../NPipeline.Connectors/StorageUri.cs)
-  - Represents a URI for storage resources with scheme, host, path, and parameters
+    - Location: [`NPipeline.Connectors.StorageUri`](../NPipeline.Connectors/StorageUri.cs)
+    - Represents a URI for storage resources with scheme, host, path, and parameters
 
 - **`StorageScheme`** - Type alias for storage scheme
-  - Location: [`NPipeline.Connectors.StorageScheme`](../NPipeline.Connectors/StorageScheme.cs)
-  - Represents the scheme component of a storage URI (e.g., "s3", "file")
+    - Location: [`NPipeline.Connectors.StorageScheme`](../NPipeline.Connectors/StorageScheme.cs)
+    - Represents the scheme component of a storage URI (e.g., "s3", "file")
 
 - **`StorageItem`** - Represents a storage item (file or directory)
-  - Location: [`NPipeline.Connectors.StorageItem`](../NPipeline.Connectors/StorageItem.cs)
-  - Contains URI, size, last modified date, and directory flag
+    - Location: [`NPipeline.Connectors.StorageItem`](../NPipeline.Connectors/StorageItem.cs)
+    - Contains URI, size, last modified date, and directory flag
 
 - **`StorageMetadata`** - Metadata for storage objects
-  - Location: [`NPipeline.Connectors.StorageMetadata`](../NPipeline.Connectors/StorageMetadata.cs)
-  - Contains size, content type, last modified date, ETag, and custom metadata
+    - Location: [`NPipeline.Connectors.StorageMetadata`](../NPipeline.Connectors/StorageMetadata.cs)
+    - Contains size, content type, last modified date, ETag, and custom metadata
 
 - **`StorageProviderMetadata`** - Metadata describing a storage provider
-  - Location: [`NPipeline.Connectors.StorageProviderMetadata`](../NPipeline.Connectors/StorageProviderMetadata.cs)
-  - Contains provider name, supported schemes, and capabilities
+    - Location: [`NPipeline.Connectors.StorageProviderMetadata`](../NPipeline.Connectors/StorageProviderMetadata.cs)
+    - Contains provider name, supported schemes, and capabilities
 
 ### S3-Specific Types
 
 - **`S3StorageProvider`** - S3 storage provider implementation
-  - Location: [`S3StorageProvider.cs`](S3StorageProvider.cs)
-  - Implements `IStorageProvider` and `IStorageProviderMetadataProvider`
+    - Location: [`S3StorageProvider.cs`](S3StorageProvider.cs)
+    - Implements `IStorageProvider` and `IStorageProviderMetadataProvider`
 
 - **`S3StorageProviderOptions`** - Configuration options
-  - Location: [`S3StorageProviderOptions.cs`](S3StorageProviderOptions.cs)
-  - Contains region, credentials, service URL, and other settings
+    - Location: [`S3StorageProviderOptions.cs`](S3StorageProviderOptions.cs)
+    - Contains region, credentials, service URL, and other settings
 
 - **`S3ClientFactory`** - Factory for creating S3 clients
-  - Location: [`S3ClientFactory.cs`](S3ClientFactory.cs)
-  - Creates and caches `AmazonS3Client` instances
+    - Location: [`S3ClientFactory.cs`](S3ClientFactory.cs)
+    - Creates and caches `AmazonS3Client` instances
 
 - **`S3WriteStream`** - Stream for writing to S3
-  - Location: [`S3WriteStream.cs`](S3WriteStream.cs)
-  - Implements multipart upload for large files
+    - Location: [`S3WriteStream.cs`](S3WriteStream.cs)
+    - Implements multipart upload for large files
 
 - **`S3StorageException`** - Custom exception for S3 errors
-  - Location: [`S3StorageException.cs`](S3StorageException.cs)
-  - Wraps `AmazonS3Exception` with bucket/key context
+    - Location: [`S3StorageException.cs`](S3StorageException.cs)
+    - Wraps `AmazonS3Exception` with bucket/key context
 
 ### Extension Methods
 
 - **`ServiceCollectionExtensions.AddS3StorageProvider`**
-  - Location: [`ServiceCollectionExtensions.cs`](ServiceCollectionExtensions.cs)
-  - Extension method for registering S3 storage provider in DI container
+    - Location: [`ServiceCollectionExtensions.cs`](ServiceCollectionExtensions.cs)
+    - Extension method for registering S3 storage provider in DI container
 
 ## Additional Resources
 

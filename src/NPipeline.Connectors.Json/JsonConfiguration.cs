@@ -18,31 +18,9 @@ namespace NPipeline.Connectors.Json;
 /// </remarks>
 public class JsonConfiguration
 {
-    private sealed class LowerCaseNamingPolicy : JsonNamingPolicy
-    {
-        public static readonly LowerCaseNamingPolicy Instance = new();
-
-        public override string ConvertName(string name)
-        {
-            return string.IsNullOrEmpty(name) ? name : name.ToLowerInvariant();
-        }
-    }
-
-    private sealed class PascalCaseNamingPolicy : JsonNamingPolicy
-    {
-        public static readonly PascalCaseNamingPolicy Instance = new();
-
-        public override string ConvertName(string name)
-        {
-            if (string.IsNullOrEmpty(name))
-                return name;
-
-            return char.ToUpperInvariant(name[0]) + name[1..];
-        }
-    }
+    private JsonPropertyNamingPolicy _propertyNamingPolicy = JsonPropertyNamingPolicy.LowerCase;
 
     private JsonSerializerOptions? _serializerOptions;
-    private JsonPropertyNamingPolicy _propertyNamingPolicy = JsonPropertyNamingPolicy.LowerCase;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="JsonConfiguration" /> class with default settings.
@@ -200,7 +178,7 @@ public class JsonConfiguration
             var options = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = PropertyNameCaseInsensitive,
-                WriteIndented = WriteIndented
+                WriteIndented = WriteIndented,
             };
 
             options.PropertyNamingPolicy = PropertyNamingPolicy switch
@@ -210,11 +188,36 @@ public class JsonConfiguration
                 JsonPropertyNamingPolicy.SnakeCase => JsonNamingPolicy.SnakeCaseLower,
                 JsonPropertyNamingPolicy.PascalCase => PascalCaseNamingPolicy.Instance,
                 JsonPropertyNamingPolicy.AsIs => null,
-                _ => LowerCaseNamingPolicy.Instance
+                _ => LowerCaseNamingPolicy.Instance,
             };
 
             _serializerOptions = options;
             return _serializerOptions;
+        }
+    }
+
+    private sealed class LowerCaseNamingPolicy : JsonNamingPolicy
+    {
+        public static readonly LowerCaseNamingPolicy Instance = new();
+
+        public override string ConvertName(string name)
+        {
+            return string.IsNullOrEmpty(name)
+                ? name
+                : name.ToLowerInvariant();
+        }
+    }
+
+    private sealed class PascalCaseNamingPolicy : JsonNamingPolicy
+    {
+        public static readonly PascalCaseNamingPolicy Instance = new();
+
+        public override string ConvertName(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+                return name;
+
+            return char.ToUpperInvariant(name[0]) + name[1..];
         }
     }
 }

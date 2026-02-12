@@ -1,7 +1,7 @@
+using Microsoft.Extensions.Logging;
 using NPipeline.ErrorHandling;
 using NPipeline.Lineage;
 using NPipeline.Observability;
-using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
 
@@ -30,7 +30,7 @@ public sealed record PipelineContextConfiguration(
     IErrorHandlerFactory? ErrorHandlerFactory = null,
     IPipelineErrorHandler? PipelineErrorHandler = null,
     IDeadLetterSink? DeadLetterSink = null,
-    IPipelineLoggerFactory? LoggerFactory = null,
+    ILoggerFactory? LoggerFactory = null,
     IPipelineTracer? Tracer = null,
     IObservabilityFactory? ObservabilityFactory = null,
     ILineageFactory? LineageFactory = null,
@@ -77,7 +77,7 @@ public sealed record PipelineContextConfiguration(
     /// </summary>
     /// <param name="loggerFactory">The logger factory for the pipeline.</param>
     /// <returns>A new configuration with the specified logger factory.</returns>
-    public static PipelineContextConfiguration WithLogging(IPipelineLoggerFactory loggerFactory)
+    public static PipelineContextConfiguration WithLogging(ILoggerFactory loggerFactory)
     {
         return Default with { LoggerFactory = loggerFactory };
     }
@@ -112,7 +112,7 @@ public sealed record PipelineContextConfiguration(
     /// <param name="tracer">The tracer for the pipeline.</param>
     /// <returns>A new configuration with the specified observability components.</returns>
     public static PipelineContextConfiguration WithObservability(
-        IPipelineLoggerFactory? loggerFactory = null,
+        ILoggerFactory? loggerFactory = null,
         IPipelineTracer? tracer = null)
     {
         return new PipelineContextConfiguration(

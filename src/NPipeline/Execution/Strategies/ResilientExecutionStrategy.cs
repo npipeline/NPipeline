@@ -61,7 +61,7 @@ namespace NPipeline.Execution.Strategies;
 ///     var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
 /// 
 ///     // Apply to a transform node
-///     var node = new TransformNode&lt;Input, Output&gt;(transformFunction)
+///     var node = new TransformNode&lt;TInput, TOutput&gt;(transformFunction)
 ///     {
 ///         ExecutionStrategy = resilientStrategy
 ///     };
@@ -287,13 +287,10 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
             if (context.Items.TryGetValue(PipelineContextKeys.CircuitBreakerManager, out var managerObj) && managerObj is ICircuitBreakerManager manager)
             {
                 circuitBreaker = manager.GetCircuitBreaker(nodeId, cbr);
-                logger.Log(LogLevel.Debug, "Circuit breaker resolved for node {NodeId}. State: {State}", nodeId, circuitBreaker.State);
+                ResilientExecutionStrategyLogMessages.CircuitBreakerResolved(logger, nodeId, circuitBreaker.State.ToString());
             }
             else
-            {
-                logger.Log(LogLevel.Warning,
-                    "Circuit breaker options enabled but manager unavailable for node {NodeId}. Resilience will continue without breaker integration.", nodeId);
-            }
+                ResilientExecutionStrategyLogMessages.CircuitBreakerManagerUnavailable(logger, nodeId);
         }
 
         while (!cancellationToken.IsCancellationRequested)
@@ -310,12 +307,11 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
             // MaxNodeRestartAttempts defines the maximum number of restart attempts AFTER the initial attempt.
             // failures counts how many restart decisions have already occurred.
             // If failures >= MaxNodeRestartAttempts we should surface the last failure (or a descriptive exception) and stop.
-            logger.Log(LogLevel.Debug, "Checking retry limit for node {NodeId}. Failures: {Failures}, MaxAttempts: {MaxAttempts}", nodeId, failures,
-                effectiveRetries.MaxNodeRestartAttempts);
+            ResilientExecutionStrategyLogMessages.CheckingRetryLimit(logger, nodeId, failures, effectiveRetries.MaxNodeRestartAttempts);
 
             if (failures >= effectiveRetries.MaxNodeRestartAttempts)
             {
-                logger.Log(LogLevel.Warning, "Retry limit exceeded at start of loop for node {NodeId}. Throwing RetryExhaustedException.", nodeId);
+                ResilientExecutionStrategyLogMessages.RetryLimitExceeded(logger, nodeId);
 
                 throw new RetryExhaustedException(nodeId, effectiveRetries.MaxNodeRestartAttempts,
                     lastFailure ?? new InvalidOperationException($"Node '{nodeId}' exceeded maximum restart attempts without a specific failure."));
@@ -380,24 +376,18 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                         context.Items[PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId)] = true;
 
                         // Log before throwing to capture the state
-                        logger.Log(LogLevel.Warning,
-                            "Failure limit reached for node {NodeId}. Failures: {Failures}, Consecutive failures: {ConsecutiveFailures}, MaxAttempts: {MaxAttempts}. Throwing RetryExhaustedException.",
-                            nodeId, failures, consecutiveFailures, effectiveRetries.MaxNodeRestartAttempts);
+                        ResilientExecutionStrategyLogMessages.FailureLimitReached(logger, nodeId, failures, consecutiveFailures,
+                            effectiveRetries.MaxNodeRestartAttempts);
 
                         var retryEx = new RetryExhaustedException(nodeId, effectiveRetries.MaxNodeRestartAttempts, ex);
-                        if (logger.IsEnabled(LogLevel.Debug))
-                        {
-                            logger.Log(LogLevel.Debug, "Created RetryExhaustedException with message: {ExceptionMessage}", retryEx.Message);
-                        }
+                        ResilientExecutionStrategyLogMessages.RetryExhaustedExceptionCreated(logger, retryEx.Message);
                         throw retryEx;
                     }
 
                     var decision = await context.PipelineErrorHandler!.HandleNodeFailureAsync(nodeId, ex, context, cancellationToken).ConfigureAwait(false);
 
                     // Log the decision from the error handler
-                    logger.Log(LogLevel.Debug,
-                        "ErrorHandler returned decision {Decision} for node {NodeId}. Current failures: {Failures}, Consecutive failures: {ConsecutiveFailures}.",
-                        decision, nodeId, failures, consecutiveFailures);
+                    ResilientExecutionStrategyLogMessages.ErrorHandlerDecision(logger, decision.ToString(), nodeId, failures, consecutiveFailures);
 
                     // Pattern matching for error decision handling - this is a key enhancement using C# switch expressions
                     var shouldContinue = decision switch
@@ -408,7 +398,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                         _ => false,
                     };
 
-                    logger.Log(LogLevel.Debug, "shouldContinue for node {NodeId} is {ShouldContinue}.", nodeId, shouldContinue);
+                    ResilientExecutionStrategyLogMessages.ShouldContinueDecision(logger, nodeId, shouldContinue);
 
                     if (shouldContinue)
                     {
@@ -423,8 +413,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
 
                             if (delay > TimeSpan.Zero)
                             {
-                                logger.Log(LogLevel.Debug, "Applying retry delay of {Delay}ms for node {NodeId} after {FailureCount} failures",
-                                    delay.TotalMilliseconds, nodeId, failures);
+                                ResilientExecutionStrategyLogMessages.ApplyingRetryDelay(logger, delay.TotalMilliseconds, nodeId, failures);
 
                                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                             }
@@ -432,8 +421,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                         catch (Exception delayEx)
                         {
                             // Log delay strategy failure but continue with retry
-                            logger.Log(LogLevel.Warning, delayEx, "Failed to apply retry delay for node {NodeId}. Continuing with retry without delay.",
-                                nodeId);
+                            ResilientExecutionStrategyLogMessages.RetryDelayFailed(logger, delayEx, nodeId);
                         }
 
                         context.ExecutionObserver.OnRetry(new NodeRetryEvent(nodeId, RetryKind.NodeRestart, failures, ex));

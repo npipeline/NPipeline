@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using NPipeline.Observability.Logging;
 
 namespace NPipeline.Lineage;
@@ -8,15 +9,15 @@ namespace NPipeline.Lineage;
 /// </summary>
 internal sealed class DefaultLineageFactory : ILineageFactory
 {
-    private readonly IPipelineLogger _logger;
+    private readonly ILogger _logger;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="DefaultLineageFactory" /> class.
     /// </summary>
-    /// <param name="loggerFactory">Optional logger factory for diagnostic logging. Defaults to NullPipelineLoggerFactory if not provided.</param>
-    public DefaultLineageFactory(IPipelineLoggerFactory? loggerFactory = null)
+    /// <param name="loggerFactory">Optional logger factory for diagnostic logging. Defaults to a no-op logger if not provided.</param>
+    public DefaultLineageFactory(ILoggerFactory? loggerFactory = null)
     {
-        var factory = loggerFactory ?? NullPipelineLoggerFactory.Instance;
+        var factory = loggerFactory ?? NullLoggerFactory.Instance;
         _logger = factory.CreateLogger(nameof(DefaultLineageFactory));
     }
 
@@ -27,7 +28,7 @@ internal sealed class DefaultLineageFactory : ILineageFactory
     /// <returns>An instance of <see cref="ILineageSink" />, or null if it cannot be created.</returns>
     public ILineageSink? CreateLineageSink(Type sinkType)
     {
-        return TryCreateInstance<ILineageSink>(sinkType, nameof(CreateLineageSink));
+        return TryCreateInstance<ILineageSink>(sinkType);
     }
 
     /// <summary>
@@ -41,7 +42,7 @@ internal sealed class DefaultLineageFactory : ILineageFactory
     /// <returns>An instance of <see cref="IPipelineLineageSink" />, or null if it cannot be created.</returns>
     public IPipelineLineageSink? CreatePipelineLineageSink(Type sinkType)
     {
-        return TryCreateInstance<IPipelineLineageSink>(sinkType, nameof(CreatePipelineLineageSink));
+        return TryCreateInstance<IPipelineLineageSink>(sinkType);
     }
 
     /// <summary>
@@ -76,40 +77,28 @@ internal sealed class DefaultLineageFactory : ILineageFactory
     /// </summary>
     /// <typeparam name="T">The interface type expected.</typeparam>
     /// <param name="type">The concrete type to instantiate.</param>
-    /// <param name="methodName">The name of the calling method for diagnostics.</param>
     /// <returns>The created instance or null if creation fails.</returns>
-    private T? TryCreateInstance<T>(Type type, string methodName) where T : class
+    private T? TryCreateInstance<T>(Type type) where T : class
     {
-        string? error = null;
-        T? instance = null;
-
         if (!typeof(T).IsAssignableFrom(type))
-            error = $"Type {type.FullName} does not implement {typeof(T).FullName}";
-        else
         {
-            try
-            {
-                instance = Activator.CreateInstance(type) as T;
-
-                if (instance is null)
-                    error = $"Activator returned null for {type.FullName}";
-            }
-            catch (Exception ex)
-            {
-                error = ex.Message;
-            }
+            DefaultLineageFactoryLogMessages.LineageSinkCreationFailed(_logger, type?.FullName ?? "null");
+            return null;
         }
 
-        if (instance is not null)
-            return instance;
+        try
+        {
+            var instance = Activator.CreateInstance(type) as T;
 
-        _logger.Log(
-            LogLevel.Warning,
-            "{Factory}.{Method}: Failed to create instance of {Type}: {Message}",
-            nameof(DefaultLineageFactory),
-            methodName,
-            type?.FullName ?? "null",
-            error ?? "unknown error");
+            if (instance is not null)
+                return instance;
+        }
+        catch
+        {
+            // Fall through to log failure
+        }
+
+        DefaultLineageFactoryLogMessages.LineageSinkCreationFailed(_logger, type?.FullName ?? "null");
 
         return null;
     }

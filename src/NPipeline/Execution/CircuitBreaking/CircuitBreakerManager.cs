@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
 using NPipeline.Configuration;
 using NPipeline.Observability.Logging;
 
@@ -13,7 +14,7 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
     private readonly ConcurrentDictionary<string, ICircuitBreaker> _circuitBreakers = new();
     private readonly object _cleanupLock = new();
     private readonly Timer? _cleanupTimer;
-    private readonly IPipelineLogger _logger;
+    private readonly ILogger _logger;
     private readonly CircuitBreakerMemoryManagementOptions _memoryOptions;
     private readonly CircuitBreakerTracker _tracker;
 
@@ -22,7 +23,7 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
     /// </summary>
     /// <param name="logger">The logger for diagnostic information.</param>
     /// <param name="memoryOptions">The memory management options for cleanup.</param>
-    public CircuitBreakerManager(IPipelineLogger logger, CircuitBreakerMemoryManagementOptions? memoryOptions = null)
+    public CircuitBreakerManager(ILogger logger, CircuitBreakerMemoryManagementOptions? memoryOptions = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
@@ -35,8 +36,7 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
             _cleanupTimer = new Timer(CleanupUnusedCircuitBreakers, null,
                 _memoryOptions.EffectiveCleanupInterval, _memoryOptions.EffectiveCleanupInterval);
 
-            _logger.Log(LogLevel.Debug, "Circuit breaker cleanup timer initialized with interval: {Interval}",
-                _memoryOptions.EffectiveCleanupInterval);
+            CircuitBreakerManagerLogMessages.CleanupTimerInitialized(_logger, _memoryOptions.EffectiveCleanupInterval);
         }
     }
 
@@ -71,7 +71,7 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
         {
             (circuitBreaker as IDisposable)?.Dispose();
             _ = _tracker.RemoveTracking(nodeId);
-            _logger.Log(LogLevel.Debug, "Removed circuit breaker for node {NodeId}", nodeId);
+            CircuitBreakerManagerLogMessages.CircuitBreakerRemoved(_logger, nodeId);
         }
     }
 
@@ -83,11 +83,11 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
     {
         if (!_memoryOptions.EnableAutomaticCleanup)
         {
-            _logger.Log(LogLevel.Debug, "Automatic cleanup is disabled, manual cleanup triggered");
+            CircuitBreakerManagerLogMessages.ManualCleanupTriggered(_logger);
             return PerformCleanup();
         }
 
-        _logger.Log(LogLevel.Debug, "Manual cleanup triggered");
+        CircuitBreakerManagerLogMessages.ManualCleanupTriggeredWithAutoEnabled(_logger);
         return PerformCleanup();
     }
 
@@ -127,9 +127,7 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
         // Check if we've exceeded the maximum number of tracked circuit breakers
         if (_tracker.GetTrackedCount() >= _memoryOptions.MaxTrackedCircuitBreakers)
         {
-            _logger.Log(LogLevel.Warning,
-                "Maximum circuit breaker limit ({MaxCount}) reached while creating circuit breaker for node {NodeId}. Issuing aggressive cleanup.",
-                _memoryOptions.MaxTrackedCircuitBreakers, nodeId);
+            CircuitBreakerManagerLogMessages.MaxCircuitBreakerLimitReached(_logger, _memoryOptions.MaxTrackedCircuitBreakers, nodeId);
 
             var removed = PerformCleanup(true);
 
@@ -138,12 +136,12 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
                 var message =
                     $"Unable to create circuit breaker for node '{nodeId}' because the manager exhausted its maximum capacity of {_memoryOptions.MaxTrackedCircuitBreakers}.";
 
-                _logger.Log(LogLevel.Error, message);
+                CircuitBreakerManagerLogMessages.CircuitBreakerCreationFailed(_logger, nodeId, _memoryOptions.MaxTrackedCircuitBreakers);
                 throw new InvalidOperationException(message);
             }
         }
 
-        _logger.Log(LogLevel.Debug, "Creating circuit breaker for node {NodeId} with options: {@Options}", nodeId, options);
+        CircuitBreakerManagerLogMessages.CreatingCircuitBreaker(_logger, nodeId, options);
         var circuitBreaker = new CircuitBreaker(options, _logger);
 
         // Track the new circuit breaker
@@ -164,7 +162,7 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
         }
         catch (Exception ex)
         {
-            _logger.Log(LogLevel.Error, ex, "Error during automatic circuit breaker cleanup");
+            CircuitBreakerManagerLogMessages.CleanupError(_logger, ex);
         }
     }
 
@@ -177,7 +175,7 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
         // Prevent concurrent cleanup operations
         if (!Monitor.TryEnter(_cleanupLock, _memoryOptions.EffectiveCleanupTimeout))
         {
-            _logger.Log(LogLevel.Warning, "Cleanup operation already in progress, skipping");
+            CircuitBreakerManagerLogMessages.CleanupSkippedInProgress(_logger);
             return 0;
         }
 
@@ -195,13 +193,13 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
                     (circuitBreaker as IDisposable)?.Dispose();
                     removedBreaker = true;
                     removedCount++;
-                    _logger.Log(LogLevel.Debug, "Removed inactive circuit breaker for node {NodeId}", nodeId);
+                    CircuitBreakerManagerLogMessages.InactiveCircuitBreakerRemoved(_logger, nodeId);
                 }
 
                 var removedTracking = _tracker.RemoveTracking(nodeId);
 
                 if (!removedBreaker && removedTracking)
-                    _logger.Log(LogLevel.Debug, "Removed stale tracking for circuit breaker node {NodeId}", nodeId);
+                    CircuitBreakerManagerLogMessages.StaleTrackingRemoved(_logger, nodeId);
             }
 
             if (removedCount == 0 && allowAggressiveEviction)
@@ -216,29 +214,20 @@ internal sealed class CircuitBreakerManager : ICircuitBreakerManager, IDisposabl
                         removedBreaker = true;
                         removedCount++;
 
-                        _logger.Log(LogLevel.Warning,
-                            "Aggressive cleanup removed least recently used circuit breaker for node {NodeId} last accessed at {LastAccess}",
-                            victimNodeId, lastAccess);
+                        CircuitBreakerManagerLogMessages.AggressiveCleanupRemoved(_logger, victimNodeId, lastAccess);
                     }
 
                     var removedTracking = _tracker.RemoveTracking(victimNodeId);
 
                     if (!removedBreaker && removedTracking)
-                    {
-                        _logger.Log(LogLevel.Warning,
-                            "Aggressive cleanup removed stale tracking for least recently used circuit breaker node {NodeId} last accessed at {LastAccess}",
-                            victimNodeId, lastAccess);
-                    }
+                        CircuitBreakerManagerLogMessages.AggressiveCleanupStaleTrackingRemoved(_logger, victimNodeId, lastAccess);
                 }
                 else
-                {
-                    _logger.Log(LogLevel.Warning,
-                        "Aggressive cleanup requested but no tracked circuit breakers were available for eviction.");
-                }
+                    CircuitBreakerManagerLogMessages.AggressiveCleanupNoVictims(_logger);
             }
 
             if (removedCount > 0)
-                _logger.Log(LogLevel.Information, "Cleanup completed: removed {Count} circuit breaker(s)", removedCount);
+                CircuitBreakerManagerLogMessages.CleanupCompleted(_logger, removedCount);
 
             return removedCount;
         }

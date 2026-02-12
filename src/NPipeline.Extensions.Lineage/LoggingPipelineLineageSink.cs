@@ -44,12 +44,12 @@ public sealed class LoggingPipelineLineageSink : IPipelineLineageSink
             var json = JsonSerializer.Serialize(report, _jsonOptions);
 
             using (_logger.BeginScope(new Dictionary<string, object?>
-            {
-                ["Pipeline"] = report.Pipeline,
-                ["RunId"] = report.RunId,
-                ["NodeCount"] = report.Nodes.Count,
-                ["EdgeCount"] = report.Edges.Count,
-            }))
+                   {
+                       ["Pipeline"] = report.Pipeline,
+                       ["RunId"] = report.RunId,
+                       ["NodeCount"] = report.Nodes.Count,
+                       ["EdgeCount"] = report.Edges.Count,
+                   }))
             {
                 _logger.LogInformation(
                     "Pipeline lineage report for {Pipeline} (RunId: {RunId}): {LineageReport}",

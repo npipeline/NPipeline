@@ -3,7 +3,6 @@ using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Execution;
 using NPipeline.Nodes;
-using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Extensions.Parallelism;
@@ -39,7 +38,7 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
         var effectiveRetries = GetRetryOptions(nodeId, context);
         var cachedContext = CachedNodeExecutionContext.CreateWithRetryOptions(context, nodeId, effectiveRetries);
         var logger = context.LoggerFactory.CreateLogger(nameof(DropOldestParallelStrategy));
-        logger.Log(LogLevel.Debug, "Node {NodeId}, Final MaxRetries: {MaxRetries}", nodeId, effectiveRetries.MaxItemRetries);
+        ParallelExecutionStrategyLogMessages.FinalMaxRetries(logger, nodeId, effectiveRetries.MaxItemRetries);
 
         ParallelOptions? parallelOptions = null;
 
@@ -123,13 +122,7 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
                         }
 
                         if (dropAttempts >= maxDropAttempts)
-                        {
-                            if (logger.IsEnabled(LogLevel.Warning))
-                            {
-                                logger.Log(LogLevel.Warning, "Node {NodeId}, Failed to enqueue item {Item} after {MaxAttempts} drop attempts",
-                                    nodeId, item?.ToString() ?? "null", maxDropAttempts);
-                            }
-                        }
+                            ParallelExecutionStrategyLogMessages.EnqueueFailed(logger, nodeId, item?.ToString(), maxDropAttempts);
                     }
 
                     if (DateTimeOffset.UtcNow - lastMetricsEmit >= metricsInterval)

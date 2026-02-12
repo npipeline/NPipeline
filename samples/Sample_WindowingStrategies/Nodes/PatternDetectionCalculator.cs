@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using NPipeline.Nodes;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
@@ -17,7 +18,7 @@ namespace Sample_WindowingStrategies.Nodes;
 /// </summary>
 public class PatternDetectionCalculator : TransformNode<IReadOnlyCollection<UserSession>, PatternMatch>
 {
-    private readonly IPipelineLogger _logger;
+    private readonly ILogger _logger;
     private readonly int _minPatternLength;
     private readonly int _minPatternSupport;
     private readonly double _patternConfidenceThreshold;
@@ -33,12 +34,12 @@ public class PatternDetectionCalculator : TransformNode<IReadOnlyCollection<User
         int minPatternSupport = 3,
         int minPatternLength = 2,
         double patternConfidenceThreshold = 0.7,
-        IPipelineLogger? logger = null)
+        ILogger? logger = null)
     {
         _minPatternSupport = minPatternSupport;
         _minPatternLength = minPatternLength;
         _patternConfidenceThreshold = patternConfidenceThreshold;
-        _logger = logger ?? NullPipelineLoggerFactory.Instance.CreateLogger(nameof(PatternDetectionCalculator));
+        _logger = logger ?? NullLoggerFactory.Instance.CreateLogger(nameof(PatternDetectionCalculator));
     }
 
     /// <summary>

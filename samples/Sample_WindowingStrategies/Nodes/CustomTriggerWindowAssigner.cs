@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using NPipeline.Nodes;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
@@ -17,7 +18,7 @@ public class CustomTriggerWindowAssigner : TransformNode<UserSession, IReadOnlyL
 {
     private readonly int _conversionTrigger;
     private readonly decimal _highValueTrigger;
-    private readonly IPipelineLogger _logger;
+    private readonly ILogger _logger;
     private readonly List<UserSession> _sessionBuffer;
     private readonly TimeSpan _timeInterval;
     private DateTime _sessionStartTime;
@@ -35,12 +36,12 @@ public class CustomTriggerWindowAssigner : TransformNode<UserSession, IReadOnlyL
         int conversionTrigger = 3,
         decimal highValueTrigger = 500m,
         TimeSpan? timeInterval = null,
-        IPipelineLogger? logger = null)
+        ILogger? logger = null)
     {
         _conversionTrigger = conversionTrigger;
         _highValueTrigger = highValueTrigger;
         _timeInterval = timeInterval ?? TimeSpan.FromMinutes(15);
-        _logger = logger ?? NullPipelineLoggerFactory.Instance.CreateLogger(nameof(CustomTriggerWindowAssigner));
+        _logger = logger ?? NullLoggerFactory.Instance.CreateLogger(nameof(CustomTriggerWindowAssigner));
         _sessionBuffer = [];
         _sessionStartTime = default;
         _totalConversions = 0;

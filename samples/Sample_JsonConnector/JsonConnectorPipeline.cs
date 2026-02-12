@@ -1,5 +1,5 @@
+using Microsoft.Extensions.Logging;
 using NPipeline.Connectors.Json;
-using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Models;

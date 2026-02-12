@@ -153,10 +153,9 @@ public static class PipelineContextRetryDelayExtensions
         catch (Exception ex)
         {
             // Log error and fall back to no-op strategy
-            logger.Log(
-                LogLevel.Warning,
+            PipelineContextRetryDelayExtensionsLogMessages.RetryDelayStrategyCreationFailed(
+                logger,
                 ex,
-                "RetryDelayStrategy: Failed to create strategy from configuration. BackoffStrategy={Backoff}, JitterStrategy={Jitter}",
                 configuration.BackoffStrategy?.GetType().Name ?? "null",
                 configuration.JitterStrategy?.GetType().Name ?? "null");
 

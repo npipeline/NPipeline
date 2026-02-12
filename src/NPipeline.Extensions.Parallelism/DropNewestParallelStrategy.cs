@@ -3,7 +3,6 @@ using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Execution;
 using NPipeline.Nodes;
-using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Extensions.Parallelism;
@@ -39,7 +38,7 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
         var effectiveRetries = GetRetryOptions(nodeId, context);
         var cachedContext = CachedNodeExecutionContext.CreateWithRetryOptions(context, nodeId, effectiveRetries);
         var logger = context.LoggerFactory.CreateLogger(nameof(DropNewestParallelStrategy));
-        logger.Log(LogLevel.Debug, "Node {NodeId}, Final MaxRetries: {MaxRetries}", nodeId, effectiveRetries.MaxItemRetries);
+        ParallelExecutionStrategyLogMessages.FinalMaxRetries(logger, nodeId, effectiveRetries.MaxItemRetries);
 
         ParallelOptions? parallelOptions = null;
 

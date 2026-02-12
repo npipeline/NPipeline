@@ -1,5 +1,5 @@
+using Microsoft.Extensions.Logging;
 using NPipeline.Nodes;
-using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
 using Sample_JsonConnector;
 

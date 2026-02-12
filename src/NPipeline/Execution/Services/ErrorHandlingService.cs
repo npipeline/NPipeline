@@ -267,16 +267,14 @@ public sealed class ErrorHandlingService : IErrorHandlingService
 
                 if (delay > TimeSpan.Zero)
                 {
-                    logger.Log(LogLevel.Debug, "Applying retry delay of {Delay}ms for node {NodeId} after {RetryCount} retries",
-                        delay.TotalMilliseconds, nodeDefinition.Id, retryCount);
-
+                    ErrorHandlingServiceLogMessages.ApplyingRetryDelay(logger, delay.TotalMilliseconds, nodeDefinition.Id, retryCount);
                     await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (Exception delayEx)
             {
                 // Log delay strategy failure but continue with retry
-                logger.Log(LogLevel.Warning, delayEx, "Failed to apply retry delay for node {NodeId}. Continuing with retry without delay.", nodeDefinition.Id);
+                ErrorHandlingServiceLogMessages.RetryDelayFailed(logger, delayEx, nodeDefinition.Id);
             }
 
             try

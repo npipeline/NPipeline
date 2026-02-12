@@ -151,38 +151,39 @@ NPipeline is modular - install only what you need.
 
 ### Core Packages
 
-| Package | Purpose |
-|---------|---------|
-| **NPipeline** | Core streaming pipeline functionality (zero dependencies) |
-| **NPipeline.Analyzers** | Roslyn analyzers for compile-time validation, style guidance, and developer guardrails |
-| **NPipeline.Extensions.DependencyInjection** | Integration with Microsoft DI container |
-| **NPipeline.Extensions.Testing** | Core testing utilities with in-memory nodes, test harness, and assertion helpers |
+| Package                                      | Purpose                                                                                |
+|----------------------------------------------|----------------------------------------------------------------------------------------|
+| **NPipeline**                                | Core streaming pipeline functionality (zero dependencies)                              |
+| **NPipeline.Analyzers**                      | Roslyn analyzers for compile-time validation, style guidance, and developer guardrails |
+| **NPipeline.Extensions.DependencyInjection** | Integration with Microsoft DI container                                                |
+| **NPipeline.Extensions.Testing**             | Core testing utilities with in-memory nodes, test harness, and assertion helpers       |
 
 ### Key Extensions
 
-| Package | Purpose |
-|---------|---------|
-| **NPipeline.Extensions.Composition** | Pipeline composition for treating entire pipelines as nodes within larger pipelines |
-| **NPipeline.Extensions.Lineage** | Data lineage tracking and provenance for governance, auditing, and debugging |
-| **NPipeline.Extensions.Nodes** | Ready-made, granular nodes for common data processing tasks (cleansing, validation, transformation, enrichment, filtering) |
-| **NPipeline.Extensions.Observability** | Observability and telemetry support for pipeline monitoring |
-| **NPipeline.Extensions.Parallelism** | Parallel processing with TPL Dataflow and configurable backpressure strategies |
+| Package                                | Purpose                                                                                                                    |
+|----------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| **NPipeline.Extensions.Composition**   | Pipeline composition for treating entire pipelines as nodes within larger pipelines                                        |
+| **NPipeline.Extensions.Lineage**       | Data lineage tracking and provenance for governance, auditing, and debugging                                               |
+| **NPipeline.Extensions.Nodes**         | Ready-made, granular nodes for common data processing tasks (cleansing, validation, transformation, enrichment, filtering) |
+| **NPipeline.Extensions.Observability** | Observability and telemetry support for pipeline monitoring                                                                |
+| **NPipeline.Extensions.Parallelism**   | Parallel processing with TPL Dataflow and configurable backpressure strategies                                             |
 
 ### Connectors
 
-| Package | Purpose |
-|---------|---------|
-| **NPipeline.Connectors** | Core abstractions for data format/storage decoupling |
-| **NPipeline.Connectors.Csv** | CSV source and sink nodes |
-| **NPipeline.Connectors.Excel** | Excel source and sink nodes for XLS and XLSX files |
-| **NPipeline.Connectors.Json** | JSON source and sink nodes for JSON array and NDJSON formats |
-| **NPipeline.Connectors.PostgreSQL** | PostgreSQL database source and sink nodes |
-| **NPipeline.Connectors.SqlServer** | SQL Server database source and sink nodes |
-| **NPipeline.Connectors.Aws.Sqs** | AWS SQS source and sink nodes for message queue processing |
+| Package                             | Purpose                                                      |
+|-------------------------------------|--------------------------------------------------------------|
+| **NPipeline.Connectors**            | Core abstractions for data format/storage decoupling         |
+| **NPipeline.Connectors.Csv**        | CSV source and sink nodes                                    |
+| **NPipeline.Connectors.Excel**      | Excel source and sink nodes for XLS and XLSX files           |
+| **NPipeline.Connectors.Json**       | JSON source and sink nodes for JSON array and NDJSON formats |
+| **NPipeline.Connectors.PostgreSQL** | PostgreSQL database source and sink nodes                    |
+| **NPipeline.Connectors.SqlServer**  | SQL Server database source and sink nodes                    |
+| **NPipeline.Connectors.Aws.Sqs**    | AWS SQS source and sink nodes for message queue processing   |
 
 ### Complete Package List
 
-For the complete list of all available packages including assertion library integrations (FluentAssertions, AwesomeAssertions) and OpenTelemetry support, see the [Extensions Documentation](https://www.npipeline.dev/docs/extensions) and [Connectors Documentation](https://www.npipeline.dev/docs/connectors).
+For the complete list of all available packages including assertion library integrations (FluentAssertions, AwesomeAssertions) and OpenTelemetry support, see
+the [Extensions Documentation](https://www.npipeline.dev/docs/extensions) and [Connectors Documentation](https://www.npipeline.dev/docs/connectors).
 
 ## What's Next?
 

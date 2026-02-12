@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Microsoft.Extensions.Logging;
 using NPipeline.Configuration;
 using NPipeline.Execution;
 using NPipeline.Observability.Logging;
@@ -26,7 +27,7 @@ public sealed class CachedNodeExecutionContextTests
         _ = cached.NodeId.Should().Be(nodeId);
         _ = cached.RetryOptions.Should().Be(context.RetryOptions);
         _ = cached.TracingEnabled.Should().BeFalse(); // Default uses NullPipelineTracer
-        _ = cached.LoggingEnabled.Should().BeFalse(); // Default uses NullPipelineLoggerFactory
+        _ = cached.LoggingEnabled.Should().BeFalse(); // Default uses NullLoggerFactory
         _ = cached.CancellationToken.Should().Be(context.CancellationToken);
     }
 
@@ -231,11 +232,15 @@ public sealed class CachedNodeExecutionContextTests
         }
     }
 
-    private sealed class TestPipelineLoggerFactory : IPipelineLoggerFactory
+    private sealed class TestPipelineLoggerFactory : ILoggerFactory
     {
-        public IPipelineLogger CreateLogger(string categoryName)
+        public ILogger CreateLogger(string categoryName)
         {
-            return NullPipelineLogger.Instance;
+            return NullLogger.Instance;
         }
+
+        public void AddProvider(ILoggerProvider provider) { }
+
+        public void Dispose() { }
     }
 }

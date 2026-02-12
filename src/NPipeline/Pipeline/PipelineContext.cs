@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.Extensions.Logging;
 using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
@@ -80,7 +81,7 @@ public sealed class PipelineContext
     ///             <description>ObservabilityFactory: <see cref="DefaultObservabilityFactory" /></description>
     ///         </item>
     ///         <item>
-    ///             <description>LoggerFactory: <see cref="NullPipelineLoggerFactory" /> (no-op)</description>
+    ///             <description>LoggerFactory: <see cref="NullLoggerFactory" /> (no-op)</description>
     ///         </item>
     ///         <item>
     ///             <description>Tracer: <see cref="NullPipelineTracer" /> (no-op)</description>
@@ -135,7 +136,7 @@ public sealed class PipelineContext
         }
 
         CancellationToken = config.CancellationToken;
-        LoggerFactory = config.LoggerFactory ?? NullPipelineLoggerFactory.Instance;
+        LoggerFactory = config.LoggerFactory ?? NullLoggerFactory.Instance;
         Tracer = config.Tracer ?? NullPipelineTracer.Instance;
         PipelineErrorHandler = config.PipelineErrorHandler;
         DeadLetterSink = config.DeadLetterSink;
@@ -201,7 +202,7 @@ public sealed class PipelineContext
     /// <summary>
     ///     The logger factory for this pipeline run.
     /// </summary>
-    public IPipelineLoggerFactory LoggerFactory { get; }
+    public ILoggerFactory LoggerFactory { get; }
 
     /// <summary>
     ///     The tracer for this pipeline run.
@@ -294,10 +295,7 @@ public sealed class PipelineContext
                 {
                     // Log but don't propagate - we're already past disposal
                     var logger = LoggerFactory.CreateLogger("PipelineContext");
-                    if (logger.IsEnabled(LogLevel.Warning))
-                    {
-                        logger.Log(LogLevel.Warning, "Late-registration disposal failed: {Message}", ex.Message);
-                    }
+                    PipelineContextLogMessages.LateRegistrationDisposalFailed(logger, ex.Message);
                 }
             });
 

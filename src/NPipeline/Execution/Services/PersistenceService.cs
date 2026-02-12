@@ -52,7 +52,7 @@ public sealed class PersistenceService : IPersistenceService
             try
             {
                 var logger = context.LoggerFactory.CreateLogger(nameof(PersistenceService));
-                logger.Log(LogLevel.Error, ex, "State snapshot failed for node {NodeId}", completedEvent.NodeId);
+                PersistenceServiceLogMessages.StateSnapshotFailed(logger, ex, completedEvent.NodeId);
             }
             catch
             {

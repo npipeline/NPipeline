@@ -5,7 +5,6 @@ using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Execution;
 using NPipeline.Nodes;
-using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Extensions.Parallelism;
@@ -46,7 +45,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         // Resolve effective retry options using our helper method
         var effectiveRetries = GetRetryOptions(nodeId, context);
         var logger = context.LoggerFactory.CreateLogger(nameof(BlockingParallelStrategy));
-        logger.Log(LogLevel.Debug, "Node {NodeId}, Final MaxRetries: {MaxRetries}", nodeId, effectiveRetries.MaxItemRetries);
+        ParallelExecutionStrategyLogMessages.FinalMaxRetries(logger, nodeId, effectiveRetries.MaxItemRetries);
 
         // Resolve per-node parallel options if provided
         ParallelOptions? parallelOptions = null;

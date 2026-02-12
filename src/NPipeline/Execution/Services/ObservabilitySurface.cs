@@ -24,7 +24,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
     {
         var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
         var activity = context.Tracer.StartActivity($"Pipeline.Run: {typeof(TDefinition).Name}");
-        logger.Log(LogLevel.Information, "Starting pipeline run for {PipelineName}", typeof(TDefinition).Name);
+        ObservabilitySurfaceLogMessages.PipelineStarting(logger, typeof(TDefinition).Name);
         return activity;
     }
 
@@ -52,7 +52,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         }
 
         var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
-        logger.Log(LogLevel.Information, "Finished pipeline run for {PipelineName}", typeof(TDefinition).Name);
+        ObservabilitySurfaceLogMessages.PipelineFinished(logger, typeof(TDefinition).Name);
 
         try
         {
@@ -60,7 +60,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         }
         catch (Exception emitEx)
         {
-            logger.Log(LogLevel.Error, emitEx, "Failed to emit observability metrics for pipeline {PipelineName}", typeof(TDefinition).Name);
+            ObservabilitySurfaceLogMessages.MetricsEmissionFailed(logger, emitEx, typeof(TDefinition).Name);
         }
     }
 
@@ -75,7 +75,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         where TDefinition : IPipelineDefinition, new()
     {
         var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
-        logger.Log(LogLevel.Error, ex, "Pipeline run for {PipelineName} failed", typeof(TDefinition).Name);
+        ObservabilitySurfaceLogMessages.PipelineFailed(logger, ex, typeof(TDefinition).Name);
         pipelineActivity.RecordException(ex);
 
         try
@@ -84,7 +84,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         }
         catch (Exception emitEx)
         {
-            logger.Log(LogLevel.Error, emitEx, "Failed to emit observability metrics after pipeline failure for {PipelineName}", typeof(TDefinition).Name);
+            ObservabilitySurfaceLogMessages.MetricsEmissionFailedAfterPipelineFailure(logger, emitEx, typeof(TDefinition).Name);
         }
     }
 
@@ -103,10 +103,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         var activity = tracer.StartActivity($"Node.Execute: {nodeDef.Id}");
         activity.SetTag("node.id", nodeDef.Id);
         activity.SetTag("node.type", nodeInstance.GetType().Name);
-        if (logger.IsEnabled(LogLevel.Information))
-        {
-            logger.Log(LogLevel.Information, "Executing node {NodeId} of type {NodeType}", nodeDef.Id, nodeInstance.GetType().Name);
-        }
+        ObservabilitySurfaceLogMessages.NodeExecuting(logger, nodeDef.Id, nodeInstance.GetType().Name);
 
         var observer = context.ExecutionObserver;
 
@@ -141,7 +138,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         if (autoObservabilityScope != null)
         {
             var contextKey = PipelineContextKeys.NodeObservabilityScope(nodeDef.Id);
-            logger.Log(LogLevel.Debug, "Storing AutoObservabilityScope in context with key: {ContextKey}", contextKey);
+            ObservabilitySurfaceLogMessages.AutoObservabilityScopeStored(logger, contextKey);
             context.Items[contextKey] = autoObservabilityScope;
         }
 
@@ -157,7 +154,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
     public NodeExecutionCompleted CompleteNodeSuccess(PipelineContext context, NodeObservationScope scope)
     {
         var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
-        logger.Log(LogLevel.Information, "Finished executing node {NodeId}", scope.NodeId);
+        ObservabilitySurfaceLogMessages.NodeFinished(logger, scope.NodeId);
         var duration = DateTimeOffset.UtcNow - scope.StartTime;
 
         // Check if AutoObservabilityScope recorded a failure
@@ -184,7 +181,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
     public NodeExecutionCompleted CompleteNodeFailure(PipelineContext context, NodeObservationScope scope, Exception ex)
     {
         var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
-        logger.Log(LogLevel.Error, ex, "Node {NodeId} failed", scope.NodeId);
+        ObservabilitySurfaceLogMessages.NodeFailed(logger, ex, scope.NodeId);
         var duration = DateTimeOffset.UtcNow - scope.StartTime;
         var completed = new NodeExecutionCompleted(scope.NodeId, scope.NodeType, duration, false, ex);
 

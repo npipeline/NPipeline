@@ -35,11 +35,11 @@ namespace NPipeline.Connectors.Json;
 ///         </list>
 ///     </para>
 ///     <para>
-    ///         Data mapping is performed using either:
+///         Data mapping is performed using either:
 ///         <list type="bullet">
-    ///             <item>
-    ///                 <description>Attribute-based mapping using Column/JsonPropertyName attributes</description>
-    ///             </item>
+///             <item>
+///                 <description>Attribute-based mapping using Column/JsonPropertyName attributes</description>
+///             </item>
 ///             <item>
 ///                 <description>Explicit <see cref="JsonRow" /> mapper delegate supplied by the caller</description>
 ///             </item>
@@ -200,6 +200,7 @@ public sealed class JsonSourceNode<T> : SourceNode<T>
         {
             // Use UTF-8 encoding without BOM
             using var reader = new StreamReader(stream, new UTF8Encoding(false), true, config.BufferSize);
+
             await foreach (var item in ReadNdjson(reader, config, cancellationToken).ConfigureAwait(false))
             {
                 yield return item;
@@ -224,7 +225,8 @@ public sealed class JsonSourceNode<T> : SourceNode<T>
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            T? result = MapJsonElement(item, config, cancellationToken);
+            var result = MapJsonElement(item, config, cancellationToken);
+
             if (result is not null)
                 yield return result;
         }
@@ -250,8 +252,9 @@ public sealed class JsonSourceNode<T> : SourceNode<T>
             {
                 var jsonDoc = JsonDocument.Parse(line, new JsonDocumentOptions
                 {
-                    AllowTrailingCommas = true
+                    AllowTrailingCommas = true,
                 });
+
                 item = jsonDoc.RootElement;
             }
             catch (JsonException ex)
@@ -261,7 +264,8 @@ public sealed class JsonSourceNode<T> : SourceNode<T>
                     ex);
             }
 
-            T? result = MapJsonElement(item, config, cancellationToken);
+            var result = MapJsonElement(item, config, cancellationToken);
+
             if (result is not null)
                 yield return result;
         }

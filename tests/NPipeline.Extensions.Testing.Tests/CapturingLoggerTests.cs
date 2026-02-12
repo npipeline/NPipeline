@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using NPipeline.Observability.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace NPipeline.Extensions.Testing.Tests;
 
@@ -65,22 +65,21 @@ public class CapturingLoggerTests
         var logger = new CapturingLogger();
         var logLevel = LogLevel.Warning;
         var message = "Warning message";
-        var args = Array.Empty<object>();
 
         // Act
-        logger.Log(logLevel, null!, message, args);
+        logger.Log(logLevel, null!, message);
 
         // Assert
         logger.LogEntries.Should().HaveCount(1);
         var entry = logger.LogEntries[0];
         entry.LogLevel.Should().Be(logLevel);
         entry.Message.Should().Be(message);
-        entry.Args.Should().BeEquivalentTo(args);
+        entry.Args.Should().BeNull();
         entry.Exception.Should().BeNull();
     }
 
     [Fact]
-    public void Log_WithNullArgs_ShouldCaptureLogEntryWithEmptyArgs()
+    public void Log_WithNullArgs_ShouldCaptureLogEntryWithNullArgs()
     {
         // Arrange
         var logger = new CapturingLogger();
@@ -101,7 +100,7 @@ public class CapturingLoggerTests
     }
 
     [Fact]
-    public void Log_WithEmptyArgs_ShouldCaptureLogEntryWithEmptyArgs()
+    public void Log_WithEmptyArgs_ShouldCaptureLogEntryWithNullArgs()
     {
         // Arrange
         var logger = new CapturingLogger();
@@ -117,7 +116,7 @@ public class CapturingLoggerTests
         var entry = logger.LogEntries[0];
         entry.LogLevel.Should().Be(logLevel);
         entry.Message.Should().Be(message);
-        entry.Args.Should().BeEmpty();
+        entry.Args.Should().BeNull();
         entry.Exception.Should().BeNull();
     }
 
@@ -137,23 +136,23 @@ public class CapturingLoggerTests
     }
 
     [Fact]
-    public void Log_WithNullMessage_ShouldCaptureLogEntryWithNullMessage()
+    public void Log_WithNullMessage_ShouldCaptureLogEntryWithNullPlaceholder()
     {
         // Arrange
         var logger = new CapturingLogger();
         var logLevel = LogLevel.Information;
         string? message = null;
-        var args = new object[] { "value" };
 
         // Act
-        logger.Log(logLevel, message!, args);
+        logger.Log(logLevel, message!);
 
         // Assert
+        // Note: ILogger extension methods convert null messages to "[null]"
         logger.LogEntries.Should().HaveCount(1);
         var entry = logger.LogEntries[0];
         entry.LogLevel.Should().Be(logLevel);
-        entry.Message.Should().BeNull();
-        entry.Args.Should().BeEquivalentTo(args);
+        entry.Message.Should().Be("[null]");
+        entry.Args.Should().BeNull();
         entry.Exception.Should().BeNull();
     }
 
@@ -164,17 +163,16 @@ public class CapturingLoggerTests
         var logger = new CapturingLogger();
         var logLevel = LogLevel.Information;
         var message = string.Empty;
-        var args = new object[] { "value" };
 
         // Act
-        logger.Log(logLevel, message, args);
+        logger.Log(logLevel, message);
 
         // Assert
         logger.LogEntries.Should().HaveCount(1);
         var entry = logger.LogEntries[0];
         entry.LogLevel.Should().Be(logLevel);
         entry.Message.Should().BeEmpty();
-        entry.Args.Should().BeEquivalentTo(args);
+        entry.Args.Should().BeNull();
         entry.Exception.Should().BeNull();
     }
 
@@ -185,17 +183,16 @@ public class CapturingLoggerTests
         var logger = new CapturingLogger();
         var logLevel = LogLevel.Information;
         var message = "   ";
-        var args = new object[] { "value" };
 
         // Act
-        logger.Log(logLevel, message, args);
+        logger.Log(logLevel, message);
 
         // Assert
         logger.LogEntries.Should().HaveCount(1);
         var entry = logger.LogEntries[0];
         entry.LogLevel.Should().Be(logLevel);
         entry.Message.Should().Be("   ");
-        entry.Args.Should().BeEquivalentTo(args);
+        entry.Args.Should().BeNull();
         entry.Exception.Should().BeNull();
     }
 
@@ -317,24 +314,24 @@ public class CapturingLoggerTests
     }
 
     [Fact]
-    public void Log_WithNullMessageAndException_ShouldCaptureBothAsNull()
+    public void Log_WithNullMessageAndException_ShouldCaptureNullMessageAsPlaceholder()
     {
         // Arrange
         var logger = new CapturingLogger();
         var logLevel = LogLevel.Information;
         string? message = null;
         Exception? exception = null;
-        var args = Array.Empty<object>();
 
         // Act
-        logger.Log(logLevel, exception!, message!, args);
+        logger.Log(logLevel, exception!, message!);
 
         // Assert
+        // Note: ILogger extension methods convert null messages to "[null]"
         logger.LogEntries.Should().HaveCount(1);
         var entry = logger.LogEntries[0];
         entry.LogLevel.Should().Be(logLevel);
-        entry.Message.Should().BeNull();
-        entry.Args.Should().BeEmpty();
+        entry.Message.Should().Be("[null]");
+        entry.Args.Should().BeNull();
         entry.Exception.Should().BeNull();
     }
 }

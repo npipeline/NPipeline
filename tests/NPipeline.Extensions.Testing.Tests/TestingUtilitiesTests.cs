@@ -1,9 +1,9 @@
 using AwesomeAssertions;
+using Microsoft.Extensions.Logging;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Graph;
 using NPipeline.Nodes;
-using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Extensions.Testing.Tests;

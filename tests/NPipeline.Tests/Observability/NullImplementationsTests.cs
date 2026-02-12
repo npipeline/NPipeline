@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Microsoft.Extensions.Logging;
 using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
 
@@ -6,27 +7,27 @@ namespace NPipeline.Tests.Observability;
 
 public sealed class NullImplementationsTests
 {
-    #region NullPipelineLogger Tests
+    #region NullLogger Tests
 
     [Fact]
-    public void NullPipelineLogger_Instance_IsNotNull()
+    public void NullLogger_Instance_IsNotNull()
     {
         // Act & Assert
-        NullPipelineLogger.Instance.Should().NotBeNull();
+        NullLogger.Instance.Should().NotBeNull();
     }
 
     [Fact]
-    public void NullPipelineLogger_Instance_ReturnsSameInstance()
+    public void NullLogger_Instance_ReturnsSameInstance()
     {
         // Act & Assert
-        NullPipelineLogger.Instance.Should().BeSameAs(NullPipelineLogger.Instance);
+        NullLogger.Instance.Should().BeSameAs(NullLogger.Instance);
     }
 
     [Fact]
-    public void NullPipelineLogger_Log_WithMessage_DoesNotThrow()
+    public void NullLogger_Log_WithMessage_DoesNotThrow()
     {
         // Arrange
-        var logger = NullPipelineLogger.Instance;
+        var logger = NullLogger.Instance;
 
         // Act
         var act = () => logger.Log(LogLevel.Information, "test message");
@@ -36,10 +37,10 @@ public sealed class NullImplementationsTests
     }
 
     [Fact]
-    public void NullPipelineLogger_Log_WithMessageAndArgs_DoesNotThrow()
+    public void NullLogger_Log_WithMessageAndArgs_DoesNotThrow()
     {
         // Arrange
-        var logger = NullPipelineLogger.Instance;
+        var logger = NullLogger.Instance;
 
         // Act
         var act = () => logger.Log(LogLevel.Information, "test message {0}", "arg");
@@ -49,10 +50,10 @@ public sealed class NullImplementationsTests
     }
 
     [Fact]
-    public void NullPipelineLogger_Log_WithException_DoesNotThrow()
+    public void NullLogger_Log_WithException_DoesNotThrow()
     {
         // Arrange
-        var logger = NullPipelineLogger.Instance;
+        var logger = NullLogger.Instance;
         var ex = new InvalidOperationException("test");
 
         // Act
@@ -63,10 +64,10 @@ public sealed class NullImplementationsTests
     }
 
     [Fact]
-    public void NullPipelineLogger_IsEnabled_AlwaysReturnsFalse()
+    public void NullLogger_IsEnabled_AlwaysReturnsFalse()
     {
         // Arrange
-        var logger = NullPipelineLogger.Instance;
+        var logger = NullLogger.Instance;
 
         // Act & Assert
         logger.IsEnabled(LogLevel.Debug).Should().BeFalse();
@@ -77,40 +78,40 @@ public sealed class NullImplementationsTests
 
     #endregion
 
-    #region NullPipelineLoggerFactory Tests
+    #region NullLoggerFactory Tests
 
     [Fact]
-    public void NullPipelineLoggerFactory_Instance_IsNotNull()
+    public void NullLoggerFactory_Instance_IsNotNull()
     {
         // Act & Assert
-        NullPipelineLoggerFactory.Instance.Should().NotBeNull();
+        NullLoggerFactory.Instance.Should().NotBeNull();
     }
 
     [Fact]
-    public void NullPipelineLoggerFactory_Instance_ReturnsSameInstance()
+    public void NullLoggerFactory_Instance_ReturnsSameInstance()
     {
         // Act & Assert
-        NullPipelineLoggerFactory.Instance.Should().BeSameAs(NullPipelineLoggerFactory.Instance);
+        NullLoggerFactory.Instance.Should().BeSameAs(NullLoggerFactory.Instance);
     }
 
     [Fact]
-    public void NullPipelineLoggerFactory_CreateLogger_ReturnsNullLogger()
+    public void NullLoggerFactory_CreateLogger_ReturnsNullLogger()
     {
         // Arrange
-        var factory = NullPipelineLoggerFactory.Instance;
+        var factory = NullLoggerFactory.Instance;
 
         // Act
         var logger = factory.CreateLogger("test");
 
         // Assert
-        logger.Should().BeOfType<NullPipelineLogger>();
+        logger.Should().BeOfType<NullLogger>();
     }
 
     [Fact]
-    public void NullPipelineLoggerFactory_CreateLogger_WithDifferentNames_ReturnsSameInstance()
+    public void NullLoggerFactory_CreateLogger_WithDifferentNames_ReturnsSameInstance()
     {
         // Arrange
-        var factory = NullPipelineLoggerFactory.Instance;
+        var factory = NullLoggerFactory.Instance;
 
         // Act
         var logger1 = factory.CreateLogger("logger1");
@@ -118,7 +119,7 @@ public sealed class NullImplementationsTests
 
         // Assert
         logger1.Should().BeSameAs(logger2);
-        logger1.Should().BeSameAs(NullPipelineLogger.Instance);
+        logger1.Should().BeSameAs(NullLogger.Instance);
     }
 
     #endregion
@@ -244,7 +245,7 @@ public sealed class NullImplementationsTests
     public void NullImplementations_CanBeUsedTogether()
     {
         // Arrange
-        var loggerFactory = NullPipelineLoggerFactory.Instance;
+        var loggerFactory = NullLoggerFactory.Instance;
         var tracer = NullPipelineTracer.Instance;
 
         // Act

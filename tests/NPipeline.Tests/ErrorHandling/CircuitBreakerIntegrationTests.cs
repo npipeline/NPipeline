@@ -1,11 +1,11 @@
 using AwesomeAssertions;
 using FakeItEasy;
+using Microsoft.Extensions.Logging;
 using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Execution.Strategies;
 using NPipeline.Nodes;
-using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Tests.ErrorHandling;
@@ -16,11 +16,11 @@ namespace NPipeline.Tests.ErrorHandling;
 /// </summary>
 public class CircuitBreakerIntegrationTests
 {
-    private readonly IPipelineLogger _logger;
+    private readonly ILogger _logger;
 
     public CircuitBreakerIntegrationTests()
     {
-        _logger = A.Fake<IPipelineLogger>();
+        _logger = A.Fake<ILogger>();
     }
 
     [Fact]

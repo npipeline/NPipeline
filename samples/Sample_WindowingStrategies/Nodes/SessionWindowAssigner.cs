@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using NPipeline.Nodes;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
@@ -17,7 +18,7 @@ namespace Sample_WindowingStrategies.Nodes;
 public class SessionWindowAssigner : TransformNode<UserEvent, UserSession>
 {
     private readonly Queue<UserSession> _emittedSessions;
-    private readonly IPipelineLogger _logger;
+    private readonly ILogger _logger;
     private readonly int _maxEventsPerSession;
     private readonly Random _random;
     private readonly Dictionary<string, SessionState> _sessionStates;
@@ -29,11 +30,11 @@ public class SessionWindowAssigner : TransformNode<UserEvent, UserSession>
     /// <param name="sessionTimeout">The timeout period for session inactivity.</param>
     /// <param name="maxEventsPerSession">Maximum events per session before emitting.</param>
     /// <param name="logger">The pipeline logger for logging operations.</param>
-    public SessionWindowAssigner(TimeSpan sessionTimeout, int maxEventsPerSession = 10, IPipelineLogger? logger = null)
+    public SessionWindowAssigner(TimeSpan sessionTimeout, int maxEventsPerSession = 10, ILogger? logger = null)
     {
         _sessionTimeout = sessionTimeout;
         _maxEventsPerSession = maxEventsPerSession;
-        _logger = logger ?? NullPipelineLoggerFactory.Instance.CreateLogger(nameof(SessionWindowAssigner));
+        _logger = logger ?? NullLoggerFactory.Instance.CreateLogger(nameof(SessionWindowAssigner));
         _sessionStates = new Dictionary<string, SessionState>();
         _emittedSessions = new Queue<UserSession>();
         _random = new Random(42); // Fixed seed for reproducible results

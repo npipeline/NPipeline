@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using NPipeline.Configuration;
 using NPipeline.Observability.Logging;
 
@@ -10,7 +11,7 @@ namespace NPipeline.Execution.CircuitBreaking;
 internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
 {
     private readonly object _gate = new();
-    private readonly IPipelineLogger _logger;
+    private readonly ILogger _logger;
     private readonly Timer? _recoveryTimer;
     private readonly RollingWindow? _rollingWindow;
     private int _consecutiveFailures;
@@ -24,7 +25,7 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
     /// </summary>
     /// <param name="options">The circuit breaker configuration options.</param>
     /// <param name="logger">The logger for diagnostic information.</param>
-    public CircuitBreaker(PipelineCircuitBreakerOptions options, IPipelineLogger logger)
+    public CircuitBreaker(PipelineCircuitBreakerOptions options, ILogger logger)
     {
         Options = (options ?? throw new ArgumentNullException(nameof(options))).Validate();
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -196,7 +197,7 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
         if (_recoveryTimer is not null && Options.OpenDuration > TimeSpan.Zero)
             _recoveryTimer.Change(Options.OpenDuration, Timeout.InfiniteTimeSpan);
 
-        _logger.Log(LogLevel.Warning, "Circuit breaker transitioned from {PreviousState} to Open: {Reason}", previousState, reason);
+        CircuitBreakerLogMessages.TransitionedToOpen(_logger, previousState.ToString(), reason);
 
         return new CircuitBreakerExecutionResult(false, true, _state, reason);
     }
@@ -209,8 +210,7 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
         _halfOpenSuccesses = 0;
         _halfOpenAttempts = 0;
 
-        _logger.Log(LogLevel.Information, "Circuit breaker transitioned from {PreviousState} to Half-Open: {Reason}. Success threshold: {Threshold}",
-            previousState, reason, Options.HalfOpenSuccessThreshold);
+        CircuitBreakerLogMessages.TransitionedToHalfOpen(_logger, previousState.ToString(), reason, Options.HalfOpenSuccessThreshold);
 
         return new CircuitBreakerExecutionResult(true, true, _state, reason);
     }
@@ -230,8 +230,7 @@ internal sealed class CircuitBreaker : ICircuitBreaker, IDisposable
         // Stop recovery timer if it's running
         _recoveryTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 
-        _logger.Log(LogLevel.Information, "Circuit breaker transitioned from {PreviousState} to Closed: {Reason}. Metrics reset.",
-            previousState, reason);
+        CircuitBreakerLogMessages.TransitionedToClosed(_logger, previousState.ToString(), reason);
 
         return new CircuitBreakerExecutionResult(true, true, _state, reason);
     }

@@ -1,6 +1,6 @@
+using Microsoft.Extensions.Logging;
 using NPipeline.Connectors;
 using NPipeline.Connectors.Csv;
-using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Models;

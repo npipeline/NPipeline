@@ -6,7 +6,6 @@ using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Nodes;
 using NPipeline.Observability;
-using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
 
@@ -57,7 +56,7 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
         // Check for per-node retry options first
         if (context.Items.TryGetValue($"retryOptions::{nodeId}", out var perNodeOptions) && perNodeOptions is PipelineRetryOptions nodeOptions)
         {
-            logger.Log(LogLevel.Debug, "Node {NodeId}, Found per-node retry options: MaxRetries={MaxRetries}", nodeId, nodeOptions.MaxItemRetries);
+            ParallelExecutionStrategyLogMessages.PerNodeRetryOptionsFound(logger, nodeId, nodeOptions.MaxItemRetries);
             return nodeOptions;
         }
 
@@ -65,12 +64,12 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
         if (context.Items.TryGetValue(PipelineContextKeys.GlobalRetryOptions, out var globalOptions) &&
             globalOptions is PipelineRetryOptions globalRetryOptions)
         {
-            logger.Log(LogLevel.Debug, "Node {NodeId}, Using global retry options: MaxItemRetries={MaxRetries}", nodeId, globalRetryOptions.MaxItemRetries);
+            ParallelExecutionStrategyLogMessages.GlobalRetryOptionsUsed(logger, nodeId, globalRetryOptions.MaxItemRetries);
             return globalRetryOptions;
         }
 
         // Fall back to context retry options
-        logger.Log(LogLevel.Debug, "Node {NodeId}, Using context retry options: MaxItemRetries={MaxRetries}", nodeId, context.RetryOptions.MaxItemRetries);
+        ParallelExecutionStrategyLogMessages.ContextRetryOptionsUsed(logger, nodeId, context.RetryOptions.MaxItemRetries);
         return context.RetryOptions;
     }
 
@@ -121,7 +120,7 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
                 itemActivity?.RecordException(ex);
 
                 if (logger is not null)
-                    LogNodeFailure(logger, cached.NodeId, attempt + 1, ex);
+                    ParallelExecutionStrategyLogMessages.NodeFailure(logger, ex, cached.NodeId, attempt + 1);
 
                 if (node.ErrorHandler is null)
                     throw;
@@ -177,14 +176,6 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
     {
         metrics?.RecordRetry(attempt);
         observer?.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, attempt, exception));
-    }
-
-    private static void LogNodeFailure(IPipelineLogger logger, string nodeId, int attemptNumber, Exception exception)
-    {
-        if (!logger.IsEnabled(LogLevel.Debug))
-            return;
-
-        logger.Log(LogLevel.Debug, exception, "Node {NodeId} failed on attempt {Attempt}.", nodeId, attemptNumber);
     }
 
     /// <summary>

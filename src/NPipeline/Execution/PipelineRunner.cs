@@ -143,16 +143,13 @@ public sealed class PipelineRunner(
             if (graph.ErrorHandling.RetryOptions is not null)
             {
                 var logger = context.LoggerFactory.CreateLogger(nameof(PipelineRunner));
-
-                logger.Log(LogLevel.Debug, "Storing retry options in context.Items: MaxItemRetries={MaxItemRetries}",
-                    graph.ErrorHandling.RetryOptions.MaxItemRetries);
-
+                PipelineRunnerLogMessages.StoringRetryOptions(logger, graph.ErrorHandling.RetryOptions.MaxItemRetries);
                 context.Items[PipelineContextKeys.GlobalRetryOptions] = graph.ErrorHandling.RetryOptions;
             }
             else
             {
                 var logger = context.LoggerFactory.CreateLogger(nameof(PipelineRunner));
-                logger.Log(LogLevel.Debug, "graph.ErrorHandling.RetryOptions is null");
+                PipelineRunnerLogMessages.RetryOptionsNull(logger);
             }
 
             // Surface circuit breaker options to downstream execution strategies via context.Items.
@@ -171,7 +168,7 @@ public sealed class PipelineRunner(
                     var managerLogger = context.LoggerFactory.CreateLogger(nameof(CircuitBreakerManager));
                     var circuitBreakerManager = context.CreateAndRegister(new CircuitBreakerManager(managerLogger, memoryOptions));
                     context.Items[PipelineContextKeys.CircuitBreakerManager] = circuitBreakerManager;
-                    managerLogger.Log(LogLevel.Debug, "CircuitBreakerManager created and stored in context");
+                    PipelineRunnerLogMessages.CircuitBreakerManagerCreated(managerLogger);
                 }
                 else
                 {
@@ -312,11 +309,7 @@ public sealed class PipelineRunner(
 
                     // Log the exception type and message for debugging
                     var logger = context.LoggerFactory.CreateLogger(nameof(PipelineRunner));
-
-                    logger.Log(
-                        LogLevel.Warning,
-                        "Node {NodeId} failed with exception type {ExceptionType}: {ExceptionMessage}",
-                        nodeDef.Id, ex.GetType().Name, ex.Message);
+                    PipelineRunnerLogMessages.NodeFailed(logger, nodeDef.Id, ex.GetType().Name, ex.Message);
 
                     // Check if this is a RestartNode-related configuration issue
                     // This provides a runtime safety net for cases where analyzers might miss issues
@@ -331,22 +324,10 @@ public sealed class PipelineRunner(
                             effectiveRetries = grc;
 
                         if (effectiveRetries.MaxNodeRestartAttempts <= 0)
-                        {
-                            logger.Log(
-                                LogLevel.Warning,
-                                "Node {NodeId} uses ResilientExecutionStrategy but MaxNodeRestartAttempts is {MaxAttempts} (must be > 0). " +
-                                "Restart functionality is disabled. Configure: builder.WithRetryOptions(o => o.WithMaxNodeRestartAttempts(3))",
-                                nodeDef.Id, effectiveRetries.MaxNodeRestartAttempts);
-                        }
+                            PipelineRunnerLogMessages.ResilientStrategyWithoutRestartAttempts(logger, nodeDef.Id, effectiveRetries.MaxNodeRestartAttempts);
 
                         if (effectiveRetries.MaxMaterializedItems == null)
-                        {
-                            logger.Log(
-                                LogLevel.Warning,
-                                "Node {NodeId} has MaxMaterializedItems set to null. " +
-                                "Restart functionality is disabled for streaming inputs. Configure: builder.WithRetryOptions(o => o.WithMaxMaterializedItems(1000))",
-                                nodeDef.Id);
-                        }
+                            PipelineRunnerLogMessages.ResilientStrategyWithoutMaterializedItems(logger, nodeDef.Id);
                     }
 
                     // Check if this is a parallel execution scenario where we want to preserve the original exception
@@ -356,22 +337,14 @@ public sealed class PipelineRunner(
                     if (isParallelExecution)
                     {
                         // For parallel execution, preserve the original exception type for correct exception propagation semantics
-                        logger.Log(
-                            LogLevel.Warning,
-                            "Preserving original exception {ExceptionType} for parallel execution of node {NodeId}",
-                            ex.GetType().Name, nodeDef.Id);
-
+                        PipelineRunnerLogMessages.PreservingExceptionForParallelExecution(logger, ex.GetType().Name, nodeDef.Id);
                         throw;
                     }
 
                     // Preserve cancellation semantics: if the operation was cancelled, rethrow OperationCanceledException
                     if (ex is OperationCanceledException)
                     {
-                        logger.Log(
-                            LogLevel.Warning,
-                            "Preserving OperationCanceledException for node {NodeId}",
-                            nodeDef.Id);
-
+                        PipelineRunnerLogMessages.PreservingCancellationException(logger, nodeDef.Id);
                         throw;
                     }
 
@@ -379,11 +352,7 @@ public sealed class PipelineRunner(
                     // This maintains the exception hierarchy while preserving the original exception as inner
                     if (ex is not PipelineException)
                     {
-                        logger.Log(
-                            LogLevel.Warning,
-                            "Wrapping non-PipelineException {ExceptionType} in PipelineExecutionException for node {NodeId}",
-                            ex.GetType().Name, nodeDef.Id);
-
+                        PipelineRunnerLogMessages.WrappingException(logger, ex.GetType().Name, nodeDef.Id);
                         throw new PipelineExecutionException(ErrorMessages.PipelineExecutionFailedAtNode(nodeDef.Id, ex), ex);
                     }
 

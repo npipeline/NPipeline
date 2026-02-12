@@ -64,5 +64,5 @@ public enum JsonPropertyNamingPolicy
     ///     This policy preserves the original property names exactly as they are defined
     ///     in the .NET type or as they appear in the JSON data.
     /// </remarks>
-    AsIs
+    AsIs,
 }

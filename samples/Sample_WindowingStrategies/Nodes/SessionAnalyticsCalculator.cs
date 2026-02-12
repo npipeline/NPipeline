@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using NPipeline.Nodes;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
@@ -17,15 +18,15 @@ namespace Sample_WindowingStrategies.Nodes;
 /// </summary>
 public class SessionAnalyticsCalculator : TransformNode<IReadOnlyCollection<UserSession>, SessionMetrics>
 {
-    private readonly IPipelineLogger _logger;
+    private readonly ILogger _logger;
 
     /// <summary>
     ///     Initializes a new instance of <see cref="SessionAnalyticsCalculator" /> class.
     /// </summary>
     /// <param name="logger">The pipeline logger for logging operations.</param>
-    public SessionAnalyticsCalculator(IPipelineLogger? logger = null)
+    public SessionAnalyticsCalculator(ILogger? logger = null)
     {
-        _logger = logger ?? NullPipelineLoggerFactory.Instance.CreateLogger(nameof(SessionAnalyticsCalculator));
+        _logger = logger ?? NullLoggerFactory.Instance.CreateLogger(nameof(SessionAnalyticsCalculator));
     }
 
     /// <summary>

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using NPipeline.Nodes;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
@@ -18,7 +19,7 @@ public class DynamicWindowAssigner : TransformNode<UserSession, IReadOnlyList<Us
 {
     private readonly double _activityThreshold;
     private readonly double _diversityThreshold;
-    private readonly IPipelineLogger _logger;
+    private readonly ILogger _logger;
     private readonly TimeSpan _maxWindowDuration;
     private readonly int _maxWindowSize;
     private readonly int _minWindowSize;
@@ -39,14 +40,14 @@ public class DynamicWindowAssigner : TransformNode<UserSession, IReadOnlyList<Us
         double activityThreshold = 0.7,
         double diversityThreshold = 0.6,
         TimeSpan? maxWindowDuration = null,
-        IPipelineLogger? logger = null)
+        ILogger? logger = null)
     {
         _minWindowSize = minWindowSize;
         _maxWindowSize = maxWindowSize;
         _activityThreshold = activityThreshold;
         _diversityThreshold = diversityThreshold;
         _maxWindowDuration = maxWindowDuration ?? TimeSpan.FromMinutes(30);
-        _logger = logger ?? NullPipelineLoggerFactory.Instance.CreateLogger(nameof(DynamicWindowAssigner));
+        _logger = logger ?? NullLoggerFactory.Instance.CreateLogger(nameof(DynamicWindowAssigner));
         _sessionBuffer = [];
         _totalEventsInWindow = 0;
     }
