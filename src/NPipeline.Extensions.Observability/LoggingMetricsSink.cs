@@ -34,12 +34,6 @@ public sealed class LoggingMetricsSink : IMetricsSink
             ? LogLevel.Information
             : LogLevel.Warning;
 
-        // Early exit if logging is disabled for this level
-        if (!_logger.IsEnabled(logLevel) && !_logger.IsEnabled(LogLevel.Debug))
-        {
-            return Task.CompletedTask;
-        }
-
         using (_logger.BeginScope(new Dictionary<string, object?>
         {
             ["NodeId"] = nodeMetrics.NodeId,
@@ -56,48 +50,39 @@ public sealed class LoggingMetricsSink : IMetricsSink
             {
                 if (nodeMetrics.AverageItemProcessingMs.HasValue)
                 {
-                    if (_logger.IsEnabled(logLevel))
-                    {
-                        _logger.Log(
-                            logLevel,
-                            "Node {NodeId} completed successfully. Processed {ItemsProcessed} items, emitted {ItemsEmitted} items in {DurationMs}ms. Throughput: {Throughput:F2} items/sec (Avg: {AverageMs:F2} ms/item)",
-                            nodeMetrics.NodeId,
-                            nodeMetrics.ItemsProcessed,
-                            nodeMetrics.ItemsEmitted,
-                            nodeMetrics.DurationMs,
-                            nodeMetrics.ThroughputItemsPerSec ?? 0,
-                            nodeMetrics.AverageItemProcessingMs.Value);
-                    }
+                    _logger.Log(
+                        logLevel,
+                        "Node {NodeId} completed successfully. Processed {ItemsProcessed} items, emitted {ItemsEmitted} items in {DurationMs}ms. Throughput: {Throughput:F2} items/sec (Avg: {AverageMs:F2} ms/item)",
+                        nodeMetrics.NodeId,
+                        nodeMetrics.ItemsProcessed,
+                        nodeMetrics.ItemsEmitted,
+                        nodeMetrics.DurationMs,
+                        nodeMetrics.ThroughputItemsPerSec ?? 0,
+                        nodeMetrics.AverageItemProcessingMs.Value);
                 }
                 else
                 {
-                    if (_logger.IsEnabled(logLevel))
-                    {
-                        _logger.Log(
-                            logLevel,
-                            "Node {NodeId} completed successfully. Processed {ItemsProcessed} items, emitted {ItemsEmitted} items in {DurationMs}ms. Throughput: {Throughput:F2} items/sec",
-                            nodeMetrics.NodeId,
-                            nodeMetrics.ItemsProcessed,
-                            nodeMetrics.ItemsEmitted,
-                            nodeMetrics.DurationMs,
-                            nodeMetrics.ThroughputItemsPerSec ?? 0);
-                    }
+                    _logger.Log(
+                        logLevel,
+                        "Node {NodeId} completed successfully. Processed {ItemsProcessed} items, emitted {ItemsEmitted} items in {DurationMs}ms. Throughput: {Throughput:F2} items/sec",
+                        nodeMetrics.NodeId,
+                        nodeMetrics.ItemsProcessed,
+                        nodeMetrics.ItemsEmitted,
+                        nodeMetrics.DurationMs,
+                        nodeMetrics.ThroughputItemsPerSec ?? 0);
                 }
             }
             else
             {
-                if (_logger.IsEnabled(logLevel))
-                {
-                    _logger.Log(
-                        logLevel,
-                        "Node {NodeId} failed. Processed {ItemsProcessed} items before failure. Exception: {ExceptionMessage}",
-                        nodeMetrics.NodeId,
-                        nodeMetrics.ItemsProcessed,
-                        nodeMetrics.Exception?.Message ?? "Unknown error");
-                }
+                _logger.Log(
+                    logLevel,
+                    "Node {NodeId} failed. Processed {ItemsProcessed} items before failure. Exception: {ExceptionMessage}",
+                    nodeMetrics.NodeId,
+                    nodeMetrics.ItemsProcessed,
+                    nodeMetrics.Exception?.Message ?? "Unknown error");
             }
 
-            if (nodeMetrics.RetryCount > 0 && _logger.IsEnabled(LogLevel.Information))
+            if (nodeMetrics.RetryCount > 0)
             {
                 _logger.Log(
                     LogLevel.Information,
@@ -106,7 +91,7 @@ public sealed class LoggingMetricsSink : IMetricsSink
                     nodeMetrics.RetryCount);
             }
 
-            if (nodeMetrics.PeakMemoryUsageMb.HasValue && _logger.IsEnabled(LogLevel.Debug))
+            if (nodeMetrics.PeakMemoryUsageMb.HasValue)
             {
                 _logger.Log(
                     LogLevel.Debug,
@@ -115,7 +100,7 @@ public sealed class LoggingMetricsSink : IMetricsSink
                     nodeMetrics.PeakMemoryUsageMb.Value);
             }
 
-            if (nodeMetrics.ProcessorTimeMs.HasValue && _logger.IsEnabled(LogLevel.Debug))
+            if (nodeMetrics.ProcessorTimeMs.HasValue)
             {
                 _logger.Log(
                     LogLevel.Debug,
@@ -124,7 +109,7 @@ public sealed class LoggingMetricsSink : IMetricsSink
                     nodeMetrics.ProcessorTimeMs.Value);
             }
 
-            if (nodeMetrics.AverageItemProcessingMs.HasValue && _logger.IsEnabled(LogLevel.Debug))
+            if (nodeMetrics.AverageItemProcessingMs.HasValue)
             {
                 _logger.Log(
                     LogLevel.Debug,

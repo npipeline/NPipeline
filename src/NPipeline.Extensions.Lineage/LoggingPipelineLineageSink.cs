@@ -39,12 +39,6 @@ public sealed class LoggingPipelineLineageSink : IPipelineLineageSink
         if (report == null)
             return Task.CompletedTask;
 
-        // Early exit if logging is disabled
-        if (!_logger.IsEnabled(LogLevel.Information))
-        {
-            return Task.CompletedTask;
-        }
-
         try
         {
             var json = JsonSerializer.Serialize(report, _jsonOptions);
