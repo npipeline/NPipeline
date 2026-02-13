@@ -67,6 +67,11 @@ public readonly record struct StorageScheme
     public static StorageScheme S3 => new("s3");
 
     /// <summary>
+    ///     Gets a <see cref="StorageScheme" /> instance representing "azure" scheme.
+    /// </summary>
+    public static StorageScheme Azure => new("azure");
+
+    /// <summary>
     ///     Attempts to parse the specified string into a <see cref="StorageScheme" /> instance.
     /// </summary>
     /// <param name="value">The string to parse.</param>

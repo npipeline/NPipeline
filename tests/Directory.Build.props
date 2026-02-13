@@ -1,11 +1,11 @@
 <Project>
-  <PropertyGroup>
-    <!-- Suppress logging-related CA warnings in test projects - verbose logging is acceptable in tests -->
-    <!-- CA1873: Expensive argument evaluation in logging calls -->
-    <!-- CA1848: Use LoggerMessage delegates instead of Log calls -->
-    <!-- CA2253: Named placeholders should not be numeric -->
-    <!-- CA2254: Message template should not vary -->
-    <!-- CA1727: Use PascalCase for named placeholders -->
-    <NoWarn>$(NoWarn);CA1873;CA1848;CA2253;CA2254;CA1727</NoWarn>
-  </PropertyGroup>
+    <PropertyGroup>
+        <!-- Suppress logging-related CA warnings in test projects - verbose logging is acceptable in tests -->
+        <!-- CA1873: Expensive argument evaluation in logging calls -->
+        <!-- CA1848: Use LoggerMessage delegates instead of Log calls -->
+        <!-- CA2253: Named placeholders should not be numeric -->
+        <!-- CA2254: Message template should not vary -->
+        <!-- CA1727: Use PascalCase for named placeholders -->
+        <NoWarn>$(NoWarn);CA1873;CA1848;CA2253;CA2254;CA1727</NoWarn>
+    </PropertyGroup>
 </Project>

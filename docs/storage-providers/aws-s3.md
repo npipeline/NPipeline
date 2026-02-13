@@ -1,7 +1,7 @@
 ---
 title: AWS S3 Storage Provider
 description: Read from and write to Amazon S3 and S3-compatible storage services using the AWS S3 storage provider.
-sidebar_position: 1
+sidebar_position: 3
 ---
 
 ## AWS S3 Storage Provider
@@ -383,7 +383,7 @@ using NPipeline.Connectors;
 using NPipeline.StorageProviders.Aws;
 
 var provider = new S3StorageProvider(new S3ClientFactory(new S3StorageProviderOptions()), new S3StorageProviderOptions());
-var uri = new StorageUri("s3://my-bucket/data.csv");
+var uri = StorageUri.Parse("s3://my-bucket/data.csv");
 
 using var stream = await provider.OpenReadAsync(uri);
 using var reader = new StreamReader(stream);
@@ -394,7 +394,7 @@ var content = await reader.ReadToEndAsync();
 
 ```csharp
 var provider = new S3StorageProvider(new S3ClientFactory(new S3StorageProviderOptions()), new S3StorageProviderOptions());
-var uri = new StorageUri("s3://my-bucket/output.csv");
+var uri = StorageUri.Parse("s3://my-bucket/output.csv");
 
 using var stream = await provider.OpenWriteAsync(uri);
 using var writer = new StreamWriter(stream);
@@ -406,7 +406,7 @@ await writer.WriteLineAsync("1,Item A,100");
 
 ```csharp
 var provider = new S3StorageProvider(new S3ClientFactory(new S3StorageProviderOptions()), new S3StorageProviderOptions());
-var uri = new StorageUri("s3://my-bucket/data/");
+var uri = StorageUri.Parse("s3://my-bucket/data/");
 
 // List all files recursively
 await foreach (var item in provider.ListAsync(uri, recursive: true))
@@ -426,7 +426,7 @@ await foreach (var item in provider.ListAsync(uri, recursive: false))
 
 ```csharp
 var provider = new S3StorageProvider(new S3ClientFactory(new S3StorageProviderOptions()), new S3StorageProviderOptions());
-var uri = new StorageUri("s3://my-bucket/data.csv");
+var uri = StorageUri.Parse("s3://my-bucket/data.csv");
 
 var exists = await provider.ExistsAsync(uri);
 if (exists)
@@ -443,7 +443,7 @@ else
 
 ```csharp
 var provider = new S3StorageProvider(new S3ClientFactory(new S3StorageProviderOptions()), new S3StorageProviderOptions());
-var uri = new StorageUri("s3://my-bucket/data.csv");
+var uri = StorageUri.Parse("s3://my-bucket/data.csv");
 
 var metadata = await provider.GetMetadataAsync(uri);
 if (metadata != null)

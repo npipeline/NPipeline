@@ -56,6 +56,11 @@ The following storage providers are available:
   - Stream-based I/O for efficient handling of large files
   - Flexible authentication via AWS credential chain or explicit credentials
   - Multipart upload for large files (configurable threshold)
+- **[Azure Blob Storage](./azure-blob.md)**: Read from and write to Azure Blob Storage.
+  - Supports Azure Blob Storage and Azurite emulator for local development
+  - Stream-based I/O for efficient handling of large files
+  - Flexible authentication via Azure credential chain, connection string, SAS token, or explicit credentials
+  - Block blob upload for large files (configurable threshold)
 
 ## Usage Pattern
 
@@ -107,6 +112,22 @@ var serviceProvider = services.BuildServiceProvider();
 var provider = serviceProvider.GetRequiredService<S3StorageProvider>();
 ```
 
+```csharp
+using Microsoft.Extensions.DependencyInjection;
+using NPipeline.StorageProviders.Azure;
+
+var services = new ServiceCollection();
+
+services.AddAzureBlobStorageProvider(options =>
+{
+    options.UseDefaultCredentialChain = true;
+    options.BlockBlobUploadThresholdBytes = 64 * 1024 * 1024; // 64 MB
+});
+
+var serviceProvider = services.BuildServiceProvider();
+var provider = serviceProvider.GetRequiredService<AzureBlobStorageProvider>();
+```
+
 ## Creating Custom Storage Providers
 
 You can implement custom storage providers by implementing the `IStorageProvider` interface from `NPipeline.StorageProviders`:
@@ -134,5 +155,6 @@ public class CustomStorageProvider : IStorageProvider
 
 - **[Storage Provider Interface](./storage-provider.md)**: Learn about the storage abstraction layer
 - **[AWS S3 Storage Provider](./aws-s3.md)**: Learn how to use the S3 storage provider
+- **[Azure Blob Storage Provider](./azure-blob.md)**: Learn how to use the Azure Blob Storage provider
 - **[CSV Connector](../connectors/csv.md)**: See storage providers in action with CSV files
 - **[Installation](../getting-started/installation.md)**: Review installation options for storage provider packages

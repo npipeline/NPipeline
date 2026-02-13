@@ -187,6 +187,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.StorageProviders.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.StorageProviders.Aws.Tests", "tests\NPipeline.StorageProviders.Aws.Tests\NPipeline.StorageProviders.Aws.Tests.csproj", "{1E8BA9BC-2FCA-476F-8635-9CCC9A82CB06}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.StorageProviders.Azure", "src\NPipeline.StorageProviders.Azure\NPipeline.StorageProviders.Azure.csproj", "{57DF42E8-F6B5-4CB6-BE8E-E4A25EC463A8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.StorageProviders.Azure.Tests", "tests\NPipeline.StorageProviders.Azure.Tests\NPipeline.StorageProviders.Azure.Tests.csproj", "{3012D246-ED8C-4120-9E6D-C5E79F1CF02D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample_AzureStorageProvider", "samples\Sample_AzureStorageProvider\Sample_AzureStorageProvider.csproj", "{BA49B347-79C3-426E-AA14-6724C832718F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -537,6 +543,18 @@ Global
 		{1E8BA9BC-2FCA-476F-8635-9CCC9A82CB06}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1E8BA9BC-2FCA-476F-8635-9CCC9A82CB06}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1E8BA9BC-2FCA-476F-8635-9CCC9A82CB06}.Release|Any CPU.Build.0 = Release|Any CPU
+		{57DF42E8-F6B5-4CB6-BE8E-E4A25EC463A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{57DF42E8-F6B5-4CB6-BE8E-E4A25EC463A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{57DF42E8-F6B5-4CB6-BE8E-E4A25EC463A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{57DF42E8-F6B5-4CB6-BE8E-E4A25EC463A8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3012D246-ED8C-4120-9E6D-C5E79F1CF02D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3012D246-ED8C-4120-9E6D-C5E79F1CF02D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3012D246-ED8C-4120-9E6D-C5E79F1CF02D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3012D246-ED8C-4120-9E6D-C5E79F1CF02D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BA49B347-79C3-426E-AA14-6724C832718F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BA49B347-79C3-426E-AA14-6724C832718F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BA49B347-79C3-426E-AA14-6724C832718F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BA49B347-79C3-426E-AA14-6724C832718F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{C539C2BB-5FF5-45B1-9D16-C8E0F2FBDD41} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
@@ -624,5 +642,8 @@ Global
 		{0E505902-6545-496B-849F-14BFD47DD848} = {2117093A-CC66-4607-8DBC-F692E0642ADD}
 		{856F8AD0-3598-42B5-8348-DD63D4D11602} = {4DAACF4B-8664-4A7C-9AC7-1E2BA02124F7}
 		{1E8BA9BC-2FCA-476F-8635-9CCC9A82CB06} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
+		{57DF42E8-F6B5-4CB6-BE8E-E4A25EC463A8} = {4DAACF4B-8664-4A7C-9AC7-1E2BA02124F7}
+		{3012D246-ED8C-4120-9E6D-C5E79F1CF02D} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
+		{BA49B347-79C3-426E-AA14-6724C832718F} = {2117093A-CC66-4607-8DBC-F692E0642ADD}
 	EndGlobalSection
 EndGlobal
