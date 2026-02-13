@@ -11,6 +11,55 @@ public sealed class LoggingPipelineMetricsSink : IPipelineMetricsSink
 {
     private readonly ILogger _logger;
 
+    // LoggerMessage delegates for high-performance logging - pipeline level
+    private static readonly Action<ILogger, string, Guid, long, long, Exception?> s_logPipelineSuccess =
+        LoggerMessage.Define<string, Guid, long, long>(
+            LogLevel.Information,
+            new EventId(1, nameof(LoggingPipelineMetricsSink)),
+            "Pipeline {PipelineName} (RunId: {RunId}) completed successfully. Processed {TotalItemsProcessed} items in {DurationMs}ms");
+
+    private static readonly Action<ILogger, string, Guid, long, string, Exception?> s_logPipelineFailure =
+        LoggerMessage.Define<string, Guid, long, string>(
+            LogLevel.Error,
+            new EventId(2, nameof(LoggingPipelineMetricsSink)),
+            "Pipeline {PipelineName} (RunId: {RunId}) failed. Processed {TotalItemsProcessed} items before failure. Exception: {ExceptionMessage}");
+
+    private static readonly Action<ILogger, string, long, long, long, Exception?> s_logNodeSuccess =
+        LoggerMessage.Define<string, long, long, long>(
+            LogLevel.Information,
+            new EventId(3, nameof(LoggingPipelineMetricsSink)),
+            "  Node {NodeId}: Processed {ItemsProcessed} items, emitted {ItemsEmitted} items in {DurationMs}ms");
+
+    private static readonly Action<ILogger, string, long, string, Exception?> s_logNodeFailure =
+        LoggerMessage.Define<string, long, string>(
+            LogLevel.Warning,
+            new EventId(4, nameof(LoggingPipelineMetricsSink)),
+            "  Node {NodeId}: Failed after processing {ItemsProcessed} items. Exception: {ExceptionMessage}");
+
+    private static readonly Action<ILogger, string, int, Exception?> s_logNodeRetryCount =
+        LoggerMessage.Define<string, int>(
+            LogLevel.Information,
+            new EventId(5, nameof(LoggingPipelineMetricsSink)),
+            "    Node {NodeId} required {RetryCount} retry attempts");
+
+    private static readonly Action<ILogger, string, double, Exception?> s_logNodeThroughput =
+        LoggerMessage.Define<string, double>(
+            LogLevel.Debug,
+            new EventId(6, nameof(LoggingPipelineMetricsSink)),
+            "    Node {NodeId} throughput: {Throughput:F2} items/sec");
+
+    private static readonly Action<ILogger, string, double, Exception?> s_logNodeAverageTime =
+        LoggerMessage.Define<string, double>(
+            LogLevel.Debug,
+            new EventId(7, nameof(LoggingPipelineMetricsSink)),
+            "    Node {NodeId} average item time: {AverageMs:F2} ms");
+
+    private static readonly Action<ILogger, double, Exception?> s_logOverallThroughput =
+        LoggerMessage.Define<double>(
+            LogLevel.Information,
+            new EventId(8, nameof(LoggingPipelineMetricsSink)),
+            "Overall pipeline throughput: {Throughput:F2} items/sec");
+
     /// <summary>
     ///     Initializes a new instance of the <see cref="LoggingPipelineMetricsSink" /> class.
     /// </summary>
@@ -30,92 +79,72 @@ public sealed class LoggingPipelineMetricsSink : IPipelineMetricsSink
     {
         ArgumentNullException.ThrowIfNull(pipelineMetrics);
 
-        var logLevel = pipelineMetrics.Success
-            ? LogLevel.Information
-            : LogLevel.Error;
-
         using (_logger.BeginScope(new Dictionary<string, object?>
-               {
-                   ["PipelineName"] = pipelineMetrics.PipelineName,
-                   ["RunId"] = pipelineMetrics.RunId,
-                   ["Success"] = pipelineMetrics.Success,
-                   ["TotalItemsProcessed"] = pipelineMetrics.TotalItemsProcessed,
-                   ["DurationMs"] = pipelineMetrics.DurationMs,
-               }))
+        {
+            ["PipelineName"] = pipelineMetrics.PipelineName,
+            ["RunId"] = pipelineMetrics.RunId,
+            ["Success"] = pipelineMetrics.Success,
+            ["TotalItemsProcessed"] = pipelineMetrics.TotalItemsProcessed,
+            ["DurationMs"] = pipelineMetrics.DurationMs,
+        }))
         {
             if (pipelineMetrics.Success)
             {
-                _logger.Log(
-                    logLevel,
-                    "Pipeline {PipelineName} (RunId: {RunId}) completed successfully. Processed {TotalItemsProcessed} items in {DurationMs}ms",
+                s_logPipelineSuccess(
+                    _logger,
                     pipelineMetrics.PipelineName,
                     pipelineMetrics.RunId,
                     pipelineMetrics.TotalItemsProcessed,
-                    pipelineMetrics.DurationMs);
+                    pipelineMetrics.DurationMs ?? 0,
+                    null);
             }
             else
             {
-                _logger.Log(
-                    logLevel,
-                    "Pipeline {PipelineName} (RunId: {RunId}) failed. Processed {TotalItemsProcessed} items before failure. Exception: {ExceptionMessage}",
+                s_logPipelineFailure(
+                    _logger,
                     pipelineMetrics.PipelineName,
                     pipelineMetrics.RunId,
                     pipelineMetrics.TotalItemsProcessed,
-                    pipelineMetrics.Exception?.Message ?? "Unknown error");
+                    pipelineMetrics.Exception?.Message ?? "Unknown error",
+                    null);
             }
 
             // Log node-level metrics
             foreach (var nodeMetric in pipelineMetrics.NodeMetrics)
             {
-                var nodeLogLevel = nodeMetric.Success
-                    ? LogLevel.Information
-                    : LogLevel.Warning;
-
                 if (nodeMetric.Success)
                 {
-                    _logger.Log(
-                        nodeLogLevel,
-                        "  Node {NodeId}: Processed {ItemsProcessed} items, emitted {ItemsEmitted} items in {DurationMs}ms",
+                    s_logNodeSuccess(
+                        _logger,
                         nodeMetric.NodeId,
                         nodeMetric.ItemsProcessed,
                         nodeMetric.ItemsEmitted,
-                        nodeMetric.DurationMs);
+                        nodeMetric.DurationMs ?? 0,
+                        null);
                 }
                 else
                 {
-                    _logger.Log(
-                        nodeLogLevel,
-                        "  Node {NodeId}: Failed after processing {ItemsProcessed} items. Exception: {ExceptionMessage}",
+                    s_logNodeFailure(
+                        _logger,
                         nodeMetric.NodeId,
                         nodeMetric.ItemsProcessed,
-                        nodeMetric.Exception?.Message ?? "Unknown error");
+                        nodeMetric.Exception?.Message ?? "Unknown error",
+                        null);
                 }
 
                 if (nodeMetric.RetryCount > 0)
                 {
-                    _logger.Log(
-                        LogLevel.Information,
-                        "    Node {NodeId} required {RetryCount} retry attempts",
-                        nodeMetric.NodeId,
-                        nodeMetric.RetryCount);
+                    s_logNodeRetryCount(_logger, nodeMetric.NodeId, nodeMetric.RetryCount, null);
                 }
 
                 if (nodeMetric.ThroughputItemsPerSec.HasValue)
                 {
-                    _logger.Log(
-                        LogLevel.Debug,
-                        "    Node {NodeId} throughput: {Throughput:F2} items/sec",
-                        nodeMetric.NodeId,
-                        nodeMetric.ThroughputItemsPerSec.Value);
+                    s_logNodeThroughput(_logger, nodeMetric.NodeId, nodeMetric.ThroughputItemsPerSec.Value, null);
                 }
 
                 if (nodeMetric.AverageItemProcessingMs.HasValue)
                 {
-                    _logger.Log(
-                        LogLevel.Debug,
-                        "    Node {NodeId} average item time: {AverageMs:F2} ms",
-                        nodeMetric.NodeId,
-                        nodeMetric.AverageItemProcessingMs.Value);
+                    s_logNodeAverageTime(_logger, nodeMetric.NodeId, nodeMetric.AverageItemProcessingMs.Value, null);
                 }
             }
 
@@ -124,10 +153,7 @@ public sealed class LoggingPipelineMetricsSink : IPipelineMetricsSink
             {
                 var overallThroughput = pipelineMetrics.TotalItemsProcessed / (pipelineMetrics.DurationMs.Value / 1000.0);
 
-                _logger.Log(
-                    LogLevel.Information,
-                    "Overall pipeline throughput: {Throughput:F2} items/sec",
-                    overallThroughput);
+                s_logOverallThroughput(_logger, overallThroughput, null);
             }
         }
 

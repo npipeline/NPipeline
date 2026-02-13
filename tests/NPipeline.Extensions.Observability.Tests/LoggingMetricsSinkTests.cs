@@ -39,6 +39,14 @@ public sealed class LoggingMetricsSinkTests
             1);
     }
 
+    private static ILogger<LoggingMetricsSink> CreateLogger()
+    {
+        var logger = A.Fake<ILogger<LoggingMetricsSink>>();
+        // LoggerMessage delegates check IsEnabled before logging
+        A.CallTo(() => logger.IsEnabled(A<LogLevel>._)).Returns(true);
+        return logger;
+    }
+
     #endregion
 
     #region Constructor Tests
@@ -84,7 +92,7 @@ public sealed class LoggingMetricsSinkTests
     public async Task RecordAsync_WithSuccessfulMetrics_ShouldLogInformation()
     {
         // Arrange
-        var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
+        var loggerMock = CreateLogger();
         var sink = new LoggingMetricsSink(loggerMock);
         var metrics = CreateNodeMetrics(true);
 
@@ -101,7 +109,7 @@ public sealed class LoggingMetricsSinkTests
     public async Task RecordAsync_WithFailedMetrics_ShouldLogWarning()
     {
         // Arrange
-        var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
+        var loggerMock = CreateLogger();
         var sink = new LoggingMetricsSink(loggerMock);
         var metrics = CreateNodeMetrics(false);
 
@@ -118,7 +126,7 @@ public sealed class LoggingMetricsSinkTests
     public async Task RecordAsync_WithSuccessfulMetrics_ShouldIncludeCorrectProperties()
     {
         // Arrange
-        var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
+        var loggerMock = CreateLogger();
         var sink = new LoggingMetricsSink(loggerMock);
         var metrics = CreateNodeMetrics(true);
 
@@ -135,7 +143,7 @@ public sealed class LoggingMetricsSinkTests
     public async Task RecordAsync_WithFailedMetrics_ShouldIncludeExceptionMessage()
     {
         // Arrange
-        var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
+        var loggerMock = CreateLogger();
         var sink = new LoggingMetricsSink(loggerMock);
         var exception = new InvalidOperationException("Test failure");
         var metrics = CreateNodeMetrics(false, exception);
@@ -153,7 +161,7 @@ public sealed class LoggingMetricsSinkTests
     public async Task RecordAsync_WithRetries_ShouldLogRetryCount()
     {
         // Arrange
-        var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
+        var loggerMock = CreateLogger();
         var sink = new LoggingMetricsSink(loggerMock);
         var metrics = CreateNodeMetrics(true, retryCount: 3);
 
@@ -170,7 +178,7 @@ public sealed class LoggingMetricsSinkTests
     public async Task RecordAsync_WithPeakMemory_ShouldLogDebug()
     {
         // Arrange
-        var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
+        var loggerMock = CreateLogger();
         var sink = new LoggingMetricsSink(loggerMock);
         var metrics = CreateNodeMetrics(true, peakMemoryMb: 500);
 
@@ -187,7 +195,7 @@ public sealed class LoggingMetricsSinkTests
     public async Task RecordAsync_WithProcessorTime_ShouldLogDebug()
     {
         // Arrange
-        var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
+        var loggerMock = CreateLogger();
         var sink = new LoggingMetricsSink(loggerMock);
         var metrics = CreateNodeMetrics(true, processorTimeMs: 250);
 
@@ -204,7 +212,7 @@ public sealed class LoggingMetricsSinkTests
     public async Task RecordAsync_WithAverageItemProcessing_ShouldLogDebug()
     {
         // Arrange
-        var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
+        var loggerMock = CreateLogger();
         var sink = new LoggingMetricsSink(loggerMock);
         var metrics = CreateNodeMetrics(true, throughputItemsPerSec: 1000.5, averageItemProcessingMs: 1.2);
 
@@ -221,7 +229,7 @@ public sealed class LoggingMetricsSinkTests
     public async Task RecordAsync_WithThroughput_ShouldLogThroughput()
     {
         // Arrange
-        var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
+        var loggerMock = CreateLogger();
         var sink = new LoggingMetricsSink(loggerMock);
         var metrics = CreateNodeMetrics(true, throughputItemsPerSec: 1000.5);
 
@@ -238,7 +246,7 @@ public sealed class LoggingMetricsSinkTests
     public async Task RecordAsync_WithZeroThroughput_ShouldLogZeroThroughput()
     {
         // Arrange
-        var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
+        var loggerMock = CreateLogger();
         var sink = new LoggingMetricsSink(loggerMock);
         var metrics = CreateNodeMetrics(true, throughputItemsPerSec: 0.0);
 
@@ -255,7 +263,7 @@ public sealed class LoggingMetricsSinkTests
     public async Task RecordAsync_WithZeroItems_ShouldLogZeroItems()
     {
         // Arrange
-        var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
+        var loggerMock = CreateLogger();
         var sink = new LoggingMetricsSink(loggerMock);
         var metrics = CreateNodeMetrics(true, itemsProcessed: 0, itemsEmitted: 0);
 
@@ -272,7 +280,7 @@ public sealed class LoggingMetricsSinkTests
     public async Task RecordAsync_WithNullException_ShouldLogUnknownError()
     {
         // Arrange
-        var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
+        var loggerMock = CreateLogger();
         var sink = new LoggingMetricsSink(loggerMock);
         var metrics = CreateNodeMetrics(false);
 
@@ -289,7 +297,7 @@ public sealed class LoggingMetricsSinkTests
     public async Task RecordAsync_WithNullMemory_ShouldNotLogMemory()
     {
         // Arrange
-        var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
+        var loggerMock = CreateLogger();
         var sink = new LoggingMetricsSink(loggerMock);
         var metrics = CreateNodeMetrics(true, peakMemoryMb: null);
 
@@ -306,7 +314,7 @@ public sealed class LoggingMetricsSinkTests
     public async Task RecordAsync_WithNullProcessorTime_ShouldNotLogProcessorTime()
     {
         // Arrange
-        var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
+        var loggerMock = CreateLogger();
         var sink = new LoggingMetricsSink(loggerMock);
         var metrics = CreateNodeMetrics(true, processorTimeMs: null);
 
@@ -323,7 +331,7 @@ public sealed class LoggingMetricsSinkTests
     public async Task RecordAsync_WithNullThroughput_ShouldNotLogThroughput()
     {
         // Arrange
-        var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
+        var loggerMock = CreateLogger();
         var sink = new LoggingMetricsSink(loggerMock);
         var metrics = CreateNodeMetrics(true, throughputItemsPerSec: null);
 
@@ -340,7 +348,7 @@ public sealed class LoggingMetricsSinkTests
     public async Task RecordAsync_WithCancellation_ShouldCompleteSuccessfully()
     {
         // Arrange
-        var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
+        var loggerMock = CreateLogger();
         var sink = new LoggingMetricsSink(loggerMock);
         var metrics = CreateNodeMetrics(true);
         var cts = new CancellationTokenSource();
@@ -358,7 +366,7 @@ public sealed class LoggingMetricsSinkTests
     public async Task RecordAsync_WithCancelledToken_ShouldCompleteSuccessfully()
     {
         // Arrange
-        var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
+        var loggerMock = CreateLogger();
         var sink = new LoggingMetricsSink(loggerMock);
         var metrics = CreateNodeMetrics(true);
         var cts = new CancellationTokenSource();

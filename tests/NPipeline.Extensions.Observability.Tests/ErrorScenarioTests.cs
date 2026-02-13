@@ -11,13 +11,33 @@ namespace NPipeline.Extensions.Observability.Tests;
 /// </summary>
 public sealed class ErrorScenarioTests
 {
+    #region Helper Methods
+
+    private static ILogger<LoggingMetricsSink> CreateNodeLogger()
+    {
+        var logger = A.Fake<ILogger<LoggingMetricsSink>>();
+        // LoggerMessage delegates check IsEnabled before logging
+        A.CallTo(() => logger.IsEnabled(A<LogLevel>._)).Returns(true);
+        return logger;
+    }
+
+    private static ILogger<LoggingPipelineMetricsSink> CreatePipelineLogger()
+    {
+        var logger = A.Fake<ILogger<LoggingPipelineMetricsSink>>();
+        // LoggerMessage delegates check IsEnabled before logging
+        A.CallTo(() => logger.IsEnabled(A<LogLevel>._)).Returns(true);
+        return logger;
+    }
+
+    #endregion
+
     #region Null Exception Handling Tests
 
     [Fact]
     public async Task LoggingMetricsSink_NullException_ShouldLogUnknownError()
     {
         // Arrange
-        var loggerMock = A.Fake<ILogger<LoggingMetricsSink>>();
+        var loggerMock = CreateNodeLogger();
         var sink = new LoggingMetricsSink(loggerMock);
         var metrics = CreateNodeMetrics(false);
 
@@ -34,7 +54,7 @@ public sealed class ErrorScenarioTests
     public async Task LoggingPipelineMetricsSink_NullException_ShouldLogUnknownError()
     {
         // Arrange
-        var loggerMock = A.Fake<ILogger<LoggingPipelineMetricsSink>>();
+        var loggerMock = CreatePipelineLogger();
         var sink = new LoggingPipelineMetricsSink(loggerMock);
         var metrics = CreatePipelineMetrics(false);
 

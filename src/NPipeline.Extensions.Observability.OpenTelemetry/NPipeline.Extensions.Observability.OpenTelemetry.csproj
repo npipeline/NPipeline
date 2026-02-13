@@ -6,7 +6,6 @@
         <Nullable>enable</Nullable>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <NoWarn>$(NoWarn);CA1848</NoWarn>
 
         <!-- NuGet Packaging Metadata -->
         <PackageId>NPipeline.Extensions.Observability.OpenTelemetry</PackageId>
