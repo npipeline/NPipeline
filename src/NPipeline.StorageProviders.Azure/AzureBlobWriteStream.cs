@@ -100,10 +100,10 @@ public sealed class AzureBlobWriteStream : Stream
     }
 
     /// <inheritdoc />
-    public override async Task FlushAsync(CancellationToken cancellationToken)
+    public override Task FlushAsync(CancellationToken cancellationToken)
     {
         // Flush is a no-op - upload happens on disposal
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
     /// <inheritdoc />

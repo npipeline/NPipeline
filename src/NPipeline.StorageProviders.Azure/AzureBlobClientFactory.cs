@@ -123,8 +123,9 @@ public class AzureBlobClientFactory
     /// <returns>The credential information, or null if using connection string.</returns>
     private CredentialInfo? GetCredentialInfo(StorageUri uri, string? accountName)
     {
-        // Check for explicit connection string first (takes precedence)
-        if (uri.Parameters.ContainsKey("connectionString") || !string.IsNullOrEmpty(_options.DefaultConnectionString))
+        // Check for explicit connection string first (takes precedence) - must be non-empty to count
+        if ((uri.Parameters.TryGetValue("connectionString", out var connectionString) && !string.IsNullOrWhiteSpace(connectionString))
+            || !string.IsNullOrEmpty(_options.DefaultConnectionString))
             return null;
 
         // Check for SAS token
