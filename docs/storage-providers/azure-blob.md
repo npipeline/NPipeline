@@ -688,5 +688,3 @@ The Azure Blob Storage provider has the following limitations:
 - [Azure Blob Storage Documentation](https://docs.microsoft.com/azure/storage/blobs/)
 - [Azure SDK for .NET Documentation](https://docs.microsoft.com/azure/sdk/)
 - [Azurite Documentation](https://docs.microsoft.com/azure/storage/common/storage-use-azurite?tabs=visual-studio)
-- [Provider README](../../src/NPipeline.StorageProviders.Azure/README.md)
-- [Sample Application](../../samples/Sample_AzureStorageProvider/)
