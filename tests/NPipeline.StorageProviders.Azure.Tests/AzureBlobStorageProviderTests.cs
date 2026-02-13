@@ -791,6 +791,63 @@ public class AzureBlobStorageProviderTests
     }
 
     [Fact]
+    public async Task ListAsync_WithRecursiveFalse_ReturnsVirtualDirectoriesAsDirectoryItems()
+    {
+        // Arrange
+        var uri = StorageUri.Parse("azure://test-container/prefix/");
+
+        A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
+            .Returns(Task.FromResult(_fakeBlobServiceClient));
+
+        A.CallTo(() => _fakeBlobServiceClient.GetBlobContainerClient("test-container"))
+            .Returns(_fakeContainerClient);
+
+        A.CallTo(() => _fakeContainerClient.ExistsAsync(A<CancellationToken>._))
+            .Returns(Task.FromResult(Response.FromValue(true, A.Fake<Response>())));
+
+        // Create a BlobHierarchyItem with a prefix (virtual directory)
+        var prefixHierarchyItem = BlobsModelFactory.BlobHierarchyItem(
+            "prefix/subdir/",
+            null);
+
+        // Create a BlobHierarchyItem with a blob
+        var blobItem = BlobItemBuilder("prefix/file1.txt", 100);
+        var blobHierarchyItem = BlobsModelFactory.BlobHierarchyItem(
+            null,
+            blobItem);
+
+        // Create a custom AsyncPageable that properly yields items
+        var asyncPageable = new TestBlobHierarchyItemAsyncPageable([prefixHierarchyItem, blobHierarchyItem]);
+
+        // Use more permissive matcher for call
+        A.CallTo(() => _fakeContainerClient.GetBlobsByHierarchyAsync(
+                A<BlobTraits>._,
+                A<BlobStates>._,
+                A<string>._,
+                A<string>._,
+                A<CancellationToken>._))
+            .Returns(asyncPageable);
+
+        // Act
+        var items = await _provider.ListAsync(uri).ToListAsync();
+
+        // Assert
+        items.Should().HaveCount(2);
+        items.Count(i => i.IsDirectory).Should().Be(1);
+        items.Count(i => !i.IsDirectory).Should().Be(1);
+
+        var directory = items.FirstOrDefault(i => i.IsDirectory);
+        directory.Should().NotBeNull();
+        directory!.Uri.Path.Should().Be("/prefix/subdir");
+        directory.Size.Should().Be(0);
+
+        var file = items.FirstOrDefault(i => !i.IsDirectory);
+        file.Should().NotBeNull();
+        file!.Uri.Path.Should().Be("/prefix/file1.txt");
+        file.Size.Should().Be(100);
+    }
+
+    [Fact]
     public async Task ListAsync_WithNullUri_ThrowsArgumentNullException()
     {
         // Act & Assert

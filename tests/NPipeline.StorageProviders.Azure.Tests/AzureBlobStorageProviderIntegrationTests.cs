@@ -534,9 +534,10 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         // Act
         var items = await _provider!.ListAsync(prefixUri, false).ToListAsync();
 
-        // Assert
-        items.Should().HaveCount(1);
-        items.Should().Contain(i => i.Uri.Path.Contains("file1.txt"));
+        // Assert - Non-recursive listing returns both files and virtual directories at the root level
+        items.Should().HaveCount(2);
+        items.Should().Contain(i => i.Uri.Path.Contains("file1.txt") && !i.IsDirectory);
+        items.Should().Contain(i => i.Uri.Path.Contains("folder") && i.IsDirectory);
     }
 
     [Fact]

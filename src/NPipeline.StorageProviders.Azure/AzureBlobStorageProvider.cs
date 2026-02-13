@@ -316,16 +316,26 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
 
                 if (blobItem.IsPrefix)
                 {
-                    // Skip virtual directories for now; could be surfaced as IsDirectory in future
+                    // Yield virtual directories as directory items
+                    var prefixPath = blobItem.Prefix.TrimEnd('/');
+                    var directoryUri = StorageUri.Parse($"azure://{container}/{prefixPath}");
+
+                    yield return new StorageItem
+                    {
+                        Uri = directoryUri,
+                        Size = 0,
+                        LastModified = DateTimeOffset.UtcNow,
+                        IsDirectory = true,
+                    };
                     continue;
                 }
 
                 var blobName = blobItem.Blob.Name;
-                var itemUri = StorageUri.Parse($"azure://{container}/{blobName}");
+                var blobUri = StorageUri.Parse($"azure://{container}/{blobName}");
 
                 yield return new StorageItem
                 {
-                    Uri = itemUri,
+                    Uri = blobUri,
                     Size = blobItem.Blob.Properties.ContentLength ?? 0,
                     LastModified = blobItem.Blob.Properties.LastModified ?? DateTimeOffset.UtcNow,
                     IsDirectory = false,
