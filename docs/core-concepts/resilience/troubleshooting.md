@@ -469,40 +469,36 @@ var hybridOptions = new PipelineCircuitBreakerOptions
 ### 1. Enable Detailed Logging
 
 ```csharp
-public class ResilienceLogger : IPipelineLogger
+// Use Microsoft.Extensions.Logging.ILogger for logging in resilience scenarios
+// The PipelineContext.LoggerFactory provides loggers for each node:
+
+public class ResilienceLoggingExample
 {
     private readonly ILogger _logger;
     
-    public ResilienceLogger(ILogger logger)
+    public ResilienceLoggingExample(ILoggerFactory loggerFactory)
     {
-        _logger = logger;
+        _logger = loggerFactory.CreateLogger("Resilience");
     }
     
-    public void LogDebug(string message, params object[] args)
+    public void LogResilienceEvent(string nodeId, string eventType, Exception? error = null)
     {
-        _logger.LogDebug(message, args);
-    }
-    
-    public void LogInformation(string message, params object[] args)
-    {
-        _logger.LogInformation(message, args);
-    }
-    
-    public void LogWarning(string message, params object[] args)
-    {
-        _logger.LogWarning(message, args);
-    }
-    
-    public void LogError(Exception exception, string message, params object[] args)
-    {
-        _logger.LogError(exception, message, args);
+        if (error != null)
+        {
+            _logger.LogError(error, "[{NodeId}] Resilience event: {EventType}", nodeId, eventType);
+        }
+        else
+        {
+            _logger.LogInformation("[{NodeId}] Resilience event: {EventType}", nodeId, eventType);
+        }
     }
 }
 
-// Configure in context
-var context = PipelineContext.WithObservability(
-    loggerFactory: new ResilienceLoggerFactory()
-);
+// Configure in context with your ILoggerFactory implementation
+var context = new PipelineContext(new PipelineContextConfiguration
+{
+    LoggerFactory = myLoggerFactory // Your Microsoft.Extensions.Logging.ILoggerFactory implementation
+});
 ```
 
 ### 2. Add Custom Observability

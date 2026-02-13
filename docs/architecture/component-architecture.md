@@ -88,7 +88,7 @@ public class PipelineContext
     public Dictionary<string, object> Properties { get; }
     public CancellationToken CancellationToken { get; }
     public string CurrentNodeId { get; }
-    public IPipelineLoggerFactory LoggerFactory { get; }
+    public ILoggerFactory LoggerFactory { get; }
     public IPipelineTracer Tracer { get; }
     public IErrorHandlerFactory ErrorHandlerFactory { get; }
     public ILineageFactory LineageFactory { get; }

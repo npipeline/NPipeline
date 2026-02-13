@@ -41,7 +41,7 @@ public PipelineContext(
     IErrorHandlerFactory? errorHandlerFactory = null,
     IPipelineErrorHandler? pipelineErrorHandler = null,
     IDeadLetterSink? deadLetterSink = null,
-    IPipelineLoggerFactory? loggerFactory = null,
+    ILoggerFactory? loggerFactory = null,
     IPipelineTracer? tracer = null,
     IObservabilityFactory? observabilityFactory = null,
     ILineageFactory? lineageFactory = null,
@@ -68,7 +68,7 @@ All of these components have built-in defaults - you don't need to explicitly se
 * **`ErrorHandlerFactory`**: `DefaultErrorHandlerFactory` (handles errors according to pipeline settings)
 * **`LineageFactory`**: `DefaultLineageFactory` (tracks data lineage)
 * **`ObservabilityFactory`**: `DefaultObservabilityFactory` (provides observability hooks)
-* **`LoggerFactory`**: `NullPipelineLoggerFactory` (no-op logger)
+* **`LoggerFactory`**: `NullLoggerFactory` (no-op logger)
 * **`Tracer`**: `NullPipelineTracer` (no-op tracer)
 * **`RetryOptions`**: `PipelineRetryOptions.Default` (no retries)
 
