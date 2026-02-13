@@ -10,7 +10,7 @@ using WriteStrategy = NPipeline.Connectors.PostgreSQL.Configuration.PostgresWrit
 namespace NPipeline.Connectors.PostgreSQL.Tests.Integration;
 
 [Collection("PostgresTestCollection")]
-public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixture) : IClassFixture<PostgresTestContainerFixture>
+public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixture)
 {
     private readonly PostgresTestContainerFixture _fixture = fixture;
 
@@ -220,14 +220,13 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
 
-                // Insert 5000 records
-                for (var i = 1; i <= 5000; i++)
+                // Insert 5000 records using batch insert for performance
+                var batchValues = string.Join(",",
+                    Enumerable.Range(1, 5000).Select(i => $"({i}, 'Test {i}', {i * 1.5})"));
+                await using (var insertCmd = new NpgsqlCommand(
+                                 $"INSERT INTO {tableName} (id, name, value) VALUES {batchValues}", conn))
                 {
-                    await using (var insertCmd = new NpgsqlCommand(
-                                     $"INSERT INTO {tableName} (id, name, value) VALUES ({i}, 'Test {i}', {i * 1.5})", conn))
-                    {
-                        _ = await insertCmd.ExecuteNonQueryAsync();
-                    }
+                    _ = await insertCmd.ExecuteNonQueryAsync();
                 }
             }
 
@@ -340,14 +339,13 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
 
-                // Insert 10000 records
-                for (var i = 1; i <= 10000; i++)
+                // Insert 10000 records using batch insert for performance
+                var batchValues = string.Join(",",
+                    Enumerable.Range(1, 10000).Select(i => $"({i}, 'Test {i}', {i * 1.5})"));
+                await using (var insertCmd = new NpgsqlCommand(
+                                 $"INSERT INTO {sourceTable} (id, name, value) VALUES {batchValues}", conn))
                 {
-                    await using (var insertCmd = new NpgsqlCommand(
-                                     $"INSERT INTO {sourceTable} (id, name, value) VALUES ({i}, 'Test {i}', {i * 1.5})", conn))
-                    {
-                        _ = await insertCmd.ExecuteNonQueryAsync();
-                    }
+                    _ = await insertCmd.ExecuteNonQueryAsync();
                 }
             }
 

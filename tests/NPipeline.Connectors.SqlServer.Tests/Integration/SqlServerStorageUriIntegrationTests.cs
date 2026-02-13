@@ -6,7 +6,7 @@ using NPipeline.StorageProviders.Models;
 namespace NPipeline.Connectors.SqlServer.Tests.Integration;
 
 [Collection("SqlServer")]
-public sealed class SqlServerStorageUriIntegrationTests : IClassFixture<SqlServerTestContainerFixture>
+public sealed class SqlServerStorageUriIntegrationTests
 {
     private readonly SqlServerTestContainerFixture _fixture;
 

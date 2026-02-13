@@ -8,7 +8,7 @@ using NPipeline.Connectors.SqlServer.Tests.Fixtures;
 namespace NPipeline.Connectors.SqlServer.Tests.Integration;
 
 [Collection("SqlServer")]
-public sealed class SqlServerConnectorIntegrationTests : IClassFixture<SqlServerTestContainerFixture>
+public sealed class SqlServerConnectorIntegrationTests
 {
     private readonly SqlServerTestContainerFixture _fixture;
 
@@ -211,11 +211,16 @@ public sealed class SqlServerConnectorIntegrationTests : IClassFixture<SqlServer
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
 
-                // Insert 5000 records
-                for (var i = 1; i <= 5000; i++)
+                // Insert 5000 records using batch insert for performance
+                // SQL Server has a limit of 1000 rows per INSERT, so we batch in groups
+                for (var batch = 0; batch < 5; batch++)
                 {
+                    var startId = batch * 1000 + 1;
+                    var endId = (batch + 1) * 1000;
+                    var batchValues = string.Join(",",
+                        Enumerable.Range(startId, 1000).Select(i => $"({i}, 'Test {i}', {i * 1.5})"));
                     await using (var insertCmd = new SqlCommand(
-                                     $"INSERT INTO {tableName} (id, name, value) VALUES ({i}, 'Test {i}', {i * 1.5})", conn))
+                                     $"INSERT INTO {tableName} (id, name, value) VALUES {batchValues}", conn))
                     {
                         _ = await insertCmd.ExecuteNonQueryAsync();
                     }
@@ -312,11 +317,15 @@ public sealed class SqlServerConnectorIntegrationTests : IClassFixture<SqlServer
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
 
-                // Insert 10000 records
-                for (var i = 1; i <= 10000; i++)
+                // Insert 10000 records using batch insert for performance
+                // SQL Server has a limit of 1000 rows per INSERT, so we batch in groups
+                for (var batch = 0; batch < 10; batch++)
                 {
+                    var startId = batch * 1000 + 1;
+                    var batchValues = string.Join(",",
+                        Enumerable.Range(startId, 1000).Select(i => $"({i}, 'Test {i}', {i * 1.5})"));
                     await using (var insertCmd = new SqlCommand(
-                                     $"INSERT INTO {sourceTable} (id, name, value) VALUES ({i}, 'Test {i}', {i * 1.5})", conn))
+                                     $"INSERT INTO {sourceTable} (id, name, value) VALUES {batchValues}", conn))
                     {
                         _ = await insertCmd.ExecuteNonQueryAsync();
                     }

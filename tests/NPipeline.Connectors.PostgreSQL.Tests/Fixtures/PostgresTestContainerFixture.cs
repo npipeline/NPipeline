@@ -12,7 +12,8 @@ public class PostgresTestContainerFixture : IAsyncLifetime
             .WithDatabase("testdb")
             .WithUsername("testuser")
             .WithPassword("testpass")
-            .WithCleanUp(true)
+            .WithReuse(true)
+            .WithLabel("npipeline-test", "postgres-integration")
             .Build();
     }
 

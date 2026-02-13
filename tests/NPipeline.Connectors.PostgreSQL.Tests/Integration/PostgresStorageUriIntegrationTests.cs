@@ -6,7 +6,7 @@ using NPipeline.StorageProviders.Models;
 namespace NPipeline.Connectors.PostgreSQL.Tests.Integration;
 
 [Collection("PostgresTestCollection")]
-public class PostgresStorageUriIntegrationTests(PostgresTestContainerFixture fixture) : IClassFixture<PostgresTestContainerFixture>
+public class PostgresStorageUriIntegrationTests(PostgresTestContainerFixture fixture)
 {
     private readonly PostgresTestContainerFixture _fixture = fixture;
 

@@ -4,7 +4,8 @@ namespace NPipeline.Connectors.SqlServer.Tests.Fixtures;
 
 /// <summary>
 ///     Test container fixture for SQL Server integration tests.
-///     Uses Testcontainers to create a disposable SQL Server instance.
+///     Uses Testcontainers to create a reusable SQL Server instance.
+///     Requires TESTCONTAINERS_REUSE_ENABLED=true environment variable for reuse.
 /// </summary>
 public class SqlServerTestContainerFixture : IAsyncLifetime
 {
@@ -14,7 +15,8 @@ public class SqlServerTestContainerFixture : IAsyncLifetime
     {
         _container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest")
             .WithPassword("YourStrong@Passw0rd")
-            .WithCleanUp(true)
+            .WithReuse(true)
+            .WithLabel("npipeline-test", "sqlserver-integration")
             .Build();
     }
 
