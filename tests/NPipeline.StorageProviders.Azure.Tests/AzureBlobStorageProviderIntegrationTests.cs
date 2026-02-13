@@ -532,7 +532,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         var prefixUri = StorageUri.Parse($"azure://{containerName}/?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
 
         // Act
-        var items = await _provider!.ListAsync(prefixUri, false).ToListAsync();
+        var items = await _provider!.ListAsync(prefixUri).ToListAsync();
 
         // Assert - Non-recursive listing returns both files and virtual directories at the root level
         items.Should().HaveCount(2);

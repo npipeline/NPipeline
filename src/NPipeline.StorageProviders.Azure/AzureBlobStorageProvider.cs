@@ -307,7 +307,6 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
         {
             await foreach (var blobItem in containerClient.GetBlobsByHierarchyAsync(
                                BlobTraits.Metadata,
-                               BlobStates.None,
                                prefix: blobPrefix,
                                delimiter: "/",
                                cancellationToken: cancellationToken).ConfigureAwait(false))
@@ -327,6 +326,7 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
                         LastModified = DateTimeOffset.UtcNow,
                         IsDirectory = true,
                     };
+
                     continue;
                 }
 

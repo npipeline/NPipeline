@@ -812,6 +812,7 @@ public class AzureBlobStorageProviderTests
 
         // Create a BlobHierarchyItem with a blob
         var blobItem = BlobItemBuilder("prefix/file1.txt", 100);
+
         var blobHierarchyItem = BlobsModelFactory.BlobHierarchyItem(
             null,
             blobItem);
