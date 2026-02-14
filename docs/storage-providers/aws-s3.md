@@ -41,33 +41,13 @@ The S3 storage provider depends on the following packages:
 
 ### Key Storage Types
 
-- **`IStorageProvider`** - Core storage provider interface
-  - Location: `NPipeline.StorageProviders.Abstractions.IStorageProvider`
-  - Defines methods for reading, writing, listing, and checking existence of storage objects
+> **Note:** The shared storage types (IStorageProvider, StorageUri, StorageItem, StorageMetadata, StorageProviderMetadata, StorageResolverOptions, StorageProviderFactory) are common across all NPipeline storage providers. Refer to the [Storage Provider Interface](./storage-provider.md) documentation for details on these types.
 
-- **`StorageUri`** - URI type for storage resources
-  - Location: `NPipeline.StorageProviders.StorageUri`
-  - Represents a URI for storage resources with scheme, host, path, and parameters
+S3-specific configuration types:
 
-- **`StorageItem`** - Represents a storage item (file or directory)
-  - Location: `NPipeline.StorageProviders.StorageItem`
-  - Contains URI, size, last modified date, and directory flag
-
-- **`StorageMetadata`** - Metadata for storage objects
-  - Location: `NPipeline.StorageProviders.StorageMetadata`
-  - Contains size, content type, last modified date, ETag, and custom metadata
-
-- **`StorageProviderMetadata`** - Metadata about a storage provider's capabilities
-  - Location: `NPipeline.StorageProviders.StorageProviderMetadata`
-  - Contains capability flags and supported schemes
-
-- **`StorageResolverOptions`** - Configuration options for creating storage resolvers
-  - Location: `NPipeline.StorageProviders.StorageResolverOptions`
-  - Controls which providers are included in the resolver
-
-- **`StorageProviderFactory`** - Factory for creating storage resolvers
-  - Location: `NPipeline.StorageProviders.StorageProviderFactory`
-  - Provides methods for creating resolvers with custom providers
+- **`S3StorageProviderOptions`** - Configuration options for the S3 storage provider
+  - Location: `NPipeline.StorageProviders.Aws.S3StorageProviderOptions`
+  - Essential settings: region, credentials, service URL, multipart upload thresholds
 
 ## Installation
 

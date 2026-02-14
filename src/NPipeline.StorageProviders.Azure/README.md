@@ -10,7 +10,6 @@ The Azure Blob Storage Provider provides seamless integration with Azure Blob St
 - **Stream-based I/O** for efficient handling of large files
 - **Async-first API** for scalable, non-blocking operations
 - **Flexible authentication** via Azure credential chain or explicit credentials
-- **Azure Blob Storage support** with full feature parity
 - **Comprehensive error handling** with proper exception translation
 - **Metadata support** for retrieving blob metadata
 - **Listing operations** with recursive and non-recursive modes
@@ -25,27 +24,6 @@ Use the Azure Blob Storage Provider when your application needs to:
 - Leverage Azure's scalability and durability for data storage
 - Handle large files through streaming and block blob uploads
 - Work with Azure Storage Emulator (Azurite) for local development
-
-### Key Features
-
-- **Multiple authentication methods**: Connection string, account key, SAS token, default Azure credential chain, custom credentials
-- **Client caching**: Automatic caching of `BlobServiceClient` instances for improved performance
-- **Streaming I/O**: All operations use streaming to avoid loading entire files into memory
-- **Block blob upload**: Efficient upload of large files with configurable thresholds
-- **Exception translation**: Azure SDK exceptions translated to standard .NET exceptions
-- **Azurite support**: Full support for local development with Azurite emulator
-- **URI-based configuration**: All settings can be specified via URI parameters
-
-### Supported Operations
-
-| Operation | Method             | Description                         |
-|-----------|--------------------|-------------------------------------|
-| Read      | `OpenReadAsync`    | Opens a readable stream for a blob  |
-| Write     | `OpenWriteAsync`   | Opens a writable stream for a blob  |
-| Exists    | `ExistsAsync`      | Checks if a blob exists             |
-| Delete    | `DeleteAsync`      | Deletes a blob                      |
-| List      | `ListAsync`        | Lists blobs with optional recursion |
-| Metadata  | `GetMetadataAsync` | Retrieves blob metadata             |
 
 ## Installation
 
@@ -172,31 +150,12 @@ using (var reader = new StreamReader(readStream))
 
 ### Dependency Injection Setup
 
-The Azure Blob Storage Provider supports two registration methods:
-
-#### Method 1: Configuration Action
-
 ```csharp
 services.AddAzureBlobStorageProvider(options =>
 {
     options.UseDefaultCredentialChain = true;
-    options.ServiceUrl = new Uri("http://localhost:10000/devstoreaccount1");
-    options.BlockBlobUploadThresholdBytes = 128 * 1024 * 1024; // 128 MB
+    options.BlockBlobUploadThresholdBytes = 64 * 1024 * 1024; // 64 MB
 });
-```
-
-#### Method 2: Pre-configured Options
-
-```csharp
-var options = new AzureBlobStorageProviderOptions
-{
-    DefaultConnectionString = "UseDevelopmentStorage=true",
-    ServiceUrl = new Uri("http://localhost:10000/devstoreaccount1"),
-    UploadMaximumConcurrency = 4,
-    UploadMaximumTransferSizeBytes = 4 * 1024 * 1024 // 4 MB
-};
-
-services.AddAzureBlobStorageProvider(options);
 ```
 
 ### Configuration Options (AzureBlobStorageProviderOptions)
@@ -210,19 +169,6 @@ services.AddAzureBlobStorageProvider(options);
 | `BlockBlobUploadThresholdBytes`  | `long`             | `64 * 1024 * 1024` (64 MB) | Threshold in bytes for using block blob upload when writing files.                                                                           |
 | `UploadMaximumConcurrency`       | `int?`             | `null`                     | Maximum concurrent upload requests for large blobs. If not specified, uses SDK default.                                                      |
 | `UploadMaximumTransferSizeBytes` | `int?`             | `null`                     | Maximum transfer size in bytes for each upload chunk. If not specified, uses SDK default.                                                    |
-
-### Default Configuration
-
-```csharp
-var defaultOptions = new AzureBlobStorageProviderOptions();
-// DefaultCredential: null
-// DefaultConnectionString: null
-// UseDefaultCredentialChain: true
-// ServiceUrl: null
-// BlockBlobUploadThresholdBytes: 67108864 (64 MB)
-// UploadMaximumConcurrency: null
-// UploadMaximumTransferSizeBytes: null
-```
 
 ### Custom Configuration Examples
 
