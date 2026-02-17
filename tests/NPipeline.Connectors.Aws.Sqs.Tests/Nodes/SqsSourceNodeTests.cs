@@ -434,6 +434,7 @@ public class SqsSourceNodeTests
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
 
             var callCount = 0;
+            var secondCallSignal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
             // Setup fake to fail once, then succeed
             A.CallTo(() => sqsClientFake.ReceiveMessageAsync(
@@ -442,6 +443,9 @@ public class SqsSourceNodeTests
                 .ReturnsLazily(() =>
                 {
                     callCount++;
+
+                    if (callCount == 2)
+                        secondCallSignal.TrySetResult();
 
                     if (callCount == 1)
                         throw new AmazonSQSException("Service unavailable", ErrorType.Unknown, "ServiceUnavailable", null, HttpStatusCode.ServiceUnavailable);
@@ -456,8 +460,9 @@ public class SqsSourceNodeTests
             // Start polling
             var pollTask = enumerator.MoveNextAsync().AsTask();
 
-            // Wait for retry
-            await Task.Delay(100);
+            // Wait for retry to happen
+            var completedTask = await Task.WhenAny(secondCallSignal.Task, Task.Delay(500, cts.Token));
+            completedTask.Should().Be(secondCallSignal.Task);
 
             // Cancel
             await cts.CancelAsync();
