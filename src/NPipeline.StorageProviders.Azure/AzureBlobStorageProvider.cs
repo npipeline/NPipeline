@@ -307,6 +307,7 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
         {
             await foreach (var blobItem in containerClient.GetBlobsByHierarchyAsync(
                                BlobTraits.Metadata,
+                               BlobStates.None,
                                prefix: blobPrefix,
                                delimiter: "/",
                                cancellationToken: cancellationToken).ConfigureAwait(false))

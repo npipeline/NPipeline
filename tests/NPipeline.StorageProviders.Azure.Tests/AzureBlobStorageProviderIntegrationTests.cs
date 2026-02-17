@@ -31,12 +31,12 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         // Start Azurite container with fixed ports and reuse enabled
-        _azuriteContainer = new ContainerBuilder()
-            .WithImage("mcr.microsoft.com/azure-storage/azurite")
+        _azuriteContainer = new ContainerBuilder("mcr.microsoft.com/azure-storage/azurite")
             .WithPortBinding(AzuriteBlobPort, AzuriteBlobPort)
             .WithPortBinding(10001, 10001)
             .WithPortBinding(10002, 10002)
-            .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(AzuriteBlobPort))
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilHttpRequestIsSucceeded(request => request.ForPort(AzuriteBlobPort)))
             .WithReuse(true)
             .WithLabel("npipeline-test", "azurite-integration")
             .Build();
@@ -91,8 +91,11 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
     /// <summary>
     ///     Gets the connection string for the current Azurite instance.
     /// </summary>
-    private string GetConnectionString() =>
-        $"DefaultEndpointsProtocol=http;AccountName={AzuriteAccountName};AccountKey={AzuriteAccountKey};BlobEndpoint=http://localhost:{AzuriteBlobPort}/{AzuriteAccountName};";
+    private string GetConnectionString()
+    {
+        return
+            $"DefaultEndpointsProtocol=http;AccountName={AzuriteAccountName};AccountKey={AzuriteAccountKey};BlobEndpoint=http://localhost:{AzuriteBlobPort}/{AzuriteAccountName};";
+    }
 
     /// <summary>
     ///     Generates a unique container name for each test.
