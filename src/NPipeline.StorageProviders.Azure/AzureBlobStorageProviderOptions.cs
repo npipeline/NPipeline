@@ -1,5 +1,6 @@
 using Azure.Core;
 using Azure.Identity;
+using Azure.Storage.Blobs;
 
 namespace NPipeline.StorageProviders.Azure;
 
@@ -41,6 +42,12 @@ public class AzureBlobStorageProviderOptions
     ///     If not specified, uses the Azure Blob Storage endpoint.
     /// </summary>
     public Uri? ServiceUrl { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the Blob service version to use when creating clients.
+    ///     Set this when targeting storage emulators like Azurite.
+    /// </summary>
+    public BlobClientOptions.ServiceVersion? ServiceVersion { get; set; }
 
     /// <summary>
     ///     Gets or sets the threshold in bytes for using block blob upload.

@@ -2,8 +2,6 @@ using System.Text;
 using System.Text.Json;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using DotNet.Testcontainers.Builders;
-using DotNet.Testcontainers.Containers;
 using FluentAssertions;
 using NPipeline.StorageProviders.Models;
 using Xunit;
@@ -14,88 +12,21 @@ namespace NPipeline.StorageProviders.Azure.Tests;
 ///     Integration tests for AzureBlobStorageProvider using TestContainers with Azurite.
 ///     Tests all IStorageProvider operations against a real Azurite instance.
 /// </summary>
-public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
+public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<AzuriteFixture>
 {
-    private const string AzuriteAccountName = "devstoreaccount1";
-    private const string AzuriteAccountKey = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
-    private const int AzuriteBlobPort = 10000;
-    private readonly List<string> _testContainers = [];
+    private const string AzuriteAccountName = AzuriteFixture.AccountName;
+    private const string AzuriteAccountKey = AzuriteFixture.AccountKey;
+    private const int LargeBlobSizeBytes = 2 * 1024 * 1024;
+    private readonly AzuriteFixture _fixture;
 
-    private IContainer? _azuriteContainer;
-    private AzureBlobStorageProviderOptions? _options;
-    private AzureBlobStorageProvider? _provider;
-
-    /// <summary>
-    ///     Initializes Azurite container and Azure provider before all tests.
-    /// </summary>
-    public async Task InitializeAsync()
+    public AzureBlobStorageProviderIntegrationTests(AzuriteFixture fixture)
     {
-        // Start Azurite container with fixed ports and reuse enabled
-        _azuriteContainer = new ContainerBuilder("mcr.microsoft.com/azure-storage/azurite")
-            .WithPortBinding(AzuriteBlobPort, AzuriteBlobPort)
-            .WithPortBinding(10001, 10001)
-            .WithPortBinding(10002, 10002)
-            .WithWaitStrategy(Wait.ForUnixContainer()
-                .UntilHttpRequestIsSucceeded(request => request.ForPort(AzuriteBlobPort)))
-            .WithReuse(true)
-            .WithLabel("npipeline-test", "azurite-integration")
-            .Build();
-
-        await _azuriteContainer.StartAsync();
-
-        // Configure provider options for Azurite with fixed port
-        _options = new AzureBlobStorageProviderOptions
-        {
-            ServiceUrl = new Uri($"http://localhost:{AzuriteBlobPort}/devstoreaccount1"),
-            BlockBlobUploadThresholdBytes = 8 * 1024 * 1024, // 8 MB for faster tests
-            UploadMaximumConcurrency = 4,
-            UploadMaximumTransferSizeBytes = 4 * 1024 * 1024, //4 MB
-            UseDefaultCredentialChain = false,
-        };
-
-        // Create provider instance
-        var clientFactory = new AzureBlobClientFactory(_options);
-        _provider = new AzureBlobStorageProvider(clientFactory, _options);
+        _fixture = fixture;
     }
 
-    /// <summary>
-    ///     Stops Azurite container and cleans up test data after all tests.
-    /// </summary>
-    public async Task DisposeAsync()
-    {
-        // Clean up all test containers
-        if (_provider != null)
-        {
-            foreach (var containerName in _testContainers)
-            {
-                try
-                {
-                    var uri = StorageUri.Parse($"azure://{containerName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
-                    await _provider.DeleteAsync(uri);
-                }
-                catch
-                {
-                    // Ignore cleanup errors
-                }
-            }
-        }
-
-        // Stop Azurite container
-        if (_azuriteContainer != null)
-        {
-            await _azuriteContainer.StopAsync();
-            await _azuriteContainer.DisposeAsync();
-        }
-    }
-
-    /// <summary>
-    ///     Gets the connection string for the current Azurite instance.
-    /// </summary>
-    private string GetConnectionString()
-    {
-        return
-            $"DefaultEndpointsProtocol=http;AccountName={AzuriteAccountName};AccountKey={AzuriteAccountKey};BlobEndpoint=http://localhost:{AzuriteBlobPort}/{AzuriteAccountName};";
-    }
+    private AzureBlobStorageProvider Provider => _fixture.Provider;
+    private AzureBlobStorageProvider _provider => _fixture.Provider;
+    private AzureBlobStorageProviderOptions _options => _fixture.Options;
 
     /// <summary>
     ///     Generates a unique container name for each test.
@@ -103,7 +34,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
     private string GetUniqueContainerName()
     {
         var containerName = $"test-container-{Guid.NewGuid():N}";
-        _testContainers.Add(containerName);
+        _fixture.TrackContainer(containerName);
         return containerName;
     }
 
@@ -112,8 +43,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
     /// </summary>
     private async Task CreateTestBlobAsync(string containerName, string blobName, string content, string? contentType = null)
     {
-        var blobServiceClient = new BlobServiceClient(GetConnectionString());
-        var containerClient = blobServiceClient.GetBlobContainerClient(containerName);
+        var containerClient = _fixture.BlobServiceClient.GetBlobContainerClient(containerName);
         _ = await containerClient.CreateIfNotExistsAsync();
 
         var blobClient = containerClient.GetBlobClient(blobName);
@@ -135,10 +65,11 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         var expectedContent = "Hello, Azure Blob Storage!";
         await CreateTestBlobAsync(containerName, blobName, expectedContent);
 
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse(
+            $"azure://{containerName}/{blobName}?accountName={AzuriteFixture.AccountName}&accountKey={AzuriteFixture.AccountKey}");
 
         // Act
-        using var stream = await _provider!.OpenReadAsync(uri);
+        using var stream = await Provider.OpenReadAsync(uri);
         using var reader = new StreamReader(stream);
         var actualContent = await reader.ReadToEndAsync();
 
@@ -152,10 +83,11 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         // Arrange
         var containerName = GetUniqueContainerName();
         var blobName = "non-existent-file.txt";
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse(
+            $"azure://{containerName}/{blobName}?accountName={AzuriteFixture.AccountName}&accountKey={AzuriteFixture.AccountKey}");
 
         // Act
-        var act = async () => await _provider!.OpenReadAsync(uri);
+        var act = async () => await Provider.OpenReadAsync(uri);
 
         // Assert
         await act.Should().ThrowAsync<FileNotFoundException>();
@@ -167,21 +99,21 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         // Arrange
         var containerName = GetUniqueContainerName();
         var blobName = "large-file.bin";
-        var largeContent = new byte[16 * 1024 * 1024]; // 16 MB
+        var largeContent = new byte[LargeBlobSizeBytes];
         new Random().NextBytes(largeContent);
 
-        var blobServiceClient = new BlobServiceClient(GetConnectionString());
-        var containerClient = blobServiceClient.GetBlobContainerClient(containerName);
+        var containerClient = _fixture.BlobServiceClient.GetBlobContainerClient(containerName);
         await containerClient.CreateIfNotExistsAsync();
 
         var blobClient = containerClient.GetBlobClient(blobName);
         using var uploadStream = new MemoryStream(largeContent);
         await blobClient.UploadAsync(uploadStream, true);
 
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse(
+            $"azure://{containerName}/{blobName}?accountName={AzuriteFixture.AccountName}&accountKey={AzuriteFixture.AccountKey}");
 
         // Act
-        using var stream = await _provider!.OpenReadAsync(uri);
+        using var stream = await Provider.OpenReadAsync(uri);
         var actualContent = new byte[largeContent.Length];
         var bytesRead = 0;
         int readResult;
@@ -206,10 +138,11 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         var expectedContent = JsonSerializer.Serialize(new { name = "test", value = 123 });
         await CreateTestBlobAsync(containerName, blobName, expectedContent, "application/json");
 
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse(
+            $"azure://{containerName}/{blobName}?accountName={AzuriteFixture.AccountName}&accountKey={AzuriteFixture.AccountKey}");
 
         // Act
-        using var stream = await _provider!.OpenReadAsync(uri);
+        using var stream = await Provider.OpenReadAsync(uri);
         using var reader = new StreamReader(stream);
         var actualContent = await reader.ReadToEndAsync();
 
@@ -228,7 +161,8 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         var containerName = GetUniqueContainerName();
         var blobName = "new-file.txt";
         var content = "New file content";
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
+        var uri = StorageUri.Parse(
+            $"azure://{containerName}/{blobName}?accountName={AzuriteFixture.AccountName}&accountKey={AzuriteFixture.AccountKey}");
 
         // Act
         using (var writeStream = await _provider!.OpenWriteAsync(uri))
@@ -321,7 +255,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         // Arrange
         var containerName = GetUniqueContainerName();
         var blobName = "large-file.bin";
-        var largeContent = new byte[16 * 1024 * 1024]; // 16 MB
+        var largeContent = new byte[LargeBlobSizeBytes];
         new Random().NextBytes(largeContent);
         var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
 
@@ -353,16 +287,17 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         // Arrange
         var containerName = GetUniqueContainerName();
         var blobName = "custom-upload.bin";
-        var largeContent = new byte[16 * 1024 * 1024]; // 16 MB
+        var largeContent = new byte[LargeBlobSizeBytes];
         new Random().NextBytes(largeContent);
 
         // Create provider with custom settings
         var customOptions = new AzureBlobStorageProviderOptions
         {
             ServiceUrl = _options!.ServiceUrl,
-            BlockBlobUploadThresholdBytes = 8 * 1024 * 1024,
-            UploadMaximumConcurrency = 8,
-            UploadMaximumTransferSizeBytes = 8 * 1024 * 1024, // 8 MB
+            ServiceVersion = _options.ServiceVersion,
+            BlockBlobUploadThresholdBytes = LargeBlobSizeBytes / 2,
+            UploadMaximumConcurrency = 4,
+            UploadMaximumTransferSizeBytes = 256 * 1024,
             UseDefaultCredentialChain = false,
         };
 
@@ -652,7 +587,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
         var containerName = GetUniqueContainerName();
         var blobName = "custom-metadata-file.txt";
 
-        var blobServiceClient = new BlobServiceClient(GetConnectionString());
+        var blobServiceClient = _fixture.BlobServiceClient;
         var containerClient = blobServiceClient.GetBlobContainerClient(containerName);
         await containerClient.CreateIfNotExistsAsync();
 
@@ -716,7 +651,8 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IAsyncLifetime
 
         var options = new AzureBlobStorageProviderOptions
         {
-            DefaultConnectionString = GetConnectionString(),
+            DefaultConnectionString = _fixture.GetConnectionString(),
+            ServiceVersion = _options!.ServiceVersion,
             UseDefaultCredentialChain = false,
         };
 

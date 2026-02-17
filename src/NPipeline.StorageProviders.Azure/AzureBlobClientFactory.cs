@@ -60,6 +60,7 @@ public class AzureBlobClientFactory
     {
         cancellationToken.ThrowIfCancellationRequested();
         var cacheKey = BuildCacheKey(connectionString, credentialInfo, serviceUrl, accountName);
+        var clientOptions = CreateClientOptions();
 
         var client = _clientCache.GetOrAdd(cacheKey, _ =>
         {
@@ -69,7 +70,11 @@ public class AzureBlobClientFactory
             // even when a connection string exists. This mirrors S3 behavior where URI parameters can override defaults
             // and avoids parsing potentially placeholder connection strings in tests.
             if (serviceUrl is null && !string.IsNullOrEmpty(connectionString))
-                return new BlobServiceClient(connectionString);
+            {
+                return clientOptions is null
+                    ? new BlobServiceClient(connectionString)
+                    : new BlobServiceClient(connectionString, clientOptions);
+            }
 
             // Build service URL if not provided
             var effectiveServiceUrl = serviceUrl ?? BuildDefaultServiceUrl(accountName ?? credentialInfo?.AccountName);
@@ -78,22 +83,32 @@ public class AzureBlobClientFactory
             if (credentialInfo?.SasToken is not null)
             {
                 var sasCredential = new AzureSasCredential(credentialInfo.SasToken);
-                return new BlobServiceClient(effectiveServiceUrl, sasCredential);
+                return clientOptions is null
+                    ? new BlobServiceClient(effectiveServiceUrl, sasCredential)
+                    : new BlobServiceClient(effectiveServiceUrl, sasCredential, clientOptions);
             }
 
             // Handle account key credential
             if (credentialInfo?.AccountKey is not null && credentialInfo.AccountName is not null)
             {
                 var keyCredential = new StorageSharedKeyCredential(credentialInfo.AccountName, credentialInfo.AccountKey);
-                return new BlobServiceClient(effectiveServiceUrl, keyCredential);
+                return clientOptions is null
+                    ? new BlobServiceClient(effectiveServiceUrl, keyCredential)
+                    : new BlobServiceClient(effectiveServiceUrl, keyCredential, clientOptions);
             }
 
             // Handle token credential (DefaultAzureCredential or custom TokenCredential)
             if (credentialInfo?.TokenCredential is not null)
-                return new BlobServiceClient(effectiveServiceUrl, credentialInfo.TokenCredential);
+            {
+                return clientOptions is null
+                    ? new BlobServiceClient(effectiveServiceUrl, credentialInfo.TokenCredential)
+                    : new BlobServiceClient(effectiveServiceUrl, credentialInfo.TokenCredential, clientOptions);
+            }
 
             // No credentials provided - use anonymous access
-            return new BlobServiceClient(effectiveServiceUrl);
+            return clientOptions is null
+                ? new BlobServiceClient(effectiveServiceUrl)
+                : new BlobServiceClient(effectiveServiceUrl, clientOptions);
         });
 
         EnforceCacheLimit();
@@ -256,6 +271,14 @@ public class AzureBlobClientFactory
         {
             _clientCache.TryRemove(staleKey, out _);
         }
+    }
+
+    private BlobClientOptions? CreateClientOptions()
+    {
+        if (_options.ServiceVersion is null)
+            return null;
+
+        return new BlobClientOptions(_options.ServiceVersion.Value);
     }
 
     private static string BuildCredentialKey(CredentialInfo credentialInfo)
