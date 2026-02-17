@@ -1,0 +1,47 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+        <!-- NuGet Packaging Metadata -->
+        <PackageId>NPipeline.Connectors.Kafka</PackageId>
+        <Description>Apache Kafka source and sink nodes for NPipeline - integrate with Kafka for high-throughput streaming with Avro/Protobuf support</Description>
+        <PackageTags>npipeline;kafka;apache;confluent;streaming;connectors;messaging;avro;protobuf</PackageTags>
+        <Authors>NPipeline contributors</Authors>
+        <RepositoryUrl>https://github.com/NPipeline/NPipeline.git</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/NPipeline/NPipeline</PackageProjectUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <PackageIcon>icon.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <WarningsNotAsErrors>$(WarningsNotAsErrors);CS1591</WarningsNotAsErrors>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Confluent.Kafka" Version="2.13.0"/>
+        <PackageReference Include="Confluent.SchemaRegistry" Version="2.13.0"/>
+        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.13.0"/>
+        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Protobuf" Version="2.13.0"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\NPipeline\NPipeline.csproj"/>
+        <ProjectReference Include="..\NPipeline.Connectors\NPipeline.Connectors.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="..\..\icon.png" Pack="true" PackagePath="\"/>
+        <None Include="README.md" Pack="true" PackagePath="\"/>
+    </ItemGroup>
+
+</Project>
