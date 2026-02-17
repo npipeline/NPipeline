@@ -60,6 +60,12 @@ The following connectors are available:
   - Includes batch acknowledgment for performance optimization
   - Configurable long polling, parallel processing, and retry logic
   - Uses AWSSDK.SQS for reliable SQS operations
+- **[Kafka](./kafka.md)**: Read from and write to Apache Kafka topics.
+  - Supports multiple delivery semantics (at-least-once, exactly-once)
+  - Configurable batching, retry strategies, and error handling
+  - Multiple serialization formats (JSON, Avro, Protobuf)
+  - Transaction support with proper offset management
+  - Uses Confluent.Kafka for reliable Kafka operations
 
 ## General Usage Pattern
 
@@ -96,5 +102,6 @@ Explore the documentation for each specific connector to learn about its install
 - **[PostgreSQL Connector](postgresql.md)**: Learn how to read from and write to PostgreSQL databases
 - **[SQL Server Connector](sqlserver.md)**: Learn how to read from and write to Microsoft SQL Server databases
 - **[AWS SQS Connector](aws-sqs.md)**: Learn how to read from and write to Amazon SQS queues
+- **[Kafka Connector](kafka.md)**: Learn how to read from and write to Apache Kafka topics
 - **[Common Patterns](../core-concepts/common-patterns.md)**: See connectors in practical examples
 - **[Installation](../getting-started/installation.md)**: Review installation options for connector packages
