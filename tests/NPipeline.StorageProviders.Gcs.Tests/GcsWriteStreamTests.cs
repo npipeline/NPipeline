@@ -2,9 +2,8 @@ using System.Net;
 using AwesomeAssertions;
 using FakeItEasy;
 using Google;
-using Google.Apis.Storage.v1.Data;
 using Google.Cloud.Storage.V1;
-using Xunit;
+using Object = Google.Apis.Storage.v1.Data.Object;
 
 namespace NPipeline.StorageProviders.Gcs.Tests;
 
@@ -249,11 +248,11 @@ public class GcsWriteStreamTests
     {
         // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-            A<Google.Apis.Storage.v1.Data.Object>._,
-            A<Stream>._,
-            A<UploadObjectOptions>._,
-            A<CancellationToken>._))
-            .Returns(Task.FromResult(new Google.Apis.Storage.v1.Data.Object()));
+                A<Object>._,
+                A<Stream>._,
+                A<UploadObjectOptions>._,
+                A<CancellationToken>._))
+            .Returns(Task.FromResult(new Object()));
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName, "application/json");
         var data = new byte[] { 1, 2, 3, 4, 5 };
@@ -264,7 +263,7 @@ public class GcsWriteStreamTests
 
         // Assert
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-                A<Google.Apis.Storage.v1.Data.Object>.That.Matches(o =>
+                A<Object>.That.Matches(o =>
                     o.Bucket == TestBucket &&
                     o.Name == TestObjectName &&
                     o.ContentType == "application/json"),
@@ -279,11 +278,11 @@ public class GcsWriteStreamTests
     {
         // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-            A<Google.Apis.Storage.v1.Data.Object>._,
-            A<Stream>._,
-            A<UploadObjectOptions>._,
-            A<CancellationToken>._))
-            .Returns(Task.FromResult(new Google.Apis.Storage.v1.Data.Object()));
+                A<Object>._,
+                A<Stream>._,
+                A<UploadObjectOptions>._,
+                A<CancellationToken>._))
+            .Returns(Task.FromResult(new Object()));
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName, "application/json");
         var data = new byte[] { 1, 2, 3, 4, 5 };
@@ -294,7 +293,7 @@ public class GcsWriteStreamTests
 
         // Assert
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-                A<Google.Apis.Storage.v1.Data.Object>.That.Matches(o =>
+                A<Object>.That.Matches(o =>
                     o.Bucket == TestBucket &&
                     o.Name == TestObjectName &&
                     o.ContentType == "application/json"),
@@ -309,11 +308,11 @@ public class GcsWriteStreamTests
     {
         // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-            A<Google.Apis.Storage.v1.Data.Object>._,
-            A<Stream>._,
-            A<UploadObjectOptions>._,
-            A<CancellationToken>._))
-            .Returns(Task.FromResult(new Google.Apis.Storage.v1.Data.Object()));
+                A<Object>._,
+                A<Stream>._,
+                A<UploadObjectOptions>._,
+                A<CancellationToken>._))
+            .Returns(Task.FromResult(new Object()));
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
         var data = new byte[] { 1, 2, 3, 4, 5 };
@@ -324,7 +323,7 @@ public class GcsWriteStreamTests
 
         // Assert
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-                A<Google.Apis.Storage.v1.Data.Object>.That.Matches(o =>
+                A<Object>.That.Matches(o =>
                     o.Bucket == TestBucket &&
                     o.Name == TestObjectName &&
                     string.IsNullOrEmpty(o.ContentType)),
@@ -344,10 +343,10 @@ public class GcsWriteStreamTests
         };
 
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-            A<Google.Apis.Storage.v1.Data.Object>._,
-            A<Stream>._,
-            A<UploadObjectOptions>._,
-            A<CancellationToken>._))
+                A<Object>._,
+                A<Stream>._,
+                A<UploadObjectOptions>._,
+                A<CancellationToken>._))
             .ThrowsAsync(gcsException);
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
@@ -368,10 +367,10 @@ public class GcsWriteStreamTests
         };
 
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-            A<Google.Apis.Storage.v1.Data.Object>._,
-            A<Stream>._,
-            A<UploadObjectOptions>._,
-            A<CancellationToken>._))
+                A<Object>._,
+                A<Stream>._,
+                A<UploadObjectOptions>._,
+                A<CancellationToken>._))
             .ThrowsAsync(gcsException);
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
@@ -392,10 +391,10 @@ public class GcsWriteStreamTests
         };
 
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-            A<Google.Apis.Storage.v1.Data.Object>._,
-            A<Stream>._,
-            A<UploadObjectOptions>._,
-            A<CancellationToken>._))
+                A<Object>._,
+                A<Stream>._,
+                A<UploadObjectOptions>._,
+                A<CancellationToken>._))
             .ThrowsAsync(gcsException);
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
@@ -416,10 +415,10 @@ public class GcsWriteStreamTests
         };
 
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-            A<Google.Apis.Storage.v1.Data.Object>._,
-            A<Stream>._,
-            A<UploadObjectOptions>._,
-            A<CancellationToken>._))
+                A<Object>._,
+                A<Stream>._,
+                A<UploadObjectOptions>._,
+                A<CancellationToken>._))
             .ThrowsAsync(gcsException);
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
@@ -440,10 +439,10 @@ public class GcsWriteStreamTests
         };
 
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-            A<Google.Apis.Storage.v1.Data.Object>._,
-            A<Stream>._,
-            A<UploadObjectOptions>._,
-            A<CancellationToken>._))
+                A<Object>._,
+                A<Stream>._,
+                A<UploadObjectOptions>._,
+                A<CancellationToken>._))
             .ThrowsAsync(gcsException);
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
@@ -464,10 +463,10 @@ public class GcsWriteStreamTests
         };
 
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-            A<Google.Apis.Storage.v1.Data.Object>._,
-            A<Stream>._,
-            A<UploadObjectOptions>._,
-            A<CancellationToken>._))
+                A<Object>._,
+                A<Stream>._,
+                A<UploadObjectOptions>._,
+                A<CancellationToken>._))
             .ThrowsAsync(gcsException);
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
@@ -483,11 +482,11 @@ public class GcsWriteStreamTests
     {
         // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-            A<Google.Apis.Storage.v1.Data.Object>._,
-            A<Stream>._,
-            A<UploadObjectOptions>._,
-            A<CancellationToken>._))
-            .Returns(Task.FromResult(new Google.Apis.Storage.v1.Data.Object()));
+                A<Object>._,
+                A<Stream>._,
+                A<UploadObjectOptions>._,
+                A<CancellationToken>._))
+            .Returns(Task.FromResult(new Object()));
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
         var data = new byte[] { 1, 2, 3, 4, 5 };
@@ -499,7 +498,7 @@ public class GcsWriteStreamTests
 
         // Assert
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-                A<Google.Apis.Storage.v1.Data.Object>._,
+                A<Object>._,
                 A<Stream>._,
                 A<UploadObjectOptions>._,
                 A<CancellationToken>._))
@@ -511,11 +510,11 @@ public class GcsWriteStreamTests
     {
         // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-            A<Google.Apis.Storage.v1.Data.Object>._,
-            A<Stream>._,
-            A<UploadObjectOptions>._,
-            A<CancellationToken>._))
-            .Returns(Task.FromResult(new Google.Apis.Storage.v1.Data.Object()));
+                A<Object>._,
+                A<Stream>._,
+                A<UploadObjectOptions>._,
+                A<CancellationToken>._))
+            .Returns(Task.FromResult(new Object()));
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
         var data = new byte[] { 1, 2, 3, 4, 5 };
@@ -527,7 +526,7 @@ public class GcsWriteStreamTests
 
         // Assert
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-                A<Google.Apis.Storage.v1.Data.Object>._,
+                A<Object>._,
                 A<Stream>._,
                 A<UploadObjectOptions>._,
                 A<CancellationToken>._))
@@ -539,11 +538,11 @@ public class GcsWriteStreamTests
     {
         // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-            A<Google.Apis.Storage.v1.Data.Object>._,
-            A<Stream>._,
-            A<UploadObjectOptions>._,
-            A<CancellationToken>._))
-            .Returns(Task.FromResult(new Google.Apis.Storage.v1.Data.Object()));
+                A<Object>._,
+                A<Stream>._,
+                A<UploadObjectOptions>._,
+                A<CancellationToken>._))
+            .Returns(Task.FromResult(new Object()));
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
         var data = new byte[1024 * 1024]; // 1MB
@@ -560,7 +559,7 @@ public class GcsWriteStreamTests
 
         // Assert
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-                A<Google.Apis.Storage.v1.Data.Object>._,
+                A<Object>._,
                 A<Stream>._,
                 A<UploadObjectOptions>._,
                 A<CancellationToken>._))
@@ -572,11 +571,11 @@ public class GcsWriteStreamTests
     {
         // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-            A<Google.Apis.Storage.v1.Data.Object>._,
-            A<Stream>._,
-            A<UploadObjectOptions>._,
-            A<CancellationToken>._))
-            .Returns(Task.FromResult(new Google.Apis.Storage.v1.Data.Object()));
+                A<Object>._,
+                A<Stream>._,
+                A<UploadObjectOptions>._,
+                A<CancellationToken>._))
+            .Returns(Task.FromResult(new Object()));
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
         var data = new byte[100];
@@ -591,7 +590,7 @@ public class GcsWriteStreamTests
 
         // Assert
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-                A<Google.Apis.Storage.v1.Data.Object>._,
+                A<Object>._,
                 A<Stream>._,
                 A<UploadObjectOptions>._,
                 A<CancellationToken>._))
@@ -607,11 +606,11 @@ public class GcsWriteStreamTests
     {
         // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-            A<Google.Apis.Storage.v1.Data.Object>._,
-            A<Stream>._,
-            A<UploadObjectOptions>._,
-            A<CancellationToken>._))
-            .Returns(Task.FromResult(new Google.Apis.Storage.v1.Data.Object()));
+                A<Object>._,
+                A<Stream>._,
+                A<UploadObjectOptions>._,
+                A<CancellationToken>._))
+            .Returns(Task.FromResult(new Object()));
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName, contentType);
         var data = new byte[] { 1, 2, 3, 4, 5 };
@@ -622,7 +621,7 @@ public class GcsWriteStreamTests
 
         // Assert
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-                A<Google.Apis.Storage.v1.Data.Object>.That.Matches(o => o.ContentType == contentType),
+                A<Object>.That.Matches(o => o.ContentType == contentType),
                 A<Stream>._,
                 A<UploadObjectOptions>._,
                 A<CancellationToken>._))
@@ -689,11 +688,11 @@ public class GcsWriteStreamTests
     {
         // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-            A<Google.Apis.Storage.v1.Data.Object>._,
-            A<Stream>._,
-            A<UploadObjectOptions>._,
-            A<CancellationToken>._))
-            .Returns(Task.FromResult(new Google.Apis.Storage.v1.Data.Object()));
+                A<Object>._,
+                A<Stream>._,
+                A<UploadObjectOptions>._,
+                A<CancellationToken>._))
+            .Returns(Task.FromResult(new Object()));
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
 
@@ -702,7 +701,7 @@ public class GcsWriteStreamTests
 
         // Assert
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-                A<Google.Apis.Storage.v1.Data.Object>._,
+                A<Object>._,
                 A<Stream>._,
                 A<UploadObjectOptions>._,
                 A<CancellationToken>._))
@@ -745,10 +744,10 @@ public class GcsWriteStreamTests
         cts.Cancel();
 
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-            A<Google.Apis.Storage.v1.Data.Object>._,
-            A<Stream>._,
-            A<UploadObjectOptions>._,
-            A<CancellationToken>._))
+                A<Object>._,
+                A<Stream>._,
+                A<UploadObjectOptions>._,
+                A<CancellationToken>._))
             .ThrowsAsync(new OperationCanceledException(cts.Token));
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
@@ -767,11 +766,11 @@ public class GcsWriteStreamTests
     {
         // Arrange
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-            A<Google.Apis.Storage.v1.Data.Object>._,
-            A<Stream>._,
-            A<UploadObjectOptions>._,
-            A<CancellationToken>._))
-            .Returns(Task.FromResult(new Google.Apis.Storage.v1.Data.Object()));
+                A<Object>._,
+                A<Stream>._,
+                A<UploadObjectOptions>._,
+                A<CancellationToken>._))
+            .Returns(Task.FromResult(new Object()));
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
         var data = new byte[] { 1, 2, 3, 4, 5 };
@@ -783,10 +782,10 @@ public class GcsWriteStreamTests
 
         // Assert - upload only happened once
         A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
-            A<Google.Apis.Storage.v1.Data.Object>._,
-            A<Stream>._,
-            A<UploadObjectOptions>._,
-            A<CancellationToken>._))
+                A<Object>._,
+                A<Stream>._,
+                A<UploadObjectOptions>._,
+                A<CancellationToken>._))
             .MustHaveHappenedOnceExactly();
     }
 }

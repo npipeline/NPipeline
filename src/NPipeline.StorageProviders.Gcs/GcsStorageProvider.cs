@@ -1,7 +1,7 @@
 using System.Net;
 using System.Runtime.CompilerServices;
+using Google;
 using Google.Apis.Storage.v1.Data;
-using Google.Cloud.Storage.V1;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
@@ -69,7 +69,7 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
     {
         ArgumentNullException.ThrowIfNull(uri);
 
-        var (bucket, objectName) = GetBucketAndObjectName(uri, requireObjectName: true);
+        var (bucket, objectName) = GetBucketAndObjectName(uri, true);
         var client = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
         var tempFilePath = Path.Combine(Path.GetTempPath(), $"gcs-download-{Guid.NewGuid():N}.tmp");
         FileStream? tempFileStream = null;
@@ -87,24 +87,21 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
             await _retryPolicy.ExecuteAsync(
                 token => client.DownloadObjectAsync(bucket, objectName, tempFileStream, cancellationToken: token),
                 cancellationToken).ConfigureAwait(false);
+
             tempFileStream.Position = 0;
             return new GcsReadStream(tempFileStream);
         }
-        catch (Google.GoogleApiException ex)
+        catch (GoogleApiException ex)
         {
             if (tempFileStream is not null)
-            {
                 await tempFileStream.DisposeAsync().ConfigureAwait(false);
-            }
 
             throw TranslateGcsException(ex, bucket, objectName, "read");
         }
         catch
         {
             if (tempFileStream is not null)
-            {
                 await tempFileStream.DisposeAsync().ConfigureAwait(false);
-            }
 
             throw;
         }
@@ -120,7 +117,7 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
     {
         ArgumentNullException.ThrowIfNull(uri);
 
-        var (bucket, objectName) = GetBucketAndObjectName(uri, requireObjectName: true);
+        var (bucket, objectName) = GetBucketAndObjectName(uri, true);
         var client = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
 
         var contentType = uri.Parameters.TryGetValue("contentType", out var ct) && !string.IsNullOrEmpty(ct)
@@ -147,7 +144,7 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
     {
         ArgumentNullException.ThrowIfNull(uri);
 
-        var (bucket, objectName) = GetBucketAndObjectName(uri, requireObjectName: true);
+        var (bucket, objectName) = GetBucketAndObjectName(uri, true);
         var client = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
 
         try
@@ -155,13 +152,14 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
             _ = await _retryPolicy.ExecuteAsync(
                 token => client.GetObjectAsync(bucket, objectName, cancellationToken: token),
                 cancellationToken).ConfigureAwait(false);
+
             return true;
         }
-        catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == HttpStatusCode.NotFound)
+        catch (GoogleApiException ex) when (ex.HttpStatusCode == HttpStatusCode.NotFound)
         {
             return false;
         }
-        catch (Google.GoogleApiException ex)
+        catch (GoogleApiException ex)
         {
             throw TranslateGcsException(ex, bucket, objectName, "exists");
         }
@@ -205,7 +203,7 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
     {
         ArgumentNullException.ThrowIfNull(uri);
 
-        var (bucket, objectName) = GetBucketAndObjectName(uri, requireObjectName: true);
+        var (bucket, objectName) = GetBucketAndObjectName(uri, true);
         var client = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
 
         try
@@ -237,11 +235,11 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
 
             return metadata;
         }
-        catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == HttpStatusCode.NotFound)
+        catch (GoogleApiException ex) when (ex.HttpStatusCode == HttpStatusCode.NotFound)
         {
             return null;
         }
-        catch (Google.GoogleApiException ex)
+        catch (GoogleApiException ex)
         {
             throw TranslateGcsException(ex, bucket, objectName, "metadata");
         }
@@ -294,7 +292,7 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
         bool recursive,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var (bucket, prefixPath) = GetBucketAndObjectName(prefix, requireObjectName: false);
+        var (bucket, prefixPath) = GetBucketAndObjectName(prefix, false);
         var client = await _clientFactory.GetClientAsync(prefix, cancellationToken).ConfigureAwait(false);
         var request = client.Service.Objects.List(bucket);
         request.Prefix = prefixPath;
@@ -317,11 +315,11 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
                     token => request.ExecuteAsync(token),
                     cancellationToken).ConfigureAwait(false);
             }
-            catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == HttpStatusCode.NotFound)
+            catch (GoogleApiException ex) when (ex.HttpStatusCode == HttpStatusCode.NotFound)
             {
                 yield break;
             }
-            catch (Google.GoogleApiException ex)
+            catch (GoogleApiException ex)
             {
                 throw TranslateGcsException(ex, bucket, prefixPath, "list");
             }
@@ -373,7 +371,7 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
     }
 
     private static Exception TranslateGcsException(
-        Google.GoogleApiException ex,
+        GoogleApiException ex,
         string bucket,
         string objectName,
         string operation)

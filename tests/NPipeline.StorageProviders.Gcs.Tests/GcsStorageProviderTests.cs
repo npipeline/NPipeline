@@ -2,10 +2,9 @@ using System.Net;
 using AwesomeAssertions;
 using FakeItEasy;
 using Google;
-using Google.Apis.Storage.v1.Data;
 using Google.Cloud.Storage.V1;
 using NPipeline.StorageProviders.Models;
-using Xunit;
+using Object = Google.Apis.Storage.v1.Data.Object;
 
 namespace NPipeline.StorageProviders.Gcs.Tests;
 
@@ -139,18 +138,18 @@ public class GcsStorageProviderTests
             .ReturnsLazily(call => Task.FromResult(_fakeStorageClient));
 
         A.CallTo(() => _fakeStorageClient.DownloadObjectAsync(
-            A<string>._,
-            A<string>._,
-            A<Stream>._,
-            A<DownloadObjectOptions>._,
-            A<CancellationToken>._))
+                A<string>._,
+                A<string>._,
+                A<Stream>._,
+                A<DownloadObjectOptions>._,
+                A<CancellationToken>._))
             .Invokes(call =>
             {
                 var stream = call.GetArgument<Stream>(2)!;
                 var data = new byte[] { 1, 2, 3, 4, 5 };
                 stream.Write(data, 0, data.Length);
             })
-            .ReturnsLazily(call => Task.FromResult(new Google.Apis.Storage.v1.Data.Object()));
+            .ReturnsLazily(call => Task.FromResult(new Object()));
 
         // Act
         var stream = await _provider.OpenReadAsync(uri);
@@ -183,11 +182,11 @@ public class GcsStorageProviderTests
         };
 
         A.CallTo(() => _fakeStorageClient.DownloadObjectAsync(
-            A<string>._,
-            A<string>._,
-            A<Stream>._,
-            A<DownloadObjectOptions>._,
-            A<CancellationToken>._))
+                A<string>._,
+                A<string>._,
+                A<Stream>._,
+                A<DownloadObjectOptions>._,
+                A<CancellationToken>._))
             .ThrowsAsync(gcsException);
 
         // Act & Assert
@@ -209,11 +208,11 @@ public class GcsStorageProviderTests
         };
 
         A.CallTo(() => _fakeStorageClient.DownloadObjectAsync(
-            A<string>._,
-            A<string>._,
-            A<Stream>._,
-            A<DownloadObjectOptions>._,
-            A<CancellationToken>._))
+                A<string>._,
+                A<string>._,
+                A<Stream>._,
+                A<DownloadObjectOptions>._,
+                A<CancellationToken>._))
             .ThrowsAsync(gcsException);
 
         // Act & Assert
@@ -235,11 +234,11 @@ public class GcsStorageProviderTests
         };
 
         A.CallTo(() => _fakeStorageClient.DownloadObjectAsync(
-            A<string>._,
-            A<string>._,
-            A<Stream>._,
-            A<DownloadObjectOptions>._,
-            A<CancellationToken>._))
+                A<string>._,
+                A<string>._,
+                A<Stream>._,
+                A<DownloadObjectOptions>._,
+                A<CancellationToken>._))
             .ThrowsAsync(gcsException);
 
         // Act & Assert
@@ -261,11 +260,11 @@ public class GcsStorageProviderTests
         };
 
         A.CallTo(() => _fakeStorageClient.DownloadObjectAsync(
-            A<string>._,
-            A<string>._,
-            A<Stream>._,
-            A<DownloadObjectOptions>._,
-            A<CancellationToken>._))
+                A<string>._,
+                A<string>._,
+                A<Stream>._,
+                A<DownloadObjectOptions>._,
+                A<CancellationToken>._))
             .ThrowsAsync(gcsException);
 
         // Act & Assert
@@ -287,11 +286,11 @@ public class GcsStorageProviderTests
         };
 
         A.CallTo(() => _fakeStorageClient.DownloadObjectAsync(
-            A<string>._,
-            A<string>._,
-            A<Stream>._,
-            A<DownloadObjectOptions>._,
-            A<CancellationToken>._))
+                A<string>._,
+                A<string>._,
+                A<Stream>._,
+                A<DownloadObjectOptions>._,
+                A<CancellationToken>._))
             .ThrowsAsync(gcsException);
 
         // Act & Assert
@@ -313,11 +312,11 @@ public class GcsStorageProviderTests
         };
 
         A.CallTo(() => _fakeStorageClient.DownloadObjectAsync(
-            A<string>._,
-            A<string>._,
-            A<Stream>._,
-            A<DownloadObjectOptions>._,
-            A<CancellationToken>._))
+                A<string>._,
+                A<string>._,
+                A<Stream>._,
+                A<DownloadObjectOptions>._,
+                A<CancellationToken>._))
             .ThrowsAsync(gcsException);
 
         // Act & Assert
@@ -393,15 +392,17 @@ public class GcsStorageProviderTests
             .Returns(Task.FromResult(storageClient));
 
         var attempts = 0;
+
         A.CallTo(() => storageClient.DownloadObjectAsync(
-            A<string>._,
-            A<string>._,
-            A<Stream>._,
-            A<DownloadObjectOptions>._,
-            A<CancellationToken>._))
+                A<string>._,
+                A<string>._,
+                A<Stream>._,
+                A<DownloadObjectOptions>._,
+                A<CancellationToken>._))
             .ReturnsLazily(call =>
             {
                 attempts++;
+
                 if (attempts == 1)
                 {
                     throw new GoogleApiException("storage", "Internal error")
@@ -413,7 +414,7 @@ public class GcsStorageProviderTests
                 var stream = call.GetArgument<Stream>(2)!;
                 var data = new byte[] { 1, 2, 3 };
                 stream.Write(data, 0, data.Length);
-                return Task.FromResult(new Google.Apis.Storage.v1.Data.Object());
+                return Task.FromResult(new Object());
             });
 
         // Act
@@ -452,14 +453,16 @@ public class GcsStorageProviderTests
             .Returns(Task.FromResult(storageClient));
 
         var attempts = 0;
+
         A.CallTo(() => storageClient.UploadObjectAsync(
-            A<Google.Apis.Storage.v1.Data.Object>._,
-            A<Stream>._,
-            A<UploadObjectOptions>._,
-            A<CancellationToken>._))
+                A<Object>._,
+                A<Stream>._,
+                A<UploadObjectOptions>._,
+                A<CancellationToken>._))
             .ReturnsLazily(_ =>
             {
                 attempts++;
+
                 if (attempts == 1)
                 {
                     throw new GoogleApiException("storage", "Service unavailable")
@@ -468,7 +471,7 @@ public class GcsStorageProviderTests
                     };
                 }
 
-                return Task.FromResult(new Google.Apis.Storage.v1.Data.Object());
+                return Task.FromResult(new Object());
             });
 
         var stream = await provider.OpenWriteAsync(uri);
@@ -491,11 +494,11 @@ public class GcsStorageProviderTests
             .ReturnsLazily(() => Task.FromResult(_fakeStorageClient));
 
         A.CallTo(() => _fakeStorageClient.GetObjectAsync(
-            A<string>._,
-            A<string>._,
-            A<GetObjectOptions>._,
-            A<CancellationToken>._))
-            .ReturnsLazily(call => Task.FromResult(new Google.Apis.Storage.v1.Data.Object()));
+                A<string>._,
+                A<string>._,
+                A<GetObjectOptions>._,
+                A<CancellationToken>._))
+            .ReturnsLazily(call => Task.FromResult(new Object()));
 
         // Act
         var result = await _provider.ExistsAsync(uri);
@@ -519,10 +522,10 @@ public class GcsStorageProviderTests
         };
 
         A.CallTo(() => _fakeStorageClient.GetObjectAsync(
-            A<string>._,
-            A<string>._,
-            A<GetObjectOptions>._,
-            A<CancellationToken>._))
+                A<string>._,
+                A<string>._,
+                A<GetObjectOptions>._,
+                A<CancellationToken>._))
             .ThrowsAsync(gcsException);
 
         // Act
@@ -554,10 +557,10 @@ public class GcsStorageProviderTests
         };
 
         A.CallTo(() => _fakeStorageClient.GetObjectAsync(
-            A<string>._,
-            A<string>._,
-            A<GetObjectOptions>._,
-            A<CancellationToken>._))
+                A<string>._,
+                A<string>._,
+                A<GetObjectOptions>._,
+                A<CancellationToken>._))
             .ThrowsAsync(gcsException);
 
         // Act & Assert
@@ -593,14 +596,16 @@ public class GcsStorageProviderTests
             .Returns(Task.FromResult(storageClient));
 
         var attempts = 0;
+
         A.CallTo(() => storageClient.GetObjectAsync(
-            A<string>._,
-            A<string>._,
-            A<GetObjectOptions>._,
-            A<CancellationToken>._))
+                A<string>._,
+                A<string>._,
+                A<GetObjectOptions>._,
+                A<CancellationToken>._))
             .ReturnsLazily(_ =>
             {
                 attempts++;
+
                 if (attempts == 1)
                 {
                     throw new GoogleApiException("storage", "Rate limited")
@@ -609,7 +614,7 @@ public class GcsStorageProviderTests
                     };
                 }
 
-                return Task.FromResult(new Google.Apis.Storage.v1.Data.Object());
+                return Task.FromResult(new Object());
             });
 
         // Act
@@ -650,7 +655,7 @@ public class GcsStorageProviderTests
         A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
             .ReturnsLazily(() => Task.FromResult(_fakeStorageClient));
 
-        var gcsObject = new Google.Apis.Storage.v1.Data.Object
+        var gcsObject = new Object
         {
             Size = 1024,
             UpdatedDateTimeOffset = DateTimeOffset.UtcNow,
@@ -660,10 +665,10 @@ public class GcsStorageProviderTests
         };
 
         A.CallTo(() => _fakeStorageClient.GetObjectAsync(
-            A<string>._,
-            A<string>._,
-            A<GetObjectOptions>._,
-            A<CancellationToken>._))
+                A<string>._,
+                A<string>._,
+                A<GetObjectOptions>._,
+                A<CancellationToken>._))
             .ReturnsLazily(() => Task.FromResult(gcsObject));
 
         // Act
@@ -693,10 +698,10 @@ public class GcsStorageProviderTests
         };
 
         A.CallTo(() => _fakeStorageClient.GetObjectAsync(
-            A<string>._,
-            A<string>._,
-            A<GetObjectOptions>._,
-            A<CancellationToken>._))
+                A<string>._,
+                A<string>._,
+                A<GetObjectOptions>._,
+                A<CancellationToken>._))
             .ThrowsAsync(gcsException);
 
         // Act
@@ -728,10 +733,10 @@ public class GcsStorageProviderTests
         };
 
         A.CallTo(() => _fakeStorageClient.GetObjectAsync(
-            A<string>._,
-            A<string>._,
-            A<GetObjectOptions>._,
-            A<CancellationToken>._))
+                A<string>._,
+                A<string>._,
+                A<GetObjectOptions>._,
+                A<CancellationToken>._))
             .ThrowsAsync(gcsException);
 
         // Act & Assert
@@ -858,18 +863,18 @@ public class GcsStorageProviderTests
             .ReturnsLazily(() => Task.FromResult(_fakeStorageClient));
 
         A.CallTo(() => _fakeStorageClient.DownloadObjectAsync(
-            A<string>._,
-            A<string>._,
-            A<Stream>._,
-            A<DownloadObjectOptions>._,
-            A<CancellationToken>._))
+                A<string>._,
+                A<string>._,
+                A<Stream>._,
+                A<DownloadObjectOptions>._,
+                A<CancellationToken>._))
             .Invokes(call =>
             {
                 var stream = call.GetArgument<Stream>(2)!;
                 var data = new byte[] { 1, 2, 3, 4, 5 };
                 stream.Write(data, 0, data.Length);
             })
-            .ReturnsLazily(call => Task.FromResult(new Google.Apis.Storage.v1.Data.Object()));
+            .ReturnsLazily(call => Task.FromResult(new Object()));
 
         // Act
         var stream = await _provider.OpenReadAsync(uri);
@@ -878,11 +883,11 @@ public class GcsStorageProviderTests
         stream.Should().NotBeNull();
 
         A.CallTo(() => _fakeStorageClient.DownloadObjectAsync(
-            expectedBucket,
-            expectedObjectName,
-            A<Stream>._,
-            A<DownloadObjectOptions>._,
-            A<CancellationToken>._))
+                expectedBucket,
+                expectedObjectName,
+                A<Stream>._,
+                A<DownloadObjectOptions>._,
+                A<CancellationToken>._))
             .MustHaveHappenedOnceExactly();
     }
 
@@ -898,18 +903,18 @@ public class GcsStorageProviderTests
             .ReturnsLazily(() => Task.FromResult(_fakeStorageClient));
 
         A.CallTo(() => _fakeStorageClient.DownloadObjectAsync(
-            A<string>._,
-            A<string>._,
-            A<Stream>._,
-            A<DownloadObjectOptions>._,
-            A<CancellationToken>._))
+                A<string>._,
+                A<string>._,
+                A<Stream>._,
+                A<DownloadObjectOptions>._,
+                A<CancellationToken>._))
             .Invokes(call =>
             {
                 var stream = call.GetArgument<Stream>(2)!;
                 var data = new byte[] { 1, 2, 3, 4, 5 };
                 stream.Write(data, 0, data.Length);
             })
-            .ReturnsLazily(_ => Task.FromResult(new Google.Apis.Storage.v1.Data.Object()));
+            .ReturnsLazily(_ => Task.FromResult(new Object()));
 
         var readStream = await _provider.OpenReadAsync(uri);
 
@@ -933,17 +938,17 @@ public class GcsStorageProviderTests
             .ReturnsLazily(() => Task.FromResult(_fakeStorageClient));
 
         A.CallTo(() => _fakeStorageClient.DownloadObjectAsync(
-            A<string>._,
-            A<string>._,
-            A<Stream>._,
-            A<DownloadObjectOptions>._,
-            A<CancellationToken>._))
+                A<string>._,
+                A<string>._,
+                A<Stream>._,
+                A<DownloadObjectOptions>._,
+                A<CancellationToken>._))
             .Invokes(call =>
             {
                 var stream = call.GetArgument<Stream>(2)!;
                 stream.Write(new byte[] { 42 }, 0, 1);
             })
-            .ReturnsLazily(_ => Task.FromResult(new Google.Apis.Storage.v1.Data.Object()));
+            .ReturnsLazily(_ => Task.FromResult(new Object()));
 
         var readStream = await _provider.OpenReadAsync(uri);
 

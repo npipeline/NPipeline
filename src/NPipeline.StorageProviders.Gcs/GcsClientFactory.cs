@@ -12,9 +12,9 @@ namespace NPipeline.StorageProviders.Gcs;
 /// </summary>
 public class GcsClientFactory
 {
-    private readonly ConcurrentDictionary<string, Lazy<StorageClient>> _clientCache = new();
-    private readonly LinkedList<string> _cacheOrder = new();
     private readonly object _cacheLock = new();
+    private readonly LinkedList<string> _cacheOrder = new();
+    private readonly ConcurrentDictionary<string, Lazy<StorageClient>> _clientCache = new();
     private readonly GcsStorageProviderOptions _options;
 
     /// <summary>
@@ -85,10 +85,9 @@ public class GcsClientFactory
             lock (_cacheLock)
             {
                 var node = _cacheOrder.Find(cacheKey);
+
                 if (node is not null)
-                {
                     _cacheOrder.Remove(node);
-                }
             }
 
             throw;
@@ -101,9 +100,7 @@ public class GcsClientFactory
 
         // Set credentials
         if (credentials is not null)
-        {
             builder.Credential = credentials;
-        }
         else if (_options.UseDefaultCredentials)
         {
             try
@@ -124,9 +121,7 @@ public class GcsClientFactory
 
         // Set service URL for emulator or custom endpoints
         if (serviceUrl is not null)
-        {
             builder.BaseUri = serviceUrl.ToString();
-        }
 
         var newClient = builder.Build();
         OnClientCreated(cacheKey);
@@ -138,9 +133,7 @@ public class GcsClientFactory
         lock (_cacheLock)
         {
             if (_cacheOrder.Find(cacheKey) is not null)
-            {
                 return;
-            }
 
             if (_cacheOrder.Count >= _options.ClientCacheSizeLimit)
             {
@@ -167,9 +160,7 @@ public class GcsClientFactory
         // Check for access token in URI parameters
         if (uri.Parameters.TryGetValue("accessToken", out var accessToken) &&
             !string.IsNullOrWhiteSpace(accessToken))
-        {
             return GoogleCredential.FromAccessToken(accessToken);
-        }
 
         // Check for credentials file path in URI parameters
         if (uri.Parameters.TryGetValue("credentialsPath", out var credentialsPath) &&
@@ -189,9 +180,7 @@ public class GcsClientFactory
 
         // Return default credentials from options if available
         if (_options.DefaultCredentials is not null)
-        {
             return _options.DefaultCredentials;
-        }
 
         // Return null to indicate ADC should be used (if enabled)
         return null;
@@ -210,9 +199,7 @@ public class GcsClientFactory
             var decoded = Uri.UnescapeDataString(serviceUrlString);
 
             if (Uri.TryCreate(decoded, UriKind.Absolute, out var serviceUrl))
-            {
                 return serviceUrl;
-            }
 
             throw new ArgumentException($"Invalid service URL: {serviceUrlString}", nameof(uri));
         }
@@ -229,9 +216,7 @@ public class GcsClientFactory
     {
         if (uri.Parameters.TryGetValue("projectId", out var projectId) &&
             !string.IsNullOrWhiteSpace(projectId))
-        {
             return projectId;
-        }
 
         return _options.DefaultProjectId;
     }

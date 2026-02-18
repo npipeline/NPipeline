@@ -62,7 +62,7 @@ public class GcsDocumentSource : SourceNode<string>
         var prefixUri = StorageUri.Parse($"gs://{bucket}/{prefix}");
 
         // List all objects with the specified prefix
-        await foreach (var item in _storageProvider.ListAsync(prefixUri, recursive: true, cancellationToken))
+        await foreach (var item in _storageProvider.ListAsync(prefixUri, true, cancellationToken))
         {
             if (item.IsDirectory)
                 continue;

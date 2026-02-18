@@ -1,6 +1,7 @@
 # GCS Storage Provider Sample
 
-This sample demonstrates how to use Google Cloud Storage with NPipeline, showing a complete pipeline that reads documents from GCS, processes them, and writes the results back to GCS.
+This sample demonstrates how to use Google Cloud Storage with NPipeline, showing a complete pipeline that reads documents from GCS, processes them, and writes
+the results back to GCS.
 
 ## Overview
 
@@ -50,10 +51,10 @@ The easiest way to run this sample is using the GCS emulator via Docker.
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NP_GCS_BUCKET` | GCS bucket name | `sample-bucket` |
-| `NP_GCS_PROJECT_ID` | Google Cloud project ID | `test-project` |
+| Variable             | Description                    | Default                   |
+|----------------------|--------------------------------|---------------------------|
+| `NP_GCS_BUCKET`      | GCS bucket name                | `sample-bucket`           |
+| `NP_GCS_PROJECT_ID`  | Google Cloud project ID        | `test-project`            |
 | `NP_GCS_SERVICE_URL` | GCS service URL (for emulator) | (not set - uses real GCS) |
 
 When using the emulator, the sample automatically:
@@ -113,7 +114,7 @@ To run against real GCS:
    export NP_GCS_BUCKET=your-bucket-name
    export NP_GCS_PROJECT_ID=your-project-id
    # Don't set NP_GCS_SERVICE_URL to use real GCS
-   
+
    dotnet run
    ```
 
@@ -151,7 +152,7 @@ public class GcsDocumentSource : SourceNode<string>
 {
     private readonly IStorageProvider _storageProvider;
     private readonly string _bucket;
-    
+
     public GcsDocumentSource(
         IStorageProvider storageProvider,
         string bucket,
@@ -160,7 +161,7 @@ public class GcsDocumentSource : SourceNode<string>
         _storageProvider = storageProvider;
         _bucket = bucket;
     }
-    
+
     // ...
 }
 ```

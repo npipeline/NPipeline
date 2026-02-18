@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Xunit;
+using Google.Apis.Auth.OAuth2;
 
 namespace NPipeline.StorageProviders.Gcs.Tests;
 
@@ -110,6 +110,7 @@ public class GcsStorageProviderOptionsTests
     {
         // Arrange
         var options = new GcsStorageProviderOptions();
+
         var retrySettings = new GcsRetrySettings
         {
             MaxAttempts = 5,
@@ -359,7 +360,7 @@ public class GcsStorageProviderOptionsTests
         // Arrange
         var options = new GcsStorageProviderOptions
         {
-            DefaultCredentials = Google.Apis.Auth.OAuth2.GoogleCredential.FromAccessToken("test-token"),
+            DefaultCredentials = GoogleCredential.FromAccessToken("test-token"),
         };
 
         // Act

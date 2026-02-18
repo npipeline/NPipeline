@@ -3,7 +3,6 @@ using FakeItEasy;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Storage.V1;
 using NPipeline.StorageProviders.Models;
-using Xunit;
 
 namespace NPipeline.StorageProviders.Gcs.Tests;
 
@@ -207,7 +206,10 @@ public class GcsClientFactoryTests
             .ReturnsLazily(() =>
             {
                 callCount++;
-                return Task.FromResult(callCount == 1 ? client1 : client2);
+
+                return Task.FromResult(callCount == 1
+                    ? client1
+                    : client2);
             });
 
         var uri1 = StorageUri.Parse("gs://test-bucket/test-object?projectId=project1");
@@ -233,7 +235,10 @@ public class GcsClientFactoryTests
             .ReturnsLazily(() =>
             {
                 callCount++;
-                return Task.FromResult(callCount == 1 ? client1 : client2);
+
+                return Task.FromResult(callCount == 1
+                    ? client1
+                    : client2);
             });
 
         var uri1 = StorageUri.Parse("gs://test-bucket/test-object?serviceUrl=http://localhost:4443");
@@ -401,10 +406,10 @@ public class GcsClientFactoryTests
     {
         // Arrange
         A.CallTo(() => _fakeClientFactory.GetClientAsync(
-            A<GoogleCredential>._,
-            A<Uri>._,
-            A<string?>._,
-            A<CancellationToken>._))
+                A<GoogleCredential>._,
+                A<Uri>._,
+                A<string?>._,
+                A<CancellationToken>._))
             .Returns(Task.FromResult(_fakeStorageClient));
 
         // Act
@@ -419,10 +424,10 @@ public class GcsClientFactoryTests
     {
         // Arrange
         A.CallTo(() => _fakeClientFactory.GetClientAsync(
-            A<GoogleCredential>._,
-            A<Uri>._,
-            A<string?>._,
-            A<CancellationToken>._))
+                A<GoogleCredential>._,
+                A<Uri>._,
+                A<string?>._,
+                A<CancellationToken>._))
             .Returns(Task.FromResult(_fakeStorageClient));
 
         var serviceUrl = new Uri("http://localhost:4443");
@@ -439,10 +444,10 @@ public class GcsClientFactoryTests
     {
         // Arrange
         A.CallTo(() => _fakeClientFactory.GetClientAsync(
-            A<GoogleCredential>._,
-            A<Uri>._,
-            A<string?>._,
-            A<CancellationToken>._))
+                A<GoogleCredential>._,
+                A<Uri>._,
+                A<string?>._,
+                A<CancellationToken>._))
             .Returns(Task.FromResult(_fakeStorageClient));
 
         // Act
@@ -459,10 +464,10 @@ public class GcsClientFactoryTests
         var cachedClient = A.Fake<StorageClient>();
 
         A.CallTo(() => _fakeClientFactory.GetClientAsync(
-            A<GoogleCredential>._,
-            A<Uri>._,
-            A<string?>._,
-            A<CancellationToken>._))
+                A<GoogleCredential>._,
+                A<Uri>._,
+                A<string?>._,
+                A<CancellationToken>._))
             .Returns(Task.FromResult(cachedClient));
 
         var serviceUrl = new Uri("http://localhost:4443");

@@ -1,6 +1,5 @@
 using System.Text;
 using NPipeline.StorageProviders.Models;
-using Xunit;
 
 namespace NPipeline.StorageProviders.Gcs.Tests;
 
@@ -76,15 +75,21 @@ public sealed class GcsStorageProviderIntegrationTests
         await WriteContentAsync(context.Provider, object2, "two");
 
         var recursiveItems = new List<StorageItem>();
-        await foreach (var item in context.Provider.ListAsync(prefixUri, recursive: true))
+
+        await foreach (var item in context.Provider.ListAsync(prefixUri, true))
+        {
             recursiveItems.Add(item);
+        }
 
         Assert.Contains(recursiveItems, item => item.Uri.Path.EndsWith("/a/file1.txt", StringComparison.Ordinal));
         Assert.Contains(recursiveItems, item => item.Uri.Path.EndsWith("/b/file2.txt", StringComparison.Ordinal));
 
         var nonRecursiveItems = new List<StorageItem>();
-        await foreach (var item in context.Provider.ListAsync(prefixUri, recursive: false))
+
+        await foreach (var item in context.Provider.ListAsync(prefixUri, false))
+        {
             nonRecursiveItems.Add(item);
+        }
 
         Assert.Contains(nonRecursiveItems, item => item.IsDirectory && item.Uri.Path.EndsWith("/a", StringComparison.Ordinal));
         Assert.Contains(nonRecursiveItems, item => item.IsDirectory && item.Uri.Path.EndsWith("/b", StringComparison.Ordinal));
@@ -102,13 +107,13 @@ public sealed class GcsStorageProviderIntegrationTests
         context = null!;
 
         var enabled = Environment.GetEnvironmentVariable("NP_GCS_INTEGRATION");
+
         if (!string.Equals(enabled, "1", StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(enabled, "true", StringComparison.OrdinalIgnoreCase))
-        {
             return false;
-        }
 
         var bucket = Environment.GetEnvironmentVariable("NP_GCS_BUCKET");
+
         if (string.IsNullOrWhiteSpace(bucket))
             return false;
 
@@ -119,6 +124,7 @@ public sealed class GcsStorageProviderIntegrationTests
         };
 
         var serviceUrl = Environment.GetEnvironmentVariable("NP_GCS_SERVICE_URL");
+
         if (!string.IsNullOrWhiteSpace(serviceUrl) && Uri.TryCreate(serviceUrl, UriKind.Absolute, out var endpoint))
             options.ServiceUrl = endpoint;
 

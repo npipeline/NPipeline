@@ -13,12 +13,10 @@ namespace Sample_GcsStorageProvider;
 ///     1. GcsDocumentSource reads text documents from GCS
 ///     2. TextTransform processes each document
 ///     3. GcsDocumentSink writes processed documents back to GCS
-///     
 ///     Configuration is passed via PipelineContext parameters:
 ///     - "Bucket": GCS bucket name
 ///     - "InputPrefix": Prefix for input objects (default: "input/")
 ///     - "OutputPrefix": Prefix for output objects (default: "output/")
-///     
 ///     Nodes receive IStorageProvider via constructor injection (DI).
 /// </remarks>
 public class GcsPipeline : IPipelineDefinition

@@ -13,13 +13,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\NPipeline\NPipeline.csproj" />
-        <ProjectReference Include="..\..\src\NPipeline.Extensions.DependencyInjection\NPipeline.Extensions.DependencyInjection.csproj" />
-        <ProjectReference Include="..\..\src\NPipeline.StorageProviders.Gcs\NPipeline.StorageProviders.Gcs.csproj" />
+        <ProjectReference Include="..\..\src\NPipeline\NPipeline.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.Extensions.DependencyInjection\NPipeline.Extensions.DependencyInjection.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.StorageProviders.Gcs\NPipeline.StorageProviders.Gcs.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.3" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.3"/>
     </ItemGroup>
 
 </Project>

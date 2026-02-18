@@ -1,5 +1,8 @@
+using System.Net;
 using System.Runtime.ExceptionServices;
+using Google;
 using Google.Cloud.Storage.V1;
+using Object = Google.Apis.Storage.v1.Data.Object;
 
 namespace NPipeline.StorageProviders.Gcs;
 
@@ -283,16 +286,14 @@ public sealed class GcsWriteStream : Stream
                 ChunkSize = _chunkSizeBytes,
             };
 
-            var obj = new Google.Apis.Storage.v1.Data.Object
+            var obj = new Object
             {
                 Bucket = _bucket,
                 Name = _objectName,
             };
 
             if (!string.IsNullOrEmpty(_contentType))
-            {
                 obj.ContentType = _contentType;
-            }
 
             await _retryPolicy.ExecuteAsync(
                 token => _storageClient.UploadObjectAsync(
@@ -304,7 +305,7 @@ public sealed class GcsWriteStream : Stream
 
             _uploaded = true;
         }
-        catch (Google.GoogleApiException ex)
+        catch (GoogleApiException ex)
         {
             throw TranslateGcsException(ex, _bucket, _objectName, "upload");
         }
@@ -321,26 +322,26 @@ public sealed class GcsWriteStream : Stream
     ///     Translates a Google API exception to an appropriate .NET exception.
     /// </summary>
     private static Exception TranslateGcsException(
-        Google.GoogleApiException ex,
+        GoogleApiException ex,
         string bucket,
         string objectName,
         string operation)
     {
         return ex.HttpStatusCode switch
         {
-            System.Net.HttpStatusCode.Unauthorized
+            HttpStatusCode.Unauthorized
                 => new UnauthorizedAccessException(
                     $"Access denied to GCS bucket '{bucket}' and object '{objectName}'. {ex.Message}", ex),
-            System.Net.HttpStatusCode.Forbidden
+            HttpStatusCode.Forbidden
                 => new UnauthorizedAccessException(
                     $"Permission denied for GCS bucket '{bucket}' and object '{objectName}'. {ex.Message}", ex),
-            System.Net.HttpStatusCode.NotFound
+            HttpStatusCode.NotFound
                 => new FileNotFoundException(
                     $"GCS bucket '{bucket}' or object '{objectName}' not found.", ex),
-            System.Net.HttpStatusCode.BadRequest
+            HttpStatusCode.BadRequest
                 => new ArgumentException(
                     $"Invalid request for GCS bucket '{bucket}' and object '{objectName}'. {ex.Message}", ex),
-            System.Net.HttpStatusCode.Conflict
+            HttpStatusCode.Conflict
                 => new IOException(
                     $"Conflict occurred for GCS bucket '{bucket}' and object '{objectName}'. {ex.Message}", ex),
             _

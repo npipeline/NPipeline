@@ -1,6 +1,7 @@
 # Google Cloud Storage Provider
 
-`NPipeline.StorageProviders.Gcs` provides a fully-featured `IStorageProvider` implementation for Google Cloud Storage, enabling seamless integration with `gs://` URIs. Use this provider to read, write, and manage objects in Google Cloud Storage buckets within your NPipeline workflows.
+`NPipeline.StorageProviders.Gcs` provides a fully-featured `IStorageProvider` implementation for Google Cloud Storage, enabling seamless integration with
+`gs://` URIs. Use this provider to read, write, and manage objects in Google Cloud Storage buckets within your NPipeline workflows.
 
 ## Features
 
@@ -48,10 +49,10 @@ services.AddGcsStorageProvider(options =>
 {
     // Use default credentials (Application Default Credentials)
     options.UseDefaultCredentials = true;
-    
+
     // Set default project ID for all operations
     options.DefaultProjectId = "my-project-id";
-    
+
     // Optional: Configure retries for transient failures
     options.MaxRetries = 3;
     options.RetryDelayMs = 1000;
@@ -64,13 +65,13 @@ var provider = services
 
 ### Configuration Options
 
-| Option | Purpose | Default |
-| --- | --- | --- |
-| `DefaultProjectId` | Project ID used for all operations | (required) |
-| `UseDefaultCredentials` | Use Application Default Credentials | `false` |
-| `ServiceUrl` | Custom GCS endpoint (for emulator) | GCS production |
-| `MaxRetries` | Max retries for transient errors | `3` |
-| `RetryDelayMs` | Initial delay between retries (ms) | `1000` |
+| Option                  | Purpose                             | Default        |
+|-------------------------|-------------------------------------|----------------|
+| `DefaultProjectId`      | Project ID used for all operations  | (required)     |
+| `UseDefaultCredentials` | Use Application Default Credentials | `false`        |
+| `ServiceUrl`            | Custom GCS endpoint (for emulator)  | GCS production |
+| `MaxRetries`            | Max retries for transient errors    | `3`            |
+| `RetryDelayMs`          | Initial delay between retries (ms)  | `1000`         |
 
 ## Usage Examples
 
@@ -129,12 +130,12 @@ var recursive = await provider.ListAsync("gs://my-bucket/data/", recursive: true
 
 You can override configuration settings per-object using query parameters in the `gs://` URI:
 
-| Parameter | Purpose | Example |
-| --- | --- | --- |
-| `projectId` | Override default project ID | `gs://bucket/file?projectId=alt-project` |
-| `contentType` | MIME type for the object | `gs://bucket/file?contentType=application/json` |
-| `serviceUrl` | Custom endpoint (emulator) | `gs://bucket/file?serviceUrl=http://localhost:4443` |
-| `accessToken` | OAuth 2.0 access token | `gs://bucket/file?accessToken=ya29.xxx` |
+| Parameter         | Purpose                      | Example                                              |
+|-------------------|------------------------------|------------------------------------------------------|
+| `projectId`       | Override default project ID  | `gs://bucket/file?projectId=alt-project`             |
+| `contentType`     | MIME type for the object     | `gs://bucket/file?contentType=application/json`      |
+| `serviceUrl`      | Custom endpoint (emulator)   | `gs://bucket/file?serviceUrl=http://localhost:4443`  |
+| `accessToken`     | OAuth 2.0 access token       | `gs://bucket/file?accessToken=ya29.xxx`              |
 | `credentialsPath` | Path to service account JSON | `gs://bucket/file?credentialsPath=/path/to/key.json` |
 
 ### Examples
@@ -216,7 +217,8 @@ export STORAGE_EMULATOR_HOST="http://localhost:4443"
 
 - **No Delete Support** — `DeleteAsync` is intentionally not supported. Use the GCS Console or `gsutil rm` for deletion.
 - **Upload Chunking** — For large objects, uploads are split into 256 KiB chunks. The chunk size parameter must be a positive multiple of 256 KiB.
-- **Transient Errors** — The provider automatically retries HTTP 429 (rate limit) and 5xx errors with exponential backoff. Configure retry behavior via `MaxRetries` and `RetryDelayMs`.
+- **Transient Errors** — The provider automatically retries HTTP 429 (rate limit) and 5xx errors with exponential backoff. Configure retry behavior via
+  `MaxRetries` and `RetryDelayMs`.
 - **Streaming** — Use `OpenReadAsync` and `OpenWriteAsync` for efficient handling of large objects without loading them entirely into memory.
 - **Metadata Freshness** — Object metadata may be cached briefly. For critical operations requiring current state, consider adding a small delay between checks.
 - **Special Characters** — Object names with special characters must be URL-encoded in URIs.

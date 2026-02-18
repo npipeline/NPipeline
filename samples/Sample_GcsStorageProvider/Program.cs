@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Text;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Gcs;
@@ -25,7 +25,7 @@ public sealed class Program
         var projectId = Environment.GetEnvironmentVariable("NP_GCS_PROJECT_ID") ?? "test-project";
         var serviceUrl = Environment.GetEnvironmentVariable("NP_GCS_SERVICE_URL");
 
-        Console.WriteLine($"Configuration:");
+        Console.WriteLine("Configuration:");
         Console.WriteLine($"  Bucket: {bucket}");
         Console.WriteLine($"  Project ID: {projectId}");
         Console.WriteLine($"  Service URL: {serviceUrl ?? "(default GCS endpoint)"}");
@@ -76,7 +76,7 @@ public sealed class Program
             {
                 ["Bucket"] = bucket,
                 ["InputPrefix"] = "input/",
-                ["OutputPrefix"] = "output/"
+                ["OutputPrefix"] = "output/",
             };
 
             // Execute the pipeline using the standard pattern
@@ -109,6 +109,7 @@ public sealed class Program
     private static async Task SeedInitialDataAsync(IStorageProvider storageProvider, string bucket)
     {
         var inputPrefix = "input/";
+
         var sampleDocuments = new[]
         {
             ("document-1.txt", "Hello from NPipeline! This is the first sample document for GCS processing."),
@@ -147,21 +148,22 @@ public sealed class Program
         try
         {
             var count = 0;
-            await foreach (var item in storageProvider.ListAsync(outputPrefix, recursive: true))
+
+            await foreach (var item in storageProvider.ListAsync(outputPrefix, true))
             {
                 count++;
-                var kind = item.IsDirectory ? "DIR " : "FILE";
+
+                var kind = item.IsDirectory
+                    ? "DIR "
+                    : "FILE";
+
                 Console.WriteLine($"  [{kind}] {item.Uri.Path} ({item.Size} bytes)");
             }
 
             if (count == 0)
-            {
                 Console.WriteLine("  No output files found.");
-            }
             else
-            {
                 Console.WriteLine($"  Total: {count} items");
-            }
         }
         catch (Exception ex)
         {

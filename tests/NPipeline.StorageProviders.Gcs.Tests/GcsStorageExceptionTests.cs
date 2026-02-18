@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Xunit;
 
 namespace NPipeline.StorageProviders.Gcs.Tests;
 
@@ -60,6 +59,7 @@ public class GcsStorageExceptionTests
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() =>
             new GcsStorageException(message, null!, objectName, operation, innerException));
+
         exception.ParamName.Should().Be("bucket");
     }
 
@@ -75,6 +75,7 @@ public class GcsStorageExceptionTests
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() =>
             new GcsStorageException(message, bucket, null!, operation, innerException));
+
         exception.ParamName.Should().Be("objectName");
     }
 
@@ -90,6 +91,7 @@ public class GcsStorageExceptionTests
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() =>
             new GcsStorageException(message, bucket, objectName, operation, null!));
+
         exception.ParamName.Should().Be("innerException");
     }
 
@@ -104,6 +106,7 @@ public class GcsStorageExceptionTests
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() =>
             new GcsStorageException(message, null!, objectName, operation));
+
         exception.ParamName.Should().Be("bucket");
     }
 
@@ -118,6 +121,7 @@ public class GcsStorageExceptionTests
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() =>
             new GcsStorageException(message, bucket, null!, operation));
+
         exception.ParamName.Should().Be("objectName");
     }
 
