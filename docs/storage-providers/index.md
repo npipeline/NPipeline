@@ -61,6 +61,11 @@ The following storage providers are available:
   - Stream-based I/O for efficient handling of large files
   - Flexible authentication via Azure credential chain, connection string, SAS token, or explicit credentials
   - Block blob upload for large files (configurable threshold)
+- **[Google Cloud Storage](./gcs-storage-provider.md)**: Read from and write to Google Cloud Storage.
+  - Supports Google Cloud Storage and fake-gcs-server emulator for local development
+  - Stream-based I/O for efficient handling of large files
+  - Flexible authentication via Application Default Credentials, service account JSON, or access tokens
+  - Resumable uploads for large files (configurable chunk size)
 
 ## Usage Pattern
 
@@ -156,5 +161,6 @@ public class CustomStorageProvider : IStorageProvider
 - **[Storage Provider Interface](./storage-provider.md)**: Learn about the storage abstraction layer
 - **[AWS S3 Storage Provider](./aws-s3.md)**: Learn how to use the S3 storage provider
 - **[Azure Blob Storage Provider](./azure-blob.md)**: Learn how to use the Azure Blob Storage provider
+- **[Google Cloud Storage Provider](./gcs-storage-provider.md)**: Learn how to use the Google Cloud Storage provider
 - **[CSV Connector](../connectors/csv.md)**: See storage providers in action with CSV files
 - **[Installation](../getting-started/installation.md)**: Review installation options for storage provider packages

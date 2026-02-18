@@ -46,7 +46,7 @@ The GCS provider depends on the following packages:
 GCS-specific configuration types:
 
 - **`GcsStorageProviderOptions`** - Configuration options for the GCS provider
-  - Location: `NPipeline.StorageProviders.Gcs.GcsStorageProviderOptions`
+  - Location: `NPipeline.StorageProviders.Gcp.GcsStorageProviderOptions`
   - Essential settings: project ID, credentials, service URL, upload chunk size
 
 ## Installation
@@ -62,14 +62,14 @@ GCS-specific configuration types:
 Add the project reference to your solution:
 
 ```bash
-dotnet add src/NPipeline.StorageProviders.Gcs/NPipeline.StorageProviders.Gcs.csproj
+dotnet add src/NPipeline.StorageProviders.Gcp/NPipeline.StorageProviders.Gcp.csproj
 ```
 
 Or add it to your `.csproj` file:
 
 ```xml
 <ItemGroup>
-  <ProjectReference Include="..\NPipeline.StorageProviders.Gcs\NPipeline.StorageProviders.Gcs.csproj" />
+  <ProjectReference Include="..\NPipeline.StorageProviders.Gcp\NPipeline.StorageProviders.Gcp.csproj" />
 </ItemGroup>
 ```
 
@@ -83,7 +83,7 @@ The GCS provider works seamlessly with all NPipeline connectors. Here's a quick 
 using NPipeline;
 using NPipeline.Connectors;
 using NPipeline.Connectors.Csv;
-using NPipeline.StorageProviders.Gcs;
+using NPipeline.StorageProviders.Gcp;
 
 // Create a resolver with GCS support
 var resolver = StorageProviderFactory.CreateResolver(
@@ -133,7 +133,7 @@ The recommended way to configure the GCS provider is through dependency injectio
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
-using NPipeline.StorageProviders.Gcs;
+using NPipeline.StorageProviders.Gcp;
 
 var services = new ServiceCollection();
 
@@ -337,7 +337,7 @@ var uri = StorageUri.Parse("gs://test-bucket/data/file.csv?serviceUrl=http://loc
 ### Reading from GCS
 
 ```csharp
-using NPipeline.StorageProviders.Gcs;
+using NPipeline.StorageProviders.Gcp;
 using NPipeline.StorageProviders.Models;
 
 var provider = new GcsStorageProvider(
@@ -469,6 +469,7 @@ gcloud projects add-iam-policy-binding my-project-id \
 ### Minimal Policies
 
 **Read-only access:**
+
 ```bash
 gcloud projects add-iam-policy-binding my-project-id \
   --member="serviceAccount:my-service-account@my-project-id.iam.gserviceaccount.com" \
@@ -476,6 +477,7 @@ gcloud projects add-iam-policy-binding my-project-id \
 ```
 
 **Write-only access:**
+
 ```bash
 gcloud projects add-iam-policy-binding my-project-id \
   --member="serviceAccount:my-service-account@my-project-id.iam.gserviceaccount.com" \
@@ -505,25 +507,25 @@ gcloud projects add-iam-policy-binding my-project-id \
 ### GCS-Specific Types
 
 - **`GcsStorageProvider`** - GCS provider implementation
-  - Location: [`GcsStorageProvider.cs`](../../src/NPipeline.StorageProviders.Gcs/GcsStorageProvider.cs)
+  - Location: [`GcsStorageProvider.cs`](../../src/NPipeline.StorageProviders.Gcp/GcsStorageProvider.cs)
   - Implements `IStorageProvider` and `IStorageProviderMetadataProvider`
 
 - **`GcsStorageProviderOptions`** - Configuration options
-  - Location: [`GcsStorageProviderOptions.cs`](../../src/NPipeline.StorageProviders.Gcs/GcsStorageProviderOptions.cs)
+  - Location: [`GcsStorageProviderOptions.cs`](../../src/NPipeline.StorageProviders.Gcp/GcsStorageProviderOptions.cs)
   - Contains project ID, credentials, service URL, and upload settings
 
 - **`GcsClientFactory`** - Factory for creating GCS clients
-  - Location: [`GcsClientFactory.cs`](../../src/NPipeline.StorageProviders.Gcs/GcsClientFactory.cs)
+  - Location: [`GcsClientFactory.cs`](../../src/NPipeline.StorageProviders.Gcp/GcsClientFactory.cs)
   - Creates and caches `StorageClient` instances
 
 - **`GcsStorageException`** - Custom exception for GCS errors
-  - Location: [`GcsStorageException.cs`](../../src/NPipeline.StorageProviders.Gcs/GcsStorageException.cs)
+  - Location: [`GcsStorageException.cs`](../../src/NPipeline.StorageProviders.Gcp/GcsStorageException.cs)
   - Wraps Google API exceptions with bucket/object context
 
 ### Extension Methods
 
 - **`ServiceCollectionExtensions.AddGcsStorageProvider`**
-  - Location: [`ServiceCollectionExtensions.cs`](../../src/NPipeline.StorageProviders.Gcs/ServiceCollectionExtensions.cs)
+  - Location: [`ServiceCollectionExtensions.cs`](../../src/NPipeline.StorageProviders.Gcp/ServiceCollectionExtensions.cs)
   - Extension method for registering GCS provider in DI container
 
 ## Limitations

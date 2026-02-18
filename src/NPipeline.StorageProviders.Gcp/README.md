@@ -1,6 +1,6 @@
 # Google Cloud Storage Provider
 
-`NPipeline.StorageProviders.Gcs` provides a fully-featured `IStorageProvider` implementation for Google Cloud Storage, enabling seamless integration with
+`NPipeline.StorageProviders.Gcp` provides a fully-featured `IStorageProvider` implementation for Google Cloud Storage, enabling seamless integration with
 `gs://` URIs. Use this provider to read, write, and manage objects in Google Cloud Storage buckets within your NPipeline workflows.
 
 ## Features
@@ -24,14 +24,14 @@
 Add a project reference to your application:
 
 ```bash
-dotnet add package NPipeline.StorageProviders.Gcs
+dotnet add package NPipeline.StorageProviders.Gcp
 ```
 
 Or add directly to your project file:
 
 ```xml
 <ItemGroup>
-  <ProjectReference Include="path/to/NPipeline.StorageProviders.Gcs/NPipeline.StorageProviders.Gcs.csproj" />
+  <ProjectReference Include="path/to/NPipeline.StorageProviders.Gcp/NPipeline.StorageProviders.Gcp.csproj" />
 </ItemGroup>
 ```
 
@@ -41,7 +41,7 @@ Register the GCS storage provider in your dependency injection container:
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
-using NPipeline.StorageProviders.Gcs;
+using NPipeline.StorageProviders.Gcp;
 
 var services = new ServiceCollection();
 
