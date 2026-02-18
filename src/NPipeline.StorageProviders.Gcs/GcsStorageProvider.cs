@@ -362,7 +362,7 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
                     {
                         Uri = itemUri,
                         Size = 0,
-                        LastModified = DateTimeOffset.UtcNow,
+                        LastModified = DateTimeOffset.MinValue,
                         IsDirectory = true,
                     };
                 }
@@ -407,7 +407,7 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
 
     private static DateTimeOffset NormalizeDateTimeOffset(DateTimeOffset? value)
     {
-        return value ?? DateTimeOffset.UtcNow;
+        return value ?? DateTimeOffset.MinValue;
     }
 
     /// <summary>

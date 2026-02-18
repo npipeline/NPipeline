@@ -18,11 +18,36 @@ internal sealed class GcsRetryPolicy
     {
         ArgumentNullException.ThrowIfNull(operation);
 
-        await ExecuteAsync(async token =>
+        if (!IsEnabled)
         {
-            await operation(token).ConfigureAwait(false);
-            return true;
-        }, cancellationToken).ConfigureAwait(false);
+            await operation(cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var settings = _settings!;
+        var nextDelay = settings.InitialDelay;
+
+        for (var attempt = 0;; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                await operation(cancellationToken).ConfigureAwait(false);
+                return;
+            }
+            catch (GoogleApiException ex) when (attempt < settings.MaxAttempts && ShouldRetry(ex))
+            {
+                var delay = GetClampedDelay(nextDelay, settings.MaxDelay);
+
+                if (delay > TimeSpan.Zero)
+                {
+                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                }
+
+                nextDelay = GetNextDelay(delay, settings.DelayMultiplier, settings.MaxDelay);
+            }
+        }
     }
 
     public async Task<T> ExecuteAsync<T>(
@@ -103,10 +128,6 @@ internal sealed class GcsRetryPolicy
 
         var nextTicks = currentDelay.Ticks * multiplier;
         var boundedTicks = Math.Min(nextTicks, maxDelay.Ticks);
-        var safeTicks = boundedTicks > TimeSpan.MaxValue.Ticks
-            ? TimeSpan.MaxValue.Ticks
-            : (long)boundedTicks;
-
-        return new TimeSpan(safeTicks);
+        return new TimeSpan((long)boundedTicks);
     }
 }

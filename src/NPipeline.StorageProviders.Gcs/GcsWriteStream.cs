@@ -277,8 +277,6 @@ public sealed class GcsWriteStream : Stream
 
         try
         {
-            var objectName = _objectName;
-
             // Use resumable upload for proper handling of large files
             var uploadOptions = new UploadObjectOptions
             {
@@ -288,7 +286,7 @@ public sealed class GcsWriteStream : Stream
             var obj = new Google.Apis.Storage.v1.Data.Object
             {
                 Bucket = _bucket,
-                Name = objectName,
+                Name = _objectName,
             };
 
             if (!string.IsNullOrEmpty(_contentType))
