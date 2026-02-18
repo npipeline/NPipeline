@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Storage.V1;
 using NPipeline.StorageProviders.Models;
@@ -174,8 +175,9 @@ public class GcsClientFactory
                     $"Google Cloud credentials file not found at path: {expandedPath}");
             }
 
-            using var stream = File.OpenRead(expandedPath);
-            return GoogleCredential.FromStream(stream);
+            var json = File.ReadAllText(expandedPath);
+            var credentialType = ExtractCredentialType(json);
+            return CredentialFactory.FromJson(json, credentialType);
         }
 
         // Return default credentials from options if available
@@ -250,5 +252,24 @@ public class GcsClientFactory
 
         var emulatorHost = Environment.GetEnvironmentVariable("STORAGE_EMULATOR_HOST");
         return !string.IsNullOrWhiteSpace(emulatorHost);
+    }
+
+    /// <summary>
+    ///     Extracts the credential type from a JSON credentials file.
+    /// </summary>
+    /// <param name="json">The JSON content of the credentials file.</param>
+    /// <returns>The credential type string.</returns>
+    private static string ExtractCredentialType(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        if (root.TryGetProperty("type", out var typeElement))
+        {
+            return typeElement.GetString()
+                   ?? throw new InvalidOperationException("Credential type is null in JSON.");
+        }
+
+        throw new InvalidOperationException("Could not find 'type' property in credentials JSON.");
     }
 }
