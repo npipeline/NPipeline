@@ -13,9 +13,9 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\..\src\NPipeline.StorageProviders.Gcp\NPipeline.StorageProviders.Gcp.csproj" />
         <ProjectReference Include="..\..\src\NPipeline\NPipeline.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Extensions.DependencyInjection\NPipeline.Extensions.DependencyInjection.csproj"/>
-        <ProjectReference Include="..\..\src\NPipeline.StorageProviders.Gcs\NPipeline.StorageProviders.Gcs.csproj"/>
     </ItemGroup>
 
     <ItemGroup>

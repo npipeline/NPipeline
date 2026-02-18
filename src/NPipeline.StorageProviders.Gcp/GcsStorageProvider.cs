@@ -5,7 +5,7 @@ using Google.Apis.Storage.v1.Data;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
-namespace NPipeline.StorageProviders.Gcs;
+namespace NPipeline.StorageProviders.Gcp;
 
 /// <summary>
 ///     Storage provider for Google Cloud Storage that implements the <see cref="IStorageProvider" /> interface.

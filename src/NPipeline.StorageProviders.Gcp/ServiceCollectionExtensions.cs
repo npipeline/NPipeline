@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.StorageProviders.Abstractions;
 
-namespace NPipeline.StorageProviders.Gcs;
+namespace NPipeline.StorageProviders.Gcp;
 
 /// <summary>
 ///     Extension methods for configuring GCS storage provider in dependency injection.

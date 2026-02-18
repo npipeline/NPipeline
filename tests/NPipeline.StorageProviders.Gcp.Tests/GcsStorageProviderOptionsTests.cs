@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Google.Apis.Auth.OAuth2;
 
-namespace NPipeline.StorageProviders.Gcs.Tests;
+namespace NPipeline.StorageProviders.Gcp.Tests;
 
 public class GcsStorageProviderOptionsTests
 {

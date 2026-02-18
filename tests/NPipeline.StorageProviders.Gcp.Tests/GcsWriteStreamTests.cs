@@ -5,7 +5,7 @@ using Google;
 using Google.Cloud.Storage.V1;
 using Object = Google.Apis.Storage.v1.Data.Object;
 
-namespace NPipeline.StorageProviders.Gcs.Tests;
+namespace NPipeline.StorageProviders.Gcp.Tests;
 
 public class GcsWriteStreamTests
 {
@@ -751,7 +751,7 @@ public class GcsWriteStreamTests
             .ThrowsAsync(new OperationCanceledException(cts.Token));
 
         var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
-        stream.Write(new byte[] { 1, 2, 3 }, 0, 3);
+        stream.Write([1, 2, 3], 0, 3);
 
         // Act & Assert - OperationCanceledException propagates even from sync Dispose
         var act = () => stream.Dispose();

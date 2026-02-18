@@ -1,7 +1,7 @@
 using System.Text;
 using NPipeline.StorageProviders.Models;
 
-namespace NPipeline.StorageProviders.Gcs.Tests;
+namespace NPipeline.StorageProviders.Gcp.Tests;
 
 /// <summary>
 ///     Integration tests for <see cref="GcsStorageProvider" />.
@@ -86,7 +86,7 @@ public sealed class GcsStorageProviderIntegrationTests
 
         var nonRecursiveItems = new List<StorageItem>();
 
-        await foreach (var item in context.Provider.ListAsync(prefixUri, false))
+        await foreach (var item in context.Provider.ListAsync(prefixUri))
         {
             nonRecursiveItems.Add(item);
         }

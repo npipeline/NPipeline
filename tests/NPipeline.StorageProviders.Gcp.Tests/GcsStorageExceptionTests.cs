@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 
-namespace NPipeline.StorageProviders.Gcs.Tests;
+namespace NPipeline.StorageProviders.Gcp.Tests;
 
 public class GcsStorageExceptionTests
 {

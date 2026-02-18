@@ -6,7 +6,7 @@ using Google.Cloud.Storage.V1;
 using NPipeline.StorageProviders.Models;
 using Object = Google.Apis.Storage.v1.Data.Object;
 
-namespace NPipeline.StorageProviders.Gcs.Tests;
+namespace NPipeline.StorageProviders.Gcp.Tests;
 
 public class GcsStorageProviderTests
 {
@@ -18,7 +18,7 @@ public class GcsStorageProviderTests
     public GcsStorageProviderTests()
     {
         _fakeClientFactory = A.Fake<GcsClientFactory>(c => c
-            .WithArgumentsForConstructor(new object[] { new GcsStorageProviderOptions() })
+            .WithArgumentsForConstructor([new GcsStorageProviderOptions()])
             .CallsBaseMethods());
 
         _fakeStorageClient = A.Fake<StorageClient>();
@@ -381,7 +381,7 @@ public class GcsStorageProviderTests
         };
 
         var clientFactory = A.Fake<GcsClientFactory>(c => c
-            .WithArgumentsForConstructor(new object[] { options })
+            .WithArgumentsForConstructor([options])
             .CallsBaseMethods());
 
         var storageClient = A.Fake<StorageClient>();
@@ -399,7 +399,7 @@ public class GcsStorageProviderTests
                 A<Stream>._,
                 A<DownloadObjectOptions>._,
                 A<CancellationToken>._))
-            .ReturnsLazily(call =>
+            .ReturnsLazily(_ =>
             {
                 attempts++;
 
@@ -411,9 +411,6 @@ public class GcsStorageProviderTests
                     };
                 }
 
-                var stream = call.GetArgument<Stream>(2)!;
-                var data = new byte[] { 1, 2, 3 };
-                stream.Write(data, 0, data.Length);
                 return Task.FromResult(new Object());
             });
 
@@ -442,7 +439,7 @@ public class GcsStorageProviderTests
         };
 
         var clientFactory = A.Fake<GcsClientFactory>(c => c
-            .WithArgumentsForConstructor(new object[] { options })
+            .WithArgumentsForConstructor([options])
             .CallsBaseMethods());
 
         var storageClient = A.Fake<StorageClient>();
@@ -475,7 +472,7 @@ public class GcsStorageProviderTests
             });
 
         var stream = await provider.OpenWriteAsync(uri);
-        await stream.WriteAsync(new byte[] { 1, 2, 3 }, 0, 3);
+        await stream.WriteAsync([1, 2, 3], 0, 3);
 
         // Act
         await stream.DisposeAsync();
@@ -585,7 +582,7 @@ public class GcsStorageProviderTests
         };
 
         var clientFactory = A.Fake<GcsClientFactory>(c => c
-            .WithArgumentsForConstructor(new object[] { options })
+            .WithArgumentsForConstructor([options])
             .CallsBaseMethods());
 
         var storageClient = A.Fake<StorageClient>();
@@ -946,7 +943,7 @@ public class GcsStorageProviderTests
             .Invokes(call =>
             {
                 var stream = call.GetArgument<Stream>(2)!;
-                stream.Write(new byte[] { 42 }, 0, 1);
+                stream.Write([42], 0, 1);
             })
             .ReturnsLazily(_ => Task.FromResult(new Object()));
 

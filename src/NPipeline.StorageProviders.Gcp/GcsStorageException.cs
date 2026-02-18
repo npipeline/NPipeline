@@ -1,4 +1,4 @@
-namespace NPipeline.StorageProviders.Gcs;
+namespace NPipeline.StorageProviders.Gcp;
 
 /// <summary>
 ///     Exception thrown when a Google Cloud Storage operation fails.

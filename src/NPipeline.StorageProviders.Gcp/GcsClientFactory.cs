@@ -4,7 +4,7 @@ using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Storage.V1;
 using NPipeline.StorageProviders.Models;
 
-namespace NPipeline.StorageProviders.Gcs;
+namespace NPipeline.StorageProviders.Gcp;
 
 /// <summary>
 ///     Factory for creating and caching Google Cloud Storage clients with flexible authentication options.

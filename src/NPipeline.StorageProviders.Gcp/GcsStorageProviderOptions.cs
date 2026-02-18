@@ -1,6 +1,6 @@
 using Google.Apis.Auth.OAuth2;
 
-namespace NPipeline.StorageProviders.Gcs;
+namespace NPipeline.StorageProviders.Gcp;
 
 /// <summary>
 ///     Configuration options for the Google Cloud Storage provider.

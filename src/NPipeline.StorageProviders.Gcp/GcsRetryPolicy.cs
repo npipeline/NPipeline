@@ -1,7 +1,7 @@
 using System.Net;
 using Google;
 
-namespace NPipeline.StorageProviders.Gcs;
+namespace NPipeline.StorageProviders.Gcp;
 
 internal sealed class GcsRetryPolicy
 {

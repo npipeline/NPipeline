@@ -4,7 +4,7 @@ using Google;
 using Google.Cloud.Storage.V1;
 using Object = Google.Apis.Storage.v1.Data.Object;
 
-namespace NPipeline.StorageProviders.Gcs;
+namespace NPipeline.StorageProviders.Gcp;
 
 /// <summary>
 ///     A write-only stream that buffers data to a local temp file and uploads to Google Cloud Storage on disposal.

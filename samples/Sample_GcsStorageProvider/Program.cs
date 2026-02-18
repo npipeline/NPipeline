@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.StorageProviders.Abstractions;
-using NPipeline.StorageProviders.Gcs;
+using NPipeline.StorageProviders.Gcp;
 using NPipeline.StorageProviders.Models;
 
 namespace Sample_GcsStorageProvider;
