@@ -885,4 +885,75 @@ public class GcsStorageProviderTests
             A<CancellationToken>._))
             .MustHaveHappenedOnceExactly();
     }
+
+    [Fact]
+    public async Task OpenReadAsync_DisposeCalledMultipleTimes_DoesNotThrow()
+    {
+        // Regression test: GcsReadStream.DisposeAsync used to double-dispose the inner temp-file stream
+        // because base.DisposeAsync() called Dispose(true) which called _inner.Dispose() a second time.
+
+        var uri = StorageUri.Parse("gs://test-bucket/test-object.txt");
+
+        A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
+            .ReturnsLazily(() => Task.FromResult(_fakeStorageClient));
+
+        A.CallTo(() => _fakeStorageClient.DownloadObjectAsync(
+            A<string>._,
+            A<string>._,
+            A<Stream>._,
+            A<DownloadObjectOptions>._,
+            A<CancellationToken>._))
+            .Invokes(call =>
+            {
+                var stream = call.GetArgument<Stream>(2)!;
+                var data = new byte[] { 1, 2, 3, 4, 5 };
+                stream.Write(data, 0, data.Length);
+            })
+            .ReturnsLazily(_ => Task.FromResult(new Google.Apis.Storage.v1.Data.Object()));
+
+        var readStream = await _provider.OpenReadAsync(uri);
+
+        // Act - dispose multiple times; should not throw ObjectDisposedException on second call
+        var act = async () =>
+        {
+            await readStream.DisposeAsync();
+            await readStream.DisposeAsync(); // second call should be a no-op
+        };
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task OpenReadAsync_DisposeAndDisposeAsync_AreIdempotent()
+    {
+        // Regression test: mixing Dispose() and DisposeAsync() should not double-dispose.
+        var uri = StorageUri.Parse("gs://test-bucket/test-object.txt");
+
+        A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
+            .ReturnsLazily(() => Task.FromResult(_fakeStorageClient));
+
+        A.CallTo(() => _fakeStorageClient.DownloadObjectAsync(
+            A<string>._,
+            A<string>._,
+            A<Stream>._,
+            A<DownloadObjectOptions>._,
+            A<CancellationToken>._))
+            .Invokes(call =>
+            {
+                var stream = call.GetArgument<Stream>(2)!;
+                stream.Write(new byte[] { 42 }, 0, 1);
+            })
+            .ReturnsLazily(_ => Task.FromResult(new Google.Apis.Storage.v1.Data.Object()));
+
+        var readStream = await _provider.OpenReadAsync(uri);
+
+        // Act
+        var act = async () =>
+        {
+            readStream.Dispose();
+            await readStream.DisposeAsync();
+        };
+
+        await act.Should().NotThrowAsync();
+    }
 }

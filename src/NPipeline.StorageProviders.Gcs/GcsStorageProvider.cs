@@ -416,6 +416,7 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
     private sealed class GcsReadStream : Stream
     {
         private readonly Stream _inner;
+        private bool _disposed;
 
         public GcsReadStream(Stream inner)
         {
@@ -495,15 +496,23 @@ public sealed class GcsStorageProvider : IStorageProvider, IStorageProviderMetad
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing)
+            if (disposing && !_disposed)
+            {
+                _disposed = true;
                 _inner.Dispose();
+            }
 
             base.Dispose(disposing);
         }
 
         public override async ValueTask DisposeAsync()
         {
-            await _inner.DisposeAsync().ConfigureAwait(false);
+            if (!_disposed)
+            {
+                _disposed = true;
+                await _inner.DisposeAsync().ConfigureAwait(false);
+            }
+
             await base.DisposeAsync().ConfigureAwait(false);
         }
     }

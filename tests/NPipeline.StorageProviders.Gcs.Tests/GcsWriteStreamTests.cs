@@ -736,4 +736,57 @@ public class GcsWriteStreamTests
         // Assert
         stream.Length.Should().Be(5);
     }
+
+    [Fact]
+    public void Dispose_WhenUploadThrowsOperationCanceledException_PropagatesCancellation()
+    {
+        // Arrange - upload cancels during synchronous Dispose
+        var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
+            A<Google.Apis.Storage.v1.Data.Object>._,
+            A<Stream>._,
+            A<UploadObjectOptions>._,
+            A<CancellationToken>._))
+            .ThrowsAsync(new OperationCanceledException(cts.Token));
+
+        var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
+        stream.Write(new byte[] { 1, 2, 3 }, 0, 3);
+
+        // Act & Assert - OperationCanceledException propagates even from sync Dispose
+        var act = () => stream.Dispose();
+        act.Should().Throw<OperationCanceledException>();
+
+        // Stream should be in disposed state after the throw
+        stream.CanWrite.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DisposeAsync_CalledAfterDispose_IsIdempotent()
+    {
+        // Arrange
+        A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
+            A<Google.Apis.Storage.v1.Data.Object>._,
+            A<Stream>._,
+            A<UploadObjectOptions>._,
+            A<CancellationToken>._))
+            .Returns(Task.FromResult(new Google.Apis.Storage.v1.Data.Object()));
+
+        var stream = new GcsWriteStream(_fakeStorageClient, TestBucket, TestObjectName);
+        var data = new byte[] { 1, 2, 3, 4, 5 };
+        await stream.WriteAsync(data, 0, data.Length);
+
+        // Act - mix async and sync dispose
+        stream.Dispose();
+        await stream.DisposeAsync();
+
+        // Assert - upload only happened once
+        A.CallTo(() => _fakeStorageClient.UploadObjectAsync(
+            A<Google.Apis.Storage.v1.Data.Object>._,
+            A<Stream>._,
+            A<UploadObjectOptions>._,
+            A<CancellationToken>._))
+            .MustHaveHappenedOnceExactly();
+    }
 }

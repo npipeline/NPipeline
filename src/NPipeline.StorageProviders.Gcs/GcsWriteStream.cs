@@ -194,6 +194,15 @@ public sealed class GcsWriteStream : Stream
                     UploadAsync(cts.Token).GetAwaiter().GetResult();
                 }
             }
+            catch (OperationCanceledException)
+            {
+                // Rethrow cancellation immediately, but still call base.Dispose
+                _tempFileStream?.Dispose();
+                _tempFileStream = null;
+                Interlocked.Exchange(ref _disposeState, 2);
+                base.Dispose(disposing);
+                throw;
+            }
             catch (Exception ex)
             {
                 capturedException = ExceptionDispatchInfo.Capture(ex);
@@ -207,9 +216,9 @@ public sealed class GcsWriteStream : Stream
 
         Interlocked.Exchange(ref _disposeState, 2);
 
-        capturedException?.Throw();
-
         base.Dispose(disposing);
+
+        capturedException?.Throw();
     }
 
     /// <inheritdoc />

@@ -5,7 +5,7 @@ namespace NPipeline.StorageProviders.Gcs;
 /// <summary>
 ///     Configuration options for the Google Cloud Storage provider.
 /// </summary>
-public class GcsStorageProviderOptions
+public sealed class GcsStorageProviderOptions
 {
     /// <summary>
     ///     Gets or sets the default Google Cloud project ID.
@@ -94,7 +94,7 @@ public class GcsStorageProviderOptions
 ///     Retry settings for Google Cloud Storage operations.
 ///     Applied to provider operations for transient HTTP failures.
 /// </summary>
-public class GcsRetrySettings
+public sealed class GcsRetrySettings
 {
     /// <summary>
     ///     Gets or sets the initial delay before the first retry.
