@@ -54,8 +54,12 @@ services.AddGcsStorageProvider(options =>
     options.DefaultProjectId = "my-project-id";
 
     // Optional: Configure retries for transient failures
-    options.MaxRetries = 3;
-    options.RetryDelayMs = 1000;
+    options.RetrySettings = new GcsRetrySettings
+    {
+        MaxAttempts = 3,
+        InitialDelay = TimeSpan.FromSeconds(1),
+        MaxDelay = TimeSpan.FromSeconds(32),
+    };
 });
 
 var provider = services
@@ -67,11 +71,10 @@ var provider = services
 
 | Option                  | Purpose                             | Default        |
 |-------------------------|-------------------------------------|----------------|
-| `DefaultProjectId`      | Project ID used for all operations  | (required)     |
-| `UseDefaultCredentials` | Use Application Default Credentials | `false`        |
+| `DefaultProjectId`      | Project ID used for all operations  | (not required) |
+| `UseDefaultCredentials` | Use Application Default Credentials | `true`         |
 | `ServiceUrl`            | Custom GCS endpoint (for emulator)  | GCS production |
-| `MaxRetries`            | Max retries for transient errors    | `3`            |
-| `RetryDelayMs`          | Initial delay between retries (ms)  | `1000`         |
+| `RetrySettings`         | Retry configuration for transient errors | `null` (disabled) |
 
 ## Usage Examples
 
@@ -107,7 +110,7 @@ if (exists)
 {
     var metadata = await provider.GetMetadataAsync(uri);
     Console.WriteLine($"Size: {metadata.Size} bytes");
-    Console.WriteLine($"Updated: {metadata.Updated}");
+    Console.WriteLine($"Last Modified: {metadata.LastModified}");
 }
 ```
 
@@ -115,15 +118,15 @@ if (exists)
 
 ```csharp
 // List all objects with a given prefix
-var objects = await provider.ListAsync("gs://my-bucket/logs/");
+var objects = provider.ListAsync(StorageUri.Parse("gs://my-bucket/logs/"));
 
-foreach (var obj in objects)
+await foreach (var obj in objects)
 {
-    Console.WriteLine($"{obj.Path} ({obj.Size} bytes)");
+    Console.WriteLine($"{obj.Uri} ({obj.Size} bytes)");
 }
 
 // Recursively list nested objects
-var recursive = await provider.ListAsync("gs://my-bucket/data/", recursive: true);
+var recursive = provider.ListAsync(StorageUri.Parse("gs://my-bucket/data/"), recursive: true);
 ```
 
 ## URI Parameters
@@ -173,14 +176,22 @@ services.AddGcsStorageProvider(options =>
 
 ### Service Account Key
 
-Explicitly provide a service account JSON file:
+Explicitly provide a service account JSON file via the `credentialsPath` URI parameter:
 
 ```csharp
+var uri = StorageUri.Parse("gs://my-bucket/data.csv?credentialsPath=/secure/service-account-key.json");
+await using var stream = await provider.OpenReadAsync(uri);
+```
+
+Alternatively, load credentials in code and set `DefaultCredentials`:
+
+```csharp
+using Google.Apis.Auth.OAuth2;
+
 services.AddGcsStorageProvider(options =>
 {
     options.DefaultProjectId = "my-project";
-    // Path can be relative or absolute
-    options.CredentialsPath = "/secure/service-account-key.json";
+    options.DefaultCredentials = GoogleCredential.FromFile("/secure/service-account-key.json");
 });
 ```
 
@@ -217,8 +228,7 @@ export STORAGE_EMULATOR_HOST="http://localhost:4443"
 
 - **No Delete Support** — `DeleteAsync` is intentionally not supported. Use the GCS Console or `gsutil rm` for deletion.
 - **Upload Chunking** — For large objects, uploads are split into 256 KiB chunks. The chunk size parameter must be a positive multiple of 256 KiB.
-- **Transient Errors** — The provider automatically retries HTTP 429 (rate limit) and 5xx errors with exponential backoff. Configure retry behavior via
-  `MaxRetries` and `RetryDelayMs`.
+- **Transient Errors** — The provider automatically retries HTTP 429 (rate limit) and 5xx errors with exponential backoff when `RetrySettings` is configured.
 - **Streaming** — Use `OpenReadAsync` and `OpenWriteAsync` for efficient handling of large objects without loading them entirely into memory.
 - **Metadata Freshness** — Object metadata may be cached briefly. For critical operations requiring current state, consider adding a small delay between checks.
 - **Special Characters** — Object names with special characters must be URL-encoded in URIs.
