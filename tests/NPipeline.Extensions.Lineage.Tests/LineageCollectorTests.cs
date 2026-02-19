@@ -234,13 +234,20 @@ public class LineageCollectorTests
         var sampledCount = 0;
         var totalItems = sampleEvery * 10;
 
+        // Use a fixed seed to generate reproducible GUIDs for deterministic testing
+        var random = new Random(42); // Fixed seed for reproducibility
+        var guidBytes = new byte[16];
+
         // Act
         for (var i = 0; i < totalItems; i++)
         {
-            var lineageId = Guid.NewGuid();
+            random.NextBytes(guidBytes);
+            var lineageId = new Guid(guidBytes);
 
             if (collector.ShouldCollectLineage(lineageId, options))
+            {
                 sampledCount++;
+            }
         }
 
         // Assert
@@ -250,6 +257,7 @@ public class LineageCollectorTests
         // Approximately 1/sampleEvery items should be sampled
         var expectedSamples = totalItems / sampleEvery;
         var tolerance = totalItems / sampleEvery;
+
         sampledCount.Should().BeInRange(expectedSamples - tolerance, expectedSamples + tolerance);
     }
 
