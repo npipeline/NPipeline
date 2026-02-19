@@ -72,6 +72,11 @@ public readonly record struct StorageScheme
     public static StorageScheme Azure => new("azure");
 
     /// <summary>
+    ///     Gets a <see cref="StorageScheme" /> instance representing the "gs" scheme for Google Cloud Storage.
+    /// </summary>
+    public static StorageScheme Gcs => new("gs");
+
+    /// <summary>
     ///     Attempts to parse the specified string into a <see cref="StorageScheme" /> instance.
     /// </summary>
     /// <param name="value">The string to parse.</param>

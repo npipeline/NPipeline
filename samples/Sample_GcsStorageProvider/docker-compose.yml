@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  fake-gcs-server:
+    image: fsouza/fake-gcs-server:latest
+    container_name: npipeline-gcs-emulator
+    ports:
+      - "4443:4443"
+    command: [ "-scheme", "http", "-port", "4443" ]
+    volumes:
+      - gcs-data:/data
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:4443/storage/v1/b" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  gcs-data:
+
