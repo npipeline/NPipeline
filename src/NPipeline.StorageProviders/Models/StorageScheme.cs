@@ -77,6 +77,26 @@ public readonly record struct StorageScheme
     public static StorageScheme Gcs => new("gs");
 
     /// <summary>
+    ///     Gets a <see cref="StorageScheme" /> instance representing the "cosmosdb" scheme.
+    /// </summary>
+    public static StorageScheme CosmosDb => new("cosmosdb");
+
+    /// <summary>
+    ///     Gets a <see cref="StorageScheme" /> instance representing the "cosmos" scheme.
+    /// </summary>
+    public static StorageScheme Cosmos => new("cosmos");
+
+    /// <summary>
+    ///     Gets a <see cref="StorageScheme" /> instance representing the "cosmos-mongo" scheme.
+    /// </summary>
+    public static StorageScheme CosmosMongo => new("cosmos-mongo");
+
+    /// <summary>
+    ///     Gets a <see cref="StorageScheme" /> instance representing the "cosmos-cassandra" scheme.
+    /// </summary>
+    public static StorageScheme CosmosCassandra => new("cosmos-cassandra");
+
+    /// <summary>
     ///     Attempts to parse the specified string into a <see cref="StorageScheme" /> instance.
     /// </summary>
     /// <param name="value">The string to parse.</param>

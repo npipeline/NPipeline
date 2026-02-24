@@ -55,6 +55,12 @@ The following connectors are available:
   - Supports streaming reads, per-row and batched writes, and in-memory checkpointing
   - Uses Microsoft.Data.SqlClient for reliable database operations
   - Supports Windows Authentication and SQL Server Authentication
+- **[Azure Cosmos DB](./cosmos.md)**: Read from and write to Azure Cosmos DB databases.
+  - Supports SQL API with parameterized queries and change feed streaming
+  - Multi-API support for Mongo and Cassandra APIs
+  - Multiple write strategies (PerRow, Batch, TransactionalBatch, Bulk)
+  - Azure AD authentication and connection pooling
+  - Uses Azure.Cosmos SDK for reliable operations
 - **[AWS SQS](./aws-sqs.md)**: Read from and write to Amazon Simple Queue Service (SQS).
   - Supports multiple acknowledgment strategies (AutoOnSinkSuccess, Manual, Delayed, None)
   - Includes batch acknowledgment for performance optimization
@@ -101,6 +107,7 @@ Explore the documentation for each specific connector to learn about its install
 - **[JSON Connector](json.md)**: Learn how to read from and write to JSON files (Array and NDJSON)
 - **[PostgreSQL Connector](postgresql.md)**: Learn how to read from and write to PostgreSQL databases
 - **[SQL Server Connector](sqlserver.md)**: Learn how to read from and write to Microsoft SQL Server databases
+- **[Azure Cosmos DB Connector](cosmos.md)**: Learn how to read from and write to Azure Cosmos DB
 - **[AWS SQS Connector](aws-sqs.md)**: Learn how to read from and write to Amazon SQS queues
 - **[Kafka Connector](kafka.md)**: Learn how to read from and write to Apache Kafka topics
 - **[Common Patterns](../core-concepts/common-patterns.md)**: See connectors in practical examples
