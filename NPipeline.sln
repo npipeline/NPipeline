@@ -205,6 +205,16 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.StorageProviders.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.StorageProviders.Gcp.Tests", "tests\NPipeline.StorageProviders.Gcp.Tests\NPipeline.StorageProviders.Gcp.Tests.csproj", "{0245185E-42B4-4539-9DA6-CCF4D81ED2EA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.Azure", "src\NPipeline.Connectors.Azure\NPipeline.Connectors.Azure.csproj", "{C0F5A198-A0C1-4882-955A-4A53CDF3455D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.Azure.CosmosDb", "src\NPipeline.Connectors.Azure.CosmosDb\NPipeline.Connectors.Azure.CosmosDb.csproj", "{705E0FC0-0596-4B1F-85AE-0642926037F5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.Azure.CosmosDb.Tests", "tests\NPipeline.Connectors.Azure.CosmosDb.Tests\NPipeline.Connectors.Azure.CosmosDb.Tests.csproj", "{FBACA4AA-C7EB-4BF1-87A4-688DACF0EEF3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample_CosmosDbConnector", "samples\Sample_CosmosDbConnector\Sample_CosmosDbConnector.csproj", "{4A201798-A61C-46EF-858D-97E2A70F64F1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.Azure.Tests", "tests\NPipeline.Connectors.Azure.Tests\NPipeline.Connectors.Azure.Tests.csproj", "{301203FC-2F73-4CC8-86E3-3380AAE3B8D5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -591,6 +601,26 @@ Global
 		{0245185E-42B4-4539-9DA6-CCF4D81ED2EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0245185E-42B4-4539-9DA6-CCF4D81ED2EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0245185E-42B4-4539-9DA6-CCF4D81ED2EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C0F5A198-A0C1-4882-955A-4A53CDF3455D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C0F5A198-A0C1-4882-955A-4A53CDF3455D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C0F5A198-A0C1-4882-955A-4A53CDF3455D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C0F5A198-A0C1-4882-955A-4A53CDF3455D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{705E0FC0-0596-4B1F-85AE-0642926037F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{705E0FC0-0596-4B1F-85AE-0642926037F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{705E0FC0-0596-4B1F-85AE-0642926037F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{705E0FC0-0596-4B1F-85AE-0642926037F5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FBACA4AA-C7EB-4BF1-87A4-688DACF0EEF3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FBACA4AA-C7EB-4BF1-87A4-688DACF0EEF3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FBACA4AA-C7EB-4BF1-87A4-688DACF0EEF3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FBACA4AA-C7EB-4BF1-87A4-688DACF0EEF3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4A201798-A61C-46EF-858D-97E2A70F64F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4A201798-A61C-46EF-858D-97E2A70F64F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4A201798-A61C-46EF-858D-97E2A70F64F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4A201798-A61C-46EF-858D-97E2A70F64F1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{301203FC-2F73-4CC8-86E3-3380AAE3B8D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{301203FC-2F73-4CC8-86E3-3380AAE3B8D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{301203FC-2F73-4CC8-86E3-3380AAE3B8D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{301203FC-2F73-4CC8-86E3-3380AAE3B8D5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{C539C2BB-5FF5-45B1-9D16-C8E0F2FBDD41} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
@@ -687,5 +717,10 @@ Global
 		{66BE7531-B37C-42E1-997D-BCBD269EE6D3} = {2117093A-CC66-4607-8DBC-F692E0642ADD}
 		{317A2179-DBE8-4896-A04E-DD9FC64D1109} = {4DAACF4B-8664-4A7C-9AC7-1E2BA02124F7}
 		{0245185E-42B4-4539-9DA6-CCF4D81ED2EA} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
+		{C0F5A198-A0C1-4882-955A-4A53CDF3455D} = {E8263C69-F8DE-4319-B7BD-DED6BA0401B4}
+		{705E0FC0-0596-4B1F-85AE-0642926037F5} = {E8263C69-F8DE-4319-B7BD-DED6BA0401B4}
+		{FBACA4AA-C7EB-4BF1-87A4-688DACF0EEF3} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
+		{4A201798-A61C-46EF-858D-97E2A70F64F1} = {2117093A-CC66-4607-8DBC-F692E0642ADD}
+		{301203FC-2F73-4CC8-86E3-3380AAE3B8D5} = {8EBB6475-2F6E-44CF-ABEB-C21A05B26825}
 	EndGlobalSection
 EndGlobal

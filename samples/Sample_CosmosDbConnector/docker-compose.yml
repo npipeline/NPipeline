@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  # Azure Cosmos DB Linux Emulator
+  # Supports the NoSQL (SQL) API used by this sample
+  cosmos-emulator:
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+    container_name: cosmos-emulator
+    ports:
+      - "8081:8081"   # NoSQL endpoint (HTTPS)
+      - "10251:10251"
+      - "10252:10252"
+      - "10253:10253"
+      - "10254:10254"
+    environment:
+      # Reduce partition count for local development
+      AZURE_COSMOS_EMULATOR_PARTITION_COUNT: "10"
+      # Disable data persistence so the emulator starts clean on every run
+      AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE: "false"
+      # Enable the IP address override so localhost connections work
+      AZURE_COSMOS_EMULATOR_IP_ADDRESS_OVERRIDE: "127.0.0.1"
+    healthcheck:
+      # The emulator is ready when it returns HTTP 200 on the /_explorer/emulator.pem endpoint
+      test: [ "CMD", "curl", "-k", "-f", "https://localhost:8081/_explorer/emulator.pem" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  cosmos-data:
