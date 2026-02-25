@@ -119,32 +119,6 @@ public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProvid
     }
 
     /// <summary>
-    ///     Deletes a file or directory at the specified URI.
-    /// </summary>
-    /// <param name="uri">The storage URI pointing to the file or directory to delete.</param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>
-    ///     A task that represents the asynchronous operation.
-    /// </returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="uri" /> is null.</exception>
-    /// <exception cref="UnauthorizedAccessException">Thrown when access to the file or directory is denied.</exception>
-    /// <exception cref="DirectoryNotFoundException">Thrown when the directory to delete does not exist.</exception>
-    public Task DeleteAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-
-        var path = ToLocalPath(uri);
-
-        return Task.Run(() =>
-        {
-            if (File.Exists(path))
-                File.Delete(path);
-            else if (Directory.Exists(path))
-                Directory.Delete(path, true);
-        }, cancellationToken);
-    }
-
-    /// <summary>
     ///     Lists files and directories under the specified prefix URI.
     /// </summary>
     /// <param name="prefix">The storage URI representing the directory to list.</param>
@@ -231,7 +205,6 @@ public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProvid
             SupportedSchemes = [StorageScheme.File.ToString()],
             SupportsRead = true,
             SupportsWrite = true,
-            SupportsDelete = true,
             SupportsListing = true,
             SupportsMetadata = true,
             SupportsHierarchy = true,

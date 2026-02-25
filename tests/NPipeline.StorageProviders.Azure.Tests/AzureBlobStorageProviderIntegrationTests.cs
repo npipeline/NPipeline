@@ -383,61 +383,6 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
 
     #endregion
 
-    #region Delete Operations Tests
-
-    [Fact]
-    public async Task DeleteAsync_ExistingBlob_RemovesBlob()
-    {
-        // Arrange
-        var containerName = GetUniqueContainerName();
-        var blobName = "delete-file.txt";
-        await CreateTestBlobAsync(containerName, blobName, "Delete me");
-
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
-
-        // Act
-        await _provider!.DeleteAsync(uri);
-
-        // Assert
-        var exists = await _provider.ExistsAsync(uri);
-        exists.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task DeleteAsync_NonExistentBlob_Succeeds()
-    {
-        // Arrange
-        var containerName = GetUniqueContainerName();
-        var blobName = "non-existent-file.txt";
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
-
-        // Act
-        var act = async () => await _provider!.DeleteAsync(uri);
-
-        // Assert
-        await act.Should().NotThrowAsync();
-    }
-
-    [Fact]
-    public async Task DeleteAsync_RemovesContainer()
-    {
-        // Arrange
-        var containerName = GetUniqueContainerName();
-        var blobName = "test-file.txt";
-        await CreateTestBlobAsync(containerName, blobName, "Test content");
-
-        var uri = StorageUri.Parse($"azure://{containerName}/{blobName}?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
-
-        // Act
-        await _provider!.DeleteAsync(uri);
-
-        // Assert
-        var exists = await _provider.ExistsAsync(uri);
-        exists.Should().BeFalse();
-    }
-
-    #endregion
-
     #region List Operations Tests
 
     [Fact]
@@ -862,7 +807,6 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         metadata.SupportedSchemes.Should().Contain("azure");
         metadata.SupportsRead.Should().BeTrue();
         metadata.SupportsWrite.Should().BeTrue();
-        metadata.SupportsDelete.Should().BeTrue();
         metadata.SupportsListing.Should().BeTrue();
         metadata.SupportsMetadata.Should().BeTrue();
         metadata.SupportsHierarchy.Should().BeFalse();

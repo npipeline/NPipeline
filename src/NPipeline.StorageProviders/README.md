@@ -39,7 +39,6 @@ Primary interface defining storage operations:
 - `ListAsync`: Enumerate items in a location
 - `GetMetadataAsync`: Retrieve file metadata
 - `ExistsAsync`: Check if an item exists
-- `DeleteAsync`: Remove an item (optional)
 
 ### StorageUri
 

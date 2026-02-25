@@ -226,7 +226,6 @@ export STORAGE_EMULATOR_HOST="http://localhost:4443"
 
 ## Important Notes
 
-- **No Delete Support** — `DeleteAsync` is intentionally not supported. Use the GCS Console or `gsutil rm` for deletion.
 - **Upload Chunking** — For large objects, uploads are split into 256 KiB chunks. The chunk size parameter must be a positive multiple of 256 KiB.
 - **Transient Errors** — The provider automatically retries HTTP 429 (rate limit) and 5xx errors with exponential backoff when `RetrySettings` is configured.
 - **Streaming** — Use `OpenReadAsync` and `OpenWriteAsync` for efficient handling of large objects without loading them entirely into memory.

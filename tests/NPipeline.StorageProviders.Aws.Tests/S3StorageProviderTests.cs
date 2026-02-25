@@ -425,16 +425,6 @@ public class S3StorageProviderTests
     }
 
     [Fact]
-    public async Task DeleteAsync_AlwaysThrowsNotSupportedException()
-    {
-        // Arrange
-        var uri = StorageUri.Parse("s3://test-bucket/test-key");
-
-        // Act & Assert
-        await Assert.ThrowsAsync<NotSupportedException>(() => _provider.DeleteAsync(uri));
-    }
-
-    [Fact]
     public async Task ListAsync_WithRecursiveTrue_ReturnsAllObjects()
     {
         // Arrange
@@ -689,7 +679,6 @@ public class S3StorageProviderTests
         metadata.SupportedSchemes.Should().Contain("s3");
         metadata.SupportsRead.Should().BeTrue();
         metadata.SupportsWrite.Should().BeTrue();
-        metadata.SupportsDelete.Should().BeFalse();
         metadata.SupportsListing.Should().BeTrue();
         metadata.SupportsMetadata.Should().BeTrue();
         metadata.SupportsHierarchy.Should().BeFalse();

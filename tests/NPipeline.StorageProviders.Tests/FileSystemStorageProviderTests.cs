@@ -25,56 +25,6 @@ public sealed class FileSystemStorageProviderTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task DeleteAsync_WithExistingFile_DeletesFile()
-    {
-        // Arrange
-        var filePath = Path.Combine(_testDirectory, "test.txt");
-        await File.WriteAllTextAsync(filePath, "test content");
-        var uri = StorageUri.FromFilePath(filePath);
-
-        File.Exists(filePath).Should().BeTrue();
-
-        // Act
-        await _provider.DeleteAsync(uri);
-
-        // Assert
-        File.Exists(filePath).Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task DeleteAsync_WithExistingDirectory_DeletesDirectoryRecursively()
-    {
-        // Arrange
-        var subDir = Path.Combine(_testDirectory, "subdir");
-        Directory.CreateDirectory(subDir);
-        var filePath = Path.Combine(subDir, "file.txt");
-        await File.WriteAllTextAsync(filePath, "content");
-        var uri = StorageUri.FromFilePath(subDir);
-
-        Directory.Exists(subDir).Should().BeTrue();
-
-        // Act
-        await _provider.DeleteAsync(uri);
-
-        // Assert
-        Directory.Exists(subDir).Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task DeleteAsync_WithNonExistentPath_DoesNotThrow()
-    {
-        // Arrange
-        var nonExistentPath = Path.Combine(_testDirectory, "nonexistent.txt");
-        var uri = StorageUri.FromFilePath(nonExistentPath);
-
-        // Act
-        var act = async () => await _provider.DeleteAsync(uri);
-
-        // Assert
-        await act.Should().NotThrowAsync();
-    }
-
-    [Fact]
     public async Task ListAsync_WithDirectoryContainingFiles_ReturnsOnlyTopLevelItems()
     {
         // Arrange - default recursive=false should only list top-level items

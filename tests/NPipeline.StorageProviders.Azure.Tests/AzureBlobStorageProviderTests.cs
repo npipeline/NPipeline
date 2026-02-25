@@ -199,7 +199,6 @@ internal sealed class PageAsyncEnumerator<T> : IAsyncEnumerator<Page<T>> where T
         return default;
     }
 }
-
 public class AzureBlobStorageProviderTests
 {
     private readonly BlobClient _fakeBlobClient;
@@ -627,90 +626,6 @@ public class AzureBlobStorageProviderTests
     }
 
     [Fact]
-    public async Task DeleteAsync_WithExistingBlob_DeletesSuccessfully()
-    {
-        // Arrange
-        var uri = StorageUri.Parse("azure://test-container/test-blob");
-        var response = A.Fake<Response<bool>>();
-        A.CallTo(() => response.Value).Returns(true);
-
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .Returns(Task.FromResult(_fakeBlobServiceClient));
-
-        A.CallTo(() => _fakeBlobServiceClient.GetBlobContainerClient("test-container"))
-            .Returns(_fakeContainerClient);
-
-        A.CallTo(() => _fakeContainerClient.GetBlobClient("test-blob"))
-            .Returns(_fakeBlobClient);
-
-        // Mock of instance method (FakeItEasy cannot intercept extension methods)
-        A.CallTo(() => _fakeBlobClient.DeleteIfExistsAsync(A<DeleteSnapshotsOption>._, A<BlobRequestConditions>._, A<CancellationToken>._))
-            .Returns(Task.FromResult(response));
-
-        // Act
-        await _provider.DeleteAsync(uri);
-
-        // Assert
-        A.CallTo(() => _fakeBlobClient.DeleteIfExistsAsync(A<DeleteSnapshotsOption>._, A<BlobRequestConditions>._, A<CancellationToken>._))
-            .MustHaveHappenedOnceExactly();
-    }
-
-    [Fact]
-    public async Task DeleteAsync_WithNullUri_ThrowsArgumentNullException()
-    {
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => _provider.DeleteAsync(null!));
-    }
-
-    [Fact]
-    public async Task DeleteAsync_WithAuthenticationFailed_ThrowsUnauthorizedAccessException()
-    {
-        // Arrange
-        var uri = StorageUri.Parse("azure://test-container/test-blob");
-        var exception = new RequestFailedException(403, "Authentication failed", "AuthenticationFailed", null);
-
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .Returns(Task.FromResult(_fakeBlobServiceClient));
-
-        A.CallTo(() => _fakeBlobServiceClient.GetBlobContainerClient("test-container"))
-            .Returns(_fakeContainerClient);
-
-        A.CallTo(() => _fakeContainerClient.GetBlobClient("test-blob"))
-            .Returns(_fakeBlobClient);
-
-        // Mock of instance method (FakeItEasy cannot intercept extension methods)
-        A.CallTo(() => _fakeBlobClient.DeleteIfExistsAsync(A<DeleteSnapshotsOption>._, A<BlobRequestConditions>._, A<CancellationToken>._))
-            .ThrowsAsync(exception);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _provider.DeleteAsync(uri));
-    }
-
-    [Fact]
-    public async Task DeleteAsync_WithContainerNotFound_ThrowsFileNotFoundException()
-    {
-        // Arrange
-        var uri = StorageUri.Parse("azure://test-container/test-blob");
-        var exception = new RequestFailedException(404, "Container not found", "ContainerNotFound", null);
-
-        A.CallTo(() => _fakeClientFactory.GetClientAsync(uri, A<CancellationToken>._))
-            .Returns(Task.FromResult(_fakeBlobServiceClient));
-
-        A.CallTo(() => _fakeBlobServiceClient.GetBlobContainerClient("test-container"))
-            .Returns(_fakeContainerClient);
-
-        A.CallTo(() => _fakeContainerClient.GetBlobClient("test-blob"))
-            .Returns(_fakeBlobClient);
-
-        // Mock of instance method (FakeItEasy cannot intercept extension methods)
-        A.CallTo(() => _fakeBlobClient.DeleteIfExistsAsync(A<DeleteSnapshotsOption>._, A<BlobRequestConditions>._, A<CancellationToken>._))
-            .ThrowsAsync(exception);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<FileNotFoundException>(() => _provider.DeleteAsync(uri));
-    }
-
-    [Fact]
     public async Task ListAsync_WithRecursiveTrue_ReturnsAllBlobs()
     {
         // Arrange
@@ -1016,7 +931,6 @@ public class AzureBlobStorageProviderTests
         metadata.SupportedSchemes.Should().Contain("azure");
         metadata.SupportsRead.Should().BeTrue();
         metadata.SupportsWrite.Should().BeTrue();
-        metadata.SupportsDelete.Should().BeTrue();
         metadata.SupportsListing.Should().BeTrue();
         metadata.SupportsMetadata.Should().BeTrue();
         metadata.SupportsHierarchy.Should().BeFalse();

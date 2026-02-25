@@ -218,11 +218,6 @@ public class ServiceCollectionExtensionsTests
             return Task.FromResult(false);
         }
 
-        public Task DeleteAsync(StorageUri uri, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
         public IAsyncEnumerable<StorageItem> ListAsync(StorageUri prefix, bool recursive = false, CancellationToken cancellationToken = default)
         {
             return AsyncEnumerable.Empty<StorageItem>();

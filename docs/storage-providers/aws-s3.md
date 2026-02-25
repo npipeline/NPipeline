@@ -613,12 +613,6 @@ To use the S3 storage provider, your AWS credentials must have appropriate IAM p
 
 The S3 storage provider has the following limitations:
 
-### Delete Operations
-
-- `DeleteAsync` is **not supported** and throws `NotSupportedException`
-- This is by design to prevent accidental data loss
-- Use the AWS SDK directly if you need delete functionality
-
 ### Flat Storage Model
 
 - S3 is a flat object storage system (no true hierarchical directories)

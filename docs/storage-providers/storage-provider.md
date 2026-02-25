@@ -22,7 +22,6 @@ The `IStorageProvider` interface is a foundational abstraction that enables NPip
 
 ### Extended Operations (Optional)
 
-- **`DeleteAsync(uri, cancellationToken)`** - Deletes a resource (default throws `NotSupportedException`)
 - **`ListAsync(prefix, recursive, cancellationToken)`** - Lists resources at a location (default throws `NotSupportedException`)
 - **`GetMetadataAsync(uri, cancellationToken)`** - Retrieves detailed metadata (default returns null)
 
@@ -34,11 +33,6 @@ Use `IStorageProviderMetadataProvider` to discover what operations a provider su
 if (provider is IStorageProviderMetadataProvider metadataProvider)
 {
     var metadata = metadataProvider.GetMetadata();
-    
-    if (metadata.SupportsDelete)
-    {
-        await provider.DeleteAsync(uri);
-    }
     
     if (metadata.SupportsListing)
     {
@@ -56,7 +50,6 @@ if (provider is IStorageProviderMetadataProvider metadataProvider)
 | --- | --- |
 | `SupportsRead` | Provider supports `OpenReadAsync()` |
 | `SupportsWrite` | Provider supports `OpenWriteAsync()` |
-| `SupportsDelete` | Provider supports `DeleteAsync()` |
 | `SupportsListing` | Provider supports `ListAsync()` |
 | `SupportsMetadata` | Provider supports `GetMetadataAsync()` |
 | `SupportsHierarchy` | Provider has meaningful directory/prefix structure |
@@ -116,7 +109,7 @@ The default provider for local file access with full feature support.
 **Characteristics:**
 
 - True directory hierarchy
-- Full read/write/delete/list support
+- Full read/write/list support
 - MIME type detection
 - File metadata with timestamps
 
@@ -246,25 +239,6 @@ if (metadata != null)
 }
 ```
 
-### Deleting Resources
-
-Delete files and directories:
-
-```csharp
-using NPipeline.StorageProviders;
-using NPipeline.StorageProviders.Abstractions;
-
-var uri = StorageUri.FromFilePath("C:\\temp\\old_data.csv");
-var provider = new FileSystemStorageProvider();
-
-if (provider is IStorageProviderMetadataProvider metadataProvider
-    && metadataProvider.GetMetadata().SupportsDelete)
-{
-    await provider.DeleteAsync(uri);
-    Console.WriteLine("File deleted");
-}
-```
-
 ## StorageUri Format
 
 `StorageUri` represents a location in any storage system:
@@ -345,13 +319,6 @@ public sealed class MyCustomStorageProvider : IStorageProvider, IStorageProvider
         throw new NotImplementedException();
     }
     
-    // Implement DeleteAsync if deletion is supported
-    public async Task DeleteAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
-        // Your implementation here
-        throw new NotImplementedException();
-    }
-    
     // Implement ListAsync if listing is supported
     public async IAsyncEnumerable<StorageItem> ListAsync(
         StorageUri prefix,
@@ -378,7 +345,6 @@ public sealed class MyCustomStorageProvider : IStorageProvider, IStorageProvider
             SupportedSchemes = ["custom"],
             SupportsRead = true,
             SupportsWrite = true,
-            SupportsDelete = true,
             SupportsListing = true,
             SupportsMetadata = true,
             SupportsHierarchy = true
@@ -412,7 +378,6 @@ public StorageProviderMetadata GetMetadata()
     {
         SupportsRead = true,
         SupportsWrite = false,    // This provider is read-only
-        SupportsDelete = false,
         SupportsListing = true,
         SupportsHierarchy = false // No directory concept
     };

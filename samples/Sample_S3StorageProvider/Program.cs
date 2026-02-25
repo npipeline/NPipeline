@@ -495,7 +495,6 @@ public sealed class Program
             Console.WriteLine($"  Supported Schemes:   {string.Join(", ", providerMetadata.SupportedSchemes)}");
             Console.WriteLine($"  Supports Read:       {providerMetadata.SupportsRead}");
             Console.WriteLine($"  Supports Write:      {providerMetadata.SupportsWrite}");
-            Console.WriteLine($"  Supports Delete:     {providerMetadata.SupportsDelete}");
             Console.WriteLine($"  Supports Listing:    {providerMetadata.SupportsListing}");
             Console.WriteLine($"  Supports Metadata:   {providerMetadata.SupportsMetadata}");
             Console.WriteLine($"  Supports Hierarchy: {providerMetadata.SupportsHierarchy}");

@@ -204,7 +204,7 @@ services.AddGcsStorageProvider(options =>
 
 ## URI Format
 
-The GCS provider uses the `gs://` URI scheme. 
+The GCS provider uses the `gs://` URI scheme.
 
 ```csharp
 // Basic format
@@ -229,6 +229,7 @@ The GCS provider supports multiple authentication methods through the credential
 3. **Access tokens** - For short-lived credentials
 
 When `UseDefaultCredentials` is true (default), the provider searches for credentials in this order:
+
 - `GOOGLE_APPLICATION_CREDENTIALS` environment variable (path to service account JSON)
 - `gcloud auth application-default login` credentials
 - Compute Engine metadata service (on GCE)
@@ -262,7 +263,6 @@ Use the `Storage Object Admin` role for testing, or assign minimal permissions b
 
 ## Limitations
 
-- `DeleteAsync` is **not supported** and throws `NotSupportedException` (by design to prevent accidental data loss)
 - GCS is a flat object storage system; directory-like paths are simulated through object name prefixes
 - Chunk size for uploads must be a multiple of 256 KiB
 

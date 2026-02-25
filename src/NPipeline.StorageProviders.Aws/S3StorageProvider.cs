@@ -137,18 +137,6 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
     }
 
     /// <summary>
-    ///     Deletes the S3 object at the specified URI.
-    ///     Delete operations are not supported by this provider.
-    /// </summary>
-    /// <param name="uri">The storage URI of the S3 object to delete.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <exception cref="NotSupportedException">Delete operation is not supported.</exception>
-    public Task DeleteAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
-        throw new NotSupportedException("Delete operation is not supported by the S3 storage provider.");
-    }
-
-    /// <summary>
     ///     Lists S3 objects at the specified prefix.
     /// </summary>
     /// <param name="prefix">The URI prefix to list.</param>
@@ -229,7 +217,6 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
             SupportedSchemes = ["s3"],
             SupportsRead = true,
             SupportsWrite = true,
-            SupportsDelete = false,
             SupportsListing = true,
             SupportsMetadata = true,
             SupportsHierarchy = false, // S3 is flat

@@ -161,7 +161,6 @@ public sealed class PostgresDatabaseStorageProviderTests
         Assert.Contains("postgresql", metadata.SupportedSchemes);
         Assert.False(metadata.SupportsRead);
         Assert.False(metadata.SupportsWrite);
-        Assert.False(metadata.SupportsDelete);
         Assert.False(metadata.SupportsListing);
         Assert.False(metadata.SupportsMetadata);
         Assert.False(metadata.SupportsHierarchy);

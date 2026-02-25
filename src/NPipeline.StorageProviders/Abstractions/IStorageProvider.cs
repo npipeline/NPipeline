@@ -70,31 +70,6 @@ public interface IStorageProvider
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    ///     Deletes the resource at the specified <see cref="StorageUri" />.
-    ///     If the resource does not exist, implementations may succeed silently or throw <see cref="FileNotFoundException" />;
-    ///     check provider documentation for behavior.
-    /// </summary>
-    /// <param name="uri">The storage location to delete.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task representing the asynchronous delete operation.</returns>
-    /// <exception cref="System.ArgumentNullException">If <paramref name="uri" /> is null.</exception>
-    /// <exception cref="System.UnauthorizedAccessException">If access is denied.</exception>
-    /// <exception cref="System.IO.IOException">For other I/O related errors.</exception>
-    /// <exception cref="System.NotSupportedException">If the provider does not support delete operations.</exception>
-    /// <remarks>
-    ///     Default implementation throws <see cref="System.NotSupportedException" />.
-    ///     Providers wishing to support delete must override this method.
-    /// </remarks>
-    Task DeleteAsync(
-        StorageUri uri,
-        CancellationToken cancellationToken = default)
-    {
-        throw new NotSupportedException(
-            $"Delete operation is not supported by {GetType().Name}. " +
-            $"Check {nameof(IStorageProviderMetadataProvider)} or provider documentation.");
-    }
-
-    /// <summary>
     ///     Lists storage items at the specified prefix/directory.
     ///     Returns an async enumerable that yields <see cref="StorageItem" /> for each resource found.
     /// </summary>

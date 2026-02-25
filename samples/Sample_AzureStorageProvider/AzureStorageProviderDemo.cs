@@ -92,7 +92,6 @@ public class AzureStorageProviderDemo
         Console.WriteLine($"  Supported Schemes: {string.Join(", ", metadata.SupportedSchemes)}");
         Console.WriteLine($"  Supports Read: {metadata.SupportsRead}");
         Console.WriteLine($"  Supports Write: {metadata.SupportsWrite}");
-        Console.WriteLine($"  Supports Delete: {metadata.SupportsDelete}");
         Console.WriteLine($"  Supports Listing: {metadata.SupportsListing}");
         Console.WriteLine($"  Supports Metadata: {metadata.SupportsMetadata}");
         Console.WriteLine($"  Supports Hierarchy: {metadata.SupportsHierarchy}");
@@ -150,10 +149,6 @@ public class AzureStorageProviderDemo
             // Check existence
             var exists = await _provider.ExistsAsync(uri, cancellationToken);
             Console.WriteLine($"  ✓ Blob exists: {exists}");
-
-            // Clean up
-            await _provider.DeleteAsync(uri, cancellationToken);
-            Console.WriteLine("  ✓ Blob deleted");
         }
         catch (Exception ex)
         {
@@ -260,11 +255,6 @@ public class AzureStorageProviderDemo
             }
 
             Console.WriteLine("  ✓ Processed data written successfully");
-
-            // Clean up
-            await _provider.DeleteAsync(csvUri, cancellationToken);
-            await _provider.DeleteAsync(outputUri, cancellationToken);
-            Console.WriteLine("  ✓ Cleanup completed");
         }
         catch (Exception ex)
         {
@@ -330,10 +320,6 @@ public class AzureStorageProviderDemo
                 var bytesRead = await readStream.ReadAsync(readBuffer, cancellationToken);
                 Console.WriteLine($"  ✓ Read {bytesRead} bytes successfully");
             }
-
-            // Clean up
-            await _provider.DeleteAsync(uri, cancellationToken);
-            Console.WriteLine("  ✓ Large file deleted");
         }
         catch (Exception ex)
         {
@@ -434,18 +420,6 @@ public class AzureStorageProviderDemo
             }
 
             Console.WriteLine($"  ✓ Found {logsBlobs.Count} log files");
-
-            // Clean up
-            Console.WriteLine();
-            Console.WriteLine("  Cleaning up test files...");
-
-            foreach (var file in files)
-            {
-                var uri = StorageUri.Parse($"azure://{_containerName}/{file}");
-                await _provider.DeleteAsync(uri, cancellationToken);
-            }
-
-            Console.WriteLine("  ✓ All test files deleted");
         }
         catch (Exception ex)
         {
@@ -519,10 +493,6 @@ public class AzureStorageProviderDemo
             var nonExistentUri = StorageUri.Parse($"azure://{_containerName}/demo/non-existent-file.txt");
             var nonExistent = await _provider.ExistsAsync(nonExistentUri, cancellationToken);
             Console.WriteLine($"  Non-existent blob exists: {nonExistent}");
-
-            // Clean up
-            await _provider.DeleteAsync(uri, cancellationToken);
-            Console.WriteLine("  ✓ Blob deleted");
         }
         catch (Exception ex)
         {
@@ -566,25 +536,9 @@ public class AzureStorageProviderDemo
             Console.ResetColor();
         }
 
-        // Scenario 2: Try to delete non-existent blob (should not throw)
+        // Scenario 2: Try to get metadata for non-existent blob
         Console.WriteLine();
-        Console.WriteLine("  Scenario 2: Deleting non-existent blob (DeleteIfExists)");
-
-        try
-        {
-            await _provider.DeleteAsync(nonExistentUri, cancellationToken);
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("    ✓ Delete completed without exception (DeleteIfExists behavior)");
-            Console.ResetColor();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"    Exception thrown: {ex.Message}");
-        }
-
-        // Scenario 3: Try to get metadata for non-existent blob
-        Console.WriteLine();
-        Console.WriteLine("  Scenario 3: Getting metadata for non-existent blob");
+        Console.WriteLine("  Scenario 2: Getting metadata for non-existent blob");
 
         try
         {
@@ -602,9 +556,9 @@ public class AzureStorageProviderDemo
             Console.WriteLine($"    Exception thrown: {ex.Message}");
         }
 
-        // Scenario 4: Try to access invalid container
+        // Scenario 3: Try to access invalid container
         Console.WriteLine();
-        Console.WriteLine("  Scenario 4: Accessing invalid container name");
+        Console.WriteLine("  Scenario 3: Accessing invalid container name");
         var invalidUri = StorageUri.Parse("azure://invalid-container-name-with-invalid-chars!/file.txt");
 
         try
@@ -625,9 +579,9 @@ public class AzureStorageProviderDemo
             Console.ResetColor();
         }
 
-        // Scenario 5: Try to use null URI
+        // Scenario 4: Try to use null URI
         Console.WriteLine();
-        Console.WriteLine("  Scenario 5: Using null URI");
+        Console.WriteLine("  Scenario 4: Using null URI");
 
         try
         {

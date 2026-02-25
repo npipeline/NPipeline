@@ -623,16 +623,6 @@ public class GcsStorageProviderTests
     }
 
     [Fact]
-    public async Task DeleteAsync_AlwaysThrowsNotSupportedException()
-    {
-        // Arrange
-        var uri = StorageUri.Parse("gs://test-bucket/test-object.txt");
-
-        // Act & Assert
-        await Assert.ThrowsAsync<NotSupportedException>(() => _provider.DeleteAsync(uri));
-    }
-
-    [Fact]
     public async Task ListAsync_WithNullPrefix_ThrowsArgumentNullException()
     {
         // Act & Assert
@@ -752,7 +742,6 @@ public class GcsStorageProviderTests
         metadata.SupportedSchemes.Should().Contain("gs");
         metadata.SupportsRead.Should().BeTrue();
         metadata.SupportsWrite.Should().BeTrue();
-        metadata.SupportsDelete.Should().BeFalse();
         metadata.SupportsListing.Should().BeTrue();
         metadata.SupportsMetadata.Should().BeTrue();
         metadata.SupportsHierarchy.Should().BeFalse();

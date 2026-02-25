@@ -140,29 +140,6 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
     }
 
     /// <summary>
-    ///     Deletes the Azure blob at the specified URI.
-    /// </summary>
-    /// <param name="uri">The storage URI of the Azure blob to delete.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    public async Task DeleteAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-
-        var (container, blob) = GetContainerAndBlob(uri, true);
-        var blobServiceClient = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
-        var blobClient = blobServiceClient.GetBlobContainerClient(container).GetBlobClient(blob);
-
-        try
-        {
-            await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-        }
-        catch (RequestFailedException ex)
-        {
-            throw TranslateAzureException(ex, container, blob);
-        }
-    }
-
-    /// <summary>
     ///     Lists Azure blobs at the specified prefix.
     /// </summary>
     /// <param name="prefix">The URI prefix to list.</param>
@@ -238,7 +215,6 @@ public sealed class AzureBlobStorageProvider : IStorageProvider, IStorageProvide
             SupportedSchemes = ["azure"],
             SupportsRead = true,
             SupportsWrite = true,
-            SupportsDelete = true,
             SupportsListing = true,
             SupportsMetadata = true,
             SupportsHierarchy = false, // Azure Blob Storage is flat

@@ -113,21 +113,7 @@ public sealed class AzuriteFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        foreach (var containerName in _testContainers)
-        {
-            try
-            {
-                var uri = StorageUri.Parse(
-                    $"azure://{containerName}?accountName={AccountName}&accountKey={AccountKey}");
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                await Provider.DeleteAsync(uri, cts.Token);
-            }
-            catch
-            {
-                // Ignore cleanup errors
-            }
-        }
-
+        // Cleanup is handled by stopping and disposing the container
         if (_azuriteContainer != null)
         {
             await _azuriteContainer.StopAsync();

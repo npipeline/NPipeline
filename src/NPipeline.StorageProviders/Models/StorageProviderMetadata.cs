@@ -32,11 +32,6 @@ public sealed record StorageProviderMetadata
     public bool SupportsWrite { get; init; }
 
     /// <summary>
-    ///     Indicates whether the provider supports delete (DeleteAsync) operations.
-    /// </summary>
-    public bool SupportsDelete { get; init; }
-
-    /// <summary>
     ///     Indicates whether the provider supports listing (ListAsync) operations.
     /// </summary>
     public bool SupportsListing { get; init; }

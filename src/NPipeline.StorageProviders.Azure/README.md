@@ -471,18 +471,6 @@ else
 }
 ```
 
-### Deleting Blobs
-
-```csharp
-var provider = serviceProvider.GetRequiredService<AzureBlobStorageProvider>();
-var uri = StorageUri.Parse("azure://my-container/data.csv");
-
-await provider.DeleteAsync(uri);
-Console.WriteLine("Blob deleted successfully.");
-```
-
-> **Note:** `DeleteAsync` uses `DeleteIfExistsAsync` internally, so it does not throw if the blob does not exist.
-
 ### Listing Blobs (Recursive)
 
 ```csharp
@@ -700,19 +688,22 @@ await using (var stream = await provider.OpenWriteAsync(uri))
 Retrieve blob metadata including custom metadata:
 
 ```csharp
-var metadata = await provider.GetMetadataAsync(uri);
+var provider = serviceProvider.GetRequiredService<AzureBlobStorageProvider>();
+var uri = StorageUri.Parse("azure://my-container/data.csv");
 
+var metadata = await provider.GetMetadataAsync(uri);
 if (metadata != null)
 {
     // Standard properties
-    Console.WriteLine($"Size: {metadata.Size}");
+    Console.WriteLine($"Size: {metadata.Size} bytes");
     Console.WriteLine($"Content Type: {metadata.ContentType}");
     Console.WriteLine($"Last Modified: {metadata.LastModified}");
     Console.WriteLine($"ETag: {metadata.ETag}");
 
     // Custom metadata
-    if (metadata.CustomMetadata != null)
+    if (metadata.CustomMetadata != null && metadata.CustomMetadata.Count > 0)
     {
+        Console.WriteLine("Custom Metadata:");
         foreach (var (key, value) in metadata.CustomMetadata)
         {
             Console.WriteLine($"  {key}: {value}");
@@ -1199,12 +1190,6 @@ var task2 = provider.OpenWriteAsync(uri);
 await Task.WhenAll(task1, task2);
 ```
 
-### Delete Operations
-
-- `DeleteAsync` is supported (unlike the S3 provider which throws `NotSupportedException`)
-- Uses `DeleteIfExistsAsync` internally, so no exception is thrown for non-existent blobs
-- Consider adding a configuration option to disable delete if needed for safety
-
 ## Troubleshooting
 
 ### Common Issues
@@ -1243,7 +1228,7 @@ services.AddAzureBlobStorageProvider(options =>
 
 ```csharp
 // Verify URI format
-var uri = StorageUri.Parse("azure://my-container/path/to/blob.txt");
+var uri = StorageUri.Parse("azure://test-container/test-blob");
 //                           ^^^^^^^^^^^^ container
 //                                      ^^^^^^^^^^^^^^^ blob path
 ```
@@ -1408,7 +1393,6 @@ Main storage provider implementation for Azure Blob Storage.
 | `OpenReadAsync(StorageUri uri, CancellationToken ct)`                | `Task<Stream>`                  | Opens a readable stream for the specified blob                                 |
 | `OpenWriteAsync(StorageUri uri, CancellationToken ct)`               | `Task<Stream>`                  | Opens a writable stream for the specified blob                                 |
 | `ExistsAsync(StorageUri uri, CancellationToken ct)`                  | `Task<bool>`                    | Checks if the blob exists                                                      |
-| `DeleteAsync(StorageUri uri, CancellationToken ct)`                  | `Task`                          | Deletes the blob                                                               |
 | `ListAsync(StorageUri prefix, bool recursive, CancellationToken ct)` | `IAsyncEnumerable<StorageItem>` | Lists blobs at the specified prefix                                            |
 | `GetMetadataAsync(StorageUri uri, CancellationToken ct)`             | `Task<StorageMetadata?>`        | Retrieves metadata for the blob                                                |
 | `GetMetadata()`                                                      | `StorageProviderMetadata`       | Returns provider capability metadata                                           |

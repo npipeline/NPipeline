@@ -24,7 +24,6 @@ public sealed class CosmosDatabaseStorageProvider : IDatabaseStorageProvider, IS
         SupportedSchemes = ["cosmosdb", "cosmos", "cosmos-mongo", "cosmos-cassandra"],
         SupportsRead = false,
         SupportsWrite = false,
-        SupportsDelete = false,
         SupportsListing = false,
         SupportsMetadata = false,
         SupportsHierarchy = false,

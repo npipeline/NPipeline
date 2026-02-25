@@ -465,20 +465,6 @@ else
 }
 ```
 
-### Deleting Files
-
-```csharp
-var provider = new AzureBlobStorageProvider(
-    new AzureBlobClientFactory(new AzureBlobStorageProviderOptions()),
-    new AzureBlobStorageProviderOptions());
-var uri = StorageUri.Parse("azure://my-container/data.csv");
-
-await provider.DeleteAsync(uri);
-Console.WriteLine("Blob deleted successfully.");
-```
-
-> **Note:** `DeleteAsync` uses `DeleteIfExistsAsync` internally, so it does not throw if the blob does not exist.
-
 ### Getting Metadata
 
 ```csharp
@@ -563,7 +549,6 @@ To use the Azure Blob Storage provider, your Azure credentials must have appropr
 | List (ListAsync) | `Microsoft.Storage/storageAccounts/blobServices/containers/read` |
 | Metadata (GetMetadataAsync) | `Microsoft.Storage/storageAccounts/blobServices/containers/read` |
 | Existence (ExistsAsync) | `Microsoft.Storage/storageAccounts/blobServices/containers/read` |
-| Delete (DeleteAsync) | `Microsoft.Storage/storageAccounts/blobServices/containers/blobs/delete` |
 
 ### Example RBAC Role
 
@@ -638,12 +623,6 @@ Assign the `Storage Blob Data Contributor` role for full read/write/delete acces
 ## Limitations
 
 The Azure Blob Storage provider has the following limitations:
-
-### Delete Operations
-
-- `DeleteAsync` is **supported** and uses `DeleteIfExistsAsync` internally
-- It does not throw an exception if the blob does not exist
-- Full delete access requires appropriate Azure Storage permissions
 
 ### Flat Storage Model
 

@@ -159,7 +159,6 @@ public sealed class SqlServerDatabaseStorageProviderTests
         Assert.Contains("sqlserver", metadata.SupportedSchemes);
         Assert.False(metadata.SupportsRead);
         Assert.False(metadata.SupportsWrite);
-        Assert.False(metadata.SupportsDelete);
         Assert.False(metadata.SupportsListing);
         Assert.False(metadata.SupportsMetadata);
         Assert.False(metadata.SupportsHierarchy);
