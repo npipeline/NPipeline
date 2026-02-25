@@ -33,9 +33,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
     /// </summary>
     private string GetUniqueContainerName()
     {
-        var containerName = $"test-container-{Guid.NewGuid():N}";
-        _fixture.TrackContainer(containerName);
-        return containerName;
+        return $"test-container-{Guid.NewGuid():N}";
     }
 
     /// <summary>

@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Azure.Storage;
 using Azure.Storage.Blobs;
 using DotNet.Testcontainers.Builders;
@@ -15,18 +14,12 @@ public sealed class AzuriteFixture : IAsyncLifetime
         "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
     public const int BlobPort = 10000;
 
-    private readonly ConcurrentBag<string> _testContainers = new();
     private IContainer? _azuriteContainer;
     private int _blobHostPort;
 
     public AzureBlobStorageProviderOptions Options { get; private set; } = null!;
     public AzureBlobStorageProvider Provider { get; private set; } = null!;
     public BlobServiceClient BlobServiceClient { get; private set; } = null!;
-
-    public void TrackContainer(string containerName)
-    {
-        _testContainers.Add(containerName);
-    }
 
     public string GetConnectionString()
     {
