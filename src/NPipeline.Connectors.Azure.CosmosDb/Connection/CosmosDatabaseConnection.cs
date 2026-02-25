@@ -67,6 +67,12 @@ internal sealed class CosmosDatabaseConnection : IDatabaseConnection
     public bool IsOpen => !_disposed;
 
     /// <summary>
+    ///     Gets the current transaction. Cosmos DB does not support connection-level transactions,
+    ///     so this always returns null.
+    /// </summary>
+    public IDatabaseTransaction? CurrentTransaction => null;
+
+    /// <summary>
     ///     Opens the database connection asynchronously.
     ///     Cosmos DB connections are stateless, so this is a no-op.
     /// </summary>
@@ -76,6 +82,17 @@ internal sealed class CosmosDatabaseConnection : IDatabaseConnection
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    ///     Begins a database transaction. Cosmos DB does not support connection-level transactions.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <exception cref="NotSupportedException">Always thrown. Use Cosmos DB transactional batch operations instead.</exception>
+    public Task<IDatabaseTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
+    {
+        throw new NotSupportedException(
+            "Cosmos DB does not support traditional database transactions. Use Cosmos DB transactional batch operations instead.");
     }
 
     /// <summary>

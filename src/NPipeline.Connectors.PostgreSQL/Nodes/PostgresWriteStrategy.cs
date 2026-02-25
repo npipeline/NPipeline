@@ -16,8 +16,7 @@ namespace NPipeline.Connectors.PostgreSQL.Nodes
         Batch,
 
         /// <summary>
-        /// Use COPY command for bulk insert.
-        /// Reserved for commercial version.
+        /// Use COPY command for bulk insert. Highest throughput for large datasets.
         /// </summary>
         Copy
     }

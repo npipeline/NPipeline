@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using NPipeline.Connectors.Checkpointing;
 using NPipeline.Connectors.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
@@ -14,10 +15,11 @@ namespace NPipeline.Connectors.Nodes;
 /// </summary>
 /// <typeparam name="TReader">The type of database reader.</typeparam>
 /// <typeparam name="T">The type of objects emitted by source.</typeparam>
-public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
+public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisposable
     where TReader : IDatabaseReader
 {
-    private static readonly Dictionary<string, long> _checkpoints = new();
+    private CheckpointManager? _checkpointManager;
+    private InMemoryCheckpointStorage? _inMemoryStorage;
 
     /// <summary>
     ///     Gets whether to stream results.
@@ -48,6 +50,34 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
     ///     Virtual property for extensions.
     /// </summary>
     protected virtual string CheckpointId => GetType().FullName ?? GetType().Name;
+
+    /// <summary>
+    ///     Gets the pipeline identifier for checkpoint namespacing.
+    ///     Virtual property for extensions.
+    /// </summary>
+    protected virtual string PipelineId => "default";
+
+    /// <summary>
+    ///     Gets the checkpoint storage backend.
+    ///     Virtual property for extensions.
+    /// </summary>
+    protected virtual ICheckpointStorage? CheckpointStorage => null;
+
+    /// <summary>
+    ///     Gets the checkpoint interval configuration.
+    ///     Virtual property for extensions.
+    /// </summary>
+    protected virtual CheckpointIntervalConfiguration CheckpointInterval => new();
+
+    /// <summary>
+    ///     Gets the offset column for offset-based checkpointing.
+    /// </summary>
+    protected virtual string? CheckpointOffsetColumn => null;
+
+    /// <summary>
+    ///     Gets the key columns for key-based checkpointing.
+    /// </summary>
+    protected virtual string[]? CheckpointKeyColumns => null;
 
     /// <summary>
     ///     Gets a database connection asynchronously.
@@ -88,6 +118,27 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
     }
 
     /// <summary>
+    ///     Gets the current offset value from the checkpoint.
+    ///     Override to provide offset values from specific columns.
+    /// </summary>
+    /// <param name="reader">The database reader.</param>
+    /// <returns>The offset value, or null if not applicable.</returns>
+    protected virtual long? GetCurrentOffset(TReader reader)
+    {
+        return null;
+    }
+
+    /// <summary>
+    ///     Gets the current key values from the row for key-based checkpointing.
+    /// </summary>
+    /// <param name="reader">The database reader.</param>
+    /// <returns>The key values dictionary, or null if not applicable.</returns>
+    protected virtual Dictionary<string, object?>? GetCurrentKeyValues(TReader reader)
+    {
+        return null;
+    }
+
+    /// <summary>
     ///     Initializes the source node and returns a data pipe.
     /// </summary>
     /// <param name="context">The pipeline context.</param>
@@ -95,6 +146,9 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
     /// <returns>A data pipe containing the data.</returns>
     public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
     {
+        // Initialize checkpoint manager
+        InitializeCheckpointManager(context);
+
         if (StreamResults)
         {
             // Create a streaming data pipe with an async enumerable
@@ -103,8 +157,58 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
         }
 
         // Buffer all data in memory
-        var items = BufferDataAsync(cancellationToken).GetAwaiter().GetResult();
+        // Use Thread Pool to avoid potential deadlocks in synchronization contexts
+        // ConfigureAwait(false) prevents capturing the synchronization context
+        var items = Task.Run(
+            () => BufferDataAsync(cancellationToken).ConfigureAwait(false).GetAwaiter().GetResult(),
+            cancellationToken).GetAwaiter().GetResult();
         return new InMemoryDataPipe<T>(items, $"{GetType().Name}");
+    }
+
+    /// <summary>
+    ///     Initializes the checkpoint manager based on configuration.
+    /// </summary>
+    /// <param name="context">The pipeline context.</param>
+    protected virtual void InitializeCheckpointManager(PipelineContext context)
+    {
+        if (CheckpointStrategy == Configuration.CheckpointStrategy.None)
+        {
+            return;
+        }
+
+        var storage = ResolveCheckpointStorage();
+        var pipelineId = context.CurrentNodeId ?? PipelineId;
+
+        _checkpointManager = new CheckpointManager(
+            storage,
+            pipelineId,
+            CheckpointId,
+            CheckpointStrategy,
+            CheckpointInterval);
+    }
+
+    /// <summary>
+    ///     Resolves the checkpoint storage backend based on configuration.
+    /// </summary>
+    /// <returns>The checkpoint storage implementation.</returns>
+    protected virtual ICheckpointStorage ResolveCheckpointStorage()
+    {
+        // If storage is explicitly provided, use it
+        if (CheckpointStorage != null)
+        {
+            return CheckpointStorage;
+        }
+
+        // For InMemory strategy, use shared in-memory storage
+        if (CheckpointStrategy == Configuration.CheckpointStrategy.InMemory)
+        {
+            _inMemoryStorage ??= new InMemoryCheckpointStorage();
+            return _inMemoryStorage;
+        }
+
+        throw new InvalidOperationException(
+            $"CheckpointStorage must be provided when CheckpointStrategy is {CheckpointStrategy}. " +
+            "Set CheckpointStorage or use InMemory strategy.");
     }
 
     /// <summary>
@@ -114,41 +218,43 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
     /// <returns>An async enumerable of data items.</returns>
     private async IAsyncEnumerable<T> StreamDataAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await using var connection = await GetConnectionAsync(cancellationToken);
-        await using var reader = await ExecuteQueryAsync(connection, cancellationToken);
+        await using var connection = await GetConnectionAsync(cancellationToken).ConfigureAwait(false);
+        await using var reader = await ExecuteQueryAsync(connection, cancellationToken).ConfigureAwait(false);
 
-        var checkpointId = CheckpointId;
-
-        var checkpoint = CheckpointStrategy == CheckpointStrategy.InMemory
-            ? GetCheckpoint(checkpointId)
-            : 0;
+        // Load checkpoint if available
+        long startOffset = 0;
+        if (_checkpointManager != null)
+        {
+            var checkpoint = await _checkpointManager.LoadAsync(cancellationToken).ConfigureAwait(false);
+            startOffset = checkpoint?.GetAsOffset() ?? 0;
+        }
 
         var currentRow = 0L;
 
-        // Skip to checkpoint position
-        while (checkpoint > 0 && await reader.ReadAsync(cancellationToken))
+        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
             currentRow++;
 
-            if (currentRow >= checkpoint)
-                break;
-        }
-
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            currentRow++;
+            // Skip rows that were already processed (for offset/cursor-based checkpointing)
+            if (currentRow <= startOffset)
+            {
+                continue;
+            }
 
             if (TryMapRow(reader, out var item))
+            {
                 yield return item;
+            }
 
-            // Update checkpoint
-            if (CheckpointStrategy == CheckpointStrategy.InMemory)
-                SetCheckpoint(checkpointId, currentRow);
+            // Update checkpoint based on strategy
+            await UpdateCheckpointAsync(reader, currentRow, false, cancellationToken).ConfigureAwait(false);
         }
 
-        // Clear checkpoint on successful completion
-        if (CheckpointStrategy == CheckpointStrategy.InMemory)
-            ClearCheckpoint(checkpointId);
+        // Save final checkpoint and clear if successful
+        if (_checkpointManager != null)
+        {
+            await _checkpointManager.SaveAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -160,82 +266,133 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>
     {
         var items = new List<T>();
 
-        await using var connection = await GetConnectionAsync(cancellationToken);
-        await using var reader = await ExecuteQueryAsync(connection, cancellationToken);
+        await using var connection = await GetConnectionAsync(cancellationToken).ConfigureAwait(false);
+        await using var reader = await ExecuteQueryAsync(connection, cancellationToken).ConfigureAwait(false);
 
-        var checkpointId = CheckpointId;
-
-        var checkpoint = CheckpointStrategy == CheckpointStrategy.InMemory
-            ? GetCheckpoint(checkpointId)
-            : 0;
+        // Load checkpoint if available
+        long startOffset = 0;
+        if (_checkpointManager != null)
+        {
+            var checkpoint = await _checkpointManager.LoadAsync(cancellationToken).ConfigureAwait(false);
+            startOffset = checkpoint?.GetAsOffset() ?? 0;
+        }
 
         var currentRow = 0L;
 
-        // Skip to checkpoint position
-        while (checkpoint > 0 && await reader.ReadAsync(cancellationToken))
+        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
             currentRow++;
 
-            if (currentRow >= checkpoint)
-                break;
-        }
-
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            currentRow++;
+            // Skip rows that were already processed (for offset/cursor-based checkpointing)
+            if (currentRow <= startOffset)
+            {
+                continue;
+            }
 
             if (TryMapRow(reader, out var item))
+            {
                 items.Add(item);
+            }
 
             // Update checkpoint periodically
-            if (CheckpointStrategy == CheckpointStrategy.InMemory && currentRow % 100 == 0)
-                SetCheckpoint(checkpointId, currentRow);
+            await UpdateCheckpointAsync(reader, currentRow, false, cancellationToken).ConfigureAwait(false);
         }
 
-        // Clear checkpoint on successful completion
-        if (CheckpointStrategy == CheckpointStrategy.InMemory)
-            ClearCheckpoint(checkpointId);
+        // Save final checkpoint
+        if (_checkpointManager != null)
+        {
+            await _checkpointManager.SaveAsync(cancellationToken).ConfigureAwait(false);
+        }
 
         return items;
     }
 
     /// <summary>
-    ///     Gets the checkpoint value for the specified checkpoint ID.
+    ///     Updates the checkpoint based on the current strategy.
     /// </summary>
-    /// <param name="checkpointId">The checkpoint identifier.</param>
-    /// <returns>The checkpoint value (row number).</returns>
-    private static long GetCheckpoint(string checkpointId)
+    /// <param name="reader">The database reader.</param>
+    /// <param name="currentRow">The current row number.</param>
+    /// <param name="forceSave">Force immediate save.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    protected virtual async Task UpdateCheckpointAsync(
+        TReader reader,
+        long currentRow,
+        bool forceSave,
+        CancellationToken cancellationToken)
     {
-        lock (_checkpoints)
+        if (_checkpointManager == null)
         {
-            return _checkpoints.TryGetValue(checkpointId, out var checkpoint)
-                ? checkpoint
-                : 0;
+            return;
+        }
+
+        switch (CheckpointStrategy)
+        {
+            case Configuration.CheckpointStrategy.InMemory:
+            case Configuration.CheckpointStrategy.Offset:
+                {
+                    var offset = GetCurrentOffset(reader) ?? currentRow;
+                    await _checkpointManager.UpdateOffsetAsync(offset, null, forceSave, cancellationToken);
+                    break;
+                }
+
+            case Configuration.CheckpointStrategy.KeyBased:
+                {
+                    var keyValues = GetCurrentKeyValues(reader);
+                    if (keyValues != null)
+                    {
+                        var serialized = string.Join("|", keyValues.Select(kv => $"{kv.Key}={kv.Value}"));
+                        await _checkpointManager.UpdateAsync(serialized, null, forceSave, cancellationToken);
+                    }
+
+                    break;
+                }
+
+            case Configuration.CheckpointStrategy.Cursor:
+                {
+                    await _checkpointManager.UpdateOffsetAsync(currentRow, null, forceSave, cancellationToken);
+                    break;
+                }
+
+            case Configuration.CheckpointStrategy.CDC:
+                // CDC checkpointing is handled by specific implementations
+                break;
+
+            case Configuration.CheckpointStrategy.None:
+            default:
+                // No checkpointing
+                break;
         }
     }
 
     /// <summary>
-    ///     Sets the checkpoint value for the specified checkpoint ID.
+    ///     Gets the current checkpoint offset value.
     /// </summary>
-    /// <param name="checkpointId">The checkpoint identifier.</param>
-    /// <param name="value">The checkpoint value (row number).</param>
-    private static void SetCheckpoint(string checkpointId, long value)
+    /// <returns>The offset value, or 0 if no checkpoint exists.</returns>
+    protected async Task<long> GetCheckpointOffsetAsync(CancellationToken cancellationToken = default)
     {
-        lock (_checkpoints)
+        if (_checkpointManager == null)
         {
-            _checkpoints[checkpointId] = value;
+            return 0;
         }
+
+        var checkpoint = await _checkpointManager.LoadAsync(cancellationToken);
+        return checkpoint?.GetAsOffset() ?? 0;
     }
 
     /// <summary>
-    ///     Clears the checkpoint for the specified checkpoint ID.
+    ///     Disposes resources used by the source node.
     /// </summary>
-    /// <param name="checkpointId">The checkpoint identifier.</param>
-    private static void ClearCheckpoint(string checkpointId)
+    public override async ValueTask DisposeAsync()
     {
-        lock (_checkpoints)
+        GC.SuppressFinalize(this);
+
+        if (_checkpointManager != null)
         {
-            _checkpoints.Remove(checkpointId);
+            await _checkpointManager.DisposeAsync();
         }
+
+        _inMemoryStorage?.Dispose();
+
+        await base.DisposeAsync();
     }
 }

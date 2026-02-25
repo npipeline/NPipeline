@@ -254,7 +254,8 @@ public class SqlServerSinkNode<T> : DatabaseSinkNode<T>
                 _configuration)),
             SqlServerWriteStrategy.Batch => Task.FromResult<IDatabaseWriter<T>>(new SqlServerBatchWriter<T>(connection, _schema, _tableName, _parameterMapper,
                 _configuration)),
-            SqlServerWriteStrategy.BulkCopy => throw new NotSupportedException($"Write strategy '{_writeStrategy}' is not supported in the free version"),
+            SqlServerWriteStrategy.BulkCopy => Task.FromResult<IDatabaseWriter<T>>(new SqlServerBulkCopyWriter<T>(connection, _schema, _tableName, _parameterMapper,
+                _configuration)),
             _ => throw new NotSupportedException($"Write strategy '{_writeStrategy}' is not supported"),
         };
 

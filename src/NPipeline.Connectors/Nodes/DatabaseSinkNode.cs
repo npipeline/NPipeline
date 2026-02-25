@@ -70,6 +70,73 @@ public abstract class DatabaseSinkNode<T> : SinkNode<T>
     public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
         await using var connection = await GetConnectionAsync(cancellationToken);
+
+        // For ExactlyOnce semantic, wrap all writes in a transaction
+        if (DeliverySemantic == DeliverySemantic.ExactlyOnce)
+        {
+            await ExecuteWithTransactionAsync(connection, input, cancellationToken);
+        }
+        else
+        {
+            await ExecuteWithoutTransactionAsync(connection, input, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    ///     Executes the sink with transaction support for ExactlyOnce semantic.
+    /// </summary>
+    /// <param name="connection">The database connection.</param>
+    /// <param name="input">The input data pipe.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    private async Task ExecuteWithTransactionAsync(IDatabaseConnection connection, IDataPipe<T> input, CancellationToken cancellationToken)
+    {
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            await using var writer = await CreateWriterAsync(connection, cancellationToken);
+
+            var batch = new List<T>(BatchSize);
+
+            await foreach (var item in input.WithCancellation(cancellationToken))
+            {
+                batch.Add(item);
+
+                if (batch.Count >= BatchSize)
+                {
+                    await WriteBatchAsync(writer, batch, cancellationToken);
+                    batch.Clear();
+                }
+            }
+
+            if (batch.Count > 0)
+            {
+                await WriteBatchAsync(writer, batch, cancellationToken);
+            }
+
+            await writer.FlushAsync(cancellationToken);
+
+            // Commit transaction only after all writes succeed
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            // Rollback on any error
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    /// <summary>
+    ///     Executes the sink without transaction (AtLeastOnce or AtMostOnce semantics).
+    /// </summary>
+    /// <param name="connection">The database connection.</param>
+    /// <param name="input">The input data pipe.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    private async Task ExecuteWithoutTransactionAsync(IDatabaseConnection connection, IDataPipe<T> input, CancellationToken cancellationToken)
+    {
         await using var writer = await CreateWriterAsync(connection, cancellationToken);
 
         var batch = new List<T>(BatchSize);
@@ -86,7 +153,9 @@ public abstract class DatabaseSinkNode<T> : SinkNode<T>
         }
 
         if (batch.Count > 0)
+        {
             await WriteBatchAsync(writer, batch, cancellationToken);
+        }
 
         await writer.FlushAsync(cancellationToken);
     }

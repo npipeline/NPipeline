@@ -6,13 +6,13 @@ namespace NPipeline.Connectors.SqlServer.Tests.Configuration;
 public class OnMergeActionTests
 {
     [Fact]
-    public void Insert_Should_HaveCorrectValue()
+    public void Ignore_Should_HaveCorrectValue()
     {
         // Act
-        var action = OnMergeAction.Insert;
+        var action = OnMergeAction.Ignore;
 
         // Assert
-        _ = action.Should().Be(OnMergeAction.Insert);
+        _ = action.Should().Be(OnMergeAction.Ignore);
     }
 
     [Fact]
@@ -26,16 +26,6 @@ public class OnMergeActionTests
     }
 
     [Fact]
-    public void InsertOrUpdate_Should_HaveCorrectValue()
-    {
-        // Act
-        var action = OnMergeAction.InsertOrUpdate;
-
-        // Assert
-        _ = action.Should().Be(OnMergeAction.InsertOrUpdate);
-    }
-
-    [Fact]
     public void Delete_Should_HaveCorrectValue()
     {
         // Act
@@ -43,5 +33,12 @@ public class OnMergeActionTests
 
         // Assert
         _ = action.Should().Be(OnMergeAction.Delete);
+    }
+
+    [Fact]
+    public void Default_ShouldBeIgnore()
+    {
+        // The zero value of the enum (default) should be Ignore
+        _ = ((OnMergeAction)0).Should().Be(OnMergeAction.Ignore);
     }
 }

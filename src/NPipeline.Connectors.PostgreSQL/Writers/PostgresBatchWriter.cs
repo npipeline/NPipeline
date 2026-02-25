@@ -134,11 +134,11 @@ internal sealed class PostgresBatchWriter<T> : IDatabaseWriter<T>
     public async ValueTask DisposeAsync()
     {
         // Flush any buffered items before disposal
-        await FlushAsync();
+        await FlushAsync().ConfigureAwait(false);
     }
 
     /// <summary>
-    ///     Builds the INSERT SQL statement.
+    ///     Builds the INSERT SQL statement, with optional ON CONFLICT clause for upsert.
     /// </summary>
     /// <returns>The INSERT SQL statement.</returns>
     private string BuildInsertSql()
@@ -152,7 +152,50 @@ internal sealed class PostgresBatchWriter<T> : IDatabaseWriter<T>
             .Select(m => ValidateAndQuoteIdentifier(m.ColumnName, nameof(m.ColumnName)))
             .ToArray();
 
-        return $"INSERT INTO {quotedTableName} ({string.Join(", ", quotedColumns)}) VALUES ";
+        var baseSql = $"INSERT INTO {quotedTableName} ({string.Join(", ", quotedColumns)}) VALUES ";
+
+        // Add ON CONFLICT clause for upsert if enabled
+        if (!_configuration.UseUpsert || _configuration.UpsertConflictColumns == null || _configuration.UpsertConflictColumns.Length == 0)
+            return baseSql;
+
+        // Quote the conflict column names
+        var conflictColumns = _configuration.UpsertConflictColumns
+            .Select(col => ValidateAndQuoteIdentifier(col, nameof(_configuration.UpsertConflictColumns)))
+            .ToArray();
+
+        var onConflictClause = $" ON CONFLICT ({string.Join(", ", conflictColumns)})";
+
+        // Build the conflict action
+        return _configuration.OnConflictAction switch
+        {
+            OnConflictAction.Ignore => baseSql + onConflictClause + " DO NOTHING",
+            OnConflictAction.Update => baseSql + onConflictClause + BuildDoUpdateClause(quotedColumns, conflictColumns),
+            _ => baseSql
+        };
+    }
+
+    /// <summary>
+    ///     Builds the DO UPDATE SET clause for upsert, excluding conflict columns.
+    /// </summary>
+    /// <param name="allColumns">All quoted column names being inserted.</param>
+    /// <param name="conflictColumns">The conflict target columns (to exclude from UPDATE).</param>
+    /// <returns>The DO UPDATE SET clause.</returns>
+    private string BuildDoUpdateClause(string[] allColumns, string[] conflictColumns)
+    {
+        // Create a HashSet for fast lookup of conflict columns (case-insensitive comparison)
+        var conflictColumnSet = new HashSet<string>(conflictColumns, StringComparer.OrdinalIgnoreCase);
+
+        // Build UPDATE SET for all non-conflict columns
+        var updateAssignments = allColumns
+            .Where(col => !conflictColumnSet.Contains(col))
+            .Select(col => $"{col} = EXCLUDED.{col}")
+            .ToArray();
+
+        // If all columns are conflict columns, there's nothing to update
+        if (updateAssignments.Length == 0)
+            return " DO NOTHING";
+
+        return $" DO UPDATE SET {string.Join(", ", updateAssignments)}";
     }
 
     /// <summary>

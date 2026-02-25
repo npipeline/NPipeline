@@ -17,7 +17,6 @@ public enum SqlServerWriteStrategy
 
     /// <summary>
     ///     Write rows using SqlBulkCopy for high-performance bulk loading.
-    ///     This feature is available in the commercial SQL Server connector.
     /// </summary>
     BulkCopy,
 }

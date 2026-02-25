@@ -26,14 +26,16 @@ The SQL Server connector provides the following capabilities:
 
 - **Source Node**: Read data from SQL Server tables and views
 - **Sink Node**: Write data to SQL Server tables
-- **Write Strategies**: Support for PerRow and Batch write strategies
+- **Write Strategies**: Support for PerRow, Batch, and BulkCopy (SqlBulkCopy API) write strategies
+- **Upsert Support**: MERGE-based insert-or-update semantics with configurable key columns
+- **Delivery Semantics**: AtLeastOnce, AtMostOnce, and ExactlyOnce delivery guarantees
+- **Checkpointing Strategies**: None, InMemory, Offset, KeyBased, Cursor, and CDC for resumable pipelines
 - **Connection Pooling**: Efficient connection management with named connections
 - **Attribute Mapping**: Support for `[Column]`, `[IgnoreColumn]`, and `[SqlServerColumn]` attributes
 - **Common Attributes**: Cross-connector `ColumnAttribute` and `IgnoreColumnAttribute` support
 - **Convention Mapping**: Automatic PascalCase mapping (no conversion needed)
 - **Custom Mappers**: `Func<T, IEnumerable<DatabaseParameter>>` for complete control
 - **Error Handling**: Retry logic for transient SQL Server errors
-- **In-Memory Checkpointing**: Basic recovery support for streaming operations
 - **Streaming Results**: Fetch data in streams to reduce memory usage
 - **MARS Support**: Multiple Active Result Sets for improved concurrency
 - **Authentication**: Both Windows Authentication and SQL Server Authentication support
@@ -444,7 +446,7 @@ public SqlServerSinkNode<T>(
 
 ### Write Strategies
 
-The connector supports the following write strategies:
+The connector supports three write strategies:
 
 #### PerRow Strategy
 
@@ -461,6 +463,46 @@ Buffers multiple rows and issues a single multi-row `INSERT` statement. This pro
 - Better performance for large datasets
 - Reduced database round-trips
 - All-or-nothing semantics within a batch
+
+#### BulkCopy Strategy
+
+Uses SQL Server's native `SqlBulkCopy` API for maximum throughput. This provides:
+
+- Highest performance for bulk loading
+- Support for batch size and notification callbacks
+- Table lock options for reduced contention
+
+```csharp
+var configuration = new SqlServerConfiguration
+{
+    WriteStrategy = SqlServerWriteStrategy.BulkCopy,
+    BulkCopyBatchSize = 5_000,
+    BulkCopyTimeout = 300,  // 5 minutes
+    BulkCopyNotifyAfter = 1_000,  // Progress notifications
+    EnableStreaming = true,
+    Schema = "dbo"
+};
+
+var sink = new SqlServerSinkNode<Order>(
+    pool,
+    "orders",
+    configuration: configuration);
+```
+
+**BulkCopy Configuration Options:**
+
+- **`BulkCopyBatchSize`**: Number of rows per batch (default: 5,000)
+- **`BulkCopyTimeout`**: Timeout in seconds (default: 300)
+- **`BulkCopyNotifyAfter`**: Rows to process before progress notification (default: 1,000)
+- **`EnableStreaming`**: Enable streaming for bulk copy operations (default: true)
+
+### Write Strategy Comparison
+
+| Strategy | Throughput | Latency | Error Isolation | Use Case |
+|----------|------------|---------|-----------------|----------|
+| PerRow | Low | Low | High | Real-time, small batches |
+| Batch | High | Medium | Medium | Bulk loading, ETL |
+| BulkCopy | Very High | High | Low | Large bulk loads, data warehouse |
 
 ### Example: Writing to SQL Server
 
@@ -583,6 +625,25 @@ The `SqlServerConfiguration` class provides comprehensive options for configurin
 | `Schema` | `string` | `"dbo"` | Default schema name for table operations. |
 | `StreamResults` | `bool` | `true` | Enables streaming of results to reduce memory usage for large result sets. |
 | `FetchSize` | `int` | `1,000` | Number of rows to fetch per round-trip when streaming. Larger values reduce round-trips but use more memory. |
+| `WriteStrategy` | `SqlServerWriteStrategy` | `Batch` | Write strategy for sink operations (PerRow, Batch, BulkCopy). |
+| `BatchSize` | `int` | `100` | Target batch size for batch write operations. |
+| `MaxBatchSize` | `int` | `1,000` | Maximum batch size to prevent runaway buffers. `BatchSize` is clamped to this value. |
+| `UseTransaction` | `bool` | `true` | Wraps write operations in a transaction for atomicity. |
+| `UsePreparedStatements` | `bool` | `true` | Uses prepared statements for improved performance. |
+| `UseUpsert` | `bool` | `false` | Enables MERGE-based upsert semantics. |
+| `UpsertKeyColumns` | `string[]?` | `null` | Columns that form the merge key for upsert. Required when UseUpsert is true. |
+| `OnMergeAction` | `OnMergeAction` | `Update` | Merge resolution action (`Update`, `Ignore`, or `Delete`). |
+| `BulkCopyBatchSize` | `int` | `5,000` | Number of rows per bulk copy batch. |
+| `BulkCopyTimeout` | `int` | `300` | Bulk copy operation timeout in seconds. |
+| `BulkCopyNotifyAfter` | `int` | `1,000` | Number of rows to process before generating a notification event. |
+| `EnableStreaming` | `bool` | `true` | Enable streaming for bulk copy operations. |
+| `DeliverySemantic` | `DeliverySemantic` | `AtLeastOnce` | Delivery guarantee semantic. |
+| `CheckpointStrategy` | `CheckpointStrategy` | `None` | Strategy for checkpointing to recover from failures. |
+| `CheckpointStorage` | `ICheckpointStorage?` | `null` | Storage backend for checkpoints. Required for persistent checkpoint strategies. |
+| `CheckpointInterval` | `CheckpointIntervalConfiguration` | `new()` | Controls how often checkpoints are saved. |
+| `CheckpointOffsetColumn` | `string?` | `null` | Column name for offset-based checkpointing. |
+| `CheckpointKeyColumns` | `string[]?` | `null` | Key columns for key-based checkpointing. |
+| `CdcCaptureInstance` | `string?` | `null` | CDC capture instance name for CDC checkpointing. |
 | `MaxRetryAttempts` | `int` | `3` | Maximum number of retry attempts for transient failures. Only applies before the first row is yielded. |
 | `RetryDelay` | `TimeSpan` | `TimeSpan.FromSeconds(1)` | Delay between retry attempts. |
 | `CaseInsensitiveMapping` | `bool` | `true` | Enables case-insensitive column name mapping. Useful when database column names have inconsistent casing. |
@@ -590,17 +651,12 @@ The `SqlServerConfiguration` class provides comprehensive options for configurin
 | `ValidateIdentifiers` | `bool` | `true` | Validates SQL identifiers (schema, table, column names) to prevent SQL injection. |
 | `ContinueOnError` | `bool` | `false` | Continues processing when per-property mapping errors occur. Properties with errors are set to default values. |
 | `RowErrorHandler` | `Func<Exception, Mapping.SqlServerRow?, bool>?` | `null` | Custom row error handler for row-level error handling and filtering. Return `true` to skip the row, `false` to re-throw the exception. |
-| `CheckpointStrategy` | `CheckpointStrategy` | `CheckpointStrategy.None` | Strategy for checkpointing to recover from transient failures. |
-| `BatchSize` | `int` | `100` | Target batch size for batch write operations. Effective size is capped by `MaxBatchSize` and SQL Server's 2,100 parameter limit. |
-| `MaxBatchSize` | `int` | `1,000` | Maximum batch size to prevent runaway buffers. `BatchSize` is clamped to this value. |
-| `UseTransaction` | `bool` | `true` | Wraps write operations in a transaction for atomicity. |
 | `CommandTimeout` | `int` | `30` | Command timeout in seconds. |
 | `ConnectionTimeout` | `int` | `15` | Connection timeout in seconds. |
 | `MinPoolSize` | `int` | `1` | Minimum connection pool size. |
 | `MaxPoolSize` | `int` | `100` | Maximum connection pool size. |
 | `EnableMARS` | `bool` | `false` | Enables Multiple Active Result Sets for improved concurrency. |
 | `ApplicationName` | `string?` | `null` | Application name for monitoring in SQL Server. |
-| `UsePreparedStatements` | `bool` | `true` | Uses prepared statements for improved performance. |
 
 ### SqlServerWriteStrategy
 
@@ -608,19 +664,432 @@ Enum defining write strategies for the sink node.
 
 | Value | Description |
 | --- | --- |
-| `PerRow` | Writes each row individually with a separate `INSERT` statement. |
-| `Batch` | Buffers multiple rows and issues a single multi-row `INSERT` statement. |
+| `PerRow` | Writes each row individually with a separate `INSERT` statement. Best for real-time processing and per-row error handling. |
+| `Batch` | Buffers multiple rows and issues a single multi-value `INSERT` statement. Best for bulk operations and high throughput. |
+| `BulkCopy` | Uses SQL Server's native `SqlBulkCopy` API. Best for maximum throughput bulk loading of very large datasets. |
+
+### OnMergeAction
+
+Enum defining actions to take when a MERGE statement encounters a match.
+
+| Value | Description |
+| --- | --- |
+| `Update` | Updates non-key columns using values from the incoming row. Generates `WHEN MATCHED THEN UPDATE SET ...`. |
+| `Ignore` | Leaves the existing row unchanged when a match is found. Omits the `WHEN MATCHED` clause entirely — only new rows are inserted. |
+| `Delete` | Removes the existing row when a match is found. Generates `WHEN MATCHED THEN DELETE`. |
+
+### DeliverySemantic
+
+Enum defining delivery guarantees for database operations.
+
+| Value | Description |
+| --- | --- |
+| `AtLeastOnce` | Items may be delivered multiple times but never lost. Best for idempotent operations. |
+| `AtMostOnce` | Items may be lost but never delivered multiple times. Best for telemetry and metrics. |
+| `ExactlyOnce` | Items are delivered exactly once. Requires checkpointing. Best for financial transactions. |
 
 ### CheckpointStrategy
 
-Enum defining checkpointing strategies for transient recovery.
+Enum defining checkpointing strategies for recovery.
 
 | Value | Description |
 | --- | --- |
 | `None` | No checkpointing. Failures require restarting from the beginning. |
 | `InMemory` | Stores checkpoint state in memory. Enables recovery from transient failures during a single process execution. |
+| `Offset` | Persists numeric offset checkpoints. Tracks position using a monotonically increasing column. |
+| `KeyBased` | Tracks processed items using composite keys. Useful for tables without a single monotonic column. |
+| `Cursor` | Tracks cursor position for cursor-based iteration. |
+| `CDC` | Tracks LSN for SQL Server Change Data Capture. Enables capturing changes from the transaction log. |
+
+## Upsert Operations
+
+The connector supports SQL Server's `MERGE` statement for upsert operations, allowing you to insert rows or update them if they already exist.
+
+### Basic Upsert Configuration
+
+Enable upsert by setting `UseUpsert = true` and specifying the key columns:
+
+```csharp
+var configuration = new SqlServerConfiguration
+{
+    UseUpsert = true,
+    UpsertKeyColumns = new[] { "CustomerId" },  // Primary key or unique constraint columns
+    OnMergeAction = OnMergeAction.Update,  // Update on match
+    WriteStrategy = SqlServerWriteStrategy.Batch,
+    Schema = "dbo"
+};
+
+var sink = new SqlServerSinkNode<Customer>(
+    connectionString,
+    "customers",
+    configuration: configuration
+);
+```
+
+### Merge Actions
+
+#### OnMergeAction.Update
+
+Updates non-key columns with values from the incoming row when a match is found:
+
+```sql
+MERGE INTO dbo.Customers AS target
+USING (VALUES (@CustomerId, @Name, @Email)) AS source (CustomerId, Name, Email)
+ON target.CustomerId = source.CustomerId
+WHEN MATCHED THEN
+    UPDATE SET Name = source.Name, Email = source.Email
+WHEN NOT MATCHED THEN
+    INSERT (CustomerId, Name, Email) VALUES (source.CustomerId, source.Name, source.Email);
+```
+
+```csharp
+var configuration = new SqlServerConfiguration
+{
+    UseUpsert = true,
+    UpsertKeyColumns = new[] { "CustomerId" },
+    OnMergeAction = OnMergeAction.Update
+};
+```
+
+#### OnMergeAction.Ignore
+
+Leaves the existing row unchanged. Only new (unmatched) rows are inserted:
+
+```csharp
+var configuration = new SqlServerConfiguration
+{
+    UseUpsert = true,
+    UpsertKeyColumns = new[] { "CustomerId" },
+    OnMergeAction = OnMergeAction.Ignore  // Leave existing rows as-is
+};
+```
+
+#### OnMergeAction.Delete
+
+Deletes the matching row when the source row is present:
+
+```sql
+MERGE INTO dbo.Customers AS target
+USING (VALUES (@CustomerId)) AS source (CustomerId)
+ON target.CustomerId = source.CustomerId
+WHEN MATCHED THEN
+    DELETE
+WHEN NOT MATCHED THEN
+    INSERT (CustomerId, Name, Email) VALUES (source.CustomerId, source.Name, source.Email);
+```
+
+```csharp
+var configuration = new SqlServerConfiguration
+{
+    UseUpsert = true,
+    UpsertKeyColumns = new[] { "CustomerId" },
+    OnMergeAction = OnMergeAction.Delete  // Remove existing rows on match
+};
+```
+
+### Composite Key Upsert
+
+For tables with composite unique constraints:
+
+```csharp
+public record OrderItem(int OrderId, int ProductId, int Quantity, decimal UnitPrice);
+
+var configuration = new SqlServerConfiguration
+{
+    UseUpsert = true,
+    UpsertKeyColumns = new[] { "OrderId", "ProductId" },  // Composite key
+    OnMergeAction = OnMergeAction.Update,
+    WriteStrategy = SqlServerWriteStrategy.Batch,
+    Schema = "dbo"
+};
+
+var sink = new SqlServerSinkNode<OrderItem>(
+    connectionString,
+    "order_items",
+    configuration: configuration
+);
+```
+
+### Upsert with Write Strategies
+
+Upsert works with all write strategies:
+
+- **PerRow**: Each row is processed individually with upsert semantics
+- **Batch**: Multi-value INSERT with MERGE logic
+- **BulkCopy**: Not supported for upsert operations (falls back to Batch)
+
+**Why use upsert:** Upsert eliminates the need for separate insert/update logic and handles race conditions where a row might be inserted between your check and insert operations.
+
+## Delivery Semantics
+
+The connector supports three delivery semantics to control data consistency guarantees during failures.
+
+### AtLeastOnce (Default)
+
+Guarantees that every item is delivered at least once. Items may be duplicated on retry after a failure.
+
+```csharp
+var configuration = new SqlServerConfiguration
+{
+    DeliverySemantic = DeliverySemantic.AtLeastOnce,
+    UseTransaction = true
+};
+```
+
+**Characteristics:**
+
+- No data loss
+- Possible duplicates on retry
+- Best for idempotent operations or when duplicates can be tolerated
+
+**Use when:**
+
+- Processing idempotent operations
+- Duplicates can be filtered downstream
+- Data loss is unacceptable
+
+### AtMostOnce
+
+Guarantees that every item is delivered at most once. Items may be lost on failure, but never duplicated.
+
+```csharp
+var configuration = new SqlServerConfiguration
+{
+    DeliverySemantic = DeliverySemantic.AtMostOnce
+};
+```
+
+**Characteristics:**
+
+- No duplicates
+- Possible data loss on failure
+- Best for high-throughput scenarios where occasional data loss is acceptable
+
+**Use when:**
+
+- Processing telemetry or metrics data
+- High throughput is critical
+- Occasional data loss is acceptable
+
+### ExactlyOnce
+
+Guarantees that every item is delivered exactly once. Uses transactional semantics to prevent both data loss and duplication.
+
+```csharp
+var configuration = new SqlServerConfiguration
+{
+    DeliverySemantic = DeliverySemantic.ExactlyOnce,
+    UseTransaction = true,
+    CheckpointStrategy = CheckpointStrategy.Offset,
+    CheckpointStorage = new FileCheckpointStorage("checkpoints.json")
+};
+```
+
+**Characteristics:**
+
+- No data loss
+- No duplicates
+- Higher overhead due to transaction coordination
+- Requires checkpoint storage
+
+**Use when:**
+
+- Financial transactions
+- Audit logging
+- Any scenario requiring strict exactly-once guarantees
+
+### Delivery Semantic Comparison
+
+| Semantic | Data Loss | Duplicates | Overhead | Use Case |
+|----------|-----------|------------|----------|----------|
+| AtLeastOnce | No | Possible | Low | General purpose, idempotent ops |
+| AtMostOnce | Possible | No | Low | Telemetry, metrics |
+| ExactlyOnce | No | No | High | Financial, audit |
+
+## Checkpointing Strategies
+
+Checkpointing enables pipelines to resume from where they left off after a failure, rather than restarting from the beginning.
+
+### None (Default)
+
+No checkpointing is performed. Failures require restarting from the beginning.
+
+```csharp
+var configuration = new SqlServerConfiguration
+{
+    CheckpointStrategy = CheckpointStrategy.None
+};
+```
+
+### InMemory
+
+Stores checkpoint state in memory. Enables recovery from transient failures during a single process execution.
+
+```csharp
+var configuration = new SqlServerConfiguration
+{
+    CheckpointStrategy = CheckpointStrategy.InMemory,
+    StreamResults = true
+};
+
+var source = new SqlServerSourceNode<Order>(
+    connectionString,
+    "SELECT * FROM orders ORDER BY OrderId",  // ORDER BY is required for checkpointing
+    configuration: configuration
+);
+```
+
+**Limitations:** Checkpoint state is lost when the process terminates.
+
+### Offset
+
+Persists numeric offset checkpoints to external storage. Tracks position using a monotonically increasing column (e.g., identity column).
+
+```csharp
+var configuration = new SqlServerConfiguration
+{
+    CheckpointStrategy = CheckpointStrategy.Offset,
+    CheckpointOffsetColumn = "OrderId",
+    CheckpointStorage = new FileCheckpointStorage("checkpoints/order_offset.json")
+};
+
+var source = new SqlServerSourceNode<Order>(
+    connectionString,
+    "SELECT * FROM orders WHERE OrderId > @lastCheckpoint ORDER BY OrderId",
+    configuration: configuration
+);
+```
+
+**Requirements:**
+
+- Requires `CheckpointOffsetColumn` to be specified
+- Requires `CheckpointStorage` to persist checkpoints
+- Query must include `ORDER BY` on the offset column
+
+### KeyBased
+
+Tracks processed items using composite keys. Useful for tables without a single monotonic column.
+
+```csharp
+var configuration = new SqlServerConfiguration
+{
+    CheckpointStrategy = CheckpointStrategy.KeyBased,
+    CheckpointKeyColumns = new[] { "CustomerId", "OrderDate" },
+    CheckpointStorage = new FileCheckpointStorage("checkpoints/order_keys.json")
+};
+```
+
+**Requirements:**
+
+- Requires `CheckpointKeyColumns` to be specified
+- Requires `CheckpointStorage` to persist checkpoints
+
+### Cursor
+
+Tracks cursor position for cursor-based iteration.
+
+```csharp
+var configuration = new SqlServerConfiguration
+{
+    CheckpointStrategy = CheckpointStrategy.Cursor,
+    CheckpointStorage = new FileCheckpointStorage("checkpoints/cursor.json")
+};
+```
+
+### CDC (Change Data Capture)
+
+Tracks LSN (Log Sequence Number) for SQL Server Change Data Capture. Enables capturing changes from the database transaction log.
+
+```csharp
+var configuration = new SqlServerConfiguration
+{
+    CheckpointStrategy = CheckpointStrategy.CDC,
+    CdcCaptureInstance = "dbo_orders",
+    CheckpointStorage = new FileCheckpointStorage("checkpoints/cdc.json")
+};
+```
+
+**Requirements:**
+
+- Requires `CdcCaptureInstance` to be specified
+- Requires SQL Server CDC to be enabled on the database and table
+- Requires appropriate SQL Server permissions
+
+**Enabling CDC on SQL Server:**
+
+```sql
+-- Enable CDC on the database
+EXEC sys.sp_cdc_enable_db;
+
+-- Enable CDC on a specific table
+EXEC sys.sp_cdc_enable_table
+    @source_schema = 'dbo',
+    @source_name = 'orders',
+    @role_name = NULL;
+```
+
+### Checkpoint Storage
+
+Implement `ICheckpointStorage` to persist checkpoints to your preferred backend:
+
+```csharp
+public interface ICheckpointStorage
+{
+    Task<Checkpoint?> LoadAsync(string pipelineId, CancellationToken cancellationToken = default);
+    Task SaveAsync(string pipelineId, Checkpoint checkpoint, CancellationToken cancellationToken = default);
+}
+```
+
+**Built-in implementations:**
+
+- `FileCheckpointStorage` - Stores checkpoints in a JSON file
+- `InMemoryCheckpointStorage` - Stores checkpoints in memory (for testing)
+
+### Checkpoint Intervals
+
+Configure how frequently checkpoints are saved:
+
+```csharp
+var configuration = new SqlServerConfiguration
+{
+    CheckpointStrategy = CheckpointStrategy.Offset,
+    CheckpointInterval = new CheckpointIntervalConfiguration
+    {
+        RowCount = 10_000,  // Save every 10,000 rows
+        TimeInterval = TimeSpan.FromMinutes(5)  // Or every 5 minutes, whichever comes first
+    }
+};
+```
 
 ## Advanced Configuration
+
+### BulkCopy Configuration
+
+For maximum throughput with the BulkCopy strategy:
+
+```csharp
+var config = new SqlServerConfiguration
+{
+    WriteStrategy = SqlServerWriteStrategy.BulkCopy,
+    BulkCopyBatchSize = 5_000,  // Rows per batch
+    BulkCopyTimeout = 600,      // 10 minutes for large loads
+    BulkCopyNotifyAfter = 1_000, // Progress notifications
+    EnableStreaming = true,
+    Schema = "dbo"
+};
+
+var sink = new SqlServerSinkNode<Order>(
+    pool,
+    "orders",
+    configuration: config);
+```
+
+**BulkCopy Options:**
+
+- **`BulkCopyBatchSize`**: Number of rows per batch. Larger batches reduce round-trips but use more memory.
+- **`BulkCopyTimeout`**: Timeout in seconds. Increase for very large datasets.
+- **`BulkCopyNotifyAfter`**: Generate progress notifications after this many rows.
+- **`EnableStreaming`**: Stream data to the server instead of buffering in memory.
 
 ### Streaming Large Result Sets
 
@@ -1013,13 +1482,28 @@ var config = new SqlServerConfiguration
 
 ### Writing Performance
 
-#### Batch vs. Per-Row Writes
+#### Write Strategy Selection
 
-- **Batch strategy**: 10-100x faster than per-row for bulk operations
-- **Per-row strategy**: Better for low-latency, real-time scenarios
+Choose the appropriate write strategy based on your requirements:
+
+| Strategy | Throughput | Latency | Best For |
+|----------|------------|---------|----------|
+| PerRow | Low | Low | Real-time processing, per-row error handling |
+| Batch | High | Medium | Bulk operations, ETL workloads |
+| BulkCopy | Very High | High | Large bulk loads, data warehouse ingestion |
 
 ```csharp
-// Batch: Maximum throughput
+// PerRow: Low latency, individual error handling
+var perRowSink = new SqlServerSinkNode<Order>(
+    pool,
+    "Orders",
+    configuration: new SqlServerConfiguration
+    {
+        WriteStrategy = SqlServerWriteStrategy.PerRow,
+        Schema = "dbo"
+    });
+
+// Batch: Balanced throughput and reliability
 var batchSink = new SqlServerSinkNode<Order>(
     pool,
     "Orders",
@@ -1031,13 +1515,16 @@ var batchSink = new SqlServerSinkNode<Order>(
         Schema = "dbo"
     });
 
-// Per-row: Low latency
-var perRowSink = new SqlServerSinkNode<Order>(
+// BulkCopy: Maximum throughput for large datasets
+var bulkCopySink = new SqlServerSinkNode<Order>(
     pool,
     "Orders",
     configuration: new SqlServerConfiguration
     {
-        WriteStrategy = SqlServerWriteStrategy.PerRow,
+        WriteStrategy = SqlServerWriteStrategy.BulkCopy,
+        BulkCopyBatchSize = 5_000,
+        BulkCopyTimeout = 600,
+        EnableStreaming = true,
         Schema = "dbo"
     });
 ```
@@ -1105,16 +1592,16 @@ services.AddSqlServerConnector(options =>
 
 ### Checkpointing Limitations
 
-- **In-memory only**: Checkpoint state is lost if the process terminates
-- **Single process**: Cannot recover across process restarts
-- **Ordered queries required**: Requires queries with an ordering column (typically an ID)
-- **No distributed recovery**: Cannot coordinate checkpoints across multiple processes
+- **InMemory**: Checkpoint state is lost if the process terminates
+- **Offset**: Requires a monotonically increasing column and ORDER BY clause
+- **KeyBased**: Memory usage grows with the number of unique keys processed
+- **CDC**: Requires SQL Server CDC to be enabled on the database and table
 
 ### Write Strategy Limitations
 
 - **Batch strategy**: All rows in a batch succeed or fail together
 - **Per-row strategy**: Higher overhead for large datasets
-- **No upsert support**: Only supports `INSERT` operations (no `UPDATE` or `UPSERT`)
+- **BulkCopy strategy**: Limited error granularity; not compatible with upsert
 
 ### Mapping Limitations
 
@@ -1168,17 +1655,21 @@ var config = new SqlServerConfiguration
 1. **Use dependency injection**: Leverage `AddSqlServerConnector` for production applications
 2. **Enable streaming for large datasets**: Set `StreamResults = true` to avoid memory issues
 3. **Tune fetch size**: Adjust `FetchSize` based on your data size and memory constraints
-4. **Use batch writes for bulk operations**: `SqlServerWriteStrategy.Batch` provides much better throughput
-5. **Validate identifiers**: Keep `ValidateIdentifiers = true` to prevent SQL injection
-6. **Cache mapping metadata**: Enable `CacheMappingMetadata` for better performance
-7. **Use prepared statements**: Keep `UsePreparedStatements = true` for repeated query patterns
+4. **Choose the right write strategy**: Use BulkCopy for bulk loading, Batch for balanced workloads, PerRow for real-time
+5. **Use upsert for idempotent writes**: Enable `UseUpsert` when loading data that may already exist
+6. **Select appropriate delivery semantics**: Use ExactlyOnce for critical data, AtLeastOnce for general workloads
+7. **Configure checkpointing for long-running pipelines**: Use Offset or KeyBased checkpointing for recovery
+8. **Validate identifiers**: Keep `ValidateIdentifiers = true` to prevent SQL injection
+9. **Cache mapping metadata**: Enable `CacheMappingMetadata` for better performance
+10. **Use prepared statements**: Keep `UsePreparedStatements = true` for repeated query patterns
 
 ### Data Modeling
 
 1. **Use convention-based mapping**: Leverage PascalCase to PascalCase mapping (no conversion needed)
 2. **Override with attributes**: Use `[Column]` for non-standard column names
 3. **Skip internal properties**: Use `[IgnoreColumn]` for properties that shouldn't be persisted
-4. **Design for streaming**: Order queries by an ID column to enable checkpointing
+4. **Design for checkpointing**: Order queries by an ID column to enable checkpointing
+5. **Mark primary keys**: Use `PrimaryKey = true` in `[SqlServerColumn]` for checkpoint columns
 
 ### Error Handling
 
@@ -1186,6 +1677,7 @@ var config = new SqlServerConfiguration
 2. **Use transactions**: Enable `UseTransaction = true` for atomic writes
 3. **Handle mapping errors**: Consider `ContinueOnError = true` for partial results
 4. **Log failures**: Implement logging to track connection and query failures
+5. **Choose delivery semantics wisely**: AtLeastOnce for idempotent operations, ExactlyOnce for critical data
 
 ### Performance
 
@@ -1194,6 +1686,7 @@ var config = new SqlServerConfiguration
 3. **Optimize batch size**: Tune `BatchSize` based on your latency and throughput requirements
 4. **Use connection pooling**: Leverage the shared connection pool for multiple operations
 5. **Index appropriately**: Ensure database indexes support your queries
+6. **Use BulkCopy for bulk loading**: Enable `SqlServerWriteStrategy.BulkCopy` for maximum throughput
 
 ### Security
 
@@ -1478,7 +1971,7 @@ var config = new SqlServerConfiguration
 |-----------|-------------|-------|
 | `PostgresWriteStrategy.PerRow` | `SqlServerWriteStrategy.PerRow` | Direct mapping |
 | `PostgresWriteStrategy.Batch` | `SqlServerWriteStrategy.Batch` | Direct mapping |
-| `PostgresWriteStrategy.Copy` | `SqlServerWriteStrategy.BulkCopy` | Similar semantics, Pro feature |
+| `PostgresWriteStrategy.Copy` | `SqlServerWriteStrategy.BulkCopy` | Similar high-throughput semantics |
 
 ### Naming Convention Differences
 

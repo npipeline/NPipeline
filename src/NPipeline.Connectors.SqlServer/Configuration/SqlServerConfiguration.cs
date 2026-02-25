@@ -1,3 +1,4 @@
+using NPipeline.Connectors.Checkpointing;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.SqlServer.Mapping;
 
@@ -44,7 +45,6 @@ public class SqlServerConfiguration
 
     /// <summary>
     ///     Gets or sets the bulk copy timeout in seconds.
-    ///     This feature is available in the commercial SQL Server connector.
     /// </summary>
     public int BulkCopyTimeout { get; set; } = DefaultBulkCopyTimeoutSeconds;
 
@@ -92,44 +92,38 @@ public class SqlServerConfiguration
     /// </summary>
     public bool UsePreparedStatements { get; set; } = true;
 
-    // Upsert Settings (Pro)
+    // Upsert Settings
 
     /// <summary>
     ///     Gets or sets whether to use MERGE-based upserts.
-    ///     This feature is available in the commercial SQL Server connector.
     /// </summary>
     public bool UseUpsert { get; set; }
 
     /// <summary>
     ///     Gets or sets the key columns for MERGE matching.
     ///     Required when <see cref="UseUpsert" /> is enabled.
-    ///     This feature is available in the commercial SQL Server connector.
     /// </summary>
     public string[]? UpsertKeyColumns { get; set; }
 
     /// <summary>
     ///     Gets or sets the action to take when a MERGE statement encounters a match.
-    ///     This feature is available in the commercial SQL Server connector.
     /// </summary>
     public OnMergeAction OnMergeAction { get; set; } = OnMergeAction.Update;
 
-    // Bulk Copy Settings (Pro)
+    // Bulk Copy Settings
 
     /// <summary>
     ///     Gets or sets the number of rows per bulk copy batch.
-    ///     This feature is available in the commercial SQL Server connector.
     /// </summary>
     public int BulkCopyBatchSize { get; set; } = DefaultBulkCopyBatchSize;
 
     /// <summary>
     ///     Gets or sets the number of rows to process before generating a notification event.
-    ///     This feature is available in the commercial SQL Server connector.
     /// </summary>
     public int BulkCopyNotifyAfter { get; set; } = DefaultBulkCopyNotifyAfter;
 
     /// <summary>
     ///     Gets or sets whether to enable streaming for bulk copy operations.
-    ///     This feature is available in the commercial SQL Server connector.
     /// </summary>
     public bool EnableStreaming { get; set; } = true;
 
@@ -201,6 +195,48 @@ public class SqlServerConfiguration
     /// </summary>
     public CheckpointStrategy CheckpointStrategy { get; set; } = CheckpointStrategy.None;
 
+    /// <summary>
+    ///     Gets or sets the checkpoint storage backend.
+    ///     Required when CheckpointStrategy is not None or InMemory.
+    /// </summary>
+    public ICheckpointStorage? CheckpointStorage { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the checkpoint interval configuration.
+    ///     Controls how often checkpoints are saved during processing.
+    /// </summary>
+    public CheckpointIntervalConfiguration CheckpointInterval { get; set; } = new();
+
+    /// <summary>
+    ///     Gets or sets the file path for file-based checkpoint storage.
+    ///     Used when CheckpointStorage is a FileCheckpointStorage created automatically.
+    /// </summary>
+    public string? CheckpointFilePath { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the table name for database checkpoint storage.
+    ///     Used when using database-based checkpoint storage.
+    /// </summary>
+    public string CheckpointTableName { get; set; } = "pipeline_checkpoints";
+
+    /// <summary>
+    ///     Gets or sets the offset column name for offset-based checkpointing.
+    ///     Used to generate WHERE clauses for resumable queries.
+    /// </summary>
+    public string? CheckpointOffsetColumn { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the key columns for key-based checkpointing.
+    ///     Used for composite key tracking.
+    /// </summary>
+    public string[]? CheckpointKeyColumns { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the CDC capture instance name for CDC checkpointing.
+    ///     Required when CheckpointStrategy is CDC.
+    /// </summary>
+    public string? CdcCaptureInstance { get; set; }
+
     // SQL Server Specific
 
     /// <summary>
@@ -219,35 +255,53 @@ public class SqlServerConfiguration
     public virtual void Validate()
     {
         if (string.IsNullOrWhiteSpace(Schema))
+        {
             throw new ArgumentException("Schema cannot be empty.", nameof(Schema));
+        }
 
         ValidateConnectionSettings();
 
         if (BulkCopyTimeout <= 0)
+        {
             throw new ArgumentException("BulkCopyTimeout must be greater than zero.", nameof(BulkCopyTimeout));
+        }
 
         if (BatchSize <= 0)
+        {
             throw new ArgumentException("BatchSize must be greater than zero.", nameof(BatchSize));
+        }
 
         if (MaxBatchSize <= 0)
+        {
             throw new ArgumentException("MaxBatchSize must be greater than zero.", nameof(MaxBatchSize));
+        }
 
         if (BatchSize > MaxBatchSize)
+        {
             throw new ArgumentException("BatchSize cannot exceed MaxBatchSize.", nameof(BatchSize));
+        }
 
         if (MaxRetryAttempts < 0)
+        {
             throw new ArgumentException("MaxRetryAttempts cannot be negative.", nameof(MaxRetryAttempts));
+        }
 
         if (RetryDelay < TimeSpan.Zero)
+        {
             throw new ArgumentException("RetryDelay cannot be negative.", nameof(RetryDelay));
+        }
 
         if (FetchSize <= 0)
+        {
             throw new ArgumentException("FetchSize must be greater than zero.", nameof(FetchSize));
-
-        ValidateFeatureSupport();
+        }
 
         if (UseUpsert && (UpsertKeyColumns == null || UpsertKeyColumns.Length == 0))
+        {
             throw new ArgumentException("UpsertKeyColumns must be provided when UseUpsert is enabled.", nameof(UpsertKeyColumns));
+        }
+
+        ValidateCheckpointSettings();
     }
 
     /// <summary>
@@ -256,40 +310,77 @@ public class SqlServerConfiguration
     internal void ValidateConnectionSettings()
     {
         if (CommandTimeout <= 0)
+        {
             throw new ArgumentException("CommandTimeout must be greater than zero.", nameof(CommandTimeout));
+        }
 
         if (ConnectionTimeout <= 0)
+        {
             throw new ArgumentException("ConnectionTimeout must be greater than zero.", nameof(ConnectionTimeout));
+        }
 
         if (ConnectTimeout <= 0)
+        {
             throw new ArgumentException("ConnectTimeout must be greater than zero.", nameof(ConnectTimeout));
+        }
 
         if (MinPoolSize < 0)
+        {
             throw new ArgumentException("MinPoolSize cannot be negative.", nameof(MinPoolSize));
+        }
 
         if (MaxPoolSize <= 0)
+        {
             throw new ArgumentException("MaxPoolSize must be greater than zero.", nameof(MaxPoolSize));
+        }
 
         if (MinPoolSize > MaxPoolSize)
+        {
             throw new ArgumentException("MinPoolSize cannot exceed MaxPoolSize.", nameof(MinPoolSize));
+        }
     }
 
     /// <summary>
-    ///     Validates whether requested features are supported by this connector edition.
-    ///     Override in commercial editions to enable additional features.
+    ///     Validates checkpoint-related settings.
     /// </summary>
-    protected virtual void ValidateFeatureSupport()
+    internal void ValidateCheckpointSettings()
     {
-        if (WriteStrategy == SqlServerWriteStrategy.BulkCopy)
-            throw new NotSupportedException("SqlServerWriteStrategy.BulkCopy is available in the commercial SQL Server connector.");
+        // Validate checkpoint storage requirements
+        if (CheckpointStrategy != CheckpointStrategy.None &&
+            CheckpointStrategy != CheckpointStrategy.InMemory &&
+            CheckpointStorage == null &&
+            string.IsNullOrWhiteSpace(CheckpointFilePath))
+        {
+            throw new ArgumentException(
+                $"CheckpointStorage or CheckpointFilePath must be provided when CheckpointStrategy is {CheckpointStrategy}.",
+                nameof(CheckpointStorage));
+        }
 
-        if (UseUpsert)
-            throw new NotSupportedException("Upsert support is available in the commercial SQL Server connector.");
+        // Validate offset checkpoint settings
+        if (CheckpointStrategy == CheckpointStrategy.Offset &&
+            string.IsNullOrWhiteSpace(CheckpointOffsetColumn))
+        {
+            throw new ArgumentException(
+                "CheckpointOffsetColumn must be provided when using Offset checkpoint strategy.",
+                nameof(CheckpointOffsetColumn));
+        }
 
-        if (DeliverySemantic == DeliverySemantic.ExactlyOnce)
-            throw new NotSupportedException("Exactly-once delivery semantics are available in the commercial SQL Server connector.");
+        // Validate key-based checkpoint settings
+        if (CheckpointStrategy == CheckpointStrategy.KeyBased &&
+            (CheckpointKeyColumns == null || CheckpointKeyColumns.Length == 0))
+        {
+            throw new ArgumentException(
+                "CheckpointKeyColumns must be provided when using KeyBased checkpoint strategy.",
+                nameof(CheckpointKeyColumns));
+        }
 
-        if (CheckpointStrategy != CheckpointStrategy.None && CheckpointStrategy != CheckpointStrategy.InMemory)
-            throw new NotSupportedException("Advanced checkpointing is available in the commercial SQL Server connector.");
+        // Validate CDC checkpoint settings
+        if (CheckpointStrategy == CheckpointStrategy.CDC &&
+            string.IsNullOrWhiteSpace(CdcCaptureInstance))
+        {
+            throw new ArgumentException(
+                "CdcCaptureInstance must be provided when using CDC checkpoint strategy.",
+                nameof(CdcCaptureInstance));
+        }
     }
 }
