@@ -1,4 +1,5 @@
 using System.Data;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
 using Microsoft.Data.SqlClient;
@@ -68,9 +69,7 @@ internal sealed class SqlServerBulkCopyWriter<T> : IDatabaseWriter<T>
         _pendingRows.Add(item);
 
         if (_pendingRows.Count >= _flushThreshold)
-        {
             await FlushAsync(cancellationToken).ConfigureAwait(false);
-        }
     }
 
     /// <summary>
@@ -86,15 +85,11 @@ internal sealed class SqlServerBulkCopyWriter<T> : IDatabaseWriter<T>
             _pendingRows.Add(item);
 
             if (_pendingRows.Count >= _flushThreshold)
-            {
                 await FlushAsync(cancellationToken).ConfigureAwait(false);
-            }
         }
 
         if (_pendingRows.Count > 0)
-        {
             await FlushAsync(cancellationToken).ConfigureAwait(false);
-        }
     }
 
     /// <summary>
@@ -105,9 +100,7 @@ internal sealed class SqlServerBulkCopyWriter<T> : IDatabaseWriter<T>
     public async Task FlushAsync(CancellationToken cancellationToken = default)
     {
         if (_pendingRows.Count == 0)
-        {
             return;
-        }
 
         var attempt = 0;
         var maxAttempts = _configuration.MaxRetryAttempts + 1;
@@ -145,7 +138,7 @@ internal sealed class SqlServerBulkCopyWriter<T> : IDatabaseWriter<T>
         {
             // Log the exception but don't throw during disposal
             // This is important for debugging flush failures during disposal
-            System.Diagnostics.Debug.WriteLine(
+            Debug.WriteLine(
                 $"Warning: Failed to flush during disposal for SqlServerBulkCopyWriter<{typeof(T).Name}>: {ex.Message}");
         }
     }
@@ -156,9 +149,7 @@ internal sealed class SqlServerBulkCopyWriter<T> : IDatabaseWriter<T>
     private SqlConnection GetSqlConnection()
     {
         if (_connection is SqlServerDatabaseConnection sqlServerConnection)
-        {
             return sqlServerConnection.UnderlyingConnection;
-        }
 
         throw new SqlServerException(
             $"Expected connection of type '{nameof(SqlServerDatabaseConnection)}' but got '{_connection.GetType().Name}'. " +
@@ -198,9 +189,7 @@ internal sealed class SqlServerBulkCopyWriter<T> : IDatabaseWriter<T>
     private SqlTransaction? GetSqlTransaction()
     {
         if (_connection is SqlServerDatabaseConnection sqlServerConnection)
-        {
             return sqlServerConnection.UnderlyingTransaction;
-        }
 
         return null;
     }
@@ -220,6 +209,7 @@ internal sealed class SqlServerBulkCopyWriter<T> : IDatabaseWriter<T>
         if (_configuration.BulkCopyNotifyAfter > 0)
         {
             bulkCopy.NotifyAfter = _configuration.BulkCopyNotifyAfter;
+
             bulkCopy.SqlRowsCopied += (_, e) =>
             {
                 // Event handler for rows copied - can be used for logging/progress
@@ -253,10 +243,12 @@ internal sealed class SqlServerBulkCopyWriter<T> : IDatabaseWriter<T>
         foreach (var mapping in _mappings)
         {
             var columnType = mapping.PropertyType;
+
             var dataColumn = new DataColumn(mapping.ColumnName, columnType)
             {
-                AllowDBNull = !mapping.PropertyType.IsValueType || Nullable.GetUnderlyingType(mapping.PropertyType) != null
+                AllowDBNull = !mapping.PropertyType.IsValueType || Nullable.GetUnderlyingType(mapping.PropertyType) != null,
             };
+
             dataTable.Columns.Add(dataColumn);
         }
 
@@ -278,9 +270,7 @@ internal sealed class SqlServerBulkCopyWriter<T> : IDatabaseWriter<T>
     private object?[] GetValues(T item)
     {
         if (_parameterMapper == null)
-        {
             return _valueFactory(item);
-        }
 
         var mapped = _parameterMapper(item)?.ToArray() ?? Array.Empty<DatabaseParameter>();
 
@@ -353,9 +343,7 @@ internal sealed class SqlServerBulkCopyWriter<T> : IDatabaseWriter<T>
         var sqlServerAttr = property.GetCustomAttribute<SqlServerColumnAttribute>();
 
         if (sqlServerAttr?.Name is { Length: > 0 } sqlName)
-        {
             return sqlName;
-        }
 
         var columnAttr = property.GetCustomAttribute<ColumnAttribute>();
 

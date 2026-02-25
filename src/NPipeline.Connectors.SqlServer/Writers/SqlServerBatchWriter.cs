@@ -23,8 +23,8 @@ internal sealed class SqlServerBatchWriter<T> : IDatabaseWriter<T>
     private readonly IDatabaseConnection _connection;
     private readonly int _flushThreshold;
     private readonly string _insertSql;
-    private readonly string _mergeSqlTemplate;
     private readonly PropertyMapping[] _mappings;
+    private readonly string _mergeSqlTemplate;
     private readonly int _parameterCount;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
     private readonly List<object?[]> _pendingRows;
@@ -224,6 +224,7 @@ internal sealed class SqlServerBatchWriter<T> : IDatabaseWriter<T>
             throw new InvalidOperationException($"Type '{typeof(T).Name}' does not expose any writable properties to persist.");
 
         var quotedTableName = QuoteIdentifier($"{_schema}.{_tableName}");
+
         var quotedColumns = _mappings
             .Select(m => QuoteIdentifier(m.ColumnName))
             .ToArray();

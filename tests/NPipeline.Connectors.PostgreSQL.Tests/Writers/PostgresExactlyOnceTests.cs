@@ -3,7 +3,6 @@ using FakeItEasy;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.StorageProviders.Abstractions;
-using Xunit;
 
 namespace NPipeline.Connectors.PostgreSQL.Tests.Writers;
 
@@ -13,6 +12,35 @@ namespace NPipeline.Connectors.PostgreSQL.Tests.Writers;
 /// </summary>
 public sealed class PostgresExactlyOnceTests
 {
+    #region Concurrent Transaction Tests
+
+    [Fact]
+    public async Task Connection_SupportsMultipleSequentialTransactions()
+    {
+        // Arrange
+        var mockConnection = A.Fake<IDatabaseConnection>();
+        var mockTransaction1 = A.Fake<IDatabaseTransaction>();
+        var mockTransaction2 = A.Fake<IDatabaseTransaction>();
+
+        A.CallTo(() => mockConnection.BeginTransactionAsync(A<CancellationToken>._))
+            .ReturnsNextFromSequence(mockTransaction1, mockTransaction2);
+
+        // Act
+        var transaction1 = await mockConnection.BeginTransactionAsync();
+        await transaction1.CommitAsync();
+        await transaction1.DisposeAsync();
+
+        var transaction2 = await mockConnection.BeginTransactionAsync();
+        await transaction2.CommitAsync();
+        await transaction2.DisposeAsync();
+
+        // Assert
+        A.CallTo(() => mockConnection.BeginTransactionAsync(A<CancellationToken>._))
+            .MustHaveHappenedTwiceExactly();
+    }
+
+    #endregion
+
     #region Test Models
 
     public sealed class TestEntity
@@ -33,6 +61,7 @@ public sealed class PostgresExactlyOnceTests
         var transactionCreated = false;
 
         var mockConnection = A.Fake<IDatabaseConnection>();
+
         A.CallTo(() => mockConnection.BeginTransactionAsync(A<CancellationToken>._))
             .ReturnsLazily(() =>
             {
@@ -56,10 +85,11 @@ public sealed class PostgresExactlyOnceTests
     }
 
     [Fact]
-    public async Task WriteAsync_WithAtLeastOnceSemantic_DoesNotRequireTransaction()
+    public void WriteAsync_WithAtLeastOnceSemantic_DoesNotRequireTransaction()
     {
         // Arrange
         var mockConnection = A.Fake<IDatabaseConnection>();
+
         var configuration = new PostgresConfiguration
         {
             DeliverySemantic = DeliverySemantic.AtLeastOnce,
@@ -226,6 +256,7 @@ public sealed class PostgresExactlyOnceTests
     {
         // Arrange
         var mockTransaction = A.Fake<IDatabaseTransaction>();
+
         A.CallTo(() => mockTransaction.RollbackAsync(A<CancellationToken>._))
             .ThrowsAsync(new InvalidOperationException("Rollback failed"));
 
@@ -268,35 +299,6 @@ public sealed class PostgresExactlyOnceTests
 
     #endregion
 
-    #region Concurrent Transaction Tests
-
-    [Fact]
-    public async Task Connection_SupportsMultipleSequentialTransactions()
-    {
-        // Arrange
-        var mockConnection = A.Fake<IDatabaseConnection>();
-        var mockTransaction1 = A.Fake<IDatabaseTransaction>();
-        var mockTransaction2 = A.Fake<IDatabaseTransaction>();
-
-        A.CallTo(() => mockConnection.BeginTransactionAsync(A<CancellationToken>._))
-            .ReturnsNextFromSequence(mockTransaction1, mockTransaction2);
-
-        // Act
-        var transaction1 = await mockConnection.BeginTransactionAsync();
-        await transaction1.CommitAsync();
-        await transaction1.DisposeAsync();
-
-        var transaction2 = await mockConnection.BeginTransactionAsync();
-        await transaction2.CommitAsync();
-        await transaction2.DisposeAsync();
-
-        // Assert
-        A.CallTo(() => mockConnection.BeginTransactionAsync(A<CancellationToken>._))
-            .MustHaveHappenedTwiceExactly();
-    }
-
-    #endregion
-
     #region Integration-Style Tests
 
     [Fact]
@@ -308,6 +310,7 @@ public sealed class PostgresExactlyOnceTests
 
         A.CallTo(() => mockConnection.BeginTransactionAsync(A<CancellationToken>._))
             .Returns(Task.FromResult(mockTransaction));
+
         A.CallTo(() => mockConnection.CurrentTransaction).Returns(null);
 
         // Act - Simulate the full lifecycle

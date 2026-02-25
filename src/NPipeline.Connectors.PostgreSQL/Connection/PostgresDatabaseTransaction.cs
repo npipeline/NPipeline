@@ -9,7 +9,6 @@ namespace NPipeline.Connectors.PostgreSQL.Connection;
 /// </summary>
 internal sealed class PostgresDatabaseTransaction : IDatabaseTransaction
 {
-    private readonly NpgsqlTransaction _transaction;
     private readonly PostgresDatabaseConnection _connection;
     private bool _disposed;
 
@@ -20,14 +19,14 @@ internal sealed class PostgresDatabaseTransaction : IDatabaseTransaction
     /// <param name="connection">The connection that owns this transaction.</param>
     public PostgresDatabaseTransaction(NpgsqlTransaction transaction, PostgresDatabaseConnection connection)
     {
-        _transaction = transaction ?? throw new ArgumentNullException(nameof(transaction));
+        UnderlyingTransaction = transaction ?? throw new ArgumentNullException(nameof(transaction));
         _connection = connection ?? throw new ArgumentNullException(nameof(connection));
     }
 
     /// <summary>
     ///     Gets the underlying NpgsqlTransaction for PostgreSQL-specific operations.
     /// </summary>
-    internal NpgsqlTransaction UnderlyingTransaction => _transaction;
+    internal NpgsqlTransaction UnderlyingTransaction { get; }
 
     /// <summary>
     ///     Commits the transaction asynchronously.
@@ -38,7 +37,7 @@ internal sealed class PostgresDatabaseTransaction : IDatabaseTransaction
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        await _transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await UnderlyingTransaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         _connection.ClearTransaction();
     }
 
@@ -51,7 +50,7 @@ internal sealed class PostgresDatabaseTransaction : IDatabaseTransaction
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        await _transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+        await UnderlyingTransaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
         _connection.ClearTransaction();
     }
 
@@ -61,14 +60,12 @@ internal sealed class PostgresDatabaseTransaction : IDatabaseTransaction
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
-        {
             return;
-        }
 
         try
         {
             // DisposeAsync will roll back the transaction if not already committed
-            await _transaction.DisposeAsync().ConfigureAwait(false);
+            await UnderlyingTransaction.DisposeAsync().ConfigureAwait(false);
         }
         finally
         {

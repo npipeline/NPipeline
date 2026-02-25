@@ -1,6 +1,9 @@
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using Npgsql;
+using NpgsqlTypes;
 using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.Connectors.PostgreSQL.Connection;
@@ -9,7 +12,7 @@ using NPipeline.Connectors.PostgreSQL.Mapping;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 using NPipeline.StorageProviders.Utilities;
-using Npgsql;
+using PostgresException = NPipeline.Connectors.PostgreSQL.Exceptions.PostgresException;
 
 namespace NPipeline.Connectors.PostgreSQL.Writers;
 
@@ -68,9 +71,7 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
         _pendingRows.Add(item);
 
         if (_pendingRows.Count >= _flushThreshold)
-        {
             await FlushAsync(cancellationToken).ConfigureAwait(false);
-        }
     }
 
     /// <summary>
@@ -86,15 +87,11 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
             _pendingRows.Add(item);
 
             if (_pendingRows.Count >= _flushThreshold)
-            {
                 await FlushAsync(cancellationToken).ConfigureAwait(false);
-            }
         }
 
         if (_pendingRows.Count > 0)
-        {
             await FlushAsync(cancellationToken).ConfigureAwait(false);
-        }
     }
 
     /// <summary>
@@ -105,9 +102,7 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
     public async Task FlushAsync(CancellationToken cancellationToken = default)
     {
         if (_pendingRows.Count == 0)
-        {
             return;
-        }
 
         var attempt = 0;
         var maxAttempts = _configuration.MaxRetryAttempts + 1;
@@ -119,13 +114,9 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
                 var npgsqlConnection = GetNpgsqlConnection();
 
                 if (_configuration.UseBinaryCopy)
-                {
                     await ExecuteBinaryCopyAsync(npgsqlConnection, cancellationToken).ConfigureAwait(false);
-                }
                 else
-                {
                     await ExecuteTextCopyAsync(npgsqlConnection, cancellationToken).ConfigureAwait(false);
-                }
 
                 _pendingRows.Clear();
                 return;
@@ -142,15 +133,30 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
         var finalConnection = GetNpgsqlConnection();
 
         if (_configuration.UseBinaryCopy)
-        {
             await ExecuteBinaryCopyAsync(finalConnection, cancellationToken).ConfigureAwait(false);
-        }
         else
-        {
             await ExecuteTextCopyAsync(finalConnection, cancellationToken).ConfigureAwait(false);
-        }
 
         _pendingRows.Clear();
+    }
+
+    /// <summary>
+    ///     Disposes the writer.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        // Flush any buffered items before disposal
+        try
+        {
+            await FlushAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // Log the exception but don't throw during disposal
+            // This is important for debugging flush failures during disposal
+            Debug.WriteLine(
+                $"Warning: Failed to flush during disposal for PostgresCopyWriter<{typeof(T).Name}>: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -170,25 +176,6 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
     }
 
     /// <summary>
-    ///     Disposes the writer.
-    /// </summary>
-    public async ValueTask DisposeAsync()
-    {
-        // Flush any buffered items before disposal
-        try
-        {
-            await FlushAsync().ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            // Log the exception but don't throw during disposal
-            // This is important for debugging flush failures during disposal
-            System.Diagnostics.Debug.WriteLine(
-                $"Warning: Failed to flush during disposal for PostgresCopyWriter<{typeof(T).Name}>: {ex.Message}");
-        }
-    }
-
-    /// <summary>
     ///     Gets the underlying NpgsqlConnection from the database connection.
     /// </summary>
     private NpgsqlConnection GetNpgsqlConnection()
@@ -200,7 +187,7 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
             // Users should use Batch write strategy when ExactlyOnce semantics are required.
             if (_connection.CurrentTransaction != null)
             {
-                throw new Exceptions.PostgresException(
+                throw new PostgresException(
                     "COPY operations cannot be used within an active transaction. " +
                     "Use Batch write strategy (PostgresWriteStrategy.Batch) when ExactlyOnce delivery semantics are required.");
             }
@@ -208,7 +195,7 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
             return postgresConnection.UnderlyingConnection;
         }
 
-        throw new Exceptions.PostgresException(
+        throw new PostgresException(
             $"Expected connection of type '{nameof(PostgresDatabaseConnection)}' but got '{_connection.GetType().Name}'. " +
             "COPY operations require access to the underlying NpgsqlConnection.");
     }
@@ -233,17 +220,11 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
                 var mapping = _mappings[i];
 
                 if (value == null || value == DBNull.Value)
-                {
                     await importer.WriteNullAsync(cancellationToken).ConfigureAwait(false);
-                }
                 else if (mapping.NpgsqlDbType.HasValue)
-                {
                     await importer.WriteAsync(value, mapping.NpgsqlDbType.Value, cancellationToken).ConfigureAwait(false);
-                }
                 else
-                {
                     await importer.WriteAsync(value, cancellationToken).ConfigureAwait(false);
-                }
             }
         }
 
@@ -272,9 +253,7 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
     private string BuildCopyCommand()
     {
         if (_mappings.Length == 0)
-        {
             throw new InvalidOperationException($"Type '{typeof(T).Name}' does not expose any writable properties to persist.");
-        }
 
         var quotedTableName = DatabaseIdentifierValidator.QuoteIdentifier($"{_schema}.{_tableName}");
 
@@ -284,7 +263,8 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
 
         var columnList = string.Join(", ", quotedColumns);
 
-        return $"COPY {quotedTableName} ({columnList}) FROM STDIN (FORMAT {_configuration.UseBinaryCopy switch { true => "BINARY", _ => "CSV" }}, DELIMITER '\t', NULL '\\N')";
+        return
+            $"COPY {quotedTableName} ({columnList}) FROM STDIN (FORMAT {_configuration.UseBinaryCopy switch { true => "BINARY", _ => "CSV" }}, DELIMITER '\t', NULL '\\N')";
     }
 
     /// <summary>
@@ -300,11 +280,10 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
             for (var i = 0; i < values.Length; i++)
             {
                 if (i > 0)
-                {
                     sb.Append('\t');
-                }
 
                 var value = values[i];
+
                 sb.Append(value == null || value == DBNull.Value
                     ? "\\N"
                     : EscapeCopyValue(value.ToString() ?? string.Empty));
@@ -332,9 +311,7 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
     private object?[] GetValues(T item)
     {
         if (_parameterMapper == null)
-        {
             return _valueFactory(item);
-        }
 
         var mapped = _parameterMapper(item)?.ToArray() ?? Array.Empty<DatabaseParameter>();
 
@@ -411,9 +388,7 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
     private string ValidateAndQuoteIdentifier(string identifier, string paramName)
     {
         if (_configuration.ValidateIdentifiers)
-        {
             DatabaseIdentifierValidator.ValidateIdentifier(identifier, paramName);
-        }
 
         return DatabaseIdentifierValidator.QuoteIdentifier(identifier);
     }
@@ -431,5 +406,5 @@ internal sealed class PostgresCopyWriter<T> : IDatabaseWriter<T>
     private sealed record PropertyMapping(
         string ColumnName,
         Func<T, object?> Getter,
-        NpgsqlTypes.NpgsqlDbType? NpgsqlDbType = null);
+        NpgsqlDbType? NpgsqlDbType = null);
 }

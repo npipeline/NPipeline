@@ -217,8 +217,10 @@ public sealed class SqlServerConnectorIntegrationTests
                 {
                     var startId = batch * 1000 + 1;
                     var endId = (batch + 1) * 1000;
+
                     var batchValues = string.Join(",",
                         Enumerable.Range(startId, 1000).Select(i => $"({i}, 'Test {i}', {i * 1.5})"));
+
                     await using (var insertCmd = new SqlCommand(
                                      $"INSERT INTO {tableName} (id, name, value) VALUES {batchValues}", conn))
                     {
@@ -322,8 +324,10 @@ public sealed class SqlServerConnectorIntegrationTests
                 for (var batch = 0; batch < 10; batch++)
                 {
                     var startId = batch * 1000 + 1;
+
                     var batchValues = string.Join(",",
                         Enumerable.Range(startId, 1000).Select(i => $"({i}, 'Test {i}', {i * 1.5})"));
+
                     await using (var insertCmd = new SqlCommand(
                                      $"INSERT INTO {sourceTable} (id, name, value) VALUES {batchValues}", conn))
                     {

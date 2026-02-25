@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AwesomeAssertions;
 using FakeItEasy;
 using NPipeline.Connectors.Checkpointing;
@@ -15,6 +16,22 @@ public sealed class SqlServerCdcCheckpointHandlerTests
     private const string TestPipelineId = "test-pipeline";
     private const string TestNodeId = "test-node";
     private const string TestCaptureInstance = "dbo_TestTable";
+
+    #region Properties Tests
+
+    [Fact]
+    public void CaptureInstance_ReturnsConfiguredCaptureInstance()
+    {
+        // Arrange
+        var storage = A.Fake<ICheckpointStorage>();
+        var manager = CreateCheckpointManager(storage);
+        var handler = new SqlServerCdcCheckpointHandler(manager, "my_capture_instance");
+
+        // Act & Assert
+        _ = handler.CaptureInstance.Should().Be("my_capture_instance");
+    }
+
+    #endregion
 
     #region Constructor Tests
 
@@ -87,22 +104,6 @@ public sealed class SqlServerCdcCheckpointHandlerTests
 
     #endregion
 
-    #region Properties Tests
-
-    [Fact]
-    public void CaptureInstance_ReturnsConfiguredCaptureInstance()
-    {
-        // Arrange
-        var storage = A.Fake<ICheckpointStorage>();
-        var manager = CreateCheckpointManager(storage);
-        var handler = new SqlServerCdcCheckpointHandler(manager, "my_capture_instance");
-
-        // Act & Assert
-        _ = handler.CaptureInstance.Should().Be("my_capture_instance");
-    }
-
-    #endregion
-
     #region LoadPositionAsync Tests
 
     [Fact]
@@ -110,6 +111,7 @@ public sealed class SqlServerCdcCheckpointHandlerTests
     {
         // Arrange
         var storage = A.Fake<ICheckpointStorage>();
+
         A.CallTo(() => storage.LoadAsync(TestPipelineId, TestNodeId, A<CancellationToken>._))
             .Returns((Checkpoint?)null);
 
@@ -128,6 +130,7 @@ public sealed class SqlServerCdcCheckpointHandlerTests
     {
         // Arrange
         var storage = A.Fake<ICheckpointStorage>();
+
         var cdcPosition = new SqlServerCdcPosition
         {
             StartLsnHex = "0x0000123456789ABC",
@@ -221,6 +224,7 @@ public sealed class SqlServerCdcCheckpointHandlerTests
 
         // Assert - Verify save was called
         await handler.SaveAsync();
+
         A.CallTo(() => storage.SaveAsync(TestPipelineId, TestNodeId, A<Checkpoint>._, A<CancellationToken>._))
             .MustHaveHappenedOnceExactly();
     }
@@ -239,7 +243,7 @@ public sealed class SqlServerCdcCheckpointHandlerTests
         };
 
         // Act
-        await handler.UpdatePositionAsync(position, forceSave: true);
+        await handler.UpdatePositionAsync(position, true);
 
         // Assert
         A.CallTo(() => storage.SaveAsync(TestPipelineId, TestNodeId, A<Checkpoint>._, A<CancellationToken>._))
@@ -267,6 +271,7 @@ public sealed class SqlServerCdcCheckpointHandlerTests
         // Arrange
         var storage = A.Fake<ICheckpointStorage>();
         Checkpoint? savedCheckpoint = null;
+
         A.CallTo(() => storage.SaveAsync(TestPipelineId, TestNodeId, A<Checkpoint>._, A<CancellationToken>._))
             .Invokes((string _, string _, Checkpoint cp, CancellationToken _) => savedCheckpoint = cp);
 
@@ -280,7 +285,7 @@ public sealed class SqlServerCdcCheckpointHandlerTests
         };
 
         // Act
-        await handler.UpdatePositionAsync(position, forceSave: true);
+        await handler.UpdatePositionAsync(position, true);
 
         // Assert
         _ = savedCheckpoint.Should().NotBeNull();
@@ -316,6 +321,7 @@ public sealed class SqlServerCdcCheckpointHandlerTests
         // Arrange
         var storage = A.Fake<ICheckpointStorage>();
         Checkpoint? savedCheckpoint = null;
+
         A.CallTo(() => storage.SaveAsync(TestPipelineId, TestNodeId, A<Checkpoint>._, A<CancellationToken>._))
             .Invokes((string _, string _, Checkpoint cp, CancellationToken _) => savedCheckpoint = cp);
 
@@ -343,6 +349,7 @@ public sealed class SqlServerCdcCheckpointHandlerTests
         // Arrange
         var storage = A.Fake<ICheckpointStorage>();
         Checkpoint? savedCheckpoint = null;
+
         A.CallTo(() => storage.SaveAsync(TestPipelineId, TestNodeId, A<Checkpoint>._, A<CancellationToken>._))
             .Invokes((string _, string _, Checkpoint cp, CancellationToken _) => savedCheckpoint = cp);
 
@@ -387,6 +394,7 @@ public sealed class SqlServerCdcCheckpointHandlerTests
         // Arrange
         var storage = A.Fake<ICheckpointStorage>();
         Checkpoint? savedCheckpoint = null;
+
         A.CallTo(() => storage.SaveAsync(TestPipelineId, TestNodeId, A<Checkpoint>._, A<CancellationToken>._))
             .Invokes((string _, string _, Checkpoint cp, CancellationToken _) => savedCheckpoint = cp);
 
@@ -454,6 +462,7 @@ public sealed class SqlServerCdcCheckpointHandlerTests
     {
         // Arrange
         var storage = A.Fake<ICheckpointStorage>();
+
         A.CallTo(() => storage.LoadAsync(TestPipelineId, TestNodeId, A<CancellationToken>._))
             .Returns((Checkpoint?)null);
 
@@ -473,6 +482,7 @@ public sealed class SqlServerCdcCheckpointHandlerTests
     {
         // Arrange
         var storage = A.Fake<ICheckpointStorage>();
+
         var cdcPosition = new SqlServerCdcPosition
         {
             StartLsnHex = "0x0000123456789ABC",
@@ -676,9 +686,9 @@ public sealed class SqlServerCdcCheckpointHandlerTests
 
     #region Helper Methods
 
-    private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new()
+    private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
     private CheckpointManager CreateCheckpointManager(ICheckpointStorage storage)
@@ -692,7 +702,7 @@ public sealed class SqlServerCdcCheckpointHandlerTests
 
     private static string SerializePosition(SqlServerCdcPosition position)
     {
-        return System.Text.Json.JsonSerializer.Serialize(position, JsonOptions);
+        return JsonSerializer.Serialize(position, JsonOptions);
     }
 
     private static SqlServerCdcPosition? DeserializePosition(string value)
@@ -702,7 +712,7 @@ public sealed class SqlServerCdcCheckpointHandlerTests
 
         try
         {
-            return System.Text.Json.JsonSerializer.Deserialize<SqlServerCdcPosition>(value, JsonOptions);
+            return JsonSerializer.Deserialize<SqlServerCdcPosition>(value, JsonOptions);
         }
         catch
         {

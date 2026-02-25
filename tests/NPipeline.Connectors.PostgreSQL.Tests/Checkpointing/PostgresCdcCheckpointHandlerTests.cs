@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AwesomeAssertions;
 using FakeItEasy;
 using NPipeline.Connectors.Checkpointing;
@@ -81,7 +82,7 @@ public sealed class PostgresCdcCheckpointHandlerTests
         var manager = CreateCheckpointManager(storage);
 
         // Act
-        var handler = new PostgresCdcCheckpointHandler(manager, TestSlotName, null);
+        var handler = new PostgresCdcCheckpointHandler(manager, TestSlotName);
 
         // Assert
         _ = handler.Should().NotBeNull();
@@ -125,6 +126,7 @@ public sealed class PostgresCdcCheckpointHandlerTests
     {
         // Arrange
         var storage = A.Fake<ICheckpointStorage>();
+
         A.CallTo(() => storage.LoadAsync(TestPipelineId, TestNodeId, A<CancellationToken>._))
             .Returns((Checkpoint?)null);
 
@@ -143,6 +145,7 @@ public sealed class PostgresCdcCheckpointHandlerTests
     {
         // Arrange
         var storage = A.Fake<ICheckpointStorage>();
+
         var cdcPosition = new PostgresCdcPosition
         {
             WalLsn = "0/16B6F48",
@@ -214,6 +217,7 @@ public sealed class PostgresCdcCheckpointHandlerTests
 
         // Assert - Verify save was called
         await handler.SaveAsync();
+
         A.CallTo(() => storage.SaveAsync(TestPipelineId, TestNodeId, A<Checkpoint>._, A<CancellationToken>._))
             .MustHaveHappenedOnceExactly();
     }
@@ -232,7 +236,7 @@ public sealed class PostgresCdcCheckpointHandlerTests
         };
 
         // Act
-        await handler.UpdatePositionAsync(position, forceSave: true);
+        await handler.UpdatePositionAsync(position, true);
 
         // Assert
         A.CallTo(() => storage.SaveAsync(TestPipelineId, TestNodeId, A<Checkpoint>._, A<CancellationToken>._))
@@ -260,6 +264,7 @@ public sealed class PostgresCdcCheckpointHandlerTests
         // Arrange
         var storage = A.Fake<ICheckpointStorage>();
         Checkpoint? savedCheckpoint = null;
+
         A.CallTo(() => storage.SaveAsync(TestPipelineId, TestNodeId, A<Checkpoint>._, A<CancellationToken>._))
             .Invokes((string _, string _, Checkpoint cp, CancellationToken _) => savedCheckpoint = cp);
 
@@ -273,7 +278,7 @@ public sealed class PostgresCdcCheckpointHandlerTests
         };
 
         // Act
-        await handler.UpdatePositionAsync(position, forceSave: true);
+        await handler.UpdatePositionAsync(position, true);
 
         // Assert
         _ = savedCheckpoint.Should().NotBeNull();
@@ -307,6 +312,7 @@ public sealed class PostgresCdcCheckpointHandlerTests
         // Arrange
         var storage = A.Fake<ICheckpointStorage>();
         Checkpoint? savedCheckpoint = null;
+
         A.CallTo(() => storage.SaveAsync(TestPipelineId, TestNodeId, A<Checkpoint>._, A<CancellationToken>._))
             .Invokes((string _, string _, Checkpoint cp, CancellationToken _) => savedCheckpoint = cp);
 
@@ -314,7 +320,7 @@ public sealed class PostgresCdcCheckpointHandlerTests
         var handler = new PostgresCdcCheckpointHandler(manager, TestSlotName);
 
         // Act
-        await handler.UpdateFromWalLsnAsync("0/16B6F48", "tx-12345", forceSave: true);
+        await handler.UpdateFromWalLsnAsync("0/16B6F48", "tx-12345", true);
 
         // Assert
         _ = savedCheckpoint.Should().NotBeNull();
@@ -392,6 +398,7 @@ public sealed class PostgresCdcCheckpointHandlerTests
 
         // Assert
         _ = result.Should().NotBeNull();
+
         // 0x16B6F48 = 23932744
         _ = result.Should().Be(0x16B6F48);
     }
@@ -407,6 +414,7 @@ public sealed class PostgresCdcCheckpointHandlerTests
 
         // Assert
         _ = result.Should().NotBeNull();
+
         // High part: 1, Low part: 0x100 = 256
         // Result: (1 << 32) | 256 = 4294967296 + 256 = 4294967552
         _ = result.Should().Be((1UL << 32) | 0x100);
@@ -478,9 +486,9 @@ public sealed class PostgresCdcCheckpointHandlerTests
 
     #region Helper Methods
 
-    private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new()
+    private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
     private CheckpointManager CreateCheckpointManager(ICheckpointStorage storage)
@@ -494,7 +502,7 @@ public sealed class PostgresCdcCheckpointHandlerTests
 
     private static string SerializePosition(PostgresCdcPosition position)
     {
-        return System.Text.Json.JsonSerializer.Serialize(position, JsonOptions);
+        return JsonSerializer.Serialize(position, JsonOptions);
     }
 
     private static PostgresCdcPosition? DeserializePosition(string value)
@@ -504,7 +512,7 @@ public sealed class PostgresCdcCheckpointHandlerTests
 
         try
         {
-            return System.Text.Json.JsonSerializer.Deserialize<PostgresCdcPosition>(value, JsonOptions);
+            return JsonSerializer.Deserialize<PostgresCdcPosition>(value, JsonOptions);
         }
         catch
         {

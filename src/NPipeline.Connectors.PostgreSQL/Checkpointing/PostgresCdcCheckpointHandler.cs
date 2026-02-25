@@ -11,12 +11,10 @@ public class PostgresCdcCheckpointHandler
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
     private readonly CheckpointManager _checkpointManager;
-    private readonly string _slotName;
-    private readonly string? _publicationName;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="PostgresCdcCheckpointHandler" /> class.
@@ -35,19 +33,19 @@ public class PostgresCdcCheckpointHandler
             throw new ArgumentException("Slot name cannot be empty.", nameof(slotName));
 
         _checkpointManager = checkpointManager;
-        _slotName = slotName;
-        _publicationName = publicationName;
+        SlotName = slotName;
+        PublicationName = publicationName;
     }
 
     /// <summary>
     ///     Gets the replication slot name.
     /// </summary>
-    public string SlotName => _slotName;
+    public string SlotName { get; }
 
     /// <summary>
     ///     Gets the publication name.
     /// </summary>
-    public string? PublicationName => _publicationName;
+    public string? PublicationName { get; }
 
     /// <summary>
     ///     Loads the CDC position from the checkpoint.
@@ -78,14 +76,15 @@ public class PostgresCdcCheckpointHandler
         ArgumentNullException.ThrowIfNull(position);
 
         var serializedValue = SerializePosition(position);
+
         var metadata = new Dictionary<string, string>
         {
-            ["slot_name"] = _slotName,
-            ["updated_at"] = DateTimeOffset.UtcNow.ToString("O")
+            ["slot_name"] = SlotName,
+            ["updated_at"] = DateTimeOffset.UtcNow.ToString("O"),
         };
 
-        if (!string.IsNullOrEmpty(_publicationName))
-            metadata["publication_name"] = _publicationName;
+        if (!string.IsNullOrEmpty(PublicationName))
+            metadata["publication_name"] = PublicationName;
 
         if (position.TransactionCount.HasValue)
             metadata["transaction_count"] = position.TransactionCount.Value.ToString();
@@ -109,7 +108,7 @@ public class PostgresCdcCheckpointHandler
         var position = new PostgresCdcPosition
         {
             WalLsn = walLsn,
-            TransactionId = transactionId
+            TransactionId = transactionId,
         };
 
         await UpdatePositionAsync(position, forceSave, cancellationToken);
@@ -220,6 +219,7 @@ public sealed record PostgresCdcPosition
         {
             // WAL LSN format is "XX/XXXXXXXX"
             var parts = WalLsn.Split('/');
+
             if (parts.Length != 2)
                 return null;
 

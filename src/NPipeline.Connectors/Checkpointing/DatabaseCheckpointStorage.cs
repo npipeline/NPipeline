@@ -13,19 +13,14 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
     private readonly IDatabaseConnection _connection;
-    private readonly bool _ownsConnection;
     private readonly SemaphoreSlim _lock = new(1, 1);
-    private bool _initialized;
+    private readonly bool _ownsConnection;
     private bool _disposed;
-
-    /// <summary>
-    ///     Gets the quoted table name for use in SQL commands.
-    /// </summary>
-    protected string QuotedTableName { get; }
+    private bool _initialized;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="DatabaseCheckpointStorage" /> class.
@@ -52,18 +47,24 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
     }
 
     /// <summary>
-    ///     Gets the SQL statement to create the checkpoint table.
-    ///     Implementations should return database-specific DDL.
+    ///     Gets the quoted table name for use in SQL commands.
     /// </summary>
-    /// <returns>The CREATE TABLE SQL statement.</returns>
-    protected abstract string GetCreateTableSql();
+    protected string QuotedTableName { get; }
 
-    /// <summary>
-    ///     Gets the SQL statement to save (insert or update) a checkpoint.
-    ///     Implementations should return database-specific UPSERT syntax.
-    /// </summary>
-    /// <returns>The UPSERT SQL statement with parameter placeholders.</returns>
-    protected abstract string GetUpsertSql();
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        GC.SuppressFinalize(this);
+
+        _lock.Dispose();
+
+        if (_ownsConnection && _connection is IAsyncDisposable asyncDisposable)
+            await asyncDisposable.DisposeAsync();
+    }
 
     /// <inheritdoc />
     public async Task<Checkpoint?> LoadAsync(string pipelineId, string nodeId, CancellationToken cancellationToken = default)
@@ -71,9 +72,11 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
         await EnsureInitializedAsync(cancellationToken);
 
         await _lock.WaitAsync(cancellationToken);
+
         try
         {
             var command = await _connection.CreateCommandAsync(cancellationToken);
+
             command.CommandText = $@"
                 SELECT checkpoint_value, checkpoint_timestamp, metadata
                 FROM {QuotedTableName}
@@ -85,18 +88,22 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
             if (!await reader.ReadAsync(cancellationToken))
-            {
                 return null;
-            }
 
             var value = reader.GetFieldValue<string>(0);
             var timestamp = reader.GetFieldValue<DateTimeOffset>(1);
-            var metadataJson = reader.IsDBNull(2) ? null : reader.GetFieldValue<string>(2);
+
+            var metadataJson = reader.IsDBNull(2)
+                ? null
+                : reader.GetFieldValue<string>(2);
+
             var metadata = metadataJson != null
                 ? JsonSerializer.Deserialize<Dictionary<string, string>>(metadataJson, JsonOptions)
                 : null;
 
-            return value is null ? null : new Checkpoint(value, timestamp, metadata);
+            return value is null
+                ? null
+                : new Checkpoint(value, timestamp, metadata);
         }
         finally
         {
@@ -112,6 +119,7 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
         await EnsureInitializedAsync(cancellationToken);
 
         await _lock.WaitAsync(cancellationToken);
+
         try
         {
             var metadataJson = checkpoint.Metadata != null
@@ -143,9 +151,11 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
         await EnsureInitializedAsync(cancellationToken);
 
         await _lock.WaitAsync(cancellationToken);
+
         try
         {
             var command = await _connection.CreateCommandAsync(cancellationToken);
+
             command.CommandText = $@"
                 DELETE FROM {QuotedTableName}
                 WHERE pipeline_id = @pipelineId AND node_id = @nodeId";
@@ -167,9 +177,11 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
         await EnsureInitializedAsync(cancellationToken);
 
         await _lock.WaitAsync(cancellationToken);
+
         try
         {
             var command = await _connection.CreateCommandAsync(cancellationToken);
+
             command.CommandText = $@"
                 SELECT COUNT(1) FROM {QuotedTableName}
                 WHERE pipeline_id = @pipelineId AND node_id = @nodeId";
@@ -178,6 +190,7 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
             command.AddParameter("@nodeId", nodeId);
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
             if (await reader.ReadAsync(cancellationToken))
             {
                 var count = reader.GetFieldValue<int>(0);
@@ -193,23 +206,34 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
     }
 
     /// <summary>
+    ///     Gets the SQL statement to create the checkpoint table.
+    ///     Implementations should return database-specific DDL.
+    /// </summary>
+    /// <returns>The CREATE TABLE SQL statement.</returns>
+    protected abstract string GetCreateTableSql();
+
+    /// <summary>
+    ///     Gets the SQL statement to save (insert or update) a checkpoint.
+    ///     Implementations should return database-specific UPSERT syntax.
+    /// </summary>
+    /// <returns>The UPSERT SQL statement with parameter placeholders.</returns>
+    protected abstract string GetUpsertSql();
+
+    /// <summary>
     ///     Ensures the checkpoint table exists.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     private async Task EnsureInitializedAsync(CancellationToken cancellationToken)
     {
         if (_initialized)
-        {
             return;
-        }
 
         await _lock.WaitAsync(cancellationToken);
+
         try
         {
             if (_initialized)
-            {
                 return;
-            }
 
             var command = await _connection.CreateCommandAsync(cancellationToken);
             command.CommandText = GetCreateTableSql();
@@ -220,25 +244,6 @@ public abstract class DatabaseCheckpointStorage : ICheckpointStorage, IAsyncDisp
         finally
         {
             _ = _lock.Release();
-        }
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        if (_disposed)
-        {
-            return;
-        }
-
-        _disposed = true;
-        GC.SuppressFinalize(this);
-
-        _lock.Dispose();
-
-        if (_ownsConnection && _connection is IAsyncDisposable asyncDisposable)
-        {
-            await asyncDisposable.DisposeAsync();
         }
     }
 }

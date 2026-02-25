@@ -170,7 +170,7 @@ internal sealed class PostgresBatchWriter<T> : IDatabaseWriter<T>
         {
             OnConflictAction.Ignore => baseSql + onConflictClause + " DO NOTHING",
             OnConflictAction.Update => baseSql + onConflictClause + BuildDoUpdateClause(quotedColumns, conflictColumns),
-            _ => baseSql
+            _ => baseSql,
         };
     }
 

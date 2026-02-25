@@ -3,7 +3,6 @@ using FakeItEasy;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.SqlServer.Configuration;
 using NPipeline.StorageProviders.Abstractions;
-using Xunit;
 
 namespace NPipeline.Connectors.SqlServer.Tests.Writers;
 
@@ -13,6 +12,35 @@ namespace NPipeline.Connectors.SqlServer.Tests.Writers;
 /// </summary>
 public sealed class SqlServerExactlyOnceTests
 {
+    #region Concurrent Transaction Tests
+
+    [Fact]
+    public async Task Connection_SupportsMultipleSequentialTransactions()
+    {
+        // Arrange
+        var mockConnection = A.Fake<IDatabaseConnection>();
+        var mockTransaction1 = A.Fake<IDatabaseTransaction>();
+        var mockTransaction2 = A.Fake<IDatabaseTransaction>();
+
+        A.CallTo(() => mockConnection.BeginTransactionAsync(A<CancellationToken>._))
+            .ReturnsNextFromSequence(mockTransaction1, mockTransaction2);
+
+        // Act
+        var transaction1 = await mockConnection.BeginTransactionAsync();
+        await transaction1.CommitAsync();
+        await transaction1.DisposeAsync();
+
+        var transaction2 = await mockConnection.BeginTransactionAsync();
+        await transaction2.CommitAsync();
+        await transaction2.DisposeAsync();
+
+        // Assert
+        A.CallTo(() => mockConnection.BeginTransactionAsync(A<CancellationToken>._))
+            .MustHaveHappenedTwiceExactly();
+    }
+
+    #endregion
+
     #region Test Models
 
     public sealed class TestEntity
@@ -33,6 +61,7 @@ public sealed class SqlServerExactlyOnceTests
         var transactionCreated = false;
 
         var mockConnection = A.Fake<IDatabaseConnection>();
+
         A.CallTo(() => mockConnection.BeginTransactionAsync(A<CancellationToken>._))
             .ReturnsLazily(() =>
             {
@@ -56,10 +85,11 @@ public sealed class SqlServerExactlyOnceTests
     }
 
     [Fact]
-    public async Task WriteAsync_WithAtLeastOnceSemantic_DoesNotRequireTransaction()
+    public void WriteAsync_WithAtLeastOnceSemantic_DoesNotRequireTransaction()
     {
         // Arrange
         var mockConnection = A.Fake<IDatabaseConnection>();
+
         var configuration = new SqlServerConfiguration
         {
             DeliverySemantic = DeliverySemantic.AtLeastOnce,
@@ -266,6 +296,7 @@ public sealed class SqlServerExactlyOnceTests
     {
         // Arrange
         var mockTransaction = A.Fake<IDatabaseTransaction>();
+
         A.CallTo(() => mockTransaction.RollbackAsync(A<CancellationToken>._))
             .ThrowsAsync(new InvalidOperationException("Rollback failed"));
 
@@ -308,35 +339,6 @@ public sealed class SqlServerExactlyOnceTests
 
     #endregion
 
-    #region Concurrent Transaction Tests
-
-    [Fact]
-    public async Task Connection_SupportsMultipleSequentialTransactions()
-    {
-        // Arrange
-        var mockConnection = A.Fake<IDatabaseConnection>();
-        var mockTransaction1 = A.Fake<IDatabaseTransaction>();
-        var mockTransaction2 = A.Fake<IDatabaseTransaction>();
-
-        A.CallTo(() => mockConnection.BeginTransactionAsync(A<CancellationToken>._))
-            .ReturnsNextFromSequence(mockTransaction1, mockTransaction2);
-
-        // Act
-        var transaction1 = await mockConnection.BeginTransactionAsync();
-        await transaction1.CommitAsync();
-        await transaction1.DisposeAsync();
-
-        var transaction2 = await mockConnection.BeginTransactionAsync();
-        await transaction2.CommitAsync();
-        await transaction2.DisposeAsync();
-
-        // Assert
-        A.CallTo(() => mockConnection.BeginTransactionAsync(A<CancellationToken>._))
-            .MustHaveHappenedTwiceExactly();
-    }
-
-    #endregion
-
     #region Integration-Style Tests
 
     [Fact]
@@ -348,6 +350,7 @@ public sealed class SqlServerExactlyOnceTests
 
         A.CallTo(() => mockConnection.BeginTransactionAsync(A<CancellationToken>._))
             .Returns(Task.FromResult(mockTransaction));
+
         A.CallTo(() => mockConnection.CurrentTransaction).Returns(null);
 
         // Act - Simulate the full lifecycle

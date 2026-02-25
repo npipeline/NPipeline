@@ -11,7 +11,7 @@ public class KeyBasedCheckpointHandler
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
     private readonly CheckpointManager _checkpointManager;
@@ -76,10 +76,11 @@ public class KeyBasedCheckpointHandler
         CancellationToken cancellationToken = default)
     {
         var serializedValue = SerializeKeyValues(keyValues);
+
         var metadata = new Dictionary<string, string>
         {
             ["key_columns"] = string.Join(",", _keyColumns),
-            ["updated_at"] = DateTimeOffset.UtcNow.ToString("O")
+            ["updated_at"] = DateTimeOffset.UtcNow.ToString("O"),
         };
 
         await _checkpointManager.UpdateAsync(serializedValue, metadata, forceSave, cancellationToken);
@@ -200,6 +201,7 @@ public class KeyBasedCheckpointHandler
         try
         {
             var deserialized = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(value, JsonOptions);
+
             if (deserialized == null)
                 return null;
 
@@ -210,11 +212,13 @@ public class KeyBasedCheckpointHandler
                 result[kvp.Key] = kvp.Value.ValueKind switch
                 {
                     JsonValueKind.String => kvp.Value.GetString(),
-                    JsonValueKind.Number => kvp.Value.TryGetInt64(out var l) ? l : kvp.Value.GetDouble(),
+                    JsonValueKind.Number => kvp.Value.TryGetInt64(out var l)
+                        ? l
+                        : kvp.Value.GetDouble(),
                     JsonValueKind.True => true,
                     JsonValueKind.False => false,
                     JsonValueKind.Null => null,
-                    _ => kvp.Value.ToString()
+                    _ => kvp.Value.ToString(),
                 };
             }
 

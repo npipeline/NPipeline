@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using AwesomeAssertions;
 using NPipeline.Connectors.Checkpointing;
 
@@ -20,9 +23,7 @@ public sealed class FileCheckpointStorageTests : IDisposable
     public void Dispose()
     {
         if (Directory.Exists(_testDirectory))
-        {
-            Directory.Delete(_testDirectory, recursive: true);
-        }
+            Directory.Delete(_testDirectory, true);
     }
 
     #region Constructor Tests
@@ -64,7 +65,7 @@ public sealed class FileCheckpointStorageTests : IDisposable
         var newDirectory = Path.Combine(_testDirectory, "new_subdir");
 
         // Act
-        _ = new FileCheckpointStorage(newDirectory, createDirectoryIfNotExists: true);
+        _ = new FileCheckpointStorage(newDirectory);
 
         // Assert
         Directory.Exists(newDirectory).Should().BeTrue();
@@ -77,7 +78,7 @@ public sealed class FileCheckpointStorageTests : IDisposable
         var nonExistentDir = Path.Combine(_testDirectory, "nonexistent");
 
         // Act - Constructor should not throw, but directory shouldn't be created
-        var storage = new FileCheckpointStorage(nonExistentDir, createDirectoryIfNotExists: false);
+        var storage = new FileCheckpointStorage(nonExistentDir, false);
 
         // Assert - Storage is created but directory doesn't exist
         _ = storage.Should().NotBeNull();
@@ -121,11 +122,13 @@ public sealed class FileCheckpointStorageTests : IDisposable
     {
         // Arrange
         var storage = new FileCheckpointStorage(_testDirectory);
+
         var metadata = new Dictionary<string, string>
         {
             ["key1"] = "value1",
             ["key2"] = "value2",
         };
+
         var checkpoint = new Checkpoint("test_value", DateTimeOffset.UtcNow, metadata);
 
         // Act
@@ -226,7 +229,7 @@ public sealed class FileCheckpointStorageTests : IDisposable
         // Arrange
         var storage = new FileCheckpointStorage(_testDirectory);
         var timestamp = new DateTimeOffset(2024, 6, 15, 10, 30, 0, TimeSpan.Zero);
-        var checkpoint = new Checkpoint("value", timestamp, null);
+        var checkpoint = new Checkpoint("value", timestamp);
         await storage.SaveAsync("pipeline1", "node1", checkpoint);
 
         // Act
@@ -252,7 +255,7 @@ public sealed class FileCheckpointStorageTests : IDisposable
         var action = async () => await storage.LoadAsync("pipeline1", "node1");
 
         // Assert - Should throw JsonException for corrupted file
-        await action.Should().ThrowAsync<System.Text.Json.JsonException>();
+        await action.Should().ThrowAsync<JsonException>();
     }
 
     #endregion
@@ -332,6 +335,7 @@ public sealed class FileCheckpointStorageTests : IDisposable
         for (var i = 0; i < 10; i++)
         {
             var index = i;
+
             tasks.Add(Task.Run(async () =>
             {
                 var checkpoint = Checkpoint.FromOffset(index);
@@ -424,18 +428,21 @@ public sealed class FileCheckpointStorageTests : IDisposable
             return "unknown";
 
         var invalidChars = Path.GetInvalidFileNameChars();
-        var safe = new System.Text.StringBuilder(identifier);
+        var safe = new StringBuilder(identifier);
 
         foreach (var c in invalidChars)
+        {
             safe.Replace(c, '_');
+        }
 
         safe.Replace('/', '_').Replace('\\', '_');
 
         if (safe.Length > 100)
         {
             var hash = Convert.ToHexString(
-                System.Security.Cryptography.SHA256.HashData(
-                    System.Text.Encoding.UTF8.GetBytes(identifier)));
+                SHA256.HashData(
+                    Encoding.UTF8.GetBytes(identifier)));
+
             return $"checkpoint_{hash}";
         }
 

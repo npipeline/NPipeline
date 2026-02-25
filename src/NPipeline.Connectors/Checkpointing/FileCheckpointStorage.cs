@@ -13,7 +13,7 @@ public class FileCheckpointStorage : ICheckpointStorage, IDisposable
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = true
+        WriteIndented = true,
     };
 
     private readonly string _baseDirectory;
@@ -44,6 +44,7 @@ public class FileCheckpointStorage : ICheckpointStorage, IDisposable
         var filePath = GetCheckpointFilePath(pipelineId, nodeId);
 
         await _lock.WaitAsync(cancellationToken);
+
         try
         {
             if (!File.Exists(filePath))
@@ -75,6 +76,7 @@ public class FileCheckpointStorage : ICheckpointStorage, IDisposable
         var directoryPath = Path.GetDirectoryName(filePath);
 
         await _lock.WaitAsync(cancellationToken);
+
         try
         {
             if (!string.IsNullOrEmpty(directoryPath) && !Directory.Exists(directoryPath))
@@ -91,7 +93,7 @@ public class FileCheckpointStorage : ICheckpointStorage, IDisposable
                 NodeId = nodeId,
                 Value = checkpoint.Value,
                 Timestamp = checkpoint.Timestamp,
-                Metadata = checkpoint.Metadata
+                Metadata = checkpoint.Metadata,
             };
 
             var json = JsonSerializer.Serialize(data, JsonOptions);
@@ -109,6 +111,7 @@ public class FileCheckpointStorage : ICheckpointStorage, IDisposable
         var filePath = GetCheckpointFilePath(pipelineId, nodeId);
 
         await _lock.WaitAsync(cancellationToken);
+
         try
         {
             if (File.Exists(filePath))
@@ -126,6 +129,7 @@ public class FileCheckpointStorage : ICheckpointStorage, IDisposable
         var filePath = GetCheckpointFilePath(pipelineId, nodeId);
 
         await _lock.WaitAsync(cancellationToken);
+
         try
         {
             return File.Exists(filePath);
@@ -134,6 +138,19 @@ public class FileCheckpointStorage : ICheckpointStorage, IDisposable
         {
             _lock.Release();
         }
+    }
+
+    /// <summary>
+    ///     Disposes resources used by the storage.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        _lock.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>
@@ -160,9 +177,7 @@ public class FileCheckpointStorage : ICheckpointStorage, IDisposable
     private static string SanitizeIdentifier(string identifier)
     {
         if (string.IsNullOrWhiteSpace(identifier))
-        {
             return "unknown";
-        }
 
         // Replace invalid characters with underscores
         var invalidChars = Path.GetInvalidFileNameChars();
@@ -181,25 +196,11 @@ public class FileCheckpointStorage : ICheckpointStorage, IDisposable
         {
             var hash = Convert.ToHexString(
                 SHA256.HashData(Encoding.UTF8.GetBytes(identifier)));
+
             return $"checkpoint_{hash}";
         }
 
         return safe.ToString();
-    }
-
-    /// <summary>
-    ///     Disposes resources used by the storage.
-    /// </summary>
-    public void Dispose()
-    {
-        if (_disposed)
-        {
-            return;
-        }
-
-        _disposed = true;
-        _lock.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     /// <summary>

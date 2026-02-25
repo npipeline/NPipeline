@@ -80,6 +80,21 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
     protected virtual string[]? CheckpointKeyColumns => null;
 
     /// <summary>
+    ///     Disposes resources used by the source node.
+    /// </summary>
+    public override async ValueTask DisposeAsync()
+    {
+        GC.SuppressFinalize(this);
+
+        if (_checkpointManager != null)
+            await _checkpointManager.DisposeAsync();
+
+        _inMemoryStorage?.Dispose();
+
+        await base.DisposeAsync();
+    }
+
+    /// <summary>
     ///     Gets a database connection asynchronously.
     ///     Abstract method to be implemented by derived classes.
     /// </summary>
@@ -162,6 +177,7 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
         var items = Task.Run(
             () => BufferDataAsync(cancellationToken).ConfigureAwait(false).GetAwaiter().GetResult(),
             cancellationToken).GetAwaiter().GetResult();
+
         return new InMemoryDataPipe<T>(items, $"{GetType().Name}");
     }
 
@@ -171,10 +187,8 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
     /// <param name="context">The pipeline context.</param>
     protected virtual void InitializeCheckpointManager(PipelineContext context)
     {
-        if (CheckpointStrategy == Configuration.CheckpointStrategy.None)
-        {
+        if (CheckpointStrategy == CheckpointStrategy.None)
             return;
-        }
 
         var storage = ResolveCheckpointStorage();
         var pipelineId = context.CurrentNodeId ?? PipelineId;
@@ -195,12 +209,10 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
     {
         // If storage is explicitly provided, use it
         if (CheckpointStorage != null)
-        {
             return CheckpointStorage;
-        }
 
         // For InMemory strategy, use shared in-memory storage
-        if (CheckpointStrategy == Configuration.CheckpointStrategy.InMemory)
+        if (CheckpointStrategy == CheckpointStrategy.InMemory)
         {
             _inMemoryStorage ??= new InMemoryCheckpointStorage();
             return _inMemoryStorage;
@@ -223,6 +235,7 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
 
         // Load checkpoint if available
         long startOffset = 0;
+
         if (_checkpointManager != null)
         {
             var checkpoint = await _checkpointManager.LoadAsync(cancellationToken).ConfigureAwait(false);
@@ -237,14 +250,10 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
 
             // Skip rows that were already processed (for offset/cursor-based checkpointing)
             if (currentRow <= startOffset)
-            {
                 continue;
-            }
 
             if (TryMapRow(reader, out var item))
-            {
                 yield return item;
-            }
 
             // Update checkpoint based on strategy
             await UpdateCheckpointAsync(reader, currentRow, false, cancellationToken).ConfigureAwait(false);
@@ -252,9 +261,7 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
 
         // Save final checkpoint and clear if successful
         if (_checkpointManager != null)
-        {
             await _checkpointManager.SaveAsync(cancellationToken).ConfigureAwait(false);
-        }
     }
 
     /// <summary>
@@ -271,6 +278,7 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
 
         // Load checkpoint if available
         long startOffset = 0;
+
         if (_checkpointManager != null)
         {
             var checkpoint = await _checkpointManager.LoadAsync(cancellationToken).ConfigureAwait(false);
@@ -285,14 +293,10 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
 
             // Skip rows that were already processed (for offset/cursor-based checkpointing)
             if (currentRow <= startOffset)
-            {
                 continue;
-            }
 
             if (TryMapRow(reader, out var item))
-            {
                 items.Add(item);
-            }
 
             // Update checkpoint periodically
             await UpdateCheckpointAsync(reader, currentRow, false, cancellationToken).ConfigureAwait(false);
@@ -300,9 +304,7 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
 
         // Save final checkpoint
         if (_checkpointManager != null)
-        {
             await _checkpointManager.SaveAsync(cancellationToken).ConfigureAwait(false);
-        }
 
         return items;
     }
@@ -321,43 +323,42 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
         CancellationToken cancellationToken)
     {
         if (_checkpointManager == null)
-        {
             return;
-        }
 
         switch (CheckpointStrategy)
         {
-            case Configuration.CheckpointStrategy.InMemory:
-            case Configuration.CheckpointStrategy.Offset:
+            case CheckpointStrategy.InMemory:
+            case CheckpointStrategy.Offset:
+            {
+                var offset = GetCurrentOffset(reader) ?? currentRow;
+                await _checkpointManager.UpdateOffsetAsync(offset, null, forceSave, cancellationToken);
+                break;
+            }
+
+            case CheckpointStrategy.KeyBased:
+            {
+                var keyValues = GetCurrentKeyValues(reader);
+
+                if (keyValues != null)
                 {
-                    var offset = GetCurrentOffset(reader) ?? currentRow;
-                    await _checkpointManager.UpdateOffsetAsync(offset, null, forceSave, cancellationToken);
-                    break;
+                    var serialized = string.Join("|", keyValues.Select(kv => $"{kv.Key}={kv.Value}"));
+                    await _checkpointManager.UpdateAsync(serialized, null, forceSave, cancellationToken);
                 }
 
-            case Configuration.CheckpointStrategy.KeyBased:
-                {
-                    var keyValues = GetCurrentKeyValues(reader);
-                    if (keyValues != null)
-                    {
-                        var serialized = string.Join("|", keyValues.Select(kv => $"{kv.Key}={kv.Value}"));
-                        await _checkpointManager.UpdateAsync(serialized, null, forceSave, cancellationToken);
-                    }
+                break;
+            }
 
-                    break;
-                }
+            case CheckpointStrategy.Cursor:
+            {
+                await _checkpointManager.UpdateOffsetAsync(currentRow, null, forceSave, cancellationToken);
+                break;
+            }
 
-            case Configuration.CheckpointStrategy.Cursor:
-                {
-                    await _checkpointManager.UpdateOffsetAsync(currentRow, null, forceSave, cancellationToken);
-                    break;
-                }
-
-            case Configuration.CheckpointStrategy.CDC:
+            case CheckpointStrategy.CDC:
                 // CDC checkpointing is handled by specific implementations
                 break;
 
-            case Configuration.CheckpointStrategy.None:
+            case CheckpointStrategy.None:
             default:
                 // No checkpointing
                 break;
@@ -371,28 +372,9 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
     protected async Task<long> GetCheckpointOffsetAsync(CancellationToken cancellationToken = default)
     {
         if (_checkpointManager == null)
-        {
             return 0;
-        }
 
         var checkpoint = await _checkpointManager.LoadAsync(cancellationToken);
         return checkpoint?.GetAsOffset() ?? 0;
-    }
-
-    /// <summary>
-    ///     Disposes resources used by the source node.
-    /// </summary>
-    public override async ValueTask DisposeAsync()
-    {
-        GC.SuppressFinalize(this);
-
-        if (_checkpointManager != null)
-        {
-            await _checkpointManager.DisposeAsync();
-        }
-
-        _inMemoryStorage?.Dispose();
-
-        await base.DisposeAsync();
     }
 }

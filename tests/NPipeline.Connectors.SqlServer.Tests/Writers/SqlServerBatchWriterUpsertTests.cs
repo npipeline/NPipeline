@@ -1,9 +1,9 @@
+using System.Reflection;
 using AwesomeAssertions;
 using FakeItEasy;
 using NPipeline.Connectors.SqlServer.Configuration;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
-using System.Reflection;
 
 namespace NPipeline.Connectors.SqlServer.Tests.Writers;
 
@@ -309,7 +309,7 @@ public sealed class SqlServerBatchWriterUpsertTests
         };
 
         // Act
-        var writer = CreateWriter<TestEntity>(connection, configuration, "custom_schema", "test_table");
+        var writer = CreateWriter<TestEntity>(connection, configuration, "custom_schema");
         var sql = InvokeBuildMergeSqlTemplate(writer);
 
         // Assert - Schema and table should be quoted with square brackets
@@ -369,6 +369,7 @@ public sealed class SqlServerBatchWriterUpsertTests
     {
         // Arrange
         var connection = A.Fake<IDatabaseConnection>();
+
         var configuration = new SqlServerConfiguration
         {
             UseUpsert = true,
@@ -389,6 +390,7 @@ public sealed class SqlServerBatchWriterUpsertTests
     {
         // Arrange
         var connection = A.Fake<IDatabaseConnection>();
+
         var configuration = new SqlServerConfiguration
         {
             UseUpsert = true,
@@ -509,6 +511,7 @@ public sealed class SqlServerBatchWriterUpsertTests
 
         A.CallTo(() => connection.CreateCommandAsync(A<CancellationToken>._))
             .Returns(command);
+
         A.CallTo(() => command.ExecuteNonQueryAsync(A<CancellationToken>._))
             .Returns(1);
 
@@ -550,6 +553,7 @@ public sealed class SqlServerBatchWriterUpsertTests
 
         A.CallTo(() => connection.CreateCommandAsync(A<CancellationToken>._))
             .Returns(command);
+
         A.CallTo(() => command.ExecuteNonQueryAsync(A<CancellationToken>._))
             .Returns(3);
 
@@ -590,6 +594,7 @@ public sealed class SqlServerBatchWriterUpsertTests
 
         A.CallTo(() => connection.CreateCommandAsync(A<CancellationToken>._))
             .Returns(command);
+
         A.CallTo(() => command.ExecuteNonQueryAsync(A<CancellationToken>._))
             .Returns(2);
 
@@ -630,9 +635,7 @@ public sealed class SqlServerBatchWriterUpsertTests
         Func<T, IEnumerable<DatabaseParameter>>? parameterMapper = null)
     {
         if (BatchWriterType == null)
-        {
             throw new InvalidOperationException("Could not find SqlServerBatchWriter type");
-        }
 
         var concreteType = BatchWriterType.MakeGenericType(typeof(T));
 

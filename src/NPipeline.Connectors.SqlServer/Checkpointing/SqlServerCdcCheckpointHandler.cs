@@ -11,11 +11,10 @@ public class SqlServerCdcCheckpointHandler
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
     private readonly CheckpointManager _checkpointManager;
-    private readonly string _captureInstance;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="SqlServerCdcCheckpointHandler" /> class.
@@ -30,13 +29,13 @@ public class SqlServerCdcCheckpointHandler
             throw new ArgumentException("Capture instance cannot be empty.", nameof(captureInstance));
 
         _checkpointManager = checkpointManager;
-        _captureInstance = captureInstance;
+        CaptureInstance = captureInstance;
     }
 
     /// <summary>
     ///     Gets the capture instance name.
     /// </summary>
-    public string CaptureInstance => _captureInstance;
+    public string CaptureInstance { get; }
 
     /// <summary>
     ///     Loads the CDC position from the checkpoint.
@@ -67,10 +66,11 @@ public class SqlServerCdcCheckpointHandler
         ArgumentNullException.ThrowIfNull(position);
 
         var serializedValue = SerializePosition(position);
+
         var metadata = new Dictionary<string, string>
         {
-            ["capture_instance"] = _captureInstance,
-            ["updated_at"] = DateTimeOffset.UtcNow.ToString("O")
+            ["capture_instance"] = CaptureInstance,
+            ["updated_at"] = DateTimeOffset.UtcNow.ToString("O"),
         };
 
         if (position.ChangeCount.HasValue)
@@ -97,8 +97,10 @@ public class SqlServerCdcCheckpointHandler
         var position = new SqlServerCdcPosition
         {
             StartLsn = Convert.ToBase64String(startLsn),
-            SeqVal = seqVal != null ? Convert.ToBase64String(seqVal) : null,
-            Operation = operation
+            SeqVal = seqVal != null
+                ? Convert.ToBase64String(seqVal)
+                : null,
+            Operation = operation,
         };
 
         await UpdatePositionAsync(position, forceSave, cancellationToken);
@@ -123,7 +125,7 @@ public class SqlServerCdcCheckpointHandler
         {
             StartLsnHex = startLsnHex,
             SeqValHex = seqValHex,
-            Operation = operation
+            Operation = operation,
         };
 
         await UpdatePositionAsync(position, forceSave, cancellationToken);
@@ -259,7 +261,7 @@ public sealed record SqlServerCdcPosition
         return new SqlServerCdcPosition
         {
             StartLsn = Convert.ToBase64String(lsn),
-            StartLsnHex = "0x" + Convert.ToHexString(lsn)
+            StartLsnHex = "0x" + Convert.ToHexString(lsn),
         };
     }
 
@@ -270,9 +272,7 @@ public sealed record SqlServerCdcPosition
     public byte[]? ParseLsnAsBytes()
     {
         if (!string.IsNullOrEmpty(StartLsn))
-        {
             return Convert.FromBase64String(StartLsn);
-        }
 
         if (!string.IsNullOrEmpty(StartLsnHex))
         {

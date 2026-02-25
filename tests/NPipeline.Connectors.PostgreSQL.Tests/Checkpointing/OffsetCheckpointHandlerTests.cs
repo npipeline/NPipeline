@@ -16,6 +16,19 @@ public sealed class OffsetCheckpointHandlerTests
     private const string TestNodeId = "test-node";
     private const string TestOffsetColumn = "id";
 
+    #region Helper Methods
+
+    private CheckpointManager CreateCheckpointManager(ICheckpointStorage storage)
+    {
+        return new CheckpointManager(
+            storage,
+            TestPipelineId,
+            TestNodeId,
+            CheckpointStrategy.Offset);
+    }
+
+    #endregion
+
     #region Constructor Tests
 
     [Fact]
@@ -67,6 +80,7 @@ public sealed class OffsetCheckpointHandlerTests
     {
         // Arrange
         var storage = A.Fake<ICheckpointStorage>();
+
         A.CallTo(() => storage.LoadAsync(TestPipelineId, TestNodeId, A<CancellationToken>._))
             .Returns((Checkpoint?)null);
 
@@ -127,6 +141,7 @@ public sealed class OffsetCheckpointHandlerTests
     {
         // Arrange
         var storage = A.Fake<ICheckpointStorage>();
+
         A.CallTo(() => storage.LoadAsync(TestPipelineId, TestNodeId, A<CancellationToken>._))
             .Returns((Checkpoint?)null);
 
@@ -168,7 +183,7 @@ public sealed class OffsetCheckpointHandlerTests
         var handler = new OffsetCheckpointHandler(manager, TestOffsetColumn);
 
         // Act
-        await handler.UpdateOffsetAsync(500L, forceSave: true);
+        await handler.UpdateOffsetAsync(500L, true);
 
         // Assert
         A.CallTo(() => storage.SaveAsync(TestPipelineId, TestNodeId, A<Checkpoint>._, A<CancellationToken>._))
@@ -236,6 +251,7 @@ public sealed class OffsetCheckpointHandlerTests
         // Arrange
         var storage = A.Fake<ICheckpointStorage>();
         var checkpoint = Checkpoint.FromOffset(1000L);
+
         A.CallTo(() => storage.LoadAsync(TestPipelineId, TestNodeId, A<CancellationToken>._))
             .Returns(checkpoint);
 
@@ -258,6 +274,7 @@ public sealed class OffsetCheckpointHandlerTests
         // Arrange
         var storage = A.Fake<ICheckpointStorage>();
         var checkpoint = Checkpoint.FromOffset(500L);
+
         A.CallTo(() => storage.LoadAsync(TestPipelineId, TestNodeId, A<CancellationToken>._))
             .Returns(checkpoint);
 
@@ -280,6 +297,7 @@ public sealed class OffsetCheckpointHandlerTests
         // Arrange
         var storage = A.Fake<ICheckpointStorage>();
         var checkpoint = Checkpoint.FromOffset(750L);
+
         A.CallTo(() => storage.LoadAsync(TestPipelineId, TestNodeId, A<CancellationToken>._))
             .Returns(checkpoint);
 
@@ -333,20 +351,8 @@ public sealed class OffsetCheckpointHandlerTests
         // Assert
         A.CallTo(() => storage.DeleteAsync(TestPipelineId, TestNodeId, A<CancellationToken>._))
             .MustHaveHappenedOnceExactly();
+
         _ = handler.GetCurrentOffset().Should().Be(0);
-    }
-
-    #endregion
-
-    #region Helper Methods
-
-    private CheckpointManager CreateCheckpointManager(ICheckpointStorage storage)
-    {
-        return new CheckpointManager(
-            storage,
-            TestPipelineId,
-            TestNodeId,
-            CheckpointStrategy.Offset);
     }
 
     #endregion

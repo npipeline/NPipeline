@@ -10,24 +10,22 @@ namespace NPipeline.Connectors.SqlServer.Connection;
 /// </summary>
 internal sealed class SqlServerDatabaseConnection(SqlConnection connection) : IDatabaseConnection
 {
-    private readonly SqlConnection _connection = connection ?? throw new ArgumentNullException(nameof(connection));
-    private SqlTransaction? _currentTransaction;
     private SqlServerDatabaseTransaction? _transactionWrapper;
 
     /// <summary>
     ///     Gets the underlying SqlConnection for SQL Server-specific operations like SqlBulkCopy.
     /// </summary>
-    internal SqlConnection UnderlyingConnection => _connection;
+    internal SqlConnection UnderlyingConnection { get; } = connection ?? throw new ArgumentNullException(nameof(connection));
 
     /// <summary>
     ///     Gets the underlying SqlTransaction for SQL Server-specific operations.
     /// </summary>
-    internal SqlTransaction? UnderlyingTransaction => _currentTransaction;
+    internal SqlTransaction? UnderlyingTransaction { get; private set; }
 
     /// <summary>
     ///     Gets a value indicating whether the connection is currently open.
     /// </summary>
-    public bool IsOpen => _connection.State == ConnectionState.Open;
+    public bool IsOpen => UnderlyingConnection.State == ConnectionState.Open;
 
     /// <summary>
     ///     Gets the current transaction, if one is active.
@@ -41,10 +39,8 @@ internal sealed class SqlServerDatabaseConnection(SqlConnection connection) : ID
     /// <returns>A task representing the asynchronous operation.</returns>
     public async Task OpenAsync(CancellationToken cancellationToken = default)
     {
-        if (_connection.State == ConnectionState.Closed)
-        {
-            await _connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        }
+        if (UnderlyingConnection.State == ConnectionState.Closed)
+            await UnderlyingConnection.OpenAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -54,7 +50,7 @@ internal sealed class SqlServerDatabaseConnection(SqlConnection connection) : ID
     /// <returns>A task representing the asynchronous operation.</returns>
     public Task CloseAsync(CancellationToken cancellationToken = default)
     {
-        _connection.Close();
+        UnderlyingConnection.Close();
         return Task.CompletedTask;
     }
 
@@ -65,13 +61,11 @@ internal sealed class SqlServerDatabaseConnection(SqlConnection connection) : ID
     /// <returns>A task representing the asynchronous operation that returns the transaction.</returns>
     public async Task<IDatabaseTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
     {
-        if (_currentTransaction != null)
-        {
+        if (UnderlyingTransaction != null)
             throw new InvalidOperationException("A transaction is already in progress. Commit or rollback the current transaction before starting a new one.");
-        }
 
-        _currentTransaction = (SqlTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-        _transactionWrapper = new SqlServerDatabaseTransaction(_currentTransaction, this);
+        UnderlyingTransaction = (SqlTransaction)await UnderlyingConnection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        _transactionWrapper = new SqlServerDatabaseTransaction(UnderlyingTransaction, this);
         return _transactionWrapper;
     }
 
@@ -83,24 +77,13 @@ internal sealed class SqlServerDatabaseConnection(SqlConnection connection) : ID
     public Task<IDatabaseCommand> CreateCommandAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var command = _connection.CreateCommand();
+        var command = UnderlyingConnection.CreateCommand();
 
         // If there's an active transaction, enlist the command in it
-        if (_currentTransaction != null)
-        {
-            command.Transaction = _currentTransaction;
-        }
+        if (UnderlyingTransaction != null)
+            command.Transaction = UnderlyingTransaction;
 
         return Task.FromResult<IDatabaseCommand>(new SqlServerDatabaseCommand(command));
-    }
-
-    /// <summary>
-    ///     Clears the current transaction reference (called by SqlServerDatabaseTransaction on commit/rollback).
-    /// </summary>
-    internal void ClearTransaction()
-    {
-        _currentTransaction = null;
-        _transactionWrapper = null;
     }
 
     /// <summary>
@@ -108,13 +91,22 @@ internal sealed class SqlServerDatabaseConnection(SqlConnection connection) : ID
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        if (_currentTransaction != null)
+        if (UnderlyingTransaction != null)
         {
-            await _currentTransaction.DisposeAsync().ConfigureAwait(false);
-            _currentTransaction = null;
+            await UnderlyingTransaction.DisposeAsync().ConfigureAwait(false);
+            UnderlyingTransaction = null;
             _transactionWrapper = null;
         }
 
-        await _connection.DisposeAsync().ConfigureAwait(false);
+        await UnderlyingConnection.DisposeAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
+    ///     Clears the current transaction reference (called by SqlServerDatabaseTransaction on commit/rollback).
+    /// </summary>
+    internal void ClearTransaction()
+    {
+        UnderlyingTransaction = null;
+        _transactionWrapper = null;
     }
 }

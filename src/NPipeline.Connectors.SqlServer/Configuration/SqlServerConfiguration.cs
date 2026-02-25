@@ -255,51 +255,33 @@ public class SqlServerConfiguration
     public virtual void Validate()
     {
         if (string.IsNullOrWhiteSpace(Schema))
-        {
             throw new ArgumentException("Schema cannot be empty.", nameof(Schema));
-        }
 
         ValidateConnectionSettings();
 
         if (BulkCopyTimeout <= 0)
-        {
             throw new ArgumentException("BulkCopyTimeout must be greater than zero.", nameof(BulkCopyTimeout));
-        }
 
         if (BatchSize <= 0)
-        {
             throw new ArgumentException("BatchSize must be greater than zero.", nameof(BatchSize));
-        }
 
         if (MaxBatchSize <= 0)
-        {
             throw new ArgumentException("MaxBatchSize must be greater than zero.", nameof(MaxBatchSize));
-        }
 
         if (BatchSize > MaxBatchSize)
-        {
             throw new ArgumentException("BatchSize cannot exceed MaxBatchSize.", nameof(BatchSize));
-        }
 
         if (MaxRetryAttempts < 0)
-        {
             throw new ArgumentException("MaxRetryAttempts cannot be negative.", nameof(MaxRetryAttempts));
-        }
 
         if (RetryDelay < TimeSpan.Zero)
-        {
             throw new ArgumentException("RetryDelay cannot be negative.", nameof(RetryDelay));
-        }
 
         if (FetchSize <= 0)
-        {
             throw new ArgumentException("FetchSize must be greater than zero.", nameof(FetchSize));
-        }
 
         if (UseUpsert && (UpsertKeyColumns == null || UpsertKeyColumns.Length == 0))
-        {
             throw new ArgumentException("UpsertKeyColumns must be provided when UseUpsert is enabled.", nameof(UpsertKeyColumns));
-        }
 
         ValidateCheckpointSettings();
     }
@@ -310,34 +292,22 @@ public class SqlServerConfiguration
     internal void ValidateConnectionSettings()
     {
         if (CommandTimeout <= 0)
-        {
             throw new ArgumentException("CommandTimeout must be greater than zero.", nameof(CommandTimeout));
-        }
 
         if (ConnectionTimeout <= 0)
-        {
             throw new ArgumentException("ConnectionTimeout must be greater than zero.", nameof(ConnectionTimeout));
-        }
 
         if (ConnectTimeout <= 0)
-        {
             throw new ArgumentException("ConnectTimeout must be greater than zero.", nameof(ConnectTimeout));
-        }
 
         if (MinPoolSize < 0)
-        {
             throw new ArgumentException("MinPoolSize cannot be negative.", nameof(MinPoolSize));
-        }
 
         if (MaxPoolSize <= 0)
-        {
             throw new ArgumentException("MaxPoolSize must be greater than zero.", nameof(MaxPoolSize));
-        }
 
         if (MinPoolSize > MaxPoolSize)
-        {
             throw new ArgumentException("MinPoolSize cannot exceed MaxPoolSize.", nameof(MinPoolSize));
-        }
     }
 
     /// <summary>

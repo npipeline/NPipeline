@@ -10,7 +10,7 @@ public class CursorCheckpointHandler
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
     private readonly CheckpointManager _checkpointManager;
@@ -54,10 +54,11 @@ public class CursorCheckpointHandler
         ArgumentNullException.ThrowIfNull(cursorPosition);
 
         var serializedValue = SerializeCursorPosition(cursorPosition);
+
         var metadata = new Dictionary<string, string>
         {
             ["cursor_type"] = cursorPosition.Type,
-            ["updated_at"] = DateTimeOffset.UtcNow.ToString("O")
+            ["updated_at"] = DateTimeOffset.UtcNow.ToString("O"),
         };
 
         if (cursorPosition.RowCount.HasValue)
@@ -163,7 +164,7 @@ public sealed record CursorPosition
         {
             Type = "keyset",
             LastKeyValues = lastKeyValues,
-            RowCount = rowCount
+            RowCount = rowCount,
         };
     }
 
@@ -181,7 +182,7 @@ public sealed record CursorPosition
             Type = "offset",
             Offset = offset,
             RowCount = rowCount,
-            FetchSize = fetchSize
+            FetchSize = fetchSize,
         };
     }
 }

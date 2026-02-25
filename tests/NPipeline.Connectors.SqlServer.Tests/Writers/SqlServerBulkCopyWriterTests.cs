@@ -1,3 +1,6 @@
+using System.Collections;
+using System.Data;
+using System.Reflection;
 using AwesomeAssertions;
 using FakeItEasy;
 using Microsoft.Data.SqlClient;
@@ -6,8 +9,6 @@ using NPipeline.Connectors.SqlServer.Configuration;
 using NPipeline.Connectors.SqlServer.Mapping;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
-using System.Data;
-using System.Reflection;
 
 namespace NPipeline.Connectors.SqlServer.Tests.Writers;
 
@@ -20,6 +21,27 @@ public sealed class SqlServerBulkCopyWriterTests
 {
     private static readonly Assembly SqlServerAssembly = typeof(SqlServerConfiguration).Assembly;
     private static readonly Type? BulkCopyWriterType = SqlServerAssembly.GetType("NPipeline.Connectors.SqlServer.Writers.SqlServerBulkCopyWriter`1");
+
+    #region Disposal Tests
+
+    [Fact]
+    public async Task DisposeAsync_FlushesRemainingItemsSilently()
+    {
+        // Arrange
+        var connection = CreateMockConnection();
+        var configuration = CreateValidConfiguration();
+        configuration.BulkCopyBatchSize = 100;
+
+        var writer = CreateWriter<TestEntity>(connection, configuration);
+        await InvokeWriteAsync(writer, new TestEntity { Id = 1, Name = "Test", Email = "test@example.com" });
+
+        // Act & Assert - Should NOT throw because DisposeAsync silently handles flush failures
+        // This is the expected behavior for disposal patterns - disposal should not throw
+        var action = async () => await InvokeDisposeAsync(writer);
+        _ = await action.Should().NotThrowAsync();
+    }
+
+    #endregion
 
     #region Test Models
 
@@ -149,7 +171,7 @@ public sealed class SqlServerBulkCopyWriterTests
         configuration.Schema = "custom_schema";
 
         // Act
-        var bulkCopy = CreateAndConfigureBulkCopy(configuration, "custom_schema", "test_table");
+        var bulkCopy = CreateAndConfigureBulkCopy(configuration, "custom_schema");
 
         // Assert
         _ = bulkCopy.DestinationTableName.Should().Be("[custom_schema].[test_table]");
@@ -237,9 +259,7 @@ public sealed class SqlServerBulkCopyWriterTests
         bulkCopy.EnableStreaming = configuration.EnableStreaming;
 
         if (configuration.BulkCopyNotifyAfter > 0)
-        {
             bulkCopy.NotifyAfter = configuration.BulkCopyNotifyAfter;
-        }
 
         return bulkCopy;
     }
@@ -460,6 +480,7 @@ public sealed class SqlServerBulkCopyWriterTests
         configuration.BulkCopyBatchSize = 100;
 
         var writer = CreateWriter<TestEntity>(connection, configuration);
+
         var items = new List<TestEntity>
         {
             new() { Id = 1, Name = "Test1", Email = "test1@example.com" },
@@ -470,27 +491,6 @@ public sealed class SqlServerBulkCopyWriterTests
         // Act & Assert - Should throw because fake connection can't provide SqlConnection
         var action = async () => await InvokeWriteBatchAsync(writer, items);
         _ = await action.Should().ThrowAsync<Exception>();
-    }
-
-    #endregion
-
-    #region Disposal Tests
-
-    [Fact]
-    public async Task DisposeAsync_FlushesRemainingItemsSilently()
-    {
-        // Arrange
-        var connection = CreateMockConnection();
-        var configuration = CreateValidConfiguration();
-        configuration.BulkCopyBatchSize = 100;
-
-        var writer = CreateWriter<TestEntity>(connection, configuration);
-        await InvokeWriteAsync(writer, new TestEntity { Id = 1, Name = "Test", Email = "test@example.com" });
-
-        // Act & Assert - Should NOT throw because DisposeAsync silently handles flush failures
-        // This is the expected behavior for disposal patterns - disposal should not throw
-        var action = async () => await InvokeDisposeAsync(writer);
-        _ = await action.Should().NotThrowAsync();
     }
 
     #endregion
@@ -522,9 +522,7 @@ public sealed class SqlServerBulkCopyWriterTests
         Func<T, IEnumerable<DatabaseParameter>>? parameterMapper = null)
     {
         if (BulkCopyWriterType == null)
-        {
             throw new InvalidOperationException("Could not find SqlServerBulkCopyWriter type");
-        }
 
         var concreteType = BulkCopyWriterType.MakeGenericType(typeof(T));
 
@@ -555,7 +553,7 @@ public sealed class SqlServerBulkCopyWriterTests
     {
         var writerType = writer.GetType();
         var field = writerType.GetField("_pendingRows", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-        var list = field?.GetValue(writer) as System.Collections.IList;
+        var list = field?.GetValue(writer) as IList;
         return list?.Count ?? 0;
     }
 
@@ -582,9 +580,7 @@ public sealed class SqlServerBulkCopyWriterTests
         var valueTask = method?.Invoke(writer, null);
 
         if (valueTask is ValueTask vt)
-        {
             await vt;
-        }
     }
 
     #endregion

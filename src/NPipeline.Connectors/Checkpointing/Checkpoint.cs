@@ -70,7 +70,9 @@ public record Checkpoint
     /// <returns>The numeric offset if parsing succeeds; otherwise, null.</returns>
     public long? GetAsOffset()
     {
-        return long.TryParse(Value, out var offset) ? offset : null;
+        return long.TryParse(Value, out var offset)
+            ? offset
+            : null;
     }
 }
 

@@ -15,6 +15,39 @@ public sealed class KeyBasedCheckpointHandlerTests
     private const string TestPipelineId = "test-pipeline";
     private const string TestNodeId = "test-node";
 
+    #region KeyColumns Property Tests
+
+    [Fact]
+    public void KeyColumns_WhenSet_ReturnsConfiguredColumns()
+    {
+        // Arrange
+        var storage = A.Fake<ICheckpointStorage>();
+        var manager = CreateCheckpointManager(storage);
+        var keyColumns = new[] { "region", "country", "city" };
+
+        // Act
+        var handler = new KeyBasedCheckpointHandler(manager, keyColumns);
+
+        // Assert
+        _ = handler.KeyColumns.Should().HaveCount(3);
+        _ = handler.KeyColumns.Should().ContainInOrder("region", "country", "city");
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    private CheckpointManager CreateCheckpointManager(ICheckpointStorage storage)
+    {
+        return new CheckpointManager(
+            storage,
+            TestPipelineId,
+            TestNodeId,
+            CheckpointStrategy.KeyBased);
+    }
+
+    #endregion
+
     #region Constructor Tests
 
     [Fact]
@@ -65,7 +98,7 @@ public sealed class KeyBasedCheckpointHandlerTests
         var manager = CreateCheckpointManager(storage);
 
         // Act
-        var action = () => new KeyBasedCheckpointHandler(manager, Array.Empty<string>());
+        var action = () => new KeyBasedCheckpointHandler(manager);
 
         // Assert
         _ = action.Should().Throw<ArgumentException>();
@@ -87,26 +120,6 @@ public sealed class KeyBasedCheckpointHandlerTests
 
     #endregion
 
-    #region KeyColumns Property Tests
-
-    [Fact]
-    public void KeyColumns_WhenSet_ReturnsConfiguredColumns()
-    {
-        // Arrange
-        var storage = A.Fake<ICheckpointStorage>();
-        var manager = CreateCheckpointManager(storage);
-        var keyColumns = new[] { "region", "country", "city" };
-
-        // Act
-        var handler = new KeyBasedCheckpointHandler(manager, keyColumns);
-
-        // Assert
-        _ = handler.KeyColumns.Should().HaveCount(3);
-        _ = handler.KeyColumns.Should().ContainInOrder("region", "country", "city");
-    }
-
-    #endregion
-
     #region LoadKeyValuesAsync Tests
 
     [Fact]
@@ -114,6 +127,7 @@ public sealed class KeyBasedCheckpointHandlerTests
     {
         // Arrange
         var storage = A.Fake<ICheckpointStorage>();
+
         A.CallTo(() => storage.LoadAsync(TestPipelineId, TestNodeId, A<CancellationToken>._))
             .Returns((Checkpoint?)null);
 
@@ -132,6 +146,7 @@ public sealed class KeyBasedCheckpointHandlerTests
     {
         // Arrange
         var storage = A.Fake<ICheckpointStorage>();
+
         // The handler expects JSON format in the Value property
         var jsonValue = """{"tenant_id":100,"user_id":"user-123"}""";
         var checkpoint = Checkpoint.Create(jsonValue);
@@ -191,7 +206,7 @@ public sealed class KeyBasedCheckpointHandlerTests
         };
 
         // Act
-        await handler.UpdateKeyValuesAsync(keyValues, forceSave: true);
+        await handler.UpdateKeyValuesAsync(keyValues, true);
 
         // Assert
         A.CallTo(() => storage.SaveAsync(TestPipelineId, TestNodeId, A<Checkpoint>._, A<CancellationToken>._))
@@ -398,6 +413,7 @@ public sealed class KeyBasedCheckpointHandlerTests
         var keyValues = new Dictionary<string, object?>
         {
             ["tenant_id"] = 5,
+
             // user_id is missing
         };
 
@@ -478,19 +494,6 @@ public sealed class KeyBasedCheckpointHandlerTests
         // Assert
         A.CallTo(() => storage.DeleteAsync(TestPipelineId, TestNodeId, A<CancellationToken>._))
             .MustHaveHappenedOnceExactly();
-    }
-
-    #endregion
-
-    #region Helper Methods
-
-    private CheckpointManager CreateCheckpointManager(ICheckpointStorage storage)
-    {
-        return new CheckpointManager(
-            storage,
-            TestPipelineId,
-            TestNodeId,
-            CheckpointStrategy.KeyBased);
     }
 
     #endregion

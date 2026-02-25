@@ -164,29 +164,29 @@ var configuration = new PostgresConfiguration
 
 ### Configuration Properties
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `ConnectionString` | `string` | `""` | PostgreSQL connection string |
-| `Schema` | `string` | `"public"` | Default schema name |
-| `WriteStrategy` | `PostgresWriteStrategy` | `Batch` | Write strategy (PerRow, Batch, Copy) |
-| `BatchSize` | `int` | `1000` | Target batch size for batched writes |
-| `MaxBatchSize` | `int` | `5000` | Maximum batch size to prevent unbounded memory |
-| `UseTransaction` | `bool` | `true` | Wrap writes in a transaction |
-| `UseUpsert` | `bool` | `false` | Enable ON CONFLICT upsert semantics |
-| `UpsertConflictColumns` | `string[]?` | `null` | Columns that form the conflict target |
-| `OnConflictAction` | `OnConflictAction` | `Update` | Conflict resolution action (Update, Ignore) |
-| `UseBinaryCopy` | `bool` | `false` | Use binary format for COPY operations |
-| `DeliverySemantic` | `DeliverySemantic` | `AtLeastOnce` | Delivery guarantee semantic |
-| `CheckpointStrategy` | `CheckpointStrategy` | `None` | Checkpointing strategy for recovery |
-| `CheckpointStorage` | `ICheckpointStorage?` | `null` | Storage backend for checkpoints |
-| `StreamResults` | `bool` | `true` | Enable streaming for large result sets |
-| `FetchSize` | `int` | `1000` | Rows to fetch per round-trip when streaming |
-| `CommandTimeout` | `int` | `30` | Command timeout in seconds |
-| `CopyTimeout` | `int` | `300` | COPY operation timeout in seconds |
-| `MaxRetryAttempts` | `int` | `3` | Maximum retry attempts for transient errors |
-| `RetryDelay` | `TimeSpan` | `1 second` | Delay between retry attempts |
-| `ValidateIdentifiers` | `bool` | `true` | Validate SQL identifiers to prevent injection |
-| `UsePreparedStatements` | `bool` | `true` | Use prepared statements for writes |
+| Property                | Type                    | Default       | Description                                    |
+|-------------------------|-------------------------|---------------|------------------------------------------------|
+| `ConnectionString`      | `string`                | `""`          | PostgreSQL connection string                   |
+| `Schema`                | `string`                | `"public"`    | Default schema name                            |
+| `WriteStrategy`         | `PostgresWriteStrategy` | `Batch`       | Write strategy (PerRow, Batch, Copy)           |
+| `BatchSize`             | `int`                   | `1000`        | Target batch size for batched writes           |
+| `MaxBatchSize`          | `int`                   | `5000`        | Maximum batch size to prevent unbounded memory |
+| `UseTransaction`        | `bool`                  | `true`        | Wrap writes in a transaction                   |
+| `UseUpsert`             | `bool`                  | `false`       | Enable ON CONFLICT upsert semantics            |
+| `UpsertConflictColumns` | `string[]?`             | `null`        | Columns that form the conflict target          |
+| `OnConflictAction`      | `OnConflictAction`      | `Update`      | Conflict resolution action (Update, Ignore)    |
+| `UseBinaryCopy`         | `bool`                  | `false`       | Use binary format for COPY operations          |
+| `DeliverySemantic`      | `DeliverySemantic`      | `AtLeastOnce` | Delivery guarantee semantic                    |
+| `CheckpointStrategy`    | `CheckpointStrategy`    | `None`        | Checkpointing strategy for recovery            |
+| `CheckpointStorage`     | `ICheckpointStorage?`   | `null`        | Storage backend for checkpoints                |
+| `StreamResults`         | `bool`                  | `true`        | Enable streaming for large result sets         |
+| `FetchSize`             | `int`                   | `1000`        | Rows to fetch per round-trip when streaming    |
+| `CommandTimeout`        | `int`                   | `30`          | Command timeout in seconds                     |
+| `CopyTimeout`           | `int`                   | `300`         | COPY operation timeout in seconds              |
+| `MaxRetryAttempts`      | `int`                   | `3`           | Maximum retry attempts for transient errors    |
+| `RetryDelay`            | `TimeSpan`              | `1 second`    | Delay between retry attempts                   |
+| `ValidateIdentifiers`   | `bool`                  | `true`        | Validate SQL identifiers to prevent injection  |
+| `UsePreparedStatements` | `bool`                  | `true`        | Use prepared statements for writes             |
 
 ### Connection String
 
@@ -326,11 +326,11 @@ var sink = new PostgresSinkNode<Customer>(
 
 ### Write Strategy Comparison
 
-| Strategy | Throughput | Latency | Error Isolation | Use Case |
-|----------|------------|---------|-----------------|----------|
-| PerRow | Low | Low | High | Real-time, small batches |
-| Batch | High | Medium | Medium | Bulk loading, ETL |
-| Copy | Very High | High | Low | Large bulk loads, data warehouse |
+| Strategy | Throughput | Latency | Error Isolation | Use Case                         |
+|----------|------------|---------|-----------------|----------------------------------|
+| PerRow   | Low        | Low     | High            | Real-time, small batches         |
+| Batch    | High       | Medium  | Medium          | Bulk loading, ETL                |
+| Copy     | Very High  | High    | Low             | Large bulk loads, data warehouse |
 
 ## Upsert Operations
 
@@ -363,10 +363,10 @@ var sink = new PostgresSinkNode<Customer>(
 Updates non-conflict columns with values from the inserted row:
 
 ```sql
-INSERT INTO customers (id, name, email) 
+INSERT INTO customers (id, name, email)
 VALUES (1, 'John Doe', 'john@example.com')
-ON CONFLICT (id) DO UPDATE SET 
-    name = EXCLUDED.name, 
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
     email = EXCLUDED.email
 ```
 
@@ -384,7 +384,7 @@ var configuration = new PostgresConfiguration
 Silently skips conflicting rows without raising an error:
 
 ```sql
-INSERT INTO customers (id, name, email) 
+INSERT INTO customers (id, name, email)
 VALUES (1, 'John Doe', 'john@example.com')
 ON CONFLICT (id) DO NOTHING
 ```
@@ -428,7 +428,8 @@ Upsert works with all write strategies:
 - **Batch**: Multi-value INSERT with ON CONFLICT clause
 - **Copy**: Not supported for upsert operations (falls back to Batch)
 
-**Why use upsert:** Upsert eliminates the need for separate insert/update logic and handles race conditions where a row might be inserted between your check and insert operations.
+**Why use upsert:** Upsert eliminates the need for separate insert/update logic and handles race conditions where a row might be inserted between your check and
+insert operations.
 
 ## Delivery Semantics
 
@@ -510,11 +511,11 @@ var configuration = new PostgresConfiguration
 
 ### Delivery Semantic Comparison
 
-| Semantic | Data Loss | Duplicates | Overhead | Use Case |
-|----------|-----------|------------|----------|----------|
-| AtLeastOnce | No | Possible | Low | General purpose, idempotent ops |
-| AtMostOnce | Possible | No | Low | Telemetry, metrics |
-| ExactlyOnce | No | No | High | Financial, audit |
+| Semantic    | Data Loss | Duplicates | Overhead | Use Case                        |
+|-------------|-----------|------------|----------|---------------------------------|
+| AtLeastOnce | No        | Possible   | Low      | General purpose, idempotent ops |
+| AtMostOnce  | Possible  | No         | Low      | Telemetry, metrics              |
+| ExactlyOnce | No        | No         | High     | Financial, audit                |
 
 ## Checkpointing
 

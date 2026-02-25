@@ -19,7 +19,7 @@ public sealed class PostgresCheckpointStorage : DatabaseCheckpointStorage
         IDatabaseConnection connection,
         string tableName = "pipeline_checkpoints",
         bool ownsConnection = false)
-        : base(connection, tableName, ownsConnection, "\"")
+        : base(connection, tableName, ownsConnection)
     {
     }
 

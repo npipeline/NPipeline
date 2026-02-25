@@ -73,13 +73,9 @@ public abstract class DatabaseSinkNode<T> : SinkNode<T>
 
         // For ExactlyOnce semantic, wrap all writes in a transaction
         if (DeliverySemantic == DeliverySemantic.ExactlyOnce)
-        {
             await ExecuteWithTransactionAsync(connection, input, cancellationToken);
-        }
         else
-        {
             await ExecuteWithoutTransactionAsync(connection, input, cancellationToken);
-        }
     }
 
     /// <summary>
@@ -111,9 +107,7 @@ public abstract class DatabaseSinkNode<T> : SinkNode<T>
             }
 
             if (batch.Count > 0)
-            {
                 await WriteBatchAsync(writer, batch, cancellationToken);
-            }
 
             await writer.FlushAsync(cancellationToken);
 
@@ -153,9 +147,7 @@ public abstract class DatabaseSinkNode<T> : SinkNode<T>
         }
 
         if (batch.Count > 0)
-        {
             await WriteBatchAsync(writer, batch, cancellationToken);
-        }
 
         await writer.FlushAsync(cancellationToken);
     }

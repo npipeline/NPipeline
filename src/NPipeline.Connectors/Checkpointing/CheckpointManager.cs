@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using NPipeline.Connectors.Configuration;
 
 namespace NPipeline.Connectors.Checkpointing;
@@ -7,17 +8,15 @@ namespace NPipeline.Connectors.Checkpointing;
 /// </summary>
 public class CheckpointManager : IAsyncDisposable
 {
-    private readonly ICheckpointStorage _storage;
-    private readonly string _pipelineId;
-    private readonly string _nodeId;
-    private readonly CheckpointStrategy _strategy;
     private readonly CheckpointIntervalConfiguration _intervalConfig;
     private readonly SemaphoreSlim _lock = new(1, 1);
+    private readonly string _nodeId;
+    private readonly string _pipelineId;
+    private readonly ICheckpointStorage _storage;
+    private bool _disposed;
+    private DateTimeOffset _lastSaveTime;
 
     private long _rowsProcessed;
-    private DateTimeOffset _lastSaveTime;
-    private Checkpoint? _currentCheckpoint;
-    private bool _disposed;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="CheckpointManager" /> class.
@@ -39,7 +38,7 @@ public class CheckpointManager : IAsyncDisposable
         _storage = storage;
         _pipelineId = pipelineId;
         _nodeId = nodeId;
-        _strategy = strategy;
+        Strategy = strategy;
         _intervalConfig = intervalConfig ?? new CheckpointIntervalConfiguration();
         _lastSaveTime = DateTimeOffset.UtcNow;
     }
@@ -47,12 +46,37 @@ public class CheckpointManager : IAsyncDisposable
     /// <summary>
     ///     Gets the current checkpoint value.
     /// </summary>
-    public Checkpoint? CurrentCheckpoint => _currentCheckpoint;
+    public Checkpoint? CurrentCheckpoint { get; private set; }
 
     /// <summary>
     ///     Gets the checkpoint strategy being used.
     /// </summary>
-    public CheckpointStrategy Strategy => _strategy;
+    public CheckpointStrategy Strategy { get; }
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        GC.SuppressFinalize(this);
+
+        // Save final checkpoint
+        try
+        {
+            await SaveAsync();
+        }
+        catch (Exception ex)
+        {
+            // Log the exception but don't throw during disposal
+            // This is important for debugging checkpoint save failures
+            Debug.WriteLine(
+                $"Warning: Failed to save checkpoint during disposal for pipeline '{_pipelineId}', node '{_nodeId}': {ex.Message}");
+        }
+
+        _lock.Dispose();
+    }
 
     /// <summary>
     ///     Loads the checkpoint from storage.
@@ -62,10 +86,11 @@ public class CheckpointManager : IAsyncDisposable
     public async Task<Checkpoint?> LoadAsync(CancellationToken cancellationToken = default)
     {
         await _lock.WaitAsync(cancellationToken);
+
         try
         {
-            _currentCheckpoint = await _storage.LoadAsync(_pipelineId, _nodeId, cancellationToken);
-            return _currentCheckpoint;
+            CurrentCheckpoint = await _storage.LoadAsync(_pipelineId, _nodeId, cancellationToken);
+            return CurrentCheckpoint;
         }
         finally
         {
@@ -88,15 +113,14 @@ public class CheckpointManager : IAsyncDisposable
         CancellationToken cancellationToken = default)
     {
         await _lock.WaitAsync(cancellationToken);
+
         try
         {
-            _currentCheckpoint = new Checkpoint(value, DateTimeOffset.UtcNow, metadata);
+            CurrentCheckpoint = new Checkpoint(value, DateTimeOffset.UtcNow, metadata);
             _rowsProcessed++;
 
             if (forceSave || ShouldSaveCheckpoint())
-            {
                 await SaveInternalAsync(cancellationToken);
-            }
         }
         finally
         {
@@ -127,9 +151,10 @@ public class CheckpointManager : IAsyncDisposable
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
         await _lock.WaitAsync(cancellationToken);
+
         try
         {
-            if (_currentCheckpoint != null)
+            if (CurrentCheckpoint != null)
                 await SaveInternalAsync(cancellationToken);
         }
         finally
@@ -145,10 +170,11 @@ public class CheckpointManager : IAsyncDisposable
     public async Task ClearAsync(CancellationToken cancellationToken = default)
     {
         await _lock.WaitAsync(cancellationToken);
+
         try
         {
             await _storage.DeleteAsync(_pipelineId, _nodeId, cancellationToken);
-            _currentCheckpoint = null;
+            CurrentCheckpoint = null;
             _rowsProcessed = 0;
         }
         finally
@@ -163,7 +189,7 @@ public class CheckpointManager : IAsyncDisposable
     /// <returns>The offset value, or null if not an offset checkpoint.</returns>
     public long? GetCurrentOffset()
     {
-        return _currentCheckpoint?.GetAsOffset();
+        return CurrentCheckpoint?.GetAsOffset();
     }
 
     /// <summary>
@@ -179,6 +205,7 @@ public class CheckpointManager : IAsyncDisposable
         if (_intervalConfig.TimeInterval > TimeSpan.Zero)
         {
             var timeSinceLastSave = DateTimeOffset.UtcNow - _lastSaveTime;
+
             if (timeSinceLastSave >= _intervalConfig.TimeInterval)
                 return true;
         }
@@ -191,38 +218,11 @@ public class CheckpointManager : IAsyncDisposable
     /// </summary>
     private async Task SaveInternalAsync(CancellationToken cancellationToken)
     {
-        if (_currentCheckpoint == null)
+        if (CurrentCheckpoint == null)
             return;
 
-        await _storage.SaveAsync(_pipelineId, _nodeId, _currentCheckpoint, cancellationToken);
+        await _storage.SaveAsync(_pipelineId, _nodeId, CurrentCheckpoint, cancellationToken);
         _lastSaveTime = DateTimeOffset.UtcNow;
-    }
-
-    /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        if (_disposed)
-        {
-            return;
-        }
-
-        _disposed = true;
-        GC.SuppressFinalize(this);
-
-        // Save final checkpoint
-        try
-        {
-            await SaveAsync();
-        }
-        catch (Exception ex)
-        {
-            // Log the exception but don't throw during disposal
-            // This is important for debugging checkpoint save failures
-            System.Diagnostics.Debug.WriteLine(
-                $"Warning: Failed to save checkpoint during disposal for pipeline '{_pipelineId}', node '{_nodeId}': {ex.Message}");
-        }
-
-        _lock.Dispose();
     }
 }
 

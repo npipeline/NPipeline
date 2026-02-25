@@ -1,9 +1,9 @@
+using System.Reflection;
 using AwesomeAssertions;
 using FakeItEasy;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
-using System.Reflection;
 
 namespace NPipeline.Connectors.PostgreSQL.Tests.Writers;
 
@@ -256,6 +256,7 @@ public sealed class PostgresBatchWriterUpsertTests
     {
         // Arrange
         var connection = A.Fake<IDatabaseConnection>();
+
         var configuration = new PostgresConfiguration
         {
             UseUpsert = true,
@@ -276,6 +277,7 @@ public sealed class PostgresBatchWriterUpsertTests
     {
         // Arrange
         var connection = A.Fake<IDatabaseConnection>();
+
         var configuration = new PostgresConfiguration
         {
             UseUpsert = true,
@@ -319,6 +321,7 @@ public sealed class PostgresBatchWriterUpsertTests
     {
         // Arrange
         var connection = A.Fake<IDatabaseConnection>();
+
         var configuration = new PostgresConfiguration
         {
             UseUpsert = true,
@@ -350,7 +353,7 @@ public sealed class PostgresBatchWriterUpsertTests
         };
 
         // Act
-        var writer = CreateWriter<TestEntity>(connection, configuration, "custom_schema", "test_table");
+        var writer = CreateWriter<TestEntity>(connection, configuration, "custom_schema");
         var sql = InvokeBuildInsertSql(writer);
 
         // Assert - Schema and table are quoted together
@@ -421,6 +424,7 @@ public sealed class PostgresBatchWriterUpsertTests
 
         A.CallTo(() => connection.CreateCommandAsync(A<CancellationToken>._))
             .Returns(command);
+
         A.CallTo(() => command.ExecuteNonQueryAsync(A<CancellationToken>._))
             .Returns(1);
 
@@ -462,6 +466,7 @@ public sealed class PostgresBatchWriterUpsertTests
 
         A.CallTo(() => connection.CreateCommandAsync(A<CancellationToken>._))
             .Returns(command);
+
         A.CallTo(() => command.ExecuteNonQueryAsync(A<CancellationToken>._))
             .Returns(3);
 
@@ -505,9 +510,7 @@ public sealed class PostgresBatchWriterUpsertTests
         Func<T, IEnumerable<DatabaseParameter>>? parameterMapper = null)
     {
         if (BatchWriterType == null)
-        {
             throw new InvalidOperationException("Could not find PostgresBatchWriter type");
-        }
 
         var concreteType = BatchWriterType.MakeGenericType(typeof(T));
 

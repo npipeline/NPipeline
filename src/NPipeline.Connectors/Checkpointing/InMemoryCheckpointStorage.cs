@@ -17,9 +17,12 @@ public class InMemoryCheckpointStorage : ICheckpointStorage, IDisposable
         var key = GetKey(pipelineId, nodeId);
 
         await _lock.WaitAsync(cancellationToken);
+
         try
         {
-            return _checkpoints.TryGetValue(key, out var checkpoint) ? checkpoint : null;
+            return _checkpoints.TryGetValue(key, out var checkpoint)
+                ? checkpoint
+                : null;
         }
         finally
         {
@@ -35,6 +38,7 @@ public class InMemoryCheckpointStorage : ICheckpointStorage, IDisposable
         var key = GetKey(pipelineId, nodeId);
 
         await _lock.WaitAsync(cancellationToken);
+
         try
         {
             _checkpoints[key] = checkpoint;
@@ -51,6 +55,7 @@ public class InMemoryCheckpointStorage : ICheckpointStorage, IDisposable
         var key = GetKey(pipelineId, nodeId);
 
         await _lock.WaitAsync(cancellationToken);
+
         try
         {
             _checkpoints.Remove(key);
@@ -67,41 +72,10 @@ public class InMemoryCheckpointStorage : ICheckpointStorage, IDisposable
         var key = GetKey(pipelineId, nodeId);
 
         await _lock.WaitAsync(cancellationToken);
+
         try
         {
             return _checkpoints.ContainsKey(key);
-        }
-        finally
-        {
-            _lock.Release();
-        }
-    }
-
-    /// <summary>
-    ///     Clears all checkpoints from memory.
-    /// </summary>
-    public async Task ClearAllAsync(CancellationToken cancellationToken = default)
-    {
-        await _lock.WaitAsync(cancellationToken);
-        try
-        {
-            _checkpoints.Clear();
-        }
-        finally
-        {
-            _lock.Release();
-        }
-    }
-
-    /// <summary>
-    ///     Gets the count of stored checkpoints.
-    /// </summary>
-    public async Task<int> GetCountAsync(CancellationToken cancellationToken = default)
-    {
-        await _lock.WaitAsync(cancellationToken);
-        try
-        {
-            return _checkpoints.Count;
         }
         finally
         {
@@ -120,6 +94,40 @@ public class InMemoryCheckpointStorage : ICheckpointStorage, IDisposable
         _disposed = true;
         _lock.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    ///     Clears all checkpoints from memory.
+    /// </summary>
+    public async Task ClearAllAsync(CancellationToken cancellationToken = default)
+    {
+        await _lock.WaitAsync(cancellationToken);
+
+        try
+        {
+            _checkpoints.Clear();
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    /// <summary>
+    ///     Gets the count of stored checkpoints.
+    /// </summary>
+    public async Task<int> GetCountAsync(CancellationToken cancellationToken = default)
+    {
+        await _lock.WaitAsync(cancellationToken);
+
+        try
+        {
+            return _checkpoints.Count;
+        }
+        finally
+        {
+            _lock.Release();
+        }
     }
 
     private static string GetKey(string pipelineId, string nodeId)

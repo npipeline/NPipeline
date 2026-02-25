@@ -1,6 +1,8 @@
 # NPipeline.Connectors.SqlServer
 
-A SQL Server connector for NPipeline data pipelines. Provides source and sink nodes for reading from and writing to SQL Server databases with support for multiple write strategies (PerRow, Batch, BulkCopy), upsert operations, delivery semantics, checkpointing strategies, convention-based mapping, custom mappers, and connection pooling.
+A SQL Server connector for NPipeline data pipelines. Provides source and sink nodes for reading from and writing to SQL Server databases with support for
+multiple write strategies (PerRow, Batch, BulkCopy), upsert operations, delivery semantics, checkpointing strategies, convention-based mapping, custom mappers,
+and connection pooling.
 
 ## Installation
 
@@ -153,44 +155,44 @@ var configuration = new SqlServerConfiguration
     Schema = "dbo",
     CommandTimeout = 30,
     ConnectionTimeout = 15,
-    
+
     // Write settings
     WriteStrategy = SqlServerWriteStrategy.Batch,
     BatchSize = 1_000,
     MaxBatchSize = 5_000,
     UseTransaction = true,
     UsePreparedStatements = true,
-    
+
     // BulkCopy settings
     BulkCopyBatchSize = 5_000,
     BulkCopyTimeout = 300,
     BulkCopyNotifyAfter = 1_000,
     EnableStreaming = true,
-    
+
     // Upsert settings
     UseUpsert = false,
     UpsertKeyColumns = new[] { "Id" },
     OnMergeAction = OnMergeAction.Update,
-    
+
     // Read settings
     StreamResults = true,
     FetchSize = 1_000,
-    
+
     // Delivery semantics
     DeliverySemantic = DeliverySemantic.AtLeastOnce,
-    
+
     // Checkpointing
     CheckpointStrategy = CheckpointStrategy.None,
     CheckpointStorage = null,
     CheckpointOffsetColumn = "Id",
     CheckpointKeyColumns = null,
     CdcCaptureInstance = null,
-    
+
     // Error handling
     MaxRetryAttempts = 3,
     RetryDelay = TimeSpan.FromSeconds(2),
     ContinueOnError = false,
-    
+
     // Mapping
     ValidateIdentifiers = true,
     CaseInsensitiveMapping = true,
@@ -202,35 +204,35 @@ var configuration = new SqlServerConfiguration
 
 ### Configuration Properties
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `ConnectionString` | `string` | `""` | SQL Server connection string |
-| `Schema` | `string` | `"dbo"` | Default schema name for table operations |
-| `WriteStrategy` | `SqlServerWriteStrategy` | `Batch` | Write strategy (PerRow, Batch, BulkCopy) |
-| `BatchSize` | `int` | `100` | Target batch size for batch writes |
-| `MaxBatchSize` | `int` | `1,000` | Maximum batch size to prevent runaway buffers |
-| `UseTransaction` | `bool` | `true` | Wrap writes in a transaction |
-| `UsePreparedStatements` | `bool` | `true` | Use prepared statements for writes |
-| `UseUpsert` | `bool` | `false` | Enable MERGE-based upserts |
-| `UpsertKeyColumns` | `string[]?` | `null` | Key columns for MERGE matching |
-| `OnMergeAction` | `OnMergeAction` | `Update` | Action on MERGE match (`Update`, `Ignore`, or `Delete`) |
-| `BulkCopyBatchSize` | `int` | `5,000` | Rows per bulk copy batch |
-| `BulkCopyTimeout` | `int` | `300` | Bulk copy timeout in seconds |
-| `BulkCopyNotifyAfter` | `int` | `1,000` | Rows before progress notification |
-| `EnableStreaming` | `bool` | `true` | Enable streaming for bulk copy |
-| `StreamResults` | `bool` | `true` | Enable streaming for reads |
-| `FetchSize` | `int` | `1,000` | Rows to fetch per round-trip |
-| `DeliverySemantic` | `DeliverySemantic` | `AtLeastOnce` | Delivery guarantee semantic |
-| `CheckpointStrategy` | `CheckpointStrategy` | `None` | Checkpointing strategy |
-| `CheckpointStorage` | `ICheckpointStorage?` | `null` | Checkpoint storage backend |
-| `CheckpointOffsetColumn` | `string?` | `null` | Column for offset checkpointing |
-| `CheckpointKeyColumns` | `string[]?` | `null` | Columns for key-based checkpointing |
-| `CdcCaptureInstance` | `string?` | `null` | CDC capture instance name |
-| `MaxRetryAttempts` | `int` | `3` | Maximum retry attempts |
-| `RetryDelay` | `TimeSpan` | `1 second` | Delay between retries |
-| `ValidateIdentifiers` | `bool` | `true` | Validate SQL identifiers |
-| `CaseInsensitiveMapping` | `bool` | `true` | Case-insensitive column mapping |
-| `CacheMappingMetadata` | `bool` | `true` | Cache mapping metadata |
+| Property                 | Type                     | Default       | Description                                             |
+|--------------------------|--------------------------|---------------|---------------------------------------------------------|
+| `ConnectionString`       | `string`                 | `""`          | SQL Server connection string                            |
+| `Schema`                 | `string`                 | `"dbo"`       | Default schema name for table operations                |
+| `WriteStrategy`          | `SqlServerWriteStrategy` | `Batch`       | Write strategy (PerRow, Batch, BulkCopy)                |
+| `BatchSize`              | `int`                    | `100`         | Target batch size for batch writes                      |
+| `MaxBatchSize`           | `int`                    | `1,000`       | Maximum batch size to prevent runaway buffers           |
+| `UseTransaction`         | `bool`                   | `true`        | Wrap writes in a transaction                            |
+| `UsePreparedStatements`  | `bool`                   | `true`        | Use prepared statements for writes                      |
+| `UseUpsert`              | `bool`                   | `false`       | Enable MERGE-based upserts                              |
+| `UpsertKeyColumns`       | `string[]?`              | `null`        | Key columns for MERGE matching                          |
+| `OnMergeAction`          | `OnMergeAction`          | `Update`      | Action on MERGE match (`Update`, `Ignore`, or `Delete`) |
+| `BulkCopyBatchSize`      | `int`                    | `5,000`       | Rows per bulk copy batch                                |
+| `BulkCopyTimeout`        | `int`                    | `300`         | Bulk copy timeout in seconds                            |
+| `BulkCopyNotifyAfter`    | `int`                    | `1,000`       | Rows before progress notification                       |
+| `EnableStreaming`        | `bool`                   | `true`        | Enable streaming for bulk copy                          |
+| `StreamResults`          | `bool`                   | `true`        | Enable streaming for reads                              |
+| `FetchSize`              | `int`                    | `1,000`       | Rows to fetch per round-trip                            |
+| `DeliverySemantic`       | `DeliverySemantic`       | `AtLeastOnce` | Delivery guarantee semantic                             |
+| `CheckpointStrategy`     | `CheckpointStrategy`     | `None`        | Checkpointing strategy                                  |
+| `CheckpointStorage`      | `ICheckpointStorage?`    | `null`        | Checkpoint storage backend                              |
+| `CheckpointOffsetColumn` | `string?`                | `null`        | Column for offset checkpointing                         |
+| `CheckpointKeyColumns`   | `string[]?`              | `null`        | Columns for key-based checkpointing                     |
+| `CdcCaptureInstance`     | `string?`                | `null`        | CDC capture instance name                               |
+| `MaxRetryAttempts`       | `int`                    | `3`           | Maximum retry attempts                                  |
+| `RetryDelay`             | `TimeSpan`               | `1 second`    | Delay between retries                                   |
+| `ValidateIdentifiers`    | `bool`                   | `true`        | Validate SQL identifiers                                |
+| `CaseInsensitiveMapping` | `bool`                   | `true`        | Case-insensitive column mapping                         |
+| `CacheMappingMetadata`   | `bool`                   | `true`        | Cache mapping metadata                                  |
 
 ### Connection String
 
@@ -370,11 +372,11 @@ var sink = new SqlServerSinkNode<Customer>(
 
 ### Write Strategy Comparison
 
-| Strategy | Throughput | Latency | Error Isolation | Use Case |
-|----------|------------|---------|-----------------|----------|
-| PerRow | Low | Low | High | Real-time, small batches |
-| Batch | High | Medium | Medium | Bulk loading, ETL |
-| BulkCopy | Very High | High | Low | Large bulk loads, data warehouse |
+| Strategy | Throughput | Latency | Error Isolation | Use Case                         |
+|----------|------------|---------|-----------------|----------------------------------|
+| PerRow   | Low        | Low     | High            | Real-time, small batches         |
+| Batch    | High       | Medium  | Medium          | Bulk loading, ETL                |
+| BulkCopy | Very High  | High    | Low             | Large bulk loads, data warehouse |
 
 ## Upsert Operations
 
@@ -466,7 +468,8 @@ var sink = new SqlServerSinkNode<OrderItem>(
 );
 ```
 
-**Why use upsert:** Upsert eliminates the need for separate insert/update logic and handles race conditions where a row might be inserted between your check and insert operations.
+**Why use upsert:** Upsert eliminates the need for separate insert/update logic and handles race conditions where a row might be inserted between your check and
+insert operations.
 
 ## Delivery Semantics
 
@@ -532,11 +535,11 @@ var configuration = new SqlServerConfiguration
 
 ### Delivery Semantic Comparison
 
-| Semantic | Data Loss | Duplicates | Overhead | Use Case |
-|----------|-----------|------------|----------|----------|
-| AtLeastOnce | No | Possible | Low | General purpose, idempotent ops |
-| AtMostOnce | Possible | No | Low | Telemetry, metrics |
-| ExactlyOnce | No | No | High | Financial, audit |
+| Semantic    | Data Loss | Duplicates | Overhead | Use Case                        |
+|-------------|-----------|------------|----------|---------------------------------|
+| AtLeastOnce | No        | Possible   | Low      | General purpose, idempotent ops |
+| AtMostOnce  | Possible  | No         | Low      | Telemetry, metrics              |
+| ExactlyOnce | No        | No         | High     | Financial, audit                |
 
 ## Checkpointing Strategies
 
@@ -740,7 +743,8 @@ of rows without memory issues.
 
 ## Checkpointing
 
-Checkpointing enables pipelines to resume from where they left off after a failure. See the [Checkpointing Strategies](#checkpointing-strategies) section for detailed configuration options for each strategy.
+Checkpointing enables pipelines to resume from where they left off after a failure. See the [Checkpointing Strategies](#checkpointing-strategies) section for
+detailed configuration options for each strategy.
 
 ### Quick Example: Offset Checkpointing
 
@@ -760,7 +764,8 @@ var source = new SqlServerSourceNode<Order>(
 );
 ```
 
-The connector tracks the last successfully processed row ID. If a transient failure occurs, processing resumes from the last checkpoint rather than restarting from the beginning.
+The connector tracks the last successfully processed row ID. If a transient failure occurs, processing resumes from the last checkpoint rather than restarting
+from the beginning.
 
 ## Analyzers
 

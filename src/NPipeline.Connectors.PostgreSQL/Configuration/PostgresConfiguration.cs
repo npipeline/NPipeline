@@ -230,46 +230,30 @@ public class PostgresConfiguration
     public virtual void Validate()
     {
         if (string.IsNullOrWhiteSpace(Schema))
-        {
             throw new ArgumentException("Schema cannot be empty.", nameof(Schema));
-        }
 
         ValidateConnectionSettings();
 
         if (CopyTimeout <= 0)
-        {
             throw new ArgumentException("CopyTimeout must be greater than zero.", nameof(CopyTimeout));
-        }
 
         if (BatchSize <= 0)
-        {
             throw new ArgumentException("BatchSize must be greater than zero.", nameof(BatchSize));
-        }
 
         if (MaxBatchSize <= 0)
-        {
             throw new ArgumentException("MaxBatchSize must be greater than zero.", nameof(MaxBatchSize));
-        }
 
         if (BatchSize > MaxBatchSize)
-        {
             throw new ArgumentException("BatchSize cannot exceed MaxBatchSize.", nameof(BatchSize));
-        }
 
         if (MaxRetryAttempts < 0)
-        {
             throw new ArgumentException("MaxRetryAttempts cannot be negative.", nameof(MaxRetryAttempts));
-        }
 
         if (RetryDelay < TimeSpan.Zero)
-        {
             throw new ArgumentException("RetryDelay cannot be negative.", nameof(RetryDelay));
-        }
 
         if (UseUpsert && (UpsertConflictColumns == null || UpsertConflictColumns.Length == 0))
-        {
             throw new ArgumentException("UpsertConflictColumns must be provided when UseUpsert is enabled.", nameof(UpsertConflictColumns));
-        }
 
         ValidateCheckpointSettings();
     }
@@ -280,34 +264,22 @@ public class PostgresConfiguration
     internal void ValidateConnectionSettings()
     {
         if (CommandTimeout <= 0)
-        {
             throw new ArgumentException("CommandTimeout must be greater than zero.", nameof(CommandTimeout));
-        }
 
         if (ConnectionTimeout <= 0)
-        {
             throw new ArgumentException("ConnectionTimeout must be greater than zero.", nameof(ConnectionTimeout));
-        }
 
         if (MinPoolSize < 0)
-        {
             throw new ArgumentException("MinPoolSize cannot be negative.", nameof(MinPoolSize));
-        }
 
         if (MaxPoolSize <= 0)
-        {
             throw new ArgumentException("MaxPoolSize must be greater than zero.", nameof(MaxPoolSize));
-        }
 
         if (MinPoolSize > MaxPoolSize)
-        {
             throw new ArgumentException("MinPoolSize cannot exceed MaxPoolSize.", nameof(MinPoolSize));
-        }
 
         if (ReadBufferSize <= 0)
-        {
             throw new ArgumentException("ReadBufferSize must be greater than zero.", nameof(ReadBufferSize));
-        }
     }
 
     /// <summary>

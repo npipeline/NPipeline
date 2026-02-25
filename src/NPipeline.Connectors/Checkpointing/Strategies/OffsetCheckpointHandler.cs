@@ -1,4 +1,3 @@
-using NPipeline.Connectors.Configuration;
 using NPipeline.StorageProviders.Utilities;
 
 namespace NPipeline.Connectors.Checkpointing.Strategies;
@@ -10,7 +9,6 @@ namespace NPipeline.Connectors.Checkpointing.Strategies;
 public class OffsetCheckpointHandler
 {
     private readonly CheckpointManager _checkpointManager;
-    private readonly string _offsetColumn;
     private readonly string _quotedOffsetColumn;
 
     /// <summary>
@@ -27,14 +25,14 @@ public class OffsetCheckpointHandler
         DatabaseIdentifierValidator.ValidateIdentifier(offsetColumn, nameof(offsetColumn));
 
         _checkpointManager = checkpointManager;
-        _offsetColumn = offsetColumn;
+        OffsetColumn = offsetColumn;
         _quotedOffsetColumn = DatabaseIdentifierValidator.QuoteIdentifier(offsetColumn);
     }
 
     /// <summary>
     ///     Gets the offset column name.
     /// </summary>
-    public string OffsetColumn => _offsetColumn;
+    public string OffsetColumn { get; }
 
     /// <summary>
     ///     Gets the current offset value.
@@ -66,8 +64,8 @@ public class OffsetCheckpointHandler
     {
         var metadata = new Dictionary<string, string>
         {
-            ["offset_column"] = _offsetColumn,
-            ["updated_at"] = DateTimeOffset.UtcNow.ToString("O")
+            ["offset_column"] = OffsetColumn,
+            ["updated_at"] = DateTimeOffset.UtcNow.ToString("O"),
         };
 
         await _checkpointManager.UpdateOffsetAsync(offset, metadata, forceSave, cancellationToken);
@@ -81,6 +79,7 @@ public class OffsetCheckpointHandler
     public (string WhereClause, long ParameterValue) GenerateWhereClause(string parameterName = "@offset")
     {
         var offset = GetCurrentOffset();
+
         var whereClause = offset > 0
             ? $"{_quotedOffsetColumn} > {parameterName}"
             : string.Empty;
