@@ -1,6 +1,6 @@
 using System.Data;
-using System.Reflection;
 using AwesomeAssertions;
+using NPipeline.Connectors.Checkpointing;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.Nodes;
 using NPipeline.DataFlow.DataPipes;
@@ -25,7 +25,6 @@ public class DatabaseSourceNodeTests
     [Fact]
     public void Initialize_WithBufferedResults_ReturnsAllItems()
     {
-        ResetCheckpoints();
         var node = new TestDatabaseSourceNode(new[] { 1, 2, 3 }, false);
 
         var result = node.Initialize(new PipelineContext(), CancellationToken.None);
@@ -37,8 +36,6 @@ public class DatabaseSourceNodeTests
     [Fact]
     public void TryMapRow_SkipsItemsWhenMapperReturnsFalse()
     {
-        ResetCheckpoints();
-
         var node = new TestDatabaseSourceNode(
             new[] { 1, 2, 3, 4 },
             false,
@@ -51,62 +48,56 @@ public class DatabaseSourceNodeTests
     }
 
     [Fact]
-    public void Initialize_WithInMemoryCheckpoint_SkipsProcessedRowsAndClearsCheckpoint()
+    public async Task Initialize_WithInMemoryCheckpoint_SkipsAlreadyProcessedRows()
     {
+        // Arrange — pre-seed checkpoint: 2 rows already processed.
+        // PipelineContext.CurrentNodeId defaults to string.Empty (not null),
+        // so DatabaseSourceNode uses "" as pipelineId (not "default").
         const string checkpointId = "TestCheckpoint";
-        ResetCheckpoints();
-        SetCheckpoint(checkpointId, 2);
+        const string pipelineId = "";
+        var storage = new InMemoryCheckpointStorage();
+        await storage.SaveAsync(pipelineId, checkpointId, Checkpoint.Create("2"));
 
         var node = new TestDatabaseSourceNode(
             new[] { 1, 2, 3, 4 },
             false,
             CheckpointStrategy.InMemory,
-            checkpointId: checkpointId);
+            checkpointId: checkpointId,
+            checkpointStorage: storage);
 
+        // Act
         var result = node.Initialize(new PipelineContext(), CancellationToken.None);
 
+        // Assert — only rows 3 and 4 should be emitted
         var dataPipe = result.Should().BeOfType<InMemoryDataPipe<int>>().Subject;
         dataPipe.Items.Should().Equal(3, 4);
-        GetCheckpointStore().Should().BeEmpty();
-    }
 
-    private static Dictionary<string, long> GetCheckpointStore()
-    {
-        var field = typeof(DatabaseSourceNode<,>)
-            .MakeGenericType(typeof(FakeDatabaseReader), typeof(int))
-            .GetField("_checkpoints", BindingFlags.Static | BindingFlags.NonPublic);
-
-        return (Dictionary<string, long>)(field?.GetValue(null) ?? new Dictionary<string, long>());
-    }
-
-    private static void ResetCheckpoints()
-    {
-        GetCheckpointStore().Clear();
-    }
-
-    private static void SetCheckpoint(string checkpointId, long value)
-    {
-        var store = GetCheckpointStore();
-        store[checkpointId] = value;
+        // Checkpoint should now reflect all rows processed (position 4)
+        var finalCheckpoint = await storage.LoadAsync(pipelineId, checkpointId);
+        finalCheckpoint.Should().NotBeNull();
+        finalCheckpoint!.GetAsOffset().Should().Be(4);
     }
 
     private sealed class TestDatabaseSourceNode : DatabaseSourceNode<FakeDatabaseReader, int>
     {
         private readonly IReadOnlyList<int> _data;
         private readonly Func<int, bool>? _shouldEmit;
+        private readonly ICheckpointStorage? _storage;
 
         public TestDatabaseSourceNode(
             IReadOnlyList<int> data,
             bool streamResults,
             CheckpointStrategy checkpointStrategy = CheckpointStrategy.None,
             Func<int, bool>? shouldEmit = null,
-            string? checkpointId = null)
+            string? checkpointId = null,
+            ICheckpointStorage? checkpointStorage = null)
         {
             _data = data;
             StreamResults = streamResults;
             CheckpointStrategy = checkpointStrategy;
             _shouldEmit = shouldEmit;
             CheckpointId = checkpointId ?? GetType().Name;
+            _storage = checkpointStorage;
         }
 
         protected override bool StreamResults { get; }
@@ -114,6 +105,8 @@ public class DatabaseSourceNodeTests
         protected override CheckpointStrategy CheckpointStrategy { get; }
 
         protected override string CheckpointId { get; }
+
+        protected override ICheckpointStorage? CheckpointStorage => _storage;
 
         protected override Task<IDatabaseConnection> GetConnectionAsync(CancellationToken cancellationToken)
         {
@@ -191,6 +184,13 @@ public class DatabaseSourceNodeTests
     private sealed class NoopDatabaseConnection : IDatabaseConnection
     {
         public bool IsOpen => true;
+
+        public IDatabaseTransaction? CurrentTransaction => null;
+
+        public Task<IDatabaseTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException("Transactions are not supported by this noop connection.");
+        }
 
         public Task OpenAsync(CancellationToken cancellationToken = default)
         {

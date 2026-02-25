@@ -1,4 +1,5 @@
 using Npgsql;
+using NPipeline.Connectors.Checkpointing;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.PostgreSQL.Mapping;
 
@@ -176,6 +177,54 @@ public class PostgresConfiguration
     public CheckpointStrategy CheckpointStrategy { get; set; } = CheckpointStrategy.None;
 
     /// <summary>
+    ///     Gets or sets the checkpoint storage backend.
+    ///     Required when CheckpointStrategy is not None or InMemory.
+    /// </summary>
+    public ICheckpointStorage? CheckpointStorage { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the checkpoint interval configuration.
+    ///     Controls how often checkpoints are saved during processing.
+    /// </summary>
+    public CheckpointIntervalConfiguration CheckpointInterval { get; set; } = new();
+
+    /// <summary>
+    ///     Gets or sets the file path for file-based checkpoint storage.
+    ///     Used when CheckpointStorage is a FileCheckpointStorage created automatically.
+    /// </summary>
+    public string? CheckpointFilePath { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the table name for database checkpoint storage.
+    ///     Used when using database-based checkpoint storage.
+    /// </summary>
+    public string CheckpointTableName { get; set; } = "pipeline_checkpoints";
+
+    /// <summary>
+    ///     Gets or sets the offset column name for offset-based checkpointing.
+    ///     Used to generate WHERE clauses for resumable queries.
+    /// </summary>
+    public string? CheckpointOffsetColumn { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the key columns for key-based checkpointing.
+    ///     Used for composite key tracking.
+    /// </summary>
+    public string[]? CheckpointKeyColumns { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the logical replication slot name for CDC checkpointing.
+    ///     Required when CheckpointStrategy is CDC.
+    /// </summary>
+    public string? CdcSlotName { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the publication name for CDC.
+    ///     Optional when using PostgreSQL logical replication.
+    /// </summary>
+    public string? CdcPublicationName { get; set; }
+
+    /// <summary>
     ///     Validates the configuration.
     /// </summary>
     public virtual void Validate()
@@ -203,10 +252,10 @@ public class PostgresConfiguration
         if (RetryDelay < TimeSpan.Zero)
             throw new ArgumentException("RetryDelay cannot be negative.", nameof(RetryDelay));
 
-        ValidateFeatureSupport();
-
         if (UseUpsert && (UpsertConflictColumns == null || UpsertConflictColumns.Length == 0))
             throw new ArgumentException("UpsertConflictColumns must be provided when UseUpsert is enabled.", nameof(UpsertConflictColumns));
+
+        ValidateCheckpointSettings();
     }
 
     /// <summary>
@@ -234,24 +283,46 @@ public class PostgresConfiguration
     }
 
     /// <summary>
-    ///     Validates whether requested features are supported by this connector edition.
-    ///     Override in commercial editions to enable additional features.
+    ///     Validates checkpoint-related settings.
     /// </summary>
-    protected virtual void ValidateFeatureSupport()
+    internal void ValidateCheckpointSettings()
     {
-        if (WriteStrategy == PostgresWriteStrategy.Copy)
-            throw new NotSupportedException("PostgresWriteStrategy.Copy is available in the commercial PostgreSQL connector.");
+        // Validate checkpoint storage requirements
+        if (CheckpointStrategy != CheckpointStrategy.None &&
+            CheckpointStrategy != CheckpointStrategy.InMemory &&
+            CheckpointStorage == null &&
+            string.IsNullOrWhiteSpace(CheckpointFilePath))
+        {
+            throw new ArgumentException(
+                $"CheckpointStorage or CheckpointFilePath must be provided when CheckpointStrategy is {CheckpointStrategy}.",
+                nameof(CheckpointStorage));
+        }
 
-        if (UseBinaryCopy)
-            throw new NotSupportedException("Binary COPY is available in the commercial PostgreSQL connector.");
+        // Validate offset checkpoint settings
+        if (CheckpointStrategy == CheckpointStrategy.Offset &&
+            string.IsNullOrWhiteSpace(CheckpointOffsetColumn))
+        {
+            throw new ArgumentException(
+                "CheckpointOffsetColumn must be provided when using Offset checkpoint strategy.",
+                nameof(CheckpointOffsetColumn));
+        }
 
-        if (UseUpsert)
-            throw new NotSupportedException("Upsert support is available in the commercial PostgreSQL connector.");
+        // Validate key-based checkpoint settings
+        if (CheckpointStrategy == CheckpointStrategy.KeyBased &&
+            (CheckpointKeyColumns == null || CheckpointKeyColumns.Length == 0))
+        {
+            throw new ArgumentException(
+                "CheckpointKeyColumns must be provided when using KeyBased checkpoint strategy.",
+                nameof(CheckpointKeyColumns));
+        }
 
-        if (DeliverySemantic == DeliverySemantic.ExactlyOnce)
-            throw new NotSupportedException("Exactly-once delivery semantics are available in the commercial PostgreSQL connector.");
-
-        if (CheckpointStrategy != CheckpointStrategy.None && CheckpointStrategy != CheckpointStrategy.InMemory)
-            throw new NotSupportedException("Advanced checkpointing is available in the commercial PostgreSQL connector.");
+        // Validate CDC checkpoint settings
+        if (CheckpointStrategy == CheckpointStrategy.CDC &&
+            string.IsNullOrWhiteSpace(CdcSlotName))
+        {
+            throw new ArgumentException(
+                "CdcSlotName must be provided when using CDC checkpoint strategy.",
+                nameof(CdcSlotName));
+        }
     }
 }

@@ -1,3 +1,4 @@
+using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.Nodes;
 using NPipeline.Connectors.PostgreSQL.Configuration;
 using NPipeline.Connectors.PostgreSQL.Connection;
@@ -194,6 +195,31 @@ public class PostgresSinkNode<T> : DatabaseSinkNode<T>
     }
 
     /// <summary>
+    ///     Gets whether to use transactions.
+    /// </summary>
+    protected override bool UseTransaction => _configuration.UseTransaction;
+
+    /// <summary>
+    ///     Gets batch size for batch writes.
+    /// </summary>
+    protected override int BatchSize => _configuration.BatchSize;
+
+    /// <summary>
+    ///     Gets delivery semantic.
+    /// </summary>
+    protected override DeliverySemantic DeliverySemantic => _configuration.DeliverySemantic;
+
+    /// <summary>
+    ///     Gets checkpoint strategy.
+    /// </summary>
+    protected override CheckpointStrategy CheckpointStrategy => _configuration.CheckpointStrategy;
+
+    /// <summary>
+    ///     Gets whether to continue on error.
+    /// </summary>
+    protected override bool ContinueOnError => _configuration.ContinueOnError;
+
+    /// <summary>
     ///     Gets a database connection asynchronously.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
@@ -235,7 +261,8 @@ public class PostgresSinkNode<T> : DatabaseSinkNode<T>
                 _configuration)),
             PostgresWriteStrategy.Batch => Task.FromResult<IDatabaseWriter<T>>(new PostgresBatchWriter<T>(connection, _schema, _tableName, _parameterMapper,
                 _configuration)),
-            PostgresWriteStrategy.Copy => throw new NotSupportedException($"Write strategy '{_writeStrategy}' is not supported in the free version"),
+            PostgresWriteStrategy.Copy => Task.FromResult<IDatabaseWriter<T>>(new PostgresCopyWriter<T>(connection, _schema, _tableName, _parameterMapper,
+                _configuration)),
             _ => throw new NotSupportedException($"Write strategy '{_writeStrategy}' is not supported"),
         };
 

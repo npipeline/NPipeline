@@ -224,6 +224,13 @@ public class DatabaseSinkNodeTests
     {
         public bool IsOpen => true;
 
+        public IDatabaseTransaction? CurrentTransaction => null;
+
+        public Task<IDatabaseTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException("Transactions are not supported by this noop connection.");
+        }
+
         public Task OpenAsync(CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;

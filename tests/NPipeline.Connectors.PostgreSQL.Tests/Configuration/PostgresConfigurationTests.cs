@@ -280,20 +280,36 @@ public sealed class PostgresConfigurationTests
     }
 
     [Fact]
-    public void Validate_WithUseUpsertEnabled_ShouldThrowNotSupportedException()
+    public void Validate_WithUseUpsertEnabledButNoConflictColumns_ShouldThrowArgumentException()
     {
         // Arrange
         var config = new PostgresConfiguration
         {
             UseUpsert = true,
+            UpsertConflictColumns = null,
         };
 
         // Act & Assert
-        Assert.Throws<NotSupportedException>(() => config.Validate());
+        Assert.Throws<ArgumentException>(() => config.Validate());
     }
 
     [Fact]
-    public void Validate_WithUseBinaryCopyEnabled_ShouldThrowNotSupportedException()
+    public void Validate_WithUseUpsertEnabledAndConflictColumns_ShouldNotThrow()
+    {
+        // Arrange
+        var config = new PostgresConfiguration
+        {
+            UseUpsert = true,
+            UpsertConflictColumns = ["id"],
+        };
+
+        // Act & Assert
+        var exception = Record.Exception(() => config.Validate());
+        exception.Should().BeNull();
+    }
+
+    [Fact]
+    public void Validate_WithUseBinaryCopyEnabled_ShouldNotThrow()
     {
         // Arrange
         var config = new PostgresConfiguration
@@ -302,11 +318,12 @@ public sealed class PostgresConfigurationTests
         };
 
         // Act & Assert
-        Assert.Throws<NotSupportedException>(() => config.Validate());
+        var exception = Record.Exception(() => config.Validate());
+        exception.Should().BeNull();
     }
 
     [Fact]
-    public void Validate_WithCopyWriteStrategy_ShouldThrowNotSupportedException()
+    public void Validate_WithCopyWriteStrategy_ShouldNotThrow()
     {
         // Arrange
         var config = new PostgresConfiguration
@@ -315,11 +332,12 @@ public sealed class PostgresConfigurationTests
         };
 
         // Act & Assert
-        Assert.Throws<NotSupportedException>(() => config.Validate());
+        var exception = Record.Exception(() => config.Validate());
+        exception.Should().BeNull();
     }
 
     [Fact]
-    public void Validate_WithExactlyOnceDeliverySemantic_ShouldThrowNotSupportedException()
+    public void Validate_WithExactlyOnceDeliverySemantic_ShouldNotThrow()
     {
         // Arrange
         var config = new PostgresConfiguration
@@ -328,20 +346,39 @@ public sealed class PostgresConfigurationTests
         };
 
         // Act & Assert
-        Assert.Throws<NotSupportedException>(() => config.Validate());
+        var exception = Record.Exception(() => config.Validate());
+        exception.Should().BeNull();
     }
 
     [Fact]
-    public void Validate_WithCheckpointStrategyEnabled_ShouldThrowNotSupportedException()
+    public void Validate_WithCheckpointStrategyEnabledButNoStorage_ShouldThrowArgumentException()
     {
         // Arrange
         var config = new PostgresConfiguration
         {
             CheckpointStrategy = CheckpointStrategy.Offset,
+            CheckpointStorage = null,
+            CheckpointFilePath = null,
         };
 
         // Act & Assert
-        Assert.Throws<NotSupportedException>(() => config.Validate());
+        Assert.Throws<ArgumentException>(() => config.Validate());
+    }
+
+    [Fact]
+    public void Validate_WithCheckpointStrategyEnabledAndFilePath_ShouldNotThrow()
+    {
+        // Arrange
+        var config = new PostgresConfiguration
+        {
+            CheckpointStrategy = CheckpointStrategy.Offset,
+            CheckpointFilePath = "/tmp/checkpoints",
+            CheckpointOffsetColumn = "id",
+        };
+
+        // Act & Assert
+        var exception = Record.Exception(() => config.Validate());
+        exception.Should().BeNull();
     }
 
     [Fact]

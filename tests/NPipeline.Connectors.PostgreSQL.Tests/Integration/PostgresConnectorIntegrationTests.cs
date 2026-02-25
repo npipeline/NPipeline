@@ -223,6 +223,7 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
                 // Insert 5000 records using batch insert for performance
                 var batchValues = string.Join(",",
                     Enumerable.Range(1, 5000).Select(i => $"({i}, 'Test {i}', {i * 1.5})"));
+
                 await using (var insertCmd = new NpgsqlCommand(
                                  $"INSERT INTO {tableName} (id, name, value) VALUES {batchValues}", conn))
                 {
@@ -342,6 +343,7 @@ public class PostgresConnectorIntegrationTests(PostgresTestContainerFixture fixt
                 // Insert 10000 records using batch insert for performance
                 var batchValues = string.Join(",",
                     Enumerable.Range(1, 10000).Select(i => $"({i}, 'Test {i}', {i * 1.5})"));
+
                 await using (var insertCmd = new NpgsqlCommand(
                                  $"INSERT INTO {sourceTable} (id, name, value) VALUES {batchValues}", conn))
                 {

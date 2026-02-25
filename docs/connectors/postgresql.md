@@ -8,7 +8,7 @@ sidebar_position: 3
 
 The `NPipeline.Connectors.PostgreSQL` package provides specialized source and sink nodes for working with PostgreSQL databases. This allows you to easily integrate PostgreSQL data into your pipelines as an input source or an output destination.
 
-This connector uses the [Npgsql](https://www.npgsql.org/) library under the hood, providing reliable streaming reads, per-row and batched writes, and in-memory checkpointing for transient recovery.
+This connector uses the [Npgsql](https://www.npgsql.org/) library under the hood, providing reliable streaming reads, multiple write strategies (per-row, batch, and COPY protocol), upsert support, delivery semantics, checkpointing strategies, and connection pooling.
 
 ## Installation
 
@@ -419,7 +419,7 @@ public PostgresSinkNode<T>(
 
 ### Write Strategies
 
-The connector supports two write strategies:
+The connector supports three write strategies:
 
 #### PerRow Strategy
 
@@ -436,6 +436,41 @@ Buffers multiple rows and issues a single multi-value `INSERT` statement. This p
 - Better performance for large datasets
 - Reduced database round-trips
 - All-or-nothing semantics within a batch
+
+#### Copy Strategy
+
+Uses PostgreSQL's native `COPY` protocol for maximum throughput. This provides:
+
+- Highest performance for bulk loading
+- Support for both text and binary formats
+- Optimal for very large datasets (millions of rows)
+
+```csharp
+var configuration = new PostgresConfiguration
+{
+    CopyTimeout = 600,  // 10 minutes for large loads
+    UseBinaryCopy = true  // Use binary format for better performance
+};
+
+var sink = new PostgresSinkNode<Order>(
+    pool,
+    "orders",
+    PostgresWriteStrategy.Copy,
+    configuration: configuration);
+```
+
+**Binary vs Text Format:**
+
+- **Text format** (`UseBinaryCopy = false`): More compatible, easier to debug
+- **Binary format** (`UseBinaryCopy = true`): 20-30% faster, more efficient encoding
+
+### Write Strategy Comparison
+
+| Strategy | Throughput | Latency | Error Isolation | Use Case |
+|----------|------------|---------|-----------------|----------|
+| PerRow | Low | Low | High | Real-time, small batches |
+| Batch | High | Medium | Medium | Bulk loading, ETL |
+| Copy | Very High | High | Low | Large bulk loads, data warehouse |
 
 ### Example: Writing to PostgreSQL
 
@@ -550,19 +585,35 @@ The `PostgresConfiguration` class provides comprehensive options for configuring
 | Property | Type | Default | Description |
 | --- | --- | --- | --- |
 | `ConnectionString` | `string?` | `null` | PostgreSQL connection string. Not required when using a connection pool. |
-| `StreamResults` | `bool` | `false` | Enables streaming of results to reduce memory usage for large result sets. |
-| `FetchSize` | `int` | `100` | Number of rows to fetch per round-trip when streaming. Larger values reduce round-trips but use more memory. |
-| `MaxRetryAttempts` | `int` | `0` | Maximum number of retry attempts for transient failures. Only applies before the first row is yielded. |
-| `RetryDelay` | `TimeSpan` | `TimeSpan.FromSeconds(1)` | Delay between retry attempts. |
-| `CaseInsensitiveMapping` | `bool` | `false` | Enables case-insensitive column name mapping. Useful when database column names have inconsistent casing. |
-| `CacheMappingMetadata` | `bool` | `true` | Caches mapping metadata per type to improve performance. Disable if mapping changes at runtime. |
-| `ValidateIdentifiers` | `bool` | `true` | Validates SQL identifiers (schema, table, column names) to prevent SQL injection. |
-| `ContinueOnError` | `bool` | `false` | Continues processing when per-property mapping errors occur. Properties with errors are set to default values. |
-| `CheckpointStrategy` | `CheckpointStrategy` | `CheckpointStrategy.None` | Strategy for checkpointing to recover from transient failures. |
+| `Schema` | `string` | `"public"` | Default schema name for PostgreSQL operations. |
+| `StreamResults` | `bool` | `true` | Enables streaming of results to reduce memory usage for large result sets. |
+| `FetchSize` | `int` | `1,000` | Number of rows to fetch per round-trip when streaming. Larger values reduce round-trips but use more memory. |
+| `WriteStrategy` | `PostgresWriteStrategy` | `Batch` | Write strategy for sink operations (PerRow, Batch, Copy). |
 | `BatchSize` | `int` | `1,000` | Target batch size for batch write operations. |
 | `MaxBatchSize` | `int` | `5,000` | Maximum batch size to prevent runaway buffers. `BatchSize` is clamped to this value. |
 | `UseTransaction` | `bool` | `true` | Wraps write operations in a transaction for atomicity. |
-| `CommandTimeout` | `int?` | `null` | Command timeout in seconds. When `null`, uses the default Npgsql timeout. |
+| `UseUpsert` | `bool` | `false` | Enables ON CONFLICT upsert semantics. |
+| `UpsertConflictColumns` | `string[]?` | `null` | Columns that form the conflict target for upsert. Required when UseUpsert is true. |
+| `OnConflictAction` | `OnConflictAction` | `Update` | Conflict resolution action (Update or Ignore). |
+| `UseBinaryCopy` | `bool` | `false` | Use binary format for COPY operations. |
+| `DeliverySemantic` | `DeliverySemantic` | `AtLeastOnce` | Delivery guarantee semantic. |
+| `CheckpointStrategy` | `CheckpointStrategy` | `None` | Strategy for checkpointing to recover from failures. |
+| `CheckpointStorage` | `ICheckpointStorage?` | `null` | Storage backend for checkpoints. Required for persistent checkpoint strategies. |
+| `CheckpointInterval` | `CheckpointIntervalConfiguration` | `new()` | Controls how often checkpoints are saved. |
+| `CheckpointOffsetColumn` | `string?` | `null` | Column name for offset-based checkpointing. |
+| `CheckpointKeyColumns` | `string[]?` | `null` | Key columns for key-based checkpointing. |
+| `CdcSlotName` | `string?` | `null` | Logical replication slot name for CDC checkpointing. |
+| `CdcPublicationName` | `string?` | `null` | Publication name for CDC. |
+| `CommandTimeout` | `int` | `30` | Command timeout in seconds. |
+| `CopyTimeout` | `int` | `300` | COPY operation timeout in seconds. |
+| `ConnectionTimeout` | `int` | `15` | Connection timeout in seconds. |
+| `MaxRetryAttempts` | `int` | `3` | Maximum number of retry attempts for transient failures. |
+| `RetryDelay` | `TimeSpan` | `1 second` | Delay between retry attempts. |
+| `CaseInsensitiveMapping` | `bool` | `true` | Enables case-insensitive column name mapping. |
+| `CacheMappingMetadata` | `bool` | `true` | Caches mapping metadata per type to improve performance. |
+| `ValidateIdentifiers` | `bool` | `true` | Validates SQL identifiers to prevent SQL injection. |
+| `UsePreparedStatements` | `bool` | `true` | Use prepared statements for writes. |
+| `ContinueOnError` | `bool` | `false` | Continues processing when per-property mapping errors occur. |
 
 ### PostgresWriteStrategy
 
@@ -570,17 +621,368 @@ Enum defining write strategies for the sink node.
 
 | Value | Description |
 | --- | --- |
-| `PerRow` | Writes each row individually with a separate `INSERT` statement. |
-| `Batch` | Buffers multiple rows and issues a single multi-value `INSERT` statement. |
+| `PerRow` | Writes each row individually with a separate `INSERT` statement. Best for real-time processing and per-row error handling. |
+| `Batch` | Buffers multiple rows and issues a single multi-value `INSERT` statement. Best for bulk operations and high throughput. |
+| `Copy` | Uses PostgreSQL's native `COPY` protocol. Best for maximum throughput bulk loading of very large datasets. |
+
+### OnConflictAction
+
+Enum defining actions to take when an INSERT encounters a conflict.
+
+| Value | Description |
+| --- | --- |
+| `Update` | Updates non-conflict columns using values from `EXCLUDED`. Generates `ON CONFLICT DO UPDATE`. |
+| `Ignore` | Silently skips the conflicting row. Generates `ON CONFLICT DO NOTHING`. |
+
+### DeliverySemantic
+
+Enum defining delivery guarantees for database operations.
+
+| Value | Description |
+| --- | --- |
+| `AtLeastOnce` | Items may be delivered multiple times but never lost. Best for idempotent operations. |
+| `AtMostOnce` | Items may be lost but never delivered multiple times. Best for telemetry and metrics. |
+| `ExactlyOnce` | Items are delivered exactly once. Requires checkpointing. Best for financial transactions. |
 
 ### CheckpointStrategy
 
-Enum defining checkpointing strategies for transient recovery.
+Enum defining checkpointing strategies for recovery.
 
 | Value | Description |
 | --- | --- |
 | `None` | No checkpointing. Failures require restarting from the beginning. |
 | `InMemory` | Stores checkpoint state in memory. Enables recovery from transient failures during a single process execution. |
+| `Offset` | Persists numeric offset checkpoints. Tracks position using a monotonically increasing column. |
+| `KeyBased` | Tracks processed items using composite keys. Useful for tables without a single monotonic column. |
+| `Cursor` | Tracks cursor position for cursor-based iteration. |
+| `CDC` | Tracks WAL position for PostgreSQL logical replication. Enables capturing changes from the write-ahead log. |
+
+## Upsert Operations
+
+The connector supports PostgreSQL's `ON CONFLICT` clause for upsert operations, allowing you to insert rows or update them if they already exist.
+
+### Basic Upsert Configuration
+
+Enable upsert by setting `UseUpsert = true` and specifying the conflict columns:
+
+```csharp
+var configuration = new PostgresConfiguration
+{
+    UseUpsert = true,
+    UpsertConflictColumns = new[] { "id" },  // Primary key or unique constraint columns
+    OnConflictAction = OnConflictAction.Update  // Update on conflict
+};
+
+var sink = new PostgresSinkNode<Customer>(
+    connectionString,
+    "customers",
+    writeStrategy: PostgresWriteStrategy.Batch,
+    configuration: configuration
+);
+```
+
+### Conflict Actions
+
+#### OnConflictAction.Update
+
+Updates non-conflict columns with values from the inserted row:
+
+```sql
+INSERT INTO customers (id, name, email) 
+VALUES (1, 'John Doe', 'john@example.com')
+ON CONFLICT (id) DO UPDATE SET 
+    name = EXCLUDED.name, 
+    email = EXCLUDED.email
+```
+
+```csharp
+var configuration = new PostgresConfiguration
+{
+    UseUpsert = true,
+    UpsertConflictColumns = new[] { "id" },
+    OnConflictAction = OnConflictAction.Update
+};
+```
+
+#### OnConflictAction.Ignore
+
+Silently skips conflicting rows without raising an error:
+
+```sql
+INSERT INTO customers (id, name, email) 
+VALUES (1, 'John Doe', 'john@example.com')
+ON CONFLICT (id) DO NOTHING
+```
+
+```csharp
+var configuration = new PostgresConfiguration
+{
+    UseUpsert = true,
+    UpsertConflictColumns = new[] { "id" },
+    OnConflictAction = OnConflictAction.Ignore
+};
+```
+
+### Composite Conflict Targets
+
+For tables with composite unique constraints:
+
+```csharp
+public record OrderItem(int OrderId, int ProductId, int Quantity, decimal UnitPrice);
+
+var configuration = new PostgresConfiguration
+{
+    UseUpsert = true,
+    UpsertConflictColumns = new[] { "order_id", "product_id" },  // Composite key
+    OnConflictAction = OnConflictAction.Update
+};
+
+var sink = new PostgresSinkNode<OrderItem>(
+    connectionString,
+    "order_items",
+    writeStrategy: PostgresWriteStrategy.Batch,
+    configuration: configuration
+);
+```
+
+### Upsert with Write Strategies
+
+Upsert works with all write strategies:
+
+- **PerRow**: Each row is processed individually with upsert semantics
+- **Batch**: Multi-value INSERT with ON CONFLICT clause
+- **Copy**: Not supported for upsert operations (falls back to Batch)
+
+**Why use upsert:** Upsert eliminates the need for separate insert/update logic and handles race conditions where a row might be inserted between your check and insert operations.
+
+## Delivery Semantics
+
+The connector supports three delivery semantics to control data consistency guarantees during failures.
+
+### AtLeastOnce (Default)
+
+Guarantees that every item is delivered at least once. Items may be duplicated on retry after a failure.
+
+```csharp
+var configuration = new PostgresConfiguration
+{
+    DeliverySemantic = DeliverySemantic.AtLeastOnce,
+    UseTransaction = true
+};
+```
+
+**Characteristics:**
+
+- No data loss
+- Possible duplicates on retry
+- Best for idempotent operations or when duplicates can be tolerated
+
+**Use when:**
+
+- Processing idempotent operations
+- Duplicates can be filtered downstream
+- Data loss is unacceptable
+
+### AtMostOnce
+
+Guarantees that every item is delivered at most once. Items may be lost on failure, but never duplicated.
+
+```csharp
+var configuration = new PostgresConfiguration
+{
+    DeliverySemantic = DeliverySemantic.AtMostOnce
+};
+```
+
+**Characteristics:**
+
+- No duplicates
+- Possible data loss on failure
+- Best for high-throughput scenarios where occasional data loss is acceptable
+
+**Use when:**
+
+- Processing telemetry or metrics data
+- High throughput is critical
+- Occasional data loss is acceptable
+
+### ExactlyOnce
+
+Guarantees that every item is delivered exactly once. Uses transactional semantics to prevent both data loss and duplication.
+
+```csharp
+var configuration = new PostgresConfiguration
+{
+    DeliverySemantic = DeliverySemantic.ExactlyOnce,
+    UseTransaction = true,
+    CheckpointStrategy = CheckpointStrategy.Offset,
+    CheckpointStorage = new FileCheckpointStorage("checkpoints.json")
+};
+```
+
+**Characteristics:**
+
+- No data loss
+- No duplicates
+- Higher overhead due to transaction coordination
+- Requires checkpoint storage
+
+**Use when:**
+
+- Financial transactions
+- Audit logging
+- Any scenario requiring strict exactly-once guarantees
+
+### Delivery Semantic Comparison
+
+| Semantic | Data Loss | Duplicates | Overhead | Use Case |
+|----------|-----------|------------|----------|----------|
+| AtLeastOnce | No | Possible | Low | General purpose, idempotent ops |
+| AtMostOnce | Possible | No | Low | Telemetry, metrics |
+| ExactlyOnce | No | No | High | Financial, audit |
+
+## Checkpointing Strategies
+
+Checkpointing enables pipelines to resume from where they left off after a failure, rather than restarting from the beginning.
+
+### None (Default)
+
+No checkpointing is performed. Failures require restarting from the beginning.
+
+```csharp
+var configuration = new PostgresConfiguration
+{
+    CheckpointStrategy = CheckpointStrategy.None
+};
+```
+
+### InMemory
+
+Stores checkpoint state in memory. Enables recovery from transient failures during a single process execution.
+
+```csharp
+var configuration = new PostgresConfiguration
+{
+    CheckpointStrategy = CheckpointStrategy.InMemory,
+    StreamResults = true
+};
+
+var source = new PostgresSourceNode<Order>(
+    connectionString,
+    "SELECT * FROM orders ORDER BY id",  // ORDER BY is required for checkpointing
+    configuration: configuration
+);
+```
+
+**Limitations:** Checkpoint state is lost when the process terminates.
+
+### Offset
+
+Persists numeric offset checkpoints to external storage. Tracks position using a monotonically increasing column (e.g., auto-increment ID).
+
+```csharp
+var configuration = new PostgresConfiguration
+{
+    CheckpointStrategy = CheckpointStrategy.Offset,
+    CheckpointOffsetColumn = "id",
+    CheckpointStorage = new FileCheckpointStorage("checkpoints/order_offset.json")
+};
+
+var source = new PostgresSourceNode<Order>(
+    connectionString,
+    "SELECT * FROM orders WHERE id > @lastCheckpoint ORDER BY id",
+    configuration: configuration
+);
+```
+
+**Requirements:**
+
+- Requires `CheckpointOffsetColumn` to be specified
+- Requires `CheckpointStorage` to persist checkpoints
+- Query must include `ORDER BY` on the offset column
+
+### KeyBased
+
+Tracks processed items using composite keys. Useful for tables without a single monotonic column.
+
+```csharp
+var configuration = new PostgresConfiguration
+{
+    CheckpointStrategy = CheckpointStrategy.KeyBased,
+    CheckpointKeyColumns = new[] { "customer_id", "order_date" },
+    CheckpointStorage = new FileCheckpointStorage("checkpoints/order_keys.json")
+};
+```
+
+**Requirements:**
+
+- Requires `CheckpointKeyColumns` to be specified
+- Requires `CheckpointStorage` to persist checkpoints
+
+### Cursor
+
+Tracks cursor position for cursor-based iteration.
+
+```csharp
+var configuration = new PostgresConfiguration
+{
+    CheckpointStrategy = CheckpointStrategy.Cursor,
+    CheckpointStorage = new FileCheckpointStorage("checkpoints/cursor.json")
+};
+```
+
+### CDC (Change Data Capture)
+
+Tracks WAL position for PostgreSQL logical replication. Enables capturing changes from the PostgreSQL write-ahead log.
+
+```csharp
+var configuration = new PostgresConfiguration
+{
+    CheckpointStrategy = CheckpointStrategy.CDC,
+    CdcSlotName = "my_pipeline_slot",
+    CdcPublicationName = "my_publication",
+    CheckpointStorage = new FileCheckpointStorage("checkpoints/cdc.json")
+};
+```
+
+**Requirements:**
+
+- Requires `CdcSlotName` to be specified
+- Requires PostgreSQL logical replication to be configured
+- Requires appropriate PostgreSQL permissions
+
+### Checkpoint Storage
+
+Implement `ICheckpointStorage` to persist checkpoints to your preferred backend:
+
+```csharp
+public interface ICheckpointStorage
+{
+    Task<Checkpoint?> LoadAsync(string pipelineId, CancellationToken cancellationToken = default);
+    Task SaveAsync(string pipelineId, Checkpoint checkpoint, CancellationToken cancellationToken = default);
+}
+```
+
+**Built-in implementations:**
+
+- `FileCheckpointStorage` - Stores checkpoints in a JSON file
+- `InMemoryCheckpointStorage` - Stores checkpoints in memory (for testing)
+
+### Checkpoint Intervals
+
+Configure how frequently checkpoints are saved:
+
+```csharp
+var configuration = new PostgresConfiguration
+{
+    CheckpointStrategy = CheckpointStrategy.Offset,
+    CheckpointInterval = new CheckpointIntervalConfiguration
+    {
+        RowCount = 10_000,  // Save every 10,000 rows
+        TimeInterval = TimeSpan.FromMinutes(5)  // Or every 5 minutes, whichever comes first
+    }
+};
+```
 
 ## Advanced Configuration
 
@@ -902,24 +1304,36 @@ var config = new PostgresConfiguration
 
 ### Writing Performance
 
-#### Batch vs. Per-Row Writes
+#### Write Strategy Selection
 
-- **Batch strategy**: 10-100x faster than per-row for bulk operations
-- **Per-row strategy**: Better for low-latency, real-time scenarios
+Choose the appropriate write strategy based on your requirements:
+
+| Strategy | Throughput | Latency | Best For |
+|----------|------------|---------|----------|
+| PerRow | Low | Low | Real-time processing, per-row error handling |
+| Batch | High | Medium | Bulk operations, ETL workloads |
+| Copy | Very High | High | Large bulk loads, data warehouse ingestion |
 
 ```csharp
-// Batch: Maximum throughput
+// PerRow: Low latency, individual error handling
+var perRowSink = new PostgresSinkNode<Order>(
+    pool,
+    "orders",
+    PostgresWriteStrategy.PerRow);
+
+// Batch: Balanced throughput and reliability
 var batchSink = new PostgresSinkNode<Order>(
     pool,
     "orders",
     PostgresWriteStrategy.Batch,
     configuration: new PostgresConfiguration { BatchSize = 1_000, UseTransaction = true });
 
-// Per-row: Low latency
-var perRowSink = new PostgresSinkNode<Order>(
+// Copy: Maximum throughput for large datasets
+var copySink = new PostgresSinkNode<Order>(
     pool,
     "orders",
-    PostgresWriteStrategy.PerRow);
+    PostgresWriteStrategy.Copy,
+    configuration: new PostgresConfiguration { UseBinaryCopy = true, CopyTimeout = 600 });
 ```
 
 #### Batch Size Tuning
@@ -947,6 +1361,18 @@ var largeBatchConfig = new PostgresConfiguration
 - **100-500**: Near real-time processing
 - **500-1,000**: Balanced throughput and latency
 - **1,000-5,000**: Bulk loading scenarios
+
+#### Binary COPY Performance
+
+For maximum throughput with the Copy strategy, enable binary format:
+
+```csharp
+var config = new PostgresConfiguration
+{
+    UseBinaryCopy = true,  // 20-30% faster than text format
+    CopyTimeout = 600      // Allow sufficient time for large loads
+};
+```
 
 #### Transaction Management
 
@@ -983,17 +1409,16 @@ services.AddPostgresConnector(options =>
 
 ### Checkpointing Limitations
 
-- **In-memory only**: Checkpoint state is lost if the process terminates
-- **Single process**: Cannot recover across process restarts
-- **Ordered queries required**: Requires queries with an ordering column (typically an ID)
-- **No distributed recovery**: Cannot coordinate checkpoints across multiple processes
+- **InMemory**: Checkpoint state is lost if the process terminates
+- **Offset**: Requires a monotonically increasing column and ORDER BY clause
+- **KeyBased**: Memory usage grows with the number of unique keys processed
+- **CDC**: Requires PostgreSQL logical replication to be configured
 
 ### Write Strategy Limitations
 
 - **Batch strategy**: All rows in a batch succeed or fail together
 - **Per-row strategy**: Higher overhead for large datasets
-- **No upsert support**: Only supports `INSERT` operations (no `UPDATE` or `UPSERT`)
-- **No bulk copy**: Does not use PostgreSQL's `COPY` command
+- **Copy strategy**: Limited error granularity; not compatible with upsert
 
 ### Mapping Limitations
 
@@ -1048,17 +1473,21 @@ var config = new PostgresConfiguration
 1. **Use dependency injection**: Leverage `AddPostgresConnector` for production applications
 2. **Enable streaming for large datasets**: Set `StreamResults = true` to avoid memory issues
 3. **Tune fetch size**: Adjust `FetchSize` based on your data size and memory constraints
-4. **Use batch writes for bulk operations**: `PostgresWriteStrategy.Batch` provides much better throughput
-5. **Validate identifiers**: Keep `ValidateIdentifiers = true` to prevent SQL injection
-6. **Cache mapping metadata**: Enable `CacheMappingMetadata` for better performance
-7. **Use prepared statements**: Keep `UsePreparedStatements = true` for repeated query patterns
+4. **Choose the right write strategy**: Use Copy for bulk loading, Batch for balanced workloads, PerRow for real-time
+5. **Use upsert for idempotent writes**: Enable `UseUpsert` when loading data that may already exist
+6. **Select appropriate delivery semantics**: Use ExactlyOnce for critical data, AtLeastOnce for general workloads
+7. **Configure checkpointing for long-running pipelines**: Use Offset or KeyBased checkpointing for recovery
+8. **Validate identifiers**: Keep `ValidateIdentifiers = true` to prevent SQL injection
+9. **Cache mapping metadata**: Enable `CacheMappingMetadata` for better performance
+10. **Use prepared statements**: Keep `UsePreparedStatements = true` for repeated query patterns
 
 ### Data Modeling
 
 1. **Use convention-based mapping**: Leverage `PascalCase` to `snake_case` conversion
 2. **Override with attributes**: Use `[PostgresColumn]` for non-standard column names
 3. **Skip internal properties**: Use `[PostgresIgnore]` for properties that shouldn't be persisted
-4. **Design for streaming**: Order queries by an ID column to enable checkpointing
+4. **Design for checkpointing**: Order queries by an ID column to enable checkpointing
+5. **Mark primary keys**: Use `PrimaryKey = true` in `[PostgresColumn]` for checkpoint columns
 
 ### Error Handling
 
@@ -1066,6 +1495,7 @@ var config = new PostgresConfiguration
 2. **Use transactions**: Enable `UseTransaction = true` for atomic writes
 3. **Handle mapping errors**: Consider `ContinueOnError = true` for partial results
 4. **Log failures**: Implement logging to track connection and query failures
+5. **Choose delivery semantics wisely**: AtLeastOnce for idempotent operations, ExactlyOnce for critical data
 
 ### Performance
 
@@ -1074,6 +1504,8 @@ var config = new PostgresConfiguration
 3. **Optimize batch size**: Tune `BatchSize` based on your latency and throughput requirements
 4. **Use connection pooling**: Leverage the shared connection pool for multiple operations
 5. **Index appropriately**: Ensure database indexes support your queries
+6. **Use COPY for bulk loading**: Enable `PostgresWriteStrategy.Copy` for maximum throughput
+7. **Enable binary COPY**: Set `UseBinaryCopy = true` for 20-30% better performance
 
 ### Security
 

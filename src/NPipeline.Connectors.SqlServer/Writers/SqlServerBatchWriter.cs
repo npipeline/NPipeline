@@ -1,6 +1,7 @@
 using System.Data;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text;
 using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.SqlServer.Configuration;
 using NPipeline.Connectors.SqlServer.Exceptions;
@@ -12,7 +13,7 @@ namespace NPipeline.Connectors.SqlServer.Writers;
 
 /// <summary>
 ///     Batch write strategy for SQL Server.
-///     Buffers rows and writes them in batches using multi-row INSERT statements.
+///     Buffers rows and writes them in batches using multi-row INSERT statements or MERGE statements for upsert.
 /// </summary>
 /// <typeparam name="T">The type of objects to write.</typeparam>
 internal sealed class SqlServerBatchWriter<T> : IDatabaseWriter<T>
@@ -23,6 +24,7 @@ internal sealed class SqlServerBatchWriter<T> : IDatabaseWriter<T>
     private readonly int _flushThreshold;
     private readonly string _insertSql;
     private readonly PropertyMapping[] _mappings;
+    private readonly string _mergeSqlTemplate;
     private readonly int _parameterCount;
     private readonly Func<T, IEnumerable<DatabaseParameter>>? _parameterMapper;
     private readonly List<object?[]> _pendingRows;
@@ -63,6 +65,7 @@ internal sealed class SqlServerBatchWriter<T> : IDatabaseWriter<T>
         _flushThreshold = Math.Clamp(_configuration.BatchSize, 1, maxBatchSize);
         _pendingRows = new List<object?[]>(_flushThreshold);
         _insertSql = BuildInsertSql();
+        _mergeSqlTemplate = BuildMergeSqlTemplate();
     }
 
     /// <summary>
@@ -170,10 +173,24 @@ internal sealed class SqlServerBatchWriter<T> : IDatabaseWriter<T>
             valueClauses.Add($"({string.Join(", ", parameterNames)})");
         }
 
-        command.CommandText = _insertSql + string.Join(", ", valueClauses);
+        // Use MERGE for upsert, otherwise use INSERT
+        command.CommandText = ShouldUseMerge()
+            ? BuildMergeSql(valueClauses)
+            : _insertSql + string.Join(", ", valueClauses);
 
         _ = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         _pendingRows.Clear();
+    }
+
+    /// <summary>
+    ///     Determines whether to use MERGE statement based on configuration.
+    /// </summary>
+    /// <returns>True if MERGE should be used; otherwise, false.</returns>
+    private bool ShouldUseMerge()
+    {
+        return _configuration.UseUpsert
+               && _configuration.UpsertKeyColumns != null
+               && _configuration.UpsertKeyColumns.Length > 0;
     }
 
     /// <summary>
@@ -192,6 +209,87 @@ internal sealed class SqlServerBatchWriter<T> : IDatabaseWriter<T>
             .ToArray();
 
         return $"INSERT INTO {quotedTableName} ({string.Join(", ", quotedColumns)}) VALUES ";
+    }
+
+    /// <summary>
+    ///     Builds the MERGE SQL template for upsert operations.
+    /// </summary>
+    /// <returns>The MERGE SQL template with placeholder for VALUES clause.</returns>
+    private string BuildMergeSqlTemplate()
+    {
+        if (!ShouldUseMerge())
+            return string.Empty;
+
+        if (_parameterCount == 0)
+            throw new InvalidOperationException($"Type '{typeof(T).Name}' does not expose any writable properties to persist.");
+
+        var quotedTableName = QuoteIdentifier($"{_schema}.{_tableName}");
+
+        var quotedColumns = _mappings
+            .Select(m => QuoteIdentifier(m.ColumnName))
+            .ToArray();
+
+        // Quote the key columns for matching
+        var keyColumns = _configuration.UpsertKeyColumns!
+            .Select(QuoteIdentifier)
+            .ToArray();
+
+        // Build the ON clause for matching
+        var onClauses = keyColumns.Select(col => $"target.{col} = source.{col}");
+        var onClause = string.Join(" AND ", onClauses);
+
+        // Build column list for source derived table
+        var sourceColumns = string.Join(", ", quotedColumns);
+
+        var sb = new StringBuilder();
+        sb.Append($"MERGE INTO {quotedTableName} AS target");
+        sb.Append($" USING ({{0}}) AS source ({sourceColumns})");
+        sb.Append($" ON {onClause}");
+
+        // Add WHEN MATCHED clause based on OnMergeAction
+        switch (_configuration.OnMergeAction)
+        {
+            case OnMergeAction.Update:
+                // Build UPDATE SET clause, excluding key columns
+                var updateColumns = quotedColumns
+                    .Where(col => !keyColumns.Contains(col, StringComparer.OrdinalIgnoreCase))
+                    .Select(col => $"{col} = source.{col}")
+                    .ToArray();
+
+                if (updateColumns.Length > 0)
+                {
+                    sb.Append(" WHEN MATCHED THEN UPDATE SET ");
+                    sb.Append(string.Join(", ", updateColumns));
+                }
+
+                break;
+            case OnMergeAction.Delete:
+                sb.Append(" WHEN MATCHED THEN DELETE");
+                break;
+            case OnMergeAction.Ignore:
+            default:
+                // Do nothing on match — no WHEN MATCHED clause added
+                break;
+        }
+
+        // Always insert when not matched
+        var insertColumns = string.Join(", ", quotedColumns);
+        var insertValues = quotedColumns.Select(col => $"source.{col}");
+        sb.Append($" WHEN NOT MATCHED THEN INSERT ({insertColumns}) VALUES ({string.Join(", ", insertValues)})");
+        sb.Append(';');
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    ///     Builds the complete MERGE SQL statement from the template and value clauses.
+    /// </summary>
+    /// <param name="valueClauses">The value clauses for the VALUES section.</param>
+    /// <returns>The complete MERGE SQL statement.</returns>
+    private string BuildMergeSql(List<string> valueClauses)
+    {
+        var valuesSection = $"VALUES {string.Join(", ", valueClauses)}";
+        return string.Format(_mergeSqlTemplate, valuesSection);
     }
 
     /// <summary>

@@ -275,7 +275,7 @@ public enum DeliverySemantic
 {
     AtLeastOnce,  // Items may be delivered multiple times but never lost
     AtMostOnce,   // Items may be lost but never delivered multiple times
-    ExactlyOnce     // Items are delivered exactly once (commercial feature)
+    ExactlyOnce   // Items are delivered exactly once using transactional semantics
 }
 ```
 
@@ -284,11 +284,12 @@ public enum DeliverySemantic
 ```csharp
 public enum CheckpointStrategy
 {
-    None,      // No checkpointing (free version)
-    Offset,     // Offset-based checkpointing (commercial feature)
-    KeyBased,   // Key-based checkpointing (commercial feature)
-    Cursor,     // Cursor-based checkpointing (commercial feature)
-    CDC          // Change Data Capture checkpointing (commercial feature)
+    None,      // No checkpointing
+    InMemory,  // In-process checkpoint state (lost on restart)
+    Offset,    // Offset-based checkpointing using a monotonic column
+    KeyBased,  // Key-based checkpointing using composite keys
+    Cursor,    // Cursor-based checkpointing
+    CDC        // Change Data Capture checkpointing (WAL/LSN position)
 }
 ```
 

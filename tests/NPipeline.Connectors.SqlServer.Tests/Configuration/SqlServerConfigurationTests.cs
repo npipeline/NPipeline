@@ -304,7 +304,7 @@ public sealed class SqlServerConfigurationTests
     }
 
     [Fact]
-    public void Validate_WithUseUpsertEnabled_ShouldThrowNotSupportedException()
+    public void Validate_WithUseUpsertEnabled_ShouldNotThrow()
     {
         // Arrange
         var config = new SqlServerConfiguration
@@ -314,11 +314,12 @@ public sealed class SqlServerConfigurationTests
         };
 
         // Act & Assert
-        Assert.Throws<NotSupportedException>(() => config.Validate());
+        var exception = Record.Exception(() => config.Validate());
+        exception.Should().BeNull();
     }
 
     [Fact]
-    public void Validate_WithBulkCopyWriteStrategy_ShouldThrowNotSupportedException()
+    public void Validate_WithBulkCopyWriteStrategy_ShouldNotThrow()
     {
         // Arrange
         var config = new SqlServerConfiguration
@@ -327,11 +328,12 @@ public sealed class SqlServerConfigurationTests
         };
 
         // Act & Assert
-        Assert.Throws<NotSupportedException>(() => config.Validate());
+        var exception = Record.Exception(() => config.Validate());
+        exception.Should().BeNull();
     }
 
     [Fact]
-    public void Validate_WithExactlyOnceDeliverySemantic_ShouldThrowNotSupportedException()
+    public void Validate_WithExactlyOnceDeliverySemantic_ShouldNotThrow()
     {
         // Arrange
         var config = new SqlServerConfiguration
@@ -340,20 +342,24 @@ public sealed class SqlServerConfigurationTests
         };
 
         // Act & Assert
-        Assert.Throws<NotSupportedException>(() => config.Validate());
+        var exception = Record.Exception(() => config.Validate());
+        exception.Should().BeNull();
     }
 
     [Fact]
-    public void Validate_WithOffsetCheckpointStrategy_ShouldThrowNotSupportedException()
+    public void Validate_WithOffsetCheckpointStrategy_ShouldNotThrow()
     {
         // Arrange
         var config = new SqlServerConfiguration
         {
             CheckpointStrategy = CheckpointStrategy.Offset,
+            CheckpointFilePath = "/tmp/checkpoints.json",
+            CheckpointOffsetColumn = "offset",
         };
 
         // Act & Assert
-        Assert.Throws<NotSupportedException>(() => config.Validate());
+        var exception = Record.Exception(() => config.Validate());
+        exception.Should().BeNull();
     }
 
     [Fact]
@@ -382,7 +388,7 @@ public sealed class SqlServerConfigurationTests
         };
 
         // Act & Assert
-        _ = Assert.Throws<NotSupportedException>(() => config.Validate());
+        _ = Assert.Throws<ArgumentException>(() => config.Validate());
     }
 
     [Fact]
@@ -396,7 +402,7 @@ public sealed class SqlServerConfigurationTests
         };
 
         // Act & Assert
-        _ = Assert.Throws<NotSupportedException>(() => config.Validate());
+        _ = Assert.Throws<ArgumentException>(() => config.Validate());
     }
 
     [Fact]

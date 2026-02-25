@@ -1,28 +1,23 @@
 namespace NPipeline.Connectors.SqlServer.Configuration;
 
 /// <summary>
-///     Actions to take when a MERGE statement encounters a match.
-///     This feature is available in the commercial SQL Server connector.
+///     Specifies the action to take when a MERGE statement finds a matching row in the target table.
 /// </summary>
 public enum OnMergeAction
 {
     /// <summary>
-    ///     Insert when no match is found.
+    ///     Do not modify the existing row when a match is found. Only new rows will be inserted.
     /// </summary>
-    Insert,
+    Ignore,
 
     /// <summary>
-    ///     Update when a match is found.
+    ///     Update the existing row with values from the source when a match is found.
+    ///     This is the standard "upsert" behavior - insert if not exists, update if exists.
     /// </summary>
     Update,
 
     /// <summary>
-    ///     Perform both insert (when no match) and update (when match) operations.
-    /// </summary>
-    InsertOrUpdate,
-
-    /// <summary>
-    ///     Delete when a match is found.
+    ///     Delete the existing row when a match is found.
     /// </summary>
     Delete,
 }
