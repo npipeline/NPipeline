@@ -2173,20 +2173,3 @@ var config = new SqlServerConfiguration
 3. **Check Connection String**: Verify all parameters are correct
 4. **Monitor SQL Server**: Use SQL Server Profiler or Extended Events to trace queries
 5. **Validate Schema**: Ensure table and column names exist in the database
-
-### Getting Help
-
-If you encounter issues not covered here:
-
-1. Check the [NPipeline GitHub Issues](https://github.com/your-repo/NPipeline/issues)
-2. Review the [SQL Server Documentation](https://learn.microsoft.com/en-us/sql/)
-3. Consult the [Microsoft.Data.SqlClient Documentation](https://learn.microsoft.com/en-us/dotnet/api/microsoft.data.sqlclient)
-
-## Related Topics
-
-- **[NPipeline Extensions Index](../.)**: Return to the extensions overview.
-- **[CSV Connector](./csv.md)**: Learn about working with CSV files.
-- **[Excel Connector](./excel.md)**: Learn about working with Excel files.
-- **[PostgreSQL Connector](./postgresql.md)**: Learn about PostgreSQL connector for comparison.
-- **[Storage Provider Interface](../storage-providers/storage-provider.md)**: Understand the storage layer architecture.
-- **[Microsoft.Data.SqlClient Documentation](https://learn.microsoft.com/en-us/dotnet/api/microsoft.data.sqlclient)**: Detailed documentation for the underlying SQL Server driver.
