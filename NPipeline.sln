@@ -143,15 +143,15 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.Csv.Te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.Excel.Tests", "tests\NPipeline.Connectors.Excel.Tests\NPipeline.Connectors.Excel.Tests.csproj", "{51D3BFE4-475C-4614-804F-1359D3574FFC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.PostgreSQL.Tests", "tests\NPipeline.Connectors.PostgreSQL.Tests\NPipeline.Connectors.PostgreSQL.Tests.csproj", "{7CB48E4C-D178-4319-866E-9AD1B7A99AC9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.Postgres.Tests", "tests\NPipeline.Connectors.Postgres.Tests\NPipeline.Connectors.Postgres.Tests.csproj", "{7CB48E4C-D178-4319-866E-9AD1B7A99AC9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.PostgreSQL", "src\NPipeline.Connectors.PostgreSQL\NPipeline.Connectors.PostgreSQL.csproj", "{09D52FE4-9FCD-4B12-A1A5-D7C546953752}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.Postgres", "src\NPipeline.Connectors.Postgres\NPipeline.Connectors.Postgres.csproj", "{09D52FE4-9FCD-4B12-A1A5-D7C546953752}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample_PostgreSQLConnector", "samples\Sample_PostgreSQLConnector\Sample_PostgreSQLConnector.csproj", "{FDBBC760-3317-4484-94FD-33DEB1C59FF8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample_PostgresConnector", "samples\Sample_PostgresConnector\Sample_PostgresConnector.csproj", "{FDBBC760-3317-4484-94FD-33DEB1C59FF8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.PostgreSQL.Analyzers", "src\NPipeline.Connectors.PostgreSQL.Analyzers\NPipeline.Connectors.PostgreSQL.Analyzers.csproj", "{3C91199F-86CD-464C-9995-F079CC5140BF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.Postgres.Analyzers", "src\NPipeline.Connectors.Postgres.Analyzers\NPipeline.Connectors.Postgres.Analyzers.csproj", "{3C91199F-86CD-464C-9995-F079CC5140BF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.PostgreSQL.Analyzers.Tests", "tests\NPipeline.Connectors.PostgreSQL.Analyzers.Tests\NPipeline.Connectors.PostgreSQL.Analyzers.Tests.csproj", "{A327910F-C2AD-48B1-B6D6-0A89B04EE39D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.Postgres.Analyzers.Tests", "tests\NPipeline.Connectors.Postgres.Analyzers.Tests\NPipeline.Connectors.Postgres.Analyzers.Tests.csproj", "{A327910F-C2AD-48B1-B6D6-0A89B04EE39D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NPipeline.Connectors.SqlServer", "src\NPipeline.Connectors.SqlServer\NPipeline.Connectors.SqlServer.csproj", "{B167552B-A80C-4339-A258-24B893AA2043}"
 EndProject

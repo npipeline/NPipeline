@@ -316,7 +316,7 @@ public class Customer
 **Example: Using Connector-Specific Attributes (PostgreSQL)**
 
 ```csharp
-using NPipeline.Connectors.PostgreSQL.Mapping;
+using NPipeline.Connectors.Postgres.Mapping;
 
 public class Customer
 {

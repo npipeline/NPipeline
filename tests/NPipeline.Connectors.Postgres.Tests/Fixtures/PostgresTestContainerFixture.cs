@@ -1,0 +1,31 @@
+using Testcontainers.PostgreSql;
+
+namespace NPipeline.Connectors.Postgres.Tests.Fixtures;
+
+public class PostgresTestContainerFixture : IAsyncLifetime
+{
+    private readonly PostgreSqlContainer _container;
+
+    public PostgresTestContainerFixture()
+    {
+        _container = new PostgreSqlBuilder("postgres:16-alpine")
+            .WithDatabase("testdb")
+            .WithUsername("testuser")
+            .WithPassword("testpass")
+            .WithReuse(true)
+            .WithLabel("npipeline-test", "postgres-integration")
+            .Build();
+    }
+
+    public string ConnectionString => _container.GetConnectionString();
+
+    public async Task InitializeAsync()
+    {
+        await _container.StartAsync();
+    }
+
+    public async Task DisposeAsync()
+    {
+        await _container.DisposeAsync();
+    }
+}

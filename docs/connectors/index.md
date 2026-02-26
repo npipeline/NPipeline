@@ -48,7 +48,7 @@ The following connectors are available:
   - Configurable property naming policies, indentation, and error handling
   - Uses System.Text.Json for efficient streaming with minimal dependencies
   - Works with any storage backend via the `IStorageProvider` abstraction from `NPipeline.StorageProviders`
-- **[PostgreSQL](./postgresql.md)**: Read from and write to PostgreSQL databases.
+- **[PostgreSQL](./postgres.md)**: Read from and write to PostgreSQL databases.
   - Supports streaming reads, per-row and batched writes, and in-memory checkpointing
   - Uses Npgsql library for reliable database operations
 - **[SQL Server](./sqlserver.md)**: Read from and write to Microsoft SQL Server databases.
@@ -105,7 +105,7 @@ Explore the documentation for each specific connector to learn about its install
 - **[CSV Connector](csv.md)**: Learn how to read from and write to CSV files
 - **[Excel Connector](excel.md)**: Learn how to read from and write to Excel files (XLS and XLSX)
 - **[JSON Connector](json.md)**: Learn how to read from and write to JSON files (Array and NDJSON)
-- **[PostgreSQL Connector](postgresql.md)**: Learn how to read from and write to PostgreSQL databases
+- **[PostgreSQL Connector](postgres.md)**: Learn how to read from and write to PostgreSQL databases
 - **[SQL Server Connector](sqlserver.md)**: Learn how to read from and write to Microsoft SQL Server databases
 - **[Azure Cosmos DB Connector](cosmos.md)**: Learn how to read from and write to Azure Cosmos DB
 - **[AWS SQS Connector](aws-sqs.md)**: Learn how to read from and write to Amazon SQS queues

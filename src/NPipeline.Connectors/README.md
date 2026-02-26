@@ -434,7 +434,7 @@ var prodSource = new PostgresSourceNode<Customer>(uri: prodUri, query: "SELECT *
 
 For detailed URI parameters and usage examples specific to each database connector, see:
 
-- [PostgreSQL Connector README](../NPipeline.Connectors.PostgreSQL/README.md)
+- [PostgreSQL Connector README](../NPipeline.Connectors.Postgres/README.md)
 - [SQL Server Connector README](../NPipeline.Connectors.SqlServer/README.md)
 
 ## Supported Storage Schemes

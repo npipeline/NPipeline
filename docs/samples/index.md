@@ -46,7 +46,7 @@ Sample applications demonstrate NPipeline concepts through practical, runnable c
 | [Sample_JsonConnector](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_JsonConnector) | JsonSourceNode/JsonSinkNode; JSON array and NDJSON formats |
 | [Sample_ExcelConnector](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_ExcelConnector) | Excel source/sink nodes; Excel-specific configuration |
 | [Sample_KafkaConnector](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_KafkaConnector) | Kafka integration; consumer/producer configuration |
-| [Sample_PostgreSQLConnector](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_PostgreSQLConnector) | PostgreSQL source/sink; database operations |
+| [Sample_PostgresConnector](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_PostgresConnector) | PostgreSQL source/sink; database operations |
 | [Sample_CosmosDbConnector](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_CosmosDbConnector) | Cosmos DB integration; NoSQL operations |
 | [Sample_SqsConnector](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_SqsConnector) | AWS SQS integration; message queue processing |
 | [Sample_SqlServerConnector](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_SqlServerConnector) | SQL Server integration; database connectivity |

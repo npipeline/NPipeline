@@ -1887,9 +1887,9 @@ Migrating from the PostgreSQL connector to the SQL Server connector is straightf
 
 ```csharp
 // PostgreSQL
-using NPipeline.Connectors.PostgreSQL;
-using NPipeline.Connectors.PostgreSQL.Configuration;
-using NPipeline.Connectors.PostgreSQL.Mapping;
+using NPipeline.Connectors.Postgres;
+using NPipeline.Connectors.Postgres.Configuration;
+using NPipeline.Connectors.Postgres.Mapping;
 using NPipeline.Connectors.Attributes;  // Common attributes
 
 // SQL Server
@@ -2009,8 +2009,8 @@ var sqlServerConnectionString = "Server=localhost;Database=npipeline;User Id=sa;
 **Before (PostgreSQL):**
 
 ```csharp
-using NPipeline.Connectors.PostgreSQL;
-using NPipeline.Connectors.PostgreSQL.Mapping;
+using NPipeline.Connectors.Postgres;
+using NPipeline.Connectors.Postgres.Mapping;
 
 [PostgresTable("customers")]
 public class Customer
