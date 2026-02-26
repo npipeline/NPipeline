@@ -530,6 +530,96 @@ public class S3WriteStreamTests
     }
 
     [Fact]
+    public async Task DisposeAsync_WithThresholdReached_UsesMultipartUpload()
+    {
+        // Arrange
+        A.CallTo(() => _fakeS3Client.InitiateMultipartUploadAsync(A<InitiateMultipartUploadRequest>._, A<CancellationToken>._))
+            .Returns(Task.FromResult(new InitiateMultipartUploadResponse
+            {
+                UploadId = "upload-1",
+            }));
+
+        A.CallTo(() => _fakeS3Client.UploadPartAsync(A<UploadPartRequest>._, A<CancellationToken>._))
+            .Returns(Task.FromResult(new UploadPartResponse
+            {
+                ETag = "etag-1",
+            }));
+
+        A.CallTo(() => _fakeS3Client.CompleteMultipartUploadAsync(A<CompleteMultipartUploadRequest>._, A<CancellationToken>._))
+            .Returns(Task.FromResult(new CompleteMultipartUploadResponse()));
+
+        var stream = new S3WriteStream(
+            _fakeS3Client,
+            TestBucket,
+            TestKey,
+            "application/octet-stream",
+            multipartUploadThreshold: 1,
+            partSize: 5 * 1024 * 1024);
+
+        var data = new byte[] { 1, 2, 3 };
+        await stream.WriteAsync(data, 0, data.Length);
+
+        // Act
+        await stream.DisposeAsync();
+
+        // Assert
+        A.CallTo(() => _fakeS3Client.InitiateMultipartUploadAsync(
+                A<InitiateMultipartUploadRequest>.That.Matches(r =>
+                    r.BucketName == TestBucket &&
+                    r.Key == TestKey &&
+                    r.ContentType == "application/octet-stream"),
+                A<CancellationToken>._))
+            .MustHaveHappenedOnceExactly();
+
+        A.CallTo(() => _fakeS3Client.UploadPartAsync(
+                A<UploadPartRequest>.That.Matches(r =>
+                    r.BucketName == TestBucket &&
+                    r.Key == TestKey &&
+                    r.UploadId == "upload-1" &&
+                    r.PartNumber == 1 &&
+                    r.PartSize == data.Length),
+                A<CancellationToken>._))
+            .MustHaveHappenedOnceExactly();
+
+        A.CallTo(() => _fakeS3Client.CompleteMultipartUploadAsync(
+                A<CompleteMultipartUploadRequest>.That.Matches(r =>
+                    r.BucketName == TestBucket &&
+                    r.Key == TestKey &&
+                    r.UploadId == "upload-1" &&
+                    r.PartETags.Count == 1 &&
+                    r.PartETags[0].PartNumber == 1),
+                A<CancellationToken>._))
+            .MustHaveHappenedOnceExactly();
+
+        A.CallTo(() => _fakeS3Client.PutObjectAsync(A<PutObjectRequest>._, A<CancellationToken>._))
+            .MustNotHaveHappened();
+    }
+
+    [Fact]
+    public async Task DisposeAsync_WithZeroLengthAndZeroThreshold_UsesSingleUpload()
+    {
+        // Arrange
+        A.CallTo(() => _fakeS3Client.PutObjectAsync(A<PutObjectRequest>._, A<CancellationToken>._))
+            .Returns(Task.FromResult(new PutObjectResponse()));
+
+        var stream = new S3WriteStream(_fakeS3Client, TestBucket, TestKey, multipartUploadThreshold: 0);
+
+        // Act
+        await stream.DisposeAsync();
+
+        // Assert
+        A.CallTo(() => _fakeS3Client.PutObjectAsync(
+                A<PutObjectRequest>.That.Matches(r =>
+                    r.BucketName == TestBucket &&
+                    r.Key == TestKey),
+                A<CancellationToken>._))
+            .MustHaveHappenedOnceExactly();
+
+        A.CallTo(() => _fakeS3Client.InitiateMultipartUploadAsync(A<InitiateMultipartUploadRequest>._, A<CancellationToken>._))
+            .MustNotHaveHappened();
+    }
+
+    [Fact]
     public async Task DisposeAsync_WithMultipleWrites_UploadsAllData()
     {
         // Arrange
