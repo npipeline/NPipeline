@@ -311,14 +311,14 @@ using NPipeline;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Nodes;
-using NPipeline.Obersability.Tracing;
+using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
 
 public sealed class TestStringSource : SourceNode<string>
 {
-    public IDataPipe<string> ExecuteAsync(
+    public override IDataPipe<string> Initialize(
         PipelineContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         static IAsyncEnumerable<string> Stream()
         {
@@ -340,11 +340,10 @@ public sealed class TestStringSource : SourceNode<string>
 
 public sealed class TestStringSink : SinkNode<string>
 {
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         IDataPipe<string> input,
         PipelineContext context,
-        IPipelineActivity parentActivity,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {

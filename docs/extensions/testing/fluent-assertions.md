@@ -84,25 +84,41 @@ All methods return the result for fluent chaining.
 For asserting on individual sink nodes, the existing sink extensions still apply:
 
 ```csharp
+using NPipeline.Extensions.Testing;
 using NPipeline.Extensions.Testing.FluentAssertions;
 using FluentAssertions;
 
-[Fact]
-public async Task Sink_Should_Receive_Data()
+public sealed class SinkTestPipeline : IPipelineDefinition
 {
-    // Arrange
-    var sink = new InMemorySinkNode<string>();
-    var context = new PipelineContext();
-    var data = new InMemoryDataPipe<string>(new[] { "a", "b", "c" });
+    public void Define(PipelineBuilder builder, PipelineContext context)
+    {
+        var source = builder.AddSource<InMemorySourceNode<string>, string>();
+        var sink = builder.AddSink<InMemorySinkNode<string>, string>();
 
-    // Act
-    await sink.ExecuteAsync(data, context, CancellationToken.None);
+        builder.Connect(source, sink);
+    }
+}
 
-    // Assert
-    sink.ShouldHaveReceived(3);
-    sink.ShouldContain("a");
-    sink.ShouldContain(x => x.Length == 1);
-    sink.ShouldOnlyContain(x => !string.IsNullOrEmpty(x));
+public class InMemorySinkTests
+{
+    [Fact]
+    public async Task Sink_Should_Receive_Data()
+    {
+        // Arrange
+        var inputData = new[] { "a", "b", "c" };
+        var context = new PipelineContext();
+        context.SetSourceData(inputData);
+
+        // Act
+        await PipelineRunner.Create().RunAsync<SinkTestPipeline>(context);
+
+        // Assert
+        var sink = context.GetSink<InMemorySinkNode<string>>();
+        sink.ShouldHaveReceived(3);
+        sink.ShouldContain("a");
+        sink.ShouldContain(x => x.Length == 1);
+        sink.ShouldOnlyContain(x => !string.IsNullOrEmpty(x));
+    }
 }
 ```
 
@@ -173,4 +189,3 @@ This integration allows you to leverage the full power of FluentAssertions to wr
 - **[AwesomeAssertions](./awesome-assertions.md)**: If you prefer AwesomeAssertions, NPipeline also provides a similar integration for that library.
 - **[Testing Extensions](./index.md)**: Return to the main testing documentation for more testing patterns and utilities.
 - **[Connectors](../../connectors/index.md)**: Explore the available connectors for reading from and writing to external systems like CSV files.
-

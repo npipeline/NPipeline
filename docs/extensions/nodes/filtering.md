@@ -14,10 +14,10 @@ Filter items using a predicate:
 
 ```csharp
 // Single filter
-builder.AddFiltering<Order>(x => x.Status == OrderStatus.Pending);
+builder.AddFilteringNode<Order>(x => x.Status == OrderStatus.Pending);
 
 // Multiple filters
-builder.AddFiltering<Product>()
+builder.AddFilteringNode<Product>()
     .Where(x => x.Price > 0)
     .Where(x => x.IsActive);
 ```
@@ -27,9 +27,9 @@ builder.AddFiltering<Product>()
 Specify the filter predicate in the constructor:
 
 ```csharp
-var activeOrders = builder.AddFiltering<Order>(x => x.Status == OrderStatus.Active);
+var activeOrders = builder.AddFilteringNode<Order>(x => x.Status == OrderStatus.Active);
 
-var expensiveProducts = builder.AddFiltering<Product>(
+var expensiveProducts = builder.AddFilteringNode<Product>(
     x => x.Price > 100,
     reason: "Price must exceed $100");
 ```
@@ -39,7 +39,7 @@ var expensiveProducts = builder.AddFiltering<Product>(
 Chain multiple filter conditions:
 
 ```csharp
-builder.AddFiltering<Order>()
+builder.AddFilteringNode<Order>()
     .Where(x => x.Amount > 100, "Order amount must exceed $100")
     .Where(x => x.Status != OrderStatus.Cancelled, "Order must not be cancelled")
     .Where(x => x.CreatedDate >= DateTime.Today, "Order must be from today");
@@ -51,7 +51,7 @@ Use a string instead of a factory for simple messages:
 
 ```csharp
 // When you have a fixed message, this is cleaner than a factory
-builder.AddFiltering<Order>()
+builder.AddFilteringNode<Order>()
     .Where(x => x.Amount > 100, "Order amount must exceed $100")
     .Where(x => x.Status != OrderStatus.Cancelled, "Order must not be cancelled");
 ```
@@ -62,17 +62,17 @@ Use complex conditional logic:
 
 ```csharp
 // Complex condition
-builder.AddFiltering<Person>(x => 
+builder.AddFilteringNode<Person>(x => 
     (x.Age >= 18 && x.Status == "Active") || 
     x.IsVip == true);
 
 // With custom message
-builder.AddFiltering<Order>(
+builder.AddFilteringNode<Order>(
     x => x.Amount > 1000 && x.Customer.CreditScore > 700,
     reason: "Order amount must exceed $1000 and customer credit score must be above 700");
 
 // Multiple conditions
-builder.AddFiltering<Document>()
+builder.AddFilteringNode<Document>()
     .Where(x => x.IsPublished, "Document must be published")
     .Where(x => x.Status == "Approved", "Document must be approved")
     .Where(x => !x.IsArchived, "Document must not be archived");
@@ -84,16 +84,16 @@ Filter based on collection properties:
 
 ```csharp
 // Item exists in collection
-builder.AddFiltering<Order>(x => x.Items.Count > 0, "Order must contain at least one item");
+builder.AddFilteringNode<Order>(x => x.Items.Count > 0, "Order must contain at least one item");
 
 // Collection contains specific value
-builder.AddFiltering<Category>(x => x.Tags.Contains("Featured"), "Category must be tagged as Featured");
+builder.AddFilteringNode<Category>(x => x.Tags.Contains("Featured"), "Category must be tagged as Featured");
 
 // All items satisfy condition
-builder.AddFiltering<Order>(x => x.Items.All(i => i.Quantity > 0), "All items must have positive quantity");
+builder.AddFilteringNode<Order>(x => x.Items.All(i => i.Quantity > 0), "All items must have positive quantity");
 
 // Any item satisfies condition
-builder.AddFiltering<Product>(x => x.Variants.Any(v => v.IsAvailable), "Product must have at least one available variant");
+builder.AddFilteringNode<Product>(x => x.Variants.Any(v => v.IsAvailable), "Product must have at least one available variant");
 ```
 
 ## Custom Error Messages
@@ -102,12 +102,12 @@ Provide descriptive messages when items are filtered:
 
 ```csharp
 // Constructor
-var filter = builder.AddFiltering<Order>(
+var filter = builder.AddFilteringNode<Order>(
     x => x.Amount > 0,
     reason: "Order amount must be greater than zero");
 
 // With Where method
-builder.AddFiltering<Product>()
+builder.AddFilteringNode<Product>()
     .Where(x => x.Price > 0, "Price must be positive")
     .Where(x => x.StockLevel > 0, "Stock level must be positive");
 ```
@@ -117,8 +117,8 @@ builder.AddFiltering<Product>()
 If no custom message is provided, a default message is used:
 
 ```csharp
-// Default: "Item did not meet filtering criteria"
-builder.AddFiltering<Order>(x => x.Amount > 0);
+// Default: "Item did not meet filter criteria"
+builder.AddFilteringNode<Order>(x => x.Amount > 0);
 ```
 
 ## Error Handling
@@ -161,17 +161,17 @@ var builder = new PipelineBuilder();
 var source = builder.AddInMemorySource<Order>();
 
 // Filter 1: Only pending orders
-var filterPending = builder.AddFiltering<Order>(
+var filterPending = builder.AddFilteringNode<Order>(
     x => x.Status == OrderStatus.Pending,
     reason: "Order must be pending");
 
 // Filter 2: Amount constraints
-var filterAmount = builder.AddFiltering<Order>()
+var filterAmount = builder.AddFilteringNode<Order>()
     .Where(x => x.Amount > 50, "Order amount must exceed $50")
     .Where(x => x.Amount <= 10000, "Order amount cannot exceed $10,000");
 
 // Filter 3: Customer validation
-var filterCustomer = builder.AddFiltering<Order>(
+var filterCustomer = builder.AddFilteringNode<Order>(
     x => x.Customer != null && !x.Customer.IsBlocked,
     reason: "Customer must exist and not be blocked");
 
@@ -204,7 +204,7 @@ var result = await pipeline.ExecuteAsync();
 var builder = new PipelineBuilder();
 
 // Fast filter first
-var quickFilter = builder.AddFiltering<Product>(x => x.Price > 0);
+var quickFilter = builder.AddFilteringNode<Product>(x => x.Price > 0);
 
 // Expensive operation after filtering
 var enrichment = builder.AddEnrichment<Product>(x => x.Details = FetchExpensiveDetails());
@@ -216,14 +216,14 @@ builder.Connect(quickFilter, enrichment);
 
 ```csharp
 // Filter stage 1
-var stage1 = builder.AddFiltering<Item>(x => x.Status == "Active");
+var stage1 = builder.AddFilteringNode<Item>(x => x.Status == "Active");
 
 // Filter stage 2
-var stage2 = builder.AddFiltering<Item>(x => x.Score >= 5)
+var stage2 = builder.AddFilteringNode<Item>(x => x.Score >= 5)
     .Where(x => x.IsApproved);
 
 // Filter stage 3
-var stage3 = builder.AddFiltering<Item>(x => !x.IsExpired);
+var stage3 = builder.AddFilteringNode<Item>(x => !x.IsExpired);
 
 builder.Connect(stage1, stage2);
 builder.Connect(stage2, stage3);
@@ -237,11 +237,11 @@ bool applyStrictFiltering = context.GetSetting("StrictMode");
 
 if (applyStrictFiltering)
 {
-    builder.AddFiltering<Product>(x => x.Quality >= 8);
+    builder.AddFilteringNode<Product>(x => x.Quality >= 8);
 }
 else
 {
-    builder.AddFiltering<Product>(x => x.Quality >= 5);
+    builder.AddFilteringNode<Product>(x => x.Quality >= 5);
 }
 ```
 
@@ -251,16 +251,16 @@ else
 var builder = new PipelineBuilder();
 
 // Cleanse first
-var cleanse = builder.AddStringCleansing<Product>(x => x.Name)
-    .Trim()
-    .ToLower();
+var cleanse = builder.AddStringCleansing<Product>()
+    .Trim(x => x.Name)
+    .ToLower(x => x.Name);
 
 // Validate
-var validate = builder.AddStringValidation<Product>(x => x.Name)
-    .HasMinLength(3);
+var validate = builder.AddStringValidation<Product>()
+    .HasMinLength(x => x.Name, 3);
 
 // Filter
-var filter = builder.AddFiltering<Product>(x => x.IsActive);
+var filter = builder.AddFilteringNode<Product>(x => x.IsActive);
 
 // Connect in order
 builder.Connect(cleanse, validate);
@@ -271,7 +271,7 @@ builder.Connect(validate, filter);
 
 ```csharp
 [Fact]
-public async Task FilterPipeline_ShouldFilterInactiveItems()
+public async Task FilterNode_ShouldFilterInactiveItems()
 {
     // Arrange
     var items = new[] { 
@@ -280,16 +280,26 @@ public async Task FilterPipeline_ShouldFilterInactiveItems()
         new Order { Id = 3, IsActive = true }
     };
 
-    var source = new InMemorySourceNode<Order>(items);
+    // Create filter node
     var filter = new FilteringNode<Order>(x => x.IsActive);
-    var sink = new InMemorySinkNode<Order>();
-
-    // Act
-    await filter.ExecuteAsync(source, context);
-    await sink.ExecuteAsync(filter, context);
+    
+    // Act & Assert - filter node throws FilteringException for filtered items
+    var activeItems = new List<Order>();
+    foreach (var item in items)
+    {
+        try
+        {
+            var result = await filter.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+            activeItems.Add(result);
+        }
+        catch (FilteringException)
+        {
+            // Item was filtered out
+        }
+    }
 
     // Assert
-    sink.Items.Should().HaveCount(2);
-    sink.Items.All(x => x.IsActive).Should().BeTrue();
+    activeItems.Should().HaveCount(2);
+    activeItems.All(x => x.IsActive).Should().BeTrue();
 }
 ```

@@ -20,7 +20,7 @@ For practical implementation guidance, see [Error Handling](../core-concepts/res
 By default, errors propagate up the pipeline and stop execution. This is often the right behavior for critical failures, but may be too harsh for transient errors or data validation issues.
 
 ```csharp
-var sourcePipe = await source.Initialize(context, ct);      // Returns 100 items
+var sourcePipe = source.Initialize(context, ct);      // Returns 100 items (synchronous)
 var transformPipe = new TransformPipe(sourcePipe, transform); // Processing...
 
 // Error occurs on item #50
@@ -89,7 +89,8 @@ Route failed items to a dead-letter sink configured in the pipeline context:
 ```csharp
 // Configure dead-letter sink when building pipeline context
 var deadLetterSink = new FileDeadLetterSink("dead-letters.json");
-var context = PipelineContext.WithErrorHandling(deadLetterSink: deadLetterSink);
+var context = new PipelineContext(
+    new PipelineContextConfiguration(DeadLetterSink: deadLetterSink));
 
 // In a transform node, use INodeErrorHandler to route failed items
 public class OrderTransform : ITransformNode<Order, ProcessedOrder>

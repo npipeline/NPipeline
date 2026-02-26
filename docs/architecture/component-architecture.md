@@ -189,17 +189,17 @@ For complete details, see [Optimization Principles: Cached Context Access](./opt
 ```csharp
 public class PipelineRunner
 {
-    // Overload 1: With PipelineContext only
+    // Overload 1: With PipelineContext only (interface method)
     public Task RunAsync<TDefinition>(
         PipelineContext context)
         where TDefinition : IPipelineDefinition, new();
 
-    // Overload 2: With CancellationToken only
+    // Overload 2: With CancellationToken only (convenience method)
     public Task RunAsync<TDefinition>(
         CancellationToken cancellationToken = default)
         where TDefinition : IPipelineDefinition, new();
 
-    // Overload 3: With both PipelineContext and CancellationToken
+    // Overload 3: With both PipelineContext and CancellationToken (full control)
     public Task RunAsync<TDefinition>(
         PipelineContext context, 
         CancellationToken cancellationToken)
@@ -234,7 +234,7 @@ var cts = new CancellationTokenSource();
 await runner.RunAsync<MyPipeline>(context, cts.Token);
 ```
 
-### 5. Node Execution Model
+### 6. Node Execution Model
 
 NPipeline uses a **plan-based execution model** for optimal performance. During pipeline initialization, the system generates pre-compiled execution plans for each node containing strongly-typed delegates that eliminate reflection overhead during steady-state execution.
 

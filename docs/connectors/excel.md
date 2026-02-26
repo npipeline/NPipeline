@@ -716,8 +716,8 @@ var q2Source = new ExcelSourceNode<SalesRecord>(
 );
 
 // Add both sources to your pipeline
-var q1Node = builder.AddSource("q1_source", q1Source);
-var q2Node = builder.AddSource("q2_source", q2Source);
+var q1Node = builder.AddSource(q1Source, "q1_source");
+var q2Node = builder.AddSource(q2Source, "q2_source");
 ```
 
 ### Round-Trip Processing

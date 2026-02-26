@@ -155,7 +155,7 @@ This simple example illustrates the fundamental flow of data through an NPipelin
 You may have noticed something interesting about our source node:
 
 ```csharp
-public override IDataPipe<string> InitializeAsync(...)  // Notice: Not async!
+public override IDataPipe<string> Initialize(...)  // Notice: Not async!
 {
     // Returns a pipe synchronously - no await here
     return new StreamingDataPipe<string>(Stream());
@@ -165,11 +165,13 @@ public override IDataPipe<string> InitializeAsync(...)  // Notice: Not async!
 The method is called `Initialize`, not `InitializeAsync`, because it returns synchronously — no await is involved!
 
 **Phase 1 (Synchronous):** The source creates a pipe immediately
+
 ```csharp
 var pipe = source.Initialize(context, cancellationToken);  // Returns instantly
 ```
 
 **Phase 2 (Asynchronous):** The sink consumes data asynchronously
+
 ```csharp
 await foreach (var item in input.WithCancellation(cancellationToken))  // Async here
 {
@@ -178,10 +180,10 @@ await foreach (var item in input.WithCancellation(cancellationToken))  // Async 
 ```
 
 **Why This Design?**
-- **Simplicity:** Pipe creation is fast and synchronous
-- **Type Safety:** Direct `IDataPipe<T>` returns enable better type compatibility
-- **Performance:** No unnecessary Task allocations
-- **Clarity:** "ExecuteAsync" signals you're in the async pipeline system, but the pipe is ready to use immediately
+* **Simplicity:** Pipe creation is fast and synchronous
+* **Type Safety:** Direct `IDataPipe<T>` returns enable better type compatibility
+* **Performance:** No unnecessary Task allocations
+* **Clarity:** "ExecuteAsync" signals you're in the async pipeline system, but the pipe is ready to use immediately
 
 Think of it like opening a file: `File.OpenRead()` is synchronous and returns immediately, but `stream.ReadAsync()` is asynchronous when you actually read data from it.
 

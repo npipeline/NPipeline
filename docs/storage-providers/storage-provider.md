@@ -297,7 +297,7 @@ To implement a custom storage provider (e.g., for S3, Azure, or a custom system)
 ```csharp
 public sealed class MyCustomStorageProvider : IStorageProvider, IStorageProviderMetadataProvider
 {
-    public StorageScheme Scheme => StorageScheme.Parse("custom");
+    public StorageScheme Scheme => new StorageScheme("custom");
     
     public bool CanHandle(StorageUri uri) => uri.Scheme == Scheme;
     

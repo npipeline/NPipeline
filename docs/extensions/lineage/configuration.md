@@ -9,25 +9,49 @@ This guide covers all configuration options for the NPipeline Lineage extension,
 
 ## LineageOptions
 
-The [`LineageOptions`](../../../src/NPipeline.Extensions.Lineage/LineageOptions.cs) class controls item-level lineage tracking behavior:
+The [`LineageOptions`](../../../src/NPipeline/Configuration/LineageOptions.cs) class controls item-level lineage tracking behavior:
 
 ```csharp
 public sealed record LineageOptions
 {
-    /// Sample every Nth item (1 = sample all items)
-    int SampleEvery { get; init; } = 1;
+    /// Throw on cardinality mismatch instead of logging (default: false)
+    bool Strict { get; init; } = false;
     
-    /// Use deterministic (hash-based) sampling vs random sampling
+    /// Log warning on mismatch when Strict=false (default: true)
+    bool WarnOnMismatch { get; init; } = true;
+    
+    /// Optional callback invoked on mismatch (default: null)
+    Action<LineageMismatchContext>? OnMismatch { get; init; } = null;
+    
+    /// Maximum items to materialize for lineage mapping (default: null = unbounded)
+    int? MaterializationCap { get; init; } = null;
+    
+    /// Behavior when materialization cap is exceeded (default: Degrade)
+    LineageOverflowPolicy OverflowPolicy { get; init; } = LineageOverflowPolicy.Degrade;
+    
+    /// Capture per-hop enter/exit timestamps (default: true)
+    bool CaptureHopTimestamps { get; init; } = true;
+    
+    /// Capture decision outcomes like Emitted, FilteredOut (default: true)
+    bool CaptureDecisions { get; init; } = true;
+    
+    /// Capture observed cardinality and counts (default: true)
+    bool CaptureObservedCardinality { get; init; } = true;
+    
+    /// Capture ancestry mapping when mapper is declared (default: false)
+    bool CaptureAncestryMapping { get; init; } = false;
+    
+    /// Sample every Nth item - 1 means all items (default: 100)
+    int SampleEvery { get; init; } = 100;
+    
+    /// Use deterministic (hash-based) sampling (default: true)
     bool DeterministicSampling { get; init; } = true;
     
-    /// Redact actual data from lineage records (store only metadata)
-    bool RedactData { get; init; } = false;
+    /// Omit payload Data in LineageInfo records (default: true)
+    bool RedactData { get; init; } = true;
     
-    /// Maximum number of items to materialize in memory
-    int MaterializationCap { get; init; } = 10000;
-    
-    /// Behavior when materialization cap is reached
-    LineageOverflowPolicy OverflowPolicy { get; init; } = LineageOverflowPolicy.Degrade;
+    /// Maximum hop records per item before truncation (default: 256)
+    int MaxHopRecordsPerItem { get; init; } = 256;
 }
 ```
 
@@ -136,12 +160,12 @@ Overflow policies control behavior when the materialization cap is reached:
 
 ### Materialization Cap
 
-The default cap limits memory usage by materializing only a subset of items:
+The cap limits memory usage by materializing only a subset of items:
 
 ```csharp
 builder.EnableItemLevelLineage(options =>
 {
-    options.MaterializationCap = 10000;  // Default
+    options.MaterializationCap = 10000;  // Default is null (unbounded)
 });
 ```
 
@@ -154,29 +178,9 @@ builder.EnableItemLevelLineage(options =>
 
 ### Overflow Policy Options
 
-#### Materialize
-
-Continues collecting all lineage data in memory:
-
-```csharp
-options.OverflowPolicy = LineageOverflowPolicy.Materialize;
-```
-
-**Characteristics:**
-
-- No limit on in-memory lineage storage
-- Complete lineage visibility
-- Risk of out-of-memory errors on large datasets
-
-**When to Use:**
-
-- Development and debugging
-- Small datasets
-- Memory-constrained environments with guaranteed capacity
-
 #### Degrade (Default)
 
-Switches to streaming mode when cap is reached:
+Switches to streaming positional mapping when cap is exceeded:
 
 ```csharp
 options.OverflowPolicy = LineageOverflowPolicy.Degrade;  // Default
@@ -184,46 +188,64 @@ options.OverflowPolicy = LineageOverflowPolicy.Degrade;  // Default
 
 **Characteristics:**
 
-- New items beyond cap are streamed to sinks
-- Older items may be removed from in-memory collection
-- Lineage is complete but older items not queryable
+- Continues processing when cap exceeded
+- Switches to streaming positional mapping
 - Best balance of visibility and memory safety
 
 **When to Use:**
 
 - Production pipelines with sampling
-- Compliance scenarios requiring persistence
 - Most production use cases
+- When you want graceful degradation
 
-#### Drop
+#### Strict
 
-Stops collecting lineage when cap is reached:
+Throws immediately when cap is exceeded:
 
 ```csharp
-options.OverflowPolicy = LineageOverflowPolicy.Drop;
+options.OverflowPolicy = LineageOverflowPolicy.Strict;
 ```
 
 **Characteristics:**
 
-- No lineage for items beyond cap
-- Minimal memory footprint
-- Partial visibility
+- Throws exception when cap exceeded
+- Strict enforcement of memory limits
+- Fail-fast behavior
 
 **When to Use:**
 
-- High-volume monitoring only
-- Memory-constrained environments
-- Scenarios where complete lineage isn't required
+- When memory limits must be strictly enforced
+- Testing and validation scenarios
+- When you need to know if cap is reached
+
+#### WarnContinue
+
+Emits warnings when cap is exceeded and continues:
+
+```csharp
+options.OverflowPolicy = LineageOverflowPolicy.WarnContinue;
+```
+
+**Characteristics:**
+
+- Logs warnings when cap exceeded
+- May continue materializing (risk of memory growth)
+- Provides visibility into overflow situations
+
+**When to Use:**
+
+- Development and debugging
+- When you want visibility without failing
+- Monitoring memory behavior
 
 ### Choosing an Overflow Policy
 
 | Scenario | Policy | Reasoning |
 |-----------|----------|-------------|
-| Production pipelines with sampling | Degrade | Safe default, maintains visibility |
-| Development/debugging | Materialize | Complete information useful for investigation |
-| High-volume monitoring | Drop | Prevents memory issues with sampling |
-| Memory-constrained environments | Drop | Minimal memory footprint |
-| Compliance/audit scenarios | Degrade | Ensures records are persisted to sinks |
+| Production pipelines | Degrade | Safe default, graceful degradation |
+| Memory-constrained | Strict | Enforce limits strictly |
+| Development/debugging | WarnContinue | Visibility without failing |
+| Compliance scenarios | Degrade | Ensures continued processing |
 
 ## Custom Sink Registration
 
@@ -352,16 +374,16 @@ services.AddNPipelineLineage<CustomCollector, LoggingPipelineLineageSink, Loggin
 ### Production-Ready Configuration
 
 ```csharp
-services.AddNPipelineLineage<DatabaseLineageSink, JsonFileLineageSink>();
+services.AddNPipelineLineage<DatabaseLineageSink>();
 
 // In pipeline
 builder.EnableItemLevelLineage(options =>
 {
-    options.SampleEvery = 100;  // 1% sampling
-    options.DeterministicSampling = true;
-    options.RedactData = true;  // Don't store sensitive data
+    options.SampleEvery = 100;  // 1% sampling (default)
+    options.DeterministicSampling = true;  // Default
+    options.RedactData = true;  // Don't store sensitive data (default)
     options.MaterializationCap = 10000;
-    options.OverflowPolicy = LineageOverflowPolicy.Degrade;
+    options.OverflowPolicy = LineageOverflowPolicy.Degrade;  // Default
 });
 ```
 
@@ -376,8 +398,8 @@ builder.EnableItemLevelLineage(options =>
     options.SampleEvery = 1;  // Track everything
     options.DeterministicSampling = true;
     options.RedactData = false;  // Keep data for debugging
-    options.MaterializationCap = int.MaxValue;  // No cap
-    options.OverflowPolicy = LineageOverflowPolicy.Materialize;
+    options.MaterializationCap = null;  // No cap (unbounded)
+    options.OverflowPolicy = LineageOverflowPolicy.WarnContinue;
 });
 ```
 
@@ -391,9 +413,9 @@ builder.EnableItemLevelLineage(options =>
 {
     options.SampleEvery = 1000;  // 0.1% sampling
     options.DeterministicSampling = false;  // Random sampling
-    options.RedactData = true;  // Minimal memory
+    options.RedactData = true;  // Minimal memory (default)
     options.MaterializationCap = 1000;  // Small cap
-    options.OverflowPolicy = LineageOverflowPolicy.Drop;  // Drop excess
+    options.OverflowPolicy = LineageOverflowPolicy.Degrade;  // Graceful degradation
 });
 ```
 

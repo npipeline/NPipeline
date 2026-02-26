@@ -838,5 +838,5 @@ public class GoodSinkNode : SinkNode<string>
 **Read More:**
 
 - [Build-Time Resilience Analyzer Guide](../analyzers/resilience.md)
-- [Dependency Injection Best Practices](../architecture/dependency-injection.md)
+- [Dependency Injection Best Practices](../extensions/dependency-injection.md)
 - [Testing Pipeline Components](../extensions/testing/index.md)

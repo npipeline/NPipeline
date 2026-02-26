@@ -75,13 +75,27 @@ public class MyPipelineTests
 
 ### Basic Testing Pattern
 
-Alternatively, you can build pipelines manually for more control:
+Alternatively, you can build pipelines manually for more control by defining a pipeline class that implements `IPipelineDefinition`:
 
 ```csharp
 using NPipeline.Extensions.Testing;
 using NPipeline.Extensions.Testing.AwesomeAssertions; // or FluentAssertions
 using NPipeline.Pipeline;
 using NPipeline.Execution;
+
+// Define your pipeline as a class implementing IPipelineDefinition
+public sealed class MyTestPipeline : IPipelineDefinition
+{
+    public void Define(PipelineBuilder builder, PipelineContext context)
+    {
+        var source = builder.AddSource<InMemorySourceNode<string>, string>();
+        var transform = builder.AddTransform<MyTransform, string, string>();
+        var sink = builder.AddSink<InMemorySinkNode<string>, string>();
+
+        builder.Connect(source, transform);
+        builder.Connect(transform, sink);
+    }
+}
 
 public class MyPipelineTests
 {
@@ -94,22 +108,15 @@ public class MyPipelineTests
         context.SetSourceData(testData);
 
         // Act
-        var builder = new PipelineBuilder();
-        var source = builder.AddInMemorySource<string>();
-        var transform = builder.AddTransform<MyTransform, string, string>();
-        var sink = builder.AddInMemorySink<string>(context);
-
-        builder.Connect(source, transform);
-        builder.Connect(transform, sink);
-
-        var pipeline = builder.Build();
-        await PipelineRunner.Create().RunAsync(pipeline, context);
+        await PipelineRunner.Create().RunAsync<MyTestPipeline>(context);
 
         // Assert
+        var sink = context.GetSink<InMemorySinkNode<string>>();
         sink.ShouldHaveReceived(3);
         sink.Items.Should().BeEquivalentTo(expectedData);
     }
 }
+```
 
 ## Testing Strategies
 
@@ -118,16 +125,18 @@ public class MyPipelineTests
 Test individual nodes in isolation:
 
 ```csharp
-    [Fact]
-    public async Task Transform_ShouldApplyCorrectLogic()
-    {
-        // Arrange
-        var transform = new MyTransform();
-        var input = new TestData { Value = "test" };
-        var context = new PipelineContext();
+[Fact]
+public async Task Transform_ShouldApplyCorrectLogic()
+{
+    // Arrange
+    var transform = new MyTransform();
+    var input = new TestData { Value = "test" };
+    var context = new PipelineContext();
 
-        // Act
-        var result = await transform.ExecuteAsync(input, context);    // Assert
+    // Act
+    var result = await transform.ExecuteAsync(input, context, CancellationToken.None);
+    
+    // Assert
     result.Should().Be("processed_test");
 }
 ```
@@ -143,23 +152,13 @@ Test entire pipelines to verify end-to-end behavior:
         // Arrange
         var testData = new[] { "test1", "test2", "test3" };
         var context = new PipelineContext();
-        context.SetSourceData(testData);    
-        var builder = new PipelineBuilder();
-        var source = builder.AddInMemorySource<string>();
-        var transform1 = builder.AddTransform<MyTransform1, string, string>();
-        var transform2 = builder.AddTransform<MyTransform2, string, string>();
-        var sink = builder.AddInMemorySink<string>(context);
-
-        builder.Connect(source, transform1);
-        builder.Connect(transform1, transform2);
-        builder.Connect(transform2, sink);
-
-        var pipeline = builder.Build();
+        context.SetSourceData(testData);
 
         // Act
-        await PipelineRunner.Create().RunAsync(pipeline, context);
+        await PipelineRunner.Create().RunAsync<FullTestPipeline>(context);
 
         // Assert
+        var sink = context.GetSink<InMemorySinkNode<string>>();
         sink.ShouldHaveReceived(3);
         sink.Items.Should().NotBeEmpty();
     }
@@ -176,20 +175,11 @@ Test error scenarios and recovery:
         // Arrange
         var testData = new[] { "valid", "invalid", "valid" };
         var context = new PipelineContext();
-        context.SetSourceData(testData);    
-        var builder = new PipelineBuilder();
-        var source = builder.AddInMemorySource<string>();
-        var transform = builder.AddTransform<TransformThatFails, string, string>();
-        var sink = builder.AddInMemorySink<string>(context);
-
-        builder.Connect(source, transform);
-        builder.Connect(transform, sink);
-
-        var pipeline = builder.Build();
+        context.SetSourceData(testData);
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            PipelineRunner.Create().RunAsync(pipeline, context));
+            PipelineRunner.Create().RunAsync<ErrorHandlingTestPipeline>(context));
     }
 ```
 
@@ -248,7 +238,7 @@ context.SetSourceData(new[] { 1, 2, 3 });
 context.SetSourceData(new[] { 1, 2, 3 }, nodeId: "MyNodeId");
 
 // Retrieve sink from context
-var sink = context.GetSink<InMemorySink<string>>();
+var sink = context.GetSink<InMemorySinkNode<string>>();
 ```
 
 ## Best Practices

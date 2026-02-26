@@ -110,6 +110,7 @@ public class MetricsCollectorSink : ISinkNode<Result>
 NPipeline includes built-in Roslyn analyzers that provide compile-time validation of your pipeline configurations. These analyzers detect common mistakes before they reach production.
 
 **Key Analyzer:**
+
 - **NP9002** - Detects incomplete resilience configurations where `RestartNode` is used without required prerequisites
 
 The analyzer framework is designed to be extensible, allowing community contributions of additional analyzers for NPipeline-specific patterns.
@@ -153,30 +154,41 @@ public class ThrottledExecutionStrategy : INodeExecutionStrategy
 
 ## Context Data
 
-Store and retrieve arbitrary data in pipeline context:
+Store and retrieve arbitrary data in pipeline context using the `Items` dictionary:
 
 ```csharp
 // Store data
 var context = PipelineContext.Default;
-context.Set("startTime", DateTime.UtcNow);
-context.Set("userId", 12345);
-context.Set("requestId", Guid.NewGuid());
+context.Items["startTime"] = DateTime.UtcNow;
+context.Items["userId"] = 12345;
+context.Items["requestId"] = Guid.NewGuid();
 
 // Access in transform
-public async IAsyncEnumerable<Output> ProcessAsync(
+public async Task<Output> ExecuteAsync(
     Input input,
-    [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    PipelineContext context,
+    CancellationToken cancellationToken)
 {
-    var startTime = context.Get<DateTime>("startTime");
-    var userId = context.Get<int>("userId");
-    var requestId = context.Get<Guid>("requestId");
+    var startTime = (DateTime)context.Items["startTime"];
+    var userId = (int)context.Items["userId"];
+    var requestId = (Guid)context.Items["requestId"];
 
-    yield return new Output
+    return new Output
     {
         UserId = userId,
         RequestId = requestId,
         ProcessingTime = DateTime.UtcNow - startTime
     };
+}
+```
+
+For type-safe access with null handling:
+
+```csharp
+// Safe access with TryGetValue
+if (context.Items.TryGetValue("startTime", out var startTimeObj) && startTimeObj is DateTime startTime)
+{
+    // Use startTime
 }
 ```
 
@@ -235,4 +247,3 @@ public class ResilientTransform : ITransformNode<T, T>
 
 - **[Design Principles](design-principles.md)** - Understand guiding principles for extensions
 - **[Advanced Testing Pipelines](../extensions/testing/advanced-testing.md)** - Test your custom nodes
-

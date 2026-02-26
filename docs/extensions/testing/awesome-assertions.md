@@ -88,6 +88,19 @@ using NPipeline.Extensions.Testing;
 using NPipeline.Extensions.Testing.AwesomeAssertions;
 using AwesomeAssertions;
 
+public sealed class ToUpperTestPipeline : IPipelineDefinition
+{
+    public void Define(PipelineBuilder builder, PipelineContext context)
+    {
+        var source = builder.AddSource<InMemorySourceNode<string>, string>();
+        var transform = builder.AddTransform<ToUpperTransform, string, string>();
+        var sink = builder.AddSink<InMemorySinkNode<string>, string>();
+
+        builder.Connect(source, transform);
+        builder.Connect(transform, sink);
+    }
+}
+
 public class InMemorySinkTests
 {
     [Fact]
@@ -98,20 +111,11 @@ public class InMemorySinkTests
         var context = new PipelineContext();
         context.SetSourceData(inputData);
 
-        var sink = new InMemorySinkNode<string>();
-        var builder = new PipelineBuilder();
-        var source = builder.AddInMemorySource<string>();
-        var transform = builder.AddTransform<ToUpperTransform, string, string>();
-
-        builder.Connect(source, transform);
-        builder.Connect(transform, sink);
-
-        var pipeline = builder.Build();
-
         // Act
-        await PipelineRunner.Create().RunAsync(pipeline, context);
+        await PipelineRunner.Create().RunAsync<ToUpperTestPipeline>(context);
 
         // Assert
+        var sink = context.GetSink<InMemorySinkNode<string>>();
         sink.ShouldContain("A");
         sink.ShouldContain("B");
         sink.ShouldHaveReceived(2);
@@ -157,6 +161,21 @@ using NPipeline.Extensions.Testing.AwesomeAssertions;
 using AwesomeAssertions;
 using Xunit;
 
+public sealed class FruitFilterTestPipeline : IPipelineDefinition
+{
+    public void Define(PipelineBuilder builder, PipelineContext context)
+    {
+        var source = builder.AddSource<InMemorySourceNode<string>, string>();
+        var filter = builder.AddTransform<FruitFilter, string, string>();
+        var transform = builder.AddTransform<ToUpperTransform, string, string>();
+        var sink = builder.AddSink<InMemorySinkNode<string>, string>();
+
+        builder.Connect(source, filter);
+        builder.Connect(filter, transform);
+        builder.Connect(transform, sink);
+    }
+}
+
 public class PipelineWithErrorHandlingTests
 {
     [Fact]
@@ -167,22 +186,11 @@ public class PipelineWithErrorHandlingTests
         var context = new PipelineContext();
         context.SetSourceData(inputData);
 
-        var builder = new PipelineBuilder();
-        var source = builder.AddInMemorySource<string>();
-        var filter = builder.AddTransform<FruitFilter, string, string>();
-        var transform = builder.AddTransform<ToUpperTransform, string, string>();
-        var sink = builder.AddInMemorySink<string>(context);
-
-        builder.Connect(source, filter);
-        builder.Connect(filter, transform);
-        builder.Connect(transform, sink);
-
-        var pipeline = builder.Build();
-
         // Act
-        await PipelineRunner.Create().RunAsync(pipeline, context);
+        await PipelineRunner.Create().RunAsync<FruitFilterTestPipeline>(context);
 
         // Assert
+        var sink = context.GetSink<InMemorySinkNode<string>>();
         sink.ShouldHaveReceived(2); // Only "apple" and "banana" should pass filter
         sink.ShouldContain("APPLE");
         sink.ShouldContain("BANANA");
@@ -244,4 +252,3 @@ public class PipelineWithErrorHandlingTests
 
 - **[FluentAssertions](./fluent-assertions.md)**: If you prefer FluentAssertions, NPipeline also provides a similar integration for that library.
 - **[Testing Extensions](./index.md)**: Return to the main testing documentation for more testing patterns and utilities.
-

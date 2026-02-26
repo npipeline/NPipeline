@@ -375,9 +375,9 @@ builder.EnableItemLevelLineage(options =>
 builder.EnableItemLevelLineage(options =>
 {
     options.SampleEvery = 1000;  // 0.1% sampling
-    options.RedactData = true;
+    options.RedactData = true;   // Default
     options.MaterializationCap = 1000;  // Small cap
-    options.OverflowPolicy = LineageOverflowPolicy.Drop;
+    options.OverflowPolicy = LineageOverflowPolicy.Degrade;  // Graceful degradation
 });
 ```
 
@@ -494,10 +494,9 @@ Monitor and adjust based on requirements.
 Choose policy based on scenario:
 
 | Scenario | Policy |
-|-----------|----------|
-| Production | Degrade |
-| Development | Materialize |
-| High-volume | Drop |
+| | Production | Degrade |
+| Development | WarnContinue |
+| Memory-constrained | Strict |
 | Compliance | Degrade |
 
 ### 4. Implement Async Sinks

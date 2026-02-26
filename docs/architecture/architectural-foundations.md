@@ -46,10 +46,9 @@ From an architectural perspective, nodes are the fundamental processing units th
 All nodes implement the `INode` interface, with specialized interfaces for each node type:
 
 ```csharp
-// Base interface
-public interface INode
+// Base interface - marker interface for all pipeline nodes
+public interface INode : IAsyncDisposable
 {
-    string Name { get; }
 }
 
 // Source nodes produce output streams
@@ -72,11 +71,13 @@ public interface ISinkNode<in TInput> : INode
 ```
 
 **Type Safety Through Generics:**
+
 - Input types (`TInput`) and output types (`TOutput`) are enforced at compile time
 - The `PipelineBuilder` validates that connected nodes have compatible types
 - Attempting to connect incompatible nodes results in a build error
 
 **Data Flow Model:**
+
 - Source nodes return `IDataPipe<TOutput>`, which implements `IAsyncEnumerable<TOutput>`
 - Transform nodes process items one at a time via `ExecuteAsync`
 - Sink nodes consume the entire input stream using `await foreach`
@@ -105,26 +106,30 @@ public interface IDataPipe<T> : IAsyncEnumerable<T>
 ### Key Characteristics
 
 **Lazy Evaluation**
+
 - Data is only produced when consumed
 - If pipeline is cancelled, source never reads unused data
 
 **Memory Efficient**
+
 - Only active items are in memory at any time
 - No need to load entire datasets upfront
 
 **Responsive**
+
 - Processing begins immediately upon pipeline start
 - Results are available as soon as items flow through
 
 **Composable**
+
 - Each transform creates a new data pipe
 - Pipes can be layered and composed
 
 ### Example: How Streaming Works
 
 ```csharp
-// Step 1: Source creates pipe (but doesn't read yet)
-var sourcePipe = await sourceNode.Initialize(context, cancellationToken);
+// Step 1: Source creates pipe (synchronous - no await needed)
+var sourcePipe = sourceNode.Initialize(context, cancellationToken);
 
 // Step 2: Transform wraps pipe (but doesn't process yet)
 var transformPipe = new TransformPipe(sourcePipe, transformNode);
@@ -147,6 +152,6 @@ await foreach (var item in transformPipe.WithCancellation(cancellationToken))
 
 ## Next Steps
 
-* **[Component Architecture](component-architecture.md)** - Learn about the major system components
-* **[Execution Flow](execution-flow.md)** - Understand how data flows through pipelines
-* **[Nodes](../core-concepts/nodes/index.md)** - Explore detailed node implementations and examples
+- **[Component Architecture](component-architecture.md)** - Learn about the major system components
+- **[Execution Flow](execution-flow.md)** - Understand how data flows through pipelines
+- **[Nodes](../core-concepts/nodes/index.md)** - Explore detailed node implementations and examples

@@ -13,9 +13,9 @@ Cleansing nodes normalize and clean data properties. They perform in-place trans
 Clean and normalize text data:
 
 ```csharp
-builder.AddStringCleansing<User>(x => x.Email)
-    .Trim()
-    .ToLower();
+builder.AddStringCleansing<User>()
+    .Trim(x => x.Email)
+    .ToLower(x => x.Email);
 ```
 
 ### Available Operations
@@ -30,9 +30,6 @@ builder.AddStringCleansing<User>(x => x.Email)
 | `ToLower()` | Convert to lowercase | `"Hello"` → `"hello"` |
 | `ToUpper()` | Convert to uppercase | `"hello"` → `"HELLO"` |
 | `ToTitleCase()` | Convert to title case | `"hello world"` → `"Hello World"` |
-| `ToCamelCase()` | Convert to camelCase | `"hello_world"` → `"helloWorld"` |
-| `ToPascalCase()` | Convert to PascalCase | `"hello_world"` → `"HelloWorld"` |
-| `ToKebabCase()` | Convert to kebab-case | `"helloWorld"` → `"hello-world"` |
 | `RemoveSpecialCharacters()` | Remove non-alphanumeric | `"hello@world!"` → `"helloworld"` |
 | `RemoveDigits()` | Remove numeric characters | `"hello123"` → `"hello"` |
 | `RemoveNonAscii()` | Remove non-ASCII characters | `"café"` → `"caf"` |
@@ -40,34 +37,35 @@ builder.AddStringCleansing<User>(x => x.Email)
 | `EnsurePrefix(prefix)` | Add prefix if missing | `"world"` → `"hello world"` |
 | `EnsureSuffix(suffix)` | Add suffix if missing | `"hello"` → `"hello world"` |
 | `Replace(old, new)` | Replace substring | `"hello"` → `"hallo"` |
-| `StripDiacritics()` | Remove accent marks | `"café"` → `"cafe"` |
 | `DefaultIfNullOrWhitespace(default)` | Use default for empty | `""` → `"N/A"` |
+| `DefaultIfNullOrEmpty(default)` | Use default for null/empty | `""` → `"N/A"` |
+| `NullIfWhitespace()` | Convert whitespace to null | `"   "` → `null` |
 
 ### Examples
 
 ```csharp
 // Email normalization
-builder.AddStringCleansing<User>(x => x.Email)
-    .Trim()
-    .ToLower()
-    .DefaultIfNullOrWhitespace("no-email@example.com");
+builder.AddStringCleansing<User>()
+    .Trim(x => x.Email)
+    .ToLower(x => x.Email)
+    .DefaultIfNullOrWhitespace(x => x.Email, "no-email@example.com");
 
 // Name normalization
-builder.AddStringCleansing<Person>(x => x.FirstName)
-    .Trim()
-    .ToTitleCase();
+builder.AddStringCleansing<Person>()
+    .Trim(x => x.FirstName)
+    .ToTitleCase(x => x.FirstName);
 
 // Username cleanup
-builder.AddStringCleansing<Account>(x => x.Username)
-    .Trim()
-    .ToLower()
-    .RemoveSpecialCharacters();
+builder.AddStringCleansing<Account>()
+    .Trim(x => x.Username)
+    .ToLower(x => x.Username)
+    .RemoveSpecialCharacters(x => x.Username);
 
 // Text sanitization
-builder.AddStringCleansing<Document>(x => x.Title)
-    .Trim()
-    .RemoveNonAscii()
-    .Truncate(100);
+builder.AddStringCleansing<Document>()
+    .Trim(x => x.Title)
+    .RemoveNonAscii(x => x.Title)
+    .Truncate(x => x.Title, 100);
 ```
 
 ## Numeric Cleansing
@@ -75,9 +73,9 @@ builder.AddStringCleansing<Document>(x => x.Title)
 Clean and normalize numeric data:
 
 ```csharp
-builder.AddNumericCleansing<Order>(x => x.Discount)
-    .Clamp(0, 100)
-    .Round(2);
+builder.AddNumericCleansing<Order>()
+    .Clamp(x => x.Discount, 0, 100)
+    .Round(x => x.Price, 2);
 ```
 
 ### Available Operations
@@ -102,30 +100,30 @@ builder.AddNumericCleansing<Order>(x => x.Discount)
 
 ```csharp
 // Price normalization
-builder.AddNumericCleansing<Product>(x => x.Price)
-    .Clamp(0, decimal.MaxValue)
-    .Round(2);
+builder.AddNumericCleansing<Product>()
+    .Clamp(x => x.Price, 0, decimal.MaxValue)
+    .Round(x => x.Price, 2);
 
 // Discount clamping
-builder.AddNumericCleansing<Order>(x => x.Discount)
-    .Clamp(0, 100);
+builder.AddNumericCleansing<Order>()
+    .Clamp(x => x.Discount, 0, 100);
 
 // Percentage cleanup
-builder.AddNumericCleansing<Survey>(x => x.CompletionRate)
-    .Clamp(0, 100)
-    .Round(1);
+builder.AddNumericCleansing<Survey>()
+    .Clamp(x => x.CompletionRate, 0, 100)
+    .Round(x => x.CompletionRate, 1);
 
 // Age normalization
-builder.AddNumericCleansing<Person>(x => x.Age)
-    .Clamp(0, 150);
+builder.AddNumericCleansing<Person>()
+    .Clamp(x => x.Age, 0, 150);
 
 // Absolute value conversion
-builder.AddNumericCleansing<Measurement>(x => x.Value)
-    .AbsoluteValue();
+builder.AddNumericCleansing<Measurement>()
+    .AbsoluteValue(x => x.Value);
 
 // Negative value handling
-builder.AddNumericCleansing<Transaction>(x => x.Amount)
-    .ToZeroIfNegative();
+builder.AddNumericCleansing<Transaction>()
+    .ToZeroIfNegative(x => x.Amount);
 ```
 
 ### Numeric Constraints with Min/Max
@@ -134,24 +132,20 @@ Use Min/Max helper methods for single-bound constraints:
 
 ```csharp
 // Ensure age is at least 0 (cleaner than Clamp(0, int.MaxValue))
-builder.AddNumericCleansing<Person>(x => x.Age)
-    .Min(0);
+builder.AddNumericCleansing<Person>()
+    .Min(x => x.Age, 0);
 
 // Ensure quantity doesn't exceed 10000
-builder.AddNumericCleansing<Order>(x => x.Quantity)
-    .Max(10000);
+builder.AddNumericCleansing<Order>()
+    .Max(x => x.Quantity, 10000);
 
 // Ensure price is at least 0.01
-builder.AddNumericCleansing<Product>(x => x.Price)
-    .Min(0.01m);
+builder.AddNumericCleansing<Product>()
+    .Min(x => x.Price, 0.01m);
 
 // Clamp only the upper bound (discount can't exceed 100%)
-builder.AddNumericCleansing<Order>(x => x.DiscountPercent)
-    .Max(100);
-
-// Nullable numeric with minimum constraint
-builder.AddNumericCleansing<Item>(x => x.OptionalStock)
-    .Min(0);  // null values pass through, non-null values enforced >= 0
+builder.AddNumericCleansing<Order>()
+    .Max(x => x.DiscountPercent, 100);
 ```
 
 ## DateTime Cleansing
@@ -159,9 +153,9 @@ builder.AddNumericCleansing<Item>(x => x.OptionalStock)
 Clean and normalize date/time data:
 
 ```csharp
-builder.AddDateTimeCleansing<Event>(x => x.StartTime)
-    .SpecifyKind(DateTimeKind.Utc)
-    .ToUtc();
+builder.AddDateTimeCleansing<Event>()
+    .SpecifyKind(x => x.StartTime, DateTimeKind.Utc)
+    .ToUtc(x => x.StartTime);
 ```
 
 ### Available Operations
@@ -185,23 +179,23 @@ builder.AddDateTimeCleansing<Event>(x => x.StartTime)
 
 ```csharp
 // Timestamp normalization
-builder.AddDateTimeCleansing<Transaction>(x => x.Timestamp)
-    .SpecifyKind(DateTimeKind.Utc)
-    .ToUtc();
+builder.AddDateTimeCleansing<Transaction>()
+    .SpecifyKind(x => x.Timestamp, DateTimeKind.Utc)
+    .ToUtc(x => x.Timestamp);
 
 // Event time cleanup with rounding
-builder.AddDateTimeCleansing<Event>(x => x.StartTime)
-    .ToUtc()
-    .RoundToMinute();
+builder.AddDateTimeCleansing<Event>()
+    .ToUtc(x => x.StartTime)
+    .RoundToMinute(x => x.StartTime);
 
 // Date normalization (remove time)
-builder.AddDateTimeCleansing<Document>(x => x.CreatedDate)
-    .StripTime();
+builder.AddDateTimeCleansing<Document>()
+    .StripTime(x => x.CreatedDate);
 
 // Default handling for edge cases
-builder.AddDateTimeCleansing<Record>(x => x.DateField)
-    .DefaultIfMinValue(DateTime.UtcNow)
-    .DefaultIfMaxValue(DateTime.UtcNow);
+builder.AddDateTimeCleansing<Record>()
+    .DefaultIfMinValue(x => x.DateField, DateTime.UtcNow)
+    .DefaultIfMaxValue(x => x.DateField, DateTime.UtcNow);
 ```
 
 ### DateTime Rounding and Clamping
@@ -210,27 +204,26 @@ Round times and constrain to ranges:
 
 ```csharp
 // Round timestamps to nearest minute for metrics
-builder.AddDateTimeCleansing<Metric>(x => x.RecordedAt)
-    .RoundToMinute();
+builder.AddDateTimeCleansing<Metric>()
+    .RoundToMinute(x => x.RecordedAt);
 
 // Round optional timestamps
-builder.AddDateTimeCleansing<Event>(x => x.OptionalEndTime)
-    .RoundToMinute();  // null values pass through unchanged
+builder.AddDateTimeCleansing<Event>()
+    .RoundToMinute(x => x.OptionalEndTime);  // null values pass through unchanged
 
 // Round to nearest hour for reports
-builder.AddDateTimeCleansing<Report>(x => x.GeneratedAt)
-    .RoundToHour();
+builder.AddDateTimeCleansing<Report>()
+    .RoundToHour(x => x.GeneratedAt);
 
 // Clamp dates to valid range
-builder.AddDateTimeCleansing<Contract>(x => x.StartDate)
-    .Clamp(
+builder.AddDateTimeCleansing<Contract>()
+    .Clamp(x => x.StartDate,
         DateTime.Now.AddYears(-1),
-        DateTime.Now.AddYears(10),
-        "Start date must be within ±10 years");
+        DateTime.Now.AddYears(10));
 
 // Clamp optional dates
-builder.AddDateTimeCleansing<Reservation>(x => x.OptionalCheckoutDate)
-    .Clamp(DateTime.Now, DateTime.Now.AddYears(2));
+builder.AddDateTimeCleansing<Reservation>()
+    .Clamp(x => x.OptionalCheckoutDate, DateTime.Now, DateTime.Now.AddYears(2));
 ```
 
 ## Collection Cleansing
@@ -238,10 +231,10 @@ builder.AddDateTimeCleansing<Reservation>(x => x.OptionalCheckoutDate)
 Clean and normalize collection properties:
 
 ```csharp
-builder.AddCollectionCleansing<Document>(x => x.Tags)
-    .RemoveNulls()
-    .RemoveDuplicates()
-    .Sort();
+builder.AddCollectionCleansing<Document>()
+    .RemoveNulls(x => x.Tags)
+    .RemoveDuplicates(x => x.Tags)
+    .Sort(x => x.Tags);
 ```
 
 ### Available Operations
@@ -261,23 +254,23 @@ builder.AddCollectionCleansing<Document>(x => x.Tags)
 
 ```csharp
 // Tag cleanup
-builder.AddCollectionCleansing<Article>(x => x.Tags)
-    .RemoveNulls()
-    .RemoveEmpty()
-    .RemoveDuplicates()
-    .Sort();
+builder.AddCollectionCleansing<Article>()
+    .RemoveNulls(x => x.Tags)
+    .RemoveEmpty(x => x.Tags)
+    .RemoveDuplicates(x => x.Tags)
+    .Sort(x => x.Tags);
 
 // Category deduplication
-builder.AddCollectionCleansing<Product>(x => x.Categories)
-    .RemoveNulls()
-    .RemoveDuplicates()
-    .Sort();
+builder.AddCollectionCleansing<Product>()
+    .RemoveNulls(x => x.Categories)
+    .RemoveDuplicates(x => x.Categories)
+    .Sort(x => x.Categories);
 
 // Email list cleaning
-builder.AddCollectionCleansing<MailingList>(x => x.Emails)
-    .RemoveNulls()
-    .RemoveEmpty()
-    .RemoveDuplicates();
+builder.AddCollectionCleansing<MailingList>()
+    .RemoveNulls(x => x.Emails)
+    .RemoveEmpty(x => x.Emails)
+    .RemoveDuplicates(x => x.Emails);
 ```
 
 ## Chaining Operations
@@ -313,6 +306,7 @@ All cleansing nodes are stateless and thread-safe. They can be safely shared acr
 ## Performance
 
 Cleansing nodes are optimized for performance:
+
 - Property access uses compiled expressions (not reflection)
 - String operations use `StringBuilder` to minimize allocations
 - Numeric operations use native types (no boxing)

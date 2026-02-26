@@ -139,7 +139,7 @@ Implement proper error handling for parallel operations:
 ```csharp
 public class ResilientTransform : TransformNode<int, int>
 {
-    public override async ValueTask<int> TransformAsync(
+    public override async Task<int> ExecuteAsync(
         int input,
         PipelineContext context,
         CancellationToken ct)
@@ -150,7 +150,8 @@ public class ResilientTransform : TransformNode<int, int>
         }
         catch (Exception ex)
         {
-            context.Logger.LogError(ex, "Error processing item {Item}", input);
+            context.LoggerFactory.CreateLogger<ResilientTransform>()
+                .LogError(ex, "Error processing item {Item}", input);
             throw; // Or handle based on your requirements
         }
     }

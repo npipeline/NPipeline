@@ -68,7 +68,7 @@ public sealed class DoubleTransform : TransformNode<int, int>
 // Sink node that outputs numbers
 public sealed class NumberSink : SinkNode<int>
 {
-    public async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context, IPipelineActivity parentActivity, CancellationToken cancellationToken = default)
+    public override async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context, CancellationToken cancellationToken = default)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {
@@ -378,7 +378,7 @@ public sealed class DatabaseSink<T> : SinkNode<T>
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
     }
 
-    public async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, IPipelineActivity parentActivity, CancellationToken cancellationToken = default)
+    public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken = default)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {
@@ -634,6 +634,12 @@ public sealed class EnrichedObservabilityCollector : IObservabilityCollector
             pipelineName, correlationId);
         
         return baseMetrics;
+    }
+
+    public Task EmitMetricsAsync(string pipelineName, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, 
+        bool success, Exception? exception = null, CancellationToken cancellationToken = default)
+    {
+        return _baseCollector.EmitMetricsAsync(pipelineName, runId, startTime, endTime, success, exception, cancellationToken);
     }
 }
 
@@ -958,8 +964,7 @@ public sealed class DatabaseSink : SinkNode<ProcessedData>
         _logger = logger;
     }
 
-    public async Task ExecuteAsync(IDataPipe<ProcessedData> input, PipelineContext context, 
-        IPipelineActivity parentActivity, CancellationToken cancellationToken = default)
+    public override async Task ExecuteAsync(IDataPipe<ProcessedData> input, PipelineContext context, CancellationToken cancellationToken = default)
     {
         int count = 0;
         await foreach (var item in input.WithCancellation(cancellationToken))

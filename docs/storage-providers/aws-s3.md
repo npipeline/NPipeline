@@ -601,7 +601,8 @@ To use the S3 storage provider, your AWS credentials must have appropriate IAM p
 
 - **`S3StorageException`** - Custom exception for S3 errors
   - Location: [`S3StorageException.cs`](../../src/NPipeline.StorageProviders.Aws/S3StorageException.cs)
-  - Wraps `AmazonS3Exception` with bucket/key context
+  - Available for custom error handling implementations
+  - Note: The provider translates S3 exceptions into standard .NET exceptions (`UnauthorizedAccessException`, `ArgumentException`, `FileNotFoundException`, `IOException`) for consistency with other storage providers
 
 ### Extension Methods
 

@@ -59,18 +59,24 @@ public class UnsafeMetricsTransform : TransformNode<int, int>
 // ✅ CORRECT - Use IPipelineStateManager for shared state
 public class SafeMetricsTransform : TransformNode<int, int>
 {
+    private long _processedCount = 0;
+    private long _sum = 0;
+    
     public override async ValueTask<int> TransformAsync(
         int input,
         PipelineContext context,
         CancellationToken ct)
     {
-        // SAFE: IPipelineStateManager handles all synchronization
+        // SAFE: Use atomic operations for simple counters
+        Interlocked.Increment(ref _processedCount);
+        Interlocked.Add(ref _sum, input);
+        
+        // SAFE: IPipelineStateManager can be used for state persistence
+        // (snapshots, recovery, node completion tracking)
         var stateManager = context.StateManager;
         if (stateManager != null)
         {
-            // These operations are internally synchronized
-            await stateManager.IncrementCounterAsync("processed", ct);
-            await stateManager.IncrementCounterAsync("sum", input, ct);
+            stateManager.MarkNodeCompleted(context.CurrentNodeId, context);
         }
         
         return input;
@@ -80,10 +86,10 @@ public class SafeMetricsTransform : TransformNode<int, int>
 
 **Why this is safe:**
 
-- State manager uses internal locking for all operations
-- All updates are atomic and isolated
+- Atomic operations (`Interlocked`) ensure thread-safe counter updates
+- State manager handles synchronization for persistence operations
 - No data races - thread-safe by design
-- Performance is optimized with fine-grained locking
+- Performance is optimized with lock-free atomic operations
 
 ## Key Principles
 
@@ -111,11 +117,14 @@ The `PipelineContext` dictionaries (Items, Parameters, Properties) are NOT threa
 // UNSAFE: Multiple threads accessing context.Items without synchronization
 context.Items["counter"] = (int)context.Items.GetValueOrDefault("counter", 0) + 1;
 
-// SAFE: Use IPipelineStateManager for thread-safe shared state
+// SAFE: Use atomic operations for simple counters
+Interlocked.Increment(ref _counter);
+
+// SAFE: Use IPipelineStateManager for state persistence (snapshots, recovery)
 var stateManager = context.StateManager;
 if (stateManager != null)
 {
-    await stateManager.IncrementCounterAsync("counter", ct);
+    stateManager.MarkNodeCompleted(context.CurrentNodeId, context);
 }
 ```
 
@@ -135,11 +144,12 @@ public override async ValueTask<TOut> TransformAsync(
 {
     var result = ProcessItem(input);
     
-    // Thread-safe state update via state manager
+    // Thread-safe state persistence via state manager
     var stateManager = context.StateManager;
     if (stateManager != null)
     {
-        await stateManager.RecordMetricAsync("items_processed", 1, ct);
+        // Mark node as completed for state tracking
+        stateManager.MarkNodeCompleted(context.CurrentNodeId, context);
     }
     
     return result;

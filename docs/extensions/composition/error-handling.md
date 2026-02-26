@@ -160,14 +160,11 @@ public class SubPipeline : IPipelineDefinition
     }
 }
 
-// Parent handles all errors
+// Parent handles all errors - configure via context
 public class ParentPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        // Configure error handling at parent level
-        builder.WithErrorHandler(new CustomErrorHandler());
-        
         var source = builder.AddSource<DataSource, Data>("source");
         var process = builder.AddComposite<Data, Data, SubPipeline>("process");
         var sink = builder.AddSink<DataSink, Data>("sink");
@@ -177,22 +174,33 @@ public class ParentPipeline : IPipelineDefinition
     }
 }
 
-public class CustomErrorHandler : IErrorHandler
+// Configure error handler via context when running
+var context = new PipelineContext(
+    PipelineContextConfiguration.WithErrorHandling(
+        pipelineErrorHandler: new CustomErrorHandler()));
+
+await runner.RunAsync<ParentPipeline>(context);
+
+public class CustomErrorHandler : IPipelineErrorHandler
 {
-    public Task<ErrorHandlingDecision> HandleAsync(NodeExecutionContext nodeContext, Exception exception)
+    public Task<PipelineErrorDecision> HandleNodeFailureAsync(
+        string nodeId, 
+        Exception error,
+        PipelineContext context, 
+        CancellationToken cancellationToken)
     {
         // Log error
-        Log.Error(exception, "Error in node {NodeId}", nodeContext.NodeId);
+        Log.Error(error, "Error in node {NodeId}", nodeId);
         
         // Decide how to proceed
-        if (exception is ValidationException)
+        if (error is ValidationException)
         {
-            // Continue with next item
-            return Task.FromResult(ErrorHandlingDecision.Continue);
+            // Continue without this node
+            return Task.FromResult(PipelineErrorDecision.ContinueWithoutNode);
         }
         
         // Fail pipeline
-        return Task.FromResult(ErrorHandlingDecision.Fail);
+        return Task.FromResult(PipelineErrorDecision.FailPipeline);
     }
 }
 ```
@@ -566,6 +574,7 @@ public async Task ParentPipeline_WithSubPipelineError_ShouldHandleGracefully()
 | **Hybrid** | Flexibility, best of both | More complexity | Complex error scenarios |
 
 Choose the error handling strategy that best fits your:
+
 - **Error types**: Expected vs unexpected
 - **Recovery options**: Retry, fallback, or fail
 - **Observability needs**: Logging and monitoring requirements

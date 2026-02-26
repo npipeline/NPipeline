@@ -27,8 +27,8 @@ public interface IDataPipe<T> : IAsyncEnumerable<T>
 **Basic Data Flow:**
 
 ```csharp
-// 1. Source produces a pipe
-var sourcePipe = await sourceNode.Initialize(context, cancellationToken);
+// 1. Source produces a pipe (synchronous - no await needed)
+var sourcePipe = sourceNode.Initialize(context, cancellationToken);
 
 // 2. Transform consumes and wraps it
 var transformedPipe = new TransformPipe(sourcePipe, transformNode);
@@ -74,8 +74,8 @@ graph LR
 **Code Example:**
 
 ```csharp
-// Step 1: Source creates pipe (but doesn't read data yet)
-var pipe = await source.Initialize(context, cancellationToken);
+// Step 1: Source creates pipe (synchronous - no await needed)
+var pipe = source.Initialize(context, cancellationToken);
 
 // Step 2: Transform wraps pipe (but doesn't process yet)
 var wrappedPipe = new TransformPipe(pipe, transform);
@@ -134,7 +134,7 @@ await foreach (var result in pipeline.WithCancellation(cancellationToken))
 Each transform creates a new data pipe, allowing for clean composition:
 
 ```csharp
-var source = await sourceNode.Initialize(context, ct);      // IDataPipe<Order>
+var source = sourceNode.Initialize(context, ct);      // IDataPipe<Order>
 var validated = new TransformPipe(source, validator);          // IDataPipe<ValidatedOrder>
 var enriched = new TransformPipe(validated, enricher);         // IDataPipe<EnrichedOrder>
 var processed = new TransformPipe(enriched, processor);        // IDataPipe<ProcessedOrder>

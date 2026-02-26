@@ -13,60 +13,27 @@ Validation nodes check property values against rules and provide clear error mes
 Validate text data against patterns and constraints:
 
 ```csharp
-builder.AddStringValidation<User>(x => x.Email)
-    .IsEmail()
-    .HasMaxLength(255);
-```
+builder.AddStringValidation<User>()
+    .IsEmail(x => x.Email, "Email address is not in valid format")
+    .HasMaxLength(x => x.Email, 255, "Email cannot exceed 255 characters");
 
-### Available Validators
+builder.AddStringValidation<User>()
+    .HasMinLength(x => x.Password, 8, "Password must be at least 8 characters")
+    .Matches(x => x.Password, "[A-Z]", RegexOptions.None, "Password must contain uppercase letter")
+    .Matches(x => x.Password, "[0-9]", RegexOptions.None, "Password must contain digit")
+    .Matches(x => x.Password, "[!@#$%^&*]", RegexOptions.None, "Password must contain special character");
 
-| Validator | Purpose | Parameters |
-|-----------|---------|------------|
-| `IsEmail()` | Valid email format | `bool allowNull` |
-| `IsUrl()` | Valid URL (HTTP/HTTPS) | `bool allowNull` |
-| `IsGuid()` | Valid GUID format | `bool allowNull` |
-| `IsAlphanumeric()` | Letters and digits only | `bool allowNull` |
-| `IsAlphabetic()` | Letters only | `bool allowNull` |
-| `IsDigitsOnly()` | Digits only | `bool allowNull` |
-| `IsNumeric()` | Valid number format | `bool allowNull` |
-| `HasMinLength(min)` | Minimum length | `int min, bool allowNull` |
-| `HasMaxLength(max)` | Maximum length | `int max, bool allowNull` |
-| `HasLengthBetween(min, max)` | Length in range | `int min, int max, bool allowNull` |
-| `Matches(pattern)` | Regex pattern match | `string pattern, RegexOptions, bool allowNull` |
-| `Contains(substring)` | Contains substring | `string substring, StringComparison, bool allowNull` |
-| `StartsWith(prefix)` | Starts with prefix | `string prefix, StringComparison, bool allowNull` |
-| `EndsWith(suffix)` | Ends with suffix | `string suffix, StringComparison, bool allowNull` |
+builder.AddStringValidation<SocialProfile>()
+    .IsUrl(x => x.WebsiteUrl, "Website URL must be valid HTTP/HTTPS URL");
 
-### Examples
+builder.AddStringValidation<Contact>()
+    .IsDigitsOnly(x => x.Phone, "Phone number must contain only digits")
+    .HasLengthBetween(x => x.Phone, 10, 15, "Phone number must be 10-15 digits");
 
-```csharp
-// Email validation with custom messages
-builder.AddStringValidation<User>(x => x.Email)
-    .IsEmail("Email address is not in valid format")
-    .HasMaxLength(255, "Email cannot exceed 255 characters");
-
-// Password validation
-builder.AddStringValidation<User>(x => x.Password)
-    .HasMinLength(8, "Password must be at least 8 characters")
-    .Matches("[A-Z]", RegexOptions.None, false, "Password must contain uppercase letter")
-    .Matches("[0-9]", RegexOptions.None, false, "Password must contain digit")
-    .Matches("[!@#$%^&*]", RegexOptions.None, false, "Password must contain special character");
-
-// URL validation
-builder.AddStringValidation<SocialProfile>(x => x.WebsiteUrl)
-    .IsUrl("Website URL must be valid HTTP/HTTPS URL")
-    .AllowNull();  // Optional field
-
-// Phone number (numeric only)
-builder.AddStringValidation<Contact>(x => x.Phone)
-    .IsDigitsOnly("Phone number must contain only digits")
-    .HasLengthBetween(10, 15, "Phone number must be 10-15 digits");
-
-// Username validation
-builder.AddStringValidation<Account>(x => x.Username)
-    .HasMinLength(3, "Username must be at least 3 characters")
-    .HasMaxLength(20, "Username must not exceed 20 characters")
-    .IsAlphanumeric("Username can only contain letters and digits");
+builder.AddStringValidation<Account>()
+    .HasMinLength(x => x.Username, 3, "Username must be at least 3 characters")
+    .HasMaxLength(x => x.Username, 20, "Username must not exceed 20 characters")
+    .IsAlphanumeric(x => x.Username, "Username can only contain letters and digits");
 ```
 
 ## Numeric Validation
@@ -234,41 +201,43 @@ builder.AddDateTimeValidation<Reminder>(x => x.ScheduledTime)
 Validate collections and their elements:
 
 ```csharp
-builder.AddCollectionValidation<Document>(x => x.Tags)
-    .HasMinLength(1)
-    .HasMaxLength(10);
+builder.AddCollectionValidation<Document>()
+    .HasMinCount(x => x.Tags, 1)
+    .HasMaxCount(x => x.Tags, 10);
 ```
 
 ### Available Validators
 
 | Validator | Purpose |
 |-----------|---------|
-| `HasMinLength(min)` | Minimum items |
-| `HasMaxLength(max)` | Maximum items |
-| `HasLengthBetween(min, max)` | Item count in range |
-| `NotEmpty()` | Contains at least one item |
-| `IsEmpty()` | Contains no items |
+| `HasMinCount(min)` | Minimum items |
+| `HasMaxCount(max)` | Maximum items |
+| `HasCountBetween(min, max)` | Item count in range |
+| `IsNotEmpty()` | Contains at least one item |
 | `Contains(item)` | Contains specific item |
-| `NotContains(item)` | Does not contain item |
-| `AllItemsMatch(predicate)` | All items satisfy condition |
-| `AnyItemMatches(predicate)` | At least one item satisfies condition |
+| `DoesNotContain(item)` | Does not contain item |
+| `AllMatch(predicate)` | All items satisfy condition |
+| `AnyMatch(predicate)` | At least one item satisfies condition |
+| `NoneMatch(predicate)` | No items match condition |
+| `AllUnique()` | All items are unique |
+| `IsSubsetOf(allowedValues)` | All items in allowed set |
 
 ### Examples
 
 ```csharp
 // Tag validation
-builder.AddCollectionValidation<Article>(x => x.Tags)
-    .HasMinLength(1, "Article must have at least one tag")
-    .HasMaxLength(10, "Article cannot have more than 10 tags");
+builder.AddCollectionValidation<Article>()
+    .HasMinCount(x => x.Tags, 1, "Article must have at least one tag")
+    .HasMaxCount(x => x.Tags, 10, "Article cannot have more than 10 tags");
 
 // Category selection
-builder.AddCollectionValidation<Product>(x => x.Categories)
-    .NotEmpty("Product must have at least one category");
+builder.AddCollectionValidation<Product>()
+    .IsNotEmpty(x => x.Categories, "Product must have at least one category");
 
 // Email recipients
-builder.AddCollectionValidation<EmailMessage>(x => x.Recipients)
-    .HasMinLength(1, "Message must have at least one recipient")
-    .AllItemsMatch(email => email.Contains("@"), "All recipients must have valid email format");
+builder.AddCollectionValidation<EmailMessage>()
+    .HasMinCount(x => x.Recipients, 1, "Message must have at least one recipient")
+    .AllMatch(x => x.Recipients, email => email.Contains("@"), "All recipients must have valid email format");
 ```
 
 ## Custom Messages
@@ -276,13 +245,13 @@ builder.AddCollectionValidation<EmailMessage>(x => x.Recipients)
 All validators support custom error messages:
 
 ```csharp
-builder.AddStringValidation<User>(x => x.Email)
-    .IsEmail("Please provide a valid email address")
-    .HasMaxLength(255, "Email address is too long");
+builder.AddStringValidation<User>()
+    .IsEmail(x => x.Email, "Please provide a valid email address")
+    .HasMaxLength(x => x.Email, 255, "Email address is too long");
 
-builder.AddNumericValidation<Product>(x => x.Price)
-    .IsGreaterThan(0, "Products must have a price greater than zero")
-    .HasDecimals(2, "Prices can only have up to 2 decimal places");
+builder.AddNumericValidation<Product>()
+    .IsGreaterThan(x => x.Price, 0, "Products must have a price greater than zero")
+    .IsBetween(x => x.Discount, 0, 100, "Discount must be between 0 and 100 percent");
 ```
 
 ## Multiple Rules

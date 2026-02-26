@@ -273,6 +273,12 @@ public sealed class CustomObservabilityCollector : IObservabilityCollector
     {
         return _baseCollector.CreatePipelineMetrics(pipelineName, runId, startTime, endTime, success, exception);
     }
+
+    public Task EmitMetricsAsync(string pipelineName, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, 
+        bool success, Exception? exception = null, CancellationToken cancellationToken = default)
+    {
+        return _baseCollector.EmitMetricsAsync(pipelineName, runId, startTime, endTime, success, exception, cancellationToken);
+    }
 }
 
 // Registration
@@ -336,7 +342,7 @@ Sinks are scoped because:
 
 ### ObservabilityExtensionOptions
 
-The [`ObservabilityExtensionOptions`](../../src/NPipeline.Extensions.Observability/DependencyInjection/ObservabilityExtensionOptions.cs:10) class controls global behavior of the observability extension:
+The [`ObservabilityExtensionOptions`](../../src/NPipeline.Extensions.Observability/DependencyInjection/ObservabilityExtensionOptions.cs) class controls global behavior of the observability extension:
 
 ```csharp
 public sealed record ObservabilityExtensionOptions

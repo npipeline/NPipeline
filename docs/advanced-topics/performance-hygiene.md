@@ -283,7 +283,7 @@ public class MyTransformBenchmarks
 }
 ```
 
-## 4. Avoid Context Mutations During Node Execution
+## 6. Avoid Context Mutations During Node Execution
 
 ### The Context Immutability Guarantee
 

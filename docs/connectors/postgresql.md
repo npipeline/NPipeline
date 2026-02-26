@@ -210,7 +210,7 @@ public PostgresSourceNode<T>(
 public PostgresSourceNode<T>(
     IPostgresConnectionPool pool,
     string query,
-    Func<NpgsqlDataReader, T> rowMapper,
+    Func<PostgresRow, T> rowMapper,
     string? connectionName = null,
     PostgresConfiguration? configuration = null)
 ```
@@ -360,11 +360,11 @@ public sealed class CustomMapperPipeline : IPipelineDefinition
             connectionString: "Host=localhost;Database=npipeline;Username=postgres;Password=postgres",
             query: "SELECT id, customer_id, total, status, created_at FROM orders",
             rowMapper: row => new Order(
-                row.GetInt32(row.GetOrdinal("id")),
-                row.GetInt32(row.GetOrdinal("customer_id")),
-                row.GetDecimal(row.GetOrdinal("total")),
-                row.GetString(row.GetOrdinal("status")),
-                row.GetDateTime(row.GetOrdinal("created_at"))));
+                row.GetInt32("id"),
+                row.GetInt32("customer_id"),
+                row.GetDecimal("total"),
+                row.GetString("status"),
+                row.GetDateTime("created_at")));
         var source = builder.AddSource(sourceNode, "postgres_source");
         var sink = builder.AddSink<ConsoleSinkNode, Order>("console_sink");
 
@@ -584,7 +584,7 @@ The `PostgresConfiguration` class provides comprehensive options for configuring
 
 | Property | Type | Default | Description |
 | --- | --- | --- | --- |
-| `ConnectionString` | `string?` | `null` | PostgreSQL connection string. Not required when using a connection pool. |
+| `ConnectionString` | `string?` | `""` | PostgreSQL connection string. Not required when using a connection pool. |
 | `Schema` | `string` | `"public"` | Default schema name for PostgreSQL operations. |
 | `StreamResults` | `bool` | `true` | Enables streaming of results to reduce memory usage for large result sets. |
 | `FetchSize` | `int` | `1,000` | Number of rows to fetch per round-trip when streaming. Larger values reduce round-trips but use more memory. |
@@ -958,8 +958,10 @@ Implement `ICheckpointStorage` to persist checkpoints to your preferred backend:
 ```csharp
 public interface ICheckpointStorage
 {
-    Task<Checkpoint?> LoadAsync(string pipelineId, CancellationToken cancellationToken = default);
-    Task SaveAsync(string pipelineId, Checkpoint checkpoint, CancellationToken cancellationToken = default);
+    Task<Checkpoint?> LoadAsync(string pipelineId, string nodeId, CancellationToken cancellationToken = default);
+    Task SaveAsync(string pipelineId, string nodeId, Checkpoint checkpoint, CancellationToken cancellationToken = default);
+    Task DeleteAsync(string pipelineId, string nodeId, CancellationToken cancellationToken = default);
+    Task<bool> ExistsAsync(string pipelineId, string nodeId, CancellationToken cancellationToken = default);
 }
 ```
 
@@ -978,7 +980,7 @@ var configuration = new PostgresConfiguration
     CheckpointStrategy = CheckpointStrategy.Offset,
     CheckpointInterval = new CheckpointIntervalConfiguration
     {
-        RowCount = 10_000,  // Save every 10,000 rows
+        RowCountInterval = 10_000,  // Save every 10,000 rows
         TimeInterval = TimeSpan.FromMinutes(5)  // Or every 5 minutes, whichever comes first
     }
 };
@@ -1191,7 +1193,9 @@ public record Order(
     [PostgresColumn("order_id", PrimaryKey = true)] int Id,
     [PostgresColumn("customer_id")] int CustomerId,
     [PostgresColumn("order_total")] decimal Total,
-    string Status);
+    [PostgresColumn("order_status")] string Status,
+    [IgnoreColumn] string? InternalNotes,
+    [IgnoreColumn] DateTime? ComputedFields);
 ```
 
 Parameters:
@@ -1200,7 +1204,7 @@ Parameters:
 - **`PrimaryKey`**: Indicates whether the column is a primary key (used for checkpointing)
 - **`Ignore`**: When `true`, skips mapping this property
 
-#### `[PostgresIgnore]`
+#### `[IgnoreColumn]`
 
 Skips a property entirely during mapping:
 
@@ -1209,8 +1213,8 @@ public record Order(
     int Id,
     int CustomerId,
     decimal Total,
-    [PostgresIgnore] string? InternalNotes,
-    [PostgresIgnore] DateTime? LastUpdated);
+    [IgnoreColumn] string? InternalNotes,
+    [IgnoreColumn] DateTime? LastUpdated);
 ```
 
 ### Mapping Metadata Caching
@@ -1233,8 +1237,8 @@ public record Order(
     [PostgresColumn("customer_id")] int CustomerId,
     [PostgresColumn("order_total")] decimal Total,
     [PostgresColumn("order_status")] string Status,
-    [PostgresIgnore] string? InternalNotes,
-    [PostgresIgnore] DateTime? ComputedFields);
+    [IgnoreColumn] string? InternalNotes,
+    [IgnoreColumn] DateTime? ComputedFields);
 
 public sealed class MappingPipeline : IPipelineDefinition
 {
@@ -1485,7 +1489,7 @@ var config = new PostgresConfiguration
 
 1. **Use convention-based mapping**: Leverage `PascalCase` to `snake_case` conversion
 2. **Override with attributes**: Use `[PostgresColumn]` for non-standard column names
-3. **Skip internal properties**: Use `[PostgresIgnore]` for properties that shouldn't be persisted
+3. **Skip internal properties**: Use `[IgnoreColumn]` for properties that shouldn't be persisted
 4. **Design for checkpointing**: Order queries by an ID column to enable checkpointing
 5. **Mark primary keys**: Use `PrimaryKey = true` in `[PostgresColumn]` for checkpoint columns
 

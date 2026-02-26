@@ -39,14 +39,16 @@ The class delegates all operations to the underlying `Activity`, which is part o
 
 ## When to Use Which Approach?
 
-### Use Core Tracing (PipelineActivity) If:
+### Use Core Tracing (PipelineActivity) If
+
 - You want lightweight, custom tracing without external dependencies
 - You're building your own observability solution
 - You need full control over how activities are created and managed
 - You're exporting traces manually or using a non-standard backend
 - You want to understand the fundamentals of how tracing works
 
-### Use OpenTelemetry Integration If:
+### Use OpenTelemetry Integration If
+
 - You need production-grade distributed tracing with multiple backends
 - You want to export traces to Jaeger, Zipkin, Azure Application Insights, or AWS X-Ray
 - You prefer standardized telemetry configuration via OpenTelemetry SDKs
@@ -62,8 +64,8 @@ To use distributed tracing with NPipeline, implement `IPipelineTracer`:
 
 ```csharp
 using System.Diagnostics;
-using NPipeline.Extensions.Observability.Tracing;
 using NPipeline.Observability.Tracing;
+using NPipeline.Extensions.Observability.Tracing;
 
 public class SystemDiagnosticsTracer : IPipelineTracer
 {
@@ -74,14 +76,18 @@ public class SystemDiagnosticsTracer : IPipelineTracer
         _serviceName = serviceName;
     }
 
+    public IPipelineActivity? CurrentActivity { get; private set; }
+
     public IPipelineActivity StartActivity(string name)
     {
         var activity = new Activity($"{_serviceName}.{name}")
             .Start();
 
-        return activity != null 
-            ? new PipelineActivity(activity)
-            : new NullPipelineActivity();
+        if (activity == null)
+            return NullPipelineActivity.Instance;
+
+        CurrentActivity = new PipelineActivity(activity);
+        return CurrentActivity;
     }
 }
 ```
@@ -210,27 +216,34 @@ Then visit `http://localhost:16686` to view traces.
 Activities can be nested to represent hierarchical execution:
 
 ```csharp
+using System.Diagnostics;
+using NPipeline.Observability.Tracing;
+using NPipeline.Extensions.Observability.Tracing;
+
 public class HierarchicalTracer : IPipelineTracer
 {
+    public IPipelineActivity? CurrentActivity { get; private set; }
+
     public IPipelineActivity StartActivity(string name)
     {
         // Activities automatically parent to the current Activity
         var activity = new Activity($"Pipeline.{name}")
             .Start();
 
-        if (activity != null)
-        {
-            activity.SetTag("trace_id", activity.TraceId);
-            activity.SetTag("span_id", activity.SpanId);
-            return new PipelineActivity(activity);
-        }
+        if (activity == null)
+            return NullPipelineActivity.Instance;
 
-        return new NullPipelineActivity();
+        activity.SetTag("trace_id", activity.TraceId);
+        activity.SetTag("span_id", activity.SpanId);
+        
+        CurrentActivity = new PipelineActivity(activity);
+        return CurrentActivity;
     }
 }
 ```
 
 Parent-child relationships are established automatically:
+
 - When a new activity is started, it becomes a child of `Activity.Current`
 - The trace ID is propagated to all child activities
 - Span IDs create the parent-child hierarchy

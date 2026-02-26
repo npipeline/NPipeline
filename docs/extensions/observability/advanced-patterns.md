@@ -36,7 +36,52 @@ public class DetailedObservabilityCollector : IObservabilityCollector
         _logger.LogDebug("Node {NodeId} started on host {HostName}", nodeId, detailed.HostName);
     }
     
-    // Implement other IObservabilityCollector methods...
+    public void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Exception? exception = null, 
+        long? peakMemoryMb = null, long? processorTimeMs = null)
+    {
+        // Implementation...
+    }
+    
+    public void RecordItemMetrics(string nodeId, long itemsProcessed, long itemsEmitted)
+    {
+        // Implementation...
+    }
+    
+    public void RecordRetry(string nodeId, int retryCount, string? reason = null)
+    {
+        // Implementation...
+    }
+    
+    public void RecordPerformanceMetrics(string nodeId, double throughputItemsPerSec, double averageItemProcessingMs)
+    {
+        // Implementation...
+    }
+    
+    public IReadOnlyList<INodeMetrics> GetNodeMetrics()
+    {
+        // Implementation...
+        return Array.Empty<INodeMetrics>();
+    }
+    
+    public INodeMetrics? GetNodeMetrics(string nodeId)
+    {
+        // Implementation...
+        return null;
+    }
+    
+    public IPipelineMetrics CreatePipelineMetrics(string pipelineName, Guid runId, DateTimeOffset startTime, 
+        DateTimeOffset? endTime, bool success, Exception? exception = null)
+    {
+        // Implementation...
+        throw new NotImplementedException();
+    }
+    
+    public Task EmitMetricsAsync(string pipelineName, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, 
+        bool success, Exception? exception = null, CancellationToken cancellationToken = default)
+    {
+        // Implementation...
+        return Task.CompletedTask;
+    }
 }
 ```
 

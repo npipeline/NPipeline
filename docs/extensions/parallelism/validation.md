@@ -75,13 +75,12 @@ var parallelOptions = new ParallelOptions(
     MaxQueueLength: 100);  // ✅ OK - Bounded to 6x parallelism
 
 // PROBLEM: Preserving order with high parallelism
-var options = builder.AddTransform<MyTransform, Input, Output>()
+var transform = builder.AddTransform<MyTransform, Input, Output>()
     .RunParallel(builder, opt => opt
-        .MaxDegreeOfParallelism(16)
-        .PreserveOrdering: true);  // ⚠️ High latency warning!
+        .MaxDegreeOfParallelism(16));  // ⚠️ High latency warning! (ordering preserved by default)
 
 // FIX: Disable ordering for throughput
-var options = builder.AddTransform<MyTransform, Input, Output>()
+var transform = builder.AddTransform<MyTransform, Input, Output>()
     .RunParallel(builder, opt => opt
         .MaxDegreeOfParallelism(16)
         .AllowUnorderedOutput());  // ✅ Better throughput

@@ -1035,8 +1035,10 @@ Implement `ICheckpointStorage` to persist checkpoints to your preferred backend:
 ```csharp
 public interface ICheckpointStorage
 {
-    Task<Checkpoint?> LoadAsync(string pipelineId, CancellationToken cancellationToken = default);
-    Task SaveAsync(string pipelineId, Checkpoint checkpoint, CancellationToken cancellationToken = default);
+    Task<Checkpoint?> LoadAsync(string pipelineId, string nodeId, CancellationToken cancellationToken = default);
+    Task SaveAsync(string pipelineId, string nodeId, Checkpoint checkpoint, CancellationToken cancellationToken = default);
+    Task DeleteAsync(string pipelineId, string nodeId, CancellationToken cancellationToken = default);
+    Task<bool> ExistsAsync(string pipelineId, string nodeId, CancellationToken cancellationToken = default);
 }
 ```
 
@@ -1055,7 +1057,7 @@ var configuration = new SqlServerConfiguration
     CheckpointStrategy = CheckpointStrategy.Offset,
     CheckpointInterval = new CheckpointIntervalConfiguration
     {
-        RowCount = 10_000,  // Save every 10,000 rows
+        RowCountInterval = 10_000,  // Save every 10,000 rows
         TimeInterval = TimeSpan.FromMinutes(5)  // Or every 5 minutes, whichever comes first
     }
 };
@@ -1920,7 +1922,7 @@ SqlServerRow
 
 // Common Attributes (Both Connectors)
 ColumnAttribute                 // Replace PostgresColumn/SqlServerColumn for basic mappings
-IgnoreColumnAttribute           // Replace PostgresIgnore/SqlServerIgnore
+IgnoreColumnAttribute           // Common ignore attribute works for all connectors
 ```
 
 ### Attribute Changes

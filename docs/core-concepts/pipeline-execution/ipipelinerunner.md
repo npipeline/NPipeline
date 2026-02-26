@@ -99,9 +99,9 @@ public sealed class MyPipelineDefinition : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        var sourceHandle = builder.AddSource<MySource, int>("source");
-        var transformHandle = builder.AddTransform<MyTransform, int, string>("transform");
-        var sinkHandle = builder.AddSink<MySink, string>("sink");
+        var sourceHandle = builder.AddSource<MySource, MyData>("source");
+        var transformHandle = builder.AddTransform<MyTransform, MyData, MyData>("transform");
+        var sinkHandle = builder.AddSink<MySink, MyData>("sink");
 
         builder.Connect(sourceHandle, transformHandle);
         builder.Connect(transformHandle, sinkHandle);
@@ -202,4 +202,3 @@ In this example, the pipeline starts producing and processing data. When a key i
 
 * **[Pipeline Context](../pipeline-context.md)**: Understand how `PipelineContext` provides runtime information and shared resources to nodes.
 * **[Error Handling](../resilience/error-handling.md)**: Dive deeper into strategies for managing errors within your pipelines.
-

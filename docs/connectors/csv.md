@@ -353,13 +353,13 @@ Common configuration options include:
 - `HasHeaderRecord`: Specify whether the CSV file has a header row (default is `true`).
 - `Delimiter`: Change the field delimiter (e.g., to a tab `\t` or semicolon `;`).
 - `CultureInfo`: Specify the culture to use for parsing numbers and dates.
-- `BufferSize`: Controls the buffer size for the StreamWriter used in CSV operations (default is 1024).
+- `BufferSize`: Controls the buffer size for the StreamWriter used in CSV operations (default is 4096).
 
 ### Buffer Size Configuration
 
-The [`BufferSize`](../../../src/NPipeline.Connectors.Csv/CsvConfiguration.cs:16) property controls the internal buffer size for CSV I/O operations:
+The `BufferSize` property controls the internal buffer size for CSV I/O operations:
 
-- **Default value**: 1024 bytes
+- **Default value**: 4096 bytes (4KB)
 - **Purpose**: Determines the size of the buffer used by StreamWriter when reading or writing CSV files
 - **Performance impact**: Larger buffers can improve I/O performance for large files but use more memory
 
@@ -378,12 +378,10 @@ When to adjust BufferSize:
 // Example: Custom buffer size for large file processing
 var largeFileConfig = new CsvConfiguration()
 {
-    BufferSize = 8192, // 8KB buffer for better performance with large files
-    HelperConfiguration = {
-        Delimiter = ",",
-        HasHeaderRecord = true
-    }
+    BufferSize = 8192 // 8KB buffer for better performance with large files
 };
+largeFileConfig.HelperConfiguration.Delimiter = ",";
+largeFileConfig.HasHeaderRecord = true;
 
 // Resolver is optional - omit it to use the default file system resolver
 var source = new CsvSourceNode<User>(
@@ -404,9 +402,9 @@ using System.Globalization;
 // Configure for a tab-separated file with no header
 var config = new CsvConfiguration(CultureInfo.InvariantCulture)
 {
-    Delimiter = "\t",
-    HasHeaderRecord = false,
+    HasHeaderRecord = false
 };
+config.HelperConfiguration.Delimiter = "\t";
 
 // Resolver is optional - omit it to use the default file system resolver
 var source = new CsvSourceNode<User>(

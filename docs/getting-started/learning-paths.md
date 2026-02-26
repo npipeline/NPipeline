@@ -114,7 +114,7 @@ New to NPipeline? Get started in three simple steps:
 
 ### Module 3: Advanced Integration (120 minutes)
 
-- [Dependency Injection](../architecture/dependency-injection.md) - Advanced Dependency Injection (DI) patterns
+- [Dependency Injection](../extensions/dependency-injection.md) - Advanced Dependency Injection (DI) patterns
 - [Extension Points](../architecture/extension-points.md) - Creating custom extensions
 - [Performance Characteristics](../architecture/performance-characteristics.md) - Understanding performance
 

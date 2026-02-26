@@ -73,29 +73,47 @@ The [`LineageCollector`](../../../src/NPipeline.Extensions.Lineage/LineageCollec
 **Storage Structure:**
 
 ```csharp
-// Per-item lineage trail
-internal sealed record LineageTrail(
-    Guid LineageId,
-    List<string> TraversalPath,
-    List<LineageHop> Hops,
-    object? Data
-);
+// Per-item lineage trail (internal)
+// Note: LineageTrail is an internal implementation detail of LineageCollector
 
 // Per-hop lineage information
 public sealed record LineageHop(
     string NodeId,
-    string Outcome,
-    Cardinality Cardinality,
-    int InputCount,
-    int OutputCount,
-    int[]? AncestryIndices,
+    HopDecisionFlags Outcome,           // Flags enum, not string
+    ObservedCardinality Cardinality,    // ObservedCardinality enum
+    int? InputContributorCount,         // Nullable int
+    int? OutputEmissionCount,           // Nullable int  
+    IReadOnlyList<int>? AncestryInputIndices,  // Renamed from AncestryIndices
     bool Truncated
 );
+
+// Hop decision flags
+[Flags]
+public enum HopDecisionFlags
+{
+    None = 0,
+    Emitted = 1 << 0,
+    FilteredOut = 1 << 1,
+    Joined = 1 << 2,
+    Aggregated = 1 << 3,
+    Retried = 1 << 4,
+    Error = 1 << 5,
+    DeadLettered = 1 << 6,
+}
+
+// Observed cardinality
+public enum ObservedCardinality
+{
+    Unknown = 0,
+    Zero = 1,
+    One = 2,
+    Many = 3,
+}
 ```
 
 ### LineagePacket
 
-The `LineagePacket` is the data structure that flows through the pipeline with each item:
+The `LineagePacket<T>` is the data structure that flows through the pipeline with each item:
 
 **Purpose:**
 
@@ -106,11 +124,15 @@ The `LineagePacket` is the data structure that flows through the pipeline with e
 **Structure:**
 
 ```csharp
-internal sealed record LineagePacket<T>(
+public sealed record LineagePacket<T>(
     T Data,
     Guid LineageId,
-    LineageTrail? Trail
-);
+    ImmutableList<string> TraversalPath
+) : ILineageEnvelope
+{
+    public ImmutableList<LineageHop> LineageHops { get; init; } = ImmutableList<LineageHop>.Empty;
+    public bool Collect { get; init; } = true;
+}
 ```
 
 **Flow:**
@@ -146,22 +168,18 @@ High-level report containing pipeline structure and execution summary:
 
 ```csharp
 public sealed record PipelineLineageReport(
-    string PipelineName,
-    Guid RunId,
-    DateTimeOffset StartTime,
-    DateTimeOffset? EndTime,
-    IReadOnlyList<NodeInfo> Nodes,
-    IReadOnlyList<EdgeInfo> Edges,
-    IReadOnlyList<ILineageInfo> LineageInfo
+    string Pipeline,                            // Pipeline name
+    Guid RunId,                                 // Unique run identifier
+    IReadOnlyList<NodeLineageInfo> Nodes,       // Node information
+    IReadOnlyList<EdgeLineageInfo> Edges        // Edge information
 );
 ```
 
 **Components:**
 
-- **Nodes**: All nodes in pipeline with types and configurations
+- **Nodes**: All nodes in pipeline with their types and configurations
 - **Edges**: Connections between nodes showing data flow
-- **LineageInfo**: All collected item-level lineage
-- **Metadata**: Pipeline name, run ID, timestamps
+- **Metadata**: Pipeline name and run ID
 
 ## Design Decisions
 

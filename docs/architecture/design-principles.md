@@ -37,7 +37,7 @@ This makes nodes testable, reusable, and easy to understand.
 Data is only processed when explicitly consumed:
 
 ```csharp
-var pipe = await source.Initialize(context, cancellationToken);
+var pipe = source.Initialize(context, cancellationToken);
 // No processing happens here - pipe exists but empty
 
 var wrappedPipe = new TransformPipe(pipe, transform);
@@ -139,26 +139,23 @@ No mocking pipelines or runners needed - test the node directly.
 Built-in diagnostics for understanding and troubleshooting:
 
 ```csharp
-// Track execution
+// Track execution using context items
 var context = PipelineContext.Default;
-context.StartTracking();
+context.Items["startTime"] = DateTime.UtcNow;
 
-await runner.ExecuteAsync(pipeline, context);
+await runner.RunAsync<MyPipeline>(context);
 
-var stats = context.GetExecutionStatistics();
-Console.WriteLine($"Items processed: {stats.ItemsProcessed}");
-Console.WriteLine($"Processing time: {stats.TotalTime}");
-Console.WriteLine($"Items per second: {stats.Throughput}");
-
-// Access lineage for debugging
-var lineage = context.Lineage.Items;
-foreach (var item in lineage)
+// Access execution statistics from context
+if (context.Items.TryGetValue("stats.totalProcessedItems", out var statsObj) && statsObj is StatsCounter counter)
 {
-    Console.WriteLine($"Processed by: {item.NodeName}");
+    Console.WriteLine($"Items processed: {counter.Count}");
 }
+
+// Access lineage factory for lineage tracking
+var lineageFactory = context.LineageFactory;
 ```
 
-No external logging frameworks needed for core diagnostics.
+For comprehensive observability, configure the [`ExecutionObserver`](./component-architecture.md#3-pipeline-context) and use the [`IObservabilityFactory`](./component-architecture.md#3-pipeline-context) to create tracers and loggers.
 
 ## Design Trade-offs
 

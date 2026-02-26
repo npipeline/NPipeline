@@ -22,7 +22,7 @@ using NPipeline.Pipeline;
 
 public sealed class SimplifiedParallelPipeline : IPipelineDefinition
 {
-    public void DefinePipeline(PipelineBuilder builder)
+    public void Define(PipelineBuilder builder, PipelineContext context)
     {
         builder
             .AddTransform<MyTransform, Input, Output>()
@@ -203,7 +203,7 @@ using NPipeline.Pipeline;
 
 public class FileProcessingPipeline : IPipelineDefinition
 {
-    public void DefinePipeline(PipelineBuilder builder)
+    public void Define(PipelineBuilder builder, PipelineContext context)
     {
         builder
             // Read files (I/O-bound)

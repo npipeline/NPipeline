@@ -1,155 +1,154 @@
 ---
 title: Sample Applications
-description: Real-world examples demonstrating NPipeline concepts and patterns for different skill levels
+description: Index of sample applications demonstrating NPipeline concepts and patterns
 sidebar_position: 1
 ---
 
 # Sample Applications
 
-This guide provides practical examples of NPipeline implementations, organized by skill level and complexity. Each sample demonstrates specific concepts and patterns you can apply to your own pipelines.
+Sample applications demonstrate NPipeline concepts through practical, runnable code. Each sample includes a README with setup instructions, code walkthrough, and key concepts.
 
-> **Location:** All samples are located in the `/samples/` directory of the repository. Each sample includes complete source code, configuration files, and a README with detailed explanations.
+> **All samples are in the `/samples/` directory.** Browse the code on GitHub or clone the repository to run them locally.
 
-## Recommended Learning Path
+## Getting Started
 
-**New to NPipeline?** Follow this path to master the framework:
+**New to NPipeline?** Start with these foundational samples:
 
-1. **Start Here:** [Sample 01: Basic Pipeline](./basic.md#sample-01-basic-pipeline) (1-2 hours)
-   - Learn the fundamentals: sources, transforms, sinks, and how data flows
-   - This is your "Hello World" of NPipeline
+1. **[Sample_BasicPipeline](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_BasicPipeline)** — Source, transform, and sink nodes; pipeline definition and execution
+2. **[Sample_FileProcessing](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_FileProcessing)** — File-based sources and sinks; streaming file I/O
+3. **[Sample_BasicErrorHandling](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_BasicErrorHandling)** — Try-catch patterns, retry logic, graceful degradation
 
-2. **Build Your Foundation:** [Samples 2-5](./basic.md) (2-3 hours)
-   - File processing, error handling, data transformation, and parallelism
-   - Strengthen core concepts with hands-on examples
+## All Samples
 
-3. **Add Resilience:** [Sample 06: Advanced Error Handling](./intermediate.md#sample-06-advanced-error-handling) (1 hour)
-   - Learn production-ready error recovery patterns
-   - Understand retries and circuit breakers
+### Fundamentals
 
-4. **Choose Your Focus** (ongoing)
-   - **Data Processing** → [Samples 7-9](./intermediate.md) - Enrichment, CSV, analytics
-   - **Performance** → [Samples 11-12](./advanced.md) - Custom nodes, optimization
-   - **Streaming** → [Samples 15-16](./advanced.md) - Windowing, time-based processing
-   - **Complex Joins** → [Samples 17-20](./advanced.md) - Keyed joins, temporal logic
-   - **Extensions** → [Extension Samples](./extensions.md) - Lineage, observability, composition, nodes
+| Sample | Concepts Demonstrated |
+|--------|----------------------|
+| [Sample_BasicPipeline](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_BasicPipeline) | Source, transform, sink nodes; pipeline definition; DI integration |
+| [Sample_FileProcessing](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_FileProcessing) | File-based sources/sinks; streaming I/O; atomic file operations |
+| [Sample_BasicErrorHandling](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_BasicErrorHandling) | Try-catch patterns; exponential backoff; fallback mechanisms |
+| [Sample_SimpleDataTransformation](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_SimpleDataTransformation) | CSV parsing; validation; filtering; enrichment |
+| [Sample_ParallelProcessing](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_ParallelProcessing) | Parallel execution strategies; resource management; thread safety |
 
-### Already know what you need?
+### Error Handling & Resilience
 
-Jump directly to samples by topic:
+| Sample | Concepts Demonstrated |
+|--------|----------------------|
+| [Sample_AdvancedErrorHandling](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_AdvancedErrorHandling) | Circuit breakers; dead letter queues; Polly integration |
+| [Sample_FluentErrorHandling](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_FluentErrorHandling) | Fluent error handling API; error simulation utilities |
+| [Sample_RetryDelay](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_RetryDelay) | Retry delay strategies; backoff patterns; jitter |
 
-- [File Processing](./basic.md#sample-02-file-processing)
-- [CSV Processing](./intermediate.md#sample-08-csv-connector)
-- [JSON Processing](./intermediate.md#sample-09-json-connector)
-- [Real-time Analytics](./intermediate.md#sample-10-aggregatenode)
-- [Custom Node Implementation](./advanced.md)
-- [Extension Samples](./extensions.md)
+### Data Connectors
 
-## What Each Sample Includes
+| Sample | Concepts Demonstrated |
+|--------|----------------------|
+| [Sample_CsvConnector](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_CsvConnector) | CsvSourceNode/CsvSinkNode; attribute-based mapping; validation |
+| [Sample_JsonConnector](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_JsonConnector) | JsonSourceNode/JsonSinkNode; JSON array and NDJSON formats |
+| [Sample_ExcelConnector](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_ExcelConnector) | Excel source/sink nodes; Excel-specific configuration |
+| [Sample_KafkaConnector](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_KafkaConnector) | Kafka integration; consumer/producer configuration |
+| [Sample_PostgreSQLConnector](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_PostgreSQLConnector) | PostgreSQL source/sink; database operations |
+| [Sample_CosmosDbConnector](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_CosmosDbConnector) | Cosmos DB integration; NoSQL operations |
+| [Sample_SqsConnector](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_SqsConnector) | AWS SQS integration; message queue processing |
+| [Sample_SqlServerConnector](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_SqlServerConnector) | SQL Server integration; database connectivity |
 
-Every sample comes with:
+### Data Enrichment & Lookups
 
-- **Complete source code** with comments explaining key concepts
-- **Configuration files** showing best practices
-- **README** with detailed explanations and setup instructions
-- **Performance characteristics** and tuning guidance
-- **Real-world scenario context** and business logic
+| Sample | Concepts Demonstrated |
+|--------|----------------------|
+| [Sample_LookupNode](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_LookupNode) | LookupNode for data enrichment; async lookups; missing data handling |
+| [Sample_InMemoryLookupNode](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_InMemoryLookupNode) | In-memory lookup patterns; reference data caching |
 
-## Sample Breakdown by Skill Level
+### Aggregation & Analytics
 
-### Basic Samples (1-5)
+| Sample | Concepts Demonstrated |
+|--------|----------------------|
+| [Sample_AggregateNode](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_AggregateNode) | AggregateNode; tumbling/sliding windows; real-time analytics |
+| [Sample_AdvancedAggregateNode](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_AdvancedAggregateNode) | AdvancedAggregateNode; complex accumulators; financial risk calculations |
+| [Sample_StreamingAnalytics](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_StreamingAnalytics) | Time-based windowing; watermarks; late data handling |
 
-Perfect for learning NPipeline fundamentals:
+### Batching & Unbatching
 
-- **Sample 01: Basic Pipeline** - Hello World of NPipeline
-- **Sample 02: File Processing** - Stream processing files efficiently
-- **Sample 03: Basic Error Handling** - Essential error handling patterns
-- **Sample 04: Simple Data Transformation** - Validation, filtering, enrichment
-- **Sample 05: Parallel Processing** - Leveraging multiple CPU cores
+| Sample | Concepts Demonstrated |
+|--------|----------------------|
+| [Sample_BatchingNode](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_BatchingNode) | BatchingNode; size/time-based batching; bulk operations |
+| [Sample_UnbatchingNode](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_UnbatchingNode) | UnbatchingNode; batch-to-stream conversion; hybrid processing |
 
-**→ [View all Basic Samples](./basic.md)**
+### Joins & Merging
 
-### Intermediate Samples (6-11)
+| Sample | Concepts Demonstrated |
+|--------|----------------------|
+| [Sample_KeyedJoinNode](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_KeyedJoinNode) | KeyedJoinNode; inner/outer joins; multi-stream correlation |
+| [Sample_TimeWindowedJoinNode](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_TimeWindowedJoinNode) | TimeWindowedJoinNode; temporal correlation; watermark management |
+| [Sample_SelfJoinNode](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_SelfJoinNode) | Self-join patterns; stream self-correlation |
+| [Sample_CustomMergeNode](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_CustomMergeNode) | CustomMergeNode; priority-based merging; conflict resolution |
 
-Building real-world features:
+### Branching & Distribution
 
-- **Sample 06: Advanced Error Handling** - Production resilience patterns
-- **Sample 07: LookupNode** - Data enrichment from external sources
-- **Sample 08: CSV Connector** - CSV processing pipelines
-- **Sample 09: JSON Connector** - JSON array and NDJSON processing pipelines
-- **Sample 10: AggregateNode** - Real-time analytics with windowing
-- **Sample 11: BranchNode** - Parallel data distribution
+| Sample | Concepts Demonstrated |
+|--------|----------------------|
+| [Sample_BranchNode](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_BranchNode) | BranchNode; parallel data distribution; multi-path processing |
+| [Sample_TapNode](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_TapNode) | TapNode; non-intrusive monitoring; audit logging; side-effect processing |
 
-**→ [View all Intermediate Samples](./intermediate.md)**
+### Windowing & Event-Time Processing
 
-### Advanced Samples (11-23)
+| Sample | Concepts Demonstrated |
+|--------|----------------------|
+| [Sample_WindowingStrategies](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_WindowingStrategies) | Session windows; dynamic windows; custom trigger windows |
+| [Sample_WatermarkHandling](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_WatermarkHandling) | Event-time processing; watermark generation; late data handling |
 
-Production-grade scenarios:
+### Performance & Optimization
 
-- **11-12:** Foundational concepts (custom nodes, performance optimization)
-- **13-14:** Data processing patterns (batching, unbatching)
-- **15-16:** Stream processing and windowing (time-based, session-based, dynamic)
-- **17-20:** Complex joins and merging (keyed, temporal, custom merge)
-- **21-23:** Event-time processing, monitoring, end-to-end scenarios
+| Sample | Concepts Demonstrated |
+|--------|----------------------|
+| [Sample_PerformanceOptimization](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_PerformanceOptimization) | ValueTask optimization; sync fast paths; memory allocation reduction |
+| [Sample_ParallelExecution_Simplified](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_ParallelExecution_Simplified) | Simplified parallel execution; degree of parallelism |
 
-**→ [View all Advanced Samples](./advanced.md)**
+### Custom Implementation
 
-### Extension Samples
+| Sample | Concepts Demonstrated |
+|--------|----------------------|
+| [Sample_CustomNodeImplementation](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_CustomNodeImplementation) | Custom node development; lifecycle management; caching patterns |
+| [Sample_LambdaNodes](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_LambdaNodes) | Lambda-based nodes; inline transforms; functional patterns |
 
-Demonstrating NPipeline extension packages:
+### Complex Scenarios
 
-- **Lineage Extension** - Data lineage tracking and provenance
-- **Nodes Extension** - Pre-built data processing nodes
-- **Observability Extension** - Metrics collection and monitoring
-- **Composition Extension** - Hierarchical pipeline composition
+| Sample | Concepts Demonstrated |
+|--------|----------------------|
+| [Sample_ComplexDataTransformations](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_ComplexDataTransformations) | Multi-stream joins; external lookups; complex aggregations |
+| [Sample_IntentDrivenGrouping](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_IntentDrivenGrouping) | Intent-based grouping; semantic data organization |
+| [Sample_HttpPost](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_HttpPost) | HTTP sink nodes; REST API integration |
 
-**→ [View all Extension Samples](./extensions.md)**
+### Storage Providers
 
-## Learning Paths
+| Sample | Concepts Demonstrated |
+|--------|----------------------|
+| [Sample_S3StorageProvider](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_S3StorageProvider) | AWS S3 integration; cloud storage operations |
+| [Sample_AzureStorageProvider](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_AzureStorageProvider) | Azure Blob Storage integration |
+| [Sample_GcsStorageProvider](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_GcsStorageProvider) | Google Cloud Storage integration |
 
-Choose the path that matches your goals:
+### Extensions
 
-### Minimum Path (1-2 hours)
+| Sample | Concepts Demonstrated |
+|--------|----------------------|
+| [Sample_LineageExtension](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_LineageExtension) | Data lineage tracking; sampling strategies; custom sinks |
+| [Sample_NodesExtension](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_NodesExtension) | Pre-built processing nodes; cleansing; validation |
+| [Sample_ObservabilityExtension](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_ObservabilityExtension) | Metrics collection; performance tracking; monitoring |
+| [Sample_Composition](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_Composition) | Hierarchical pipelines; sub-pipeline composition; context inheritance |
 
-Get started quickly with essentials:
+## Running Samples
 
-- Sample 01: Basic Pipeline
-- Sample 03: Basic Error Handling
-- Sample 04: Simple Data Transformation
+All samples follow the same pattern:
 
-### Foundation Path (4-5 hours)
+```bash
+cd samples/<SampleName>
+dotnet restore
+dotnet run
+```
 
-Build a solid understanding:
-
-- All Basic Samples (1-5)
-- Sample 06: Advanced Error Handling
-- Sample 07: LookupNode
-- Sample 08: CSV Connector
-- Sample 09: JSON Connector
-- Sample 10: AggregateNode
-
-### Comprehensive Path (8+ hours)
-
-Master all patterns:
-
-- All Basic Samples (1-5)
-- All Intermediate Samples (6-11)
-- All Advanced Samples (12-23)
-- All Extension Samples
-
-### Extension-Focused Path (3-4 hours)
-
-Master extension packages:
-
-- All Basic Samples (1-5)
-- Sample 06: Advanced Error Handling
-- Sample 07: LookupNode
-- Sample 08: CSV Connector
-- Sample 09: JSON Connector
-- All Extension Samples
+Each sample's README contains specific prerequisites, configuration options, and expected output.
 
 ## Related Documentation
 
-- **[Core Concepts](../core-concepts/index.md)** - Learn fundamental NPipeline concepts
-- **[Architecture](../architecture/index.md)** - Understand how NPipeline works internally
-- **[Advanced Topics](../advanced-topics/index.md)** - Master performance optimization and production patterns
-- **[Extensions](../extensions/index.md)** - Discover available extension packages
+- **[Core Concepts](../core-concepts/index.md)** — Fundamental NPipeline concepts
+- **[Architecture](../architecture/index.md)** — How NPipeline works internally
+- **[Extensions](../extensions/index.md)** — Available extension packages

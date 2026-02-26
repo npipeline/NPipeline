@@ -20,7 +20,7 @@ Execution strategies primarily apply to [Transform Nodes](../nodes/index.md#tran
 
 ## `IExecutionStrategy`
 
-The core interface for all execution strategies is [`IExecutionStrategy`](../../../src/NPipeline/Abstractions/Execution/IExecutionStrategy.cs). It defines a single method:
+The core interface for all execution strategies is [`IExecutionStrategy`](../../../src/NPipeline/Execution/IExecutionStrategy.cs). It defines a single method:
 
 ```csharp
 public interface IExecutionStrategy
@@ -29,12 +29,11 @@ public interface IExecutionStrategy
         IDataPipe<TIn> input,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
-        IPipelineActivity parentActivity,
         CancellationToken cancellationToken);
 }
 ```
 
-This method takes an input data pipe, the transform node itself, the pipeline context, a parent tracing activity, and a cancellation token, returning an output data pipe.
+This method takes an input data pipe, the transform node itself, the pipeline context, and a cancellation token, returning an output data pipe. Tracing is accessed through `context.Tracer` when needed.
 
 ## Applying an Execution Strategy
 

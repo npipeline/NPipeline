@@ -69,8 +69,7 @@ builder.AddNumericValidation<Product>()
     .IsLessThan(x => x.Discount, 100);
 
 builder.AddDateTimeValidation<Event>()
-    .IsInFuture(x => x.StartDate)
-    .IsAfter(x => x.EndDate, x => x.StartDate);
+    .IsInFuture(x => x.StartDate);
 ```
 
 See [Data Validation documentation](validation.md) for details.
@@ -78,13 +77,14 @@ See [Data Validation documentation](validation.md) for details.
 ### Data Filtering
 
 Filter items based on predicates:
+
 - **Simple Filtering**: Filter based on property values or custom predicates
 - **Complex Filtering**: Multiple filter rules with flexible composition
 
 ```csharp
-builder.AddFiltering<Order>(x => x.Status == OrderStatus.Active);
+builder.AddFilteringNode<Order>(x => x.Status == OrderStatus.Active);
 
-builder.AddFiltering<Transaction>()
+builder.AddFilteringNode<Transaction>()
     .Where(x => x.Amount > 0)
     .Where(x => x.Date >= DateTime.Today);
 ```
@@ -92,6 +92,7 @@ builder.AddFiltering<Transaction>()
 ### [Type Conversion](conversion.md)
 
 Convert between types safely:
+
 - **String Conversion**: Parse strings to numbers, dates, enums
 - **Numeric Conversion**: Convert between int, long, float, decimal
 - **Type Coercion**: Flexible type conversion with fallback defaults
@@ -105,6 +106,7 @@ builder.AddTypeConversion<ImportRow, Data>()
 ### [Data Enrichment](enrichment.md)
 
 Enrich data with lookups, computations, and defaults using a unified API:
+
 - **Lookup**: Enrich from dictionaries (only sets if key exists)
 - **Set**: Set from dictionaries (uses default if key missing)
 - **Compute**: Calculate values from item properties
@@ -196,8 +198,7 @@ builder.AddNumericValidation<Product>()
     .IsLessThan(x => x.Discount, 100, "Discount cannot exceed 100%");
 
 builder.AddDateTimeValidation<Event>()
-    .IsInFuture(x => x.StartDate, "Event must be in the future")
-    .IsAfter(x => x.EndDate, x => x.StartDate, "End date must be after start date");
+    .IsInFuture(x => x.StartDate, "Event must be in the future");
 ```
 
 ## Performance Characteristics

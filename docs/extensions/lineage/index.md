@@ -65,7 +65,7 @@ Optionally exclude actual data from lineage records to:
 
 Implement custom lineage sinks to export lineage data to various destinations:
 
-- **Logging**: Built-in [`LoggingPipelineLineageSink`](../../../../src/NPipeline.Extensions.Lineage/LoggingPipelineLineageSink.cs) for structured logging
+- **Logging**: Built-in [`LoggingPipelineLineageSink`](../../../src/NPipeline.Extensions.Lineage/LoggingPipelineLineageSink.cs) for structured logging
 - **Databases**: Store lineage information in SQL or NoSQL databases
 - **File Systems**: Export to JSON, CSV, or custom formats
 - **External Services**: Send lineage data to monitoring or analytics platforms
@@ -73,7 +73,7 @@ Implement custom lineage sinks to export lineage data to various destinations:
 
 ### Thread-Safe Collection
 
-Lineage data is collected safely across parallel and concurrent pipeline executions using thread-safe data structures. The [`LineageCollector`](../../../../src/NPipeline.Extensions.Lineage/LineageCollector.cs) uses `ConcurrentDictionary` for storage and fine-grained locking for individual trail updates.
+Lineage data is collected safely across parallel and concurrent pipeline executions using thread-safe data structures. The [`LineageCollector`](../../../src/NPipeline.Extensions.Lineage/LineageCollector.cs) uses `ConcurrentDictionary` for storage and fine-grained locking for individual trail updates.
 
 ## When to Use Lineage Tracking
 

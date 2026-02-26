@@ -36,11 +36,11 @@ The Cosmos DB connector provides the following capabilities:
 
 ## Dependency Injection
 
-The Cosmos DB connector supports dependency injection for managing connections and factories. This is the recommended approach for production applications.
+The Cosmos DB connector supports dependency injection for managing connections. This is the recommended approach for production applications.
 
 ### Registering the Connector
 
-Use `AddCosmosDbConnector` to register connection management and node factories:
+Use `AddCosmosDbConnector` to register connection management:
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
@@ -53,7 +53,7 @@ var services = new ServiceCollection()
         options.DefaultConnectionString = "AccountEndpoint=https://your-account.documents.azure.com:443/;AccountKey=your-key;";
         
         // Or using Azure AD
-        // options.DefaultUri = new Uri("https://your-account.documents.azure.com:443/");
+        // options.DefaultEndpoint = new Uri("https://your-account.documents.azure.com:443/");
         // options.DefaultCredential = new DefaultAzureCredential();
         
         // Add named connections
@@ -61,8 +61,31 @@ var services = new ServiceCollection()
     })
     .BuildServiceProvider();
 
-var sourceFactory = services.GetRequiredService<CosmosSourceNodeFactory>();
-var sinkFactory = services.GetRequiredService<CosmosSinkNodeFactory>();
+// Access the connection pool to create nodes
+var connectionPool = services.GetRequiredService<ICosmosConnectionPool>();
+```
+
+### Using the Connection Pool with Nodes
+
+After registering the connector, use the connection pool when constructing nodes:
+
+```csharp
+// Create source node using the connection pool
+var sourceNode = new CosmosSourceNode<Customer>(
+    connectionPool: connectionPool,
+    databaseId: "MyDatabase",
+    containerId: "Customers",
+    query: "SELECT * FROM c WHERE c.Status = @status",
+    parameters: [new DatabaseParameter("status", "Active")]);
+
+// Create sink node using the connection pool
+var sinkNode = new CosmosSinkNode<Customer>(
+    connectionPool: connectionPool,
+    databaseId: "MyDatabase",
+    containerId: "Customers",
+    writeStrategy: CosmosWriteStrategy.Batch,
+    idSelector: c => c.Id,
+    partitionKeySelector: c => new PartitionKey(c.Region));
 ```
 
 ### Why Use Dependency Injection?
@@ -336,11 +359,11 @@ var cassandraSink = new CosmosCassandraSinkNode<Dictionary<string, object?>>(
 
 | Property | Type | Default | Description |
 | -------- | ---- | ------- | ----------- |
-| `CommandTimeout` | `int` | `30` | Command timeout in seconds |
-| `FetchSize` | `int` | `100` | Number of items per request |
-| `StreamResults` | `bool` | `false` | Stream results vs. buffer |
+| `CommandTimeout` | `int` | `60` | Command timeout in seconds |
+| `FetchSize` | `int` | `1000` | Number of items per request |
+| `StreamResults` | `bool` | `true` | Stream results vs. buffer |
 | `WriteBatchSize` | `int` | `100` | Batch size for writes |
-| `MaxConcurrency` | `int?` | `null` | Max concurrent operations |
+| `MaxConcurrency` | `int?` | `32` | Max concurrent operations |
 | `ContinueOnError` | `bool` | `false` | Continue on row-level errors |
 
 ### ChangeFeedConfiguration

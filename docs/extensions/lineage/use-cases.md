@@ -133,10 +133,10 @@ public sealed class LineageDebugger
                 lineageInfo.LineageHops.IndexOf(hop), hop.NodeId);
             _logger.LogInformation("  Outcome: {Outcome}", hop.Outcome);
             _logger.LogInformation("  Cardinality: {Cardinality}", hop.Cardinality);
-            _logger.LogInformation("  Input Count: {InputCount}", hop.InputCount);
-            _logger.LogInformation("  Output Count: {OutputCount}", hop.OutputCount);
+            _logger.LogInformation("  Input Count: {InputCount}", hop.InputContributorCount);
+            _logger.LogInformation("  Output Count: {OutputCount}", hop.OutputEmissionCount);
             
-            if (hop.Outcome != "Success")
+            if (hop.Outcome.HasFlag(HopDecisionFlags.Error))
             {
                 _logger.LogError("  ⚠️  Issue detected at this hop!");
             }
@@ -182,10 +182,11 @@ public sealed class NodeHealthAnalyzer
                 var health = nodeHealth[hop.NodeId];
                 health.TotalHops++;
                 
-                if (hop.Outcome == "Success")
-                    health.SuccessCount++;
-                else
+                // Outcome is HopDecisionFlags enum - check for Error flag
+                if (hop.Outcome.HasFlag(HopDecisionFlags.Error))
                     health.FailureCount++;
+                else if (hop.Outcome.HasFlag(HopDecisionFlags.Emitted))
+                    health.SuccessCount++;
             }
         }
         
@@ -222,14 +223,14 @@ var lineageInfo = collector.GetLineageInfo(problematicItemId);
 
 if (lineageInfo != null)
 {
-    Console.WriteLine($"Item entered at: {lineageInfo.LineageHops[0].NodeId}");
+    Console.WriteLine($"Item entered at: {lineageInfo.TraversalPath[0]}");
     
     foreach (var hop in lineageInfo.LineageHops)
     {
         Console.WriteLine($"  → {hop.NodeId}");
         Console.WriteLine($"    Outcome: {hop.Outcome}");
         Console.WriteLine($"    Cardinality: {hop.Cardinality}");
-        Console.WriteLine($"    Input: {hop.InputCount}, Output: {hop.OutputCount}");
+        Console.WriteLine($"    Input: {hop.InputContributorCount}, Output: {hop.OutputEmissionCount}");
     }
 }
 ```
@@ -482,8 +483,8 @@ public sealed class ThroughputAnalyzer
                 }
                 
                 var throughput = nodeThroughput[hop.NodeId];
-                throughput.TotalInputCount += hop.InputCount;
-                throughput.TotalOutputCount += hop.OutputCount;
+                throughput.TotalInputCount += hop.InputContributorCount ?? 0;
+                throughput.TotalOutputCount += hop.OutputEmissionCount ?? 0;
             }
         }
         
@@ -528,7 +529,7 @@ public sealed class CardinalityAnalyzer
                     {
                         NodeId = hop.NodeId,
                         TotalHops = 0,
-                        CardinalityCounts = new Dictionary<Cardinality, int>()
+                        CardinalityCounts = new Dictionary<ObservedCardinality, int>()
                     };
                 }
                 
@@ -549,15 +550,16 @@ public sealed class CardinalityAnalyzer
 public sealed record CardinalityStats(
     string NodeId,
     int TotalHops,
-    Dictionary<Cardinality, int> CardinalityCounts
+    Dictionary<ObservedCardinality, int> CardinalityCounts
 );
 
-public enum Cardinality
+// ObservedCardinality enum (defined in NPipeline.Lineage namespace)
+public enum ObservedCardinality
 {
-    OneToOne,      // 1 input → 1 output
-    OneToMany,      // 1 input → N outputs
-    ManyToOne,      // N inputs → 1 output
-    ManyToMany       // N inputs → N outputs
+    Unknown = 0,   // Cardinality is not known
+    Zero = 1,      // No items were observed
+    One = 2,       // Exactly one item was observed
+    Many = 3       // More than one item was observed
 }
 ```
 
@@ -588,14 +590,13 @@ public sealed class DatasetProvenanceTracker
             DatasetName = datasetName,
             CreationTimestamp = DateTime.UtcNow,
             SourceNodes = allLineage
-                .SelectMany(li => li.LineageHops)
-                .Where(h => h.Outcome == "Source")
-                .Select(h => h.NodeId)
+                .Where(li => li.TraversalPath.Count > 0)
+                .Select(li => li.TraversalPath[0])
                 .Distinct()
                 .ToList(),
             TransformationsApplied = allLineage
                 .SelectMany(li => li.LineageHops)
-                .Where(h => h.Outcome == "Success")
+                .Where(h => h.Outcome.HasFlag(HopDecisionFlags.Emitted))
                 .GroupBy(h => h.NodeId)
                 .Select(g => new TransformationSummary
                 {
@@ -646,9 +647,8 @@ public sealed class ModelTrainingLineage
         {
             ModelName = modelName,
             TrainingDataSources = allLineage
-                .SelectMany(li => li.LineageHops)
-                .Where(h => h.Outcome == "Source")
-                .Select(h => h.NodeId)
+                .Where(li => li.TraversalPath.Count > 0)
+                .Select(li => li.TraversalPath[0])
                 .Distinct()
                 .ToList(),
             DataTransformations = allLineage
@@ -658,7 +658,7 @@ public sealed class ModelTrainingLineage
                 {
                     NodeId = g.Key,
                     TransformCount = g.Count(),
-                    SuccessRate = g.Count(h => h.Outcome == "Success") / (double)g.Count()
+                    SuccessRate = g.Count(h => h.Outcome.HasFlag(HopDecisionFlags.Emitted)) / (double)g.Count()
                 })
                 .ToList(),
             SampleSize = allLineage.Count,
@@ -668,13 +668,11 @@ public sealed class ModelTrainingLineage
         return report;
     }
     
-    private DataQualityMetrics CalculateQualityMetrics(IReadOnlyList<ILineageInfo> lineage)
+    private DataQualityMetrics CalculateQualityMetrics(IReadOnlyList<LineageInfo> lineage)
     {
-        // Calculate quality metrics based on lineage
-        // This is a placeholder for the concept
         return new DataQualityMetrics
         {
-            SuccessRate = lineage.Count(li => li.LineageHops.All(h => h.Outcome == "Success")) / (double)lineage.Count,
+            SuccessRate = lineage.Count(li => li.LineageHops.All(h => h.Outcome.HasFlag(HopDecisionFlags.Emitted))) / (double)lineage.Count,
             AverageHopCount = lineage.Average(li => li.LineageHops.Count)
         };
     }
@@ -722,12 +720,12 @@ public sealed class DataCatalogBuilder
         return catalog;
     }
     
-    private List<DataSource> ExtractDataSources(IReadOnlyList<ILineageInfo> lineage)
+    private List<DataSource> ExtractDataSources(IReadOnlyList<LineageInfo> lineage)
     {
+        // Sources are identified by being the first node in the traversal path
         return lineage
-            .SelectMany(li => li.LineageHops)
-            .Where(h => h.Outcome == "Source")
-            .GroupBy(h => h.NodeId)
+            .Where(li => li.TraversalPath.Count > 0)
+            .GroupBy(li => li.TraversalPath[0])
             .Select(g => new DataSource
             {
                 NodeId = g.Key,
@@ -736,11 +734,11 @@ public sealed class DataCatalogBuilder
             .ToList();
     }
     
-    private List<DataTransformation> ExtractTransformations(IReadOnlyList<ILineageInfo> lineage)
+    private List<DataTransformation> ExtractTransformations(IReadOnlyList<LineageInfo> lineage)
     {
         return lineage
             .SelectMany(li => li.LineageHops)
-            .Where(h => h.Outcome == "Success")
+            .Where(h => h.Outcome.HasFlag(HopDecisionFlags.Emitted))
             .GroupBy(h => h.NodeId)
             .Select(g => new DataTransformation
             {
@@ -753,7 +751,7 @@ public sealed class DataCatalogBuilder
             .ToList();
     }
     
-    private List<DataFlow> ExtractDataFlows(IReadOnlyList<ILineageInfo> lineage)
+    private List<DataFlow> ExtractDataFlows(IReadOnlyList<LineageInfo> lineage)
     {
         return lineage
             .Select(li => new DataFlow

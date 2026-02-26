@@ -155,59 +155,104 @@ public async Task ProcessDataAsync()
 }
 ```
 
-### NP9103: Cancellation Token Not Respected
+### NP9103: LINQ Operations in Hot Paths
 
 **ID:** `NP9103`
-**Severity:** Warning  
-**Category:** Performance  
+**Severity:** Warning
+**Category:** Performance
 
-This analyzer detects when a cancellation token is not checked or respected in long-running operations. When you receive a cancellation token, you must check it periodically and propagate cancellation requests.
+This analyzer detects LINQ operations in high-frequency execution paths that cause unnecessary allocations and GC pressure, significantly impacting performance in high-throughput NPipeline scenarios.
 
-#### Problematic Cancellation Patterns
+#### Why This Matters
+
+LINQ in hot paths causes:
+
+1. **Excessive Allocations**: Each LINQ operation creates intermediate collections
+2. **GC Pressure**: Frequent garbage collection reduces throughput
+3. **Poor Performance**: Overhead of delegates and iterators
+4. **Memory Fragmentation**: Many small objects fragment the heap
+
+#### Problematic Patterns
 
 ```csharp
-// PROBLEM: Not checking cancellation token in loop
-public async Task ProcessItemsAsync(IEnumerable<Item> items, CancellationToken cancellationToken)
+// PROBLEM: LINQ in ExecuteAsync method
+public class BadTransform : ITransformNode<Input, Output>
 {
-    foreach (var item in items)
+    protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
     {
-        // NP9103: Not checking cancellation token
-        await ProcessItemAsync(item);
+        // NP9103: LINQ in hot path creates allocations
+        var filtered = input.Items.Where(x => x.IsActive).ToList();
+        var sorted = filtered.OrderBy(x => x.Priority).ToList();
+        var grouped = sorted.GroupBy(x => x.Category).ToList();
+        
+        return new Output(grouped);
     }
+}
+
+// PROBLEM: LINQ in loop
+foreach (var batch in batches)
+{
+    // NP9103: LINQ inside loop creates pressure
+    var processed = batch.Select(x => ProcessItem(x)).Where(x => x != null).ToList();
+    await SendBatchAsync(processed);
+}
+
+// PROBLEM: Materializing LINQ results
+var items = sourceData.Where(x => x.IsValid).Select(x => x.Transform()).ToArray(); // NP9103: Immediate materialization
+```
+
+#### Solution: Use Imperative Alternatives
+
+```csharp
+// CORRECT: Use imperative processing
+public class GoodTransform : ITransformNode<Input, Output>
+{
+    protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
+    {
+        var filtered = new List<Item>();
+        foreach (var item in input.Items)
+        {
+            if (item.IsActive)
+                filtered.Add(item);
+        }
+        
+        filtered.Sort((x, y) => x.Priority.CompareTo(y.Priority));
+        
+        var grouped = new Dictionary<string, List<Item>>();
+        foreach (var item in filtered)
+        {
+            if (!grouped.ContainsKey(item.Category))
+                grouped[item.Category] = new List<Item>();
+            grouped[item.Category].Add(item);
+        }
+        
+        return new Output(grouped.Values.ToList());
+    }
+}
+
+// CORRECT: Process items directly in loop
+foreach (var batch in batches)
+{
+    var processed = new List<Item>();
+    foreach (var item in batch)
+    {
+        var result = ProcessItem(item);
+        if (result != null)
+            processed.Add(result);
+    }
+    await SendBatchAsync(processed);
 }
 ```
 
-#### Solution: Check and Respect Cancellation
+#### LINQ Alternatives Guidelines
 
-```csharp
-// CORRECT: Check cancellation token before processing
-public async Task ProcessItemsAsync(IEnumerable<Item> items, CancellationToken cancellationToken)
-{
-    foreach (var item in items)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        await ProcessItemAsync(item, cancellationToken);
-    }
-}
-
-// CORRECT: Pass token to async operations
-public async Task ProcessItemsAsync(IEnumerable<Item> items, CancellationToken cancellationToken)
-{
-    await foreach (var item in GetItemsAsync(cancellationToken))
-    {
-        await ProcessItemAsync(item, cancellationToken);
-    }
-}
-
-private async IAsyncEnumerable<Item> GetItemsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
-{
-    foreach (var item in _items)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        yield return item;
-    }
-}
-```
+| LINQ Operation | Imperative Alternative | Performance Benefit |
+|----------------|----------------------|-------------------|
+| Where() | foreach with if | No intermediate collection |
+| Select() | foreach with transformation | No delegate overhead |
+| OrderBy() | Sort() with comparer | In-place sorting |
+| GroupBy() | Dictionary grouping | Direct grouping |
+| ToList()/ToArray() | Pre-sized collection | No resizing |
 
 ### NP9104: Inefficient String Operations
 
@@ -292,105 +337,6 @@ protected override async Task<string> ProcessAsync(string input, CancellationTok
 | Substring/Trim | AsSpan().Slice() | Hot paths |
 | ToUpper/ToLower | string.Create with Span | Case conversion in hot paths |
 | Join | string.Join with Span | Array/list joining |
-
-### NP9105: LINQ Operations in Hot Paths
-
-**ID:** `NP9105`
-**Severity:** Warning
-**Category:** Performance
-
-This analyzer detects LINQ operations in high-frequency execution paths that cause unnecessary allocations and GC pressure, significantly impacting performance in high-throughput NPipeline scenarios.
-
-#### Why This Matters
-
-LINQ in hot paths causes:
-
-1. **Excessive Allocations**: Each LINQ operation creates intermediate collections
-2. **GC Pressure**: Frequent garbage collection reduces throughput
-3. **Poor Performance**: Overhead of delegates and iterators
-4. **Memory Fragmentation**: Many small objects fragment the heap
-
-#### Problematic Patterns
-
-```csharp
-// PROBLEM: LINQ in ExecuteAsync method
-public class BadTransform : ITransformNode<Input, Output>
-{
-    protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
-    {
-        // NP9105: LINQ in hot path creates allocations
-        var filtered = input.Items.Where(x => x.IsActive).ToList();
-        var sorted = filtered.OrderBy(x => x.Priority).ToList();
-        var grouped = sorted.GroupBy(x => x.Category).ToList();
-        
-        return new Output(grouped);
-    }
-}
-
-// PROBLEM: LINQ in loop
-foreach (var batch in batches)
-{
-    // NP9105: LINQ inside loop creates pressure
-    var processed = batch.Select(x => ProcessItem(x)).Where(x => x != null).ToList();
-    await SendBatchAsync(processed);
-}
-
-// PROBLEM: Materializing LINQ results
-var items = sourceData.Where(x => x.IsValid).Select(x => x.Transform()).ToArray(); // NP9105: Immediate materialization
-```
-
-#### Solution: Use Imperative Alternatives
-
-```csharp
-// CORRECT: Use imperative processing
-public class GoodTransform : ITransformNode<Input, Output>
-{
-    protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
-    {
-        var filtered = new List<Item>();
-        foreach (var item in input.Items)
-        {
-            if (item.IsActive)
-                filtered.Add(item);
-        }
-        
-        filtered.Sort((x, y) => x.Priority.CompareTo(y.Priority));
-        
-        var grouped = new Dictionary<string, List<Item>>();
-        foreach (var item in filtered)
-        {
-            if (!grouped.ContainsKey(item.Category))
-                grouped[item.Category] = new List<Item>();
-            grouped[item.Category].Add(item);
-        }
-        
-        return new Output(grouped.Values.ToList());
-    }
-}
-
-// CORRECT: Process items directly in loop
-foreach (var batch in batches)
-{
-    var processed = new List<Item>();
-    foreach (var item in batch)
-    {
-        var result = ProcessItem(item);
-        if (result != null)
-            processed.Add(result);
-    }
-    await SendBatchAsync(processed);
-}
-```
-
-#### LINQ Alternatives Guidelines
-
-| LINQ Operation | Imperative Alternative | Performance Benefit |
-|----------------|----------------------|-------------------|
-| Where() | foreach with if | No intermediate collection |
-| Select() | foreach with transformation | No delegate overhead |
-| OrderBy() | Sort() with comparer | In-place sorting |
-| GroupBy() | Dictionary grouping | Direct grouping |
-| ToList()/ToArray() | Pre-sized collection | No resizing |
 
 ### NP9106: Missing ValueTask Optimization
 

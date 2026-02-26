@@ -39,6 +39,7 @@ using NPipeline.Extensions.Parallelism;
 using NPipeline.Extensions.Testing;
 using NPipeline.Execution;
 using NPipeline.Nodes;
+using Microsoft.Extensions.Logging;
 
 public sealed class IntensiveTransform : TransformNode<int, int>
 {
@@ -48,8 +49,7 @@ public sealed class IntensiveTransform : TransformNode<int, int>
         CancellationToken cancellationToken)
     {
         var logger = context.LoggerFactory.CreateLogger("IntensiveTransform");
-        logger.Log(NPipeline.Observability.Logging.LogLevel.Information,
-            $"Processing item {item} on Thread {Environment.CurrentManagedThreadId}");
+        logger.LogInformation("Processing item {Item} on Thread {ThreadId}", item, Environment.CurrentManagedThreadId);
         await Task.Delay(100, cancellationToken); // Simulate intensive work
         return item * 2;
     }
@@ -71,7 +71,7 @@ public sealed class ParallelPipeline : IPipelineDefinition
             new ParallelOptions { MaxDegreeOfParallelism = 4 });
 
         // Set execution strategy to ParallelExecutionStrategy
-        transform.NodeDefinition.ExecutionConfig.ExecutionStrategy = new ParallelExecutionStrategy();
+        builder.WithExecutionStrategy(transform, new ParallelExecutionStrategy());
     }
 }
 
@@ -109,6 +109,7 @@ using NPipeline.Extensions.Testing;
 using NPipeline.Execution;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using Microsoft.Extensions.Logging;
 
 public sealed class IntensiveTransform : TransformNode<int, int>
 {
@@ -118,8 +119,7 @@ public sealed class IntensiveTransform : TransformNode<int, int>
         CancellationToken cancellationToken)
     {
         var logger = context.LoggerFactory.CreateLogger("IntensiveTransform");
-        logger.Log(NPipeline.Observability.Logging.LogLevel.Information,
-            $"Processing item {item} on Thread {Environment.CurrentManagedThreadId}");
+        logger.LogInformation("Processing item {Item} on Thread {ThreadId}", item, Environment.CurrentManagedThreadId);
         await Task.Delay(new Random().Next(50, 150), cancellationToken); // Simulate variable work
         return item * 2;
     }
@@ -145,7 +145,7 @@ public sealed class NonOrderedParallelPipeline : IPipelineDefinition
             });
 
         // Set execution strategy to ParallelExecutionStrategy
-        transform.NodeDefinition.ExecutionConfig.ExecutionStrategy = new ParallelExecutionStrategy();
+        builder.WithExecutionStrategy(transform, new ParallelExecutionStrategy());
     }
 }
 

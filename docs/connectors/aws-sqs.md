@@ -75,8 +75,8 @@ public SqsSourceNode(IAmazonSQS sqsClient, SqsConfiguration configuration)
 ### Example: Reading from an SQS Queue
 
 ```csharp
-using NPipeline.Connectors.AwsSqs.Configuration;
-using NPipeline.Connectors.AwsSqs.Nodes;
+using NPipeline.Connectors.Aws.Sqs.Configuration;
+using NPipeline.Connectors.Aws.Sqs.Nodes;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.DataFlow;
 using NPipeline.Execution;
@@ -155,8 +155,8 @@ public SqsSinkNode(IAmazonSQS sqsClient, SqsConfiguration configuration)
 ### Example: Writing to an SQS Queue
 
 ```csharp
-using NPipeline.Connectors.AwsSqs.Configuration;
-using NPipeline.Connectors.AwsSqs.Nodes;
+using NPipeline.Connectors.Aws.Sqs.Configuration;
+using NPipeline.Connectors.Aws.Sqs.Nodes;
 using NPipeline.Execution;
 using NPipeline.Extensions.Testing;
 using NPipeline.Nodes;
@@ -432,8 +432,8 @@ public sealed class SqsMessage<T> : IAcknowledgableMessage<T>
 ## Complete Pipeline Example
 
 ```csharp
-using NPipeline.Connectors.AwsSqs.Configuration;
-using NPipeline.Connectors.AwsSqs.Nodes;
+using NPipeline.Connectors.Aws.Sqs.Configuration;
+using NPipeline.Connectors.Aws.Sqs.Nodes;
 using NPipeline.Pipeline;
 
 public sealed record OrderMessage(string OrderId, string CustomerId, decimal Amount, DateTime OrderDate);
