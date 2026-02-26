@@ -150,6 +150,6 @@ Lineage tracking is automatically integrated into pipeline execution when enable
 - **[Architecture](./architecture.md)** - Architecture and implementation details
 - **[Performance](./performance.md)** - Performance characteristics and optimization strategies
 - **[Use Cases](./use-cases.md)** - Common use cases and examples
-- **[Extension Samples](../../samples/extensions.md)** - Sample applications for all extensions including lineage
+- **[Extension Samples](../../samples/index.md)** - Sample applications for all extensions including lineage
 - **[NPipeline Core Concepts](../../core-concepts/index.md)** - Core pipeline concepts
 - **[NPipeline Extensions](../index.md)** - Other available extensions

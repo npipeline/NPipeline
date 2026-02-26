@@ -180,4 +180,4 @@ With default configuration, lineage tracking captures:
 - **[Architecture](./architecture.md)** - Understand the internal architecture and design decisions
 - **[Performance](./performance.md)** - Learn about performance characteristics and optimization strategies
 - **[Use Cases](./use-cases.md)** - Explore common use cases and advanced examples
-- **[Extension Samples](../../samples/extensions.md)** - Sample applications for all extensions including lineage
+- **[Extension Samples](../../samples/index.md)** - Sample applications for all extensions including lineage
