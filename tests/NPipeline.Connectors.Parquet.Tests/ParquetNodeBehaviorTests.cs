@@ -225,6 +225,47 @@ public sealed class ParquetNodeBehaviorTests
     }
 
     [Fact]
+    public async Task SourceNode_WithMultipleFilesAndParallelRead_ReturnsRowsInDeterministicOrder()
+    {
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), $"parquet_test_{Guid.NewGuid():N}");
+        _ = Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var file1 = Path.Combine(tempDir, "file_a.parquet");
+            var file2 = Path.Combine(tempDir, "file_b.parquet");
+            var file3 = Path.Combine(tempDir, "file_c.parquet");
+
+            await CreateTestParquetFileAsync(file1, [new TestRecord { Id = 1, Name = "FileA" }]);
+            await CreateTestParquetFileAsync(file2, [new TestRecord { Id = 2, Name = "FileB" }]);
+            await CreateTestParquetFileAsync(file3, [new TestRecord { Id = 3, Name = "FileC" }]);
+
+            var uri = StorageUri.FromFilePath(tempDir + "/");
+            var config = new ParquetConfiguration { FileReadParallelism = 2 };
+            var resolver = StorageProviderFactory.CreateResolver();
+            var source = new ParquetSourceNode<TestRecord>(uri, resolver, config);
+
+            // Act
+            var pipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var results = await pipe.ToListAsync();
+
+            // Assert
+            results.Should().HaveCount(3);
+            results[0].Name.Should().Be("FileA");
+            results[1].Name.Should().Be("FileB");
+            results[2].Name.Should().Be("FileC");
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task SourceNode_WithMultipleFilesInSubdirectories_WhenRecursiveDiscoversFiles()
     {
         // Arrange

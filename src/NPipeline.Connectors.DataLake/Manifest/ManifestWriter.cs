@@ -62,13 +62,13 @@ namespace NPipeline.Connectors.DataLake.Manifest
         }
 
         /// <summary>
-        ///     Generates a new snapshot ID using the format: yyyyMMddHHmmssfff-xxxx.
+        ///     Generates a new snapshot ID using the format: yyyyMMddHHmmssfff-xxxxxxxx.
         /// </summary>
         /// <returns>A new snapshot ID string.</returns>
         public static string GenerateSnapshotId()
         {
             var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmssfff", System.Globalization.CultureInfo.InvariantCulture);
-            var randomSuffix = RandomNumberGenerator.GetHexString(4, lowercase: true);
+            var randomSuffix = RandomNumberGenerator.GetHexString(8, lowercase: true);
             return $"{timestamp}-{randomSuffix}";
         }
 

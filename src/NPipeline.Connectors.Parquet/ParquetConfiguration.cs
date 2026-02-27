@@ -77,11 +77,6 @@ public class ParquetConfiguration
     ///     A value of 1 results in sequential deterministic reads.
     ///     Default is 1.
     /// </summary>
-    /// <remarks>
-    ///     Note: This property is reserved for future implementation.
-    ///     Currently, all files are read sequentially regardless of this setting.
-    /// </remarks>
-    [Obsolete("FileReadParallelism is not yet implemented. Files are always read sequentially.")]
     public int FileReadParallelism { get; set; } = 1;
 
     /// <summary>
@@ -122,6 +117,11 @@ public class ParquetConfiguration
         if (TargetFileSizeBytes is { } targetSize && targetSize < 32L * 1024 * 1024)
         {
             throw new InvalidOperationException($"{nameof(TargetFileSizeBytes)} must be at least 32 MiB when specified. Current value: {TargetFileSizeBytes}");
+        }
+
+        if (FileReadParallelism < 1)
+        {
+            throw new InvalidOperationException($"{nameof(FileReadParallelism)} must be greater than or equal to 1. Current value: {FileReadParallelism}");
         }
     }
 }

@@ -45,6 +45,7 @@ namespace NPipeline.Connectors.DataLake
             _tableBasePath = tableBasePath;
             _resolver = resolver;
             _configuration = configuration ?? new ParquetConfiguration();
+            _configuration.Validate();
         }
 
         /// <summary>
@@ -64,6 +65,7 @@ namespace NPipeline.Connectors.DataLake
             _provider = provider;
             _tableBasePath = tableBasePath;
             _configuration = configuration ?? new ParquetConfiguration();
+            _configuration.Validate();
         }
 
         /// <summary>

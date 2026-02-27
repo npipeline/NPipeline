@@ -46,6 +46,7 @@ namespace NPipeline.Connectors.DataLake
             _tableBasePath = tableBasePath;
             _partitionSpec = partitionSpec;
             _configuration = configuration ?? new ParquetConfiguration();
+            _configuration.Validate();
             _snapshotId = ManifestWriter.GenerateSnapshotId();
         }
 

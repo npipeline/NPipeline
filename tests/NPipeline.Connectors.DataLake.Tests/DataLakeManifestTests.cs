@@ -113,7 +113,7 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
         var snapshotId = ManifestWriter.GenerateSnapshotId();
 
         // Assert
-        snapshotId.Should().MatchRegex(@"^\d{17}-[a-f0-9]{4}$");
+        snapshotId.Should().MatchRegex(@"^\d{17}-[a-f0-9]{8}$");
     }
 
     [Fact]

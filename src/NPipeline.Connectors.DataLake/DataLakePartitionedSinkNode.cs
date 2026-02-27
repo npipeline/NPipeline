@@ -46,6 +46,7 @@ namespace NPipeline.Connectors.DataLake
             _partitionSpec = partitionSpec;
             _resolver = resolver ?? DefaultResolver.Value;
             _configuration = configuration ?? new ParquetConfiguration();
+            _configuration.Validate();
         }
 
         /// <summary>
@@ -68,6 +69,7 @@ namespace NPipeline.Connectors.DataLake
             _tableBasePath = tableBasePath;
             _partitionSpec = partitionSpec;
             _configuration = configuration ?? new ParquetConfiguration();
+            _configuration.Validate();
         }
 
         /// <inheritdoc />

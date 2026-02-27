@@ -23,9 +23,7 @@ public sealed class ParquetConfigurationTests
         config.SchemaValidator.Should().BeNull();
         config.SchemaCompatibility.Should().Be(SchemaCompatibilityMode.Strict);
         config.RecursiveDiscovery.Should().BeFalse();
-#pragma warning disable CS0618 // Type or member is obsolete
-        config.FileReadParallelism.Should().Be(1); // Reserved for future use
-#pragma warning restore CS0618
+        config.FileReadParallelism.Should().Be(1);
         config.RowFilter.Should().BeNull();
         config.RowErrorHandler.Should().BeNull();
         config.Observer.Should().BeNull();
@@ -255,7 +253,49 @@ public sealed class ParquetConfigurationTests
 
     #endregion
 
-    // Note: FileReadParallelism validation tests removed - property is reserved for future implementation
+    #region FileReadParallelism Validation
+
+    [Fact]
+    public void Validate_FileReadParallelismZero_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var config = new ParquetConfiguration { FileReadParallelism = 0 };
+
+        // Act
+        Action act = () => config.Validate();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*FileReadParallelism*greater than or equal to 1*");
+    }
+
+    [Fact]
+    public void Validate_FileReadParallelismOne_DoesNotThrow()
+    {
+        // Arrange
+        var config = new ParquetConfiguration { FileReadParallelism = 1 };
+
+        // Act
+        Action act = () => config.Validate();
+
+        // Assert
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Validate_FileReadParallelismGreaterThanOne_DoesNotThrow()
+    {
+        // Arrange
+        var config = new ParquetConfiguration { FileReadParallelism = 4 };
+
+        // Act
+        Action act = () => config.Validate();
+
+        // Assert
+        act.Should().NotThrow();
+    }
+
+    #endregion
 
     #region SchemaCompatibilityMode
 

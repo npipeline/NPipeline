@@ -10,6 +10,7 @@ using NPipeline.StorageProviders.Exceptions;
 using NPipeline.StorageProviders.Models;
 using Parquet;
 using Parquet.Schema;
+using System.Threading.Channels;
 
 namespace NPipeline.Connectors.Parquet;
 
@@ -150,14 +151,82 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
     {
         var files = await DiscoverParquetFiles(provider, uri, config, cancellationToken);
 
-        foreach (var fileUri in files)
+        if (config.FileReadParallelism <= 1 || files.Count <= 1)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            foreach (var fileUri in files)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
 
-            await foreach (var item in ReadFile(provider, fileUri, config, cancellationToken))
+                await foreach (var item in ReadFile(provider, fileUri, config, cancellationToken))
+                {
+                    yield return item;
+                }
+            }
+
+            yield break;
+        }
+
+        await foreach (var item in ReadAllParallel(provider, files, config, cancellationToken))
+        {
+            yield return item;
+        }
+    }
+
+    private async IAsyncEnumerable<T> ReadAllParallel(
+        IStorageProvider provider,
+        IReadOnlyList<StorageUri> files,
+        ParquetConfiguration config,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var maxParallelism = Math.Min(config.FileReadParallelism, files.Count);
+        var semaphore = new SemaphoreSlim(maxParallelism, maxParallelism);
+        var channels = new Channel<T>[files.Count];
+        var workers = new Task[files.Count];
+
+        for (var index = 0; index < files.Count; index++)
+        {
+            var fileIndex = index;
+            var fileUri = files[fileIndex];
+            var channel = Channel.CreateBounded<T>(new BoundedChannelOptions(config.RowGroupSize)
+            {
+                FullMode = BoundedChannelFullMode.Wait,
+                SingleReader = true,
+                SingleWriter = true
+            });
+
+            channels[fileIndex] = channel;
+
+            workers[fileIndex] = Task.Run(async () =>
+            {
+                await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await foreach (var item in ReadFile(provider, fileUri, config, cancellationToken).ConfigureAwait(false))
+                    {
+                        await channel.Writer.WriteAsync(item, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    channel.Writer.TryComplete();
+                }
+                catch (Exception ex)
+                {
+                    channel.Writer.TryComplete(ex);
+                }
+                finally
+                {
+                    _ = semaphore.Release();
+                }
+            }, cancellationToken);
+        }
+
+        for (var index = 0; index < channels.Length; index++)
+        {
+            await foreach (var item in channels[index].Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             {
                 yield return item;
             }
+
+            await workers[index].ConfigureAwait(false);
         }
     }
 
@@ -202,7 +271,10 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
         observer?.OnFileReadStarted(fileUri);
 
         await using var stream = await provider.OpenReadAsync(fileUri, cancellationToken);
-        totalBytes = stream.Length;
+        if (stream.CanSeek)
+        {
+            totalBytes = stream.Length;
+        }
 
         using var reader = await ParquetReader.CreateAsync(stream, cancellationToken: cancellationToken);
 

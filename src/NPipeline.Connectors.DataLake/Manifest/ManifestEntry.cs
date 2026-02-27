@@ -42,7 +42,7 @@ namespace NPipeline.Connectors.DataLake.Manifest
 
         /// <summary>
         ///     Gets the snapshot ID that this file belongs to.
-        ///     Format: yyyyMMddHHmmssfff-xxxx (sortable timestamp + random suffix).
+        ///     Format: yyyyMMddHHmmssfff-xxxxxxxx (sortable timestamp + random suffix).
         /// </summary>
         [JsonPropertyName("snapshot_id")]
         public required string SnapshotId { get; init; }
