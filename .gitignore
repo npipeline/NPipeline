@@ -63,3 +63,7 @@ xunit-*.xml
 
 # Mac OS generated files
 **/.DS_Store
+
+# Test output and generated data files
+output/
+*.tmp-*

@@ -72,6 +72,21 @@ The following connectors are available:
   - Multiple serialization formats (JSON, Avro, Protobuf)
   - Transaction support with proper offset management
   - Uses Confluent.Kafka for reliable Kafka operations
+- **[Parquet](./parquet.md)**: Read from and write to Apache Parquet files.
+  - Columnar storage optimised for analytical workloads
+  - Row-group streaming with bounded memory usage
+  - Configurable compression (Snappy, Gzip, None), column projection, and parallel reads
+  - Attribute-based or explicit row mapping
+  - Schema evolution via `SchemaCompatibilityMode` (Strict, Additive, NameOnly)
+  - Atomic writes and observability hooks via `IParquetConnectorObserver`
+  - Works with any storage backend via `IStorageProvider`
+- **[Data Lake](./datalake.md)**: Write and read partitioned Parquet tables with snapshot tracking.
+  - Hive-style partitioning (`column=value/` directories) compatible with Spark, Athena, Trino, DuckDB
+  - NDJSON manifest with per-snapshot file inventory for auditability
+  - Time travel — query table state as of any timestamp or snapshot ID
+  - Small-file compaction to optimise query engine performance
+  - Format adapter interface for Iceberg, Delta Lake, or custom table formats
+  - Built on `NPipeline.Connectors.Parquet`
 
 ## General Usage Pattern
 
@@ -110,5 +125,7 @@ Explore the documentation for each specific connector to learn about its install
 - **[Azure Cosmos DB Connector](cosmos.md)**: Learn how to read from and write to Azure Cosmos DB
 - **[AWS SQS Connector](aws-sqs.md)**: Learn how to read from and write to Amazon SQS queues
 - **[Kafka Connector](kafka.md)**: Learn how to read from and write to Apache Kafka topics
+- **[Parquet Connector](parquet.md)**: Learn how to read from and write to Apache Parquet files
+- **[Data Lake Connector](datalake.md)**: Learn how to write partitioned tables, use time travel, and compact small files
 - **[Common Patterns](../core-concepts/common-patterns.md)**: See connectors in practical examples
 - **[Installation](../getting-started/installation.md)**: Review installation options for connector packages
