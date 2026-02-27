@@ -72,6 +72,12 @@ The following connectors are available:
   - Multiple serialization formats (JSON, Avro, Protobuf)
   - Transaction support with proper offset management
   - Uses Confluent.Kafka for reliable Kafka operations
+- **[RabbitMQ](./rabbitmq.md)**: Read from and write to RabbitMQ message queues.
+  - Push-based consumers with backpressure and configurable prefetch
+  - Publisher confirms and automatic topology declaration
+  - Dead-letter handling at both broker and pipeline levels
+  - Support for Classic, Quorum, and Stream queue types
+  - Uses RabbitMQ.Client 7.x for fully asynchronous operations
 - **[Parquet](./parquet.md)**: Read from and write to Apache Parquet files.
   - Columnar storage optimised for analytical workloads
   - Row-group streaming with bounded memory usage
@@ -125,6 +131,7 @@ Explore the documentation for each specific connector to learn about its install
 - **[Azure Cosmos DB Connector](cosmos.md)**: Learn how to read from and write to Azure Cosmos DB
 - **[AWS SQS Connector](aws-sqs.md)**: Learn how to read from and write to Amazon SQS queues
 - **[Kafka Connector](kafka.md)**: Learn how to read from and write to Apache Kafka topics
+- **[RabbitMQ Connector](rabbitmq.md)**: Learn how to read from and write to RabbitMQ message queues
 - **[Parquet Connector](parquet.md)**: Learn how to read from and write to Apache Parquet files
 - **[Data Lake Connector](datalake.md)**: Learn how to write partitioned tables, use time travel, and compact small files
 - **[Common Patterns](../core-concepts/common-patterns.md)**: See connectors in practical examples
