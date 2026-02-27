@@ -451,9 +451,3 @@ public sealed class DataLakePipeline : IPipelineDefinition
     }
 }
 ```
-
-## Related Packages
-
-- **[NPipeline.Connectors.Parquet](./parquet.md)** — Underlying Parquet file I/O
-- **[NPipeline.StorageProviders.Aws](../storage-providers/aws.md)** — S3 storage provider for writing to AWS Data Lake environments
-- **[NPipeline.StorageProviders.Azure](../storage-providers/azure.md)** — Azure Blob storage provider for Azure Data Lake Storage Gen2

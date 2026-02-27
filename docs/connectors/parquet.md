@@ -454,9 +454,3 @@ public sealed class SalesPipeline : IPipelineDefinition
     }
 }
 ```
-
-## Related Packages
-
-- **[NPipeline.Connectors.DataLake](./datalake.md)** — Table-level abstractions (partitioning, snapshots, time travel) built on top of this connector
-- **[NPipeline.StorageProviders.Aws](../storage-providers/aws.md)** — S3 storage provider
-- **[NPipeline.StorageProviders.Azure](../storage-providers/azure.md)** — Azure Blob storage provider
