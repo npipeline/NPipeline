@@ -9,6 +9,98 @@ namespace NPipeline.Connectors.Parquet.Tests;
 
 public sealed class ParquetIntegrationTests
 {
+    #region Nullable Values
+
+    [Fact]
+    public async Task RoundTrip_WithNullableValues_PreservesNulls()
+    {
+        // Arrange
+        var records = new[]
+        {
+            new NullableRecord { Id = 1, Name = "First", OptionalValue = 100 },
+            new NullableRecord { Id = 2, Name = null, OptionalValue = null },
+            new NullableRecord { Id = 3, Name = "Third", OptionalValue = 300 },
+        };
+
+        var tempFile = Path.GetTempFileName() + ".parquet";
+        var uri = StorageUri.FromFilePath(tempFile);
+
+        try
+        {
+            var resolver = StorageProviderFactory.CreateResolver();
+
+            // Act - Write
+            var sink = new ParquetSinkNode<NullableRecord>(uri, resolver);
+
+            await sink.ExecuteAsync(
+                new StreamingDataPipe<NullableRecord>(records.ToAsyncEnumerable()),
+                PipelineContext.Default,
+                CancellationToken.None);
+
+            // Act - Read
+            var source = new ParquetSourceNode<NullableRecord>(uri, resolver);
+            var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+
+            // Assert
+            result.Should().HaveCount(3);
+            result[0].Name.Should().Be("First");
+            result[0].OptionalValue.Should().Be(100);
+            result[1].Name.Should().BeNull();
+            result[1].OptionalValue.Should().BeNull();
+            result[2].Name.Should().Be("Third");
+            result[2].OptionalValue.Should().Be(300);
+        }
+        finally
+        {
+            CleanupFile(tempFile);
+        }
+    }
+
+    #endregion
+
+    #region Custom Column Names
+
+    [Fact]
+    public async Task RoundTrip_WithCustomColumnNames_PreservesData()
+    {
+        // Arrange
+        var records = new[]
+        {
+            new CustomColumnRecord { RecordId = 1, RecordName = "Test" },
+        };
+
+        var tempFile = Path.GetTempFileName() + ".parquet";
+        var uri = StorageUri.FromFilePath(tempFile);
+
+        try
+        {
+            var resolver = StorageProviderFactory.CreateResolver();
+
+            // Act - Write
+            var sink = new ParquetSinkNode<CustomColumnRecord>(uri, resolver);
+
+            await sink.ExecuteAsync(
+                new StreamingDataPipe<CustomColumnRecord>(records.ToAsyncEnumerable()),
+                PipelineContext.Default,
+                CancellationToken.None);
+
+            // Act - Read
+            var source = new ParquetSourceNode<CustomColumnRecord>(uri, resolver);
+            var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].RecordId.Should().Be(1);
+            result[0].RecordName.Should().Be("Test");
+        }
+        finally
+        {
+            CleanupFile(tempFile);
+        }
+    }
+
+    #endregion
+
     #region Single File Round-Trip
 
     [Fact]
@@ -25,6 +117,7 @@ public sealed class ParquetIntegrationTests
 
             // Act - Write
             var sink = new ParquetSinkNode<TestRecord>(uri, resolver);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<TestRecord>(records.ToAsyncEnumerable()),
                 PipelineContext.Default,
@@ -59,8 +152,8 @@ public sealed class ParquetIntegrationTests
                 IsActive = true,
                 Score = 95.5,
                 Count = 1000L,
-                ExternalId = Guid.Parse("A1B2C3D4-E5F6-7890-ABCD-EF1234567890")
-            }
+                ExternalId = Guid.Parse("A1B2C3D4-E5F6-7890-ABCD-EF1234567890"),
+            },
         };
 
         var tempFile = Path.GetTempFileName() + ".parquet";
@@ -72,6 +165,7 @@ public sealed class ParquetIntegrationTests
 
             // Act - Write
             var sink = new ParquetSinkNode<AllTypesRecord>(uri, resolver);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<AllTypesRecord>(records.ToAsyncEnumerable()),
                 PipelineContext.Default,
@@ -116,6 +210,7 @@ public sealed class ParquetIntegrationTests
 
             // Act - Write
             var sink = new ParquetSinkNode<TestRecord>(uri, resolver, config);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<TestRecord>(records.ToAsyncEnumerable()),
                 PipelineContext.Default,
@@ -150,6 +245,7 @@ public sealed class ParquetIntegrationTests
 
             // Act - Write
             var sink = new ParquetSinkNode<TestRecord>(uri, resolver, config);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<TestRecord>(records.ToAsyncEnumerable()),
                 PipelineContext.Default,
@@ -186,6 +282,7 @@ public sealed class ParquetIntegrationTests
 
             // Write all data
             var sink = new ParquetSinkNode<TestRecord>(uri, resolver);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<TestRecord>(records.ToAsyncEnumerable()),
                 PipelineContext.Default,
@@ -220,6 +317,7 @@ public sealed class ParquetIntegrationTests
 
             // Write
             var sink = new ParquetSinkNode<TestRecord>(uri, resolver);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<TestRecord>(records.ToAsyncEnumerable()),
                 PipelineContext.Default,
@@ -270,9 +368,7 @@ public sealed class ParquetIntegrationTests
         finally
         {
             if (Directory.Exists(tempDir))
-            {
-                Directory.Delete(tempDir, recursive: true);
-            }
+                Directory.Delete(tempDir, true);
         }
     }
 
@@ -303,9 +399,7 @@ public sealed class ParquetIntegrationTests
         finally
         {
             if (Directory.Exists(tempDir))
-            {
-                Directory.Delete(tempDir, recursive: true);
-            }
+                Directory.Delete(tempDir, true);
         }
     }
 
@@ -328,6 +422,7 @@ public sealed class ParquetIntegrationTests
 
             // Act - Write
             var sink = new ParquetSinkNode<TestRecord>(uri, resolver, config);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<TestRecord>(records.ToAsyncEnumerable()),
                 PipelineContext.Default,
@@ -361,6 +456,7 @@ public sealed class ParquetIntegrationTests
 
             // Act - Write (streaming)
             var sink = new ParquetSinkNode<TestRecord>(uri, resolver, config);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<TestRecord>(GenerateRecords(0, 50_000).ToAsyncEnumerable()),
                 PipelineContext.Default,
@@ -369,6 +465,7 @@ public sealed class ParquetIntegrationTests
             // Act - Read (streaming)
             var source = new ParquetSourceNode<TestRecord>(uri, resolver);
             var count = 0;
+
             await foreach (var _ in source.Initialize(PipelineContext.Default, CancellationToken.None))
             {
                 count++;
@@ -376,96 +473,6 @@ public sealed class ParquetIntegrationTests
 
             // Assert
             count.Should().Be(50_000);
-        }
-        finally
-        {
-            CleanupFile(tempFile);
-        }
-    }
-
-    #endregion
-
-    #region Nullable Values
-
-    [Fact]
-    public async Task RoundTrip_WithNullableValues_PreservesNulls()
-    {
-        // Arrange
-        var records = new[]
-        {
-            new NullableRecord { Id = 1, Name = "First", OptionalValue = 100 },
-            new NullableRecord { Id = 2, Name = null, OptionalValue = null },
-            new NullableRecord { Id = 3, Name = "Third", OptionalValue = 300 }
-        };
-
-        var tempFile = Path.GetTempFileName() + ".parquet";
-        var uri = StorageUri.FromFilePath(tempFile);
-
-        try
-        {
-            var resolver = StorageProviderFactory.CreateResolver();
-
-            // Act - Write
-            var sink = new ParquetSinkNode<NullableRecord>(uri, resolver);
-            await sink.ExecuteAsync(
-                new StreamingDataPipe<NullableRecord>(records.ToAsyncEnumerable()),
-                PipelineContext.Default,
-                CancellationToken.None);
-
-            // Act - Read
-            var source = new ParquetSourceNode<NullableRecord>(uri, resolver);
-            var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
-
-            // Assert
-            result.Should().HaveCount(3);
-            result[0].Name.Should().Be("First");
-            result[0].OptionalValue.Should().Be(100);
-            result[1].Name.Should().BeNull();
-            result[1].OptionalValue.Should().BeNull();
-            result[2].Name.Should().Be("Third");
-            result[2].OptionalValue.Should().Be(300);
-        }
-        finally
-        {
-            CleanupFile(tempFile);
-        }
-    }
-
-    #endregion
-
-    #region Custom Column Names
-
-    [Fact]
-    public async Task RoundTrip_WithCustomColumnNames_PreservesData()
-    {
-        // Arrange
-        var records = new[]
-        {
-            new CustomColumnRecord { RecordId = 1, RecordName = "Test" }
-        };
-
-        var tempFile = Path.GetTempFileName() + ".parquet";
-        var uri = StorageUri.FromFilePath(tempFile);
-
-        try
-        {
-            var resolver = StorageProviderFactory.CreateResolver();
-
-            // Act - Write
-            var sink = new ParquetSinkNode<CustomColumnRecord>(uri, resolver);
-            await sink.ExecuteAsync(
-                new StreamingDataPipe<CustomColumnRecord>(records.ToAsyncEnumerable()),
-                PipelineContext.Default,
-                CancellationToken.None);
-
-            // Act - Read
-            var source = new ParquetSourceNode<CustomColumnRecord>(uri, resolver);
-            var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
-
-            // Assert
-            result.Should().HaveCount(1);
-            result[0].RecordId.Should().Be(1);
-            result[0].RecordName.Should().Be("Test");
         }
         finally
         {
@@ -494,7 +501,7 @@ public sealed class ParquetIntegrationTests
             yield return new TestRecord
             {
                 Id = startId + i,
-                Name = $"Record_{startId + i}"
+                Name = $"Record_{startId + i}",
             };
         }
     }
@@ -504,6 +511,7 @@ public sealed class ParquetIntegrationTests
         var uri = StorageUri.FromFilePath(path);
         var resolver = StorageProviderFactory.CreateResolver();
         var sink = new ParquetSinkNode<TestRecord>(uri, resolver);
+
         await sink.ExecuteAsync(
             new StreamingDataPipe<TestRecord>(records.ToAsyncEnumerable()),
             PipelineContext.Default,
@@ -513,16 +521,24 @@ public sealed class ParquetIntegrationTests
     private static void CleanupFile(string path)
     {
         if (File.Exists(path))
-        {
             File.Delete(path);
-        }
+
         var directory = Path.GetDirectoryName(path);
+
         if (directory is not null && Directory.Exists(directory))
         {
             var tempFiles = Directory.GetFiles(directory, Path.GetFileName(path) + ".tmp-*");
+
             foreach (var tempFile in tempFiles)
             {
-                try { File.Delete(tempFile); } catch { /* ignore */ }
+                try
+                {
+                    File.Delete(tempFile);
+                }
+                catch
+                {
+                    /* ignore */
+                }
             }
         }
     }
@@ -541,8 +557,10 @@ public sealed class ParquetIntegrationTests
     {
         public int Id { get; set; }
         public string? Name { get; set; }
+
         [ParquetDecimal(18, 4)]
         public decimal Amount { get; set; }
+
         public DateTime CreatedAt { get; set; }
         public DateTimeOffset Timestamp { get; set; }
         public bool IsActive { get; set; }

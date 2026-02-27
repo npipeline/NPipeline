@@ -13,7 +13,7 @@ public sealed class ParquetConnectorPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        var source = builder.AddSource(new SalesDataSourceNode(500), "sales-source");
+        var source = builder.AddSource(new SalesDataSourceNode(), "sales-source");
         var sink = builder.AddSink(new ParquetSinkNode<SalesRecord>(StorageUri.FromFilePath(GetOutputPath())), "parquet-sink");
 
         builder.Connect(source, sink);

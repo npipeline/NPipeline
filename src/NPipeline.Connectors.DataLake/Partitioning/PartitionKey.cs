@@ -46,6 +46,7 @@ public sealed record PartitionKey
         ArgumentNullException.ThrowIfNull(hiveStyleString);
 
         var separatorIndex = hiveStyleString.IndexOf('=');
+
         if (separatorIndex <= 0 || separatorIndex >= hiveStyleString.Length - 1)
         {
             throw new FormatException(
@@ -55,7 +56,7 @@ public sealed record PartitionKey
         return new PartitionKey
         {
             ColumnName = hiveStyleString[..separatorIndex],
-            Value = hiveStyleString[(separatorIndex + 1)..]
+            Value = hiveStyleString[(separatorIndex + 1)..],
         };
     }
 
@@ -70,20 +71,17 @@ public sealed record PartitionKey
         partitionKey = null;
 
         if (string.IsNullOrEmpty(hiveStyleString))
-        {
             return false;
-        }
 
         var separatorIndex = hiveStyleString.IndexOf('=');
+
         if (separatorIndex <= 0 || separatorIndex >= hiveStyleString.Length - 1)
-        {
             return false;
-        }
 
         partitionKey = new PartitionKey
         {
             ColumnName = hiveStyleString[..separatorIndex],
-            Value = hiveStyleString[(separatorIndex + 1)..]
+            Value = hiveStyleString[(separatorIndex + 1)..],
         };
 
         return true;

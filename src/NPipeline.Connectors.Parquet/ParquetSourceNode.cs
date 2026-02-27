@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading.Channels;
 using NPipeline.Connectors.Parquet.Mapping;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
@@ -10,7 +12,6 @@ using NPipeline.StorageProviders.Exceptions;
 using NPipeline.StorageProviders.Models;
 using Parquet;
 using Parquet.Schema;
-using System.Threading.Channels;
 
 namespace NPipeline.Connectors.Parquet;
 
@@ -134,9 +135,7 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
             var meta = metaProvider.GetMetadata();
 
             if (!meta.SupportsRead)
-            {
                 throw new UnsupportedStorageCapabilityException(_uri, "read", meta.Name);
-            }
         }
 
         var stream = ReadAll(provider, _uri, _configuration, cancellationToken);
@@ -187,11 +186,12 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
         {
             var fileIndex = index;
             var fileUri = files[fileIndex];
+
             var channel = Channel.CreateBounded<T>(new BoundedChannelOptions(config.RowGroupSize)
             {
                 FullMode = BoundedChannelFullMode.Wait,
                 SingleReader = true,
-                SingleWriter = true
+                SingleWriter = true,
             });
 
             channels[fileIndex] = channel;
@@ -199,6 +199,7 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
             workers[fileIndex] = Task.Run(async () =>
             {
                 await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+
                 try
                 {
                     await foreach (var item in ReadFile(provider, fileUri, config, cancellationToken).ConfigureAwait(false))
@@ -238,20 +239,18 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
     {
         // Check if the URI points to a single file
         var path = uri.Path ?? string.Empty;
+
         if (ParquetExtensions.Any(ext => path.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
-        {
             return [uri];
-        }
 
         // Directory listing - ListAsync returns IAsyncEnumerable
         var parquetFiles = new List<StorageUri>();
-        await foreach (var item in provider.ListAsync(uri, recursive: config.RecursiveDiscovery, cancellationToken))
+
+        await foreach (var item in provider.ListAsync(uri, config.RecursiveDiscovery, cancellationToken))
         {
             // Use !IsDirectory to check for files
             if (!item.IsDirectory && ParquetExtensions.Any(ext => item.Uri.Path?.EndsWith(ext, StringComparison.OrdinalIgnoreCase) == true))
-            {
                 parquetFiles.Add(item.Uri);
-            }
         }
 
         return [.. parquetFiles.OrderBy(u => u.Path, StringComparer.OrdinalIgnoreCase)];
@@ -264,17 +263,16 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var observer = config.Observer;
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
         long totalRows = 0;
         long totalBytes = 0;
 
         observer?.OnFileReadStarted(fileUri);
 
         await using var stream = await provider.OpenReadAsync(fileUri, cancellationToken);
+
         if (stream.CanSeek)
-        {
             totalBytes = stream.Length;
-        }
 
         using var reader = await ParquetReader.CreateAsync(stream, cancellationToken: cancellationToken);
 
@@ -282,9 +280,7 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
         if (config.SchemaValidator is not null)
         {
             if (!config.SchemaValidator(reader.Schema))
-            {
                 throw new ParquetSchemaException($"Schema validation failed for file '{fileUri}'");
-            }
         }
 
         // Build column name to DataField mapping (computed once per file)
@@ -295,6 +291,7 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
         for (var i = 0; i < dataFields.Length; i++)
         {
             var field = dataFields[i];
+
             if (!string.IsNullOrEmpty(field.Name))
             {
                 columnNameToField[field.Name] = field;
@@ -304,10 +301,9 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
 
         // Determine which columns to read
         string[]? columnsToRead = null;
+
         if (config.ProjectedColumns is not null && config.ProjectedColumns.Count > 0)
-        {
             columnsToRead = [.. config.ProjectedColumns];
-        }
 
         // Read each row group
         for (var rowGroupIndex = 0; rowGroupIndex < reader.RowGroupCount; rowGroupIndex++)
@@ -331,11 +327,10 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
 
                 // Apply row filter if configured
                 if (config.RowFilter is not null && !config.RowFilter(row))
-                {
                     continue;
-                }
 
                 T? record;
+
                 try
                 {
                     record = _rowMapper(row);
@@ -345,10 +340,9 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
                     observer?.OnRowMappingError(fileUri, ex);
 
                     var handler = config.RowErrorHandler;
+
                     if (handler is not null && handler(ex, row))
-                    {
                         continue; // handler opted to skip
-                    }
 
                     throw;
                 }
@@ -378,9 +372,7 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
         foreach (var columnName in columns)
         {
             if (!columnNameToField.TryGetValue(columnName, out var field))
-            {
                 continue;
-            }
 
             // Read the column using the DataField
             var data = await rowGroupReader.ReadColumnAsync(field, cancellationToken);
@@ -388,6 +380,7 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
             // Convert DataColumn.Data array to object array
             var dataArray = data.Data;
             var values = new object?[dataArray.Length];
+
             for (var i = 0; i < dataArray.Length; i++)
             {
                 values[i] = dataArray.GetValue(i);
@@ -413,9 +406,7 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
             var index = kvp.Value;
 
             if (columnData.TryGetValue(columnName, out var columnValues) && rowIndex < columnValues.Length)
-            {
                 values[index] = columnValues[rowIndex];
-            }
         }
 
         return new ParquetRow(values, columnNameToIndex, schema);

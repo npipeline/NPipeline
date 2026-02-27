@@ -20,7 +20,7 @@ public sealed class DataLakeConnectorPipeline : IPipelineDefinition
             .By(x => x.EventDate)
             .ThenBy(x => x.Region);
 
-        var source = builder.AddSource(new SalesDataSourceNode(300), "sales-source");
+        var source = builder.AddSource(new SalesDataSourceNode(), "sales-source");
         var sink = builder.AddSink(new DataLakePartitionedSinkNode<SalesRecord>(tableUri, partitionSpec), "datalake-sink");
 
         builder.Connect(source, sink);

@@ -34,9 +34,12 @@ public static class Program
         Console.WriteLine("First 5 records (read back from Parquet):");
         var sourceNode = new ParquetSourceNode<SalesRecord>(StorageUri.FromFilePath(outputPath));
         var count = 0;
+
         await foreach (var record in sourceNode.Initialize(PipelineContext.Default, CancellationToken.None))
         {
-            if (count++ >= 5) break;
+            if (count++ >= 5)
+                break;
+
             Console.WriteLine($"  [{record.Id,4}] {record.Product,-15} {record.Amount,8:C}  {record.TransactionDate:yyyy-MM-dd}  {record.Region}");
         }
     }

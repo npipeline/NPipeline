@@ -105,23 +105,16 @@ public class ParquetConfiguration
     public void Validate()
     {
         if (RowGroupSize <= 0)
-        {
             throw new InvalidOperationException($"{nameof(RowGroupSize)} must be greater than 0. Current value: {RowGroupSize}");
-        }
 
         if (MaxBufferedRows < RowGroupSize)
-        {
-            throw new InvalidOperationException($"{nameof(MaxBufferedRows)} ({MaxBufferedRows}) must be greater than or equal to {nameof(RowGroupSize)} ({RowGroupSize})");
-        }
+            throw new InvalidOperationException(
+                $"{nameof(MaxBufferedRows)} ({MaxBufferedRows}) must be greater than or equal to {nameof(RowGroupSize)} ({RowGroupSize})");
 
         if (TargetFileSizeBytes is { } targetSize && targetSize < 32L * 1024 * 1024)
-        {
             throw new InvalidOperationException($"{nameof(TargetFileSizeBytes)} must be at least 32 MiB when specified. Current value: {TargetFileSizeBytes}");
-        }
 
         if (FileReadParallelism < 1)
-        {
             throw new InvalidOperationException($"{nameof(FileReadParallelism)} must be greater than or equal to 1. Current value: {FileReadParallelism}");
-        }
     }
 }

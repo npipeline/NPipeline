@@ -10,6 +10,79 @@ namespace NPipeline.Connectors.Parquet.Tests;
 
 public sealed class ParquetSchemaEvolutionTests
 {
+    #region Extra Columns in File
+
+    [Fact]
+    public async Task Read_WithExtraColumnsInFile_IgnoresExtraColumnsInAdditiveMode()
+    {
+        // Arrange
+        var tempFile = Path.GetTempFileName() + ".parquet";
+        var uri = StorageUri.FromFilePath(tempFile);
+
+        try
+        {
+            var resolver = StorageProviderFactory.CreateResolver();
+
+            // Write with extra columns
+            var fullRecords = new[]
+            {
+                new FullRecord { Id = 1, Name = "Test", ExtraColumn = "Extra" },
+            };
+
+            var sink = new ParquetSinkNode<FullRecord>(uri, resolver);
+
+            await sink.ExecuteAsync(
+                new StreamingDataPipe<FullRecord>(fullRecords.ToAsyncEnumerable()),
+                PipelineContext.Default,
+                CancellationToken.None);
+
+            // Read with schema that doesn't have the extra column
+            var config = new ParquetConfiguration { SchemaCompatibility = SchemaCompatibilityMode.Additive };
+            var source = new ParquetSourceNode<PartialRecord>(uri, resolver, config);
+            var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+
+            // Assert - extra column should be ignored
+            result.Should().HaveCount(1);
+            result[0].Id.Should().Be(1);
+            result[0].Name.Should().Be("Test");
+        }
+        finally
+        {
+            CleanupFile(tempFile);
+        }
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    private static void CleanupFile(string path)
+    {
+        if (File.Exists(path))
+            File.Delete(path);
+
+        var directory = Path.GetDirectoryName(path);
+
+        if (directory is not null && Directory.Exists(directory))
+        {
+            var tempFiles = Directory.GetFiles(directory, Path.GetFileName(path) + ".tmp-*");
+
+            foreach (var tempFile in tempFiles)
+            {
+                try
+                {
+                    File.Delete(tempFile);
+                }
+                catch
+                {
+                    /* ignore */
+                }
+            }
+        }
+    }
+
+    #endregion
+
     #region Strict vs Additive Compatibility Mode
 
     [Fact]
@@ -26,6 +99,7 @@ public sealed class ParquetSchemaEvolutionTests
             // Write initial data
             var records = new[] { new SimpleRecord { Id = 1, Name = "Test" } };
             var sink = new ParquetSinkNode<SimpleRecord>(uri, resolver);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<SimpleRecord>(records.ToAsyncEnumerable()),
                 PipelineContext.Default,
@@ -61,6 +135,7 @@ public sealed class ParquetSchemaEvolutionTests
             // Write with fewer columns
             var minimalRecords = new[] { new MinimalRecord { Id = 1 } };
             var sink = new ParquetSinkNode<MinimalRecord>(uri, resolver);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<MinimalRecord>(minimalRecords.ToAsyncEnumerable()),
                 PipelineContext.Default,
@@ -96,6 +171,7 @@ public sealed class ParquetSchemaEvolutionTests
             // Write with more columns
             var extendedRecords = new[] { new ExtendedRecord { Id = 1, Name = "Test" } };
             var sink = new ParquetSinkNode<ExtendedRecord>(uri, resolver);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<ExtendedRecord>(extendedRecords.ToAsyncEnumerable()),
                 PipelineContext.Default,
@@ -134,6 +210,7 @@ public sealed class ParquetSchemaEvolutionTests
             // Write with original column name
             var originalRecords = new[] { new OriginalNameRecord { OriginalId = 42 } };
             var sink = new ParquetSinkNode<OriginalNameRecord>(uri, resolver);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<OriginalNameRecord>(originalRecords.ToAsyncEnumerable()),
                 PipelineContext.Default,
@@ -167,6 +244,7 @@ public sealed class ParquetSchemaEvolutionTests
             // Write with renamed column
             var renamedRecords = new[] { new RenamedColumnRecord { NewId = 100 } };
             var sink = new ParquetSinkNode<RenamedColumnRecord>(uri, resolver);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<RenamedColumnRecord>(renamedRecords.ToAsyncEnumerable()),
                 PipelineContext.Default,
@@ -204,6 +282,7 @@ public sealed class ParquetSchemaEvolutionTests
             // Write without the optional column
             var requiredOnly = new[] { new RequiredOnlyRecord { RequiredId = 1 } };
             var sink = new ParquetSinkNode<RequiredOnlyRecord>(uri, resolver);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<RequiredOnlyRecord>(requiredOnly.ToAsyncEnumerable()),
                 PipelineContext.Default,
@@ -239,6 +318,7 @@ public sealed class ParquetSchemaEvolutionTests
             // Write without the count column
             var idOnly = new[] { new IdOnlyRecord { Id = 5 } };
             var sink = new ParquetSinkNode<IdOnlyRecord>(uri, resolver);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<IdOnlyRecord>(idOnly.ToAsyncEnumerable()),
                 PipelineContext.Default,
@@ -253,48 +333,6 @@ public sealed class ParquetSchemaEvolutionTests
             result.Should().HaveCount(1);
             result[0].Id.Should().Be(5);
             result[0].Count.Should().Be(0);
-        }
-        finally
-        {
-            CleanupFile(tempFile);
-        }
-    }
-
-    #endregion
-
-    #region Extra Columns in File
-
-    [Fact]
-    public async Task Read_WithExtraColumnsInFile_IgnoresExtraColumnsInAdditiveMode()
-    {
-        // Arrange
-        var tempFile = Path.GetTempFileName() + ".parquet";
-        var uri = StorageUri.FromFilePath(tempFile);
-
-        try
-        {
-            var resolver = StorageProviderFactory.CreateResolver();
-
-            // Write with extra columns
-            var fullRecords = new[]
-            {
-                new FullRecord { Id = 1, Name = "Test", ExtraColumn = "Extra" }
-            };
-            var sink = new ParquetSinkNode<FullRecord>(uri, resolver);
-            await sink.ExecuteAsync(
-                new StreamingDataPipe<FullRecord>(fullRecords.ToAsyncEnumerable()),
-                PipelineContext.Default,
-                CancellationToken.None);
-
-            // Read with schema that doesn't have the extra column
-            var config = new ParquetConfiguration { SchemaCompatibility = SchemaCompatibilityMode.Additive };
-            var source = new ParquetSourceNode<PartialRecord>(uri, resolver, config);
-            var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
-
-            // Assert - extra column should be ignored
-            result.Should().HaveCount(1);
-            result[0].Id.Should().Be(1);
-            result[0].Name.Should().Be("Test");
         }
         finally
         {
@@ -320,6 +358,7 @@ public sealed class ParquetSchemaEvolutionTests
             // Write with int
             var intRecords = new[] { new IntValueRecord { Value = 42 } };
             var sink = new ParquetSinkNode<IntValueRecord>(uri, resolver);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<IntValueRecord>(intRecords.ToAsyncEnumerable()),
                 PipelineContext.Default,
@@ -354,6 +393,7 @@ public sealed class ParquetSchemaEvolutionTests
             // Write with float
             var floatRecords = new[] { new FloatValueRecord { Value = 3.14f } };
             var sink = new ParquetSinkNode<FloatValueRecord>(uri, resolver);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<FloatValueRecord>(floatRecords.ToAsyncEnumerable()),
                 PipelineContext.Default,
@@ -392,12 +432,14 @@ public sealed class ParquetSchemaEvolutionTests
             // Write test data
             var records = new[] { new SimpleRecord { Id = 1, Name = "Test" } };
             var sink = new ParquetSinkNode<SimpleRecord>(uri, resolver);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<SimpleRecord>(records.ToAsyncEnumerable()),
                 PipelineContext.Default,
                 CancellationToken.None);
 
             var validatorCalled = false;
+
             var config = new ParquetConfiguration
             {
                 SchemaValidator = schema =>
@@ -405,7 +447,7 @@ public sealed class ParquetSchemaEvolutionTests
                     validatorCalled = true;
                     schema.Fields.Should().HaveCount(2);
                     return true;
-                }
+                },
             };
 
             var source = new ParquetSourceNode<SimpleRecord>(uri, resolver, config);
@@ -434,6 +476,7 @@ public sealed class ParquetSchemaEvolutionTests
             // Write test data
             var records = new[] { new SimpleRecord { Id = 1, Name = "Test" } };
             var sink = new ParquetSinkNode<SimpleRecord>(uri, resolver);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<SimpleRecord>(records.ToAsyncEnumerable()),
                 PipelineContext.Default,
@@ -441,7 +484,7 @@ public sealed class ParquetSchemaEvolutionTests
 
             var config = new ParquetConfiguration
             {
-                SchemaValidator = _ => false // Reject schema
+                SchemaValidator = _ => false, // Reject schema
             };
 
             var source = new ParquetSourceNode<SimpleRecord>(uri, resolver, config);
@@ -454,27 +497,6 @@ public sealed class ParquetSchemaEvolutionTests
         finally
         {
             CleanupFile(tempFile);
-        }
-    }
-
-    #endregion
-
-    #region Helper Methods
-
-    private static void CleanupFile(string path)
-    {
-        if (File.Exists(path))
-        {
-            File.Delete(path);
-        }
-        var directory = Path.GetDirectoryName(path);
-        if (directory is not null && Directory.Exists(directory))
-        {
-            var tempFiles = Directory.GetFiles(directory, Path.GetFileName(path) + ".tmp-*");
-            foreach (var tempFile in tempFiles)
-            {
-                try { File.Delete(tempFile); } catch { /* ignore */ }
-            }
         }
     }
 

@@ -18,9 +18,9 @@ namespace NPipeline.Connectors.DataLake.Tests;
 /// </summary>
 public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
 {
-    private readonly string _tempDir;
-    private readonly StorageUri _tableUri;
     private readonly IStorageProvider _provider;
+    private readonly StorageUri _tableUri;
+    private readonly string _tempDir;
 
     public DataLakePartitionedWriteTests()
     {
@@ -34,10 +34,39 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if (Directory.Exists(_tempDir))
-            Directory.Delete(_tempDir, recursive: true);
+            Directory.Delete(_tempDir, true);
 
         await Task.CompletedTask;
     }
+
+    #region Unpartitioned Write
+
+    [Fact]
+    public async Task Write_WithNoPartitionSpec_WritesToTableRoot()
+    {
+        // Arrange
+        var spec = PartitionSpec<OrderRecord>.None();
+        var records = Enumerable.Range(0, 50).Select(i => CreateOrder(i, "2025-01-01", "EU")).ToList();
+
+        // Act
+        await using (var writer = new DataLakeTableWriter<OrderRecord>(_provider, _tableUri, spec))
+        {
+            await writer.AppendAsync(new InMemoryDataPipe<OrderRecord>(records), CancellationToken.None);
+        }
+
+        // Assert — no partition subdirectories created; file is at root or directly in tableUri path
+        var parquetFiles = Directory.GetFiles(_tempDir, "*.parquet", SearchOption.TopDirectoryOnly);
+
+        parquetFiles.Should().NotBeEmpty(
+            "unpartitioned write should place Parquet files directly under the table base path");
+
+        // Readable via DataLakeTableSourceNode
+        var source = new DataLakeTableSourceNode<OrderRecord>(_provider, _tableUri);
+        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        result.Should().HaveCount(50);
+    }
+
+    #endregion
 
     #region Single-Partition Write
 
@@ -54,6 +83,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
 
         // Assert — directory follows event_date=yyyy-MM-dd pattern
         var expectedDir = Path.Combine(_tempDir, "event_date=2025-03-10");
+
         Directory.Exists(expectedDir).Should().BeTrue(
             "single-partition write must create a Hive-style directory");
 
@@ -100,6 +130,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         var entries = await reader.ReadAllAsync();
 
         entries.Should().NotBeEmpty();
+
         entries.Should().AllSatisfy(e =>
         {
             e.PartitionValues.Should().NotBeNull();
@@ -123,8 +154,10 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         {
             // 2025-01-15 / EU
             CreateOrder(1, "2025-01-15", "EU"),
+
             // 2025-01-15 / US
             CreateOrder(2, "2025-01-15", "US"),
+
             // 2025-01-16 / EU
             CreateOrder(3, "2025-01-16", "EU"),
         };
@@ -136,8 +169,10 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         // Assert all three nested combinations exist
         Directory.Exists(Path.Combine(_tempDir, "event_date=2025-01-15", "region=EU"))
             .Should().BeTrue("event_date=2025-01-15/region=EU must exist");
+
         Directory.Exists(Path.Combine(_tempDir, "event_date=2025-01-15", "region=US"))
             .Should().BeTrue("event_date=2025-01-15/region=US must exist");
+
         Directory.Exists(Path.Combine(_tempDir, "event_date=2025-01-16", "region=EU"))
             .Should().BeTrue("event_date=2025-01-16/region=EU must exist");
     }
@@ -196,6 +231,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
     {
         // Arrange
         var spec = PartitionSpec<OrderRecord>.By(x => x.Region);
+
         var records = new[]
         {
             CreateOrder(1, "2025-01-01", "EU"),
@@ -215,7 +251,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
 
         entries.Should().HaveCount(3, "one file per distinct region partition");
         var regions = entries.Select(e => e.PartitionValues!["region"]).ToHashSet();
-        regions.Should().BeEquivalentTo(new[] { "EU", "US", "APAC" });
+        regions.Should().BeEquivalentTo("EU", "US", "APAC");
     }
 
     #endregion
@@ -282,9 +318,11 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         var files = Directory.GetFiles(euDir, "*.parquet");
 
         files.Should().NotBeEmpty();
+
         files.Should().AllSatisfy(f =>
         {
             var fileName = Path.GetFileName(f);
+
             // Files should start with "part-" per the plan: part-{sequence:D5}-{guid:N8}.parquet
             fileName.Should().StartWith("part-",
                 "data files must follow the part-{seq}-{guid}.parquet naming convention");
@@ -304,10 +342,11 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         const int maxBufferedRows = distinctRegions * 10; // force flush before all rows are accumulated
 
         var spec = PartitionSpec<OrderRecord>.By(x => x.Region);
+
         var config = new ParquetConfiguration
         {
-            RowGroupSize = 10,                  // tiny row group to force early flushes
-            MaxBufferedRows = maxBufferedRows
+            RowGroupSize = 10, // tiny row group to force early flushes
+            MaxBufferedRows = maxBufferedRows,
         };
 
         var records = Enumerable.Range(0, distinctRegions)
@@ -350,6 +389,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         for (var i = 0; i < distinctRegions; i++)
         {
             var partDir = Path.Combine(_tempDir, $"region=Region_{i:D3}");
+
             Directory.Exists(partDir).Should().BeTrue(
                 $"partition directory for Region_{i:D3} should exist");
         }
@@ -363,6 +403,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         var config = new ParquetConfiguration { RowGroupSize = 5, MaxBufferedRows = 20 };
 
         var regions = new[] { "EU", "US", "APAC" };
+
         var records = regions
             .SelectMany((r, ri) => Enumerable.Range(0, 30)
                 .Select(i => CreateOrder(ri * 30 + i, "2025-01-01", r)))
@@ -389,34 +430,6 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
 
     #endregion
 
-    #region Unpartitioned Write
-
-    [Fact]
-    public async Task Write_WithNoPartitionSpec_WritesToTableRoot()
-    {
-        // Arrange
-        var spec = PartitionSpec<OrderRecord>.None();
-        var records = Enumerable.Range(0, 50).Select(i => CreateOrder(i, "2025-01-01", "EU")).ToList();
-
-        // Act
-        await using (var writer = new DataLakeTableWriter<OrderRecord>(_provider, _tableUri, spec))
-        {
-            await writer.AppendAsync(new InMemoryDataPipe<OrderRecord>(records), CancellationToken.None);
-        }
-
-        // Assert — no partition subdirectories created; file is at root or directly in tableUri path
-        var parquetFiles = Directory.GetFiles(_tempDir, "*.parquet", SearchOption.TopDirectoryOnly);
-        parquetFiles.Should().NotBeEmpty(
-            "unpartitioned write should place Parquet files directly under the table base path");
-
-        // Readable via DataLakeTableSourceNode
-        var source = new DataLakeTableSourceNode<OrderRecord>(_provider, _tableUri);
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
-        result.Should().HaveCount(50);
-    }
-
-    #endregion
-
     #region SinkNode Write
 
     [Fact]
@@ -424,6 +437,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
     {
         // Arrange
         var spec = PartitionSpec<OrderRecord>.By(x => x.Region);
+
         var records = new[]
         {
             CreateOrder(1, "2025-01-01", "EU"),
@@ -431,6 +445,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         };
 
         var resolver = StorageProviderFactory.CreateResolver();
+
         var sink = new DataLakePartitionedSinkNode<OrderRecord>(
             _tableUri, spec, resolver);
 
@@ -477,7 +492,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
             ProductName = $"Product_{id}",
             Amount = 10m * (id + 1),
             EventDate = DateOnly.Parse(dateStr),
-            Region = region
+            Region = region,
         };
     }
 
@@ -490,7 +505,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
                 ProductName = $"Prod_{i}",
                 Amount = 1m + i,
                 EventDate = date,
-                Region = region
+                Region = region,
             });
     }
 

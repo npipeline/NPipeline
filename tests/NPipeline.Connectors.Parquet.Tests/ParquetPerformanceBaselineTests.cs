@@ -1,9 +1,9 @@
 using System.Diagnostics;
-using NPipeline.Connectors.Parquet.Attributes;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
+using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 using Parquet;
 
@@ -18,6 +18,148 @@ public sealed class ParquetPerformanceBaselineTests
 {
     private const int SmallRecordCount = 50_000;
     private const int LargeRecordCount = 200_000;
+
+    #region Column Projection Performance
+
+    [Fact]
+    public async Task Read_WithProjection_FasterThanReadingAllColumns()
+    {
+        var tempFile = Path.GetTempFileName() + ".parquet";
+        var uri = StorageUri.FromFilePath(tempFile);
+
+        try
+        {
+            var resolver = StorageProviderFactory.CreateResolver();
+
+            // Write wide records
+            var sink = new ParquetSinkNode<WideRecord>(uri, resolver,
+                new ParquetConfiguration { RowGroupSize = 10_000 });
+
+            await sink.ExecuteAsync(
+                new StreamingDataPipe<WideRecord>(GenerateWideRecords(SmallRecordCount).ToAsyncEnumerable()),
+                PipelineContext.Default,
+                CancellationToken.None);
+
+            // Read all columns
+            var swAll = Stopwatch.StartNew();
+            var sourceAll = new ParquetSourceNode<WideRecord>(uri, resolver);
+            var countAll = (await sourceAll.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync()).Count;
+            swAll.Stop();
+
+            countAll.Should().Be(SmallRecordCount);
+            swAll.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(15));
+        }
+        finally
+        {
+            CleanupFile(tempFile);
+        }
+    }
+
+    #endregion
+
+    #region Narrow Schema Baseline
+
+    [Fact]
+    public async Task RoundTrip_NarrowSchema_ThroughputBaseline()
+    {
+        var tempFile = Path.GetTempFileName() + ".parquet";
+        var uri = StorageUri.FromFilePath(tempFile);
+
+        try
+        {
+            var config = new ParquetConfiguration
+            {
+                RowGroupSize = 50_000,
+                Compression = CompressionMethod.Snappy,
+            };
+
+            var resolver = StorageProviderFactory.CreateResolver();
+
+            // Measure write
+            var swWrite = Stopwatch.StartNew();
+            var sink = new ParquetSinkNode<NarrowRecord>(uri, resolver, config);
+
+            await sink.ExecuteAsync(
+                new StreamingDataPipe<NarrowRecord>(GenerateNarrowRecords(LargeRecordCount).ToAsyncEnumerable()),
+                PipelineContext.Default,
+                CancellationToken.None);
+
+            swWrite.Stop();
+
+            // Measure read
+            var swRead = Stopwatch.StartNew();
+            var source = new ParquetSourceNode<NarrowRecord>(uri, resolver);
+            var count = (await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync()).Count;
+            swRead.Stop();
+
+            count.Should().Be(LargeRecordCount);
+
+            swWrite.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(30),
+                $"Write baseline exceeded for {LargeRecordCount} narrow records");
+
+            swRead.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(15),
+                $"Read baseline exceeded for {LargeRecordCount} narrow records");
+        }
+        finally
+        {
+            CleanupFile(tempFile);
+        }
+    }
+
+    #endregion
+
+    #region Wide Schema Baseline
+
+    [Fact]
+    public async Task RoundTrip_WideSchema_ThroughputBaseline()
+    {
+        var tempFile = Path.GetTempFileName() + ".parquet";
+        var uri = StorageUri.FromFilePath(tempFile);
+
+        try
+        {
+            var config = new ParquetConfiguration
+            {
+                RowGroupSize = 10_000,
+                Compression = CompressionMethod.Snappy,
+            };
+
+            var resolver = StorageProviderFactory.CreateResolver();
+
+            const int count = 20_000;
+
+            // Measure write
+            var swWrite = Stopwatch.StartNew();
+            var sink = new ParquetSinkNode<WideRecord>(uri, resolver, config);
+
+            await sink.ExecuteAsync(
+                new StreamingDataPipe<WideRecord>(GenerateWideRecords(count).ToAsyncEnumerable()),
+                PipelineContext.Default,
+                CancellationToken.None);
+
+            swWrite.Stop();
+
+            // Measure read
+            var swRead = Stopwatch.StartNew();
+            var source = new ParquetSourceNode<WideRecord>(uri, resolver);
+            var result = (await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync()).Count;
+            swRead.Stop();
+
+            result.Should().Be(count);
+
+            swWrite.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(20),
+                $"Write baseline exceeded for {count} wide records");
+
+            swRead.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(15),
+                $"Read baseline exceeded for {count} wide records");
+        }
+        finally
+        {
+            CleanupFile(tempFile);
+        }
+    }
+
+    #endregion
 
     #region Row-Group Size Variants
 
@@ -35,8 +177,9 @@ public sealed class ParquetPerformanceBaselineTests
             var config = new ParquetConfiguration
             {
                 RowGroupSize = rowGroupSize,
-                Compression = CompressionMethod.Snappy
+                Compression = CompressionMethod.Snappy,
             };
+
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ParquetSinkNode<NarrowRecord>(uri, resolver, config);
 
@@ -78,6 +221,7 @@ public sealed class ParquetPerformanceBaselineTests
 
             // Write first
             var sink = new ParquetSinkNode<NarrowRecord>(uri, resolver, config);
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<NarrowRecord>(GenerateNarrowRecords(SmallRecordCount).ToAsyncEnumerable()),
                 PipelineContext.Default,
@@ -90,6 +234,7 @@ public sealed class ParquetPerformanceBaselineTests
             sw.Stop();
 
             readResult.Count.Should().Be(SmallRecordCount);
+
             sw.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(10),
                 $"read of {SmallRecordCount} records with row group size {rowGroupSize} took too long");
         }
@@ -117,16 +262,19 @@ public sealed class ParquetPerformanceBaselineTests
             var config = new ParquetConfiguration
             {
                 RowGroupSize = 10_000,
-                Compression = compression
+                Compression = compression,
             };
+
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ParquetSinkNode<NarrowRecord>(uri, resolver, config);
 
             var sw = Stopwatch.StartNew();
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<NarrowRecord>(GenerateNarrowRecords(SmallRecordCount).ToAsyncEnumerable()),
                 PipelineContext.Default,
                 CancellationToken.None);
+
             sw.Stop();
 
             sw.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(15),
@@ -190,16 +338,19 @@ public sealed class ParquetPerformanceBaselineTests
             var config = new ParquetConfiguration
             {
                 RowGroupSize = 50_000,
-                Compression = CompressionMethod.Snappy
+                Compression = CompressionMethod.Snappy,
             };
+
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ParquetSinkNode<NarrowRecord>(uri, resolver, config);
 
             var sw = Stopwatch.StartNew();
+
             await sink.ExecuteAsync(
                 new StreamingDataPipe<NarrowRecord>(GenerateNarrowRecords(LargeRecordCount).ToAsyncEnumerable()),
                 PipelineContext.Default,
                 CancellationToken.None);
+
             sw.Stop();
 
             sw.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(30),
@@ -256,138 +407,7 @@ public sealed class ParquetPerformanceBaselineTests
         finally
         {
             if (Directory.Exists(tempDir))
-                Directory.Delete(tempDir, recursive: true);
-        }
-    }
-
-    #endregion
-
-    #region Column Projection Performance
-
-    [Fact]
-    public async Task Read_WithProjection_FasterThanReadingAllColumns()
-    {
-        var tempFile = Path.GetTempFileName() + ".parquet";
-        var uri = StorageUri.FromFilePath(tempFile);
-
-        try
-        {
-            var resolver = StorageProviderFactory.CreateResolver();
-
-            // Write wide records
-            var sink = new ParquetSinkNode<WideRecord>(uri, resolver,
-                new ParquetConfiguration { RowGroupSize = 10_000 });
-            await sink.ExecuteAsync(
-                new StreamingDataPipe<WideRecord>(GenerateWideRecords(SmallRecordCount).ToAsyncEnumerable()),
-                PipelineContext.Default,
-                CancellationToken.None);
-
-            // Read all columns
-            var swAll = Stopwatch.StartNew();
-            var sourceAll = new ParquetSourceNode<WideRecord>(uri, resolver);
-            var countAll = (await sourceAll.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync()).Count;
-            swAll.Stop();
-
-            countAll.Should().Be(SmallRecordCount);
-            swAll.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(15));
-        }
-        finally
-        {
-            CleanupFile(tempFile);
-        }
-    }
-
-    #endregion
-
-    #region Narrow Schema Baseline
-
-    [Fact]
-    public async Task RoundTrip_NarrowSchema_ThroughputBaseline()
-    {
-        var tempFile = Path.GetTempFileName() + ".parquet";
-        var uri = StorageUri.FromFilePath(tempFile);
-
-        try
-        {
-            var config = new ParquetConfiguration
-            {
-                RowGroupSize = 50_000,
-                Compression = CompressionMethod.Snappy
-            };
-            var resolver = StorageProviderFactory.CreateResolver();
-
-            // Measure write
-            var swWrite = Stopwatch.StartNew();
-            var sink = new ParquetSinkNode<NarrowRecord>(uri, resolver, config);
-            await sink.ExecuteAsync(
-                new StreamingDataPipe<NarrowRecord>(GenerateNarrowRecords(LargeRecordCount).ToAsyncEnumerable()),
-                PipelineContext.Default,
-                CancellationToken.None);
-            swWrite.Stop();
-
-            // Measure read
-            var swRead = Stopwatch.StartNew();
-            var source = new ParquetSourceNode<NarrowRecord>(uri, resolver);
-            var count = (await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync()).Count;
-            swRead.Stop();
-
-            count.Should().Be(LargeRecordCount);
-            swWrite.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(30),
-                $"Write baseline exceeded for {LargeRecordCount} narrow records");
-            swRead.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(15),
-                $"Read baseline exceeded for {LargeRecordCount} narrow records");
-        }
-        finally
-        {
-            CleanupFile(tempFile);
-        }
-    }
-
-    #endregion
-
-    #region Wide Schema Baseline
-
-    [Fact]
-    public async Task RoundTrip_WideSchema_ThroughputBaseline()
-    {
-        var tempFile = Path.GetTempFileName() + ".parquet";
-        var uri = StorageUri.FromFilePath(tempFile);
-
-        try
-        {
-            var config = new ParquetConfiguration
-            {
-                RowGroupSize = 10_000,
-                Compression = CompressionMethod.Snappy
-            };
-            var resolver = StorageProviderFactory.CreateResolver();
-
-            const int count = 20_000;
-
-            // Measure write
-            var swWrite = Stopwatch.StartNew();
-            var sink = new ParquetSinkNode<WideRecord>(uri, resolver, config);
-            await sink.ExecuteAsync(
-                new StreamingDataPipe<WideRecord>(GenerateWideRecords(count).ToAsyncEnumerable()),
-                PipelineContext.Default,
-                CancellationToken.None);
-            swWrite.Stop();
-
-            // Measure read
-            var swRead = Stopwatch.StartNew();
-            var source = new ParquetSourceNode<WideRecord>(uri, resolver);
-            var result = (await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync()).Count;
-            swRead.Stop();
-
-            result.Should().Be(count);
-            swWrite.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(20),
-                $"Write baseline exceeded for {count} wide records");
-            swRead.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(15),
-                $"Read baseline exceeded for {count} wide records");
-        }
-        finally
-        {
-            CleanupFile(tempFile);
+                Directory.Delete(tempDir, true);
         }
     }
 
@@ -397,16 +417,18 @@ public sealed class ParquetPerformanceBaselineTests
 
     private static async Task WriteRecords(
         StorageUri uri,
-        NPipeline.StorageProviders.Abstractions.IStorageResolver resolver,
+        IStorageResolver resolver,
         CompressionMethod compression,
         int count)
     {
         var config = new ParquetConfiguration
         {
             RowGroupSize = 5_000,
-            Compression = compression
+            Compression = compression,
         };
+
         var sink = new ParquetSinkNode<NarrowRecord>(uri, resolver, config);
+
         await sink.ExecuteAsync(
             new StreamingDataPipe<NarrowRecord>(GenerateNarrowRecords(count).ToAsyncEnumerable()),
             PipelineContext.Default,
@@ -421,7 +443,7 @@ public sealed class ParquetPerformanceBaselineTests
             {
                 Id = offset + i,
                 Name = $"Record_{offset + i}",
-                IsActive = i % 2 == 0
+                IsActive = i % 2 == 0,
             };
         }
     }
@@ -441,7 +463,7 @@ public sealed class ParquetPerformanceBaselineTests
                 Count = i * 10L,
                 IsActive = i % 3 == 0,
                 CreatedAt = DateTime.UtcNow.AddSeconds(-i),
-                ExternalId = Guid.NewGuid()
+                ExternalId = Guid.NewGuid(),
             };
         }
     }
@@ -449,17 +471,31 @@ public sealed class ParquetPerformanceBaselineTests
     private static void CleanupFile(string path)
     {
         if (File.Exists(path))
-        {
-            try { File.Delete(path); } catch { /* ignore */ }
-        }
+            try
+            {
+                File.Delete(path);
+            }
+            catch
+            {
+                /* ignore */
+            }
 
         var directory = Path.GetDirectoryName(path);
+
         if (directory is not null)
         {
             var tempFiles = Directory.GetFiles(directory, Path.GetFileName(path) + ".tmp-*");
+
             foreach (var tempFile in tempFiles)
             {
-                try { File.Delete(tempFile); } catch { /* ignore */ }
+                try
+                {
+                    File.Delete(tempFile);
+                }
+                catch
+                {
+                    /* ignore */
+                }
             }
         }
     }

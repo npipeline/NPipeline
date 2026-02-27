@@ -1,9 +1,6 @@
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
-using NPipeline.Connectors.Attributes;
-using NPipeline.Connectors.Parquet.Attributes;
-using Parquet.Schema;
 
 namespace NPipeline.Connectors.Parquet.Mapping;
 
@@ -26,9 +23,7 @@ public static class ParquetWriterMapperBuilder
         var type = typeof(T);
 
         if (ColumnNamesCache.TryGetValue(type, out var cachedColumnNames))
-        {
             return cachedColumnNames;
-        }
 
         var columnNames = BuildColumnNames<T>();
         ColumnNamesCache.TryAdd(type, columnNames);
@@ -46,9 +41,7 @@ public static class ParquetWriterMapperBuilder
         var type = typeof(T);
 
         if (ValueGetterCache.TryGetValue(type, out var cachedGetters))
-        {
             return (Func<T, object?>[])cachedGetters;
-        }
 
         var getters = BuildValueGetters<T>();
         ValueGetterCache.TryAdd(type, getters);

@@ -1,9 +1,6 @@
 using NPipeline.Connectors.DataLake.FormatAdapters;
 using NPipeline.Connectors.DataLake.Manifest;
-using NPipeline.Connectors.DataLake.Partitioning;
-using NPipeline.Connectors.Parquet;
 using NPipeline.Connectors.Parquet.Attributes;
-using NPipeline.DataFlow.DataPipes;
 using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
@@ -15,9 +12,9 @@ namespace NPipeline.Connectors.DataLake.Tests;
 
 public sealed class DataLakeCompactionTests : IAsyncDisposable
 {
-    private readonly string _tempDir;
-    private readonly StorageUri _tableUri;
     private readonly IStorageProvider _provider;
+    private readonly StorageUri _tableUri;
+    private readonly string _tempDir;
 
     public DataLakeCompactionTests()
     {
@@ -31,12 +28,147 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if (Directory.Exists(_tempDir))
-        {
-            Directory.Delete(_tempDir, recursive: true);
-        }
+            Directory.Delete(_tempDir, true);
 
         await Task.CompletedTask;
     }
+
+    #region Row Count Preservation Tests
+
+    [Fact]
+    public async Task CompactAsync_PreservesRowCount()
+    {
+        // Arrange
+        await CreateSmallFilesAsync(5, 100);
+
+        var request = new TableCompactRequest
+        {
+            TableBasePath = _tableUri,
+            Provider = _provider,
+            SmallFileThresholdBytes = 1024 * 1024,
+            MinFilesToCompact = 3,
+            MaxFilesToCompact = 10,
+            DeleteOriginalFiles = false,
+        };
+
+        var compactor = new DataLakeCompactor(_provider, _tableUri);
+
+        // Act
+        var result = await compactor.CompactAsync(request);
+
+        // Assert
+        result.RowsProcessed.Should().Be(500); // 5 files * 100 rows
+    }
+
+    #endregion
+
+    #region Manifest Update Tests
+
+    [Fact]
+    public async Task CompactAsync_UpdatesManifestWithNewFiles()
+    {
+        // Arrange
+        await CreateSmallFilesAsync(5);
+
+        var request = new TableCompactRequest
+        {
+            TableBasePath = _tableUri,
+            Provider = _provider,
+            SmallFileThresholdBytes = 1024 * 1024,
+            MinFilesToCompact = 3,
+            DeleteOriginalFiles = false,
+        };
+
+        var compactor = new DataLakeCompactor(_provider, _tableUri);
+
+        // Act
+        var result = await compactor.CompactAsync(request);
+
+        // Assert - Check manifest has new entries
+        var reader = new ManifestReader(_provider, _tableUri);
+        var entries = await reader.ReadAllAsync();
+
+        // Should have original 5 + new compacted file(s)
+        entries.Count.Should().BeGreaterOrEqualTo(5);
+        entries.Count(e => e.Path.StartsWith("compacted-", StringComparison.Ordinal)).Should().BeGreaterThan(0);
+    }
+
+    #endregion
+
+    #region Max Files Limit Tests
+
+    [Fact]
+    public async Task CompactAsync_RespectsMaxFilesLimit()
+    {
+        // Arrange - Create 20 small files
+        await CreateSmallFilesAsync(20);
+
+        var request = new TableCompactRequest
+        {
+            TableBasePath = _tableUri,
+            Provider = _provider,
+            SmallFileThresholdBytes = 1024 * 1024,
+            MinFilesToCompact = 5,
+            MaxFilesToCompact = 10,
+            DeleteOriginalFiles = false,
+        };
+
+        var compactor = new DataLakeCompactor(_provider, _tableUri);
+
+        // Act
+        var result = await compactor.CompactAsync(request);
+
+        // Assert
+        result.FilesCompacted.Should().Be(10); // Limited to MaxFilesToCompact
+    }
+
+    #endregion
+
+    #region Result Summary Tests
+
+    [Fact]
+    public async Task CompactAsync_ReturnsCorrectSummary()
+    {
+        // Arrange
+        await CreateSmallFilesAsync(5);
+
+        var request = new TableCompactRequest
+        {
+            TableBasePath = _tableUri,
+            Provider = _provider,
+            SmallFileThresholdBytes = 1024 * 1024,
+            MinFilesToCompact = 3,
+            DeleteOriginalFiles = false,
+        };
+
+        var compactor = new DataLakeCompactor(_provider, _tableUri);
+
+        // Act
+        var result = await compactor.CompactAsync(request);
+
+        // Assert - BytesBefore should be positive since we have actual Parquet files
+        result.BytesBefore.Should().BeGreaterThan(0);
+        result.Duration.Should().BeGreaterThan(TimeSpan.Zero);
+        result.ToString().Should().Contain("Compacted");
+    }
+
+    #endregion
+
+    #region Test Record Types
+
+    public sealed class SalesRecord
+    {
+        public int Id { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+
+        [ParquetDecimal(18, 2)]
+        public decimal Amount { get; set; }
+
+        public DateOnly EventDate { get; set; }
+        public string Region { get; set; } = string.Empty;
+    }
+
+    #endregion
 
     #region Dry Run Tests
 
@@ -52,7 +184,7 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
             Provider = _provider,
             SmallFileThresholdBytes = 1024 * 1024, // 1 MB
             MinFilesToCompact = 3,
-            DryRun = true
+            DryRun = true,
         };
 
         var compactor = new DataLakeCompactor(_provider, _tableUri);
@@ -82,7 +214,7 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
             Provider = _provider,
             SmallFileThresholdBytes = 1024 * 1024,
             MinFilesToCompact = 5,
-            DryRun = true
+            DryRun = true,
         };
 
         var compactor = new DataLakeCompactor(_provider, _tableUri);
@@ -110,7 +242,7 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
             TableBasePath = _tableUri,
             Provider = _provider,
             SmallFileThresholdBytes = 1024 * 1024,
-            MinFilesToCompact = 5
+            MinFilesToCompact = 5,
         };
 
         var compactor = new DataLakeCompactor(_provider, _tableUri);
@@ -129,6 +261,7 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
     {
         // Arrange - Create manifest entries for "large" files
         var snapshotId = ManifestWriter.GenerateSnapshotId();
+
         await using (var writer = new ManifestWriter(_provider, _tableUri, snapshotId))
         {
             // Create entries for files that are above the threshold
@@ -138,16 +271,18 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
                 RowCount = 10000,
                 WrittenAt = DateTimeOffset.UtcNow,
                 FileSizeBytes = 100L * 1024 * 1024, // 100 MB - above threshold
-                SnapshotId = snapshotId
+                SnapshotId = snapshotId,
             });
+
             writer.Append(new ManifestEntry
             {
                 Path = "large-file-2.parquet",
                 RowCount = 10000,
                 WrittenAt = DateTimeOffset.UtcNow,
                 FileSizeBytes = 100L * 1024 * 1024, // 100 MB - above threshold
-                SnapshotId = snapshotId
+                SnapshotId = snapshotId,
             });
+
             await writer.FlushAsync();
         }
 
@@ -156,7 +291,7 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
             TableBasePath = _tableUri,
             Provider = _provider,
             SmallFileThresholdBytes = 32L * 1024 * 1024, // 32 MB
-            MinFilesToCompact = 2
+            MinFilesToCompact = 2,
         };
 
         var compactor = new DataLakeCompactor(_provider, _tableUri);
@@ -171,35 +306,6 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
 
     #endregion
 
-    #region Row Count Preservation Tests
-
-    [Fact]
-    public async Task CompactAsync_PreservesRowCount()
-    {
-        // Arrange
-        await CreateSmallFilesAsync(5, rowsPerFile: 100);
-
-        var request = new TableCompactRequest
-        {
-            TableBasePath = _tableUri,
-            Provider = _provider,
-            SmallFileThresholdBytes = 1024 * 1024,
-            MinFilesToCompact = 3,
-            MaxFilesToCompact = 10,
-            DeleteOriginalFiles = false
-        };
-
-        var compactor = new DataLakeCompactor(_provider, _tableUri);
-
-        // Act
-        var result = await compactor.CompactAsync(request);
-
-        // Assert
-        result.RowsProcessed.Should().Be(500); // 5 files * 100 rows
-    }
-
-    #endregion
-
     #region Partition Value Preservation Tests
 
     [Fact]
@@ -207,6 +313,7 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
     {
         // Arrange - Create partitioned small files with actual Parquet data
         var snapshotId = ManifestWriter.GenerateSnapshotId();
+
         await using (var writer = new ManifestWriter(_provider, _tableUri, snapshotId))
         {
             // Create the actual directory structure
@@ -231,10 +338,11 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
                     SnapshotId = snapshotId,
                     PartitionValues = new Dictionary<string, string>
                     {
-                        ["event_date"] = "2025-01-15"
-                    }
+                        ["event_date"] = "2025-01-15",
+                    },
                 });
             }
+
             await writer.FlushAsync();
         }
 
@@ -244,7 +352,7 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
             Provider = _provider,
             SmallFileThresholdBytes = 1024 * 1024,
             MinFilesToCompact = 3,
-            DeleteOriginalFiles = false
+            DeleteOriginalFiles = false,
         };
 
         var compactor = new DataLakeCompactor(_provider, _tableUri);
@@ -293,7 +401,7 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
                     WrittenAt = DateTimeOffset.UtcNow,
                     FileSizeBytes = fileInfo.Length,
                     SnapshotId = snapshotId,
-                    PartitionValues = new Dictionary<string, string> { ["region"] = "EU" }
+                    PartitionValues = new Dictionary<string, string> { ["region"] = "EU" },
                 });
             }
 
@@ -313,9 +421,10 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
                     WrittenAt = DateTimeOffset.UtcNow,
                     FileSizeBytes = fileInfo.Length,
                     SnapshotId = snapshotId,
-                    PartitionValues = new Dictionary<string, string> { ["region"] = "US" }
+                    PartitionValues = new Dictionary<string, string> { ["region"] = "US" },
                 });
             }
+
             await writer.FlushAsync();
         }
 
@@ -326,7 +435,7 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
             SmallFileThresholdBytes = 1024 * 1024,
             MinFilesToCompact = 2,
             PartitionFilters = new Dictionary<string, string> { ["region"] = "EU" },
-            DeleteOriginalFiles = false
+            DeleteOriginalFiles = false,
         };
 
         var compactor = new DataLakeCompactor(_provider, _tableUri);
@@ -337,98 +446,6 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
         // Assert - Only EU files should be compacted
         result.FilesCompacted.Should().Be(3);
         result.CompactedFiles.Should().OnlyContain(f => f.StartsWith("region=EU"));
-    }
-
-    #endregion
-
-    #region Manifest Update Tests
-
-    [Fact]
-    public async Task CompactAsync_UpdatesManifestWithNewFiles()
-    {
-        // Arrange
-        await CreateSmallFilesAsync(5);
-
-        var request = new TableCompactRequest
-        {
-            TableBasePath = _tableUri,
-            Provider = _provider,
-            SmallFileThresholdBytes = 1024 * 1024,
-            MinFilesToCompact = 3,
-            DeleteOriginalFiles = false
-        };
-
-        var compactor = new DataLakeCompactor(_provider, _tableUri);
-
-        // Act
-        var result = await compactor.CompactAsync(request);
-
-        // Assert - Check manifest has new entries
-        var reader = new ManifestReader(_provider, _tableUri);
-        var entries = await reader.ReadAllAsync();
-
-        // Should have original 5 + new compacted file(s)
-        entries.Count.Should().BeGreaterOrEqualTo(5);
-        entries.Count(e => e.Path.StartsWith("compacted-", StringComparison.Ordinal)).Should().BeGreaterThan(0);
-    }
-
-    #endregion
-
-    #region Max Files Limit Tests
-
-    [Fact]
-    public async Task CompactAsync_RespectsMaxFilesLimit()
-    {
-        // Arrange - Create 20 small files
-        await CreateSmallFilesAsync(20);
-
-        var request = new TableCompactRequest
-        {
-            TableBasePath = _tableUri,
-            Provider = _provider,
-            SmallFileThresholdBytes = 1024 * 1024,
-            MinFilesToCompact = 5,
-            MaxFilesToCompact = 10,
-            DeleteOriginalFiles = false
-        };
-
-        var compactor = new DataLakeCompactor(_provider, _tableUri);
-
-        // Act
-        var result = await compactor.CompactAsync(request);
-
-        // Assert
-        result.FilesCompacted.Should().Be(10); // Limited to MaxFilesToCompact
-    }
-
-    #endregion
-
-    #region Result Summary Tests
-
-    [Fact]
-    public async Task CompactAsync_ReturnsCorrectSummary()
-    {
-        // Arrange
-        await CreateSmallFilesAsync(5);
-
-        var request = new TableCompactRequest
-        {
-            TableBasePath = _tableUri,
-            Provider = _provider,
-            SmallFileThresholdBytes = 1024 * 1024,
-            MinFilesToCompact = 3,
-            DeleteOriginalFiles = false
-        };
-
-        var compactor = new DataLakeCompactor(_provider, _tableUri);
-
-        // Act
-        var result = await compactor.CompactAsync(request);
-
-        // Assert - BytesBefore should be positive since we have actual Parquet files
-        result.BytesBefore.Should().BeGreaterThan(0);
-        result.Duration.Should().BeGreaterThan(TimeSpan.Zero);
-        result.ToString().Should().Contain("Compacted");
     }
 
     #endregion
@@ -458,7 +475,7 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
                 RowCount = rowsPerFile,
                 WrittenAt = DateTimeOffset.UtcNow,
                 FileSizeBytes = fileInfo.Length,
-                SnapshotId = snapshotId
+                SnapshotId = snapshotId,
             });
         }
 
@@ -501,20 +518,6 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
         await rowGroupWriter.WriteColumnAsync(new DataColumn(schema.DataFields[2], amounts));
         await rowGroupWriter.WriteColumnAsync(new DataColumn(schema.DataFields[3], eventDates));
         await rowGroupWriter.WriteColumnAsync(new DataColumn(schema.DataFields[4], regions));
-    }
-
-    #endregion
-
-    #region Test Record Types
-
-    public sealed class SalesRecord
-    {
-        public int Id { get; set; }
-        public string ProductName { get; set; } = string.Empty;
-        [ParquetDecimal(18, 2)]
-        public decimal Amount { get; set; }
-        public DateOnly EventDate { get; set; }
-        public string Region { get; set; } = string.Empty;
     }
 
     #endregion

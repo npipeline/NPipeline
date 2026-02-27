@@ -11,9 +11,9 @@ namespace NPipeline.Connectors.DataLake.Tests;
 
 public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 {
-    private readonly string _tempDir;
-    private readonly StorageUri _tableUri;
     private readonly IStorageProvider _provider;
+    private readonly StorageUri _tableUri;
+    private readonly string _tempDir;
 
     public DataLakeTableRoundTripTests()
     {
@@ -27,12 +27,54 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if (Directory.Exists(_tempDir))
-        {
-            Directory.Delete(_tempDir, recursive: true);
-        }
+            Directory.Delete(_tempDir, true);
 
         await Task.CompletedTask;
     }
+
+    #region Snapshot ID Tests
+
+    [Fact]
+    public async Task GetSnapshotIdsAsync_ReturnsAllSnapshotIds()
+    {
+        // Arrange
+        var spec = PartitionSpec<SalesRecord>.None();
+        var snapshotIds = new List<string>();
+
+        for (var i = 0; i < 3; i++)
+        {
+            var records = CreateTestRecords(i * 10, 10);
+            await using var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec);
+            snapshotIds.Add(writer.SnapshotId);
+            await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records), CancellationToken.None);
+        }
+
+        // Act
+        await using var writer2 = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec);
+        var result = await writer2.GetSnapshotIdsAsync();
+
+        // Assert
+        result.Should().HaveCount(3);
+        result.Should().Contain(snapshotIds);
+    }
+
+    #endregion
+
+    #region Test Record Types
+
+    public sealed class SalesRecord
+    {
+        public int Id { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+
+        [ParquetDecimal(18, 2)]
+        public decimal Amount { get; set; }
+
+        public DateOnly EventDate { get; set; }
+        public string Region { get; set; } = string.Empty;
+    }
+
+    #endregion
 
     #region Single Partition Write Tests
 
@@ -64,7 +106,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
         {
             new() { Id = 1, ProductName = "Product A", Amount = 100m, EventDate = new DateOnly(2025, 1, 15), Region = "EU" },
             new() { Id = 2, ProductName = "Product B", Amount = 200m, EventDate = new DateOnly(2025, 1, 15), Region = "US" },
-            new() { Id = 3, ProductName = "Product C", Amount = 150m, EventDate = new DateOnly(2025, 1, 16), Region = "EU" }
+            new() { Id = 3, ProductName = "Product C", Amount = 150m, EventDate = new DateOnly(2025, 1, 16), Region = "EU" },
         };
 
         // Act
@@ -123,8 +165,12 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
                 Id = i,
                 ProductName = $"Product_{i}",
                 Amount = 100m * (i + 1),
-                EventDate = i < 10 ? date1 : date2,
-                Region = i % 2 == 0 ? "EU" : "US"
+                EventDate = i < 10
+                    ? date1
+                    : date2,
+                Region = i % 2 == 0
+                    ? "EU"
+                    : "US",
             });
         }
 
@@ -155,6 +201,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         // First write
         var records1 = CreateTestRecords(0, 10);
+
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
             await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records1), CancellationToken.None);
@@ -167,6 +214,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         // Second write
         var records2 = CreateTestRecords(10, 10);
+
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
             await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records2), CancellationToken.None);
@@ -190,6 +238,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
         // First write
         var records1 = CreateTestRecords(0, 10);
         string snapshotId1;
+
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
             snapshotId1 = writer.SnapshotId;
@@ -198,6 +247,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         // Second write
         var records2 = CreateTestRecords(10, 15);
+
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
             await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records2), CancellationToken.None);
@@ -224,6 +274,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         // First append
         var records1 = CreateTestRecords(0, 25);
+
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
             await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records1), CancellationToken.None);
@@ -231,6 +282,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         // Second append
         var records2 = CreateTestRecords(25, 25);
+
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
             await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records2), CancellationToken.None);
@@ -254,6 +306,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
         // First append - date1
         var date1 = new DateOnly(2025, 1, 15);
         var records1 = CreateTestRecordsForDate(date1, 20);
+
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
             await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records1), CancellationToken.None);
@@ -262,6 +315,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
         // Second append - date2
         var date2 = new DateOnly(2025, 1, 16);
         var records2 = CreateTestRecordsForDate(date2, 15);
+
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
             await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records2), CancellationToken.None);
@@ -316,6 +370,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         // Create records distributed across ALL date/region combinations (not just matching indices)
         var recordId = 0;
+
         foreach (var date in dates)
         {
             foreach (var region in regions)
@@ -326,9 +381,9 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
                     {
                         Id = recordId++,
                         ProductName = $"Product_{recordId}",
-                        Amount = 100m * (recordId),
+                        Amount = 100m * recordId,
                         EventDate = date,
-                        Region = region
+                        Region = region,
                     });
                 }
             }
@@ -360,34 +415,6 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
     #endregion
 
-    #region Snapshot ID Tests
-
-    [Fact]
-    public async Task GetSnapshotIdsAsync_ReturnsAllSnapshotIds()
-    {
-        // Arrange
-        var spec = PartitionSpec<SalesRecord>.None();
-        var snapshotIds = new List<string>();
-
-        for (var i = 0; i < 3; i++)
-        {
-            var records = CreateTestRecords(i * 10, 10);
-            await using var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec);
-            snapshotIds.Add(writer.SnapshotId);
-            await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records), CancellationToken.None);
-        }
-
-        // Act
-        await using var writer2 = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec);
-        var result = await writer2.GetSnapshotIdsAsync();
-
-        // Assert
-        result.Should().HaveCount(3);
-        result.Should().Contain(snapshotIds);
-    }
-
-    #endregion
-
     #region Helper Methods
 
     private static List<SalesRecord> CreateTestRecords(int count)
@@ -398,6 +425,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
     private static List<SalesRecord> CreateTestRecords(int startId, int count)
     {
         var records = new List<SalesRecord>();
+
         for (var i = 0; i < count; i++)
         {
             records.Add(new SalesRecord
@@ -406,7 +434,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
                 ProductName = $"Product_{startId + i}",
                 Amount = 100m * (i + 1),
                 EventDate = new DateOnly(2025, 1, 15),
-                Region = "EU"
+                Region = "EU",
             });
         }
 
@@ -416,6 +444,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
     private static List<SalesRecord> CreateTestRecordsForDate(DateOnly date, int count)
     {
         var records = new List<SalesRecord>();
+
         for (var i = 0; i < count; i++)
         {
             records.Add(new SalesRecord
@@ -424,25 +453,11 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
                 ProductName = $"Product_{i}",
                 Amount = 100m * (i + 1),
                 EventDate = date,
-                Region = "EU"
+                Region = "EU",
             });
         }
 
         return records;
-    }
-
-    #endregion
-
-    #region Test Record Types
-
-    public sealed class SalesRecord
-    {
-        public int Id { get; set; }
-        public string ProductName { get; set; } = string.Empty;
-        [ParquetDecimal(18, 2)]
-        public decimal Amount { get; set; }
-        public DateOnly EventDate { get; set; }
-        public string Region { get; set; } = string.Empty;
     }
 
     #endregion

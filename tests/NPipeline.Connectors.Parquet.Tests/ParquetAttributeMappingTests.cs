@@ -1,3 +1,4 @@
+using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.Parquet.Attributes;
 using NPipeline.Connectors.Parquet.Mapping;
 
@@ -14,7 +15,7 @@ public sealed class ParquetAttributeMappingTests
         var columnNames = ParquetWriterMapperBuilder.GetColumnNames<SimpleRecord>();
 
         // Assert
-        columnNames.Should().BeEquivalentTo(["Id", "Name", "IsActive"]);
+        columnNames.Should().BeEquivalentTo("Id", "Name", "IsActive");
     }
 
     [Fact]
@@ -24,7 +25,7 @@ public sealed class ParquetAttributeMappingTests
         var columnNames = ParquetWriterMapperBuilder.GetColumnNames<ColumnNameOverrideRecord>();
 
         // Assert
-        columnNames.Should().BeEquivalentTo(["column_id", "column_name"]);
+        columnNames.Should().BeEquivalentTo("column_id", "column_name");
     }
 
     [Fact]
@@ -99,7 +100,7 @@ public sealed class ParquetAttributeMappingTests
         var properties = ParquetWriterMapperBuilder.GetProperties<SimpleRecord>();
 
         // Assert
-        properties.Select(p => p.Name).Should().BeEquivalentTo(["Id", "Name", "IsActive"]);
+        properties.Select(p => p.Name).Should().BeEquivalentTo("Id", "Name", "IsActive");
     }
 
     [Fact]
@@ -109,7 +110,7 @@ public sealed class ParquetAttributeMappingTests
         var properties = ParquetWriterMapperBuilder.GetProperties<IgnoredPropertyRecord>();
 
         // Assert
-        properties.Select(p => p.Name).Should().BeEquivalentTo(["Included"]);
+        properties.Select(p => p.Name).Should().BeEquivalentTo("Included");
     }
 
     [Fact]
@@ -215,7 +216,7 @@ public sealed class ParquetAttributeMappingTests
 
     private sealed class ColumnAttributeRecord
     {
-        [NPipeline.Connectors.Attributes.Column("fallback_column_name")]
+        [Column("fallback_column_name")]
         public string? Value { get; set; }
     }
 
@@ -223,7 +224,7 @@ public sealed class ParquetAttributeMappingTests
     {
         Active,
         Inactive,
-        Pending
+        Pending,
     }
 
     #endregion

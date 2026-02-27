@@ -1,4 +1,3 @@
-using NPipeline.Connectors.Parquet.Attributes;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Pipeline;
@@ -9,6 +8,16 @@ namespace NPipeline.Connectors.Parquet.Tests;
 
 public sealed class ParquetNodeBehaviorTests
 {
+    #region Test Record Types
+
+    private sealed class TestRecord
+    {
+        public int Id { get; set; }
+        public string? Name { get; set; }
+    }
+
+    #endregion
+
     #region CancellationToken Propagation
 
     [Fact]
@@ -93,7 +102,7 @@ public sealed class ParquetNodeBehaviorTests
             [
                 new TestRecord { Id = 1, Name = "First" },
                 new TestRecord { Id = 2, Name = "Second" },
-                new TestRecord { Id = 3, Name = "Third" }
+                new TestRecord { Id = 3, Name = "Third" },
             ]);
 
             var config = new ParquetConfiguration
@@ -102,11 +111,10 @@ public sealed class ParquetNodeBehaviorTests
                 {
                     // Skip rows where Id = 2
                     if (row.HasColumn("Id") && row.GetOrDefault("Id", 0) == 2)
-                    {
                         return true; // Skip
-                    }
+
                     return false; // Rethrow for others
-                }
+                },
             };
 
             var resolver = StorageProviderFactory.CreateResolver();
@@ -138,25 +146,26 @@ public sealed class ParquetNodeBehaviorTests
             await CreateTestParquetFileAsync(tempFile,
             [
                 new TestRecord { Id = 1, Name = "First" },
-                new TestRecord { Id = 2, Name = "Second" }
+                new TestRecord { Id = 2, Name = "Second" },
             ]);
 
             // Use a custom mapper that throws for Id = 2
             var config = new ParquetConfiguration
             {
-                RowErrorHandler = (_, _) => false // Never skip, always rethrow
+                RowErrorHandler = (_, _) => false, // Never skip, always rethrow
             };
 
             var resolver = StorageProviderFactory.CreateResolver();
+
             var source = new ParquetSourceNode<TestRecord>(
                 uri,
                 row =>
                 {
                     var id = row.GetOrDefault("Id", 0);
+
                     if (id == 2)
-                    {
                         throw new InvalidOperationException("Simulated mapping error for Id=2");
-                    }
+
                     return new TestRecord { Id = id, Name = row.GetOrDefault("Name", "") ?? "" };
                 },
                 resolver,
@@ -218,9 +227,7 @@ public sealed class ParquetNodeBehaviorTests
         finally
         {
             if (Directory.Exists(tempDir))
-            {
-                Directory.Delete(tempDir, recursive: true);
-            }
+                Directory.Delete(tempDir, true);
         }
     }
 
@@ -259,9 +266,7 @@ public sealed class ParquetNodeBehaviorTests
         finally
         {
             if (Directory.Exists(tempDir))
-            {
-                Directory.Delete(tempDir, recursive: true);
-            }
+                Directory.Delete(tempDir, true);
         }
     }
 
@@ -298,9 +303,7 @@ public sealed class ParquetNodeBehaviorTests
         finally
         {
             if (Directory.Exists(tempDir))
-            {
-                Directory.Delete(tempDir, recursive: true);
-            }
+                Directory.Delete(tempDir, true);
         }
     }
 
@@ -364,9 +367,7 @@ public sealed class ParquetNodeBehaviorTests
         finally
         {
             if (Directory.Exists(tempDir))
-            {
-                Directory.Delete(tempDir, recursive: true);
-            }
+                Directory.Delete(tempDir, true);
         }
     }
 
@@ -386,29 +387,27 @@ public sealed class ParquetNodeBehaviorTests
     private static void CleanupFile(string path)
     {
         if (File.Exists(path))
-        {
             File.Delete(path);
-        }
+
         // Also clean up temp files created by atomic write
         var directory = Path.GetDirectoryName(path);
+
         if (directory is not null && Directory.Exists(directory))
         {
             var tempFiles = Directory.GetFiles(directory, Path.GetFileName(path) + ".tmp-*");
+
             foreach (var tempFile in tempFiles)
             {
-                try { File.Delete(tempFile); } catch { /* ignore */ }
+                try
+                {
+                    File.Delete(tempFile);
+                }
+                catch
+                {
+                    /* ignore */
+                }
             }
         }
-    }
-
-    #endregion
-
-    #region Test Record Types
-
-    private sealed class TestRecord
-    {
-        public int Id { get; set; }
-        public string? Name { get; set; }
     }
 
     #endregion

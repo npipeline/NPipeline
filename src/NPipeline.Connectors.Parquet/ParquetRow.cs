@@ -8,9 +8,8 @@ namespace NPipeline.Connectors.Parquet;
 /// </summary>
 public sealed class ParquetRow
 {
-    private readonly object?[] _values;
     private readonly Dictionary<string, int> _columnNameToIndex;
-    private readonly ParquetSchema _schema;
+    private readonly object?[] _values;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="ParquetRow" /> class.
@@ -22,13 +21,13 @@ public sealed class ParquetRow
     {
         _values = values;
         _columnNameToIndex = columnNameToIndex;
-        _schema = schema;
+        Schema = schema;
     }
 
     /// <summary>
     ///     Gets the Parquet schema for the file.
     /// </summary>
-    public ParquetSchema Schema => _schema;
+    public ParquetSchema Schema { get; }
 
     /// <summary>
     ///     Gets the number of columns in this row.
@@ -171,7 +170,10 @@ public sealed class ParquetRow
     /// </summary>
     /// <param name="columnName">The name of the column.</param>
     /// <returns><c>true</c> if the column exists; otherwise <c>false</c>.</returns>
-    public bool HasColumn(string columnName) => _columnNameToIndex.ContainsKey(columnName);
+    public bool HasColumn(string columnName)
+    {
+        return _columnNameToIndex.ContainsKey(columnName);
+    }
 
     /// <summary>
     ///     Tries to get a typed column value by column name.
@@ -218,32 +220,22 @@ public sealed class ParquetRow
         try
         {
             if (targetType == typeof(string) && value is not null)
-            {
                 return (T)(object)value.ToString()!;
-            }
 
             if (underlyingType == typeof(Guid) && value is string guidString)
-            {
                 return (T)(object)Guid.Parse(guidString);
-            }
 
             if (underlyingType == typeof(DateTime) && value is DateTimeOffset dto)
-            {
                 return (T)(object)dto.DateTime;
-            }
 
             if (underlyingType == typeof(DateTimeOffset) && value is DateTime dt)
-            {
                 return (T)(object)new DateTimeOffset(dt, TimeSpan.Zero);
-            }
 
-            var converted = System.Convert.ChangeType(value, underlyingType);
+            var converted = Convert.ChangeType(value, underlyingType);
 
             // Handle nullable types - if target is nullable and we got a value, wrap it
             if (targetType != underlyingType && converted is not null)
-            {
                 return (T)converted;
-            }
 
             return (T)converted!;
         }

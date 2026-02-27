@@ -106,11 +106,12 @@ public sealed class DataLakePartitionTests
     {
         // Arrange
         var spec = PartitionSpec<SalesRecord>.By(x => x.EventDate);
+
         var record = new SalesRecord
         {
             Id = 1,
             EventDate = new DateOnly(2025, 1, 15),
-            Region = "EU"
+            Region = "EU",
         };
 
         // Act
@@ -132,7 +133,7 @@ public sealed class DataLakePartitionTests
         {
             Id = 1,
             EventDate = new DateOnly(2025, 1, 15),
-            Region = "EU"
+            Region = "EU",
         };
 
         // Act
@@ -276,7 +277,7 @@ public sealed class DataLakePartitionTests
         var key = new PartitionKey
         {
             ColumnName = "event_date",
-            Value = "2025-01-15"
+            Value = "2025-01-15",
         };
 
         // Act
@@ -353,7 +354,7 @@ public sealed class DataLakePartitionTests
         var record = new SalesRecord
         {
             EventDate = new DateOnly(2025, 1, 15),
-            Region = "EU"
+            Region = "EU",
         };
 
         // Act
@@ -429,7 +430,7 @@ public sealed class DataLakePartitionTests
     {
         Active,
         Inactive,
-        Pending
+        Pending,
     }
 
     #endregion

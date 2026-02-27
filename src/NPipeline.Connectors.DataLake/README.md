@@ -1,10 +1,13 @@
 # NPipeline Data Lake Connector
 
-NPipeline Data Lake Connector provides table abstractions for building data lakes on top of the Parquet connector. This package enables partitioned writes, manifest-based table management, time travel queries, and small-file compaction with Parquet as the default storage format.
+NPipeline Data Lake Connector provides table abstractions for building data lakes on top of the Parquet connector. This package enables partitioned writes,
+manifest-based table management, time travel queries, and small-file compaction with Parquet as the default storage format.
 
 ## About NPipeline
 
-NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for resilience patterns and error handling.
+NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based
+applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for
+resilience patterns and error handling.
 
 ## Installation
 
@@ -21,7 +24,8 @@ dotnet add package NPipeline.Connectors.DataLake
 
 ## Relationship to Parquet Connector
 
-This package builds on [`NPipeline.Connectors.Parquet`](../NPipeline.Connectors.Parquet/README.md) and uses Parquet as its default file format. The Data Lake connector adds:
+This package builds on [`NPipeline.Connectors.Parquet`](../NPipeline.Connectors.Parquet/README.md) and uses Parquet as its default file format. The Data Lake
+connector adds:
 
 - **Hive-style partitioning**: Automatic directory structure with `column=value/` patterns
 - **Manifest tracking**: NDJSON-based file inventory with snapshot IDs
@@ -29,7 +33,8 @@ This package builds on [`NPipeline.Connectors.Parquet`](../NPipeline.Connectors.
 - **Compaction**: Merge small files into larger, query-optimized files
 - **Format adapters**: Extensibility for Iceberg, Delta, or custom table formats
 
-**Why this separation:** The Parquet connector handles single-file I/O with full Parquet feature support. The Data Lake connector adds table-level semantics (partitioning, snapshots, time travel) without duplicating the Parquet implementation. This allows using either package independently or together.
+**Why this separation:** The Parquet connector handles single-file I/O with full Parquet feature support. The Data Lake connector adds table-level semantics (
+partitioning, snapshots, time travel) without duplicating the Parquet implementation. This allows using either package independently or together.
 
 ## Features
 
@@ -77,7 +82,8 @@ var spec = PartitionSpec<SalesRecord>
 var spec = PartitionSpec<SalesRecord>.None();
 ```
 
-**Why fluent builder:** The fluent API makes partition schemes readable and discoverable. Property expressions are compiled to delegates for efficient runtime evaluation. Column names default to snake_case (e.g., `EventDate` → `event_date`) following Hive conventions.
+**Why fluent builder:** The fluent API makes partition schemes readable and discoverable. Property expressions are compiled to delegates for efficient runtime
+evaluation. Column names default to snake_case (e.g., `EventDate` → `event_date`) following Hive conventions.
 
 ### Writing Partitioned Data
 
@@ -93,7 +99,7 @@ using NPipeline.DataFlow.DataPipes;
 
 var resolver = StorageProviderFactory.CreateResolver();
 var provider = StorageProviderFactory.GetProviderOrThrow(
-    resolver, 
+    resolver,
     StorageUri.Parse("file:///data/warehouse"));
 
 var tableUri = StorageUri.Parse("file:///data/warehouse/sales_table");
@@ -200,17 +206,17 @@ The manifest is stored as NDJSON at `_manifest/manifest.ndjson`:
 
 Each [`ManifestEntry`](Manifest/ManifestEntry.cs:9) tracks:
 
-| Field | Description |
-|-------|-------------|
-| `path` | Relative path from table base |
-| `row_count` | Number of rows in the file |
-| `written_at` | Timestamp when file was written |
-| `file_size_bytes` | File size in bytes |
-| `partition_values` | Partition key/value pairs |
-| `snapshot_id` | ID of the snapshot containing this file |
-| `content_hash` | Optional hash for integrity verification |
-| `file_format` | Format (e.g., "parquet") |
-| `compression` | Compression codec used |
+| Field              | Description                              |
+|--------------------|------------------------------------------|
+| `path`             | Relative path from table base            |
+| `row_count`        | Number of rows in the file               |
+| `written_at`       | Timestamp when file was written          |
+| `file_size_bytes`  | File size in bytes                       |
+| `partition_values` | Partition key/value pairs                |
+| `snapshot_id`      | ID of the snapshot containing this file  |
+| `content_hash`     | Optional hash for integrity verification |
+| `file_format`      | Format (e.g., "parquet")                 |
+| `compression`      | Compression codec used                   |
 
 **Why NDJSON:** Newline-delimited JSON allows:
 
@@ -235,10 +241,10 @@ foreach (var entry in entries)
     Console.WriteLine($"  Rows: {entry.RowCount}, Size: {entry.FileSizeBytes:N0} bytes");
     Console.WriteLine($"  Snapshot: {entry.SnapshotId}");
     Console.WriteLine($"  Written: {entry.WrittenAt:yyyy-MM-dd HH:mm:ss}");
-    
+
     if (entry.PartitionValues is not null)
     {
-        var partitions = string.Join(", ", 
+        var partitions = string.Join(", ",
             entry.PartitionValues.Select(kv => $"{kv.Key}={kv.Value}"));
         Console.WriteLine($"  Partitions: {partitions}");
     }
@@ -352,15 +358,15 @@ event_date=2025-01-15/region=EU/
 
 **Path format rules:**
 
-| CLR Type | Path Format | Example |
-|----------|-------------|---------|
-| `DateOnly` | `yyyy-MM-dd` | `2025-01-15` |
-| `DateTime` | `yyyy-MM-dd-HH-mm-ss` | `2025-01-15-14-30-00` |
-| `DateTimeOffset` | `yyyy-MM-dd-HH-mm-ss` | `2025-01-15-14-30-00` |
-| `string` | URL-encoded | `Hello%20World` |
-| `enum` | Lowercase name | `active` |
-| `Guid` | Lowercase D format | `a1b2c3d4-e5f6-7890-abcd-ef1234567890` |
-| Numeric types | Invariant culture | `12345`, `3.14` |
+| CLR Type         | Path Format           | Example                                |
+|------------------|-----------------------|----------------------------------------|
+| `DateOnly`       | `yyyy-MM-dd`          | `2025-01-15`                           |
+| `DateTime`       | `yyyy-MM-dd-HH-mm-ss` | `2025-01-15-14-30-00`                  |
+| `DateTimeOffset` | `yyyy-MM-dd-HH-mm-ss` | `2025-01-15-14-30-00`                  |
+| `string`         | URL-encoded           | `Hello%20World`                        |
+| `enum`           | Lowercase name        | `active`                               |
+| `Guid`           | Lowercase D format    | `a1b2c3d4-e5f6-7890-abcd-ef1234567890` |
+| Numeric types    | Invariant culture     | `12345`, `3.14`                        |
 
 **Why Hive-style:** Hive-style partitioning is supported by:
 

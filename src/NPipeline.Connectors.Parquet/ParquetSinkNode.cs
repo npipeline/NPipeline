@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Reflection;
 using NPipeline.Connectors.Parquet.Mapping;
 using NPipeline.DataFlow;
 using NPipeline.Nodes;
@@ -92,9 +94,9 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
         CancellationToken cancellationToken)
     {
         var observer = _configuration.Observer;
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
         long totalRows = 0;
-        int rowGroupCount = 0;
+        var rowGroupCount = 0;
 
         // Get schema and column information
         var schema = ParquetSchemaBuilder.Build<T>();
@@ -105,7 +107,10 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
         // Determine target URI (potentially temp file for atomic write)
         var targetUri = _uri;
         var useAtomicWrite = _configuration.UseAtomicWrite;
-        var tempUri = useAtomicWrite ? CreateTempUri(_uri) : _uri;
+
+        var tempUri = useAtomicWrite
+            ? CreateTempUri(_uri)
+            : _uri;
 
         try
         {
@@ -154,9 +159,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
                 {
                     // Best-effort cleanup - we don't want to mask the original exception
                     if (provider is IDeletableStorageProvider deletableProvider)
-                    {
                         await deletableProvider.DeleteAsync(tempUri, CancellationToken.None);
-                    }
                 }
                 catch
                 {
@@ -169,9 +172,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
 
         // For atomic write, now publish the temp file to the final location
         if (useAtomicWrite && !tempUri.Equals(targetUri))
-        {
             await PublishAtomicWrite(provider, tempUri, targetUri, cancellationToken);
-        }
 
         stopwatch.Stop();
         observer?.OnFileWriteCompleted(targetUri, totalRows, -1, stopwatch.Elapsed);
@@ -198,7 +199,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
         ParquetSchema schema,
         string[] columnNames,
         Func<T, object?>[] valueGetters,
-        System.Reflection.PropertyInfo[] properties,
+        PropertyInfo[] properties,
         CancellationToken cancellationToken)
     {
         using var rowGroupWriter = writer.CreateRowGroup();
@@ -210,9 +211,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             var field = schema.Fields.FirstOrDefault(f => f.Name == columnName);
 
             if (field is null)
-            {
                 continue;
-            }
 
             var property = properties[colIndex];
             var columnData = CreateColumnData(field, property.PropertyType, buffer, valueGetters[colIndex]);
@@ -234,10 +233,12 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
         if (underlyingType == typeof(string))
         {
             var data = new string?[buffer.Count];
+
             for (var i = 0; i < buffer.Count; i++)
             {
                 data[i] = valueGetter(buffer[i]) as string;
             }
+
             return new DataColumn((DataField)field, data);
         }
 
@@ -246,21 +247,31 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new int?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is int intValue ? intValue : null;
+
+                    data[i] = value is int intValue
+                        ? intValue
+                        : null;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
             else
             {
                 var data = new int[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is int intValue ? intValue : default;
+
+                    data[i] = value is int intValue
+                        ? intValue
+                        : default;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
         }
@@ -270,21 +281,31 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new long?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is long longValue ? longValue : null;
+
+                    data[i] = value is long longValue
+                        ? longValue
+                        : null;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
             else
             {
                 var data = new long[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is long longValue ? longValue : default;
+
+                    data[i] = value is long longValue
+                        ? longValue
+                        : default;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
         }
@@ -294,21 +315,31 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new short?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is short shortValue ? shortValue : null;
+
+                    data[i] = value is short shortValue
+                        ? shortValue
+                        : null;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
             else
             {
                 var data = new short[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is short shortValue ? shortValue : default;
+
+                    data[i] = value is short shortValue
+                        ? shortValue
+                        : default;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
         }
@@ -318,21 +349,31 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new byte?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is byte byteValue ? byteValue : null;
+
+                    data[i] = value is byte byteValue
+                        ? byteValue
+                        : null;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
             else
             {
                 var data = new byte[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is byte byteValue ? byteValue : default;
+
+                    data[i] = value is byte byteValue
+                        ? byteValue
+                        : default;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
         }
@@ -342,21 +383,31 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new float?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is float floatValue ? floatValue : null;
+
+                    data[i] = value is float floatValue
+                        ? floatValue
+                        : null;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
             else
             {
                 var data = new float[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is float floatValue ? floatValue : default;
+
+                    data[i] = value is float floatValue
+                        ? floatValue
+                        : default;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
         }
@@ -366,21 +417,31 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new double?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is double doubleValue ? doubleValue : null;
+
+                    data[i] = value is double doubleValue
+                        ? doubleValue
+                        : null;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
             else
             {
                 var data = new double[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is double doubleValue ? doubleValue : default;
+
+                    data[i] = value is double doubleValue
+                        ? doubleValue
+                        : default;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
         }
@@ -390,21 +451,31 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new bool?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is bool boolValue ? boolValue : null;
+
+                    data[i] = value is bool boolValue
+                        ? boolValue
+                        : null;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
             else
             {
                 var data = new bool[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is bool boolValue ? boolValue : default;
+
+                    data[i] = value is bool boolValue
+                        ? boolValue
+                        : default;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
         }
@@ -414,21 +485,31 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new decimal?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is decimal decimalValue ? decimalValue : null;
+
+                    data[i] = value is decimal decimalValue
+                        ? decimalValue
+                        : null;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
             else
             {
                 var data = new decimal[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is decimal decimalValue ? decimalValue : default;
+
+                    data[i] = value is decimal decimalValue
+                        ? decimalValue
+                        : default;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
         }
@@ -438,21 +519,31 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new DateTime?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : null;
+
+                    data[i] = value is DateTime dateTimeValue
+                        ? dateTimeValue
+                        : null;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
             else
             {
                 var data = new DateTime[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : default;
+
+                    data[i] = value is DateTime dateTimeValue
+                        ? dateTimeValue
+                        : default;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
         }
@@ -463,23 +554,33 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new DateTime?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
+
                     // Value getter already converts DateTimeOffset to DateTime via UtcDateTime property
-                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : null;
+                    data[i] = value is DateTime dateTimeValue
+                        ? dateTimeValue
+                        : null;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
             else
             {
                 var data = new DateTime[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
+
                     // Value getter already converts DateTimeOffset to DateTime via UtcDateTime property
-                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : default;
+                    data[i] = value is DateTime dateTimeValue
+                        ? dateTimeValue
+                        : default;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
         }
@@ -490,23 +591,33 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             if (isNullableProperty)
             {
                 var data = new DateTime?[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
+
                     // Value getter already converts DateOnly to DateTime via ToDateTime method
-                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : null;
+                    data[i] = value is DateTime dateTimeValue
+                        ? dateTimeValue
+                        : null;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
             else
             {
                 var data = new DateTime[buffer.Count];
+
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
+
                     // Value getter already converts DateOnly to DateTime via ToDateTime method
-                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : default;
+                    data[i] = value is DateTime dateTimeValue
+                        ? dateTimeValue
+                        : default;
                 }
+
                 return new DataColumn((DataField)field, data);
             }
         }
@@ -514,22 +625,26 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
         if (underlyingType == typeof(byte[]))
         {
             var data = new byte[buffer.Count][];
+
             for (var i = 0; i < buffer.Count; i++)
             {
                 var value = valueGetter(buffer[i]);
                 data[i] = value as byte[] ?? [];
             }
+
             return new DataColumn((DataField)field, data);
         }
 
         // Default: convert to string representation
         {
             var data = new string?[buffer.Count];
+
             for (var i = 0; i < buffer.Count; i++)
             {
                 var value = valueGetter(buffer[i]);
                 data[i] = value?.ToString();
             }
+
             return new DataColumn((DataField)field, data);
         }
     }
@@ -537,15 +652,25 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
     private static StorageUri CreateTempUri(StorageUri uri)
     {
         var tempSuffix = $".tmp-{Guid.NewGuid():N}";
+
         // Use Combine to append the temp suffix to the path
         // First, get the filename and add the temp suffix
         var path = uri.Path ?? string.Empty;
         var lastSlashIndex = path.LastIndexOf('/');
-        var fileName = lastSlashIndex >= 0 ? path[(lastSlashIndex + 1)..] : path;
-        var directory = lastSlashIndex >= 0 ? path[..lastSlashIndex] : "";
+
+        var fileName = lastSlashIndex >= 0
+            ? path[(lastSlashIndex + 1)..]
+            : path;
+
+        var directory = lastSlashIndex >= 0
+            ? path[..lastSlashIndex]
+            : "";
 
         var tempFileName = fileName + tempSuffix;
-        var tempPath = string.IsNullOrEmpty(directory) ? "/" + tempFileName : directory + "/" + tempFileName;
+
+        var tempPath = string.IsNullOrEmpty(directory)
+            ? "/" + tempFileName
+            : directory + "/" + tempFileName;
 
         // Parse the modified URI string to create a new StorageUri
         return StorageUri.Parse($"{uri.Scheme}://{uri.Host ?? ""}{tempPath}");
@@ -562,6 +687,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
         if (provider is IMoveableStorageProvider moveableProvider)
         {
             await moveableProvider.MoveAsync(tempUri, targetUri, cancellationToken);
+
             // MoveAsync atomically moves the file - no separate cleanup needed
         }
         else
@@ -573,9 +699,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
             await writeStream.FlushAsync(cancellationToken);
 
             if (provider is IDeletableStorageProvider deletableProvider)
-            {
                 await deletableProvider.DeleteAsync(tempUri, CancellationToken.None);
-            }
         }
     }
 }

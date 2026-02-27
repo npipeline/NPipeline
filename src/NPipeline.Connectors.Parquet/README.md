@@ -1,10 +1,13 @@
 # NPipeline Parquet Connector
 
-NPipeline Parquet Connector provides source and sink nodes for reading and writing Parquet files using Parquet.Net. This package enables high-performance, columnar data processing in your NPipeline workflows with configurable row-group sizing, compression, and schema evolution support.
+NPipeline Parquet Connector provides source and sink nodes for reading and writing Parquet files using Parquet.Net. This package enables high-performance,
+columnar data processing in your NPipeline workflows with configurable row-group sizing, compression, and schema evolution support.
 
 ## About NPipeline
 
-NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for resilience patterns and error handling.
+NPipeline is a high-performance, extensible data processing framework for .NET that enables developers to build scalable and efficient pipeline-based
+applications. It provides a rich set of components for data transformation, aggregation, branching, and parallel processing, with built-in support for
+resilience patterns and error handling.
 
 ## Installation
 
@@ -68,7 +71,9 @@ var source = new ParquetSourceNode<Transaction>(
 );
 ```
 
-**Why attribute mapping:** Attributes provide compile-time verification of column mappings and keep the mapping logic co-located with the model definition. The [`ParquetColumnAttribute`](Attributes/ParquetColumnAttribute.cs:8) specifies the exact Parquet column name, while [`ParquetDecimalAttribute`](Attributes/ParquetDecimalAttribute.cs:8) is required for decimal properties to define precision and scale.
+**Why attribute mapping:** Attributes provide compile-time verification of column mappings and keep the mapping logic co-located with the model definition.
+The [`ParquetColumnAttribute`](Attributes/ParquetColumnAttribute.cs:8) specifies the exact Parquet column name, while [
+`ParquetDecimalAttribute`](Attributes/ParquetDecimalAttribute.cs:8) is required for decimal properties to define precision and scale.
 
 ### Reading Parquet Files with Explicit Row Mapping
 
@@ -89,7 +94,8 @@ var source = new ParquetSourceNode<Transaction>(
 );
 ```
 
-**When to use explicit mapping:** Use explicit mapping when you need custom type conversions, want to handle missing columns gracefully, or prefer keeping mapping logic separate from the model.
+**When to use explicit mapping:** Use explicit mapping when you need custom type conversions, want to handle missing columns gracefully, or prefer keeping
+mapping logic separate from the model.
 
 ### Writing Parquet Files
 
@@ -124,21 +130,21 @@ var sink = new ParquetSinkNode<Transaction>(
 
 The [`ParquetConfiguration`](ParquetConfiguration.cs:9) class provides comprehensive control over Parquet operations:
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `RowGroupSize` | `int` | `50,000` | Rows accumulated before flushing a row group. Larger values improve scan performance; smaller values reduce memory pressure. |
-| `Compression` | `CompressionMethod` | `Snappy` | Compression codec for column chunks. Options: `Snappy`, `Gzip`, `None`. |
-| `TargetFileSizeBytes` | `long?` | `256 MB` | Target file size for partitioned writes. Writer rotates to a new file when threshold is reached. Set to `null` to disable. |
-| `UseAtomicWrite` | `bool` | `true` | Write to temporary path and atomically publish on success. Prevents partial-file visibility during failures. |
-| `MaxBufferedRows` | `int` | `250,000` | Maximum buffered rows across partition buffers. Protects memory during high-cardinality partition fan-out. |
-| `ProjectedColumns` | `IReadOnlyList<string>?` | `null` | Subset of columns to materialize. Pushes projection down to avoid I/O for unused columns. |
-| `SchemaValidator` | `Func<ParquetSchema, bool>?` | `null` | Callback to validate file schema before reading. Return `false` to throw. |
-| `SchemaCompatibility` | `SchemaCompatibilityMode` | `Strict` | Behavior when file schema and CLR model diverge. |
-| `RecursiveDiscovery` | `bool` | `false` | Scan nested directories when discovering Parquet files. |
-| `FileReadParallelism` | `int` | `1` | Number of files read in parallel per source node. |
-| `RowFilter` | `Func<ParquetRow, bool>?` | `null` | Best-effort row-group predicate applied using metadata, then validated at row level. |
-| `RowErrorHandler` | `Func<Exception, ParquetRow, bool>?` | `null` | Handler for row mapping errors. Return `true` to skip the row, `false` to fail. |
-| `Observer` | `IParquetConnectorObserver?` | `null` | Observer for connector-level metrics and events. |
+| Property              | Type                                 | Default   | Description                                                                                                                  |
+|-----------------------|--------------------------------------|-----------|------------------------------------------------------------------------------------------------------------------------------|
+| `RowGroupSize`        | `int`                                | `50,000`  | Rows accumulated before flushing a row group. Larger values improve scan performance; smaller values reduce memory pressure. |
+| `Compression`         | `CompressionMethod`                  | `Snappy`  | Compression codec for column chunks. Options: `Snappy`, `Gzip`, `None`.                                                      |
+| `TargetFileSizeBytes` | `long?`                              | `256 MB`  | Target file size for partitioned writes. Writer rotates to a new file when threshold is reached. Set to `null` to disable.   |
+| `UseAtomicWrite`      | `bool`                               | `true`    | Write to temporary path and atomically publish on success. Prevents partial-file visibility during failures.                 |
+| `MaxBufferedRows`     | `int`                                | `250,000` | Maximum buffered rows across partition buffers. Protects memory during high-cardinality partition fan-out.                   |
+| `ProjectedColumns`    | `IReadOnlyList<string>?`             | `null`    | Subset of columns to materialize. Pushes projection down to avoid I/O for unused columns.                                    |
+| `SchemaValidator`     | `Func<ParquetSchema, bool>?`         | `null`    | Callback to validate file schema before reading. Return `false` to throw.                                                    |
+| `SchemaCompatibility` | `SchemaCompatibilityMode`            | `Strict`  | Behavior when file schema and CLR model diverge.                                                                             |
+| `RecursiveDiscovery`  | `bool`                               | `false`   | Scan nested directories when discovering Parquet files.                                                                      |
+| `FileReadParallelism` | `int`                                | `1`       | Number of files read in parallel per source node.                                                                            |
+| `RowFilter`           | `Func<ParquetRow, bool>?`            | `null`    | Best-effort row-group predicate applied using metadata, then validated at row level.                                         |
+| `RowErrorHandler`     | `Func<Exception, ParquetRow, bool>?` | `null`    | Handler for row mapping errors. Return `true` to skip the row, `false` to fail.                                              |
+| `Observer`            | `IParquetConnectorObserver?`         | `null`    | Observer for connector-level metrics and events.                                                                             |
 
 ### Configuration Example
 
@@ -183,13 +189,15 @@ var source = new ParquetSourceNode<Transaction>(
 
 The [`SchemaCompatibilityMode`](SchemaCompatibilityMode.cs:6) enum controls behavior when the Parquet file schema and CLR model diverge:
 
-| Mode | Behavior |
-|------|----------|
-| `Strict` | All mapped fields must exist in the file and types must match exactly. Any mismatch throws an exception. |
+| Mode       | Behavior                                                                                                                |
+|------------|-------------------------------------------------------------------------------------------------------------------------|
+| `Strict`   | All mapped fields must exist in the file and types must match exactly. Any mismatch throws an exception.                |
 | `Additive` | Missing columns map to default values. Nullable properties may be set to `null`. Extra columns in the file are ignored. |
-| `NameOnly` | Columns matched by name only. Allows compatible type coercions (e.g., `int` to `long`, `float` to `double`). |
+| `NameOnly` | Columns matched by name only. Allows compatible type coercions (e.g., `int` to `long`, `float` to `double`).            |
 
-**Why multiple modes:** Different scenarios require different trade-offs. `Strict` ensures data integrity for critical pipelines. `Additive` supports schema evolution where new columns are added over time. `NameOnly` provides flexibility when integrating with external systems that may use slightly different type representations.
+**Why multiple modes:** Different scenarios require different trade-offs. `Strict` ensures data integrity for critical pipelines. `Additive` supports schema
+evolution where new columns are added over time. `NameOnly` provides flexibility when integrating with external systems that may use slightly different type
+representations.
 
 ## Attribute Mapping
 
@@ -229,7 +237,8 @@ public class FinancialRecord
 }
 ```
 
-**Why required:** Parquet requires explicit precision and scale for decimal columns. The attribute ensures the schema is correctly defined at write time and prevents runtime errors.
+**Why required:** Parquet requires explicit precision and scale for decimal columns. The attribute ensures the schema is correctly defined at write time and
+prevents runtime errors.
 
 ## ParquetRow
 
@@ -287,26 +296,27 @@ public class LoggingParquetObserver : IParquetConnectorObserver
 }
 ```
 
-**Why observability:** Production pipelines need visibility into I/O operations for performance tuning and troubleshooting. The observer pattern allows integration with logging frameworks, OpenTelemetry, or custom metrics systems without coupling the connector to any specific implementation.
+**Why observability:** Production pipelines need visibility into I/O operations for performance tuning and troubleshooting. The observer pattern allows
+integration with logging frameworks, OpenTelemetry, or custom metrics systems without coupling the connector to any specific implementation.
 
 ## Supported Types
 
-| CLR Type | Parquet Type | Notes |
-|----------|--------------|-------|
-| `string` | `STRING` | UTF-8 encoded |
-| `int` | `INT32` | 32-bit signed integer |
-| `long` | `INT64` | 64-bit signed integer |
-| `short` | `INT32` | 16-bit signed integer |
-| `byte` | `INT32` | 8-bit unsigned integer |
-| `float` | `FLOAT` | IEEE 754 single-precision |
-| `double` | `DOUBLE` | IEEE 754 double-precision |
-| `bool` | `BOOLEAN` | Boolean flag |
-| `decimal` | `DECIMAL` | Requires `[ParquetDecimal]` attribute |
-| `DateTime` | `INT64` (timestamp) | Stored as UTC ticks |
-| `DateTimeOffset` | `INT64` (timestamp) | Converted to UTC DateTime |
-| `byte[]` | `BYTE_ARRAY` | Binary data |
-| `Guid` | `STRING` | Stored as formatted string |
-| `int?`, `long?`, etc. | Optional | Nullable value types |
+| CLR Type              | Parquet Type        | Notes                                 |
+|-----------------------|---------------------|---------------------------------------|
+| `string`              | `STRING`            | UTF-8 encoded                         |
+| `int`                 | `INT32`             | 32-bit signed integer                 |
+| `long`                | `INT64`             | 64-bit signed integer                 |
+| `short`               | `INT32`             | 16-bit signed integer                 |
+| `byte`                | `INT32`             | 8-bit unsigned integer                |
+| `float`               | `FLOAT`             | IEEE 754 single-precision             |
+| `double`              | `DOUBLE`            | IEEE 754 double-precision             |
+| `bool`                | `BOOLEAN`           | Boolean flag                          |
+| `decimal`             | `DECIMAL`           | Requires `[ParquetDecimal]` attribute |
+| `DateTime`            | `INT64` (timestamp) | Stored as UTC ticks                   |
+| `DateTimeOffset`      | `INT64` (timestamp) | Converted to UTC DateTime             |
+| `byte[]`              | `BYTE_ARRAY`        | Binary data                           |
+| `Guid`                | `STRING`            | Stored as formatted string            |
+| `int?`, `long?`, etc. | Optional            | Nullable value types                  |
 
 ## Performance Considerations
 
@@ -318,7 +328,8 @@ Row groups are the unit of I/O in Parquet. The default `RowGroupSize` of 50,000 
 - **Memory usage**: Entire row groups are buffered during writes
 - **Compression ratio**: Larger row groups improve compression effectiveness
 
-For memory-constrained environments, reduce `RowGroupSize` to 10,000-25,000 rows. For analytical workloads with ample memory, increase to 100,000-1,000,000 rows.
+For memory-constrained environments, reduce `RowGroupSize` to 10,000-25,000 rows. For analytical workloads with ample memory, increase to 100,000-1,000,000
+rows.
 
 ### Compression
 

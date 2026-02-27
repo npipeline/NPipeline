@@ -10,10 +10,15 @@ public sealed class SalesDataSourceNode : SourceNode<SalesRecord>
 {
     private readonly int _count;
 
-    public SalesDataSourceNode(int count = 500) => _count = count;
+    public SalesDataSourceNode(int count = 500)
+    {
+        _count = count;
+    }
 
     public override IDataPipe<SalesRecord> Initialize(PipelineContext context, CancellationToken cancellationToken)
-        => new InMemoryDataPipe<SalesRecord>(GenerateRecords().ToList(), "sales-data");
+    {
+        return new InMemoryDataPipe<SalesRecord>(GenerateRecords().ToList(), "sales-data");
+    }
 
     private IEnumerable<SalesRecord> GenerateRecords()
     {

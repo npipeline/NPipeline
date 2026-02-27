@@ -1,8 +1,6 @@
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
-using NPipeline.Connectors.Attributes;
-using NPipeline.Connectors.Parquet.Attributes;
 
 namespace NPipeline.Connectors.Parquet.Mapping;
 
@@ -100,24 +98,20 @@ public static class ParquetMapperBuilder
 
         // Special handling for DateTimeOffset - stored as DateTime in Parquet
         if (underlyingType == typeof(DateTimeOffset))
-        {
             return BuildDateTimeOffsetApplyDelegate<T>(property, columnName, instanceParam, rowParam, propertyType, isNullable);
-        }
 
         // Special handling for DateOnly - stored as DateTime in Parquet
         if (underlyingType == typeof(DateOnly))
-        {
             return BuildDateOnlyApplyDelegate<T>(property, columnName, instanceParam, rowParam, propertyType, isNullable);
-        }
 
         // Get the TryGet method with the appropriate generic parameter
         var tryGetMethodBase = typeof(ParquetRow)
-            .GetMethods()
-            .FirstOrDefault(m => m.Name == nameof(ParquetRow.TryGet)
-                                 && m.IsGenericMethodDefinition
-                                 && m.GetGenericArguments().Length == 1
-                                 && m.GetParameters().Length == 3)
-            ?? throw new InvalidOperationException("ParquetRow.TryGet<T>(string, out T, T) not found");
+                                   .GetMethods()
+                                   .FirstOrDefault(m => m.Name == nameof(ParquetRow.TryGet)
+                                                        && m.IsGenericMethodDefinition
+                                                        && m.GetGenericArguments().Length == 1
+                                                        && m.GetParameters().Length == 3)
+                               ?? throw new InvalidOperationException("ParquetRow.TryGet<T>(string, out T, T) not found");
 
         var tryGetMethod = tryGetMethodBase.MakeGenericMethod(underlyingType);
 
@@ -164,12 +158,12 @@ public static class ParquetMapperBuilder
     {
         // DateTimeOffset is stored as DateTime in Parquet, need to convert
         var tryGetMethodBase = typeof(ParquetRow)
-            .GetMethods()
-            .FirstOrDefault(m => m.Name == nameof(ParquetRow.TryGet)
-                                 && m.IsGenericMethodDefinition
-                                 && m.GetGenericArguments().Length == 1
-                                 && m.GetParameters().Length == 3)
-            ?? throw new InvalidOperationException("ParquetRow.TryGet<T>(string, out T, T) not found");
+                                   .GetMethods()
+                                   .FirstOrDefault(m => m.Name == nameof(ParquetRow.TryGet)
+                                                        && m.IsGenericMethodDefinition
+                                                        && m.GetGenericArguments().Length == 1
+                                                        && m.GetParameters().Length == 3)
+                               ?? throw new InvalidOperationException("ParquetRow.TryGet<T>(string, out T, T) not found");
 
         var tryGetMethod = tryGetMethodBase.MakeGenericMethod(typeof(DateTime));
 
@@ -185,7 +179,7 @@ public static class ParquetMapperBuilder
 
         // Convert DateTime to DateTimeOffset (assuming UTC)
         var dateTimeOffsetConstructor = typeof(DateTimeOffset).GetConstructor([typeof(DateTime)])
-            ?? throw new InvalidOperationException("DateTimeOffset constructor not found");
+                                        ?? throw new InvalidOperationException("DateTimeOffset constructor not found");
 
         // Handle the assignment based on whether the property is nullable
         Expression assignValue;
@@ -222,12 +216,12 @@ public static class ParquetMapperBuilder
     {
         // DateOnly is stored as DateTime in Parquet, need to convert
         var tryGetMethodBase = typeof(ParquetRow)
-            .GetMethods()
-            .FirstOrDefault(m => m.Name == nameof(ParquetRow.TryGet)
-                                 && m.IsGenericMethodDefinition
-                                 && m.GetGenericArguments().Length == 1
-                                 && m.GetParameters().Length == 3)
-            ?? throw new InvalidOperationException("ParquetRow.TryGet<T>(string, out T, T) not found");
+                                   .GetMethods()
+                                   .FirstOrDefault(m => m.Name == nameof(ParquetRow.TryGet)
+                                                        && m.IsGenericMethodDefinition
+                                                        && m.GetGenericArguments().Length == 1
+                                                        && m.GetParameters().Length == 3)
+                               ?? throw new InvalidOperationException("ParquetRow.TryGet<T>(string, out T, T) not found");
 
         var tryGetMethod = tryGetMethodBase.MakeGenericMethod(typeof(DateTime));
 
@@ -243,7 +237,7 @@ public static class ParquetMapperBuilder
 
         // Convert DateTime to DateOnly using DateOnly.FromDateTime
         var fromDateTimeMethod = typeof(DateOnly).GetMethod("FromDateTime", [typeof(DateTime)])
-            ?? throw new InvalidOperationException("DateOnly.FromDateTime method not found");
+                                 ?? throw new InvalidOperationException("DateOnly.FromDateTime method not found");
 
         // Handle the assignment based on whether the property is nullable
         Expression assignValue;

@@ -7,9 +7,9 @@ namespace NPipeline.Connectors.DataLake.Tests;
 
 public sealed class DataLakeManifestTests : IAsyncDisposable
 {
-    private readonly string _tempDir;
-    private readonly StorageUri _tableUri;
     private readonly IStorageProvider _provider;
+    private readonly StorageUri _tableUri;
+    private readonly string _tempDir;
 
     public DataLakeManifestTests()
     {
@@ -23,12 +23,65 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if (Directory.Exists(_tempDir))
-        {
-            Directory.Delete(_tempDir, recursive: true);
-        }
+            Directory.Delete(_tempDir, true);
 
         await Task.CompletedTask;
     }
+
+    #region Concurrent Entry Isolation Tests
+
+    [Fact]
+    public async Task ManifestWriter_ConcurrentAppends_MaintainsIsolation()
+    {
+        // Arrange
+        var snapshotId1 = ManifestWriter.GenerateSnapshotId();
+        var snapshotId2 = ManifestWriter.GenerateSnapshotId();
+
+        // Act - Write concurrently with different snapshot IDs
+        var task1 = Task.Run(async () =>
+        {
+            await using var writer = new ManifestWriter(_provider, _tableUri, snapshotId1);
+
+            writer.Append(new ManifestEntry
+            {
+                Path = "part-snap1.parquet",
+                RowCount = 100,
+                WrittenAt = DateTimeOffset.UtcNow,
+                FileSizeBytes = 1024,
+                SnapshotId = snapshotId1,
+            });
+
+            await writer.FlushAsync();
+        });
+
+        var task2 = Task.Run(async () =>
+        {
+            await using var writer = new ManifestWriter(_provider, _tableUri, snapshotId2);
+
+            writer.Append(new ManifestEntry
+            {
+                Path = "part-snap2.parquet",
+                RowCount = 200,
+                WrittenAt = DateTimeOffset.UtcNow,
+                FileSizeBytes = 2048,
+                SnapshotId = snapshotId2,
+            });
+
+            await writer.FlushAsync();
+        });
+
+        await Task.WhenAll(task1, task2);
+
+        // Assert
+        var reader = new ManifestReader(_provider, _tableUri);
+        var allEntries = await reader.ReadAllAsync();
+
+        allEntries.Should().HaveCount(2);
+        allEntries.Count(e => e.SnapshotId == snapshotId1).Should().Be(1);
+        allEntries.Count(e => e.SnapshotId == snapshotId2).Should().Be(1);
+    }
+
+    #endregion
 
     #region ManifestEntry Tests
 
@@ -42,7 +95,7 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
             RowCount = 1000,
             WrittenAt = DateTimeOffset.UtcNow,
             FileSizeBytes = 4096,
-            SnapshotId = "20250115000000000-abcd"
+            SnapshotId = "20250115000000000-abcd",
         };
 
         // Assert
@@ -67,8 +120,8 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
             PartitionValues = new Dictionary<string, string>
             {
                 ["event_date"] = "2025-01-15",
-                ["region"] = "EU"
-            }
+                ["region"] = "EU",
+            },
         };
 
         // Assert
@@ -88,7 +141,7 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
             WrittenAt = DateTimeOffset.UtcNow,
             FileSizeBytes = 1024,
             SnapshotId = "snap-001",
-            PartitionValues = new Dictionary<string, string> { ["key"] = "value" }
+            PartitionValues = new Dictionary<string, string> { ["key"] = "value" },
         };
 
         // Act
@@ -107,7 +160,7 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
     #region ManifestWriter Tests
 
     [Fact]
-    public async Task ManifestWriter_GenerateSnapshotId_ProducesValidFormat()
+    public void ManifestWriter_GenerateSnapshotId_ProducesValidFormat()
     {
         // Act
         var snapshotId = ManifestWriter.GenerateSnapshotId();
@@ -117,7 +170,7 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task ManifestWriter_GenerateSnapshotId_ProducesUniqueIds()
+    public void ManifestWriter_GenerateSnapshotId_ProducesUniqueIds()
     {
         // Act
         var ids = Enumerable.Range(0, 100)
@@ -141,7 +194,7 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
             RowCount = 100,
             WrittenAt = DateTimeOffset.UtcNow,
             FileSizeBytes = 1024,
-            SnapshotId = snapshotId
+            SnapshotId = snapshotId,
         };
 
         writer.Append(entry);
@@ -169,7 +222,7 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
                 RowCount = 100,
                 WrittenAt = DateTimeOffset.UtcNow,
                 FileSizeBytes = 1024,
-                SnapshotId = snapshotId
+                SnapshotId = snapshotId,
             },
             new ManifestEntry
             {
@@ -177,8 +230,8 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
                 RowCount = 200,
                 WrittenAt = DateTimeOffset.UtcNow,
                 FileSizeBytes = 2048,
-                SnapshotId = snapshotId
-            }
+                SnapshotId = snapshotId,
+            },
         };
 
         // Act
@@ -205,7 +258,7 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
             RowCount = 100,
             WrittenAt = DateTimeOffset.UtcNow,
             FileSizeBytes = 1024,
-            SnapshotId = snapshotId
+            SnapshotId = snapshotId,
         };
 
         writer.Append(entry);
@@ -240,6 +293,7 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
     {
         // Arrange
         var snapshotId = ManifestWriter.GenerateSnapshotId();
+
         await using (var writer = new ManifestWriter(_provider, _tableUri, snapshotId))
         {
             writer.AppendRange(new[]
@@ -250,7 +304,7 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
                     RowCount = 100,
                     WrittenAt = DateTimeOffset.UtcNow,
                     FileSizeBytes = 1024,
-                    SnapshotId = snapshotId
+                    SnapshotId = snapshotId,
                 },
                 new ManifestEntry
                 {
@@ -258,9 +312,10 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
                     RowCount = 200,
                     WrittenAt = DateTimeOffset.UtcNow,
                     FileSizeBytes = 2048,
-                    SnapshotId = snapshotId
-                }
+                    SnapshotId = snapshotId,
+                },
             });
+
             await writer.FlushAsync();
         }
 
@@ -288,8 +343,9 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
                 RowCount = 100,
                 WrittenAt = DateTimeOffset.UtcNow,
                 FileSizeBytes = 1024,
-                SnapshotId = snapshotId1
+                SnapshotId = snapshotId1,
             });
+
             await writer1.FlushAsync();
         }
 
@@ -301,8 +357,9 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
                 RowCount = 200,
                 WrittenAt = DateTimeOffset.UtcNow,
                 FileSizeBytes = 2048,
-                SnapshotId = snapshotId2
+                SnapshotId = snapshotId2,
             });
+
             await writer2.FlushAsync();
         }
 
@@ -325,6 +382,7 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
         var newer = now.AddHours(-1);
 
         var snapshotId1 = ManifestWriter.GenerateSnapshotId();
+
         await using (var writer = new ManifestWriter(_provider, _tableUri, snapshotId1))
         {
             writer.Append(new ManifestEntry
@@ -333,12 +391,14 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
                 RowCount = 100,
                 WrittenAt = older,
                 FileSizeBytes = 1024,
-                SnapshotId = snapshotId1
+                SnapshotId = snapshotId1,
             });
+
             await writer.FlushAsync();
         }
 
         var snapshotId2 = ManifestWriter.GenerateSnapshotId();
+
         await using (var writer = new ManifestWriter(_provider, _tableUri, snapshotId2))
         {
             writer.Append(new ManifestEntry
@@ -347,8 +407,9 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
                 RowCount = 200,
                 WrittenAt = newer,
                 FileSizeBytes = 2048,
-                SnapshotId = snapshotId2
+                SnapshotId = snapshotId2,
             });
+
             await writer.FlushAsync();
         }
 
@@ -378,8 +439,9 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
                 RowCount = 100,
                 WrittenAt = DateTimeOffset.UtcNow,
                 FileSizeBytes = 1024,
-                SnapshotId = snapshotId1
+                SnapshotId = snapshotId1,
             });
+
             await writer1.FlushAsync();
         }
 
@@ -393,8 +455,9 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
                 RowCount = 200,
                 WrittenAt = DateTimeOffset.UtcNow,
                 FileSizeBytes = 2048,
-                SnapshotId = snapshotId2
+                SnapshotId = snapshotId2,
             });
+
             await writer2.FlushAsync();
         }
 
@@ -405,6 +468,7 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
 
         // Assert
         snapshotIds.Should().HaveCount(2);
+
         // Verify both snapshot IDs are present (order may vary based on read order)
         snapshotIds.Should().Contain(snapshotId1);
         snapshotIds.Should().Contain(snapshotId2);
@@ -425,7 +489,7 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
                 RowCount = 100,
                 WrittenAt = DateTimeOffset.UtcNow,
                 FileSizeBytes = 1024,
-                SnapshotId = snapshotId
+                SnapshotId = snapshotId,
             },
             new ManifestEntry
             {
@@ -433,7 +497,7 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
                 RowCount = 250,
                 WrittenAt = DateTimeOffset.UtcNow,
                 FileSizeBytes = 2048,
-                SnapshotId = snapshotId
+                SnapshotId = snapshotId,
             },
             new ManifestEntry
             {
@@ -441,9 +505,10 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
                 RowCount = 150,
                 WrittenAt = DateTimeOffset.UtcNow,
                 FileSizeBytes = 1536,
-                SnapshotId = snapshotId
-            }
+                SnapshotId = snapshotId,
+            },
         });
+
         await writer.FlushAsync();
 
         var reader = new ManifestReader(_provider, _tableUri);
@@ -474,14 +539,16 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
         // Arrange
         var snapshotId = ManifestWriter.GenerateSnapshotId();
         await using var writer = new ManifestWriter(_provider, _tableUri, snapshotId);
+
         writer.Append(new ManifestEntry
         {
             Path = "part.parquet",
             RowCount = 1,
             WrittenAt = DateTimeOffset.UtcNow,
             FileSizeBytes = 100,
-            SnapshotId = snapshotId
+            SnapshotId = snapshotId,
         });
+
         await writer.FlushAsync();
 
         var reader = new ManifestReader(_provider, _tableUri);
@@ -491,57 +558,6 @@ public sealed class DataLakeManifestTests : IAsyncDisposable
 
         // Assert
         exists.Should().BeTrue();
-    }
-
-    #endregion
-
-    #region Concurrent Entry Isolation Tests
-
-    [Fact]
-    public async Task ManifestWriter_ConcurrentAppends_MaintainsIsolation()
-    {
-        // Arrange
-        var snapshotId1 = ManifestWriter.GenerateSnapshotId();
-        var snapshotId2 = ManifestWriter.GenerateSnapshotId();
-
-        // Act - Write concurrently with different snapshot IDs
-        var task1 = Task.Run(async () =>
-        {
-            await using var writer = new ManifestWriter(_provider, _tableUri, snapshotId1);
-            writer.Append(new ManifestEntry
-            {
-                Path = "part-snap1.parquet",
-                RowCount = 100,
-                WrittenAt = DateTimeOffset.UtcNow,
-                FileSizeBytes = 1024,
-                SnapshotId = snapshotId1
-            });
-            await writer.FlushAsync();
-        });
-
-        var task2 = Task.Run(async () =>
-        {
-            await using var writer = new ManifestWriter(_provider, _tableUri, snapshotId2);
-            writer.Append(new ManifestEntry
-            {
-                Path = "part-snap2.parquet",
-                RowCount = 200,
-                WrittenAt = DateTimeOffset.UtcNow,
-                FileSizeBytes = 2048,
-                SnapshotId = snapshotId2
-            });
-            await writer.FlushAsync();
-        });
-
-        await Task.WhenAll(task1, task2);
-
-        // Assert
-        var reader = new ManifestReader(_provider, _tableUri);
-        var allEntries = await reader.ReadAllAsync();
-
-        allEntries.Should().HaveCount(2);
-        allEntries.Count(e => e.SnapshotId == snapshotId1).Should().Be(1);
-        allEntries.Count(e => e.SnapshotId == snapshotId2).Should().Be(1);
     }
 
     #endregion

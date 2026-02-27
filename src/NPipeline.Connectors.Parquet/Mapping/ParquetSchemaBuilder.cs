@@ -45,12 +45,11 @@ public static class ParquetSchemaBuilder
     {
         // Check ParquetColumnAttribute first
         var parquetColumnAttr = property.GetCustomAttribute<ParquetColumnAttribute>();
+
         if (parquetColumnAttr is not null)
         {
             if (!string.IsNullOrEmpty(parquetColumnAttr.Name))
-            {
                 return parquetColumnAttr.Name;
-            }
 
             // Attribute present but no name override - use property name as-is
             return property.Name;
@@ -58,10 +57,9 @@ public static class ParquetSchemaBuilder
 
         // Fallback to ColumnAttribute (generic)
         var columnAttr = property.GetCustomAttribute<ColumnAttribute>();
+
         if (columnAttr is not null && !string.IsNullOrEmpty(columnAttr.Name))
-        {
             return columnAttr.Name;
-        }
 
         // Convention: use property name as-is (Parquet is case-sensitive, preserve PascalCase)
         return property.Name;
@@ -75,16 +73,14 @@ public static class ParquetSchemaBuilder
     public static bool IsIgnored(PropertyInfo property)
     {
         var parquetColumnAttr = property.GetCustomAttribute<ParquetColumnAttribute>();
+
         if (parquetColumnAttr is not null && parquetColumnAttr.Ignore)
-        {
             return true;
-        }
 
         var columnAttr = property.GetCustomAttribute<ColumnAttribute>();
+
         if (columnAttr is not null && columnAttr.Ignore)
-        {
             return true;
-        }
 
         return property.IsDefined(typeof(IgnoreColumnAttribute), true);
     }
@@ -114,7 +110,7 @@ public static class ParquetSchemaBuilder
         var targetType = underlyingType ?? propertyType;
         var isNullable = underlyingType is not null || !propertyType.IsValueType;
 
-        Field field = targetType switch
+        var field = targetType switch
         {
             _ when targetType == typeof(string) => new DataField<string>(columnName, isNullable),
             _ when targetType == typeof(int) => new DataField<int>(columnName, isNullable),
@@ -139,7 +135,7 @@ public static class ParquetSchemaBuilder
                 => CreateListField(property, columnName, targetType),
             _ => throw new ParquetSchemaException(
                 $"Unsupported type '{targetType.Name}' for property '{property.Name}' on type '{property.DeclaringType?.Name}'. " +
-                "Consider using a custom converter or a supported type.")
+                "Consider using a custom converter or a supported type."),
         };
 
         return field;
@@ -165,9 +161,7 @@ public static class ParquetSchemaBuilder
         Type? elementType = null;
 
         if (listType.IsArray)
-        {
             elementType = listType.GetElementType();
-        }
         else if (ImplementsInterface(listType, typeof(IList<>)))
         {
             var genericInterface = listType.GetInterfaces()
@@ -176,9 +170,7 @@ public static class ParquetSchemaBuilder
             elementType = genericInterface?.GetGenericArguments()[0];
         }
         else if (listType.IsGenericType)
-        {
             elementType = listType.GetGenericArguments()[0];
-        }
 
         if (elementType is null)
         {
@@ -210,7 +202,7 @@ public static class ParquetSchemaBuilder
             _ when underlyingElementType == typeof(DateTimeOffset) => new DataField<DateTime>(ListField.ElementName), // Store DateTimeOffset as DateTime (UTC)
             _ when underlyingElementType == typeof(DateOnly) => new DataField<DateTime>(ListField.ElementName), // Store DateOnly as DateTime
             _ when underlyingElementType == typeof(Guid) => new DataField<string>(ListField.ElementName),
-            _ => new DataField<string>(ListField.ElementName)
+            _ => new DataField<string>(ListField.ElementName),
         };
 
         return new ListField(columnName, elementField);

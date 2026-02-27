@@ -1,3 +1,4 @@
+using System.Drawing;
 using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.Parquet.Attributes;
 using NPipeline.Connectors.Parquet.Mapping;
@@ -7,6 +8,21 @@ namespace NPipeline.Connectors.Parquet.Tests;
 
 public sealed class ParquetSchemaBuilderTests
 {
+    #region Multiple Properties
+
+    [Fact]
+    public void Build_WithMultipleProperties_CreatesAllFields()
+    {
+        // Arrange & Act
+        var schema = ParquetSchemaBuilder.Build<MultiPropertyRecord>();
+
+        // Assert
+        schema.Fields.Should().HaveCount(5);
+        schema.Fields.Select(f => f.Name).Should().BeEquivalentTo("Id", "Name", "Amount", "CreatedDate", "IsActive");
+    }
+
+    #endregion
+
     #region Supported CLR Types
 
     [Fact]
@@ -439,37 +455,72 @@ public sealed class ParquetSchemaBuilderTests
 
     #endregion
 
-    #region Multiple Properties
-
-    [Fact]
-    public void Build_WithMultipleProperties_CreatesAllFields()
-    {
-        // Arrange & Act
-        var schema = ParquetSchemaBuilder.Build<MultiPropertyRecord>();
-
-        // Assert
-        schema.Fields.Should().HaveCount(5);
-        schema.Fields.Select(f => f.Name).Should().BeEquivalentTo(
-            ["Id", "Name", "Amount", "CreatedDate", "IsActive"]);
-    }
-
-    #endregion
-
     #region Test Record Types
 
-    private sealed class StringRecord { public string? Value { get; set; } }
-    private sealed class IntRecord { public int Value { get; set; } }
-    private sealed class LongRecord { public long Value { get; set; } }
-    private sealed class ShortRecord { public short Value { get; set; } }
-    private sealed class ByteRecord { public byte Value { get; set; } }
-    private sealed class FloatRecord { public float Value { get; set; } }
-    private sealed class DoubleRecord { public double Value { get; set; } }
-    private sealed class BoolRecord { public bool Value { get; set; } }
-    private sealed class DateTimeRecord { public DateTime Value { get; set; } }
-    private sealed class DateTimeOffsetRecord { public DateTimeOffset Value { get; set; } }
-    private sealed class GuidRecord { public Guid Value { get; set; } }
-    private sealed class ByteArrayRecord { public byte[]? Value { get; set; } }
-    private sealed class EnumRecord { public TestEnum Value { get; set; } }
+    private sealed class StringRecord
+    {
+        public string? Value { get; set; }
+    }
+
+    private sealed class IntRecord
+    {
+        public int Value { get; set; }
+    }
+
+    private sealed class LongRecord
+    {
+        public long Value { get; set; }
+    }
+
+    private sealed class ShortRecord
+    {
+        public short Value { get; set; }
+    }
+
+    private sealed class ByteRecord
+    {
+        public byte Value { get; set; }
+    }
+
+    private sealed class FloatRecord
+    {
+        public float Value { get; set; }
+    }
+
+    private sealed class DoubleRecord
+    {
+        public double Value { get; set; }
+    }
+
+    private sealed class BoolRecord
+    {
+        public bool Value { get; set; }
+    }
+
+    private sealed class DateTimeRecord
+    {
+        public DateTime Value { get; set; }
+    }
+
+    private sealed class DateTimeOffsetRecord
+    {
+        public DateTimeOffset Value { get; set; }
+    }
+
+    private sealed class GuidRecord
+    {
+        public Guid Value { get; set; }
+    }
+
+    private sealed class ByteArrayRecord
+    {
+        public byte[]? Value { get; set; }
+    }
+
+    private sealed class EnumRecord
+    {
+        public TestEnum Value { get; set; }
+    }
 
     private sealed class DecimalRecord
     {
@@ -477,13 +528,40 @@ public sealed class ParquetSchemaBuilderTests
         public decimal Value { get; set; }
     }
 
-    private sealed class NullableIntRecord { public int? Value { get; set; } }
-    private sealed class NullableLongRecord { public long? Value { get; set; } }
-    private sealed class NullableDoubleRecord { public double? Value { get; set; } }
-    private sealed class NullableBoolRecord { public bool? Value { get; set; } }
-    private sealed class NullableDateTimeRecord { public DateTime? Value { get; set; } }
-    private sealed class NullableDateTimeOffsetRecord { public DateTimeOffset? Value { get; set; } }
-    private sealed class NullableGuidRecord { public Guid? Value { get; set; } }
+    private sealed class NullableIntRecord
+    {
+        public int? Value { get; set; }
+    }
+
+    private sealed class NullableLongRecord
+    {
+        public long? Value { get; set; }
+    }
+
+    private sealed class NullableDoubleRecord
+    {
+        public double? Value { get; set; }
+    }
+
+    private sealed class NullableBoolRecord
+    {
+        public bool? Value { get; set; }
+    }
+
+    private sealed class NullableDateTimeRecord
+    {
+        public DateTime? Value { get; set; }
+    }
+
+    private sealed class NullableDateTimeOffsetRecord
+    {
+        public DateTimeOffset? Value { get; set; }
+    }
+
+    private sealed class NullableGuidRecord
+    {
+        public Guid? Value { get; set; }
+    }
 
     private sealed class NullableDecimalRecord
     {
@@ -529,7 +607,7 @@ public sealed class ParquetSchemaBuilderTests
 
     private sealed class UnsupportedTypeRecord
     {
-        public System.Drawing.Point Value { get; set; } = default!;
+        public Point Value { get; set; } = default!;
     }
 
     private sealed class ComplexTypeRecord
@@ -545,6 +623,7 @@ public sealed class ParquetSchemaBuilderTests
     private sealed class IgnoredPropertyRecord
     {
         public string? Included { get; set; }
+
         [ParquetColumn(Ignore = true)]
         public string? Excluded { get; set; }
     }
@@ -552,6 +631,7 @@ public sealed class ParquetSchemaBuilderTests
     private sealed class IgnoreColumnAttributeRecord
     {
         public string? Included { get; set; }
+
         [IgnoreColumn]
         public string? Excluded { get; set; }
     }
@@ -560,8 +640,10 @@ public sealed class ParquetSchemaBuilderTests
     {
         public int Id { get; set; }
         public string? Name { get; set; }
+
         [ParquetDecimal(10, 2)]
         public decimal Amount { get; set; }
+
         public DateTime CreatedDate { get; set; }
         public bool IsActive { get; set; }
     }
@@ -570,7 +652,7 @@ public sealed class ParquetSchemaBuilderTests
     {
         Value1,
         Value2,
-        Value3
+        Value3,
     }
 
     #endregion

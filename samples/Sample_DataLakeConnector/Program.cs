@@ -5,7 +5,6 @@ using NPipeline.Connectors.DataLake.Manifest;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
-using NPipeline.StorageProviders.Models;
 
 namespace Sample_DataLakeConnector;
 
@@ -44,21 +43,31 @@ public static class Program
         Console.WriteLine("First 5 records (read back via DataLakeTableSourceNode):");
         var sourceNode = new DataLakeTableSourceNode<SalesRecord>(provider, tableUri);
         var count = 0;
+
         await foreach (var record in sourceNode.Initialize(PipelineContext.Default, CancellationToken.None))
         {
-            if (count++ >= 5) break;
+            if (count++ >= 5)
+                break;
+
             Console.WriteLine($"  [{record.Id,4}] {record.Product,-15} {record.Amount,8:C}  {record.EventDate:yyyy-MM-dd}  {record.Region}");
         }
 
         Console.WriteLine();
         Console.WriteLine("Partition structure:");
+
         foreach (var dir in Directory.GetDirectories(tablePath).OrderBy(d => d))
         {
             var name = Path.GetFileName(dir);
-            if (name == "_manifest") continue;
+
+            if (name == "_manifest")
+                continue;
+
             Console.WriteLine($"  {name}/");
+
             foreach (var sub in Directory.GetDirectories(dir).OrderBy(d => d))
+            {
                 Console.WriteLine($"    {Path.GetFileName(sub)}/");
+            }
         }
     }
 }
