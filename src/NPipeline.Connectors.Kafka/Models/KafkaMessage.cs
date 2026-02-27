@@ -138,6 +138,21 @@ public sealed class KafkaMessage<T> : IAcknowledgableMessage<T>, IKafkaMessageMe
     }
 
     /// <summary>
+    ///     Negatively acknowledges the message.
+    ///     For Kafka, this is a no-op as Kafka does not support negative acknowledgment.
+    ///     Messages will be redelivered based on consumer group offset management.
+    /// </summary>
+    /// <param name="requeue">Ignored for Kafka. Kafka does not support requeue semantics.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
+    /// <returns>A completed task.</returns>
+    public Task NegativeAcknowledgeAsync(bool requeue = true, CancellationToken cancellationToken = default)
+    {
+        // Kafka does not support negative acknowledgment.
+        // Message redelivery is handled by not committing the offset.
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
     ///     Creates a new KafkaMessage with the provided body while preserving acknowledgment behavior.
     /// </summary>
     /// <typeparam name="TNew">The new body type.</typeparam>

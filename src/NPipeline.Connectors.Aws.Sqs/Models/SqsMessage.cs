@@ -140,6 +140,21 @@ public sealed class SqsMessage<T> : IAcknowledgableMessage<T>, IAwsSqsAcknowledg
     }
 
     /// <summary>
+    ///     Negatively acknowledges the message.
+    ///     For SQS, this is a no-op — the message will become visible again after the
+    ///     visibility timeout expires, effectively achieving redelivery.
+    /// </summary>
+    /// <param name="requeue">Ignored for SQS. Redelivery is handled by visibility timeout.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
+    /// <returns>A completed task.</returns>
+    public Task NegativeAcknowledgeAsync(bool requeue = true, CancellationToken cancellationToken = default)
+    {
+        // SQS does not support explicit nack — messages are redelivered
+        // after the visibility timeout expires.
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
     ///     Creates a new SqsMessage with the provided body while preserving acknowledgment behavior.
     /// </summary>
     /// <typeparam name="TNew">The new body type.</typeparam>

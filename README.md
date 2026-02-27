@@ -180,6 +180,7 @@ NPipeline is modular - install only what you need.
 | **NPipeline.Connectors.SqlServer**  | SQL Server database source and sink nodes                    |
 | **NPipeline.Connectors.Aws.Sqs**    | AWS SQS source and sink nodes for message queue processing   |
 | **NPipeline.Connectors.Kafka**      | Kafka source and sink nodes with batching and transactional support |
+| **NPipeline.Connectors.RabbitMQ**   | RabbitMQ source and sink nodes with publisher confirms and dead-lettering |
 
 ### Complete Package List
 

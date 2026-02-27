@@ -35,6 +35,17 @@ public interface IAcknowledgableMessage
     /// <param name="cancellationToken">Cancellation token for the operation.</param>
     /// <returns>A task representing the asynchronous acknowledgment operation.</returns>
     Task AcknowledgeAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     Negatively acknowledges the message, indicating failed processing.
+    ///     For RabbitMQ: maps to basic.nack with requeue semantics.
+    ///     For Kafka: no-op (Kafka does not support nack).
+    ///     For SQS: changes message visibility timeout to 0 for immediate redelivery.
+    /// </summary>
+    /// <param name="requeue">Whether the message should be requeued for redelivery. Default is true.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
+    /// <returns>A task representing the asynchronous negative acknowledgment operation.</returns>
+    Task NegativeAcknowledgeAsync(bool requeue = true, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

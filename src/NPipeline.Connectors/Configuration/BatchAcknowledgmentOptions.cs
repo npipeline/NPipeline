@@ -12,6 +12,13 @@ public class BatchAcknowledgmentOptions
     public int BatchSize { get; set; } = 10;
 
     /// <summary>
+    ///     Gets or sets the maximum allowed batch size for validation.
+    ///     Connectors override this to match their backend's limits.
+    ///     Default is 10 (backward-compatible with SQS). RabbitMQ sets 10,000.
+    /// </summary>
+    public int MaxBatchSize { get; set; } = 10;
+
+    /// <summary>
     ///     Gets or sets the maximum time to wait before flushing a partial batch, in milliseconds.
     ///     Default is 1000ms.
     /// </summary>
@@ -36,8 +43,9 @@ public class BatchAcknowledgmentOptions
     /// </summary>
     public void Validate()
     {
-        if (BatchSize < 1 || BatchSize > 10)
-            throw new InvalidOperationException("BatchSize must be between 1 and 10.");
+        if (BatchSize < 1 || BatchSize > MaxBatchSize)
+            throw new InvalidOperationException(
+                $"BatchSize must be between 1 and {MaxBatchSize}.");
 
         if (FlushTimeoutMs < 0)
             throw new InvalidOperationException("FlushTimeoutMs must be non-negative.");
