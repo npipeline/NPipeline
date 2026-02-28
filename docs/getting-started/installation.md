@@ -90,6 +90,13 @@ Provides JSON specific connectors for reading and writing JSON array and NDJSON 
 dotnet add package NPipeline.Connectors.Json
 ```
 
+**11. NPipeline.Connectors.DuckDB (Optional)**
+Provides an embedded analytical database connector for SQL-over-files (Parquet/CSV/JSON) and local zero-setup pipelines.
+
+```bash
+dotnet add package NPipeline.Connectors.DuckDB
+```
+
 ### Using Visual Studio NuGet Package Manager
 
 1. Right-click on your project in the Solution Explorer and select "Manage NuGet Packages...".
@@ -108,6 +115,7 @@ The following table shows the dependencies for each NPipeline package:
 | NPipeline.Connectors.Csv | CsvHelper |
 | NPipeline.Connectors.Excel | ExcelDataReader, DocumentFormat.OpenXml |
 | NPipeline.Connectors.Json | System.Text.Json |
+| NPipeline.Connectors.DuckDB | DuckDB.NET.Data.Full |
 | NPipeline.Extensions.Parallelism | System.Threading.Tasks.DataFlow |
 
 ## Setting Up Dependency Injection

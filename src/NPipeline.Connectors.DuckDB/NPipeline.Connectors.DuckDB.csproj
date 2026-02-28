@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+        <!-- NuGet Packaging Metadata -->
+        <PackageId>NPipeline.Connectors.DuckDB</PackageId>
+        <Description>DuckDB source and sink nodes for NPipeline — embedded analytical database with native Parquet/CSV/JSON support, SQL queries, and high-performance Appender API</Description>
+        <PackageTags>npipeline;duckdb;analytics;olap;connectors;parquet;embedded-database</PackageTags>
+        <Authors>NPipeline contributors</Authors>
+        <RepositoryUrl>https://github.com/NPipeline/NPipeline.git</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/NPipeline/NPipeline</PackageProjectUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <PackageIcon>icon.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <WarningsNotAsErrors>$(WarningsNotAsErrors);CS1591</WarningsNotAsErrors>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\NPipeline.Connectors\NPipeline.Connectors.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="DuckDB.NET.Data.Full" Version="1.3.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="..\..\icon.png" Pack="true" PackagePath="\"/>
+        <None Include="README.md" Pack="true" PackagePath="\"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="NPipeline.Connectors.DuckDB.Tests"/>
+    </ItemGroup>
+
+</Project>

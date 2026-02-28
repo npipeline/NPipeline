@@ -93,6 +93,13 @@ The following connectors are available:
   - Small-file compaction to optimise query engine performance
   - Format adapter interface for Iceberg, Delta Lake, or custom table formats
   - Built on `NPipeline.Connectors.Parquet`
+- **[DuckDB](./duckdb.md)**: Read from and write to DuckDB databases and query files directly.
+  - In-process analytical database — zero config, no separate server
+  - Direct queries on Parquet, CSV, and JSON files (local or S3)
+  - High-performance Appender API for bulk inserts
+  - Auto-create tables from CLR types with `[DuckDBColumn]` attributes
+  - Export pipeline data to Parquet/CSV via COPY TO
+  - Dependency injection support with named databases
 
 ## General Usage Pattern
 
@@ -134,5 +141,6 @@ Explore the documentation for each specific connector to learn about its install
 - **[RabbitMQ Connector](rabbitmq.md)**: Learn how to read from and write to RabbitMQ message queues
 - **[Parquet Connector](parquet.md)**: Learn how to read from and write to Apache Parquet files
 - **[Data Lake Connector](datalake.md)**: Learn how to write partitioned tables, use time travel, and compact small files
+- **[DuckDB Connector](duckdb.md)**: Learn how to read from and write to DuckDB databases and query files directly
 - **[Common Patterns](../core-concepts/common-patterns.md)**: See connectors in practical examples
 - **[Installation](../getting-started/installation.md)**: Review installation options for connector packages
