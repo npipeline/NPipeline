@@ -55,6 +55,12 @@ The following connectors are available:
   - Supports streaming reads, per-row and batched writes, and in-memory checkpointing
   - Uses Microsoft.Data.SqlClient for reliable database operations
   - Supports Windows Authentication and SQL Server Authentication
+- **[Snowflake](./snowflake.md)**: Read from and write to Snowflake cloud data warehouses.
+  - Supports streaming reads, per-row writes, batched writes, and bulk loading via PUT + COPY INTO
+  - Three write strategies: PerRow, Batch, and StagedCopy for optimal throughput
+  - MERGE-based upsert support with configurable merge actions
+  - Uses Snowflake.Data official ADO.NET driver for reliable operations
+  - Supports password and key-pair (JWT) authentication
 - **[Azure Cosmos DB](./cosmos.md)**: Read from and write to Azure Cosmos DB databases.
   - Supports SQL API with parameterized queries and change feed streaming
   - Multi-API support for Mongo and Cassandra APIs
@@ -135,6 +141,7 @@ Explore the documentation for each specific connector to learn about its install
 - **[JSON Connector](json.md)**: Learn how to read from and write to JSON files (Array and NDJSON)
 - **[PostgreSQL Connector](postgres.md)**: Learn how to read from and write to PostgreSQL databases
 - **[SQL Server Connector](sqlserver.md)**: Learn how to read from and write to Microsoft SQL Server databases
+- **[Snowflake Connector](snowflake.md)**: Learn how to read from and write to Snowflake cloud data warehouses
 - **[Azure Cosmos DB Connector](cosmos.md)**: Learn how to read from and write to Azure Cosmos DB
 - **[AWS SQS Connector](aws-sqs.md)**: Learn how to read from and write to Amazon SQS queues
 - **[Kafka Connector](kafka.md)**: Learn how to read from and write to Apache Kafka topics
