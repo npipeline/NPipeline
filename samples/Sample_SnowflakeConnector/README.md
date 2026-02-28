@@ -62,6 +62,7 @@ The Snowflake Connector sample showcases how to use NPipeline's Snowflake connec
 ### Snowflake Account
 
 You need access to a Snowflake account with:
+
 - A warehouse with compute credits
 - A database and schema for test tables
 - A user with appropriate permissions (CREATE TABLE, INSERT, SELECT, DROP TABLE)

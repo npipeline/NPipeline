@@ -58,7 +58,7 @@ internal static class SnowflakeParameterMapper
         if (commonAttribute != null && !string.IsNullOrWhiteSpace(commonAttribute.Name))
             return commonAttribute.Name;
 
-        return property.Name;
+        return SnowflakeNamingConvention.ToDefaultColumnName(property.Name);
     }
 
     /// <summary>

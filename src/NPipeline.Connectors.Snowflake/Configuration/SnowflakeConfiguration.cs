@@ -329,6 +329,13 @@ public class SnowflakeConfiguration
         if (WriteStrategy == SnowflakeWriteStrategy.StagedCopy && string.IsNullOrWhiteSpace(StageName))
             throw new ArgumentException("StageName must be provided when using StagedCopy write strategy.", nameof(StageName));
 
+        if (WriteStrategy == SnowflakeWriteStrategy.StagedCopy && DeliverySemantic == DeliverySemantic.ExactlyOnce)
+        {
+            throw new ArgumentException(
+                "Snowflake StagedCopy strategy does not support ExactlyOnce delivery semantics. Use PerRow or Batch for ExactlyOnce.",
+                nameof(WriteStrategy));
+        }
+
         ValidateCheckpointSettings();
     }
 

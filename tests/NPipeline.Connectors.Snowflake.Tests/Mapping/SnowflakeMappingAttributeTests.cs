@@ -1,6 +1,9 @@
 using System.Data;
+using FakeItEasy;
 using NPipeline.Connectors.Attributes;
+using NPipeline.Connectors.Snowflake.Configuration;
 using NPipeline.Connectors.Snowflake.Mapping;
+using NPipeline.StorageProviders.Abstractions;
 
 namespace NPipeline.Connectors.Snowflake.Tests.Mapping;
 
@@ -101,6 +104,56 @@ public sealed class SnowflakeMappingAttributeTests
         Assert.True(attr.Ignore);
     }
 
+    [Fact]
+    public void ParameterMapper_GetColumnNames_ShouldUseUpperSnakeCaseConvention()
+    {
+        // Arrange
+        var configuration = new SnowflakeConfiguration();
+
+        // Act
+        var columns = SnowflakeParameterMapper.GetColumnNames<ConventionModel>(configuration);
+
+        // Assert
+        Assert.Contains("FIRST_NAME", columns);
+        Assert.Contains("CREATED_AT", columns);
+        Assert.Contains("URL_VALUE", columns);
+        Assert.Contains("ORDER_2_TOTAL", columns);
+    }
+
+    [Fact]
+    public void ParameterMapper_GetColumnNames_ShouldRespectAttributeOverrides()
+    {
+        // Arrange
+        var configuration = new SnowflakeConfiguration();
+
+        // Act
+        var columns = SnowflakeParameterMapper.GetColumnNames<AttributeOverrideModel>(configuration);
+
+        // Assert
+        Assert.Contains("RAW_VALUE", columns);
+        Assert.Contains("EXPLICIT_NAME", columns);
+    }
+
+    [Fact]
+    public void MapperBuilder_ShouldMapUpperSnakeCaseColumns_ByConvention()
+    {
+        // Arrange
+        var reader = A.Fake<IDatabaseReader>();
+        A.CallTo(() => reader.FieldCount).Returns(1);
+        A.CallTo(() => reader.GetName(0)).Returns("FIRST_NAME");
+        A.CallTo(() => reader.IsDBNull(0)).Returns(false);
+        A.CallTo(() => reader.GetFieldValue<string>(0)).Returns("Grace");
+
+        var row = new SnowflakeRow(reader);
+        var mapper = SnowflakeMapperBuilder.BuildMapper<ConventionReadModel>(new SnowflakeConfiguration());
+
+        // Act
+        var result = mapper(row);
+
+        // Assert
+        Assert.Equal("Grace", result.FirstName);
+    }
+
     private sealed class TestModel
     {
         [SnowflakeColumn("ID", PrimaryKey = true, Identity = true)]
@@ -111,5 +164,27 @@ public sealed class SnowflakeMappingAttributeTests
 
         [IgnoreColumn]
         public string Ignored { get; set; } = string.Empty;
+    }
+
+    private sealed class ConventionModel
+    {
+        public string FirstName { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public string UrlValue { get; set; } = string.Empty;
+        public decimal Order2Total { get; set; }
+    }
+
+    private sealed class AttributeOverrideModel
+    {
+        [Column("RAW_VALUE")]
+        public string RawValue { get; set; } = string.Empty;
+
+        [SnowflakeColumn("EXPLICIT_NAME")]
+        public string AnyName { get; set; } = string.Empty;
+    }
+
+    private sealed class ConventionReadModel
+    {
+        public string FirstName { get; set; } = string.Empty;
     }
 }

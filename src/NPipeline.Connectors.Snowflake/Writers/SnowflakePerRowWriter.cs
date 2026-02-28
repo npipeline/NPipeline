@@ -209,7 +209,7 @@ internal sealed class SnowflakePerRowWriter<T> : IDatabaseWriter<T>
 
         var columnAttr = property.GetCustomAttribute<ColumnAttribute>();
 
-        return columnAttr?.Name ?? property.Name;
+        return columnAttr?.Name ?? SnowflakeNamingConvention.ToDefaultColumnName(property.Name);
     }
 
     private static Func<T, object?> BuildGetter(PropertyInfo property)

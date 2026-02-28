@@ -77,8 +77,7 @@ internal static class SnowflakeMapperBuilder
         if (attribute != null && !string.IsNullOrWhiteSpace(attribute.Name))
             return attribute.Name;
 
-        // Snowflake convention: property names are used as-is (case-insensitive matching handles uppercase)
-        return property.Name;
+        return SnowflakeNamingConvention.ToDefaultColumnName(property.Name);
     }
 
     private static Func<T> BuildCreateInstanceDelegate<T>()

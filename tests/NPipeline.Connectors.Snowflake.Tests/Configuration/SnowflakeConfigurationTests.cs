@@ -305,4 +305,18 @@ public sealed class SnowflakeConfigurationTests
         var exception = Record.Exception(() => config.Validate());
         exception.Should().BeNull();
     }
+
+    [Fact]
+    public void Validate_WithStagedCopyAndExactlyOnce_ShouldThrowArgumentException()
+    {
+        // Arrange
+        var config = new SnowflakeConfiguration
+        {
+            WriteStrategy = SnowflakeWriteStrategy.StagedCopy,
+            DeliverySemantic = DeliverySemantic.ExactlyOnce,
+        };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => config.Validate());
+    }
 }
