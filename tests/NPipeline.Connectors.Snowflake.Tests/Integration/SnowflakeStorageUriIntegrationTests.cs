@@ -1,7 +1,8 @@
-using Snowflake.Data.Client;
+using System.Data;
 using NPipeline.Connectors.Snowflake.Tests.Fixtures;
 using NPipeline.Connectors.Snowflake.Tests.Helpers;
 using NPipeline.StorageProviders.Models;
+using Snowflake.Data.Client;
 
 namespace NPipeline.Connectors.Snowflake.Tests.Integration;
 
@@ -44,7 +45,7 @@ public sealed class SnowflakeStorageUriIntegrationTests(SnowflakeTestFixture fix
         using var connection = new SnowflakeDbConnection(builtConnectionString);
         await connection.OpenAsync();
 
-        Assert.Equal(System.Data.ConnectionState.Open, connection.State);
+        Assert.Equal(ConnectionState.Open, connection.State);
     }
 
     private static Dictionary<string, string> ParseConnectionString(string connectionString)

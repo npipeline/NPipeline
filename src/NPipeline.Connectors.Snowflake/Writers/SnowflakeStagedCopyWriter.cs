@@ -5,7 +5,6 @@ using System.Reflection;
 using System.Text;
 using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.Snowflake.Configuration;
-using NPipeline.Connectors.Snowflake.Connection;
 using NPipeline.Connectors.Snowflake.Exceptions;
 using NPipeline.Connectors.Snowflake.Mapping;
 using NPipeline.StorageProviders.Abstractions;
@@ -126,7 +125,8 @@ internal sealed class SnowflakeStagedCopyWriter<T> : IDatabaseWriter<T>
                 ? $"@~/{fileName}"
                 : $"@{_configuration.StageName}/{fileName}";
 
-            var putSql = $"PUT 'file://{tempFilePath.Replace("\\", "/")}' '{stagePath}' AUTO_COMPRESS={(_configuration.CopyCompression != "NONE" ? "TRUE" : "FALSE")} OVERWRITE=TRUE";
+            var putSql =
+                $"PUT 'file://{tempFilePath.Replace("\\", "/")}' '{stagePath}' AUTO_COMPRESS={(_configuration.CopyCompression != "NONE" ? "TRUE" : "FALSE")} OVERWRITE=TRUE";
 
             await using (var putCommand = await _connection.CreateCommandAsync(cancellationToken).ConfigureAwait(false))
             {
@@ -146,15 +146,11 @@ internal sealed class SnowflakeStagedCopyWriter<T> : IDatabaseWriter<T>
             copySql.Append($" FILE_FORMAT = (TYPE = '{_configuration.FileFormat}'");
 
             if (_configuration.FileFormat.Equals("CSV", StringComparison.OrdinalIgnoreCase))
-            {
                 copySql.Append(" FIELD_OPTIONALLY_ENCLOSED_BY = '\"' SKIP_HEADER = 0 ESCAPE_UNENCLOSED_FIELD = NONE");
-            }
 
             if (!string.IsNullOrWhiteSpace(_configuration.CopyCompression) &&
                 !_configuration.CopyCompression.Equals("NONE", StringComparison.OrdinalIgnoreCase))
-            {
                 copySql.Append($" COMPRESSION = '{_configuration.CopyCompression}'");
-            }
 
             copySql.Append(')');
             copySql.Append($" ON_ERROR = '{_configuration.OnErrorAction}'");
@@ -222,16 +218,16 @@ internal sealed class SnowflakeStagedCopyWriter<T> : IDatabaseWriter<T>
             decimal d => d.ToString(CultureInfo.InvariantCulture),
             double d => d.ToString(CultureInfo.InvariantCulture),
             float f => f.ToString(CultureInfo.InvariantCulture),
-            bool b => b ? "TRUE" : "FALSE",
+            bool b => b
+                ? "TRUE"
+                : "FALSE",
             byte[] bytes => Convert.ToBase64String(bytes),
             _ => value.ToString() ?? string.Empty,
         };
 
         // Escape CSV: if contains comma, quote, or newline, wrap in quotes and double any existing quotes
         if (str.Contains(',') || str.Contains('"') || str.Contains('\n') || str.Contains('\r'))
-        {
             return $"\"{str.Replace("\"", "\"\"")}\"";
-        }
 
         return str;
     }

@@ -11,7 +11,7 @@ public sealed class SnowflakeRowTests
     {
         // Arrange
         var reader = CreateReader();
-        var row = new SnowflakeRow(reader, caseInsensitive: true);
+        var row = new SnowflakeRow(reader, true);
 
         // Act
         var hasUpper = row.HasColumn("FIRST_NAME");
@@ -27,7 +27,7 @@ public sealed class SnowflakeRowTests
     {
         // Arrange
         var reader = CreateReader();
-        var row = new SnowflakeRow(reader, caseInsensitive: true);
+        var row = new SnowflakeRow(reader, true);
 
         // Act
         var value = row.Get<string>("FIRST_NAME");

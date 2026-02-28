@@ -1,5 +1,4 @@
 using System.Data.Common;
-using System.Net.Http;
 using System.Net.Sockets;
 
 namespace NPipeline.Connectors.Snowflake.Exceptions;

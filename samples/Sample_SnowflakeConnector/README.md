@@ -4,7 +4,8 @@ This sample demonstrates the usage of the Snowflake connector in NPipeline for r
 
 ## Overview
 
-The Snowflake Connector sample showcases how to use NPipeline's Snowflake connector to perform various database operations including reading data, writing data with different strategies (PerRow, Batch, StagedCopy), attribute-based and convention-based mapping, upsert (MERGE) operations, and data transformations.
+The Snowflake Connector sample showcases how to use NPipeline's Snowflake connector to perform various database operations including reading data, writing data
+with different strategies (PerRow, Batch, StagedCopy), attribute-based and convention-based mapping, upsert (MERGE) operations, and data transformations.
 
 ## Features Demonstrated
 
@@ -177,54 +178,54 @@ The sample creates the following tables in the `PUBLIC` schema:
 
 ### CUSTOMERS
 
-| Column | Type | Description |
-|--------|------|-------------|
-| ID | NUMBER AUTOINCREMENT | Primary key |
-| FIRST_NAME | VARCHAR(100) | Customer first name |
-| LAST_NAME | VARCHAR(100) | Customer last name |
-| EMAIL | VARCHAR(255) | Email address |
-| PHONE_NUMBER | VARCHAR(50) | Phone number (nullable) |
-| CREATED_AT | TIMESTAMP_NTZ | Registration date |
-| STATUS | VARCHAR(50) | Customer status |
+| Column       | Type                 | Description             |
+|--------------|----------------------|-------------------------|
+| ID           | NUMBER AUTOINCREMENT | Primary key             |
+| FIRST_NAME   | VARCHAR(100)         | Customer first name     |
+| LAST_NAME    | VARCHAR(100)         | Customer last name      |
+| EMAIL        | VARCHAR(255)         | Email address           |
+| PHONE_NUMBER | VARCHAR(50)          | Phone number (nullable) |
+| CREATED_AT   | TIMESTAMP_NTZ        | Registration date       |
+| STATUS       | VARCHAR(50)          | Customer status         |
 
 ### ORDERS
 
-| Column | Type | Description |
-|--------|------|-------------|
-| ORDER_ID | NUMBER AUTOINCREMENT | Primary key |
-| CUSTOMER_ID | NUMBER | Foreign key to CUSTOMERS |
-| ORDER_DATE | TIMESTAMP_NTZ | Order date |
-| AMOUNT | NUMBER(18,2) | Order amount |
-| STATUS | VARCHAR(50) | Order status |
-| SHIPPING_ADDRESS | VARCHAR(500) | Shipping address (nullable) |
-| NOTES | VARCHAR(1000) | Notes (nullable) |
+| Column           | Type                 | Description                 |
+|------------------|----------------------|-----------------------------|
+| ORDER_ID         | NUMBER AUTOINCREMENT | Primary key                 |
+| CUSTOMER_ID      | NUMBER               | Foreign key to CUSTOMERS    |
+| ORDER_DATE       | TIMESTAMP_NTZ        | Order date                  |
+| AMOUNT           | NUMBER(18,2)         | Order amount                |
+| STATUS           | VARCHAR(50)          | Order status                |
+| SHIPPING_ADDRESS | VARCHAR(500)         | Shipping address (nullable) |
+| NOTES            | VARCHAR(1000)        | Notes (nullable)            |
 
 ### ENRICHED_CUSTOMERS
 
-| Column | Type | Description |
-|--------|------|-------------|
-| CUSTOMER_ID | NUMBER | Primary key |
-| FULL_NAME | VARCHAR(255) | Full name |
-| EMAIL | VARCHAR(255) | Email address |
-| PHONE_NUMBER | VARCHAR(50) | Phone number (nullable) |
-| CREATED_AT | TIMESTAMP_NTZ | Registration date |
-| STATUS | VARCHAR(50) | Status |
-| TOTAL_ORDERS | NUMBER | Total order count |
-| TOTAL_SPENT | NUMBER(18,2) | Total spending |
-| AVERAGE_ORDER_VALUE | NUMBER(18,2) | Average per order |
-| CUSTOMER_TIER | VARCHAR(50) | Tier: Bronze/Silver/Gold/Platinum |
-| LAST_ORDER_DATE | TIMESTAMP_NTZ | Last order date (nullable) |
-| ENRICHMENT_DATE | TIMESTAMP_NTZ | When enrichment was calculated |
+| Column              | Type          | Description                       |
+|---------------------|---------------|-----------------------------------|
+| CUSTOMER_ID         | NUMBER        | Primary key                       |
+| FULL_NAME           | VARCHAR(255)  | Full name                         |
+| EMAIL               | VARCHAR(255)  | Email address                     |
+| PHONE_NUMBER        | VARCHAR(50)   | Phone number (nullable)           |
+| CREATED_AT          | TIMESTAMP_NTZ | Registration date                 |
+| STATUS              | VARCHAR(50)   | Status                            |
+| TOTAL_ORDERS        | NUMBER        | Total order count                 |
+| TOTAL_SPENT         | NUMBER(18,2)  | Total spending                    |
+| AVERAGE_ORDER_VALUE | NUMBER(18,2)  | Average per order                 |
+| CUSTOMER_TIER       | VARCHAR(50)   | Tier: Bronze/Silver/Gold/Platinum |
+| LAST_ORDER_DATE     | TIMESTAMP_NTZ | Last order date (nullable)        |
+| ENRICHMENT_DATE     | TIMESTAMP_NTZ | When enrichment was calculated    |
 
 ## Key Concepts
 
 ### Write Strategies
 
-| Strategy | Best For | Throughput | Transactional |
-|----------|----------|------------|---------------|
-| **PerRow** | Small batches, debugging | Low | Yes |
-| **Batch** | Moderate volumes (100-10K rows) | Medium | Yes |
-| **StagedCopy** | Large volumes (10K+ rows) | High | No* |
+| Strategy       | Best For                        | Throughput | Transactional |
+|----------------|---------------------------------|------------|---------------|
+| **PerRow**     | Small batches, debugging        | Low        | Yes           |
+| **Batch**      | Moderate volumes (100-10K rows) | Medium     | Yes           |
+| **StagedCopy** | Large volumes (10K+ rows)       | High       | No*           |
 
 *StagedCopy uses PUT + COPY INTO which is not wrapped in a transaction. Use PerRow or Batch for ExactlyOnce semantics.
 

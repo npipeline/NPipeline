@@ -1,5 +1,3 @@
-using System.Data.Common;
-using System.Net.Http;
 using System.Net.Sockets;
 using NPipeline.Connectors.Snowflake.Exceptions;
 

@@ -1,9 +1,9 @@
-using Snowflake.Data.Client;
 using NPipeline.Connectors.Snowflake.Connection;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Exceptions;
 using NPipeline.StorageProviders.Models;
 using NPipeline.StorageProviders.Utilities;
+using Snowflake.Data.Client;
 
 namespace NPipeline.Connectors.Snowflake;
 

@@ -21,7 +21,7 @@ public sealed class SnowflakePerRowWriterTests
             connection,
             "PUBLIC",
             "CUSTOMERS",
-            parameterMapper: null,
+            null,
             new SnowflakeConfiguration());
 
         // Act
@@ -29,7 +29,7 @@ public sealed class SnowflakePerRowWriterTests
 
         // Assert
         A.CallToSet(() => command.CommandText).WhenArgumentsMatch(args =>
-            (args.Get<string>(0) ?? string.Empty).Contains("\"FIRST_NAME\"", StringComparison.Ordinal))
+                (args.Get<string>(0) ?? string.Empty).Contains("\"FIRST_NAME\"", StringComparison.Ordinal))
             .MustHaveHappened();
     }
 

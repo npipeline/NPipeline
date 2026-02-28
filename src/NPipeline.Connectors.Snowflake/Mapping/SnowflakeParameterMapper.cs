@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Linq.Expressions;
 using System.Reflection;
 using NPipeline.Connectors.Attributes;
@@ -10,7 +11,7 @@ namespace NPipeline.Connectors.Snowflake.Mapping;
 /// </summary>
 internal static class SnowflakeParameterMapper
 {
-    public static Action<System.Data.Common.DbParameterCollection, T> Build<T>(SnowflakeConfiguration configuration)
+    public static Action<DbParameterCollection, T> Build<T>(SnowflakeConfiguration configuration)
     {
         var properties = typeof(T)
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -37,6 +38,7 @@ internal static class SnowflakeParameterMapper
             foreach (var mapping in mappings)
             {
                 var value = mapping.Getter(item) ?? DBNull.Value;
+
                 // Parameters are added via the command's AddParameter method in the writers
                 // This delegate provides values for the writers to create parameters from
                 parameters.Add(value);

@@ -27,7 +27,10 @@ internal static class SnowflakeNamingConvention
             {
                 var previous = propertyName[i - 1];
                 var hasNext = i + 1 < propertyName.Length;
-                var next = hasNext ? propertyName[i + 1] : '\0';
+
+                var next = hasNext
+                    ? propertyName[i + 1]
+                    : '\0';
 
                 var startsNewWord = char.IsLower(previous)
                                     || char.IsDigit(previous)

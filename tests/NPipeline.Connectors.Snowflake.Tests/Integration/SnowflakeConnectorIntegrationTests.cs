@@ -1,6 +1,7 @@
-using Snowflake.Data.Client;
+using System.Data;
 using NPipeline.Connectors.Snowflake.Tests.Fixtures;
 using NPipeline.Connectors.Snowflake.Tests.Helpers;
+using Snowflake.Data.Client;
 
 namespace NPipeline.Connectors.Snowflake.Tests.Integration;
 
@@ -20,7 +21,7 @@ public sealed class SnowflakeConnectorIntegrationTests(SnowflakeTestFixture fixt
         using var connection = new SnowflakeDbConnection(_fixture.ConnectionString);
         await connection.OpenAsync();
 
-        Assert.Equal(System.Data.ConnectionState.Open, connection.State);
+        Assert.Equal(ConnectionState.Open, connection.State);
     }
 
     [Fact]

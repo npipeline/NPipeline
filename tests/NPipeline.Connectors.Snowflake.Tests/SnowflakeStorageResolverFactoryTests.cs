@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using NPipeline.Connectors.Snowflake.Configuration;
 
 namespace NPipeline.Connectors.Snowflake.Tests;
 

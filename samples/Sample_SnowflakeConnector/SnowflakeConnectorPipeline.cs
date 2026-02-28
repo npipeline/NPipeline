@@ -1,9 +1,8 @@
-using Snowflake.Data.Client;
 using NPipeline.Connectors.Snowflake.Configuration;
 using NPipeline.Connectors.Snowflake.Nodes;
-using NPipeline.StorageProviders.Models;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Pipeline;
+using Snowflake.Data.Client;
 
 namespace Sample_SnowflakeConnector;
 
@@ -358,7 +357,9 @@ public sealed class SnowflakeConnectorPipeline
                 CustomerId = random.Next(1, 6),
                 OrderDate = DateTime.UtcNow.AddDays(-random.Next(1, 365)),
                 Amount = Math.Round((decimal)(random.NextDouble() * 2000), 2),
-                Status = random.Next(0, 10) > 3 ? "Shipped" : "Pending",
+                Status = random.Next(0, 10) > 3
+                    ? "Shipped"
+                    : "Pending",
                 ShippingAddress = $"{random.Next(100, 999)} Elm Blvd, City {random.Next(1, 50)}",
                 Notes = $"Bulk order #{i}",
             });

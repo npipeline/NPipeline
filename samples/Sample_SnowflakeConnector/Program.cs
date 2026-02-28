@@ -26,10 +26,7 @@ public sealed class Program
         try
         {
             var host = Host.CreateDefaultBuilder(args)
-                .ConfigureServices((context, services) =>
-                {
-                    _ = services.AddNPipeline(Assembly.GetExecutingAssembly());
-                })
+                .ConfigureServices((context, services) => { _ = services.AddNPipeline(Assembly.GetExecutingAssembly()); })
                 .Build();
 
             Console.WriteLine("Registered NPipeline services and scanned assemblies for nodes.");
@@ -100,8 +97,13 @@ public sealed class Program
         Console.WriteLine("  2. Passing it as a command line argument");
         Console.WriteLine();
         Console.WriteLine("Example connection strings:");
-        Console.WriteLine("  Password auth: \"account=myaccount;host=myaccount.snowflakecomputing.com;user=myuser;password=mypassword;db=mydb;schema=PUBLIC;warehouse=COMPUTE_WH\"");
-        Console.WriteLine("  Key-pair auth: \"account=myaccount;host=myaccount.snowflakecomputing.com;user=myuser;authenticator=snowflake_jwt;private_key_file=/path/to/key.p8;db=mydb;schema=PUBLIC;warehouse=COMPUTE_WH\"");
+
+        Console.WriteLine(
+            "  Password auth: \"account=myaccount;host=myaccount.snowflakecomputing.com;user=myuser;password=mypassword;db=mydb;schema=PUBLIC;warehouse=COMPUTE_WH\"");
+
+        Console.WriteLine(
+            "  Key-pair auth: \"account=myaccount;host=myaccount.snowflakecomputing.com;user=myuser;authenticator=snowflake_jwt;private_key_file=/path/to/key.p8;db=mydb;schema=PUBLIC;warehouse=COMPUTE_WH\"");
+
         Console.WriteLine();
         Console.WriteLine("Usage:");
         Console.WriteLine("  dotnet run --project samples/Sample_SnowflakeConnector \"<connection-string>\"");
@@ -113,9 +115,11 @@ public sealed class Program
     private static string GetAccountFromConnectionString(string connectionString)
     {
         var parts = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries);
+
         foreach (var part in parts)
         {
             var keyValue = part.Split('=', 2);
+
             if (keyValue.Length == 2 && keyValue[0].Trim().Equals("account", StringComparison.OrdinalIgnoreCase))
                 return keyValue[1].Trim();
         }
@@ -126,9 +130,11 @@ public sealed class Program
     private static string GetDatabaseFromConnectionString(string connectionString)
     {
         var parts = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries);
+
         foreach (var part in parts)
         {
             var keyValue = part.Split('=', 2);
+
             if (keyValue.Length == 2 && keyValue[0].Trim().Equals("db", StringComparison.OrdinalIgnoreCase))
                 return keyValue[1].Trim();
         }

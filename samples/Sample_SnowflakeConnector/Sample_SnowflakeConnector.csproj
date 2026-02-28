@@ -13,15 +13,15 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\..\src\NPipeline.Connectors.Snowflake\NPipeline.Connectors.Snowflake.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline\NPipeline.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Extensions.DependencyInjection\NPipeline.Extensions.DependencyInjection.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Connectors\NPipeline.Connectors.csproj"/>
-        <ProjectReference Include="..\..\src\NPipeline.Connectors.Snowflake\NPipeline.Connectors.Snowflake.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.3" />
-        <PackageReference Include="Snowflake.Data" Version="4.4.0" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.3"/>
+        <PackageReference Include="Snowflake.Data" Version="4.4.0"/>
     </ItemGroup>
 
 </Project>

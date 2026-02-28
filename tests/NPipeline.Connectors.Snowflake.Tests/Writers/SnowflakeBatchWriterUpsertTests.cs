@@ -39,7 +39,7 @@ public sealed class SnowflakeBatchWriterUpsertTests
 
         // Assert
         A.CallToSet(() => command.CommandText).WhenArgumentsMatch(args =>
-            (args.Get<string>(0) ?? string.Empty).StartsWith("MERGE INTO", StringComparison.OrdinalIgnoreCase))
+                (args.Get<string>(0) ?? string.Empty).StartsWith("MERGE INTO", StringComparison.OrdinalIgnoreCase))
             .MustHaveHappened();
     }
 

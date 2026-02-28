@@ -143,6 +143,7 @@ public class SnowflakeConnectionPool : ISnowflakeConnectionPool
         foreach (var segment in connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries))
         {
             var kvp = segment.Split('=', 2);
+
             if (kvp.Length == 2)
                 parts[kvp[0].Trim()] = kvp[1].Trim();
         }

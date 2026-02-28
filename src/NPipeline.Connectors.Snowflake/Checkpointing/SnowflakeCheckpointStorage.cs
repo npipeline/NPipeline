@@ -20,7 +20,7 @@ public sealed class SnowflakeCheckpointStorage : DatabaseCheckpointStorage
         IDatabaseConnection connection,
         string tableName = "PIPELINE_CHECKPOINTS",
         bool ownsConnection = false)
-        : base(connection, tableName, ownsConnection, "\"")
+        : base(connection, tableName, ownsConnection)
     {
     }
 
