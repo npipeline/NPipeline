@@ -72,3 +72,4 @@ jobs:
             git commit -m "docs: update documentation (manual deployment from NPipeline)"
             git push origin main
           fi
+
