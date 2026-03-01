@@ -916,11 +916,3 @@ The connector supports all authentication methods provided by the `Snowflake.Dat
 | `Column not found` | Enable `CaseInsensitiveMapping = true` (default) |
 | `Type mismatch` | Use `NativeTypeName` to specify Snowflake-native types |
 | `Computed property persisted` | Add `[IgnoreColumn]` attribute to computed properties |
-
-## Next Steps
-
-- **[Sample Application](../../samples/Sample_SnowflakeConnector/README.md)**: See the full working sample
-- **[SQL Server Connector](sqlserver.md)**: Compare with the SQL Server connector
-- **[PostgreSQL Connector](postgres.md)**: Compare with the PostgreSQL connector
-- **[Common Patterns](../core-concepts/common-patterns.md)**: See connectors in practical examples
-- **[Installation](../getting-started/installation.md)**: Review installation options for connector packages
