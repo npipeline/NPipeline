@@ -228,10 +228,9 @@ public sealed class RedshiftUnloadSourceNode<T> : SourceNode<T>, IAsyncDisposabl
         if (_config.IncludeHeader && _config.UnloadFileFormat.Equals("CSV", StringComparison.OrdinalIgnoreCase))
             await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
 
-        while (!reader.EndOfStream)
+        string? line;
+        while ((line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)) != null)
         {
-            var line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-
             if (string.IsNullOrEmpty(line))
                 continue;
 
