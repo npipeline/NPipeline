@@ -1,0 +1,74 @@
+name: Deploy Documentation
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to deploy docs from"
+        required: false
+        default: "main"
+        type: string
+
+env:
+  DOTNET_VERSION: "10.0.x"
+
+jobs:
+  deploy-docs:
+    name: Deploy Documentation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.branch || 'main' }}
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build solution
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Checkout npipeline.dev repo
+        uses: actions/checkout@v6
+        with:
+          repository: npipeline/npipeline.dev
+          token: ${{ secrets.NPIPELINE_DEV_TOKEN }}
+          path: ./npipeline-dev
+
+      - name: Deploy to npipeline.dev
+        run: |
+          # Copy docs content to target repo /docs directory
+          mkdir -p ./npipeline-dev/docs
+          rm -rf ./npipeline-dev/docs/*
+          cp -r ./docs/* ./npipeline-dev/docs/
+
+          # Configure git
+          cd ./npipeline-dev
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Commit and push
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "docs: update documentation (manual deployment from NPipeline)"
+            git push origin main
+          fi
