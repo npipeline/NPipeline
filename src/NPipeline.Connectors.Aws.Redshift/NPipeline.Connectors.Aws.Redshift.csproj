@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+        <!-- NuGet Packaging Metadata -->
+        <PackageId>NPipeline.Connectors.Aws.Redshift</PackageId>
+        <Description>AWS Redshift source and sink nodes for NPipeline — streaming reads, batched INSERT and high-throughput COPY FROM S3 bulk loading with full DI and checkpoint support</Description>
+        <PackageTags>npipeline;redshift;aws;amazon;datawarehouse;connectors;database;cloud</PackageTags>
+        <Authors>NPipeline contributors</Authors>
+        <RepositoryUrl>https://github.com/NPipeline/NPipeline.git</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/NPipeline/NPipeline</PackageProjectUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <PackageIcon>icon.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <WarningsNotAsErrors>$(WarningsNotAsErrors);CS1591</WarningsNotAsErrors>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\NPipeline.Connectors\NPipeline.Connectors.csproj"/>
+        <ProjectReference Include="..\NPipeline.StorageProviders\NPipeline.StorageProviders.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- PostgreSQL wire protocol driver — works with Redshift -->
+        <PackageReference Include="Npgsql" Version="10.0.1"/>
+        <!-- S3 client for CopyFromS3 write strategy -->
+        <PackageReference Include="AWSSDK.S3" Version="4.0.18.7" />
+        <!-- DI integration (optional, for NpgsqlDataSource) -->
+        <PackageReference Include="Npgsql.DependencyInjection" Version="10.0.1"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="..\..\icon.png" Pack="true" PackagePath="\"/>
+        <None Include="README.md" Pack="true" PackagePath="\"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="NPipeline.Connectors.Aws.Redshift.Tests"/>
+        <InternalsVisibleTo Include="NPipeline.Connectors.Aws.Redshift.Pro"/>
+    </ItemGroup>
+
+</Project>
