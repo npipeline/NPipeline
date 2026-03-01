@@ -797,7 +797,7 @@ var configuration = new SnowflakeConfiguration
 
 The retry delay uses exponential backoff with ±25% jitter and a 60-second cap:
 
-$$\mathrm{delay} = \min(\mathrm{baseDelay} \times 2^{\mathrm{attempt}} \times (0.75 + 0.5 \times \mathrm{random}), 60s)$$
+`delay = min(baseDelay * 2^attempt * (0.75 + 0.5 * random), 60s)`
 
 ### Row-Level Error Handling
 
