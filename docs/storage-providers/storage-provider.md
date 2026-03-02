@@ -1,7 +1,7 @@
 ---
 title: Storage Provider Interface
 description: Understanding the IStorageProvider abstraction and implementing custom storage backends.
-sidebar_position: 2
+sidebar_position: 6
 ---
 
 ## Storage Provider Interface

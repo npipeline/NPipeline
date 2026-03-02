@@ -1,7 +1,7 @@
 ---
 title: Excel Connector
 description: Read from and write to Excel files (XLS and XLSX) with NPipeline using the Excel connector.
-sidebar_position: 2
+sidebar_position: 6
 ---
 
 ## Excel Connector

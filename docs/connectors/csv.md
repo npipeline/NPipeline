@@ -1,7 +1,7 @@
 ---
 title: CSV Connector
 description: Read from and write to Comma-Separated Values (CSV) files with NPipeline using the CSV connector.
-sidebar_position: 1
+sidebar_position: 3
 ---
 
 ## CSV Connector

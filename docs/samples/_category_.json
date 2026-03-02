@@ -1,9 +1,10 @@
 {
   "label": "Samples",
-  "position": 8,
+  "position": 10,
   "description": "Real-world examples demonstrating NPipeline concepts and patterns",
   "link": {
     "type": "doc",
     "id": "samples/index"
   }
 }
+

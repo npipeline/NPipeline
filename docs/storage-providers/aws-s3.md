@@ -1,7 +1,7 @@
 ---
 title: AWS S3 Storage Provider
 description: Read from and write to Amazon S3 using the AWS S3 storage provider with full IAM and credential chain support.
-sidebar_position: 3
+sidebar_position: 1
 ---
 
 ## AWS S3 Storage Provider
@@ -359,6 +359,7 @@ The AWS S3 provider can work with S3-compatible services (MinIO, LocalStack) via
 - Other S3-compatible services
 
 The S3-compatible provider:
+
 - Uses static credentials without AWS IAM complexity
 - Provides better configuration for non-AWS endpoints
 - Avoids the overhead of AWS credential chain lookups

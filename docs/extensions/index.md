@@ -13,19 +13,19 @@ This section details the officially supported extensions and how to leverage the
 
 ## Available Extensions
 
+* **[Dependency Injection](dependency-injection.md)**: Seamlessly integrate NPipeline with your favorite Dependency Injection container. Learn how to use constructor injection in your nodes and run pipelines with the `RunPipelineAsync<TDefinition>()` extension method.
+
 * **[Composition](composition/index.md)**: Create hierarchical, modular pipelines by treating entire pipelines as reusable transform nodes. Enables breaking complex workflows into smaller, well-tested building blocks with full type safety and context control.
 
 * **[Connectors](../connectors/index.md)**: Pre-built source and sink nodes for common data sources and destinations (e.g., CSV files).
 
-* **[Dependency Injection](dependency-injection.md)**: Seamlessly integrate NPipeline with your favorite Dependency Injection container. Learn how to use constructor injection in your nodes and run pipelines with the `RunPipelineAsync<TDefinition>()` extension method.
-
-* **[Lineage](lineage/index.md)**: Comprehensive data lineage tracking and provenance capabilities. Track the complete journey of each data item from source to destination, enabling data governance, debugging, audit trails, and data discovery.
-
 * **[Nodes](nodes/index.md)**: Pre-built, production-ready nodes for common data processing operations. Includes cleansing, validation, filtering, and type conversion nodes for string, numeric, datetime, and collection data.
+
+* **[Parallelism](parallelism/index.md)**: Execute pipeline nodes in parallel for improved performance. Discover how to use `ParallelExecutionStrategy` with `WithParallelOptions()` to configure parallel processing, queue policies, and ordering behavior.
 
 * **[Observability](observability/index.md)**: Comprehensive metrics collection and monitoring capabilities for NPipeline pipelines. Track node and pipeline performance, throughput, memory usage, retries, and errors with built-in logging sinks and custom metrics sink support.
 
-* **[Parallelism](parallelism/index.md)**: Execute pipeline nodes in parallel for improved performance. Discover how to use `ParallelExecutionStrategy` with `WithParallelOptions()` to configure parallel processing, queue policies, and ordering behavior.
+* **[Lineage](lineage/index.md)**: Comprehensive data lineage tracking and provenance capabilities. Track the complete journey of each data item from source to destination, enabling data governance, debugging, audit trails, and data discovery.
 
 * **[Testing](testing/index.md)**: Utilities and helpers for writing comprehensive and efficient tests for your pipelines. Includes in-memory source/sink nodes, pipeline builder extensions, and assertion libraries.
 
@@ -35,12 +35,12 @@ This section details the officially supported extensions and how to leverage the
 
 | Package | Description | Key Features |
 |----------|-------------|---------------|
-| [`NPipeline.Extensions.Composition`](../../../src/NPipeline.Extensions.Composition/NPipeline.Extensions.Composition.csproj) | Hierarchical pipeline composition | Sub-pipelines as nodes, modular design, context control, unlimited nesting |
 | [`NPipeline.Extensions.DependencyInjection`](../../../src/NPipeline.Extensions.DependencyInjection/NPipeline.Extensions.DependencyInjection.csproj) | DI container integration | Constructor injection, service lifetime management, `RunPipelineAsync()` extension |
-| [`NPipeline.Extensions.Lineage`](../../../src/NPipeline.Extensions.Lineage/NPipeline.Extensions.Lineage.csproj) | Data lineage tracking | Item-level lineage, pipeline reports, configurable sampling, custom sinks |
+| [`NPipeline.Extensions.Composition`](../../../src/NPipeline.Extensions.Composition/NPipeline.Extensions.Composition.csproj) | Hierarchical pipeline composition | Sub-pipelines as nodes, modular design, context control, unlimited nesting |
 | [`NPipeline.Extensions.Nodes`](../../src/NPipeline.Extensions.Nodes/NPipeline.Extensions.Nodes.csproj) | Pre-built data processing nodes | String/numeric/datetime cleansing, validation, filtering, type conversion |
-| [`NPipeline.Extensions.Observability`](../../../src/NPipeline.Extensions.Observability/NPipeline.Extensions.Observability.csproj) | Metrics collection and monitoring | Node/pipeline metrics, throughput tracking, memory/CPU monitoring, custom sinks |
 | [`NPipeline.Extensions.Parallelism`](../../../src/NPipeline.Extensions.Parallelism/NPipeline.Extensions.Parallelism.csproj) | Parallel processing capabilities | `ParallelExecutionStrategy`, `WithParallelOptions()`, queue policies |
+| [`NPipeline.Extensions.Observability`](../../../src/NPipeline.Extensions.Observability/NPipeline.Extensions.Observability.csproj) | Metrics collection and monitoring | Node/pipeline metrics, throughput tracking, memory/CPU monitoring, custom sinks |
+| [`NPipeline.Extensions.Lineage`](../../../src/NPipeline.Extensions.Lineage/NPipeline.Extensions.Lineage.csproj) | Data lineage tracking | Item-level lineage, pipeline reports, configurable sampling, custom sinks |
 | [`NPipeline.Extensions.Testing`](../../../src/NPipeline.Extensions.Testing/NPipeline.Extensions.Testing.csproj) | Testing utilities | In-memory nodes, pipeline builder extensions, test context helpers |
 
 ### Assertion Libraries

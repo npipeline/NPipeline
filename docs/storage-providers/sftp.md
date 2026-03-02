@@ -1,7 +1,7 @@
 ---
 title: SFTP Storage Provider
 description: Read from and write to SFTP servers using the SFTP storage provider.
-sidebar_position: 6
+sidebar_position: 5
 ---
 
 ## SFTP Storage Provider

@@ -1,7 +1,7 @@
 ---
 title: Installation
 description: A quick guide to installing NPipeline and its essential extensions via NuGet.
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 # Installation

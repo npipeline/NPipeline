@@ -37,30 +37,6 @@ These common attributes work across all connectors (CSV, Excel, PostgreSQL, SQL 
 
 The following connectors are available:
 
-- **[CSV](./csv.md)**: Read from and write to Comma-Separated Values (CSV) files.
-  - Works with any storage backend via the `IStorageProvider` abstraction from `NPipeline.StorageProviders`
-- **[Excel](./excel.md)**: Read from and write to Excel files (XLS and XLSX formats).
-  - Supports both legacy XLS (binary) and modern XLSX (Open XML) formats
-  - Configurable sheet selection, header handling, and type detection
-  - Works with any storage backend via the `IStorageProvider` abstraction from `NPipeline.StorageProviders`
-- **[JSON](./json.md)**: Read from and write to JSON files (Array and NDJSON formats).
-  - Supports both JSON array and newline-delimited JSON (NDJSON) formats
-  - Configurable property naming policies, indentation, and error handling
-  - Uses System.Text.Json for efficient streaming with minimal dependencies
-  - Works with any storage backend via the `IStorageProvider` abstraction from `NPipeline.StorageProviders`
-- **[PostgreSQL](./postgres.md)**: Read from and write to PostgreSQL databases.
-  - Supports streaming reads, per-row and batched writes, and in-memory checkpointing
-  - Uses Npgsql library for reliable database operations
-- **[SQL Server](./sqlserver.md)**: Read from and write to Microsoft SQL Server databases.
-  - Supports streaming reads, per-row and batched writes, and in-memory checkpointing
-  - Uses Microsoft.Data.SqlClient for reliable database operations
-  - Supports Windows Authentication and SQL Server Authentication
-- **[Snowflake](./snowflake.md)**: Read from and write to Snowflake cloud data warehouses.
-  - Supports streaming reads, per-row writes, batched writes, and bulk loading via PUT + COPY INTO
-  - Three write strategies: PerRow, Batch, and StagedCopy for optimal throughput
-  - MERGE-based upsert support with configurable merge actions
-  - Uses Snowflake.Data official ADO.NET driver for reliable operations
-  - Supports password and key-pair (JWT) authentication
 - **[Azure Cosmos DB](./cosmos.md)**: Read from and write to Azure Cosmos DB databases.
   - Supports SQL API with parameterized queries and change feed streaming
   - Multi-API support for Mongo and Cassandra APIs
@@ -72,26 +48,8 @@ The following connectors are available:
   - Includes batch acknowledgment for performance optimization
   - Configurable long polling, parallel processing, and retry logic
   - Uses AWSSDK.SQS for reliable SQS operations
-- **[Kafka](./kafka.md)**: Read from and write to Apache Kafka topics.
-  - Supports multiple delivery semantics (at-least-once, exactly-once)
-  - Configurable batching, retry strategies, and error handling
-  - Multiple serialization formats (JSON, Avro, Protobuf)
-  - Transaction support with proper offset management
-  - Uses Confluent.Kafka for reliable Kafka operations
-- **[RabbitMQ](./rabbitmq.md)**: Read from and write to RabbitMQ message queues.
-  - Push-based consumers with backpressure and configurable prefetch
-  - Publisher confirms and automatic topology declaration
-  - Dead-letter handling at both broker and pipeline levels
-  - Support for Classic, Quorum, and Stream queue types
-  - Uses RabbitMQ.Client 7.x for fully asynchronous operations
-- **[Parquet](./parquet.md)**: Read from and write to Apache Parquet files.
-  - Columnar storage optimised for analytical workloads
-  - Row-group streaming with bounded memory usage
-  - Configurable compression (Snappy, Gzip, None), column projection, and parallel reads
-  - Attribute-based or explicit row mapping
-  - Schema evolution via `SchemaCompatibilityMode` (Strict, Additive, NameOnly)
-  - Atomic writes and observability hooks via `IParquetConnectorObserver`
-  - Works with any storage backend via `IStorageProvider`
+- **[CSV](./csv.md)**: Read from and write to Comma-Separated Values (CSV) files.
+  - Works with any storage backend via the `IStorageProvider` abstraction from `NPipeline.StorageProviders`
 - **[Data Lake](./datalake.md)**: Write and read partitioned Parquet tables with snapshot tracking.
   - Hive-style partitioning (`column=value/` directories) compatible with Spark, Athena, Trino, DuckDB
   - NDJSON manifest with per-snapshot file inventory for auditability
@@ -106,6 +64,48 @@ The following connectors are available:
   - Auto-create tables from CLR types with `[DuckDBColumn]` attributes
   - Export pipeline data to Parquet/CSV via COPY TO
   - Dependency injection support with named databases
+- **[Excel](./excel.md)**: Read from and write to Excel files (XLS and XLSX formats).
+  - Supports both legacy XLS (binary) and modern XLSX (Open XML) formats
+  - Configurable sheet selection, header handling, and type detection
+  - Works with any storage backend via the `IStorageProvider` abstraction from `NPipeline.StorageProviders`
+- **[JSON](./json.md)**: Read from and write to JSON files (Array and NDJSON formats).
+  - Supports both JSON array and newline-delimited JSON (NDJSON) formats
+  - Configurable property naming policies, indentation, and error handling
+  - Uses System.Text.Json for efficient streaming with minimal dependencies
+  - Works with any storage backend via the `IStorageProvider` abstraction from `NPipeline.StorageProviders`
+- **[Kafka](./kafka.md)**: Read from and write to Apache Kafka topics.
+  - Supports multiple delivery semantics (at-least-once, exactly-once)
+  - Configurable batching, retry strategies, and error handling
+  - Multiple serialization formats (JSON, Avro, Protobuf)
+  - Transaction support with proper offset management
+  - Uses Confluent.Kafka for reliable Kafka operations
+- **[Parquet](./parquet.md)**: Read from and write to Apache Parquet files.
+  - Columnar storage optimised for analytical workloads
+  - Row-group streaming with bounded memory usage
+  - Configurable compression (Snappy, Gzip, None), column projection, and parallel reads
+  - Attribute-based or explicit row mapping
+  - Schema evolution via `SchemaCompatibilityMode` (Strict, Additive, NameOnly)
+  - Atomic writes and observability hooks via `IParquetConnectorObserver`
+  - Works with any storage backend via `IStorageProvider`
+- **[PostgreSQL](./postgres.md)**: Read from and write to PostgreSQL databases.
+  - Supports streaming reads, per-row and batched writes, and in-memory checkpointing
+  - Uses Npgsql library for reliable database operations
+- **[RabbitMQ](./rabbitmq.md)**: Read from and write to RabbitMQ message queues.
+  - Push-based consumers with backpressure and configurable prefetch
+  - Publisher confirms and automatic topology declaration
+  - Dead-letter handling at both broker and pipeline levels
+  - Support for Classic, Quorum, and Stream queue types
+  - Uses RabbitMQ.Client 7.x for fully asynchronous operations
+- **[Snowflake](./snowflake.md)**: Read from and write to Snowflake cloud data warehouses.
+  - Supports streaming reads, per-row writes, batched writes, and bulk loading via PUT + COPY INTO
+  - Three write strategies: PerRow, Batch, and StagedCopy for optimal throughput
+  - MERGE-based upsert support with configurable merge actions
+  - Uses Snowflake.Data official ADO.NET driver for reliable operations
+  - Supports password and key-pair (JWT) authentication
+- **[SQL Server](./sqlserver.md)**: Read from and write to Microsoft SQL Server databases.
+  - Supports streaming reads, per-row and batched writes, and in-memory checkpointing
+  - Uses Microsoft.Data.SqlClient for reliable database operations
+  - Supports Windows Authentication and SQL Server Authentication
 
 ## General Usage Pattern
 
@@ -136,18 +136,18 @@ Explore the documentation for each specific connector to learn about its install
 
 ## Next Steps
 
-- **[CSV Connector](csv.md)**: Learn how to read from and write to CSV files
-- **[Excel Connector](excel.md)**: Learn how to read from and write to Excel files (XLS and XLSX)
-- **[JSON Connector](json.md)**: Learn how to read from and write to JSON files (Array and NDJSON)
-- **[PostgreSQL Connector](postgres.md)**: Learn how to read from and write to PostgreSQL databases
-- **[SQL Server Connector](sqlserver.md)**: Learn how to read from and write to Microsoft SQL Server databases
-- **[Snowflake Connector](snowflake.md)**: Learn how to read from and write to Snowflake cloud data warehouses
 - **[Azure Cosmos DB Connector](cosmos.md)**: Learn how to read from and write to Azure Cosmos DB
 - **[AWS SQS Connector](aws-sqs.md)**: Learn how to read from and write to Amazon SQS queues
-- **[Kafka Connector](kafka.md)**: Learn how to read from and write to Apache Kafka topics
-- **[RabbitMQ Connector](rabbitmq.md)**: Learn how to read from and write to RabbitMQ message queues
-- **[Parquet Connector](parquet.md)**: Learn how to read from and write to Apache Parquet files
+- **[CSV Connector](csv.md)**: Learn how to read from and write to CSV files
 - **[Data Lake Connector](datalake.md)**: Learn how to write partitioned tables, use time travel, and compact small files
 - **[DuckDB Connector](duckdb.md)**: Learn how to read from and write to DuckDB databases and query files directly
+- **[Excel Connector](excel.md)**: Learn how to read from and write to Excel files (XLS and XLSX)
+- **[JSON Connector](json.md)**: Learn how to read from and write to JSON files (Array and NDJSON)
+- **[Kafka Connector](kafka.md)**: Learn how to read from and write to Apache Kafka topics
+- **[Parquet Connector](parquet.md)**: Learn how to read from and write to Apache Parquet files
+- **[PostgreSQL Connector](postgres.md)**: Learn how to read from and write to PostgreSQL databases
+- **[RabbitMQ Connector](rabbitmq.md)**: Learn how to read from and write to RabbitMQ message queues
+- **[Snowflake Connector](snowflake.md)**: Learn how to read from and write to Snowflake cloud data warehouses
+- **[SQL Server Connector](sqlserver.md)**: Learn how to read from and write to Microsoft SQL Server databases
 - **[Common Patterns](../core-concepts/common-patterns.md)**: See connectors in practical examples
 - **[Installation](../getting-started/installation.md)**: Review installation options for connector packages

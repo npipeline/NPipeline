@@ -1,7 +1,7 @@
 ---
 title: Quick Start
 description: Build your first NPipeline with a simple "Hello World" example.
-sidebar_position: 2
+sidebar_position: 3
 ---
 
 # Quick Start: Your First NPipeline
@@ -180,6 +180,7 @@ await foreach (var item in input.WithCancellation(cancellationToken))  // Async 
 ```
 
 **Why This Design?**
+
 * **Simplicity:** Pipe creation is fast and synchronous
 * **Type Safety:** Direct `IDataPipe<T>` returns enable better type compatibility
 * **Performance:** No unnecessary Task allocations

@@ -47,10 +47,6 @@ The `IStorageResolver` interface (from `NPipeline.StorageProviders`) is responsi
 
 The following storage providers are available:
 
-- **[Storage Provider Interface](./storage-provider.md)**: Learn about the storage abstraction layer that powers connectors
-  - Works with filesystems, cloud storage (S3, Azure), databases, and custom backends
-  - Unified API for read, write, delete, list, and metadata operations
-  - Built-in support for filesystem with resilient directory traversal
 - **[AWS S3](./aws-s3.md)**: Read from and write to Amazon S3 buckets.
   - AWS-native authentication via credential chain, IAM roles, or explicit credentials
   - Region-aware endpoint selection for all AWS regions
@@ -72,6 +68,14 @@ The following storage providers are available:
   - Stream-based I/O for efficient handling of large files
   - Flexible authentication via Application Default Credentials, service account JSON, or access tokens
   - Resumable uploads for large files (configurable chunk size)
+- **[SFTP](./sftp.md)**: Read from and write to files on SFTP servers.
+  - Secure file transfer over SSH with key and password authentication
+  - Stream-based I/O for efficient handling of large files
+  - Configurable connection pooling and timeout handling
+- **[Storage Provider Interface](./storage-provider.md)**: Learn about the storage abstraction layer that powers connectors
+  - Works with filesystems, cloud storage (S3, Azure), databases, and custom backends
+  - Unified API for read, write, delete, list, and metadata operations
+  - Built-in support for filesystem with resilient directory traversal
 
 ## Usage Pattern
 
@@ -189,10 +193,11 @@ public class CustomStorageProvider : IStorageProvider
 
 ## Next Steps
 
-- **[Storage Provider Interface](./storage-provider.md)**: Learn about the storage abstraction layer
 - **[AWS S3 Storage Provider](./aws-s3.md)**: Learn how to use the AWS S3 storage provider
-- **[S3-Compatible Storage Provider](./s3-compatible.md)**: Learn how to use MinIO, DigitalOcean Spaces, Cloudflare R2, and other S3-compatible services
 - **[Azure Blob Storage Provider](./azure-blob.md)**: Learn how to use the Azure Blob Storage provider
 - **[Google Cloud Storage Provider](./gcs-storage-provider.md)**: Learn how to use the Google Cloud Storage provider
+- **[S3-Compatible Storage Provider](./s3-compatible.md)**: Learn how to use MinIO, DigitalOcean Spaces, Cloudflare R2, and other S3-compatible services
+- **[SFTP Storage Provider](./sftp.md)**: Learn how to use the SFTP storage provider
+- **[Storage Provider Interface](./storage-provider.md)**: Learn about the storage abstraction layer
 - **[CSV Connector](../connectors/csv.md)**: See storage providers in action with CSV files
 - **[Installation](../getting-started/installation.md)**: Review installation options for storage provider packages

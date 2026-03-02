@@ -1,7 +1,7 @@
 ---
 title: RabbitMQ Connector
 description: Consume from and publish to RabbitMQ with NPipeline using the RabbitMQ connector with support for quorum queues, publisher confirms, dead-letter handling, and topology auto-declaration.
-sidebar_position: 7
+sidebar_position: 11
 ---
 
 ## RabbitMQ Connector

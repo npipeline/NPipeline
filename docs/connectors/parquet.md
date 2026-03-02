@@ -1,7 +1,7 @@
 ---
 title: Parquet Connector
 description: Read from and write to Apache Parquet files with NPipeline using the Parquet connector.
-sidebar_position: 7
+sidebar_position: 9
 ---
 
 ## Parquet Connector

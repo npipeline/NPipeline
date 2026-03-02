@@ -1,7 +1,7 @@
 ---
 title: Dependency Injection
 description: Integrate NPipeline with .NET's dependency injection framework to manage dependencies in your nodes and pipelines.
-sidebar_position: 2
+sidebar_position: 1
 ---
 
 # Dependency Injection

@@ -1,7 +1,7 @@
 ---
 title: Azure Cosmos DB Connector
 description: Read from and write to Azure Cosmos DB with NPipeline using the CosmosDB connector with support for SQL, Mongo, and Cassandra APIs.
-sidebar_position: 5
+sidebar_position: 1
 ---
 
 ## Azure Cosmos DB Connector

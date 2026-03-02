@@ -1,8 +1,9 @@
 {
   "label": "Parallelism",
-  "position": 6,
+  "position": 5,
   "link": {
     "type": "doc",
     "id": "extensions/parallelism/index"
   }
 }
+

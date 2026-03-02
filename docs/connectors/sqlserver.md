@@ -1,7 +1,7 @@
 ---
 title: SQL Server Connector
 description: Read from and write to Microsoft SQL Server databases with NPipeline using the SQL Server connector.
-sidebar_position: 4
+sidebar_position: 13
 ---
 
 ## SQL Server Connector

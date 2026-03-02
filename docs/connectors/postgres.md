@@ -1,7 +1,7 @@
 ---
 title: PostgreSQL Connector
 description: Read from and write to PostgreSQL databases with NPipeline using the PostgreSQL connector.
-sidebar_position: 3
+sidebar_position: 10
 ---
 
 ## PostgreSQL Connector
