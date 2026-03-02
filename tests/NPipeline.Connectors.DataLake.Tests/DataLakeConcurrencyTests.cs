@@ -333,7 +333,7 @@ public sealed class DataLakeConcurrencyTests : IAsyncDisposable
         if (Directory.Exists(snapshotsDir))
         {
             var snapshotFiles = Directory.GetFiles(snapshotsDir, "*.ndjson");
-            snapshotFiles.Length.Should().BeGreaterOrEqualTo(3);
+            snapshotFiles.Length.Should().BeGreaterThanOrEqualTo(3);
         }
     }
 

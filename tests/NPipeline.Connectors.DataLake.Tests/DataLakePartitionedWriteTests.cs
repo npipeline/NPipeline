@@ -325,7 +325,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
 
             // Files should start with "part-" per the plan: part-{sequence:D5}-{guid:N8}.parquet
             fileName.Should().StartWith("part-",
-                "data files must follow the part-{seq}-{guid}.parquet naming convention");
+                "data files must follow the part-{{seq}}-{{guid}}.parquet naming convention");
         });
     }
 

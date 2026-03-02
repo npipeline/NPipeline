@@ -89,7 +89,7 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
         var entries = await reader.ReadAllAsync();
 
         // Should have original 5 + new compacted file(s)
-        entries.Count.Should().BeGreaterOrEqualTo(5);
+        entries.Count.Should().BeGreaterThanOrEqualTo(5);
         entries.Count(e => e.Path.StartsWith("compacted-", StringComparison.Ordinal)).Should().BeGreaterThan(0);
     }
 
