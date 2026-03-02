@@ -6,11 +6,11 @@ using Amazon.S3.Model;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
-namespace NPipeline.StorageProviders.Aws;
+namespace NPipeline.StorageProviders.S3;
 
 /// <summary>
-///     Storage provider for AWS S3 that implements the <see cref="IStorageProvider" /> interface.
-///     Handles "s3" scheme URIs and supports reading, writing, listing, and metadata operations.
+///     Core S3 storage provider implementation that handles common S3 operations.
+///     Subclasses provide environment-specific client factory and metadata.
 /// </summary>
 /// <remarks>
 ///     - Async-first API design
@@ -18,23 +18,26 @@ namespace NPipeline.StorageProviders.Aws;
 ///     - Proper error handling and exception translation
 ///     - Cancellation token support throughout
 ///     - Thread-safe implementation
-///     - Consistent with existing FileSystemStorageProvider patterns
 /// </remarks>
-public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetadataProvider
+public class S3CoreStorageProvider : IStorageProvider, IStorageProviderMetadataProvider
 {
-    private readonly S3ClientFactory _clientFactory;
-    private readonly S3StorageProviderOptions _options;
+    private readonly S3ClientFactoryBase _clientFactory;
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="S3StorageProvider" /> class.
+    ///     Initializes a new instance of the <see cref="S3CoreStorageProvider" /> class.
     /// </summary>
     /// <param name="clientFactory">The S3 client factory.</param>
     /// <param name="options">The S3 storage provider options.</param>
-    public S3StorageProvider(S3ClientFactory clientFactory, S3StorageProviderOptions options)
+    protected S3CoreStorageProvider(S3ClientFactoryBase clientFactory, S3CoreOptions options)
     {
         _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
-        _options = options ?? throw new ArgumentNullException(nameof(options));
+        Options = options ?? throw new ArgumentNullException(nameof(options));
     }
+
+    /// <summary>
+    ///     Gets the options for this provider.
+    /// </summary>
+    protected S3CoreOptions Options { get; }
 
     /// <summary>
     ///     Gets the storage scheme supported by this provider.
@@ -99,7 +102,7 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
             ? ct
             : null;
 
-        return new S3WriteStream(client, bucket, key, contentType, _options.MultipartUploadThresholdBytes);
+        return new S3WriteStream(client, bucket, key, contentType, Options.MultipartUploadThresholdBytes);
     }
 
     /// <summary>
@@ -211,9 +214,18 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
     /// <returns>A <see cref="StorageProviderMetadata" /> object containing information about the provider's supported features.</returns>
     public StorageProviderMetadata GetMetadata()
     {
+        return BuildMetadata();
+    }
+
+    /// <summary>
+    ///     Builds the provider metadata. Subclasses can override this to provide environment-specific metadata.
+    /// </summary>
+    /// <returns>A <see cref="StorageProviderMetadata" /> object.</returns>
+    protected virtual StorageProviderMetadata BuildMetadata()
+    {
         return new StorageProviderMetadata
         {
-            Name = "AWS S3",
+            Name = "S3",
             SupportedSchemes = ["s3"],
             SupportsRead = true,
             SupportsWrite = true,
@@ -222,14 +234,17 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
             SupportsHierarchy = false, // S3 is flat
             Capabilities = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
             {
-                ["multipartUploadThresholdBytes"] = _options.MultipartUploadThresholdBytes,
-                ["supportsPathStyle"] = true,
-                ["supportsServiceUrl"] = true,
+                ["multipartUploadThresholdBytes"] = Options.MultipartUploadThresholdBytes,
             },
         };
     }
 
-    private static (string bucket, string key) GetBucketAndKey(StorageUri uri)
+    /// <summary>
+    ///     Extracts the bucket and key from a storage URI.
+    /// </summary>
+    /// <param name="uri">The storage URI.</param>
+    /// <returns>A tuple containing the bucket name and object key.</returns>
+    protected static (string bucket, string key) GetBucketAndKey(StorageUri uri)
     {
         var bucket = uri.Host;
 
@@ -238,6 +253,46 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
 
         var key = uri.Path.TrimStart('/');
         return (bucket, key);
+    }
+
+    /// <summary>
+    ///     Translates an AmazonS3Exception to a more specific exception type.
+    /// </summary>
+    /// <param name="ex">The Amazon S3 exception.</param>
+    /// <param name="bucket">The bucket name.</param>
+    /// <param name="key">The object key.</param>
+    /// <returns>A translated exception.</returns>
+    protected static Exception TranslateS3Exception(AmazonS3Exception ex, string bucket, string key)
+    {
+        return ex.ErrorCode switch
+        {
+            "AccessDenied" or "InvalidAccessKeyId" or "SignatureDoesNotMatch"
+                => new UnauthorizedAccessException(
+                    $"Access denied to S3 bucket '{bucket}' and key '{key}'. {ex.Message}", ex),
+            "InvalidBucketName" or "InvalidKey"
+                => new ArgumentException(
+                    $"Invalid S3 bucket '{bucket}' or key '{key}'. {ex.Message}", ex),
+            "NoSuchBucket" or "NotFound"
+                => new FileNotFoundException(
+                    $"S3 bucket '{bucket}' or key '{key}' not found.", ex),
+            _
+                => new IOException(
+                    $"Failed to access S3 bucket '{bucket}' and key '{key}'. {ex.Message}", ex),
+        };
+    }
+
+    /// <summary>
+    ///     Normalizes a nullable DateTime to a DateTimeOffset.
+    /// </summary>
+    private static DateTimeOffset NormalizeDateTime(DateTime? value)
+    {
+        var actual = value ?? DateTime.UtcNow;
+
+        var utc = actual.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(actual, DateTimeKind.Utc)
+            : actual.ToUniversalTime();
+
+        return new DateTimeOffset(utc);
     }
 
     private async IAsyncEnumerable<StorageItem> ListAsyncCore(
@@ -330,36 +385,6 @@ public sealed class S3StorageProvider : IStorageProvider, IStorageProviderMetada
 
             continuationToken = response.NextContinuationToken;
         } while (!string.IsNullOrEmpty(continuationToken));
-    }
-
-    private static Exception TranslateS3Exception(AmazonS3Exception ex, string bucket, string key)
-    {
-        return ex.ErrorCode switch
-        {
-            "AccessDenied" or "InvalidAccessKeyId" or "SignatureDoesNotMatch"
-                => new UnauthorizedAccessException(
-                    $"Access denied to S3 bucket '{bucket}' and key '{key}'. {ex.Message}", ex),
-            "InvalidBucketName" or "InvalidKey"
-                => new ArgumentException(
-                    $"Invalid S3 bucket '{bucket}' or key '{key}'. {ex.Message}", ex),
-            "NoSuchBucket" or "NotFound"
-                => new FileNotFoundException(
-                    $"S3 bucket '{bucket}' or key '{key}' not found.", ex),
-            _
-                => new IOException(
-                    $"Failed to access S3 bucket '{bucket}' and key '{key}'. {ex.Message}", ex),
-        };
-    }
-
-    private static DateTimeOffset NormalizeDateTime(DateTime? value)
-    {
-        var actual = value ?? DateTime.UtcNow;
-
-        var utc = actual.Kind == DateTimeKind.Unspecified
-            ? DateTime.SpecifyKind(actual, DateTimeKind.Utc)
-            : actual.ToUniversalTime();
-
-        return new DateTimeOffset(utc);
     }
 
     private sealed class S3ResponseStream : Stream

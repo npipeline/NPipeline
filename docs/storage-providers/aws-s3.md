@@ -1,6 +1,6 @@
 ---
 title: AWS S3 Storage Provider
-description: Read from and write to Amazon S3 and S3-compatible storage services using the AWS S3 storage provider.
+description: Read from and write to Amazon S3 using the AWS S3 storage provider with full IAM and credential chain support.
 sidebar_position: 3
 ---
 
@@ -10,12 +10,12 @@ The AWS S3 storage provider enables NPipeline applications to read from and writ
 
 ### Overview
 
-The S3 storage provider provides seamless integration with Amazon S3 and S3-compatible storage services. It offers:
+The AWS S3 storage provider provides seamless integration with Amazon S3. It offers:
 
 - **Stream-based I/O** for efficient handling of large files
 - **Async-first API** for scalable, non-blocking operations
-- **Flexible authentication** via AWS credential chain or explicit credentials
-- **S3-compatible endpoint support** for MinIO, LocalStack, and other compatible services
+- **Flexible authentication** via AWS credential chain, explicit credentials, or IAM roles
+- **Region-aware endpoint selection** with support for all AWS regions
 - **Multipart upload** for large files (configurable threshold, default 64 MB)
 - **Comprehensive error handling** with proper exception translation
 - **Metadata support** for retrieving object metadata
@@ -23,38 +23,41 @@ The S3 storage provider provides seamless integration with Amazon S3 and S3-comp
 
 ### When to Use This Provider
 
-Use the S3 storage provider when your application needs to:
+Use the AWS S3 storage provider when your application needs to:
 
-- Store and retrieve data in Amazon S3
-- Work with S3-compatible storage services (MinIO, LocalStack, etc.)
+- Store and retrieve data in Amazon S3 buckets
 - Integrate cloud storage into NPipeline data pipelines
-- Leverage S3's scalability and durability for data storage
+- Leverage the AWS credential chain (environment variables, credential files, IAM roles)
+- Use different regions and AWS features
 - Handle large files through streaming and multipart uploads
+
+> **For S3-Compatible Endpoints:** If you need to use MinIO, DigitalOcean Spaces, Cloudflare R2, or other S3-compatible services, use the [S3-Compatible Storage Provider](./s3-compatible.md) instead. It's optimized for static credentials and custom endpoints without AWS IAM complexity.
 
 ## Dependencies
 
-The S3 storage provider depends on the following packages:
+The AWS S3 storage provider depends on the following packages:
 
 - `AWSSDK.S3` - AWS SDK for S3 operations
-- `NPipeline.StorageProviders` - Core storage abstractions (IStorageProvider, StorageUri, StorageItem, StorageMetadata, StorageProviderMetadata, StorageResolverOptions, StorageProviderFactory)
-- `NPipeline.Connectors` - Core connectors for using storage providers with connectors
+- `AWSSDK.Core` - Core AWS SDK functionality
+- `NPipeline.StorageProviders.S3` - Shared S3 core functionality (base classes, shared types)
+- `NPipeline.StorageProviders` - Core storage abstractions (IStorageProvider, StorageUri, StorageItem, StorageMetadata, StorageProviderMetadata, StorageResolverOptions)
 
 ### Key Storage Types
 
-> **Note:** The shared storage types (IStorageProvider, StorageUri, StorageItem, StorageMetadata, StorageProviderMetadata, StorageResolverOptions, StorageProviderFactory) are common across all NPipeline storage providers. Refer to the [Storage Provider Interface](./storage-provider.md) documentation for details on these types.
+> **Note:** The shared storage types (IStorageProvider, StorageUri, StorageItem, StorageMetadata, StorageProviderMetadata, StorageResolverOptions) are common across all NPipeline storage providers. Refer to the [Storage Provider Interface](./storage-provider.md) documentation for details on these types.
 
-S3-specific configuration types:
+AWS S3-specific configuration types:
 
-- **`S3StorageProviderOptions`** - Configuration options for the S3 storage provider
-  - Location: `NPipeline.StorageProviders.Aws.S3StorageProviderOptions`
-  - Essential settings: region, credentials, service URL, multipart upload thresholds
+- **`AwsS3StorageProviderOptions`** - Configuration options for the AWS S3 storage provider
+  - Location: `NPipeline.StorageProviders.S3.Aws.AwsS3StorageProviderOptions`
+  - Essential settings: region, credentials, multipart upload thresholds
 
 ## Installation
 
 ### Prerequisites
 
 - .NET 6.0 or later
-- An AWS account with S3 access (or S3-compatible service)
+- An AWS account with S3 access
 - Appropriate IAM permissions for S3 operations
 
 ### Package Installation
@@ -62,23 +65,24 @@ S3-specific configuration types:
 Add the project reference to your solution:
 
 ```bash
-dotnet add src/NPipeline.StorageProviders.Aws/NPipeline.StorageProviders.Aws.csproj
+dotnet add src/NPipeline.StorageProviders.S3.Aws/NPipeline.StorageProviders.S3.Aws.csproj
 ```
 
 Or add it to your `.csproj` file:
 
 ```xml
 <ItemGroup>
-  <ProjectReference Include="..\NPipeline.StorageProviders.Aws\NPipeline.StorageProviders.Aws.csproj" />
+  <ProjectReference Include="..\NPipeline.StorageProviders.S3.Aws\NPipeline.StorageProviders.S3.Aws.csproj" />
 </ItemGroup>
 ```
 
 ### Required Dependencies
 
-The S3 storage provider depends on:
+The AWS S3 storage provider depends on:
 
-- `AWSSDK.S3` - AWS SDK for S3 operations
-- `NPipeline.Connectors` - Core storage abstractions
+- `AWSSDK.S3` and `AWSSDK.Core` - AWS SDK for S3 operations
+- `NPipeline.StorageProviders.S3` - Shared S3 core functionality
+- `NPipeline.StorageProviders` - Core storage abstractions
 
 These dependencies are automatically resolved when adding the project reference.
 
@@ -86,21 +90,30 @@ These dependencies are automatically resolved when adding the project reference.
 
 ### Basic Usage with Connectors
 
-The S3 storage provider works seamlessly with all NPipeline connectors. Here's a quick example using the CSV connector:
+The AWS S3 storage provider works seamlessly with all NPipeline connectors. Here's a quick example using the CSV connector:
 
 ```csharp
 using NPipeline;
 using NPipeline.Connectors;
 using NPipeline.Connectors.Csv;
-using NPipeline.StorageProviders.Aws;
+using NPipeline.StorageProviders.S3.Aws;
 using Amazon;
+using Microsoft.Extensions.DependencyInjection;
 
-// Create a resolver with S3 support
+// Register and configure AWS S3 provider
+var services = new ServiceCollection();
+
+services.AddAwsS3StorageProvider(options =>
+{
+    options.DefaultRegion = RegionEndpoint.USEast1;
+    options.UseDefaultCredentialChain = true;  // Uses AWS credential chain
+});
+
 var resolver = StorageProviderFactory.CreateResolver(
     new StorageResolverOptions
     {
         IncludeFileSystem = true,
-        AdditionalProviders = new[] { new S3StorageProvider() }
+        AdditionalProviders = new[] { services.BuildServiceProvider().GetRequiredService<AwsS3StorageProvider>() }
     }
 );
 
@@ -137,16 +150,16 @@ public sealed class S3CsvPipeline : IPipelineDefinition
 
 ### Using Dependency Injection
 
-The recommended way to configure the S3 storage provider is through dependency injection:
+The recommended way to configure the AWS S3 storage provider is through dependency injection:
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
-using NPipeline.StorageProviders.Aws;
+using NPipeline.StorageProviders.S3.Aws;
 using Amazon;
 
 var services = new ServiceCollection();
 
-services.AddS3StorageProvider(options =>
+services.AddAwsS3StorageProvider(options =>
 {
     options.DefaultRegion = RegionEndpoint.USEast1;
     options.UseDefaultCredentialChain = true;
@@ -154,12 +167,12 @@ services.AddS3StorageProvider(options =>
 });
 
 var serviceProvider = services.BuildServiceProvider();
-var provider = serviceProvider.GetRequiredService<S3StorageProvider>();
+var provider = serviceProvider.GetRequiredService<AwsS3StorageProvider>();
 ```
 
-### S3StorageProviderOptions
+### AwsS3StorageProviderOptions
 
-The `S3StorageProviderOptions` class provides configuration options for the S3 storage provider:
+The `AwsS3StorageProviderOptions` class provides configuration options for the AWS S3 storage provider:
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -175,28 +188,45 @@ The `S3StorageProviderOptions` class provides configuration options for the S3 s
 #### Basic Configuration with Default Credentials
 
 ```csharp
-services.AddS3StorageProvider(options =>
+services.AddAwsS3StorageProvider(options =>
 {
     options.DefaultRegion = RegionEndpoint.APSoutheast2; // Sydney
     options.UseDefaultCredentialChain = true;
 });
 ```
 
-#### Configuration for MinIO
+#### Configuration with Explicit Credentials
 
 ```csharp
-services.AddS3StorageProvider(options =>
+services.AddAwsS3StorageProvider(options =>
+{
+    options.DefaultRegion = RegionEndpoint.USEast1;
+    options.DefaultCredentials = new BasicAWSCredentials("accessKey", "secretKey");
+    options.UseDefaultCredentialChain = false;
+});
+```
+
+#### Configuration for MinIO (S3-Compatible via AWS Provider)
+
+> **Recommended:** Use the [S3-Compatible Storage Provider](./s3-compatible.md) instead. It's optimized for MinIO and other S3-compatible services without AWS complexity.
+
+If you need to use MinIO with the AWS provider:
+
+```csharp
+services.AddAwsS3StorageProvider(options =>
 {
     options.ServiceUrl = new Uri("http://localhost:9000");
     options.ForcePathStyle = true;
     options.DefaultRegion = RegionEndpoint.USEast1;
+    options.DefaultCredentials = new BasicAWSCredentials("minioadmin", "minioadmin");
+    options.UseDefaultCredentialChain = false;
 });
 ```
 
 #### Configuration for LocalStack
 
 ```csharp
-services.AddS3StorageProvider(options =>
+services.AddAwsS3StorageProvider(options =>
 {
     options.ServiceUrl = new Uri("http://localhost:4566");
     options.ForcePathStyle = true;
@@ -206,7 +236,7 @@ services.AddS3StorageProvider(options =>
 
 ## URI Format
 
-The S3 storage provider uses URIs with the `s3://` scheme to identify S3 objects.
+The AWS S3 storage provider uses URIs with the `s3://` scheme to identify S3 objects.
 
 ### Basic Format
 
@@ -220,7 +250,7 @@ s3://bucket-name/path/to/file.csv
 s3://bucket-name/path/to/file.csv?region=us-east-1
 ```
 
-### With Service URL (S3-Compatible Endpoints)
+### With Service URL (for Custom Endpoints)
 
 ```
 s3://bucket-name/path/to/file.csv?serviceUrl=http://localhost:9000&pathStyle=true
@@ -255,16 +285,16 @@ var uri2 = StorageUri.Parse("s3://my-bucket/data/input.csv?region=us-west-2");
 // With custom content type
 var uri3 = StorageUri.Parse("s3://my-bucket/data/output.json?contentType=application/json");
 
-// MinIO endpoint
-var uri4 = StorageUri.Parse("s3://my-bucket/data/file.csv?serviceUrl=http://localhost:9000&pathStyle=true");
+// With explicit credentials (development only)
+var uri4 = StorageUri.Parse("s3://my-bucket/data/file.csv?accessKey=AKIA...&secretKey=...");
 
-// LocalStack endpoint
+// Custom endpoint (for testing or S3-compatible services)
 var uri5 = StorageUri.Parse("s3://local-bucket/data/file.csv?serviceUrl=http://localhost:4566&pathStyle=true");
 ```
 
 ## Authentication
 
-The S3 storage provider supports multiple authentication methods.
+The AWS S3 storage provider supports multiple authentication methods, with the AWS credential chain being the recommended approach.
 
 ### Default AWS Credential Chain (Recommended)
 
@@ -278,7 +308,7 @@ The default credential chain automatically searches for credentials in the follo
 **Configuration:**
 
 ```csharp
-services.AddS3StorageProvider(options =>
+services.AddAwsS3StorageProvider(options =>
 {
     options.UseDefaultCredentialChain = true;
     options.DefaultRegion = RegionEndpoint.USEast1;
@@ -295,10 +325,10 @@ export AWS_DEFAULT_REGION=us-east-1
 
 ### Explicit Credentials
 
-You can provide explicit credentials via `S3StorageProviderOptions`:
+You can provide explicit credentials via `AwsS3StorageProviderOptions`:
 
 ```csharp
-services.AddS3StorageProvider(options =>
+services.AddAwsS3StorageProvider(options =>
 {
     options.DefaultCredentials = new BasicAWSCredentials("accessKey", "secretKey");
     options.DefaultRegion = RegionEndpoint.USEast1;
@@ -306,63 +336,42 @@ services.AddS3StorageProvider(options =>
 });
 ```
 
-⚠️ **Security Warning:** Avoid passing credentials in URIs in production code. URIs may be logged, displayed in error messages, or stored in configuration files. Use the credential chain instead.
+### Per-URI Credentials
 
-## S3-Compatible Endpoints
-
-The S3 storage provider supports S3-compatible storage services such as MinIO and LocalStack.
-
-### MinIO
-
-MinIO is a high-performance, S3-compatible object storage system.
-
-**Configuration:**
+For development and testing, credentials can be passed via URI parameters:
 
 ```csharp
-services.AddS3StorageProvider(options =>
-{
-    options.ServiceUrl = new Uri("http://localhost:9000");
-    options.ForcePathStyle = true;
-    options.DefaultRegion = RegionEndpoint.USEast1;
-});
+var uri = StorageUri.Parse("s3://my-bucket/data.csv?accessKey=AKIA...&secretKey=...");
 ```
 
-**URI Example:**
+⚠️ **Security Warning:** Avoid passing credentials in URIs in production code. URIs may be logged, displayed in error messages, or stored in configuration files. Use the credential chain or explicit configuration instead.
 
-```csharp
-var uri = StorageUri.Parse("s3://my-bucket/data/file.csv?serviceUrl=http://localhost:9000&pathStyle=true");
-```
+## Working with S3-Compatible Endpoints
 
-### LocalStack
+The AWS S3 provider can work with S3-compatible services (MinIO, LocalStack) via the `ServiceUrl` option, but this functionality is **not recommended for production use**.
 
-LocalStack provides a fully functional local AWS cloud stack for testing.
+**Instead:** Use the dedicated [S3-Compatible Storage Provider](./s3-compatible.md), which is purpose-built for:
 
-**Configuration:**
+- MinIO
+- DigitalOcean Spaces
+- Cloudflare R2
+- Wasabi
+- Other S3-compatible services
 
-```csharp
-services.AddS3StorageProvider(options =>
-{
-    options.ServiceUrl = new Uri("http://localhost:4566");
-    options.ForcePathStyle = true;
-    options.DefaultRegion = RegionEndpoint.USEast1;
-});
-```
-
-**URI Example:**
-
-```csharp
-var uri = StorageUri.Parse("s3://local-bucket/data/file.csv?serviceUrl=http://localhost:4566&pathStyle=true");
-```
+The S3-compatible provider:
+- Uses static credentials without AWS IAM complexity
+- Provides better configuration for non-AWS endpoints
+- Avoids the overhead of AWS credential chain lookups
+- Offers dedicated documentation and examples
 
 ## Examples
 
 ### Reading from S3
 
 ```csharp
-using NPipeline.Connectors;
-using NPipeline.StorageProviders.Aws;
+using NPipeline.StorageProviders.S3.Aws;
 
-var provider = new S3StorageProvider(new S3ClientFactory(new S3StorageProviderOptions()), new S3StorageProviderOptions());
+var provider = serviceProvider.GetRequiredService<AwsS3StorageProvider>();
 var uri = StorageUri.Parse("s3://my-bucket/data.csv");
 
 using var stream = await provider.OpenReadAsync(uri);
@@ -373,7 +382,6 @@ var content = await reader.ReadToEndAsync();
 ### Writing to S3
 
 ```csharp
-var provider = new S3StorageProvider(new S3ClientFactory(new S3StorageProviderOptions()), new S3StorageProviderOptions());
 var uri = StorageUri.Parse("s3://my-bucket/output.csv");
 
 using var stream = await provider.OpenWriteAsync(uri);
@@ -385,7 +393,6 @@ await writer.WriteLineAsync("1,Item A,100");
 ### Listing Files
 
 ```csharp
-var provider = new S3StorageProvider(new S3ClientFactory(new S3StorageProviderOptions()), new S3StorageProviderOptions());
 var uri = StorageUri.Parse("s3://my-bucket/data/");
 
 // List all files recursively
@@ -405,7 +412,6 @@ await foreach (var item in provider.ListAsync(uri, recursive: false))
 ### Checking File Existence
 
 ```csharp
-var provider = new S3StorageProvider(new S3ClientFactory(new S3StorageProviderOptions()), new S3StorageProviderOptions());
 var uri = StorageUri.Parse("s3://my-bucket/data.csv");
 
 var exists = await provider.ExistsAsync(uri);
@@ -422,7 +428,6 @@ else
 ### Getting Metadata
 
 ```csharp
-var provider = new S3StorageProvider(new S3ClientFactory(new S3StorageProviderOptions()), new S3StorageProviderOptions());
 var uri = StorageUri.Parse("s3://my-bucket/data.csv");
 
 var metadata = await provider.GetMetadataAsync(uri);
@@ -585,30 +590,35 @@ To use the S3 storage provider, your AWS credentials must have appropriate IAM p
   - Location: [`NPipeline.StorageProviders.StorageMetadata`](../../src/NPipeline.StorageProviders/Models/StorageMetadata.cs)
   - Contains size, content type, last modified date, ETag, and custom metadata
 
-### S3-Specific Types
+### AWS S3-Specific Types
 
-- **`S3StorageProvider`** - S3 storage provider implementation
-  - Location: [`S3StorageProvider.cs`](../../src/NPipeline.StorageProviders.Aws/S3StorageProvider.cs)
+- **`AwsS3StorageProvider`** - AWS S3 storage provider implementation
+  - Location: [`AwsS3StorageProvider.cs`](../../src/NPipeline.StorageProviders.S3.Aws/AwsS3StorageProvider.cs)
   - Implements `IStorageProvider` and `IStorageProviderMetadataProvider`
 
-- **`S3StorageProviderOptions`** - Configuration options
-  - Location: [`S3StorageProviderOptions.cs`](../../src/NPipeline.StorageProviders.Aws/S3StorageProviderOptions.cs)
+- **`AwsS3StorageProviderOptions`** - Configuration options
+  - Location: [`AwsS3StorageProviderOptions.cs`](../../src/NPipeline.StorageProviders.S3.Aws/AwsS3StorageProviderOptions.cs)
   - Contains region, credentials, service URL, and other settings
 
-- **`S3ClientFactory`** - Factory for creating S3 clients
-  - Location: [`S3ClientFactory.cs`](../../src/NPipeline.StorageProviders.Aws/S3ClientFactory.cs)
+- **`AwsS3ClientFactory`** - Factory for creating S3 clients
+  - Location: [`AwsS3ClientFactory.cs`](../../src/NPipeline.StorageProviders.S3.Aws/AwsS3ClientFactory.cs)
   - Creates and caches `AmazonS3Client` instances
 
-- **`S3StorageException`** - Custom exception for S3 errors
-  - Location: [`S3StorageException.cs`](../../src/NPipeline.StorageProviders.Aws/S3StorageException.cs)
-  - Available for custom error handling implementations
-  - Note: The provider translates S3 exceptions into standard .NET exceptions (`UnauthorizedAccessException`, `ArgumentException`, `FileNotFoundException`, `IOException`) for consistency with other storage providers
+### Shared S3 Core Types
+
+- **`S3ClientFactoryBase`** - Abstract base class for S3 client factories
+  - Location: [`S3ClientFactoryBase.cs`](../../src/NPipeline.StorageProviders.S3/S3ClientFactoryBase.cs)
+  - Shared client caching logic used by AWS and compatible providers
+
+- **`S3CoreStorageProvider`** - Base class for S3 provider implementations
+  - Location: [`S3CoreStorageProvider.cs`](../../src/NPipeline.StorageProviders.S3/S3CoreStorageProvider.cs)
+  - Shared core logic for all S3 providers
 
 ### Extension Methods
 
-- **`ServiceCollectionExtensions.AddS3StorageProvider`**
-  - Location: [`ServiceCollectionExtensions.cs`](../../src/NPipeline.StorageProviders.Aws/ServiceCollectionExtensions.cs)
-  - Extension method for registering S3 storage provider in DI container
+- **`ServiceCollectionExtensions.AddAwsS3StorageProvider`**
+  - Location: [`ServiceCollectionExtensions.cs`](../../src/NPipeline.StorageProviders.S3.Aws/ServiceCollectionExtensions.cs)
+  - Extension method for registering AWS S3 storage provider in DI container
 
 ## Limitations
 
@@ -630,5 +640,6 @@ The S3 storage provider has the following limitations:
 
 - [AWS S3 Documentation](https://docs.aws.amazon.com/s3/)
 - [AWS SDK for .NET Documentation](https://docs.aws.amazon.com/sdk-for-net/)
-- [MinIO Documentation](https://docs.min.io/)
-- [LocalStack Documentation](https://docs.localstack.cloud/)
+- [AWS IAM Documentation](https://docs.aws.amazon.com/iam/)
+- [AWS Credential Configuration](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)
+- [S3-Compatible Storage Provider](./s3-compatible.md) - For MinIO, DigitalOcean Spaces, Cloudflare R2, and other S3-compatible services

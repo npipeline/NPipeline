@@ -6,31 +6,31 @@ using FakeItEasy;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 
-namespace NPipeline.StorageProviders.Aws.Tests;
+namespace NPipeline.StorageProviders.S3.Aws.Tests;
 
-public class S3StorageProviderTests
+public class AwsS3StorageProviderTests
 {
-    private readonly S3ClientFactory _fakeClientFactory;
+    private readonly AwsS3ClientFactory _fakeClientFactory;
     private readonly IAmazonS3 _fakeS3Client;
-    private readonly S3StorageProviderOptions _options;
-    private readonly S3StorageProvider _provider;
+    private readonly AwsS3StorageProviderOptions _options;
+    private readonly AwsS3StorageProvider _provider;
 
-    public S3StorageProviderTests()
+    public AwsS3StorageProviderTests()
     {
-        _fakeClientFactory = A.Fake<S3ClientFactory>(c => c
-            .WithArgumentsForConstructor(new object[] { new S3StorageProviderOptions() })
+        _fakeClientFactory = A.Fake<AwsS3ClientFactory>(c => c
+            .WithArgumentsForConstructor(new object[] { new AwsS3StorageProviderOptions() })
             .CallsBaseMethods());
 
         _fakeS3Client = A.Fake<IAmazonS3>();
-        _options = new S3StorageProviderOptions();
-        _provider = new S3StorageProvider(_fakeClientFactory, _options);
+        _options = new AwsS3StorageProviderOptions();
+        _provider = new AwsS3StorageProvider(_fakeClientFactory, _options);
     }
 
     [Fact]
     public void Constructor_WithNullClientFactory_ThrowsArgumentNullException()
     {
         // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() => new S3StorageProvider(null!, _options));
+        var exception = Assert.Throws<ArgumentNullException>(() => new AwsS3StorageProvider(null!, _options));
         exception.ParamName.Should().Be("clientFactory");
     }
 
@@ -38,7 +38,7 @@ public class S3StorageProviderTests
     public void Constructor_WithNullOptions_ThrowsArgumentNullException()
     {
         // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() => new S3StorageProvider(_fakeClientFactory, null!));
+        var exception = Assert.Throws<ArgumentNullException>(() => new AwsS3StorageProvider(_fakeClientFactory, null!));
         exception.ParamName.Should().Be("options");
     }
 
@@ -691,12 +691,12 @@ public class S3StorageProviderTests
     public void GetMetadata_WithCustomOptions_ReturnsCorrectCapabilities()
     {
         // Arrange
-        var customOptions = new S3StorageProviderOptions
+        var customOptions = new AwsS3StorageProviderOptions
         {
             MultipartUploadThresholdBytes = 128 * 1024 * 1024,
         };
 
-        var customProvider = new S3StorageProvider(_fakeClientFactory, customOptions);
+        var customProvider = new AwsS3StorageProvider(_fakeClientFactory, customOptions);
 
         // Act
         var metadata = customProvider.GetMetadata();

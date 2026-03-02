@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using NPipeline.StorageProviders.Exceptions;
 using Xunit;
 
-namespace NPipeline.StorageProviders.Aws.Tests;
+namespace NPipeline.StorageProviders.S3.Tests;
 
 public class S3StorageExceptionTests
 {
@@ -220,7 +220,7 @@ public class S3StorageExceptionTests
 
         // Act & Assert
         // Note: S3StorageException is not marked as Serializable,
-        // so this test verifies. current behavior
+        // so this test verifies current behavior
         exception.Should().NotBeNull();
     }
 

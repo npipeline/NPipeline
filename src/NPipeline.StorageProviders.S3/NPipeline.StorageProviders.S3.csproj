@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
@@ -8,9 +8,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="AWSSDK.S3" Version="4.0.18.7" />
-        <PackageReference Include="AWSSDK.Core" Version="4.0.3.15" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.3"/>
+        <PackageReference Include="AWSSDK.S3" Version="4.0.18.7"/>
+        <PackageReference Include="AWSSDK.Core" Version="4.0.3.15"/>
     </ItemGroup>
 
     <ItemGroup>

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <NoWarn>$(NoWarn);NU1901</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="AWSSDK.S3" Version="4.0.18.7"/>
+        <PackageReference Include="AWSSDK.Core" Version="4.0.3.15"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.3"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\NPipeline.StorageProviders.S3\NPipeline.StorageProviders.S3.csproj"/>
+    </ItemGroup>
+
+</Project>

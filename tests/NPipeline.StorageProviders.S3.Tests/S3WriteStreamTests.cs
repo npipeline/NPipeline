@@ -4,7 +4,7 @@ using AwesomeAssertions;
 using FakeItEasy;
 using Xunit;
 
-namespace NPipeline.StorageProviders.Aws.Tests;
+namespace NPipeline.StorageProviders.S3.Tests;
 
 public class S3WriteStreamTests
 {
@@ -553,8 +553,8 @@ public class S3WriteStreamTests
             TestBucket,
             TestKey,
             "application/octet-stream",
-            multipartUploadThreshold: 1,
-            partSize: 5 * 1024 * 1024);
+            1,
+            5 * 1024 * 1024);
 
         var data = new byte[] { 1, 2, 3 };
         await stream.WriteAsync(data, 0, data.Length);

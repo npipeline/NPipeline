@@ -51,10 +51,16 @@ The following storage providers are available:
   - Works with filesystems, cloud storage (S3, Azure), databases, and custom backends
   - Unified API for read, write, delete, list, and metadata operations
   - Built-in support for filesystem with resilient directory traversal
-- **[AWS S3](./aws-s3.md)**: Read from and write to Amazon S3 and S3-compatible storage services.
-  - Supports AWS S3, MinIO, LocalStack, and other S3-compatible services
+- **[AWS S3](./aws-s3.md)**: Read from and write to Amazon S3 buckets.
+  - AWS-native authentication via credential chain, IAM roles, or explicit credentials
+  - Region-aware endpoint selection for all AWS regions
   - Stream-based I/O for efficient handling of large files
-  - Flexible authentication via AWS credential chain or explicit credentials
+  - Multipart upload for large files (configurable threshold)
+- **[S3-Compatible Storage](./s3-compatible.md)**: Read from and write to S3-compatible storage services.
+  - Supports MinIO, DigitalOcean Spaces, Cloudflare R2, Wasabi, and other S3-compatible platforms
+  - Static credential authentication (no AWS IAM required)
+  - Purpose-built for custom endpoints and non-AWS services
+  - Stream-based I/O for efficient handling of large files
   - Multipart upload for large files (configurable threshold)
 - **[Azure Blob Storage](./azure-blob.md)**: Read from and write to Azure Blob Storage.
   - Supports Azure Blob Storage and Azurite emulator for local development
@@ -75,14 +81,21 @@ For cloud storage or custom providers, you need to create a custom resolver:
 
 ```csharp
 using NPipeline.Connectors;
-using NPipeline.StorageProviders.Aws;
+using NPipeline.StorageProviders.S3.Aws;
+using Microsoft.Extensions.DependencyInjection;
 
-// Create a resolver with S3 support
+// Create a resolver with AWS S3 support
+var services = new ServiceCollection();
+services.AddAwsS3StorageProvider(options =>
+{
+    options.UseDefaultCredentialChain = true;
+});
+
 var resolver = StorageProviderFactory.CreateResolver(
     new StorageResolverOptions
     {
         IncludeFileSystem = true,
-        AdditionalProviders = new[] { new S3StorageProvider() }
+        AdditionalProviders = new[] { services.BuildServiceProvider().GetRequiredService<AwsS3StorageProvider>() }
     }
 );
 
@@ -103,18 +116,36 @@ Storage providers can be configured through dependency injection for cleaner app
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
-using NPipeline.StorageProviders.Aws;
+using NPipeline.StorageProviders.S3.Aws;
+using Amazon;
 
 var services = new ServiceCollection();
 
-services.AddS3StorageProvider(options =>
+services.AddAwsS3StorageProvider(options =>
 {
     options.DefaultRegion = RegionEndpoint.USEast1;
     options.UseDefaultCredentialChain = true;
 });
 
 var serviceProvider = services.BuildServiceProvider();
-var provider = serviceProvider.GetRequiredService<S3StorageProvider>();
+var provider = serviceProvider.GetRequiredService<AwsS3StorageProvider>();
+```
+
+```csharp
+using Microsoft.Extensions.DependencyInjection;
+using NPipeline.StorageProviders.S3.Compatible;
+
+var services = new ServiceCollection();
+
+services.AddS3CompatibleStorageProvider(new S3CompatibleStorageProviderOptions
+{
+    ServiceUrl = new Uri("https://nyc3.digitaloceanspaces.com"),
+    AccessKey = "your-access-key",
+    SecretKey = "your-secret-key",
+});
+
+var serviceProvider = services.BuildServiceProvider();
+var provider = serviceProvider.GetRequiredService<S3CompatibleStorageProvider>();
 ```
 
 ```csharp
@@ -159,7 +190,8 @@ public class CustomStorageProvider : IStorageProvider
 ## Next Steps
 
 - **[Storage Provider Interface](./storage-provider.md)**: Learn about the storage abstraction layer
-- **[AWS S3 Storage Provider](./aws-s3.md)**: Learn how to use the S3 storage provider
+- **[AWS S3 Storage Provider](./aws-s3.md)**: Learn how to use the AWS S3 storage provider
+- **[S3-Compatible Storage Provider](./s3-compatible.md)**: Learn how to use MinIO, DigitalOcean Spaces, Cloudflare R2, and other S3-compatible services
 - **[Azure Blob Storage Provider](./azure-blob.md)**: Learn how to use the Azure Blob Storage provider
 - **[Google Cloud Storage Provider](./gcs-storage-provider.md)**: Learn how to use the Google Cloud Storage provider
 - **[CSV Connector](../connectors/csv.md)**: See storage providers in action with CSV files
