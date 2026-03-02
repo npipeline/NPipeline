@@ -97,6 +97,11 @@ public readonly record struct StorageScheme
     public static StorageScheme CosmosCassandra => new("cosmos-cassandra");
 
     /// <summary>
+    ///     Gets a <see cref="StorageScheme" /> instance representing the "sftp" scheme.
+    /// </summary>
+    public static StorageScheme Sftp => new("sftp");
+
+    /// <summary>
     ///     Attempts to parse the specified string into a <see cref="StorageScheme" /> instance.
     /// </summary>
     /// <param name="value">The string to parse.</param>

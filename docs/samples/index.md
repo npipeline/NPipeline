@@ -125,6 +125,7 @@ Sample applications demonstrate NPipeline concepts through practical, runnable c
 | [Sample_S3StorageProvider](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_S3StorageProvider) | AWS S3 integration; cloud storage operations |
 | [Sample_AzureStorageProvider](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_AzureStorageProvider) | Azure Blob Storage integration |
 | [Sample_GcsStorageProvider](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_GcsStorageProvider) | Google Cloud Storage integration |
+| [Sample_SftpStorageProvider](https://github.com/chrisjacques/NPipeline/tree/main/samples/Sample_SftpStorageProvider) | SFTP server integration; connection pooling; SSH authentication |
 
 ### Extensions
 
