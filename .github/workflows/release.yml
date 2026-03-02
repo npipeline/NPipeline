@@ -85,13 +85,13 @@ jobs:
 
     steps:
       - name: Download packages
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: nuget-packages
           path: ./artifacts/packages
 
       - name: Download symbols
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: nuget-symbols
           path: ./artifacts/packages
