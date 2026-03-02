@@ -1,61 +1,72 @@
-﻿using Amazon;
-using Amazon.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.StorageProviders.Models;
-using NPipeline.StorageProviders.S3.Aws;
+using NPipeline.StorageProviders.S3.Compatible;
 
-namespace Sample_S3StorageProvider;
+namespace Sample_S3CompatibleStorageProvider;
 
 /// <summary>
-///     Entry point for S3 Storage Provider sample demonstrating AWS S3 storage provider usage.
-///     This sample shows how to read, write, list, and manage files in AWS S3 using the NPipeline storage provider.
+///     Entry point for S3-Compatible Storage Provider sample demonstrating usage with non-AWS
+///     S3-compatible services such as MinIO, DigitalOcean Spaces, Cloudflare R2, and LocalStack.
 /// </summary>
 public sealed class Program
 {
-    // ========================================================================
-    // CONFIGURATION - Replace these values with your own AWS credentials and bucket
-    // ========================================================================
+    /// <summary>
+    ///     Your S3-compatible access key.
+    ///     MinIO default: minioadmin
+    /// </summary>
+    private const string AccessKey = "minioadmin";
 
     /// <summary>
-    ///     Your AWS S3 bucket name. Replace with your actual bucket name.
+    ///     Your S3-compatible secret key.
+    ///     MinIO default: minioadmin
+    /// </summary>
+    private const string SecretKey = "minioadmin";
+
+    /// <summary>
+    ///     The bucket name to use for all examples.
+    ///     The bucket must exist on your S3-compatible service before running.
     /// </summary>
     private const string BucketName = "your-bucket-name-here";
 
     /// <summary>
-    ///     Your AWS access key ID. Replace with your actual credentials or use the default credential chain.
+    ///     Signing region used for request authentication.
+    ///     Most providers accept "us-east-1". Cloudflare R2 requires "auto".
     /// </summary>
-    private const string AccessKeyId = "your-access-key-id";
+    private const string SigningRegion = "us-east-1";
+
+    // ========================================================================
+    // CONFIGURATION — Replace these values with your own endpoint and credentials
+    // ========================================================================
 
     /// <summary>
-    ///     Your AWS secret access key. Replace with your actual credentials or use the default credential chain.
+    ///     The base URL of your S3-compatible service.
+    ///     MinIO default: http://localhost:9000
+    ///     LocalStack default: http://localhost:4566
     /// </summary>
-    private const string SecretAccessKey = "your-secret-access-key";
-
-    /// <summary>
-    ///     Your AWS region. Replace with your actual region.
-    /// </summary>
-    private const string Region = "us-east-1";
+    private static readonly Uri ServiceUrl = new("http://localhost:9000");
 
     public static async Task Main(string[] args)
     {
-        Console.WriteLine("=== NPipeline Sample: AWS S3 Storage Provider ===");
+        Console.WriteLine("=== NPipeline Sample: S3-Compatible Storage Provider ===");
         Console.WriteLine();
 
         // Check if user has configured their credentials
         if (BucketName == "your-bucket-name-here")
         {
-            Console.WriteLine("⚠️  WARNING: You need to configure your AWS credentials and bucket name!");
+            Console.WriteLine("⚠️  WARNING: You need to configure your S3-compatible service settings!");
             Console.WriteLine();
             Console.WriteLine("Please update the following constants in Program.cs:");
-            Console.WriteLine("  - BucketName: Your S3 bucket name");
-            Console.WriteLine("  - AccessKeyId: Your AWS access key ID (or use default credential chain)");
-            Console.WriteLine("  - SecretAccessKey: Your AWS secret access key (or use default credential chain)");
-            Console.WriteLine("  - Region: Your AWS region");
+            Console.WriteLine("  - ServiceUrl:    The base URL of your S3-compatible service");
+            Console.WriteLine("  - AccessKey:     Your access key");
+            Console.WriteLine("  - SecretKey:     Your secret key");
+            Console.WriteLine("  - BucketName:    Your bucket name");
+            Console.WriteLine("  - SigningRegion: Signing region (default: us-east-1)");
             Console.WriteLine();
-            Console.WriteLine("Alternatively, you can use the default AWS credential chain by:");
-            Console.WriteLine("  1. Setting AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables");
-            Console.WriteLine("  2. Configuring AWS credentials in ~/.aws/credentials");
-            Console.WriteLine("  3. Using IAM roles when running on EC2/ECS");
+            Console.WriteLine("Common configurations:");
+            Console.WriteLine("  MinIO:        http://localhost:9000, minioadmin / minioadmin");
+            Console.WriteLine("  LocalStack:   http://localhost:4566, test / test");
+            Console.WriteLine("  DO Spaces:    https://<region>.digitaloceanspaces.com");
+            Console.WriteLine("  Cloudflare R2: https://<account-id>.r2.cloudflarestorage.com, region=auto");
             Console.WriteLine();
             Console.WriteLine("Press any key to continue with demo mode (examples will be shown but not executed)...");
             Console.ReadKey();
@@ -64,14 +75,13 @@ public sealed class Program
 
         try
         {
-            // Run all examples
-            await Example1_BasicReadFromS3();
-            await Example2_BasicWriteToS3();
-            await Example3_ListS3Objects();
+            await Example1_BasicReadFromStorage();
+            await Example2_BasicWriteToStorage();
+            await Example3_ListObjects();
             await Example4_CheckFileExistence();
             await Example5_GetFileMetadata();
             await Example6_UsingDependencyInjection();
-            Example7_S3CompatibleEndpoints();
+            Example7_ProviderConfigurations();
 
             Console.WriteLine();
             Console.WriteLine("=== All examples completed successfully! ===");
@@ -92,31 +102,27 @@ public sealed class Program
     }
 
     // ========================================================================
-    // EXAMPLE 1: Basic Read from S3
+    // EXAMPLE 1: Basic Read
     // ========================================================================
 
-    /// <summary>
-    ///     Example 1: Demonstrates reading a CSV file from S3.
-    /// </summary>
-    private static async Task Example1_BasicReadFromS3()
+    private static async Task Example1_BasicReadFromStorage()
     {
         Console.WriteLine("─────────────────────────────────────────────────────────────");
-        Console.WriteLine("Example 1: Basic Read from S3");
+        Console.WriteLine("Example 1: Basic Read");
         Console.WriteLine("─────────────────────────────────────────────────────────────");
         Console.WriteLine();
 
-        // Create S3 storage provider with credentials
-        var options = new AwsS3StorageProviderOptions
+        var options = new S3CompatibleStorageProviderOptions
         {
-            DefaultRegion = RegionEndpoint.GetBySystemName(Region),
-            DefaultCredentials = new BasicAWSCredentials(AccessKeyId, SecretAccessKey),
-            UseDefaultCredentialChain = false,
+            ServiceUrl = ServiceUrl,
+            AccessKey = AccessKey,
+            SecretKey = SecretKey,
+            SigningRegion = SigningRegion,
         };
 
-        var clientFactory = new AwsS3ClientFactory(options);
-        var provider = new AwsS3StorageProvider(clientFactory, options);
+        var factory = new S3CompatibleClientFactory(options);
+        var provider = new S3CompatibleStorageProvider(factory, options);
 
-        // Define the S3 URI for the file to read
         var fileUri = StorageUri.Parse($"s3://{BucketName}/data/sample.csv");
 
         Console.WriteLine($"Reading file: {fileUri}");
@@ -124,10 +130,7 @@ public sealed class Program
 
         try
         {
-            // Open a readable stream from S3
             await using var stream = await provider.OpenReadAsync(fileUri);
-
-            // Read the stream content
             using var reader = new StreamReader(stream);
             var content = await reader.ReadToEndAsync();
 
@@ -136,17 +139,15 @@ public sealed class Program
             Console.WriteLine(content);
             Console.WriteLine("─────────────────────────────────────────────────────────────");
             Console.WriteLine();
-            Console.WriteLine("✓ Successfully read file from S3!");
+            Console.WriteLine("✓ Successfully read file!");
         }
         catch (UnauthorizedAccessException ex)
         {
             Console.WriteLine($"✗ Access denied: {ex.Message}");
-            Console.WriteLine("  Check your AWS credentials and bucket permissions.");
         }
         catch (FileNotFoundException ex)
         {
             Console.WriteLine($"✗ File not found: {ex.Message}");
-            Console.WriteLine("  Ensure the file exists in the specified bucket.");
         }
         catch (Exception ex)
         {
@@ -157,31 +158,27 @@ public sealed class Program
     }
 
     // ========================================================================
-    // EXAMPLE 2: Basic Write to S3
+    // EXAMPLE 2: Basic Write
     // ========================================================================
 
-    /// <summary>
-    ///     Example 2: Demonstrates writing data to S3.
-    /// </summary>
-    private static async Task Example2_BasicWriteToS3()
+    private static async Task Example2_BasicWriteToStorage()
     {
         Console.WriteLine("─────────────────────────────────────────────────────────────");
-        Console.WriteLine("Example 2: Basic Write to S3");
+        Console.WriteLine("Example 2: Basic Write");
         Console.WriteLine("─────────────────────────────────────────────────────────────");
         Console.WriteLine();
 
-        // Create S3 storage provider
-        var options = new AwsS3StorageProviderOptions
+        var options = new S3CompatibleStorageProviderOptions
         {
-            DefaultRegion = RegionEndpoint.GetBySystemName(Region),
-            DefaultCredentials = new BasicAWSCredentials(AccessKeyId, SecretAccessKey),
-            UseDefaultCredentialChain = false,
+            ServiceUrl = ServiceUrl,
+            AccessKey = AccessKey,
+            SecretKey = SecretKey,
+            SigningRegion = SigningRegion,
         };
 
-        var clientFactory = new AwsS3ClientFactory(options);
-        var provider = new AwsS3StorageProvider(clientFactory, options);
+        var factory = new S3CompatibleClientFactory(options);
+        var provider = new S3CompatibleStorageProvider(factory, options);
 
-        // Define the S3 URI for the file to write
         var fileUri = StorageUri.Parse($"s3://{BucketName}/data/output/sample-{DateTime.UtcNow:yyyyMMdd-HHmmss}.txt");
 
         Console.WriteLine($"Writing file: {fileUri}");
@@ -189,15 +186,10 @@ public sealed class Program
 
         try
         {
-            // Create sample data
             var sampleData = $"Sample data written at {DateTime.UtcNow:O}\n" +
-                             $"This is a test file created by the NPipeline S3 sample.\n" +
-                             $"It demonstrates writing data to AWS S3.\n";
+                             $"Written by the NPipeline S3-Compatible storage provider sample.\n";
 
-            // Open a writable stream to S3
             await using var stream = await provider.OpenWriteAsync(fileUri);
-
-            // Write the data
             await using var writer = new StreamWriter(stream);
             await writer.WriteAsync(sampleData);
             await writer.FlushAsync();
@@ -208,18 +200,15 @@ public sealed class Program
             Console.WriteLine("─────────────────────────────────────────────────────────────");
             Console.WriteLine();
 
-            // Verify the write succeeded by checking if the file exists
             var exists = await provider.ExistsAsync(fileUri);
 
-            if (exists)
-                Console.WriteLine("✓ Successfully wrote file to S3!");
-            else
-                Console.WriteLine("✗ File write verification failed - file not found.");
+            Console.WriteLine(exists
+                ? "✓ Successfully wrote file!"
+                : "✗ File write verification failed — file not found.");
         }
         catch (UnauthorizedAccessException ex)
         {
             Console.WriteLine($"✗ Access denied: {ex.Message}");
-            Console.WriteLine("  Check your AWS credentials and bucket write permissions.");
         }
         catch (Exception ex)
         {
@@ -230,31 +219,27 @@ public sealed class Program
     }
 
     // ========================================================================
-    // EXAMPLE 3: List S3 Objects
+    // EXAMPLE 3: List Objects
     // ========================================================================
 
-    /// <summary>
-    ///     Example 3: Demonstrates listing objects in an S3 bucket.
-    /// </summary>
-    private static async Task Example3_ListS3Objects()
+    private static async Task Example3_ListObjects()
     {
         Console.WriteLine("─────────────────────────────────────────────────────────────");
-        Console.WriteLine("Example 3: List S3 Objects");
+        Console.WriteLine("Example 3: List Objects");
         Console.WriteLine("─────────────────────────────────────────────────────────────");
         Console.WriteLine();
 
-        // Create S3 storage provider
-        var options = new AwsS3StorageProviderOptions
+        var options = new S3CompatibleStorageProviderOptions
         {
-            DefaultRegion = RegionEndpoint.GetBySystemName(Region),
-            DefaultCredentials = new BasicAWSCredentials(AccessKeyId, SecretAccessKey),
-            UseDefaultCredentialChain = false,
+            ServiceUrl = ServiceUrl,
+            AccessKey = AccessKey,
+            SecretKey = SecretKey,
+            SigningRegion = SigningRegion,
         };
 
-        var clientFactory = new AwsS3ClientFactory(options);
-        var provider = new AwsS3StorageProvider(clientFactory, options);
+        var factory = new S3CompatibleClientFactory(options);
+        var provider = new S3CompatibleStorageProvider(factory, options);
 
-        // Define the prefix to list
         var prefixUri = StorageUri.Parse($"s3://{BucketName}/data/");
 
         Console.WriteLine($"Listing objects in: {prefixUri}");
@@ -262,7 +247,6 @@ public sealed class Program
 
         try
         {
-            // List objects non-recursively (only direct children)
             Console.WriteLine("Non-recursive listing (direct children only):");
             Console.WriteLine("─────────────────────────────────────────────────────────────");
 
@@ -288,7 +272,6 @@ public sealed class Program
             Console.WriteLine($"Total items (non-recursive): {count}");
             Console.WriteLine();
 
-            // List objects recursively (all descendants)
             Console.WriteLine("Recursive listing (all descendants):");
             Console.WriteLine("─────────────────────────────────────────────────────────────");
 
@@ -313,12 +296,11 @@ public sealed class Program
             Console.WriteLine("─────────────────────────────────────────────────────────────");
             Console.WriteLine($"Total items (recursive): {count}");
             Console.WriteLine();
-            Console.WriteLine("✓ Successfully listed S3 objects!");
+            Console.WriteLine("✓ Successfully listed objects!");
         }
         catch (UnauthorizedAccessException ex)
         {
             Console.WriteLine($"✗ Access denied: {ex.Message}");
-            Console.WriteLine("  Check your AWS credentials and bucket list permissions.");
         }
         catch (Exception ex)
         {
@@ -332,9 +314,6 @@ public sealed class Program
     // EXAMPLE 4: Check File Existence
     // ========================================================================
 
-    /// <summary>
-    ///     Example 4: Demonstrates checking if a file exists in S3.
-    /// </summary>
     private static async Task Example4_CheckFileExistence()
     {
         Console.WriteLine("─────────────────────────────────────────────────────────────");
@@ -342,18 +321,17 @@ public sealed class Program
         Console.WriteLine("─────────────────────────────────────────────────────────────");
         Console.WriteLine();
 
-        // Create S3 storage provider
-        var options = new AwsS3StorageProviderOptions
+        var options = new S3CompatibleStorageProviderOptions
         {
-            DefaultRegion = RegionEndpoint.GetBySystemName(Region),
-            DefaultCredentials = new BasicAWSCredentials(AccessKeyId, SecretAccessKey),
-            UseDefaultCredentialChain = false,
+            ServiceUrl = ServiceUrl,
+            AccessKey = AccessKey,
+            SecretKey = SecretKey,
+            SigningRegion = SigningRegion,
         };
 
-        var clientFactory = new AwsS3ClientFactory(options);
-        var provider = new AwsS3StorageProvider(clientFactory, options);
+        var factory = new S3CompatibleClientFactory(options);
+        var provider = new S3CompatibleStorageProvider(factory, options);
 
-        // Test file URIs
         var existingFileUri = StorageUri.Parse($"s3://{BucketName}/data/sample.csv");
         var nonExistentFileUri = StorageUri.Parse($"s3://{BucketName}/data/non-existent-file.txt");
 
@@ -375,9 +353,6 @@ public sealed class Program
     // EXAMPLE 5: Get File Metadata
     // ========================================================================
 
-    /// <summary>
-    ///     Example 5: Demonstrates retrieving metadata for a file in S3.
-    /// </summary>
     private static async Task Example5_GetFileMetadata()
     {
         Console.WriteLine("─────────────────────────────────────────────────────────────");
@@ -385,18 +360,17 @@ public sealed class Program
         Console.WriteLine("─────────────────────────────────────────────────────────────");
         Console.WriteLine();
 
-        // Create S3 storage provider
-        var options = new AwsS3StorageProviderOptions
+        var options = new S3CompatibleStorageProviderOptions
         {
-            DefaultRegion = RegionEndpoint.GetBySystemName(Region),
-            DefaultCredentials = new BasicAWSCredentials(AccessKeyId, SecretAccessKey),
-            UseDefaultCredentialChain = false,
+            ServiceUrl = ServiceUrl,
+            AccessKey = AccessKey,
+            SecretKey = SecretKey,
+            SigningRegion = SigningRegion,
         };
 
-        var clientFactory = new AwsS3ClientFactory(options);
-        var provider = new AwsS3StorageProvider(clientFactory, options);
+        var factory = new S3CompatibleClientFactory(options);
+        var provider = new S3CompatibleStorageProvider(factory, options);
 
-        // Define the file URI
         var fileUri = StorageUri.Parse($"s3://{BucketName}/data/sample.csv");
 
         Console.WriteLine($"Retrieving metadata for: {fileUri}");
@@ -404,10 +378,9 @@ public sealed class Program
 
         try
         {
-            // Get metadata
             var metadata = await provider.GetMetadataAsync(fileUri);
 
-            if (metadata == null)
+            if (metadata is null)
             {
                 Console.WriteLine("✗ File not found.");
                 return;
@@ -439,7 +412,6 @@ public sealed class Program
         catch (UnauthorizedAccessException ex)
         {
             Console.WriteLine($"✗ Access denied: {ex.Message}");
-            Console.WriteLine("  Check your AWS credentials and bucket permissions.");
         }
         catch (Exception ex)
         {
@@ -453,9 +425,6 @@ public sealed class Program
     // EXAMPLE 6: Using Dependency Injection
     // ========================================================================
 
-    /// <summary>
-    ///     Example 6: Demonstrates using S3 storage provider with dependency injection.
-    /// </summary>
     private static async Task Example6_UsingDependencyInjection()
     {
         Console.WriteLine("─────────────────────────────────────────────────────────────");
@@ -463,30 +432,29 @@ public sealed class Program
         Console.WriteLine("─────────────────────────────────────────────────────────────");
         Console.WriteLine();
 
-        // Create a service collection and configure S3 storage provider
         var services = new ServiceCollection();
 
-        // Add S3 storage provider with configuration
-        services.AddAwsS3StorageProvider(options =>
+        // Build options up-front (all required properties must be provided)
+        var options = new S3CompatibleStorageProviderOptions
         {
-            options.DefaultRegion = RegionEndpoint.GetBySystemName(Region);
-            options.DefaultCredentials = new BasicAWSCredentials(AccessKeyId, SecretAccessKey);
-            options.UseDefaultCredentialChain = false;
-            options.MultipartUploadThresholdBytes = 64 * 1024 * 1024; // 64 MB
-        });
+            ServiceUrl = ServiceUrl,
+            AccessKey = AccessKey,
+            SecretKey = SecretKey,
+            SigningRegion = SigningRegion,
+        };
 
-        // Build the service provider
+        // Register via the extension method
+        services.AddS3CompatibleStorageProvider(options);
+
         var serviceProvider = services.BuildServiceProvider();
 
         try
         {
-            // Resolve the S3 storage provider from DI container
-            var provider = serviceProvider.GetRequiredService<AwsS3StorageProvider>();
+            var provider = serviceProvider.GetRequiredService<S3CompatibleStorageProvider>();
 
-            Console.WriteLine("✓ Successfully resolved S3StorageProvider from DI container");
+            Console.WriteLine("✓ Successfully resolved S3CompatibleStorageProvider from DI container");
             Console.WriteLine();
 
-            // Use the provider to get provider metadata
             var providerMetadata = provider.GetMetadata();
 
             Console.WriteLine("Provider Metadata:");
@@ -497,7 +465,7 @@ public sealed class Program
             Console.WriteLine($"  Supports Write:      {providerMetadata.SupportsWrite}");
             Console.WriteLine($"  Supports Listing:    {providerMetadata.SupportsListing}");
             Console.WriteLine($"  Supports Metadata:   {providerMetadata.SupportsMetadata}");
-            Console.WriteLine($"  Supports Hierarchy: {providerMetadata.SupportsHierarchy}");
+            Console.WriteLine($"  Supports Hierarchy:  {providerMetadata.SupportsHierarchy}");
 
             if (providerMetadata.Capabilities.Count > 0)
             {
@@ -516,7 +484,6 @@ public sealed class Program
         }
         finally
         {
-            // Dispose the service provider
             await serviceProvider.DisposeAsync();
         }
 
@@ -524,32 +491,97 @@ public sealed class Program
     }
 
     // ========================================================================
-    // EXAMPLE 7: S3-Compatible Endpoints — Dedicated Sample
+    // EXAMPLE 7: Provider-Specific Configurations
     // ========================================================================
 
-    /// <summary>
-    ///     Example 7: Points to the dedicated S3-compatible storage provider sample.
-    /// </summary>
-    private static void Example7_S3CompatibleEndpoints()
+    private static void Example7_ProviderConfigurations()
     {
         Console.WriteLine("─────────────────────────────────────────────────────────────");
-        Console.WriteLine("Example 7: S3-Compatible Services");
+        Console.WriteLine("Example 7: Provider-Specific Configurations");
         Console.WriteLine("─────────────────────────────────────────────────────────────");
         Console.WriteLine();
 
-        Console.WriteLine("S3-compatible services (MinIO, DigitalOcean Spaces, Cloudflare R2,");
-        Console.WriteLine("LocalStack, etc.) now have their own dedicated provider:");
+        // ── MinIO ─────────────────────────────────────────────────────────
+        Console.WriteLine("MinIO (local development):");
+        Console.WriteLine("─────────────────────────────────────────────────────────────");
+
+        _ = new S3CompatibleStorageProviderOptions
+        {
+            ServiceUrl = new Uri("http://localhost:9000"),
+            AccessKey = "minioadmin",
+            SecretKey = "minioadmin",
+            SigningRegion = "us-east-1",
+            ForcePathStyle = true,
+        };
+
+        Console.WriteLine("  ServiceUrl:    http://localhost:9000");
+        Console.WriteLine("  AccessKey:     minioadmin");
+        Console.WriteLine("  SecretKey:     minioadmin");
+        Console.WriteLine("  SigningRegion: us-east-1");
+        Console.WriteLine("  ForcePathStyle: true (required for MinIO)");
         Console.WriteLine();
-        Console.WriteLine("  Package:  NPipeline.StorageProviders.S3.Compatible");
-        Console.WriteLine("  Provider: S3CompatibleStorageProvider");
-        Console.WriteLine("  Options:  S3CompatibleStorageProviderOptions");
-        Console.WriteLine("  DI:       services.AddS3CompatibleStorageProvider(options)");
+
+        // ── LocalStack ────────────────────────────────────────────────────
+        Console.WriteLine("LocalStack (local AWS simulation):");
+        Console.WriteLine("─────────────────────────────────────────────────────────────");
+
+        _ = new S3CompatibleStorageProviderOptions
+        {
+            ServiceUrl = new Uri("http://localhost:4566"),
+            AccessKey = "test",
+            SecretKey = "test",
+            SigningRegion = "us-east-1",
+            ForcePathStyle = true,
+        };
+
+        Console.WriteLine("  ServiceUrl:    http://localhost:4566");
+        Console.WriteLine("  AccessKey:     test  (any value works with LocalStack)");
+        Console.WriteLine("  SecretKey:     test  (any value works with LocalStack)");
+        Console.WriteLine("  SigningRegion: us-east-1");
+        Console.WriteLine("  ForcePathStyle: true");
         Console.WriteLine();
-        Console.WriteLine("See the 'Sample_S3CompatibleStorageProvider' project for full");
-        Console.WriteLine("examples covering MinIO, DigitalOcean Spaces, Cloudflare R2,");
-        Console.WriteLine("and LocalStack configurations.");
+
+        // ── DigitalOcean Spaces ───────────────────────────────────────────
+        Console.WriteLine("DigitalOcean Spaces:");
+        Console.WriteLine("─────────────────────────────────────────────────────────────");
+
+        _ = new S3CompatibleStorageProviderOptions
+        {
+            ServiceUrl = new Uri("https://nyc3.digitaloceanspaces.com"),
+            AccessKey = "<your-spaces-access-key>",
+            SecretKey = "<your-spaces-secret-key>",
+            SigningRegion = "us-east-1",
+            ForcePathStyle = false, // DigitalOcean Spaces uses virtual-hosted-style
+        };
+
+        Console.WriteLine("  ServiceUrl:    https://<region>.digitaloceanspaces.com");
+        Console.WriteLine("  AccessKey:     <your Spaces access key>");
+        Console.WriteLine("  SecretKey:     <your Spaces secret key>");
+        Console.WriteLine("  SigningRegion: us-east-1");
+        Console.WriteLine("  ForcePathStyle: false (Spaces uses virtual-hosted-style)");
         Console.WriteLine();
-        Console.WriteLine("✓ See Sample_S3CompatibleStorageProvider for complete examples!");
+
+        // ── Cloudflare R2 ─────────────────────────────────────────────────
+        Console.WriteLine("Cloudflare R2:");
+        Console.WriteLine("─────────────────────────────────────────────────────────────");
+
+        _ = new S3CompatibleStorageProviderOptions
+        {
+            ServiceUrl = new Uri("https://<account-id>.r2.cloudflarestorage.com"),
+            AccessKey = "<your-r2-access-key-id>",
+            SecretKey = "<your-r2-secret-access-key>",
+            SigningRegion = "auto", // Cloudflare R2 requires "auto" as the signing region
+            ForcePathStyle = false,
+        };
+
+        Console.WriteLine("  ServiceUrl:    https://<account-id>.r2.cloudflarestorage.com");
+        Console.WriteLine("  AccessKey:     <R2 access key ID>");
+        Console.WriteLine("  SecretKey:     <R2 secret access key>");
+        Console.WriteLine("  SigningRegion: auto  ← required for Cloudflare R2");
+        Console.WriteLine("  ForcePathStyle: false");
+        Console.WriteLine();
+
+        Console.WriteLine("✓ Successfully demonstrated provider-specific configurations!");
         Console.WriteLine();
     }
 
@@ -557,11 +589,6 @@ public sealed class Program
     // HELPER METHODS
     // ========================================================================
 
-    /// <summary>
-    ///     Formats a byte count into a human-readable string.
-    /// </summary>
-    /// <param name="bytes">The number of bytes to format.</param>
-    /// <returns>A human-readable string representation.</returns>
     private static string FormatBytes(long bytes)
     {
         string[] sizes = ["B", "KB", "MB", "GB", "TB"];

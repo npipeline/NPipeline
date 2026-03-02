@@ -1,79 +1,63 @@
-using System.Collections.Concurrent;
 using Amazon;
 using Amazon.Runtime;
 using Amazon.S3;
 using NPipeline.StorageProviders.Models;
 
-namespace NPipeline.StorageProviders.Aws;
+namespace NPipeline.StorageProviders.S3.Aws;
 
 /// <summary>
-///     Factory for creating and caching Amazon S3 clients with flexible authentication options.
+///     Factory for creating and caching Amazon S3 clients with AWS-specific authentication options.
+///     Supports IAM credential chain, explicit credentials, and STS session tokens.
 /// </summary>
-public class S3ClientFactory
+public class AwsS3ClientFactory : S3ClientFactoryBase
 {
-    private readonly ConcurrentDictionary<string, IAmazonS3> _clientCache = new();
-    private readonly S3StorageProviderOptions _options;
+    private readonly AwsS3StorageProviderOptions _options;
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="S3ClientFactory" /> class.
+    ///     Initializes a new instance of the <see cref="AwsS3ClientFactory" /> class.
     /// </summary>
-    /// <param name="options">The S3 storage provider options.</param>
-    public S3ClientFactory(S3StorageProviderOptions options)
+    /// <param name="options">The AWS S3 storage provider options.</param>
+    public AwsS3ClientFactory(AwsS3StorageProviderOptions options)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
     }
 
     /// <summary>
-    ///     Gets or creates an Amazon S3 client for the specified storage URI.
+    ///     Creates an Amazon S3 client for the specified storage URI.
     /// </summary>
-    /// <param name="uri">The storage URI containing bucket, region, and optional credentials.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing an <see cref="IAmazonS3" /> client.</returns>
-    public virtual Task<IAmazonS3> GetClientAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    /// <param name="uri">The storage URI.</param>
+    /// <returns>An <see cref="IAmazonS3" /> client.</returns>
+    protected override IAmazonS3 CreateClient(StorageUri uri)
     {
-        cancellationToken.ThrowIfCancellationRequested();
         var credentials = GetCredentials(uri);
         var region = GetRegion(uri);
         var serviceUrl = GetServiceUrl(uri);
         var forcePathStyle = GetForcePathStyle(uri);
 
-        return GetClientAsync(credentials, region, serviceUrl, forcePathStyle, cancellationToken);
+        var config = new AmazonS3Config
+        {
+            RegionEndpoint = region,
+            ServiceURL = serviceUrl?.ToString(),
+            ForcePathStyle = forcePathStyle,
+        };
+
+        return credentials is null
+            ? new AmazonS3Client(config)
+            : new AmazonS3Client(credentials, config);
     }
 
     /// <summary>
-    ///     Gets or creates an Amazon S3 client with the specified configuration.
+    ///     Builds a cache key for the client based on the URI and configuration.
     /// </summary>
-    /// <param name="credentials">The AWS credentials to use.</param>
-    /// <param name="region">The AWS region endpoint.</param>
-    /// <param name="serviceUrl">Optional service URL for S3-compatible endpoints.</param>
-    /// <param name="forcePathStyle">Whether to force path-style addressing.</param>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
-    /// <returns>A task producing an <see cref="IAmazonS3" /> client.</returns>
-    public virtual Task<IAmazonS3> GetClientAsync(
-        AWSCredentials? credentials,
-        RegionEndpoint region,
-        Uri? serviceUrl,
-        bool forcePathStyle,
-        CancellationToken cancellationToken = default)
+    /// <param name="uri">The storage URI.</param>
+    /// <returns>A cache key string.</returns>
+    protected override string BuildCacheKey(StorageUri uri)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        var cacheKey = BuildCacheKey(credentials, region, serviceUrl, forcePathStyle);
-
-        var client = _clientCache.GetOrAdd(cacheKey, _ =>
-        {
-            var config = new AmazonS3Config
-            {
-                RegionEndpoint = region,
-                ServiceURL = serviceUrl?.ToString(),
-                ForcePathStyle = forcePathStyle,
-            };
-
-            return credentials is null
-                ? new AmazonS3Client(config)
-                : new AmazonS3Client(credentials, config);
-        });
-
-        return Task.FromResult(client);
+        var credentials = GetCredentials(uri);
+        var region = GetRegion(uri);
+        var serviceUrl = GetServiceUrl(uri);
+        var forcePathStyle = GetForcePathStyle(uri);
+        return BuildCacheKey(credentials, region, serviceUrl, forcePathStyle);
     }
 
     /// <summary>
@@ -173,9 +157,6 @@ public class S3ClientFactory
         return _options.ForcePathStyle;
     }
 
-    /// <summary>
-    ///     Builds a cache key for the client configuration.
-    /// </summary>
     private static string BuildCacheKey(
         AWSCredentials? credentials,
         RegionEndpoint region,

@@ -1,8 +1,7 @@
 using Amazon.S3;
 using Amazon.S3.Model;
-using System.Linq;
 
-namespace NPipeline.StorageProviders.Aws;
+namespace NPipeline.StorageProviders.S3;
 
 /// <summary>
 ///     A stream that buffers writes and uploads to S3 on disposal or flush.
@@ -16,11 +15,11 @@ public sealed class S3WriteStream : Stream
     private readonly string _bucket;
     private readonly string? _contentType;
     private readonly string _key;
-    private readonly IAmazonS3 _s3Client;
-    private readonly string _tempFilePath;
     private readonly long _multipartUploadThreshold;
     private readonly int _partSize;
     private readonly object _readLock = new();
+    private readonly IAmazonS3 _s3Client;
+    private readonly string _tempFilePath;
     private bool _disposed;
     private FileStream? _tempFileStream;
     private bool _uploaded;
@@ -92,10 +91,10 @@ public sealed class S3WriteStream : Stream
     }
 
     /// <inheritdoc />
-    public override async Task FlushAsync(CancellationToken cancellationToken)
+    public override Task FlushAsync(CancellationToken cancellationToken)
     {
         // Flush is a no-op - upload happens on disposal
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
@@ -216,7 +215,7 @@ public sealed class S3WriteStream : Stream
             }
         }
 
-        await base.DisposeAsync();
+        await base.DisposeAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -235,13 +234,9 @@ public sealed class S3WriteStream : Stream
         try
         {
             if (contentLength > 0 && contentLength >= _multipartUploadThreshold)
-            {
                 await UploadMultipartAsync(contentLength, cancellationToken).ConfigureAwait(false);
-            }
             else
-            {
                 await UploadSingleAsync(cancellationToken).ConfigureAwait(false);
-            }
         }
         catch (AmazonS3Exception ex)
         {
@@ -345,6 +340,7 @@ public sealed class S3WriteStream : Stream
                     Key = _key,
                     UploadId = uploadId,
                 };
+
                 _ = await _s3Client.AbortMultipartUploadAsync(abortRequest, CancellationToken.None).ConfigureAwait(false);
             }
             catch
@@ -367,6 +363,7 @@ public sealed class S3WriteStream : Stream
         CancellationToken cancellationToken)
     {
         await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+
         try
         {
             // Calculate offset and size for this part
@@ -380,6 +377,7 @@ public sealed class S3WriteStream : Stream
             ObjectDisposedException.ThrowIf(_tempFileStream is null, typeof(S3WriteStream));
 
             int bytesRead;
+
             lock (_readLock)
             {
                 _tempFileStream.Position = offset;
@@ -387,12 +385,11 @@ public sealed class S3WriteStream : Stream
             }
 
             if (bytesRead != partSize)
-            {
                 throw new IOException($"Expected to read {partSize} bytes for part {partNumber}, but only read {bytesRead} bytes.");
-            }
 
             // Upload the part
-            using var partStream = new MemoryStream(buffer, 0, bytesRead, writable: false);
+            using var partStream = new MemoryStream(buffer, 0, bytesRead, false);
+
             var uploadRequest = new UploadPartRequest
             {
                 BucketName = _bucket,

@@ -1,12 +1,13 @@
 using Amazon;
 using Amazon.Runtime;
 
-namespace NPipeline.StorageProviders.Aws;
+namespace NPipeline.StorageProviders.S3.Aws;
 
 /// <summary>
-///     Configuration options for the S3 storage provider.
+///     Configuration options for the AWS S3 storage provider.
+///     Extends <see cref="S3CoreOptions" /> with AWS-specific settings.
 /// </summary>
-public class S3StorageProviderOptions
+public sealed class AwsS3StorageProviderOptions : S3CoreOptions
 {
     /// <summary>
     ///     Gets or sets the default AWS region endpoint.
@@ -39,10 +40,4 @@ public class S3StorageProviderOptions
     ///     Path-style addressing is required for some S3-compatible services.
     /// </summary>
     public bool ForcePathStyle { get; set; }
-
-    /// <summary>
-    ///     Gets or sets the threshold in bytes for using multipart upload.
-    ///     Default is 64 MB.
-    /// </summary>
-    public long MultipartUploadThresholdBytes { get; set; } = 64 * 1024 * 1024;
 }

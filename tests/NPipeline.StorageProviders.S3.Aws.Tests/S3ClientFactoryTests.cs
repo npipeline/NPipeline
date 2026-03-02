@@ -5,17 +5,17 @@ using FakeItEasy;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 
-namespace NPipeline.StorageProviders.Aws.Tests;
+namespace NPipeline.StorageProviders.S3.Aws.Tests;
 
-public class S3ClientFactoryTests
+public class AwsS3ClientFactoryTests
 {
-    private readonly S3ClientFactory _fakeClientFactory;
+    private readonly AwsS3ClientFactory _fakeClientFactory;
     private readonly IAmazonS3 _fakeS3Client;
 
-    public S3ClientFactoryTests()
+    public AwsS3ClientFactoryTests()
     {
-        _fakeClientFactory = A.Fake<S3ClientFactory>(c => c
-            .WithArgumentsForConstructor([new S3StorageProviderOptions()])
+        _fakeClientFactory = A.Fake<AwsS3ClientFactory>(c => c
+            .WithArgumentsForConstructor([new AwsS3StorageProviderOptions()])
             .CallsBaseMethods());
 
         _fakeS3Client = A.Fake<IAmazonS3>();
@@ -25,7 +25,7 @@ public class S3ClientFactoryTests
     public void Constructor_WithNullOptions_ThrowsArgumentNullException()
     {
         // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() => new S3ClientFactory(null!));
+        var exception = Assert.Throws<ArgumentNullException>(() => new AwsS3ClientFactory(null!));
         exception.ParamName.Should().Be("options");
     }
 
@@ -33,7 +33,7 @@ public class S3ClientFactoryTests
     public void Constructor_WithValidOptions_Succeeds()
     {
         // Act
-        var factory = new S3ClientFactory(new S3StorageProviderOptions());
+        var factory = new AwsS3ClientFactory(new AwsS3StorageProviderOptions());
 
         // Assert
         factory.Should().NotBeNull();
@@ -94,7 +94,7 @@ public class S3ClientFactoryTests
     public async Task GetClientAsync_WithInvalidRegionInURI_ThrowsArgumentException()
     {
         // Arrange
-        var factory = new S3ClientFactory(new S3StorageProviderOptions
+        var factory = new AwsS3ClientFactory(new AwsS3StorageProviderOptions
         {
             ServiceUrl = new Uri("http://localhost:9000"),
         });
@@ -126,7 +126,7 @@ public class S3ClientFactoryTests
     public async Task GetClientAsync_WithInvalidServiceUrlInURI_ThrowsArgumentException()
     {
         // Arrange
-        var factory = new S3ClientFactory(new S3StorageProviderOptions
+        var factory = new AwsS3ClientFactory(new AwsS3StorageProviderOptions
         {
             ServiceUrl = new Uri("http://localhost:9000"),
         });
@@ -175,7 +175,7 @@ public class S3ClientFactoryTests
     public async Task GetClientAsync_WithInvalidPathStyleInURI_ThrowsArgumentException()
     {
         // Arrange
-        var factory = new S3ClientFactory(new S3StorageProviderOptions
+        var factory = new AwsS3ClientFactory(new AwsS3StorageProviderOptions
         {
             ServiceUrl = new Uri("http://localhost:9000"),
         });
@@ -332,13 +332,13 @@ public class S3ClientFactoryTests
         A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(_fakeS3Client));
 
-        var options = new S3StorageProviderOptions
+        var options = new AwsS3StorageProviderOptions
         {
             DefaultCredentials = new BasicAWSCredentials("test-key", "test-secret"),
             ServiceUrl = new Uri("http://localhost:9000"),
         };
 
-        var factory = new S3ClientFactory(options);
+        var factory = new AwsS3ClientFactory(options);
         var uri = StorageUri.Parse("s3://test-bucket/test-key");
 
         // Act
@@ -373,12 +373,12 @@ public class S3ClientFactoryTests
         A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(_fakeS3Client));
 
-        var options = new S3StorageProviderOptions
+        var options = new AwsS3StorageProviderOptions
         {
             ServiceUrl = new Uri("http://localhost:9000"),
         };
 
-        var factory = new S3ClientFactory(options);
+        var factory = new AwsS3ClientFactory(options);
         var uri = StorageUri.Parse("s3://test-bucket/test-key");
 
         // Act
@@ -396,13 +396,13 @@ public class S3ClientFactoryTests
         A.CallTo(() => _fakeClientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(_fakeS3Client));
 
-        var options = new S3StorageProviderOptions
+        var options = new AwsS3StorageProviderOptions
         {
             ForcePathStyle = true,
             ServiceUrl = new Uri("http://localhost:9000"),
         };
 
-        var factory = new S3ClientFactory(options);
+        var factory = new AwsS3ClientFactory(options);
         var uri = StorageUri.Parse("s3://test-bucket/test-key");
 
         // Act

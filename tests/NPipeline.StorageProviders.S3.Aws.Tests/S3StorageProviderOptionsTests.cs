@@ -3,15 +3,15 @@ using Amazon.Runtime;
 using AwesomeAssertions;
 using Xunit;
 
-namespace NPipeline.StorageProviders.Aws.Tests;
+namespace NPipeline.StorageProviders.S3.Aws.Tests;
 
-public class S3StorageProviderOptionsTests
+public class AwsS3StorageProviderOptionsTests
 {
     [Fact]
     public void DefaultValues_AreCorrect()
     {
         // Act
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
 
         // Assert
         options.DefaultRegion.Should().BeNull();
@@ -26,7 +26,7 @@ public class S3StorageProviderOptionsTests
     public void DefaultRegion_CanBeSet()
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
         var expectedRegion = RegionEndpoint.APSoutheast2;
 
         // Act
@@ -40,7 +40,7 @@ public class S3StorageProviderOptionsTests
     public void DefaultCredentials_CanBeSet()
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
         var expectedCredentials = new BasicAWSCredentials("test-key", "test-secret");
 
         // Act
@@ -54,7 +54,7 @@ public class S3StorageProviderOptionsTests
     public void UseDefaultCredentialChain_CanBeSet()
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
 
         // Act
         options.UseDefaultCredentialChain = false;
@@ -67,7 +67,7 @@ public class S3StorageProviderOptionsTests
     public void ServiceUrl_CanBeSet()
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
         var expectedUrl = new Uri("http://localhost:9000");
 
         // Act
@@ -81,7 +81,7 @@ public class S3StorageProviderOptionsTests
     public void ForcePathStyle_CanBeSet()
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
 
         // Act
         options.ForcePathStyle = true;
@@ -94,7 +94,7 @@ public class S3StorageProviderOptionsTests
     public void MultipartUploadThresholdBytes_CanBeSet()
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
         var expectedThreshold = 128 * 1024 * 1024;
 
         // Act
@@ -108,7 +108,7 @@ public class S3StorageProviderOptionsTests
     public void ConfigurationViaAction_UpdatesAllProperties()
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
 
         // Act
         options.DefaultRegion = RegionEndpoint.EUWest1;
@@ -131,7 +131,7 @@ public class S3StorageProviderOptionsTests
     public void DefaultRegion_AcceptsUSEast1()
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
 
         // Act
         options.DefaultRegion = RegionEndpoint.USEast1;
@@ -144,7 +144,7 @@ public class S3StorageProviderOptionsTests
     public void DefaultRegion_AcceptsUSWest2()
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
 
         // Act
         options.DefaultRegion = RegionEndpoint.USWest2;
@@ -157,7 +157,7 @@ public class S3StorageProviderOptionsTests
     public void DefaultRegion_AcceptsEUWest1()
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
 
         // Act
         options.DefaultRegion = RegionEndpoint.EUWest1;
@@ -170,7 +170,7 @@ public class S3StorageProviderOptionsTests
     public void DefaultRegion_AcceptsAPSoutheast2()
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
 
         // Act
         options.DefaultRegion = RegionEndpoint.APSoutheast2;
@@ -183,7 +183,7 @@ public class S3StorageProviderOptionsTests
     public void DefaultRegion_AcceptsAPNortheast1()
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
 
         // Act
         options.DefaultRegion = RegionEndpoint.APNortheast1;
@@ -202,7 +202,7 @@ public class S3StorageProviderOptionsTests
     public void MultipartUploadThresholdBytes_AcceptsVariousValues(long threshold)
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
 
         // Act
         options.MultipartUploadThresholdBytes = threshold;
@@ -218,7 +218,7 @@ public class S3StorageProviderOptionsTests
     public void ServiceUrl_AcceptsVariousUrls(string urlString)
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
         var url = new Uri(urlString);
 
         // Act
@@ -232,7 +232,7 @@ public class S3StorageProviderOptionsTests
     public void DefaultCredentials_WithAWSCredentialsInterface_Works()
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
         AWSCredentials credentials = new BasicAWSCredentials("key", "secret");
 
         // Act
@@ -246,8 +246,8 @@ public class S3StorageProviderOptionsTests
     public void MultipleOptionsInstances_AreIndependent()
     {
         // Arrange
-        var options1 = new S3StorageProviderOptions();
-        var options2 = new S3StorageProviderOptions();
+        var options1 = new AwsS3StorageProviderOptions();
+        var options2 = new AwsS3StorageProviderOptions();
 
         // Act
         options1.DefaultRegion = RegionEndpoint.USEast1;
@@ -266,7 +266,7 @@ public class S3StorageProviderOptionsTests
     public void DefaultMultipartUploadThresholdBytes_Is64MB()
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
 
         // Act & Assert
         options.MultipartUploadThresholdBytes.Should().Be(64 * 1024 * 1024);
@@ -276,7 +276,7 @@ public class S3StorageProviderOptionsTests
     public void DefaultUseDefaultCredentialChain_IsTrue()
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
 
         // Act & Assert
         options.UseDefaultCredentialChain.Should().BeTrue();
@@ -286,7 +286,7 @@ public class S3StorageProviderOptionsTests
     public void DefaultForcePathStyle_IsFalse()
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
 
         // Act & Assert
         options.ForcePathStyle.Should().BeFalse();
@@ -296,7 +296,7 @@ public class S3StorageProviderOptionsTests
     public void DefaultServiceUrl_IsNull()
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
 
         // Act & Assert
         options.ServiceUrl.Should().BeNull();
@@ -306,7 +306,7 @@ public class S3StorageProviderOptionsTests
     public void DefaultDefaultRegion_IsNull()
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
 
         // Act & Assert
         options.DefaultRegion.Should().BeNull();
@@ -316,7 +316,7 @@ public class S3StorageProviderOptionsTests
     public void DefaultDefaultCredentials_IsNull()
     {
         // Arrange
-        var options = new S3StorageProviderOptions();
+        var options = new AwsS3StorageProviderOptions();
 
         // Act & Assert
         options.DefaultCredentials.Should().BeNull();
@@ -326,7 +326,7 @@ public class S3StorageProviderOptionsTests
     public void SettingDefaultRegionToNull_Works()
     {
         // Arrange
-        var options = new S3StorageProviderOptions
+        var options = new AwsS3StorageProviderOptions
         {
             DefaultRegion = RegionEndpoint.USEast1,
         };
@@ -342,7 +342,7 @@ public class S3StorageProviderOptionsTests
     public void SettingDefaultCredentialsToNull_Works()
     {
         // Arrange
-        var options = new S3StorageProviderOptions
+        var options = new AwsS3StorageProviderOptions
         {
             DefaultCredentials = new BasicAWSCredentials("key", "secret"),
         };
@@ -358,7 +358,7 @@ public class S3StorageProviderOptionsTests
     public void SettingServiceUrlToNull_Works()
     {
         // Arrange
-        var options = new S3StorageProviderOptions
+        var options = new AwsS3StorageProviderOptions
         {
             ServiceUrl = new Uri("http://localhost:9000"),
         };

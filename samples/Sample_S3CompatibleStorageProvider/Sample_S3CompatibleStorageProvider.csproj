@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -13,7 +13,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\NPipeline.StorageProviders.S3.Aws\NPipeline.StorageProviders.S3.Aws.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.StorageProviders.S3.Compatible\NPipeline.StorageProviders.S3.Compatible.csproj"/>
     </ItemGroup>
 
 </Project>

@@ -211,14 +211,14 @@ Demonstrates configuring S3 storage provider with DI:
 
 ```csharp
 var services = new ServiceCollection();
-services.AddS3StorageProvider(options =>
+services.AddAwsS3StorageProvider(options =>
 {
     options.DefaultRegion = RegionEndpoint.GetBySystemName(Region);
     options.DefaultCredentials = new BasicAWSCredentials(AccessKeyId, SecretAccessKey);
     options.UseDefaultCredentialChain = false;
 });
 var serviceProvider = services.BuildServiceProvider();
-var provider = serviceProvider.GetRequiredService<S3StorageProvider>();
+var provider = serviceProvider.GetRequiredService<AwsS3StorageProvider>();
 ```
 
 **What it demonstrates:**
@@ -227,40 +227,27 @@ var provider = serviceProvider.GetRequiredService<S3StorageProvider>();
 - Resolving the provider from the service container
 - Accessing provider metadata and capabilities
 
-### Example 7: S3-Compatible Endpoints
+### Example 7: S3-Compatible Services
 
-Demonstrates configuration for S3-compatible services:
+Points to the dedicated `Sample_S3CompatibleStorageProvider` project, which covers:
 
-```csharp
-// MinIO configuration
-var options = new S3StorageProviderOptions
-{
-    ServiceUrl = new Uri("http://localhost:9000"),
-    ForcePathStyle = true,
-    DefaultRegion = RegionEndpoint.USEast1,
-    DefaultCredentials = new BasicAWSCredentials("minioadmin", "minioadmin")
-};
-```
+- MinIO (local development)
+- DigitalOcean Spaces
+- Cloudflare R2
+- LocalStack (local AWS simulation)
 
-**What it demonstrates:**
-
-- Configuring MinIO endpoint
-- Configuring LocalStack endpoint
-- Using `ServiceUrl` and `ForcePathStyle` options
-- DI configuration for S3-compatible services
+S3-compatible services now have their own package and provider: `NPipeline.StorageProviders.S3.Compatible`.
 
 ## Configuration Options
 
-### S3StorageProviderOptions
+### AwsS3StorageProviderOptions
 
-| Option                          | Type              | Default | Description                             |
-|---------------------------------|-------------------|---------|-----------------------------------------|
-| `DefaultRegion`                 | `RegionEndpoint?` | `null`  | Default AWS region endpoint             |
-| `DefaultCredentials`            | `AWSCredentials?` | `null`  | Default AWS credentials                 |
-| `UseDefaultCredentialChain`     | `bool`            | `true`  | Use the default AWS credential chain    |
-| `ServiceUrl`                    | `Uri?`            | `null`  | Service URL for S3-compatible endpoints |
-| `ForcePathStyle`                | `bool`            | `false` | Force path-style addressing             |
-| `MultipartUploadThresholdBytes` | `long`            | `64 MB` | Threshold for multipart upload          |
+| Option                          | Type              | Default | Description                          |
+|---------------------------------|-------------------|---------|--------------------------------------|
+| `DefaultRegion`                 | `RegionEndpoint?` | `null`  | Default AWS region endpoint          |
+| `DefaultCredentials`            | `AWSCredentials?` | `null`  | Default AWS credentials              |
+| `UseDefaultCredentialChain`     | `bool`            | `true`  | Use the default AWS credential chain |
+| `MultipartUploadThresholdBytes` | `long`            | `64 MB` | Threshold for multipart upload       |
 
 ### URI Format
 
@@ -290,45 +277,10 @@ s3://my-bucket/data/file.json?contentType=application/json
 
 ## S3-Compatible Services
 
-### MinIO
+For non-AWS S3-compatible services such as MinIO, DigitalOcean Spaces, Cloudflare R2, and LocalStack, use the dedicated *
+*`NPipeline.StorageProviders.S3.Compatible`** package with the `S3CompatibleStorageProvider` and `S3CompatibleStorageProviderOptions` types.
 
-MinIO is a high-performance, S3-compatible object storage system.
-
-**Configuration:**
-
-```csharp
-var options = new S3StorageProviderOptions
-{
-    ServiceUrl = new Uri("http://localhost:9000"),
-    ForcePathStyle = true,
-    DefaultRegion = RegionEndpoint.USEast1,
-    DefaultCredentials = new BasicAWSCredentials("minioadmin", "minioadmin"),
-    UseDefaultCredentialChain = false
-};
-```
-
-**Default credentials:**
-
-- Access Key: `minioadmin`
-- Secret Key: `minioadmin`
-
-### LocalStack
-
-LocalStack provides a fully functional local AWS cloud stack.
-
-**Configuration:**
-
-```csharp
-var options = new S3StorageProviderOptions
-{
-    ServiceUrl = new Uri("http://localhost:4566"),
-    ForcePathStyle = true,
-    DefaultRegion = RegionEndpoint.USEast1,
-    UseDefaultCredentialChain = true // LocalStack accepts any credentials
-};
-```
-
-**Note:** LocalStack accepts any credentials, so you can use the default credential chain.
+See the **[`Sample_S3CompatibleStorageProvider`](../Sample_S3CompatibleStorageProvider/README.md)** project for complete examples.
 
 ## Error Handling
 
