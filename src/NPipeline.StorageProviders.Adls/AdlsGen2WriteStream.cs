@@ -3,7 +3,6 @@ using Azure;
 using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using Azure.Storage.Files.DataLake;
 
 namespace NPipeline.StorageProviders.Adls;
 
@@ -97,13 +96,11 @@ public sealed class AdlsGen2WriteStream : Stream
     /// <inheritdoc />
     public override void Flush()
     {
-        // Flush is a no-op - upload happens on disposal
     }
 
     /// <inheritdoc />
     public override Task FlushAsync(CancellationToken cancellationToken)
     {
-        // Flush is a no-op - upload happens on disposal
         return Task.CompletedTask;
     }
 
@@ -163,7 +160,6 @@ public sealed class AdlsGen2WriteStream : Stream
     /// <inheritdoc />
     protected override void Dispose(bool disposing)
     {
-        // Ensure only one disposing path executes
         if (Interlocked.CompareExchange(ref _disposeState, 1, 0) != 0)
             return;
 
@@ -175,13 +171,9 @@ public sealed class AdlsGen2WriteStream : Stream
             {
                 if (!_uploaded && _tempFileStream is not null)
                 {
-                    // Flush the temp file stream to ensure all data is written
                     _tempFileStream.Flush();
-
-                    // Reset position to beginning for upload
                     _tempFileStream.Position = 0;
 
-                    // Upload to ADLS Gen2
                     using var cts = CreateLinkedUploadCts();
                     UploadAsync(cts.Token).GetAwaiter().GetResult();
                 }
@@ -212,7 +204,6 @@ public sealed class AdlsGen2WriteStream : Stream
     /// <inheritdoc />
     public override async ValueTask DisposeAsync()
     {
-        // Ensure only one async disposing path executes
         if (Interlocked.CompareExchange(ref _disposeState, 1, 0) != 0)
             return;
 
@@ -222,13 +213,9 @@ public sealed class AdlsGen2WriteStream : Stream
         {
             if (!_uploaded && _tempFileStream is not null)
             {
-                // Flush the temp file stream to ensure all data is written
                 await _tempFileStream.FlushAsync(CancellationToken.None).ConfigureAwait(false);
-
-                // Reset position to beginning for upload
                 _tempFileStream.Position = 0;
 
-                // Upload to ADLS Gen2
                 using var cts = CreateLinkedUploadCts();
                 await UploadAsync(cts.Token).ConfigureAwait(false);
             }
@@ -259,10 +246,6 @@ public sealed class AdlsGen2WriteStream : Stream
         capturedException?.Throw();
     }
 
-    /// <summary>
-    ///     Uploads the buffered data to ADLS Gen2.
-    /// </summary>
-    /// <param name="cancellationToken">Token to observe while waiting for the task to complete.</param>
     private async Task UploadAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -274,17 +257,14 @@ public sealed class AdlsGen2WriteStream : Stream
 
         try
         {
-            // Determine if we should use chunked upload based on file size
             var fileSize = _tempFileStream.Length;
 
             if (fileSize >= _uploadThreshold)
             {
-                // Use chunked upload for large files
                 await UploadChunkedAsync(blobClient, cancellationToken).ConfigureAwait(false);
             }
             else
             {
-                // Use simple upload for smaller files
                 await UploadSimpleAsync(blobClient, cancellationToken).ConfigureAwait(false);
             }
 
@@ -315,13 +295,9 @@ public sealed class AdlsGen2WriteStream : Stream
         }
         catch
         {
-            // Best-effort cleanup; ignore failures to delete the temporary file.
         }
     }
 
-    /// <summary>
-    ///     Uploads the file using simple upload for smaller files via Blob API.
-    /// </summary>
     private async Task UploadSimpleAsync(Azure.Storage.Blobs.BlobClient blobClient, CancellationToken cancellationToken)
     {
         var options = new BlobUploadOptions();
@@ -329,19 +305,14 @@ public sealed class AdlsGen2WriteStream : Stream
         if (!string.IsNullOrEmpty(_contentType))
             options.HttpHeaders = new BlobHttpHeaders { ContentType = _contentType };
 
-        // Ensure container (filesystem) exists before uploading
         var containerClient = _blobServiceClient.GetBlobContainerClient(_filesystem);
         _ = await containerClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 
         _ = await blobClient.UploadAsync(_tempFileStream, options, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>
-    ///     Uploads the file using chunked upload for large files via Blob API.
-    /// </summary>
     private async Task UploadChunkedAsync(Azure.Storage.Blobs.BlobClient blobClient, CancellationToken cancellationToken)
     {
-        // Ensure container (filesystem) exists before uploading
         var containerClient = _blobServiceClient.GetBlobContainerClient(_filesystem);
         _ = await containerClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 

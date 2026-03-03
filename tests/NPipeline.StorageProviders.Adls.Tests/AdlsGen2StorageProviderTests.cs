@@ -139,13 +139,12 @@ public class AdlsGen2StorageProviderTests
     {
         // Arrange
         var serviceClient = A.Fake<DataLakeServiceClient>();
-        var fileSystemClient = A.Fake<DataLakeFileSystemClient>();
-        var fileClient = A.Fake<DataLakeFileClient>();
+        var blobServiceClient = A.Fake<BlobServiceClient>();
 
         A.CallTo(() => _clientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(serviceClient));
-        A.CallTo(() => serviceClient.GetFileSystemClient("filesystem")).Returns(fileSystemClient);
-        A.CallTo(() => fileSystemClient.GetFileClient("path/file.txt")).Returns(fileClient);
+        A.CallTo(() => _clientFactory.GetBlobServiceClientAsync(A<StorageUri>._, A<CancellationToken>._))
+            .Returns(Task.FromResult(blobServiceClient));
 
         var uri = StorageUri.Parse("adls://filesystem/path/file.txt");
 
@@ -169,13 +168,12 @@ public class AdlsGen2StorageProviderTests
     {
         // Arrange
         var serviceClient = A.Fake<DataLakeServiceClient>();
-        var fileSystemClient = A.Fake<DataLakeFileSystemClient>();
-        var fileClient = A.Fake<DataLakeFileClient>();
+        var blobServiceClient = A.Fake<BlobServiceClient>();
 
         A.CallTo(() => _clientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(serviceClient));
-        A.CallTo(() => serviceClient.GetFileSystemClient("filesystem")).Returns(fileSystemClient);
-        A.CallTo(() => fileSystemClient.GetFileClient("path/file.txt")).Returns(fileClient);
+        A.CallTo(() => _clientFactory.GetBlobServiceClientAsync(A<StorageUri>._, A<CancellationToken>._))
+            .Returns(Task.FromResult(blobServiceClient));
 
         var uri = StorageUri.Parse("adls://filesystem/path/file.txt?contentType=text/plain");
 
@@ -259,7 +257,6 @@ public class AdlsGen2StorageProviderTests
         var containerClient = A.Fake<BlobContainerClient>();
         var existsResponse = A.Fake<Response<bool>>();
 
-        // Two file items and one common prefix (virtual directory)
         var file1 = BlobsModelFactory.BlobItem("path/file1.txt", false, null, null, (IDictionary<string, string>?)null);
         var file2 = BlobsModelFactory.BlobItem("path/file2.txt", false, null, null, (IDictionary<string, string>?)null);
         var hierItems = new List<BlobHierarchyItem>
@@ -321,7 +318,7 @@ public class AdlsGen2StorageProviderTests
             result.Add(item);
         }
 
-        // Assert - 2 files + 1 synthesised virtual directory (path/subdir)
+        // Assert
         result.Should().HaveCount(3);
     }
 

@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
 using Azure;
 using Azure.Core;
 using Azure.Storage;
@@ -302,7 +304,7 @@ public class AdlsGen2ClientFactory
     {
         // When a connection string is provided we ignore serviceUrl for caching purposes
         if (!string.IsNullOrEmpty(connectionString))
-            return $"connection-string|{connectionString}";
+            return $"connection-string:{ComputeStableHash(connectionString)}";
 
         var endpointKey = serviceUrl?.ToString() ?? "default";
 
@@ -330,10 +332,17 @@ public class AdlsGen2ClientFactory
 
     private DataLakeClientOptions? CreateClientOptions()
     {
-        if (_options.ServiceVersion is null)
-            return null;
+        var options = _options.ServiceVersion is null
+            ? new DataLakeClientOptions()
+            : new DataLakeClientOptions(_options.ServiceVersion.Value);
 
-        return new DataLakeClientOptions(_options.ServiceVersion.Value);
+        options.Retry.Mode = RetryMode.Exponential;
+        options.Retry.MaxRetries = 5;
+        options.Retry.Delay = TimeSpan.FromMilliseconds(800);
+        options.Retry.MaxDelay = TimeSpan.FromSeconds(8);
+        options.Retry.NetworkTimeout = TimeSpan.FromSeconds(100);
+
+        return options;
     }
 
     private static string BuildCredentialKey(CredentialInfo credentialInfo)
@@ -344,15 +353,21 @@ public class AdlsGen2ClientFactory
             components.Add($"token:{credentialInfo.TokenCredential.GetType().FullName}");
 
         if (credentialInfo.SasToken is not null)
-            components.Add($"sas:{credentialInfo.SasToken[..Math.Min(10, credentialInfo.SasToken.Length)]}...");
+            components.Add($"sas:{ComputeStableHash(credentialInfo.SasToken)}");
 
         if (credentialInfo.AccountKey is not null)
-            components.Add($"key:{credentialInfo.AccountKey[..Math.Min(10, credentialInfo.AccountKey.Length)]}...");
+            components.Add($"key:{ComputeStableHash(credentialInfo.AccountKey)}");
 
         if (credentialInfo.AccountName is not null)
             components.Add($"account:{credentialInfo.AccountName}");
 
         return string.Join(";", components);
+    }
+
+    private static string ComputeStableHash(string value)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+        return Convert.ToHexString(bytes);
     }
 
     /// <summary>

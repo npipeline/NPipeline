@@ -1,8 +1,6 @@
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Azure;
-using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Files.DataLake;
 using Azure.Storage.Files.DataLake.Models;
@@ -100,11 +98,11 @@ public sealed class AdlsGen2StorageProvider
         ArgumentNullException.ThrowIfNull(uri);
 
         var (filesystem, path) = GetFilesystemAndPath(uri, true);
-        var dataLakeServiceClient = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
+        _ = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
         var blobServiceClient = await _clientFactory.GetBlobServiceClientAsync(uri, cancellationToken).ConfigureAwait(false);
 
         var contentType = uri.Parameters.TryGetValue("contentType", out var ct) && !string.IsNullOrEmpty(ct)
-            ? ct
+            ? Uri.UnescapeDataString(ct)
             : null;
 
         return new AdlsGen2WriteStream(
@@ -283,8 +281,6 @@ public sealed class AdlsGen2StorageProvider
         }
         catch (RequestFailedException ex) when (ex.Status == 400)
         {
-            // Flat-namespace accounts (non-HNS) and Azurite do not support the DFS rename endpoint.
-            // Fall back to copy-then-delete using the Blob API, which works everywhere.
             await MoveViaBlobCopyAsync(sourceUri, destinationUri, sourceFilesystem, sourcePath, destFilesystem, destPath, cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -378,25 +374,34 @@ public sealed class AdlsGen2StorageProvider
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var (filesystem, pathPrefix) = GetFilesystemAndPath(prefix);
+        await foreach (var item in ListViaBlobFallbackAsync(prefix, filesystem, pathPrefix, recursive, cancellationToken)
+                           .ConfigureAwait(false))
+        {
+            yield return item;
+        }
+    }
+
+    private async IAsyncEnumerable<StorageItem> ListViaBlobFallbackAsync(
+        StorageUri prefix,
+        string filesystem,
+        string pathPrefix,
+        bool recursive,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
         var blobServiceClient = await _clientFactory.GetBlobServiceClientAsync(prefix, cancellationToken).ConfigureAwait(false);
         var containerClient = blobServiceClient.GetBlobContainerClient(filesystem);
 
-        // Check if container (filesystem) exists before enumerating to avoid 404 exceptions.
         if (!await containerClient.ExistsAsync(cancellationToken).ConfigureAwait(false))
             yield break;
 
-        // Normalize prefix: must end with '/' if non-empty so blob prefix matching is correct.
         var blobPrefix = string.IsNullOrEmpty(pathPrefix)
             ? null
             : pathPrefix.EndsWith('/') ? pathPrefix : pathPrefix + "/";
 
         if (recursive)
         {
-            // Flat listing — enumerate every blob under the prefix and synthesize virtual directories.
             var emittedDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            // Calculate the prefix depth so we don't emit virtual dirs for segments that are
-            // already part of the prefix itself (e.g. when blobPrefix = "data/" we don't re-emit "data").
             var prefixDepth = string.IsNullOrEmpty(blobPrefix)
                 ? 0
                 : blobPrefix.TrimEnd('/').Split('/').Length;
@@ -405,7 +410,6 @@ public sealed class AdlsGen2StorageProvider
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                // Emit virtual directory entries for path segments below the prefix depth.
                 var relativeName = blobItem.Name;
                 var segments = relativeName.Split('/');
 
@@ -435,8 +439,8 @@ public sealed class AdlsGen2StorageProvider
         }
         else
         {
-            // Hierarchical listing — return immediate children only, with '/' as delimiter.
-            await foreach (var item in containerClient.GetBlobsByHierarchyAsync(delimiter: "/", prefix: blobPrefix, cancellationToken: cancellationToken).ConfigureAwait(false))
+            await foreach (var item in containerClient.GetBlobsByHierarchyAsync(delimiter: "/", prefix: blobPrefix, cancellationToken: cancellationToken)
+                               .ConfigureAwait(false))
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -452,7 +456,6 @@ public sealed class AdlsGen2StorageProvider
                 }
                 else if (item.IsPrefix)
                 {
-                    // Strip trailing '/' from prefix to get the directory name.
                     var dirName = item.Prefix.TrimEnd('/');
                     yield return new StorageItem
                     {
@@ -499,40 +502,45 @@ public sealed class AdlsGen2StorageProvider
         var errorCode = ex.ErrorCode ?? string.Empty;
         var status = ex.Status;
         var message = ex.Message ?? string.Empty;
-        Debug.WriteLine($"TranslateAdlsException: ErrorCode='{errorCode}', Message='{message}', Status={status}");
+
+        var adlsException = new AdlsStorageException(
+            $"ADLS operation failed for filesystem '{filesystem}' and path '{path}'. Status={status}, Code={errorCode}.",
+            filesystem,
+            path,
+            ex);
 
         return errorCode switch
         {
             "AuthenticationFailed" or "AuthorizationFailed" or "AuthorizationFailure" or "TokenAuthenticationFailed"
                 => new UnauthorizedAccessException(
-                    $"Access denied to ADLS filesystem '{filesystem}' and path '{path}'. Status={status}, Code={errorCode}. {message}", ex),
+                    $"Access denied to ADLS filesystem '{filesystem}' and path '{path}'. Status={status}, Code={errorCode}.", ex),
             "InvalidQueryParameterValue" or "InvalidResourceName"
                 => new ArgumentException(
-                    $"Invalid ADLS filesystem '{filesystem}' or path '{path}'. Status={status}, Code={errorCode}. {message}", ex),
+                    $"Invalid ADLS filesystem '{filesystem}' or path '{path}'. Status={status}, Code={errorCode}.", ex),
             "FilesystemNotFound" or "PathNotFound"
                 => new FileNotFoundException(
                     $"ADLS filesystem '{filesystem}' or path '{path}' not found. Status={status}, Code={errorCode}.", ex),
             "PathAlreadyExists"
                 => new IOException(
-                    $"Path already exists in ADLS filesystem '{filesystem}' at '{path}'. Status={status}, Code={errorCode}. {message}", ex),
+                    $"Path already exists in ADLS filesystem '{filesystem}' at '{path}'. Status={status}, Code={errorCode}.", adlsException),
             _ when status is 401 or 403
                 => new UnauthorizedAccessException(
-                    $"Access denied to ADLS filesystem '{filesystem}' and path '{path}'. Status={status}, Code={errorCode}. {message}", ex),
+                    $"Access denied to ADLS filesystem '{filesystem}' and path '{path}'. Status={status}, Code={errorCode}.", ex),
             _ when status == 400
                 => new ArgumentException(
-                    $"Invalid ADLS filesystem '{filesystem}' or path '{path}'. Status={status}, Code={errorCode}. {message}", ex),
+                    $"Invalid ADLS filesystem '{filesystem}' or path '{path}'. Status={status}, Code={errorCode}.", ex),
             _ when status == 404
                 => new FileNotFoundException(
                     $"ADLS filesystem '{filesystem}' or path '{path}' not found. Status={status}, Code={errorCode}.", ex),
             _ when status == 409
                 => new IOException(
-                    $"Conflict in ADLS filesystem '{filesystem}' at path '{path}'. Status={status}, Code={errorCode}. {message}", ex),
-            _ when status == 429
+                    $"Conflict in ADLS filesystem '{filesystem}' at path '{path}'. Status={status}, Code={errorCode}.", adlsException),
+            _ when status == 429 || status >= 500
                 => new IOException(
-                    $"Too many requests to ADLS filesystem '{filesystem}' at path '{path}'. Status={status}, Code={errorCode}. {message}", ex),
+                    $"Transient ADLS failure for filesystem '{filesystem}' at path '{path}'. Status={status}, Code={errorCode}.", adlsException),
             _
                 => new IOException(
-                    $"Failed to access ADLS filesystem '{filesystem}' and path '{path}'. Status={status}, Code={errorCode}. {message}", ex),
+                    $"Failed to access ADLS filesystem '{filesystem}' and path '{path}'. Status={status}, Code={errorCode}. {message}", adlsException),
         };
     }
 }
