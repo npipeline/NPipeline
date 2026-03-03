@@ -94,5 +94,5 @@ New to NPipeline? Get started in three simple steps:
 
 ## Need Help?
 
-- [FAQ](reference/faq.md) - Common questions and answers
+- [FAQ](faq/index.md) - Common questions and answers
 - [Issue Tracker](https://github.com/NPipeline/NPipeline/issues) - Report bugs or request features

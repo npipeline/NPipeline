@@ -1,7 +1,8 @@
 ---
 title: Troubleshooting Guide
 description: Common NPipeline issues and solutions.
-sidebar_position: 4
+sidebar_position: 1
+slug: /troubleshooting
 ---
 
 # Troubleshooting Guide
@@ -46,7 +47,7 @@ class MyPipeline : IPipelineDefinition
 }
 ```
 
-2. **Source not yielding data**
+1. **Source not yielding data**
 
 Verify your source node returns data:
 
@@ -72,7 +73,7 @@ public override IDataPipe<T> Initialize(PipelineContext context, CancellationTok
 }
 ```
 
-3. **Transform returning empty**
+1. **Transform returning empty**
 
 Ensure transform yields data for each input:
 
@@ -179,7 +180,7 @@ public override async Task<Item> ExecuteAsync(Item item, PipelineContext context
 }
 ```
 
-2. **Check for blocking operations:**
+1. **Check for blocking operations:**
 
 ```csharp
 // BAD - Blocking I/O
@@ -197,7 +198,7 @@ public override Task<Item> ExecuteAsync(Item item, PipelineContext context, Canc
 }
 ```
 
-3. **Enable parallelism if CPU-bound:**
+1. **Enable parallelism if CPU-bound:**
 
 ```csharp
 services.AddNPipelineParallelism();
@@ -232,7 +233,7 @@ async IAsyncEnumerable<Item> ReadAsync()
 }
 ```
 
-2. **Not disposing resources:**
+1. **Not disposing resources:**
 
 ```csharp
 // BAD - Connections not disposed
@@ -254,7 +255,7 @@ public override async Task ExecuteAsync(IDataPipe<Item> input, PipelineContext c
 }
 ```
 
-3. **Accumulating state in context:**
+1. **Accumulating state in context:**
 
 ```csharp
 // BAD - Context grows unbounded
@@ -312,7 +313,7 @@ catch (Exception ex)
 }
 ```
 
-> **Tip:** If you encounter error codes in your exceptions (e.g., `[NP0301]`), see the [Error Codes Reference](./error-codes.md) for detailed explanations and solutions.
+> **Tip:** If you encounter error codes in your exceptions (e.g., `[NP0301]`), see the [Error Codes Reference](../error-codes/index.md) for detailed explanations and solutions.
 
 ### Cancellation not working
 
@@ -396,7 +397,7 @@ public override Task<Item> ExecuteAsync(Item item, PipelineContext context, Canc
 }
 ```
 
-2. **Verify with unit tests:**
+1. **Verify with unit tests:**
 
 ```csharp
 [Fact]
@@ -442,7 +443,7 @@ public override Task<Item> ExecuteAsync(Item item, PipelineContext context, Canc
 }
 ```
 
-2. **Async enumerable not fully consumed:**
+1. **Async enumerable not fully consumed:**
 
 ```csharp
 // BAD - Only reads first item
@@ -586,18 +587,18 @@ If you can't resolve the issue:
 services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
 ```
 
-2. **Review similar examples** - See [Common Patterns](../core-concepts/common-patterns.md)
+1. **Review similar examples** - See [Common Patterns](../core-concepts/common-patterns.md)
 
-3. **Check [FAQ](./faq.md)** - Common questions answered
+2. **Check [FAQ](../faq/index.md)** - Common questions answered
 
-4. **Review [Error Handling](../core-concepts/resilience/error-handling.md)** - Error-specific guidance
+3. **Review [Error Handling](../core-concepts/resilience/error-handling.md)** - Error-specific guidance
 
-5. **Look up error codes** - See [Error Codes Reference](./error-codes.md) for NP error codes (e.g., `[NP0101]`)
+4. **Look up error codes** - See [Error Codes Reference](../error-codes/index.md) for NP error codes (e.g., `[NP0101]`)
 
-6. **Check source code** - Inspect node implementations in `/src/NPipeline`
+5. **Check source code** - Inspect node implementations in `/src/NPipeline`
 
 ## Next Steps
 
-* **[FAQ](./faq.md)**: Common questions and answers
+* **[FAQ](../faq/index.md)**: Common questions and answers
 * **[Error Handling](../core-concepts/resilience/error-handling.md)**: Comprehensive error handling guide
-* **[Error Codes Reference](./error-codes.md)**: Look up error codes and solutions
+* **[Error Codes Reference](../error-codes/index.md)**: Look up error codes and solutions

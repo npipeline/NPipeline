@@ -13,6 +13,7 @@ This section covers advanced techniques and best practices for building high-per
 ### [Performance Hygiene](./performance-hygiene.md)
 
 Learn best practices for building efficient, low-allocation data pipelines. Covers:
+
 - Memory allocation minimization strategies
 - Buffer reuse patterns
 - Data structure optimization
@@ -23,6 +24,7 @@ Learn best practices for building efficient, low-allocation data pipelines. Cove
 ### [Synchronous Fast Paths and ValueTask Optimization](./synchronous-fast-paths.md)
 
 Master the ValueTask pattern for eliminating allocations in high-throughput scenarios. Covers:
+
 - Understanding ValueTask vs Task tradeoffs
 - Implementing fast path/slow path patterns
 - Real-world optimization examples
@@ -35,17 +37,20 @@ Master the ValueTask pattern for eliminating allocations in high-throughput scen
 ### Resilience & Retry Strategies
 
 For advanced retry delay patterns and production resilience strategies:
+
 - **[Advanced Retry Delay Strategies](../core-concepts/resilience/retry-delay-advanced.md)** - Dynamic configuration, adaptive strategies, performance optimization, and monitoring
 
 ### Production Deployment
 
 For guidance on deploying NPipeline to production environments:
+
 - **[Deployment & Operations](../architecture/performance-characteristics.md)** - Performance characteristics and scalability patterns
-- **[Troubleshooting](../reference/troubleshooting.md)** - Common issues and solutions
+- **[Troubleshooting](../troubleshooting/index.md)** - Common issues and solutions
 
 ### Testing
 
 For advanced testing strategies:
+
 - **[Advanced Testing Pipelines](../extensions/testing/advanced-testing.md)** - Mocking, dependencies, error handling, and complex scenarios
 
 ## Learning Path
@@ -60,6 +65,7 @@ If you're new to these topics, follow this recommended order:
 ## Prerequisites
 
 Before diving into these advanced topics, ensure you're familiar with:
+
 - [Core Concepts](../core-concepts/index.md) - Pipeline fundamentals
 - [Basic Resilience](../core-concepts/resilience/index.md) - Error handling and recovery
 - [Basic Testing](../extensions/testing/index.md) - Testing pipelines

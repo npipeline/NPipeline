@@ -46,7 +46,7 @@ New to NPipeline? Get started in three simple steps:
 ### Module 3: Testing (30 minutes)
 
 - [Unit Testing Pipelines](../extensions/testing/index.md) - Testing your pipeline components
-- [Debugging Pipelines](../reference/troubleshooting.md) - Common issues and solutions
+- [Debugging Pipelines](../troubleshooting/index.md) - Common issues and solutions
 
 ### Module 4: Thread Safety (20 minutes)
 

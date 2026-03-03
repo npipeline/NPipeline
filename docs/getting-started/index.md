@@ -42,6 +42,6 @@ Once you've completed the quick start, explore these resources:
 
 ## Quick Navigation
 
-* **[FAQ](../reference/faq.md)** - Common questions and answers
-* **[Troubleshooting](../reference/troubleshooting.md)** - Diagnose common issues
+* **[FAQ](../faq/index.md)** - Common questions and answers
+* **[Troubleshooting](../troubleshooting/index.md)** - Diagnose common issues
 * **[Issue Tracker](https://github.com/NPipeline/NPipeline/issues)** - Report bugs or request features

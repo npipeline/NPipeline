@@ -7,7 +7,7 @@ sidebar_position: 6
 # Troubleshooting
 
 >**Related Documentation**
->This guide covers **resilience-specific issues** (retries, node restarts, materialization). For general pipeline execution issues, see [General Troubleshooting](../../reference/troubleshooting.md).
+>This guide covers **resilience-specific issues** (retries, node restarts, materialization). For general pipeline execution issues, see [General Troubleshooting](../../troubleshooting/index.md).
 
 This guide covers diagnosing and resolving common issues with resilience configuration in NPipeline. It provides symptom-based troubleshooting, debugging techniques, and solutions for common anti-patterns.
 
@@ -799,4 +799,4 @@ public class ResilienceHealthCheck : IHealthCheck
 
 - **[Error Handling Guide](error-handling.md)**: Review proper configuration patterns
 - **[Getting Started with Resilience](getting-started.md)**: Understand critical prerequisite relationships
-- **[Error Codes Reference](../../reference/error-codes.md)**: Look up specific NPipeline error codes (NP01xx-NP05xx)
+- **[Error Codes Reference](../../error-codes/index.md)**: Look up specific NPipeline error codes (NP01xx-NP05xx)

@@ -1,6 +1,6 @@
 {
   "label": "Samples",
-  "position": 10,
+  "position": 11,
   "description": "Real-world examples demonstrating NPipeline concepts and patterns",
   "link": {
     "type": "doc",
