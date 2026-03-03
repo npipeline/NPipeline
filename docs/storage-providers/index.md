@@ -1,7 +1,7 @@
 ---
 title: Storage Providers Overview
 description: An overview of the available storage providers for NPipeline.
-sidebar_position: 1
+sidebar_position: 0
 slug: /storage-providers
 ---
 
@@ -63,6 +63,12 @@ The following storage providers are available:
   - Stream-based I/O for efficient handling of large files
   - Flexible authentication via Azure credential chain, connection string, SAS token, or explicit credentials
   - Block blob upload for large files (configurable threshold)
+- **[Azure Data Lake Storage Gen2](./adls-gen2.md)**: Read from and write to Azure Data Lake Storage Gen2.
+  - Supports ADLS Gen2 and Azurite emulator for local development
+  - True hierarchical namespace with POSIX-like directory structure
+  - Atomic move/rename operations via O(1) server-side rename
+  - Stream-based I/O for efficient handling of large files
+  - Flexible authentication via Azure credential chain, connection string, SAS token, or explicit credentials
 - **[Google Cloud Storage](./gcs-storage-provider.md)**: Read from and write to Google Cloud Storage.
   - Supports Google Cloud Storage and fake-gcs-server emulator for local development
   - Stream-based I/O for efficient handling of large files
@@ -195,6 +201,7 @@ public class CustomStorageProvider : IStorageProvider
 
 - **[AWS S3 Storage Provider](./aws-s3.md)**: Learn how to use the AWS S3 storage provider
 - **[Azure Blob Storage Provider](./azure-blob.md)**: Learn how to use the Azure Blob Storage provider
+- **[Azure Data Lake Storage Gen2 Provider](./adls-gen2.md)**: Learn how to use the Azure Data Lake Storage Gen2 provider
 - **[Google Cloud Storage Provider](./gcs-storage-provider.md)**: Learn how to use the Google Cloud Storage provider
 - **[S3-Compatible Storage Provider](./s3-compatible.md)**: Learn how to use MinIO, DigitalOcean Spaces, Cloudflare R2, and other S3-compatible services
 - **[SFTP Storage Provider](./sftp.md)**: Learn how to use the SFTP storage provider

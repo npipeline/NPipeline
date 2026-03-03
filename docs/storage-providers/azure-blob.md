@@ -1,7 +1,7 @@
 ---
 title: Azure Blob Storage Provider
 description: Read from and write to Azure Blob Storage using the Azure Blob Storage provider.
-sidebar_position: 2
+sidebar_position: 3
 ---
 
 ## Azure Blob Storage Provider
