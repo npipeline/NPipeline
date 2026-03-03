@@ -8,19 +8,19 @@ namespace NPipeline.StorageProviders.Adls.Tests;
 /// <summary>
 ///     Test container fixture for ADLS Gen2 integration tests using Azurite.
 ///     Uses Testcontainers.Azurite to spin up a dedicated Azurite instance per test collection run.
-///
 ///     Key configuration decisions:
 ///     • AzuriteBuilder is used with a pinned image (3.32.0+) that accepts the API version
-///       defaulted by Azure.Storage.Files.DataLake 12.x (2024-11-04).  Azurite 3.28.0 (the
-///       Testcontainers.Azurite default) rejects that version for DFS path-create operations.
+///     defaulted by Azure.Storage.Files.DataLake 12.x (2024-11-04).  Azurite 3.28.0 (the
+///     Testcontainers.Azurite default) rejects that version for DFS path-create operations.
 ///     • WithInMemoryPersistence is used to avoid disk I/O during tests.
 ///     • Options.DefaultConnectionString is set (not ServiceUrl) so the Azure SDK correctly
-///       routes DFS API calls through Azurite's blob endpoint.  Using a bare ServiceUrl causes
-///       400 errors for DFS path-create operations.
+///     routes DFS API calls through Azurite's blob endpoint.  Using a bare ServiceUrl causes
+///     400 errors for DFS path-create operations.
 /// </summary>
 public sealed class AzuriteAdlsFixture : IAsyncLifetime
 {
     public const string AccountName = "devstoreaccount1";
+
     public const string AccountKey =
         "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
 
@@ -36,26 +36,6 @@ public sealed class AzuriteAdlsFixture : IAsyncLifetime
     public AdlsGen2StorageProvider Provider { get; private set; } = null!;
     public DataLakeServiceClient DataLakeServiceClient { get; private set; } = null!;
     public BlobServiceClient BlobServiceClient { get; private set; } = null!;
-
-    /// <summary>Returns the Azurite connection string (dynamically mapped host ports).</summary>
-    public string GetConnectionString() => _azuriteContainer!.GetConnectionString();
-
-    /// <summary>
-    ///     Returns the Azurite blob service URI parsed from the connection string.
-    ///     Use this when constructing a provider that authenticates via per-URI accountKey credentials
-    ///     rather than a connection string.
-    /// </summary>
-    public Uri GetBlobServiceUri()
-    {
-        var cs = GetConnectionString();
-        foreach (var part in cs.Split(';'))
-        {
-            if (part.StartsWith("BlobEndpoint=", StringComparison.OrdinalIgnoreCase))
-                return new Uri(part["BlobEndpoint=".Length..]);
-        }
-
-        throw new InvalidOperationException("BlobEndpoint not found in Azurite connection string.");
-    }
 
     public async Task InitializeAsync()
     {
@@ -93,10 +73,44 @@ public sealed class AzuriteAdlsFixture : IAsyncLifetime
         catch (Exception ex)
         {
             var logs = await _azuriteContainer.GetLogsAsync().ConfigureAwait(false);
+
             throw new InvalidOperationException(
                 $"Azurite failed to become ready. Container logs:\n{logs.Stdout}\n{logs.Stderr}",
                 ex);
         }
+    }
+
+    public async Task DisposeAsync()
+    {
+        if (_azuriteContainer != null)
+        {
+            await _azuriteContainer.StopAsync();
+            await _azuriteContainer.DisposeAsync();
+        }
+    }
+
+    /// <summary>Returns the Azurite connection string (dynamically mapped host ports).</summary>
+    public string GetConnectionString()
+    {
+        return _azuriteContainer!.GetConnectionString();
+    }
+
+    /// <summary>
+    ///     Returns the Azurite blob service URI parsed from the connection string.
+    ///     Use this when constructing a provider that authenticates via per-URI accountKey credentials
+    ///     rather than a connection string.
+    /// </summary>
+    public Uri GetBlobServiceUri()
+    {
+        var cs = GetConnectionString();
+
+        foreach (var part in cs.Split(';'))
+        {
+            if (part.StartsWith("BlobEndpoint=", StringComparison.OrdinalIgnoreCase))
+                return new Uri(part["BlobEndpoint=".Length..]);
+        }
+
+        throw new InvalidOperationException("BlobEndpoint not found in Azurite connection string.");
     }
 
     private static async Task WaitForAzuriteReadyAsync(
@@ -113,6 +127,7 @@ public sealed class AzuriteAdlsFixture : IAsyncLifetime
                     .GetFileSystemClient("health-check")
                     .CreateIfNotExistsAsync(cancellationToken: CancellationToken.None)
                     .ConfigureAwait(false);
+
                 return;
             }
             catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
@@ -123,14 +138,5 @@ public sealed class AzuriteAdlsFixture : IAsyncLifetime
 
         cancellationToken.ThrowIfCancellationRequested();
         throw new TimeoutException("Azurite did not become ready within the expected time.");
-    }
-
-    public async Task DisposeAsync()
-    {
-        if (_azuriteContainer != null)
-        {
-            await _azuriteContainer.StopAsync();
-            await _azuriteContainer.DisposeAsync();
-        }
     }
 }

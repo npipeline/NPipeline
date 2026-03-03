@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
@@ -5,18 +6,15 @@ using Azure.Storage.Files.DataLake;
 using Azure.Storage.Files.DataLake.Models;
 using FakeItEasy;
 using FluentAssertions;
-using NPipeline.StorageProviders.Adls;
 using NPipeline.StorageProviders.Models;
-using NPipeline.StorageProviders.Exceptions;
-using System.Runtime.CompilerServices;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Adls.Tests;
 
 public class AdlsGen2StorageProviderTests
 {
-    private readonly AdlsGen2StorageProviderOptions _options;
     private readonly AdlsGen2ClientFactory _clientFactory;
+    private readonly AdlsGen2StorageProviderOptions _options;
     private readonly AdlsGen2StorageProvider _provider;
 
     public AdlsGen2StorageProviderTests()
@@ -33,6 +31,29 @@ public class AdlsGen2StorageProviderTests
     {
         // Assert
         _provider.Scheme.Should().Be(StorageScheme.Adls);
+    }
+
+    #endregion
+
+    #region GetMetadata (IStorageProviderMetadataProvider) Tests
+
+    [Fact]
+    public void GetMetadata_ReturnsCorrectMetadata()
+    {
+        // Act
+        var metadata = _provider.GetMetadata();
+
+        // Assert
+        metadata.Should().NotBeNull();
+        metadata.Name.Should().Be("Azure Data Lake Storage Gen2");
+        metadata.SupportedSchemes.Should().Contain("adls");
+        metadata.SupportsRead.Should().BeTrue();
+        metadata.SupportsWrite.Should().BeTrue();
+        metadata.SupportsListing.Should().BeTrue();
+        metadata.SupportsMetadata.Should().BeTrue();
+        metadata.SupportsHierarchy.Should().BeTrue();
+        metadata.Capabilities.Should().ContainKey("supportsAtomicMove");
+        metadata.Capabilities["supportsAtomicMove"].As<bool>().Should().BeTrue();
     }
 
     #endregion
@@ -87,8 +108,10 @@ public class AdlsGen2StorageProviderTests
 
         A.CallTo(() => _clientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(serviceClient));
+
         A.CallTo(() => serviceClient.GetFileSystemClient("filesystem")).Returns(fileSystemClient);
         A.CallTo(() => fileSystemClient.GetFileClient("path/file.txt")).Returns(fileClient);
+
         // Match the overload with DataLakeOpenReadOptions (first param)
         A.CallTo(() => fileClient.OpenReadAsync(A<DataLakeOpenReadOptions?>._, A<CancellationToken>._))
             .Returns(Task.FromResult<Stream>(stream));
@@ -143,6 +166,7 @@ public class AdlsGen2StorageProviderTests
 
         A.CallTo(() => _clientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(serviceClient));
+
         A.CallTo(() => _clientFactory.GetBlobServiceClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(blobServiceClient));
 
@@ -172,6 +196,7 @@ public class AdlsGen2StorageProviderTests
 
         A.CallTo(() => _clientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(serviceClient));
+
         A.CallTo(() => _clientFactory.GetBlobServiceClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(blobServiceClient));
 
@@ -199,6 +224,7 @@ public class AdlsGen2StorageProviderTests
 
         A.CallTo(() => _clientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(serviceClient));
+
         A.CallTo(() => serviceClient.GetFileSystemClient("filesystem")).Returns(fileSystemClient);
         A.CallTo(() => fileSystemClient.GetFileClient("path/file.txt")).Returns(fileClient);
         A.CallTo(() => response.Value).Returns(true);
@@ -224,6 +250,7 @@ public class AdlsGen2StorageProviderTests
 
         A.CallTo(() => _clientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(serviceClient));
+
         A.CallTo(() => serviceClient.GetFileSystemClient("filesystem")).Returns(fileSystemClient);
         A.CallTo(() => fileSystemClient.GetFileClient("path/file.txt")).Returns(fileClient);
         A.CallTo(() => response.Value).Returns(false);
@@ -257,8 +284,9 @@ public class AdlsGen2StorageProviderTests
         var containerClient = A.Fake<BlobContainerClient>();
         var existsResponse = A.Fake<Response<bool>>();
 
-        var file1 = BlobsModelFactory.BlobItem("path/file1.txt", false, null, null, (IDictionary<string, string>?)null);
-        var file2 = BlobsModelFactory.BlobItem("path/file2.txt", false, null, null, (IDictionary<string, string>?)null);
+        var file1 = BlobsModelFactory.BlobItem("path/file1.txt", false, null, null, null);
+        var file2 = BlobsModelFactory.BlobItem("path/file2.txt", false, null, null, null);
+
         var hierItems = new List<BlobHierarchyItem>
         {
             BlobsModelFactory.BlobHierarchyItem("path/subdir/", null),
@@ -268,9 +296,11 @@ public class AdlsGen2StorageProviderTests
 
         A.CallTo(() => _clientFactory.GetBlobServiceClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(blobServiceClient));
+
         A.CallTo(() => blobServiceClient.GetBlobContainerClient("filesystem")).Returns(containerClient);
         A.CallTo(() => existsResponse.Value).Returns(true);
         A.CallTo(() => containerClient.ExistsAsync(A<CancellationToken>._)).Returns(Task.FromResult(existsResponse));
+
         A.CallTo(() => containerClient.GetBlobsByHierarchyAsync(
                 A<BlobTraits>._, A<BlobStates>._, A<string>._, A<string>._, A<CancellationToken>._))
             .Returns(new FakeAsyncPageable<BlobHierarchyItem>(hierItems));
@@ -279,7 +309,8 @@ public class AdlsGen2StorageProviderTests
 
         // Act
         var result = new List<StorageItem>();
-        await foreach (var item in _provider.ListAsync(uri, recursive: false))
+
+        await foreach (var item in _provider.ListAsync(uri))
         {
             result.Add(item);
         }
@@ -296,15 +327,17 @@ public class AdlsGen2StorageProviderTests
         var containerClient = A.Fake<BlobContainerClient>();
         var existsResponse = A.Fake<Response<bool>>();
 
-        var file1 = BlobsModelFactory.BlobItem("path/file1.txt", false, null, null, (IDictionary<string, string>?)null);
-        var file2 = BlobsModelFactory.BlobItem("path/subdir/file2.txt", false, null, null, (IDictionary<string, string>?)null);
+        var file1 = BlobsModelFactory.BlobItem("path/file1.txt", false, null, null, null);
+        var file2 = BlobsModelFactory.BlobItem("path/subdir/file2.txt", false, null, null, null);
         var blobItems = new List<BlobItem> { file1, file2 };
 
         A.CallTo(() => _clientFactory.GetBlobServiceClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(blobServiceClient));
+
         A.CallTo(() => blobServiceClient.GetBlobContainerClient("filesystem")).Returns(containerClient);
         A.CallTo(() => existsResponse.Value).Returns(true);
         A.CallTo(() => containerClient.ExistsAsync(A<CancellationToken>._)).Returns(Task.FromResult(existsResponse));
+
         A.CallTo(() => containerClient.GetBlobsAsync(
                 A<BlobTraits>._, A<BlobStates>._, A<string>._, A<CancellationToken>._))
             .Returns(new FakeAsyncPageable<BlobItem>(blobItems));
@@ -313,7 +346,8 @@ public class AdlsGen2StorageProviderTests
 
         // Act
         var result = new List<StorageItem>();
-        await foreach (var item in _provider.ListAsync(uri, recursive: true))
+
+        await foreach (var item in _provider.ListAsync(uri, true))
         {
             result.Add(item);
         }
@@ -351,10 +385,13 @@ public class AdlsGen2StorageProviderTests
 
         A.CallTo(() => _clientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(serviceClient));
+
         A.CallTo(() => serviceClient.GetFileSystemClient("filesystem")).Returns(fileSystemClient);
         A.CallTo(() => fileSystemClient.GetFileClient("path/file.txt")).Returns(fileClient);
+
         A.CallTo(() => fileClient.GetPropertiesAsync(A<DataLakeRequestConditions?>._, A<CancellationToken>._))
             .Returns(Task.FromResult(properties));
+
         A.CallTo(() => properties.Value).Returns(pathProperties);
 
         var uri = StorageUri.Parse("adls://filesystem/path/file.txt");
@@ -379,8 +416,10 @@ public class AdlsGen2StorageProviderTests
 
         A.CallTo(() => _clientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(serviceClient));
+
         A.CallTo(() => serviceClient.GetFileSystemClient("filesystem")).Returns(fileSystemClient);
         A.CallTo(() => fileSystemClient.GetFileClient("path/file.txt")).Returns(fileClient);
+
         A.CallTo(() => fileClient.GetPropertiesAsync(A<DataLakeRequestConditions?>._, A<CancellationToken>._))
             .Throws(new RequestFailedException(404, "Not found"));
 
@@ -414,6 +453,7 @@ public class AdlsGen2StorageProviderTests
 
         A.CallTo(() => _clientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(serviceClient));
+
         A.CallTo(() => serviceClient.GetFileSystemClient("filesystem")).Returns(fileSystemClient);
         A.CallTo(() => fileSystemClient.GetFileClient("path/file.txt")).Returns(fileClient);
 
@@ -436,8 +476,10 @@ public class AdlsGen2StorageProviderTests
 
         A.CallTo(() => _clientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(serviceClient));
+
         A.CallTo(() => serviceClient.GetFileSystemClient("filesystem")).Returns(fileSystemClient);
         A.CallTo(() => fileSystemClient.GetFileClient("path/file.txt")).Returns(fileClient);
+
         A.CallTo(() => fileClient.DeleteAsync(A<DataLakeRequestConditions?>._, A<CancellationToken>._))
             .Throws(new RequestFailedException(404, "Not found"));
 
@@ -469,9 +511,12 @@ public class AdlsGen2StorageProviderTests
 
         A.CallTo(() => _clientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(serviceClient));
+
         A.CallTo(() => serviceClient.GetFileSystemClient("filesystem")).Returns(fileSystemClient);
         A.CallTo(() => fileSystemClient.GetFileClient("path/source.txt")).Returns(sourceFileClient);
-        A.CallTo(() => sourceFileClient.RenameAsync("path/destination.txt", A<string?>._, A<DataLakeRequestConditions?>._, A<DataLakeRequestConditions?>._, A<CancellationToken>._))
+
+        A.CallTo(() => sourceFileClient.RenameAsync("path/destination.txt", A<string?>._, A<DataLakeRequestConditions?>._, A<DataLakeRequestConditions?>._,
+                A<CancellationToken>._))
             .Returns(Task.FromResult(response));
 
         var sourceUri = StorageUri.Parse("adls://filesystem/path/source.txt");
@@ -481,7 +526,8 @@ public class AdlsGen2StorageProviderTests
         await _provider.MoveAsync(sourceUri, destinationUri);
 
         // Assert
-        A.CallTo(() => sourceFileClient.RenameAsync("path/destination.txt", A<string?>._, A<DataLakeRequestConditions?>._, A<DataLakeRequestConditions?>._, A<CancellationToken>._))
+        A.CallTo(() => sourceFileClient.RenameAsync("path/destination.txt", A<string?>._, A<DataLakeRequestConditions?>._, A<DataLakeRequestConditions?>._,
+                A<CancellationToken>._))
             .MustHaveHappened();
     }
 
@@ -514,29 +560,6 @@ public class AdlsGen2StorageProviderTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(() => _provider.MoveAsync(sourceUri, null!));
-    }
-
-    #endregion
-
-    #region GetMetadata (IStorageProviderMetadataProvider) Tests
-
-    [Fact]
-    public void GetMetadata_ReturnsCorrectMetadata()
-    {
-        // Act
-        var metadata = _provider.GetMetadata();
-
-        // Assert
-        metadata.Should().NotBeNull();
-        metadata.Name.Should().Be("Azure Data Lake Storage Gen2");
-        metadata.SupportedSchemes.Should().Contain("adls");
-        metadata.SupportsRead.Should().BeTrue();
-        metadata.SupportsWrite.Should().BeTrue();
-        metadata.SupportsListing.Should().BeTrue();
-        metadata.SupportsMetadata.Should().BeTrue();
-        metadata.SupportsHierarchy.Should().BeTrue();
-        metadata.Capabilities.Should().ContainKey("supportsAtomicMove");
-        metadata.Capabilities["supportsAtomicMove"].As<bool>().Should().BeTrue();
     }
 
     #endregion
@@ -593,20 +616,24 @@ public class AdlsGen2StorageProviderTests
 
         A.CallTo(() => _clientFactory.GetClientAsync(A<StorageUri>._, A<CancellationToken>._))
             .Returns(Task.FromResult(serviceClient));
+
         A.CallTo(() => serviceClient.GetFileSystemClient("filesystem")).Returns(fileSystemClient);
+
         // The path will be "path\\file.txt" or "path/file.txt" depending on how StorageUri handles it
         A.CallTo(() => fileSystemClient.GetFileClient(A<string>._)).Returns(fileClient);
+
         A.CallTo(() => fileClient.OpenReadAsync(A<DataLakeOpenReadOptions?>._, A<CancellationToken>._))
             .Returns(Task.FromResult<Stream>(stream));
 
         // Create a URI and manually set a path with backslash for testing
         var uri = StorageUri.Parse("adls://filesystem/path/file.txt");
+
         // Override the path to contain a backslash for validation testing
         // This tests the ValidatePath method directly
 
         // Act & Assert
         // Since StorageUri.Parse may normalize the path, we test with an invalid filesystem instead
-        var invalidUri = StorageUri.Parse("adls://ab/path");  // "ab" is too short (less than 3 chars)
+        var invalidUri = StorageUri.Parse("adls://ab/path"); // "ab" is too short (less than 3 chars)
         await Assert.ThrowsAsync<ArgumentException>(() => _provider.OpenReadAsync(invalidUri));
     }
 
@@ -724,6 +751,7 @@ internal sealed class FakeAsyncPageable<T> : AsyncPageable<T> where T : notnull
     private async IAsyncEnumerable<Page<T>> GetPagesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         yield return Page<T>.FromValues(_items.ToList(), null, A.Fake<Response>());
+
         await Task.CompletedTask;
     }
 }

@@ -12,15 +12,15 @@ namespace NPipeline.StorageProviders.Adls;
 public sealed class AdlsGen2WriteStream : Stream
 {
     private static readonly TimeSpan UploadDisposeTimeout = TimeSpan.FromMinutes(5);
-    private readonly string _path;
     private readonly BlobServiceClient _blobServiceClient;
-    private readonly long _uploadThreshold;
-    private readonly string _filesystem;
     private readonly string? _contentType;
     private readonly CancellationToken _disposeCancellationToken;
+    private readonly string _filesystem;
     private readonly int? _maximumConcurrency;
     private readonly int? _maximumTransferSizeBytes;
+    private readonly string _path;
     private readonly string _tempFilePath;
+    private readonly long _uploadThreshold;
     private int _disposeState; // 0 = not disposed, 1 = disposing, 2 = disposed
     private FileStream? _tempFileStream;
     private bool _uploaded;
@@ -28,7 +28,10 @@ public sealed class AdlsGen2WriteStream : Stream
     /// <summary>
     ///     Initializes a new instance of the <see cref="AdlsGen2WriteStream" /> class.
     /// </summary>
-    /// <param name="blobServiceClient">The Azure Blob Service client (used for uploads via the Blob API, which is compatible with Azurite and all ADLS Gen2 configurations).</param>
+    /// <param name="blobServiceClient">
+    ///     The Azure Blob Service client (used for uploads via the Blob API, which is compatible with Azurite and all ADLS Gen2
+    ///     configurations).
+    /// </param>
     /// <param name="filesystem">The ADLS filesystem name (maps to a Blob container).</param>
     /// <param name="path">The ADLS path.</param>
     /// <param name="contentType">Optional content type for the upload.</param>
@@ -260,13 +263,9 @@ public sealed class AdlsGen2WriteStream : Stream
             var fileSize = _tempFileStream.Length;
 
             if (fileSize >= _uploadThreshold)
-            {
                 await UploadChunkedAsync(blobClient, cancellationToken).ConfigureAwait(false);
-            }
             else
-            {
                 await UploadSimpleAsync(blobClient, cancellationToken).ConfigureAwait(false);
-            }
 
             _uploaded = true;
         }
@@ -298,7 +297,7 @@ public sealed class AdlsGen2WriteStream : Stream
         }
     }
 
-    private async Task UploadSimpleAsync(Azure.Storage.Blobs.BlobClient blobClient, CancellationToken cancellationToken)
+    private async Task UploadSimpleAsync(BlobClient blobClient, CancellationToken cancellationToken)
     {
         var options = new BlobUploadOptions();
 
@@ -311,7 +310,7 @@ public sealed class AdlsGen2WriteStream : Stream
         _ = await blobClient.UploadAsync(_tempFileStream, options, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task UploadChunkedAsync(Azure.Storage.Blobs.BlobClient blobClient, CancellationToken cancellationToken)
+    private async Task UploadChunkedAsync(BlobClient blobClient, CancellationToken cancellationToken)
     {
         var containerClient = _blobServiceClient.GetBlobContainerClient(_filesystem);
         _ = await containerClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);

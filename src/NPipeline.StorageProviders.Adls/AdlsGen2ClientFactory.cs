@@ -15,8 +15,8 @@ namespace NPipeline.StorageProviders.Adls;
 /// </summary>
 public class AdlsGen2ClientFactory
 {
-    private readonly ConcurrentDictionary<string, DataLakeServiceClient> _clientCache = new();
     private readonly ConcurrentDictionary<string, BlobServiceClient> _blobClientCache = new();
+    private readonly ConcurrentDictionary<string, DataLakeServiceClient> _clientCache = new();
     private readonly ConcurrentQueue<string> _clientKeyQueue = new();
     private readonly AdlsGen2StorageProviderOptions _options;
 
@@ -140,6 +140,7 @@ public class AdlsGen2ClientFactory
             if (credentialInfo?.SasToken is not null)
             {
                 var sasCredential = new AzureSasCredential(credentialInfo.SasToken);
+
                 return clientOptions is null
                     ? new DataLakeServiceClient(effectiveServiceUrl, sasCredential)
                     : new DataLakeServiceClient(effectiveServiceUrl, sasCredential, clientOptions);
@@ -149,6 +150,7 @@ public class AdlsGen2ClientFactory
             if (credentialInfo?.AccountKey is not null && credentialInfo.AccountName is not null)
             {
                 var keyCredential = new StorageSharedKeyCredential(credentialInfo.AccountName, credentialInfo.AccountKey);
+
                 return clientOptions is null
                     ? new DataLakeServiceClient(effectiveServiceUrl, keyCredential)
                     : new DataLakeServiceClient(effectiveServiceUrl, keyCredential, clientOptions);

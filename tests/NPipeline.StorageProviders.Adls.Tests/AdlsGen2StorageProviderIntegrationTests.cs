@@ -1,13 +1,9 @@
 using System.Text;
 using System.Text.Json;
-using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using Azure.Storage.Files.DataLake;
 using FluentAssertions;
 using NPipeline.StorageProviders.Models;
-using NPipeline.StorageProviders;
 using Xunit;
-using System.Runtime.CompilerServices;
 
 namespace NPipeline.StorageProviders.Adls.Tests;
 
@@ -38,8 +34,12 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
     private static async Task<List<T>> CollectAsync<T>(IAsyncEnumerable<T> source, CancellationToken ct = default)
     {
         var list = new List<T>();
+
         await foreach (var item in source.WithCancellation(ct))
+        {
             list.Add(item);
+        }
+
         return list;
     }
 
@@ -62,6 +62,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
 
         var blobClient = containerClient.GetBlobClient(path);
         var options = new BlobUploadOptions();
+
         if (contentType != null)
             options.HttpHeaders = new BlobHttpHeaders { ContentType = contentType };
 
@@ -80,7 +81,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
 
         // Upload a zero-byte placeholder at the exact path so provider.ExistsAsync returns true.
         var blobClient = containerClient.GetBlobClient(path);
-        await blobClient.UploadAsync(BinaryData.Empty, overwrite: true);
+        await blobClient.UploadAsync(BinaryData.Empty, true);
     }
 
     #region Read Operations Tests
@@ -112,6 +113,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         // Arrange
         var filesystemName = GetUniqueFilesystemName();
         var path = "non-existent-file.txt";
+
         var uri = StorageUri.Parse(
             $"adls://{filesystemName}/{path}?accountName={AzuriteAdlsFixture.AccountName}&accountKey={AzuriteAdlsFixture.AccountKey}");
 
@@ -136,7 +138,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
 
         var blobClient = containerClient.GetBlobClient(path);
         using var uploadStream = new MemoryStream(largeContent);
-        await blobClient.UploadAsync(uploadStream, overwrite: true);
+        await blobClient.UploadAsync(uploadStream, true);
 
         var uri = StorageUri.Parse(
             $"adls://{filesystemName}/{path}?accountName={AzuriteAdlsFixture.AccountName}&accountKey={AzuriteAdlsFixture.AccountKey}");
@@ -190,6 +192,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var filesystemName = GetUniqueFilesystemName();
         var path = "new-file.txt";
         var content = "New file content";
+
         var uri = StorageUri.Parse(
             $"adls://{filesystemName}/{path}?accountName={AzuriteAdlsFixture.AccountName}&accountKey={AzuriteAdlsFixture.AccountKey}");
 
@@ -445,7 +448,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var prefixUri = StorageUri.Parse($"adls://{filesystemName}/?accountName={AzuriteAccountName}&accountKey={AzuriteAccountKey}");
 
         // Act
-        var items = await CollectAsync(_provider!.ListAsync(prefixUri, false));
+        var items = await CollectAsync(_provider!.ListAsync(prefixUri));
 
         // Assert - Non-recursive listing returns files and directories at the root level
         items.Should().HaveCount(2);
@@ -568,7 +571,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         await containerClient.CreateIfNotExistsAsync();
 
         var blobClient = containerClient.GetBlobClient(path);
-        await blobClient.UploadAsync(BinaryData.FromString("Content"), overwrite: true);
+        await blobClient.UploadAsync(BinaryData.FromString("Content"), true);
 
         await blobClient.SetMetadataAsync(new Dictionary<string, string>
         {
@@ -758,6 +761,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var content = "Account key test";
 
         var blobEndpoint = _fixture.GetBlobServiceUri();
+
         var keyConnectionString =
             $"DefaultEndpointsProtocol=http;AccountName={AzuriteAccountName};AccountKey={AzuriteAccountKey}" +
             $";BlobEndpoint={blobEndpoint}";
@@ -768,6 +772,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
             UploadThresholdBytes = _options.UploadThresholdBytes,
             UseDefaultCredentialChain = false,
         };
+
         var provider = new AdlsGen2StorageProvider(new AdlsGen2ClientFactory(options), options);
 
         // URI still carries accountName + accountKey; DefaultConnectionString (built from the same key)
@@ -812,11 +817,13 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         // Build a provider that uses only the Azurite service URL (no DefaultConnectionString), so
         // that the per-URI accountKey credential is actually forwarded to Azurite.
         var blobEndpoint = _fixture.GetBlobServiceUri();
+
         var noConnectionStringOptions = new AdlsGen2StorageProviderOptions
         {
             ServiceUrl = blobEndpoint,
             UseDefaultCredentialChain = false,
         };
+
         var provider = new AdlsGen2StorageProvider(new AdlsGen2ClientFactory(noConnectionStringOptions), noConnectionStringOptions);
 
         var uri = StorageUri.Parse($"adls://{filesystemName}/{path}?accountName={AzuriteAccountName}&accountKey={invalidKey}");

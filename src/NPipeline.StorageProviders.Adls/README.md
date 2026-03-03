@@ -4,7 +4,8 @@ Azure Data Lake Storage Gen2 (ADLS Gen2) storage provider for NPipeline.
 
 ## Overview
 
-This library provides a storage provider implementation for Azure Data Lake Storage Gen2, enabling NPipeline to read, write, list, move, and delete files in ADLS Gen2 accounts using the `adls://` URI scheme.
+This library provides a storage provider implementation for Azure Data Lake Storage Gen2, enabling NPipeline to read, write, list, move, and delete files in
+ADLS Gen2 accounts using the `adls://` URI scheme.
 
 ## Key Features
 
@@ -28,20 +29,20 @@ dotnet add package NPipeline.StorageProviders.Adls
 adls://<filesystem>/<path/to/file.ext>[?param=value&...]
 ```
 
-| URI component | Maps to |
-|---|---|
-| `Host` | Data Lake **filesystem** name (equivalent of container) |
-| `Path` | File or directory path within the filesystem |
+| URI component | Maps to                                                 |
+|---------------|---------------------------------------------------------|
+| `Host`        | Data Lake **filesystem** name (equivalent of container) |
+| `Path`        | File or directory path within the filesystem            |
 
 ### Supported Query Parameters
 
-| Parameter | Description |
-|---|---|
-| `accountName` | Storage account name (overrides options default) |
-| `accountKey` | Shared-key credential (base64) |
-| `sasToken` | SAS token |
-| `connectionString` | Full connection string |
-| `contentType` | MIME type hint applied on write |
+| Parameter          | Description                                      |
+|--------------------|--------------------------------------------------|
+| `accountName`      | Storage account name (overrides options default) |
+| `accountKey`       | Shared-key credential (base64)                   |
+| `sasToken`         | SAS token                                        |
+| `connectionString` | Full connection string                           |
+| `contentType`      | MIME type hint applied on write                  |
 
 ## Authentication
 
@@ -176,41 +177,41 @@ public async Task MoveFileAsync(string filesystem, string sourcePath, string des
 
 ## Configuration Options
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `DefaultCredential` | `TokenCredential?` | `null` | Custom token credential |
-| `DefaultConnectionString` | `string?` | `null` | Storage account connection string |
-| `UseDefaultCredentialChain` | `bool` | `true` | Use `DefaultAzureCredential` when no other credential is provided |
-| `ServiceUrl` | `Uri?` | `null` | Custom service URL (e.g., for Azurite) |
-| `ServiceVersion` | `DataLakeClientOptions.ServiceVersion?` | `null` | REST API version |
-| `UploadThresholdBytes` | `long` | `67108864` (64 MB) | Threshold for chunked uploads |
-| `UploadMaximumConcurrency` | `int?` | `null` | Max concurrent upload operations |
-| `UploadMaximumTransferSizeBytes` | `int?` | `null` | Max bytes per transfer chunk |
-| `ClientCacheSizeLimit` | `int` | `100` | Max cached service clients |
+| Property                         | Type                                    | Default            | Description                                                       |
+|----------------------------------|-----------------------------------------|--------------------|-------------------------------------------------------------------|
+| `DefaultCredential`              | `TokenCredential?`                      | `null`             | Custom token credential                                           |
+| `DefaultConnectionString`        | `string?`                               | `null`             | Storage account connection string                                 |
+| `UseDefaultCredentialChain`      | `bool`                                  | `true`             | Use `DefaultAzureCredential` when no other credential is provided |
+| `ServiceUrl`                     | `Uri?`                                  | `null`             | Custom service URL (e.g., for Azurite)                            |
+| `ServiceVersion`                 | `DataLakeClientOptions.ServiceVersion?` | `null`             | REST API version                                                  |
+| `UploadThresholdBytes`           | `long`                                  | `67108864` (64 MB) | Threshold for chunked uploads                                     |
+| `UploadMaximumConcurrency`       | `int?`                                  | `null`             | Max concurrent upload operations                                  |
+| `UploadMaximumTransferSizeBytes` | `int?`                                  | `null`             | Max bytes per transfer chunk                                      |
+| `ClientCacheSizeLimit`           | `int`                                   | `100`              | Max cached service clients                                        |
 
 ## ADLS Gen2 vs Azure Blob Storage
 
-| Concern | Azure Blob | ADLS Gen2 |
-|---|---|---|
-| SDK package | `Azure.Storage.Blobs` | `Azure.Storage.Files.DataLake` |
-| Hierarchy | Flat (virtual `/` delimiter) | True POSIX-like directory tree |
-| Atomic rename / move | Not supported natively | `RenameAsync` — O(1) atomic |
-| Write semantics | Block upload | Append + flush (or block upload) |
-| ACLs | RBAC/container-level only | Per-file and per-directory POSIX ACLs |
-| URI scheme | `azure://` | `adls://` |
-| `SupportsHierarchy` | `false` | `true` |
+| Concern              | Azure Blob                   | ADLS Gen2                             |
+|----------------------|------------------------------|---------------------------------------|
+| SDK package          | `Azure.Storage.Blobs`        | `Azure.Storage.Files.DataLake`        |
+| Hierarchy            | Flat (virtual `/` delimiter) | True POSIX-like directory tree        |
+| Atomic rename / move | Not supported natively       | `RenameAsync` — O(1) atomic           |
+| Write semantics      | Block upload                 | Append + flush (or block upload)      |
+| ACLs                 | RBAC/container-level only    | Per-file and per-directory POSIX ACLs |
+| URI scheme           | `azure://`                   | `adls://`                             |
+| `SupportsHierarchy`  | `false`                      | `true`                                |
 
 ## Exception Handling
 
 The provider translates Azure `RequestFailedException` errors to standard .NET exceptions:
 
-| HTTP status / error code | Thrown exception |
-|---|---|
+| HTTP status / error code                                | Thrown exception              |
+|---------------------------------------------------------|-------------------------------|
 | `AuthenticationFailed`, `AuthorizationFailed`, 401, 403 | `UnauthorizedAccessException` |
-| `FilesystemNotFound`, `PathNotFound`, 404 | `FileNotFoundException` |
-| `InvalidResourceName`, 400 | `ArgumentException` |
-| `PathAlreadyExists`, 409 | `IOException` |
-| 429 / 5xx | `IOException` (retryable) |
+| `FilesystemNotFound`, `PathNotFound`, 404               | `FileNotFoundException`       |
+| `InvalidResourceName`, 400                              | `ArgumentException`           |
+| `PathAlreadyExists`, 409                                | `IOException`                 |
+| 429 / 5xx                                               | `IOException` (retryable)     |
 
 ## Development & Testing
 

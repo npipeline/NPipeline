@@ -10,8 +10,8 @@ namespace NPipeline.StorageProviders.Adls;
 public class AdlsGen2StorageProviderOptions
 {
     private readonly Lazy<TokenCredential> _defaultCredentialChain = new(() => new DefaultAzureCredential());
-    private long _uploadThresholdBytes = 64 * 1024 * 1024;
     private int _clientCacheSizeLimit = 100;
+    private long _uploadThresholdBytes = 64 * 1024 * 1024;
 
     /// <summary>
     ///     Gets or sets the default Azure credential for authentication.

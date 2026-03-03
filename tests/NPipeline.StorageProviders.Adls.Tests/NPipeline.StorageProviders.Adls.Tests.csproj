@@ -16,12 +16,12 @@
         <PackageReference Include="FakeItEasy" Version="9.0.1"/>
         <PackageReference Include="FluentAssertions" Version="8.0.0"/>
         <PackageReference Include="Testcontainers.Azurite" Version="4.10.0"/>
-        <PackageReference Include="Azure.Storage.Files.DataLake" Version="12.24.0" />
-        <PackageReference Include="Azure.Identity" Version="1.18.0" />
+        <PackageReference Include="Azure.Storage.Files.DataLake" Version="12.24.0"/>
+        <PackageReference Include="Azure.Identity" Version="1.18.0"/>
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\NPipeline.StorageProviders.Adls\NPipeline.StorageProviders.Adls.csproj" />
+        <ProjectReference Include="..\..\src\NPipeline.StorageProviders.Adls\NPipeline.StorageProviders.Adls.csproj"/>
     </ItemGroup>
 
 </Project>

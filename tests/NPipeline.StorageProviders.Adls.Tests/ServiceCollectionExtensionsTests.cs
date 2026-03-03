@@ -1,9 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using NPipeline.StorageProviders.Abstractions;
-using NPipeline.StorageProviders.Adls;
-using NPipeline.StorageProviders.Models;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Adls.Tests;
@@ -93,10 +90,7 @@ public class ServiceCollectionExtensionsTests
         var customThreshold = 128 * 1024 * 1024; // 128 MB
 
         // Act
-        services.AddAdlsGen2StorageProvider(options =>
-        {
-            options.UploadThresholdBytes = customThreshold;
-        });
+        services.AddAdlsGen2StorageProvider(options => { options.UploadThresholdBytes = customThreshold; });
 
         // Assert
         var provider = services.BuildServiceProvider();

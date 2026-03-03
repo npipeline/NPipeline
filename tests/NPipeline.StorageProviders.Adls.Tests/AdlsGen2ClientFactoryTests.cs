@@ -1,8 +1,5 @@
-using Azure;
 using Azure.Storage.Files.DataLake;
-using FakeItEasy;
 using FluentAssertions;
-using NPipeline.StorageProviders.Adls;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 
@@ -10,8 +7,8 @@ namespace NPipeline.StorageProviders.Adls.Tests;
 
 public class AdlsGen2ClientFactoryTests
 {
-    private readonly AdlsGen2StorageProviderOptions _options;
     private readonly AdlsGen2ClientFactory _factory;
+    private readonly AdlsGen2StorageProviderOptions _options;
 
     public AdlsGen2ClientFactoryTests()
     {
@@ -179,4 +176,3 @@ public class AdlsGen2ClientFactoryTests
         client.Should().NotBeNull();
     }
 }
-

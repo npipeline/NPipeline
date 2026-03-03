@@ -3,22 +3,21 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using FakeItEasy;
 using FluentAssertions;
-using NPipeline.StorageProviders.Adls;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Adls.Tests;
 
 public class AdlsGen2WriteStreamTests
 {
-    private readonly BlobServiceClient _serviceClient;
+    private readonly BlobClient _blobClient;
     private readonly BlobContainerClient _containerClient;
-    private readonly Azure.Storage.Blobs.BlobClient _blobClient;
+    private readonly BlobServiceClient _serviceClient;
 
     public AdlsGen2WriteStreamTests()
     {
         _serviceClient = A.Fake<BlobServiceClient>();
         _containerClient = A.Fake<BlobContainerClient>();
-        _blobClient = A.Fake<Azure.Storage.Blobs.BlobClient>();
+        _blobClient = A.Fake<BlobClient>();
 
         A.CallTo(() => _serviceClient.GetBlobContainerClient("filesystem")).Returns(_containerClient);
         A.CallTo(() => _containerClient.GetBlobClient("path/file.txt")).Returns(_blobClient);
@@ -286,6 +285,7 @@ public class AdlsGen2WriteStreamTests
         // Arrange
         A.CallTo(() => _containerClient.CreateIfNotExistsAsync(A<PublicAccessType>._, A<IDictionary<string, string>?>._, A<CancellationToken>._))
             .Returns(Task.FromResult(A.Fake<Response<BlobContainerInfo>>()));
+
         A.CallTo(() => _blobClient.UploadAsync(A<Stream>._, A<BlobUploadOptions?>._, A<CancellationToken>._))
             .Returns(Task.FromResult(A.Fake<Response<BlobContentInfo>>()));
 
@@ -316,6 +316,7 @@ public class AdlsGen2WriteStreamTests
         // Arrange
         A.CallTo(() => _containerClient.CreateIfNotExistsAsync(A<PublicAccessType>._, A<IDictionary<string, string>?>._, A<CancellationToken>._))
             .Returns(Task.FromResult(A.Fake<Response<BlobContainerInfo>>()));
+
         A.CallTo(() => _blobClient.UploadAsync(A<Stream>._, A<BlobUploadOptions?>._, A<CancellationToken>._))
             .Returns(Task.FromResult(A.Fake<Response<BlobContentInfo>>()));
 
@@ -346,6 +347,7 @@ public class AdlsGen2WriteStreamTests
         // Arrange
         A.CallTo(() => _containerClient.CreateIfNotExistsAsync(A<PublicAccessType>._, A<IDictionary<string, string>?>._, A<CancellationToken>._))
             .Returns(Task.FromResult(A.Fake<Response<BlobContainerInfo>>()));
+
         A.CallTo(() => _blobClient.UploadAsync(A<Stream>._, A<BlobUploadOptions?>._, A<CancellationToken>._))
             .Returns(Task.FromResult(A.Fake<Response<BlobContentInfo>>()));
 

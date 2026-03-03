@@ -1,9 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Azure;
-using Azure.Storage.Blobs.Models;
-using Azure.Storage.Files.DataLake;
-using Azure.Storage.Files.DataLake.Models;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
@@ -24,9 +21,9 @@ namespace NPipeline.StorageProviders.Adls;
 /// </remarks>
 public sealed class AdlsGen2StorageProvider
     : IStorageProvider,
-      IDeletableStorageProvider,
-      IMoveableStorageProvider,
-      IStorageProviderMetadataProvider
+        IDeletableStorageProvider,
+        IMoveableStorageProvider,
+        IStorageProviderMetadataProvider
 {
     private static readonly Regex FilesystemNameRegex = new(
         "^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$",
@@ -45,6 +42,88 @@ public sealed class AdlsGen2StorageProvider
     {
         _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
         _options = options ?? throw new ArgumentNullException(nameof(options));
+    }
+
+    /// <summary>
+    ///     Deletes a file at the specified URI.
+    /// </summary>
+    /// <param name="uri">The URI of the file to delete.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    public async Task DeleteAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+
+        var (filesystem, path) = GetFilesystemAndPath(uri, true);
+        var dataLakeServiceClient = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
+        var pathClient = dataLakeServiceClient.GetFileSystemClient(filesystem).GetFileClient(path);
+
+        try
+        {
+            await pathClient.DeleteAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+        catch (RequestFailedException ex) when (ex.Status == 404)
+        {
+            // Idempotent delete - silently ignore if path doesn't exist
+        }
+        catch (RequestFailedException ex)
+        {
+            throw TranslateAdlsException(ex, filesystem, path);
+        }
+    }
+
+    /// <summary>
+    ///     Moves a file from one location to another using ADLS Gen2's atomic rename operation.
+    /// </summary>
+    /// <param name="sourceUri">The source URI.</param>
+    /// <param name="destinationUri">The destination URI.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    /// <exception cref="NotSupportedException">Thrown when attempting to move across storage accounts.</exception>
+    public async Task MoveAsync(StorageUri sourceUri, StorageUri destinationUri, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sourceUri);
+        ArgumentNullException.ThrowIfNull(destinationUri);
+
+        var (sourceFilesystem, sourcePath) = GetFilesystemAndPath(sourceUri, true);
+        var (destFilesystem, destPath) = GetFilesystemAndPath(destinationUri, true);
+
+        var sourceServiceClient = await _clientFactory.GetClientAsync(sourceUri, cancellationToken).ConfigureAwait(false);
+
+        // For v1, we only support moves within the same storage account
+        // Check if destination uses the same account/connection
+        var destServiceClient = await _clientFactory.GetClientAsync(destinationUri, cancellationToken).ConfigureAwait(false);
+
+        if (sourceServiceClient != destServiceClient)
+        {
+            throw new NotSupportedException(
+                "Cross-account moves are not supported in ADLS Gen2 provider v1. " +
+                "Source and destination must be in the same storage account.");
+        }
+
+        var sourcePathClient = sourceServiceClient.GetFileSystemClient(sourceFilesystem).GetFileClient(sourcePath);
+
+        // ADLS Gen2 atomic rename - destination path must be relative to filesystem root.
+        // If moving to a different filesystem, we need the full destination path.
+        var destinationPath = sourceFilesystem == destFilesystem
+            ? destPath
+            : $"{destFilesystem}/{destPath}";
+
+        try
+        {
+            _ = await sourcePathClient.RenameAsync(
+                destinationPath,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+        catch (RequestFailedException ex) when (ex.Status == 400)
+        {
+            await MoveViaBlobCopyAsync(sourceUri, destinationUri, sourceFilesystem, sourcePath, destFilesystem, destPath, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (RequestFailedException ex)
+        {
+            throw TranslateAdlsException(ex, sourceFilesystem, sourcePath);
+        }
     }
 
     /// <summary>
@@ -209,85 +288,33 @@ public sealed class AdlsGen2StorageProvider
     }
 
     /// <summary>
-    ///     Deletes a file at the specified URI.
+    ///     Gets metadata describing this storage provider's capabilities.
     /// </summary>
-    /// <param name="uri">The URI of the file to delete.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task DeleteAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    /// <returns>A <see cref="StorageProviderMetadata" /> object containing information about the provider's supported features.</returns>
+    public StorageProviderMetadata GetMetadata()
     {
-        ArgumentNullException.ThrowIfNull(uri);
-
-        var (filesystem, path) = GetFilesystemAndPath(uri, true);
-        var dataLakeServiceClient = await _clientFactory.GetClientAsync(uri, cancellationToken).ConfigureAwait(false);
-        var pathClient = dataLakeServiceClient.GetFileSystemClient(filesystem).GetFileClient(path);
-
-        try
+        return new StorageProviderMetadata
         {
-            await pathClient.DeleteAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-        }
-        catch (RequestFailedException ex) when (ex.Status == 404)
-        {
-            // Idempotent delete - silently ignore if path doesn't exist
-        }
-        catch (RequestFailedException ex)
-        {
-            throw TranslateAdlsException(ex, filesystem, path);
-        }
-    }
-
-    /// <summary>
-    ///     Moves a file from one location to another using ADLS Gen2's atomic rename operation.
-    /// </summary>
-    /// <param name="sourceUri">The source URI.</param>
-    /// <param name="destinationUri">The destination URI.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    /// <exception cref="NotSupportedException">Thrown when attempting to move across storage accounts.</exception>
-    public async Task MoveAsync(StorageUri sourceUri, StorageUri destinationUri, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(sourceUri);
-        ArgumentNullException.ThrowIfNull(destinationUri);
-
-        var (sourceFilesystem, sourcePath) = GetFilesystemAndPath(sourceUri, true);
-        var (destFilesystem, destPath) = GetFilesystemAndPath(destinationUri, true);
-
-        var sourceServiceClient = await _clientFactory.GetClientAsync(sourceUri, cancellationToken).ConfigureAwait(false);
-
-        // For v1, we only support moves within the same storage account
-        // Check if destination uses the same account/connection
-        var destServiceClient = await _clientFactory.GetClientAsync(destinationUri, cancellationToken).ConfigureAwait(false);
-
-        if (sourceServiceClient != destServiceClient)
-        {
-            throw new NotSupportedException(
-                "Cross-account moves are not supported in ADLS Gen2 provider v1. " +
-                "Source and destination must be in the same storage account.");
-        }
-
-        var sourcePathClient = sourceServiceClient.GetFileSystemClient(sourceFilesystem).GetFileClient(sourcePath);
-
-        // ADLS Gen2 atomic rename - destination path must be relative to filesystem root.
-        // If moving to a different filesystem, we need the full destination path.
-        var destinationPath = sourceFilesystem == destFilesystem
-            ? destPath
-            : $"{destFilesystem}/{destPath}";
-
-        try
-        {
-            _ = await sourcePathClient.RenameAsync(
-                destinationPath,
-                cancellationToken: cancellationToken).ConfigureAwait(false);
-        }
-        catch (RequestFailedException ex) when (ex.Status == 400)
-        {
-            await MoveViaBlobCopyAsync(sourceUri, destinationUri, sourceFilesystem, sourcePath, destFilesystem, destPath, cancellationToken)
-                .ConfigureAwait(false);
-        }
-        catch (RequestFailedException ex)
-        {
-            throw TranslateAdlsException(ex, sourceFilesystem, sourcePath);
-        }
+            Name = "Azure Data Lake Storage Gen2",
+            SupportedSchemes = ["adls"],
+            SupportsRead = true,
+            SupportsWrite = true,
+            SupportsListing = true,
+            SupportsMetadata = true,
+            SupportsHierarchy = true, // ADLS Gen2 has true hierarchical namespace
+            Capabilities = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["supportsAtomicMove"] = true,
+                ["supportsNativeDelete"] = true,
+                ["supportsHierarchicalListing"] = true,
+                ["uploadThresholdBytes"] = _options.UploadThresholdBytes,
+                ["supportsServiceUrl"] = true,
+                ["supportsConnectionString"] = true,
+                ["supportsSasToken"] = true,
+                ["supportsAccountKey"] = true,
+                ["supportsDefaultCredentialChain"] = true,
+            },
+        };
     }
 
     private async Task MoveViaBlobCopyAsync(
@@ -327,36 +354,6 @@ public sealed class AdlsGen2StorageProvider
         }
     }
 
-    /// <summary>
-    ///     Gets metadata describing this storage provider's capabilities.
-    /// </summary>
-    /// <returns>A <see cref="StorageProviderMetadata" /> object containing information about the provider's supported features.</returns>
-    public StorageProviderMetadata GetMetadata()
-    {
-        return new StorageProviderMetadata
-        {
-            Name = "Azure Data Lake Storage Gen2",
-            SupportedSchemes = ["adls"],
-            SupportsRead = true,
-            SupportsWrite = true,
-            SupportsListing = true,
-            SupportsMetadata = true,
-            SupportsHierarchy = true, // ADLS Gen2 has true hierarchical namespace
-            Capabilities = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["supportsAtomicMove"] = true,
-                ["supportsNativeDelete"] = true,
-                ["supportsHierarchicalListing"] = true,
-                ["uploadThresholdBytes"] = _options.UploadThresholdBytes,
-                ["supportsServiceUrl"] = true,
-                ["supportsConnectionString"] = true,
-                ["supportsSasToken"] = true,
-                ["supportsAccountKey"] = true,
-                ["supportsDefaultCredentialChain"] = true,
-            },
-        };
-    }
-
     private static (string filesystem, string path) GetFilesystemAndPath(StorageUri uri, bool requirePath = false)
     {
         var filesystem = uri.Host ?? string.Empty;
@@ -374,6 +371,7 @@ public sealed class AdlsGen2StorageProvider
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var (filesystem, pathPrefix) = GetFilesystemAndPath(prefix);
+
         await foreach (var item in ListViaBlobFallbackAsync(prefix, filesystem, pathPrefix, recursive, cancellationToken)
                            .ConfigureAwait(false))
         {
@@ -396,7 +394,9 @@ public sealed class AdlsGen2StorageProvider
 
         var blobPrefix = string.IsNullOrEmpty(pathPrefix)
             ? null
-            : pathPrefix.EndsWith('/') ? pathPrefix : pathPrefix + "/";
+            : pathPrefix.EndsWith('/')
+                ? pathPrefix
+                : pathPrefix + "/";
 
         if (recursive)
         {
@@ -416,6 +416,7 @@ public sealed class AdlsGen2StorageProvider
                 for (var i = Math.Max(1, prefixDepth + 1); i < segments.Length; i++)
                 {
                     var dirPath = string.Join("/", segments, 0, i);
+
                     if (emittedDirectories.Add(dirPath))
                     {
                         yield return new StorageItem
@@ -457,6 +458,7 @@ public sealed class AdlsGen2StorageProvider
                 else if (item.IsPrefix)
                 {
                     var dirName = item.Prefix.TrimEnd('/');
+
                     yield return new StorageItem
                     {
                         Uri = StorageUri.Parse($"adls://{filesystem}/{dirName}"),
