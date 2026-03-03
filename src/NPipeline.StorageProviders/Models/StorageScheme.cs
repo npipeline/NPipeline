@@ -72,6 +72,12 @@ public readonly record struct StorageScheme
     public static StorageScheme Azure => new("azure");
 
     /// <summary>
+    ///     Gets a <see cref="StorageScheme" /> instance representing the "adls" scheme
+    ///     for Azure Data Lake Storage Gen2.
+    /// </summary>
+    public static StorageScheme Adls => new("adls");
+
+    /// <summary>
     ///     Gets a <see cref="StorageScheme" /> instance representing the "gs" scheme for Google Cloud Storage.
     /// </summary>
     public static StorageScheme Gcs => new("gs");
