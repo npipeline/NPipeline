@@ -79,6 +79,12 @@ The following connectors are available:
   - Multiple serialization formats (JSON, Avro, Protobuf)
   - Transaction support with proper offset management
   - Uses Confluent.Kafka for reliable Kafka operations
+- **[MongoDB](./mongodb.md)**: Read from and write to MongoDB databases.
+  - Streaming reads with IAsyncEnumerable pattern
+  - Multiple write strategies (InsertMany, Upsert, BulkWrite)
+  - Change stream support with operation filtering and resume-token-based restart
+  - Dependency injection support with connection pooling and named connections
+  - Uses official MongoDB C# Driver for reliable operations
 - **[Parquet](./parquet.md)**: Read from and write to Apache Parquet files.
   - Columnar storage optimised for analytical workloads
   - Row-group streaming with bounded memory usage
@@ -144,6 +150,7 @@ Explore the documentation for each specific connector to learn about its install
 - **[Excel Connector](excel.md)**: Learn how to read from and write to Excel files (XLS and XLSX)
 - **[JSON Connector](json.md)**: Learn how to read from and write to JSON files (Array and NDJSON)
 - **[Kafka Connector](kafka.md)**: Learn how to read from and write to Apache Kafka topics
+- **[MongoDB Connector](mongodb.md)**: Learn how to read from and write to MongoDB databases
 - **[Parquet Connector](parquet.md)**: Learn how to read from and write to Apache Parquet files
 - **[PostgreSQL Connector](postgres.md)**: Learn how to read from and write to PostgreSQL databases
 - **[RabbitMQ Connector](rabbitmq.md)**: Learn how to read from and write to RabbitMQ message queues
