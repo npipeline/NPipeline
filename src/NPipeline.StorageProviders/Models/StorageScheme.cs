@@ -108,6 +108,16 @@ public readonly record struct StorageScheme
     public static StorageScheme Sftp => new("sftp");
 
     /// <summary>
+    ///     Gets a <see cref="StorageScheme" /> instance representing the "mysql" scheme.
+    /// </summary>
+    public static StorageScheme MySql => new("mysql");
+
+    /// <summary>
+    ///     Gets a <see cref="StorageScheme" /> instance representing the "mariadb" scheme.
+    /// </summary>
+    public static StorageScheme MariaDb => new("mariadb");
+
+    /// <summary>
     ///     Attempts to parse the specified string into a <see cref="StorageScheme" /> instance.
     /// </summary>
     /// <param name="value">The string to parse.</param>
