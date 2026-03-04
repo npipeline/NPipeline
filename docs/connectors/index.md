@@ -85,6 +85,12 @@ The following connectors are available:
   - Change stream support with operation filtering and resume-token-based restart
   - Dependency injection support with connection pooling and named connections
   - Uses official MongoDB C# Driver for reliable operations
+- **[MySQL](./mysql.md)**: Read from and write to MySQL and MariaDB databases.
+  - Supports streaming reads, per-row, batched, and bulk load (`LOAD DATA LOCAL INFILE`) writes
+  - Upsert via `INSERT … ON DUPLICATE KEY UPDATE`, `INSERT IGNORE`, and `REPLACE INTO`
+  - Attribute mapping with `[MySqlTable]`, `[MySqlColumn]`, `[Column]`, `[IgnoreColumn]`
+  - `mariadb://` StorageUri scheme supported alongside `mysql://`
+  - Uses MySqlConnector (fully async, MIT) for reliable operations
 - **[Parquet](./parquet.md)**: Read from and write to Apache Parquet files.
   - Columnar storage optimised for analytical workloads
   - Row-group streaming with bounded memory usage
@@ -151,6 +157,7 @@ Explore the documentation for each specific connector to learn about its install
 - **[JSON Connector](json.md)**: Learn how to read from and write to JSON files (Array and NDJSON)
 - **[Kafka Connector](kafka.md)**: Learn how to read from and write to Apache Kafka topics
 - **[MongoDB Connector](mongodb.md)**: Learn how to read from and write to MongoDB databases
+- **[MySQL Connector](mysql.md)**: Learn how to read from and write to MySQL and MariaDB databases
 - **[Parquet Connector](parquet.md)**: Learn how to read from and write to Apache Parquet files
 - **[PostgreSQL Connector](postgres.md)**: Learn how to read from and write to PostgreSQL databases
 - **[RabbitMQ Connector](rabbitmq.md)**: Learn how to read from and write to RabbitMQ message queues

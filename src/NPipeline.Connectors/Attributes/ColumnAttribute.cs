@@ -22,7 +22,7 @@ public class ColumnAttribute : Attribute
     /// <summary>
     ///     Gets the column name.
     /// </summary>
-    public string Name { get; }
+    public string Name { get; set; }
 
     /// <summary>
     ///     Gets or sets whether this column should be ignored during mapping.
