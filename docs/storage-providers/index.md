@@ -78,6 +78,9 @@ The following storage providers are available:
   - Secure file transfer over SSH with key and password authentication
   - Stream-based I/O for efficient handling of large files
   - Configurable connection pooling and timeout handling
+- **[MongoDB Connector Storage URI Support](../connectors/mongodb.md)**: Use `mongodb://` and `mongodb+srv://` URIs through the storage abstraction.
+  - Supports `StorageUri`-based source and sink configuration for MongoDB connectors
+  - Enables resolver-driven connection string handling for MongoDB-backed pipelines
 - **[Storage Provider Interface](./storage-provider.md)**: Learn about the storage abstraction layer that powers connectors
   - Works with filesystems, cloud storage (S3, Azure), databases, and custom backends
   - Unified API for read, write, delete, list, and metadata operations
@@ -205,6 +208,7 @@ public class CustomStorageProvider : IStorageProvider
 - **[Google Cloud Storage Provider](./gcs-storage-provider.md)**: Learn how to use the Google Cloud Storage provider
 - **[S3-Compatible Storage Provider](./s3-compatible.md)**: Learn how to use MinIO, DigitalOcean Spaces, Cloudflare R2, and other S3-compatible services
 - **[SFTP Storage Provider](./sftp.md)**: Learn how to use the SFTP storage provider
+- **[MongoDB Connector](../connectors/mongodb.md)**: Learn how MongoDB connectors use `StorageUri` with `mongodb` and `mongodb+srv` schemes
 - **[Storage Provider Interface](./storage-provider.md)**: Learn about the storage abstraction layer
 - **[CSV Connector](../connectors/csv.md)**: See storage providers in action with CSV files
 - **[Installation](../getting-started/installation.md)**: Review installation options for storage provider packages
