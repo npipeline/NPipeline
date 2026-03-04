@@ -22,10 +22,10 @@ public class MySqlSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
 {
     private static readonly ConcurrentDictionary<Type, Func<MySqlRow, T>> MapperCache = new();
     private static readonly Lazy<IReadOnlyList<PropertyBinding>> CachedBindings = new(BuildBindings);
-    private static readonly Lazy<Func<T>> CachedCreateInstance = new(BuildCreateInstanceDelegate);
+    private static readonly Lazy<Func<T>> CachedCreateInstance = new(() => BuildCreateInstanceDelegate());
 
     private static readonly Lazy<IStorageResolver> DefaultResolver = new(
-        () => MySqlStorageResolverFactory.CreateResolver(),
+        MySqlStorageResolverFactory.CreateResolver,
         LazyThreadSafetyMode.ExecutionAndPublication);
 
     private readonly Func<MySqlRow, T>? _cachedMapper;
@@ -418,16 +418,16 @@ public class MySqlSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     {
         if (property.GetCustomAttribute<MySqlColumnAttribute>() is { } mySqlAttr
             && !string.IsNullOrEmpty(mySqlAttr.Name))
-            return mySqlAttr.Name!;
+            return mySqlAttr.Name;
 
         if (property.GetCustomAttribute<ColumnAttribute>() is { } colAttr
             && !string.IsNullOrEmpty(colAttr.Name))
-            return colAttr.Name!;
+            return colAttr.Name;
 
         return property.Name;
     }
 
-    private static Func<MySqlRow, T>? ResolveDefaultMapper(
+    private static Func<MySqlRow, T> ResolveDefaultMapper(
         Func<MySqlRow, T>? customMapper,
         MySqlConfiguration configuration)
     {
