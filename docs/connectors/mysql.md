@@ -569,7 +569,7 @@ This is particularly useful when URIs are read from configuration files at runti
 
 ## Samples
 
-A working sample application is in [samples/Sample_MySQLConnector](../../samples/Sample_MySQLConnector/README.md). It demonstrates:
+A working sample application is in [samples/Sample_MySQLConnector](../../samples/Sample_MySQLConnector/). It demonstrates:
 
 - PerRow, Batch, and BulkLoad write strategies
 - Upsert with `OnDuplicateKeyAction.Update` and `OnDuplicateKeyAction.Ignore`
