@@ -74,26 +74,49 @@ public class AdlsGen2ClientFactory
     {
         cancellationToken.ThrowIfCancellationRequested();
         var cacheKey = "blob|" + BuildCacheKey(connectionString, credentialInfo, serviceUrl, accountName);
+        var blobClientOptions = CreateBlobClientOptions();
 
         var client = _blobClientCache.GetOrAdd(cacheKey, _ =>
         {
             if (serviceUrl is null && !string.IsNullOrEmpty(connectionString))
-                return new BlobServiceClient(connectionString);
+            {
+                return blobClientOptions is null
+                    ? new BlobServiceClient(connectionString)
+                    : new BlobServiceClient(connectionString, blobClientOptions);
+            }
 
             var effectiveServiceUrl = serviceUrl is not null
                 ? new Uri(serviceUrl.ToString().Replace(".dfs.core.windows.net", ".blob.core.windows.net"))
                 : new Uri($"https://{accountName ?? credentialInfo?.AccountName}.blob.core.windows.net");
 
             if (credentialInfo?.SasToken is not null)
-                return new BlobServiceClient(effectiveServiceUrl, new AzureSasCredential(credentialInfo.SasToken));
+            {
+                var sasCredential = new AzureSasCredential(credentialInfo.SasToken);
+
+                return blobClientOptions is null
+                    ? new BlobServiceClient(effectiveServiceUrl, sasCredential)
+                    : new BlobServiceClient(effectiveServiceUrl, sasCredential, blobClientOptions);
+            }
 
             if (credentialInfo?.AccountKey is not null && credentialInfo.AccountName is not null)
-                return new BlobServiceClient(effectiveServiceUrl, new StorageSharedKeyCredential(credentialInfo.AccountName, credentialInfo.AccountKey));
+            {
+                var keyCredential = new StorageSharedKeyCredential(credentialInfo.AccountName, credentialInfo.AccountKey);
+
+                return blobClientOptions is null
+                    ? new BlobServiceClient(effectiveServiceUrl, keyCredential)
+                    : new BlobServiceClient(effectiveServiceUrl, keyCredential, blobClientOptions);
+            }
 
             if (credentialInfo?.TokenCredential is not null)
-                return new BlobServiceClient(effectiveServiceUrl, credentialInfo.TokenCredential);
+            {
+                return blobClientOptions is null
+                    ? new BlobServiceClient(effectiveServiceUrl, credentialInfo.TokenCredential)
+                    : new BlobServiceClient(effectiveServiceUrl, credentialInfo.TokenCredential, blobClientOptions);
+            }
 
-            return new BlobServiceClient(effectiveServiceUrl);
+            return blobClientOptions is null
+                ? new BlobServiceClient(effectiveServiceUrl)
+                : new BlobServiceClient(effectiveServiceUrl, blobClientOptions);
         });
 
         return Task.FromResult(client);
@@ -338,6 +361,24 @@ public class AdlsGen2ClientFactory
             ? new DataLakeClientOptions()
             : new DataLakeClientOptions(_options.ServiceVersion.Value);
 
+        options.Retry.Mode = RetryMode.Exponential;
+        options.Retry.MaxRetries = 5;
+        options.Retry.Delay = TimeSpan.FromMilliseconds(800);
+        options.Retry.MaxDelay = TimeSpan.FromSeconds(8);
+        options.Retry.NetworkTimeout = TimeSpan.FromSeconds(100);
+
+        return options;
+    }
+
+    private BlobClientOptions? CreateBlobClientOptions()
+    {
+        if (_options.ServiceVersion is null)
+            return null;
+
+        if (!Enum.TryParse<BlobClientOptions.ServiceVersion>(_options.ServiceVersion.Value.ToString(), out var blobServiceVersion))
+            return null;
+
+        var options = new BlobClientOptions(blobServiceVersion);
         options.Retry.Mode = RetryMode.Exponential;
         options.Retry.MaxRetries = 5;
         options.Retry.Delay = TimeSpan.FromMilliseconds(800);

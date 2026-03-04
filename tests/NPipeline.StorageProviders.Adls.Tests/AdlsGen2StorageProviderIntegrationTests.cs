@@ -327,6 +327,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var customOptions = new AdlsGen2StorageProviderOptions
         {
             DefaultConnectionString = _fixture.GetConnectionString(),
+            ServiceVersion = _options!.ServiceVersion,
             UploadThresholdBytes = LargeFileSizeBytes / 2,
             UploadMaximumConcurrency = 4,
             UploadMaximumTransferSizeBytes = 256 * 1024,
@@ -769,6 +770,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var options = new AdlsGen2StorageProviderOptions
         {
             DefaultConnectionString = keyConnectionString,
+            ServiceVersion = _options!.ServiceVersion,
             UploadThresholdBytes = _options.UploadThresholdBytes,
             UseDefaultCredentialChain = false,
         };
@@ -821,6 +823,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
         var noConnectionStringOptions = new AdlsGen2StorageProviderOptions
         {
             ServiceUrl = blobEndpoint,
+            ServiceVersion = _options!.ServiceVersion,
             UseDefaultCredentialChain = false,
         };
 

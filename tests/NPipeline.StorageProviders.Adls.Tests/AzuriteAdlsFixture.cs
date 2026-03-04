@@ -9,9 +9,8 @@ namespace NPipeline.StorageProviders.Adls.Tests;
 ///     Test container fixture for ADLS Gen2 integration tests using Azurite.
 ///     Uses Testcontainers.Azurite to spin up a dedicated Azurite instance per test collection run.
 ///     Key configuration decisions:
-///     • AzuriteBuilder is used with a pinned image (3.32.0+) that accepts the API version
-///     defaulted by Azure.Storage.Files.DataLake 12.x (2024-11-04).  Azurite 3.28.0 (the
-///     Testcontainers.Azurite default) rejects that version for DFS path-create operations.
+///     • AzuriteBuilder is used with a pinned image and the fixture pins explicit storage API
+///     versions to avoid breakages when SDK defaults advance faster than Azurite support.
 ///     • WithInMemoryPersistence is used to avoid disk I/O during tests.
 ///     • Options.DefaultConnectionString is set (not ServiceUrl) so the Azure SDK correctly
 ///     routes DFS API calls through Azurite's blob endpoint.  Using a bare ServiceUrl causes
@@ -25,8 +24,7 @@ public sealed class AzuriteAdlsFixture : IAsyncLifetime
         "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
 
     /// <summary>
-    ///     Azurite image that supports API version 2024-11-04 (which Azure.Storage.Files.DataLake
-    ///     12.x defaults to).  3.32.0 was the first release to accept this API version.
+    ///     Azurite image pinned for deterministic test behavior.
     /// </summary>
     private const string AzuriteImage = "mcr.microsoft.com/azure-storage/azurite:3.35.0";
 
@@ -52,6 +50,7 @@ public sealed class AzuriteAdlsFixture : IAsyncLifetime
         Options = new AdlsGen2StorageProviderOptions
         {
             DefaultConnectionString = connectionString,
+            ServiceVersion = DataLakeClientOptions.ServiceVersion.V2023_11_03,
             UploadThresholdBytes = 512 * 1024,
             UploadMaximumConcurrency = 4,
             UploadMaximumTransferSizeBytes = 256 * 1024,
@@ -61,14 +60,19 @@ public sealed class AzuriteAdlsFixture : IAsyncLifetime
         var clientFactory = new AdlsGen2ClientFactory(Options);
         Provider = new AdlsGen2StorageProvider(clientFactory, Options);
 
-        DataLakeServiceClient = new DataLakeServiceClient(connectionString);
-        BlobServiceClient = new BlobServiceClient(connectionString);
+        DataLakeServiceClient = new DataLakeServiceClient(
+            connectionString,
+            new DataLakeClientOptions(Options.ServiceVersion!.Value));
+
+        BlobServiceClient = new BlobServiceClient(
+            connectionString,
+            new BlobClientOptions(BlobClientOptions.ServiceVersion.V2021_12_02));
 
         using var readyCts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
 
         try
         {
-            await WaitForAzuriteReadyAsync(DataLakeServiceClient, readyCts.Token);
+            await WaitForAzuriteReadyAsync(BlobServiceClient, readyCts.Token);
         }
         catch (Exception ex)
         {
@@ -114,7 +118,7 @@ public sealed class AzuriteAdlsFixture : IAsyncLifetime
     }
 
     private static async Task WaitForAzuriteReadyAsync(
-        DataLakeServiceClient dataLakeServiceClient,
+        BlobServiceClient blobServiceClient,
         CancellationToken cancellationToken)
     {
         var deadline = DateTimeOffset.UtcNow.AddSeconds(120);
@@ -123,8 +127,8 @@ public sealed class AzuriteAdlsFixture : IAsyncLifetime
         {
             try
             {
-                _ = await dataLakeServiceClient
-                    .GetFileSystemClient("health-check")
+                _ = await blobServiceClient
+                    .GetBlobContainerClient("health-check")
                     .CreateIfNotExistsAsync(cancellationToken: CancellationToken.None)
                     .ConfigureAwait(false);
 
