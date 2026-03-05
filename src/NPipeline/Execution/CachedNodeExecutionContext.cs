@@ -159,12 +159,7 @@ public readonly struct CachedNodeExecutionContext
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(nodeId);
 
-        // Determine effective retry options with precedence:
-        // 1. Per-node override (highest priority)
-        // 2. Global retry options from context
-        var effectiveRetries = context.NodeRetryOverrides.TryGetValue(nodeId, out var nodeRetryOptions)
-            ? nodeRetryOptions
-            : context.GlobalRetryOptions;
+        var effectiveRetries = RetryOptionsResolver.Resolve(context, nodeId);
 
         // Determine if tracing is enabled by checking if tracer is not the null implementation
         var tracingEnabled = context.Tracer is not NullPipelineTracer;

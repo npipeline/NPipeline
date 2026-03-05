@@ -3,6 +3,7 @@ using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.ErrorHandling;
+using NPipeline.Execution;
 using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Nodes;
 using NPipeline.Observability.Logging;
@@ -121,13 +122,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                 "Node restarts require an error handler. Configure: builder.AddPipelineErrorHandler<T>()");
         }
 
-        // Determine effective retry options precedence
-        var effectiveRetries = context.RetryOptions;
-
-        if (context.NodeRetryOverrides.TryGetValue(context.CurrentNodeId, out var prc))
-            effectiveRetries = prc;
-        else
-            effectiveRetries = context.GlobalRetryOptions;
+        var effectiveRetries = RetryOptionsResolver.Resolve(context, context.CurrentNodeId);
 
         if (effectiveRetries.MaxNodeRestartAttempts <= 0)
         {
@@ -157,19 +152,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         // This is a performance trade-off for resiliency.
         if (input is IStreamingDataPipe)
         {
-            // Determine effective cap (prefer node-specific override captured in context.NodeRetryOverrides)
-            // Pattern matching for retry options resolution with precedence:
-            // 1. Node-specific override (highest priority)
-            // 2. Graph-level retry options
-            // 3. Context-level retry options (lowest priority)
-            int? cap = null;
-
-            if (context.NodeRetryOverrides.TryGetValue(context.CurrentNodeId, out var pro) && pro.MaxMaterializedItems is not null)
-                cap = pro.MaxMaterializedItems;
-            else if (context.GlobalRetryOptions.MaxMaterializedItems is not null)
-                cap = context.GlobalRetryOptions.MaxMaterializedItems;
-            else if (context.RetryOptions.MaxMaterializedItems is not null)
-                cap = context.RetryOptions.MaxMaterializedItems;
+            var cap = effectiveRetries.MaxMaterializedItems;
 
             // Always wrap in replayable pipe so restarts re-enumerate buffered items. Cap enforced when specified.
 #pragma warning disable CA2000 // Ownership transferred to PipelineContext via RegisterForDisposal
@@ -213,16 +196,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         // Capture retry options & nodeId at creation time so later enumeration (during sink execution) still uses correct values.
         var creationNodeId = context.CurrentNodeId;
 
-        // Determine effective retry options precedence using pattern matching:
-        // 1. Node-specific override stored in context.NodeRetryOverrides
-        // 2. Graph-level configured retry options surfaced in context.GlobalRetryOptions
-        // 3. Context-level RetryOptions (may be default if not explicitly set on PipelineContext construction)
-        var effectiveAtCreation = context.RetryOptions;
-
-        if (context.NodeRetryOverrides.TryGetValue(creationNodeId, out var nodeRetryOptions))
-            effectiveAtCreation = nodeRetryOptions;
-        else
-            effectiveAtCreation = context.GlobalRetryOptions;
+        var effectiveAtCreation = RetryOptionsResolver.Resolve(context, creationNodeId);
 
         var resilientStream = CreateResilientStream<TIn, TOut>(StreamFactory, context, creationNodeId, effectiveAtCreation, cancellationToken);
         var pipe = new StreamingDataPipe<TOut>(resilientStream);

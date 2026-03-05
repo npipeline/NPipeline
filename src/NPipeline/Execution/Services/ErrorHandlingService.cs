@@ -1,4 +1,4 @@
-using NPipeline.Configuration;
+using NPipeline.Execution;
 using NPipeline.ErrorHandling;
 using NPipeline.Graph;
 using NPipeline.Nodes;
@@ -194,7 +194,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
         ArgumentNullException.ThrowIfNull(executeAsync);
 
         var retryCount = 0;
-        var effectiveRetryOptions = GetEffectiveRetryOptions(nodeDefinition, context);
+        var effectiveRetryOptions = RetryOptionsResolver.Resolve(context, nodeDefinition.Id);
         var maxRetries = effectiveRetryOptions.MaxNodeRestartAttempts;
         Exception? lastException = null;
 
@@ -337,22 +337,6 @@ public sealed class ErrorHandlingService : IErrorHandlingService
     private static bool IsParallelExecution(PipelineContext context)
     {
         return context.IsParallelExecution;
-    }
-
-    /// <summary>
-    ///     Gets the effective retry options for a node based on node, graph, and context settings.
-    /// </summary>
-    /// <param name="nodeDefinition">The node definition.</param>
-    /// <param name="context">The pipeline context.</param>
-    /// <returns>The effective retry options.</returns>
-    private static PipelineRetryOptions GetEffectiveRetryOptions(NodeDefinition nodeDefinition, PipelineContext context)
-    {
-        // Check for node-specific retry options
-        if (context.NodeRetryOverrides.TryGetValue(nodeDefinition.Id, out var specificOptions))
-            return specificOptions;
-
-        // Fall back to global retry options
-        return context.GlobalRetryOptions;
     }
 
     /// <summary>

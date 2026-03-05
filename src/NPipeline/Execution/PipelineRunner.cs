@@ -326,12 +326,7 @@ public sealed class PipelineRunner(
                     // This provides a runtime safety net for cases where analyzers might miss issues
                     if (context.PipelineErrorHandler != null && nodeDef.ExecutionStrategy?.GetType().Name == "ResilientExecutionStrategy")
                     {
-                        var effectiveRetries = context.RetryOptions;
-
-                        if (context.NodeRetryOverrides.TryGetValue(nodeDef.Id, out var prc))
-                            effectiveRetries = prc;
-                        else
-                            effectiveRetries = context.GlobalRetryOptions;
+                        var effectiveRetries = RetryOptionsResolver.Resolve(context, nodeDef.Id);
 
                         if (effectiveRetries.MaxNodeRestartAttempts <= 0)
                             PipelineRunnerLogMessages.ResilientStrategyWithoutRestartAttempts(logger, nodeDef.Id, effectiveRetries.MaxNodeRestartAttempts);
