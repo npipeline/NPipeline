@@ -74,6 +74,13 @@ The following connectors are available:
   - Supports both legacy XLS (binary) and modern XLSX (Open XML) formats
   - Configurable sheet selection, header handling, and type detection
   - Works with any storage backend via the `IStorageProvider` abstraction from `NPipeline.StorageProviders`
+- **[HTTP](./http.md)**: Read from and write to REST APIs.
+  - Stream items from any paginated REST API with pluggable pagination strategies
+  - Write items to REST endpoints via POST, PUT, or PATCH with optional batching
+  - Multiple authentication schemes (Bearer token, API key, Basic auth)
+  - Retry with exponential backoff and `Retry-After` header support
+  - Token-bucket rate limiting and OpenTelemetry observability
+  - Named `HttpClient` integration for connection pooling
 - **[JSON](./json.md)**: Read from and write to JSON files (Array and NDJSON formats).
   - Supports both JSON array and newline-delimited JSON (NDJSON) formats
   - Configurable property naming policies, indentation, and error handling
