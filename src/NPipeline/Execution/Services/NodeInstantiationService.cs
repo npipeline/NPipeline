@@ -16,6 +16,9 @@ namespace NPipeline.Execution.Services;
 /// </summary>
 public sealed class NodeInstantiationService : INodeInstantiationService
 {
+    private static readonly MethodInfo AdaptOutputPipeGenericMethod = typeof(NodeInstantiationService)
+        .GetMethod(nameof(AdaptOutputPipe), BindingFlags.NonPublic | BindingFlags.Static)!;
+
     /// <inheritdoc />
     public Dictionary<string, INode> InstantiateNodes(PipelineGraph graph, INodeFactory nodeFactory)
     {
@@ -105,14 +108,16 @@ public sealed class NodeInstantiationService : INodeInstantiationService
                     def.Kind,
                     def.InputType,
                     def.OutputType,
-                    ExecuteJoin: BuildJoinDelegate(def, joinNode)),
+                    ExecuteJoin: BuildJoinDelegate(def, joinNode),
+                    AdaptOutput: BuildOutputAdapter(def.OutputType)),
 
                 NodeKind.Aggregate when instance is IAggregateNode aggregateNode => new NodeExecutionPlan(
                     def.Id,
                     def.Kind,
                     def.InputType,
                     def.OutputType,
-                    ExecuteAggregate: BuildAggregateDelegate(def, aggregateNode)),
+                    ExecuteAggregate: BuildAggregateDelegate(def, aggregateNode),
+                    AdaptOutput: BuildOutputAdapter(def.OutputType)),
 
                 NodeKind.Sink => new NodeExecutionPlan(
                     def.Id,
@@ -349,14 +354,8 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         {
             var merged = inputs.First(); // merge already performed upstream
             var stream = merged.ToAsyncEnumerable(ct);
-            var joined = await joinNode.ExecuteAsync(stream, ctx, ct);
-            var outType = def.OutputType ?? typeof(object);
-
-            var method = typeof(NodeInstantiationService)
-                .GetMethod(nameof(CreateTypedJoinPipe), BindingFlags.NonPublic | BindingFlags.Static)!
-                .MakeGenericMethod(outType);
-
-            return (IDataPipe)method.Invoke(null, [joined, $"JoinResult_{def.Id}"])!;
+            var joined = await joinNode.ExecuteAsync(stream, ctx, ct).ConfigureAwait(false);
+            return new StreamingDataPipe<object?>(joined, $"JoinResult_{def.Id}");
         };
     }
 
@@ -383,25 +382,50 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         };
     }
 
-    // Helper for typed join pipe creation
-    private static StreamingDataPipe<TOut> CreateTypedJoinPipe<TOut>(IAsyncEnumerable<object?> joined, string streamName)
+    internal static Func<IDataPipe, string, IDataPipe>? BuildOutputAdapter(Type? outputType)
     {
+        if (outputType is null)
+            return null;
+
+        var pipeParam = Expression.Parameter(typeof(IDataPipe), "pipe");
+        var streamNameParam = Expression.Parameter(typeof(string), "streamName");
+
+        var closedMethod = AdaptOutputPipeGenericMethod.MakeGenericMethod(outputType);
+        var call = Expression.Call(closedMethod, pipeParam, streamNameParam);
+        var castToIDataPipe = Expression.Convert(call, typeof(IDataPipe));
+
+        return Expression.Lambda<Func<IDataPipe, string, IDataPipe>>(castToIDataPipe, pipeParam, streamNameParam).Compile();
+    }
+
+    private static StreamingDataPipe<TOut> AdaptOutputPipe<TOut>(IDataPipe untyped, string streamName)
+    {
+        if (untyped is IDataPipe<TOut> typedExisting)
+        {
+            if (typedExisting is StreamingDataPipe<TOut> streaming)
+                return streaming;
+
+            async IAsyncEnumerable<TOut> Passthrough([EnumeratorCancellation] CancellationToken ct = default)
+            {
+                await foreach (var obj in typedExisting.ToAsyncEnumerable(ct).WithCancellation(ct))
+                {
+                    yield return obj is TOut t
+                        ? t
+                        : (TOut)obj!;
+                }
+            }
+
+            return new StreamingDataPipe<TOut>(Passthrough(), streamName);
+        }
+
         async IAsyncEnumerable<TOut> Cast([EnumeratorCancellation] CancellationToken ct = default)
         {
-            await foreach (var item in joined.WithCancellation(ct))
+            await foreach (var item in untyped.ToAsyncEnumerable(ct).WithCancellation(ct))
             {
-                if (item is null)
-                {
-                    if (default(TOut) is null)
-                        yield return default!; // allow null for reference/nullable types
-
-                    continue;
-                }
-
-                if (item is TOut t)
-                    yield return t;
-                else
-                    yield return (TOut)item;
+                yield return item is null
+                    ? default!
+                    : item is TOut t
+                        ? t
+                        : (TOut)item!;
             }
         }
 
