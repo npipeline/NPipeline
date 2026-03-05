@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Azure;
+using Azure.Storage.Blobs.Models;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
 
@@ -406,7 +407,8 @@ public sealed class AdlsGen2StorageProvider
                 ? 0
                 : blobPrefix.TrimEnd('/').Split('/').Length;
 
-            await foreach (var blobItem in containerClient.GetBlobsAsync(prefix: blobPrefix, cancellationToken: cancellationToken).ConfigureAwait(false))
+            await foreach (var blobItem in containerClient.GetBlobsAsync(BlobTraits.None, BlobStates.None, blobPrefix, cancellationToken)
+                               .ConfigureAwait(false))
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -440,7 +442,7 @@ public sealed class AdlsGen2StorageProvider
         }
         else
         {
-            await foreach (var item in containerClient.GetBlobsByHierarchyAsync(delimiter: "/", prefix: blobPrefix, cancellationToken: cancellationToken)
+            await foreach (var item in containerClient.GetBlobsByHierarchyAsync(BlobTraits.None, BlobStates.None, "/", blobPrefix, cancellationToken)
                                .ConfigureAwait(false))
             {
                 cancellationToken.ThrowIfCancellationRequested();

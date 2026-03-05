@@ -13,8 +13,7 @@ public class MySqlTestContainerFixture : IAsyncLifetime
 
     public MySqlTestContainerFixture()
     {
-        _container = new MySqlBuilder()
-            .WithImage("mysql:8.4")
+        _container = new MySqlBuilder("mysql:8.4")
             .WithDatabase("npipeline_test")
             .WithUsername("root")
             .WithPassword("root")
