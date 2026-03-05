@@ -1,5 +1,5 @@
 using Azure;
-using FluentAssertions;
+using AwesomeAssertions;
 using NPipeline.StorageProviders.Exceptions;
 using Xunit;
 

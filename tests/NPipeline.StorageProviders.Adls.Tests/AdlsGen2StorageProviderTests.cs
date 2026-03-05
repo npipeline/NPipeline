@@ -5,7 +5,7 @@ using Azure.Storage.Blobs.Models;
 using Azure.Storage.Files.DataLake;
 using Azure.Storage.Files.DataLake.Models;
 using FakeItEasy;
-using FluentAssertions;
+using AwesomeAssertions;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 

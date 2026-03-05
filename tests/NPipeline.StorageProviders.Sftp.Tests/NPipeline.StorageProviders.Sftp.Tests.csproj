@@ -18,13 +18,13 @@
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Moq" Version="4.20.72"/>
-        <PackageReference Include="FluentAssertions" Version="8.8.0" />
+                <PackageReference Include="Moq" Version="4.20.72"/>
+        <PackageReference Include="AwesomeAssertions" Version="9.4.0" />
     </ItemGroup>
 
     <ItemGroup>
         <Using Include="Xunit"/>
-        <Using Include="FluentAssertions"/>
+        <Using Include="AwesomeAssertions"/>
         <Using Include="Moq"/>
     </ItemGroup>
 
