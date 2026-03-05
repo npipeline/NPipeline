@@ -42,7 +42,7 @@ public sealed class ParallelExecutionStrategy : BlockingParallelStrategy
         var nodeId = context.CurrentNodeId;
         var queuePolicy = BoundedQueuePolicy.Block;
 
-        if (context.Items.TryGetValue(PipelineContextKeys.NodeExecutionOptions(nodeId), out var opt) && opt is ParallelOptions po)
+        if (context.NodeExecutionAnnotations.TryGetValue(nodeId, out var opt) && opt is ParallelOptions po)
             queuePolicy = po.QueuePolicy;
 
         // Delegate to the appropriate strategy

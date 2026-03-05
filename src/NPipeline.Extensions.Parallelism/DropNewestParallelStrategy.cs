@@ -30,7 +30,7 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
         CancellationToken cancellationToken)
     {
         // Set the parallel execution flag to help ErrorHandlingService preserve original exception types
-        context.Items[PipelineContextKeys.ParallelExecution] = true;
+        context.IsParallelExecution = true;
 
         var nodeId = context.CurrentNodeId;
         var observabilityScope = TryGetNodeObservabilityScope(context, nodeId);
@@ -42,7 +42,7 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
 
         ParallelOptions? parallelOptions = null;
 
-        if (context.Items.TryGetValue(PipelineContextKeys.NodeExecutionOptions(nodeId), out var opt) && opt is ParallelOptions po)
+        if (context.NodeExecutionAnnotations.TryGetValue(nodeId, out var opt) && opt is ParallelOptions po)
             parallelOptions = po;
 
         var effectiveDop = parallelOptions?.MaxDegreeOfParallelism ?? ConfiguredMaxDop ?? Environment.ProcessorCount;
@@ -66,13 +66,13 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
         // Check if metrics already exist before creating new ones
         ParallelExecutionMetrics metrics;
 
-        if (!context.Items.TryGetValue(PipelineContextKeys.ParallelMetrics(nodeId), out _))
+        if (!context.RuntimeAnnotations.TryGetValue(PipelineContextKeys.ParallelMetrics(nodeId), out _))
         {
             metrics = new ParallelExecutionMetrics();
-            context.Items[PipelineContextKeys.ParallelMetrics(nodeId)] = metrics;
+            context.RuntimeAnnotations[PipelineContextKeys.ParallelMetrics(nodeId)] = metrics;
         }
         else
-            metrics = (ParallelExecutionMetrics)context.Items[PipelineContextKeys.ParallelMetrics(nodeId)];
+            metrics = (ParallelExecutionMetrics)context.RuntimeAnnotations[PipelineContextKeys.ParallelMetrics(nodeId)];
 
         _ = Task.Run(async () =>
         {

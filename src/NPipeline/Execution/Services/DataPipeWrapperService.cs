@@ -47,7 +47,7 @@ public sealed class DataPipeWrapperService
         // Branching needed - use combined counting + multicast
         var options = GetBranchOptions(graph, nodeId);
         var metrics = new BranchMetrics();
-        context.Items[ExecutionAnnotationKeys.BranchMetricsForNode(nodeId)] = metrics;
+        context.RuntimeAnnotations[ExecutionAnnotationKeys.BranchMetricsForNode(nodeId)] = metrics;
 
         return wrapper.WrapMulticast(pipe, counter, branchCount, options, metrics);
     }

@@ -39,7 +39,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         where TDefinition : IPipelineDefinition, new()
     {
         // Emit branch metrics as tracing tags
-        foreach (var kv in context.Items.Where(kv => kv.Key.StartsWith(ExecutionAnnotationKeys.BranchMetricsPrefix, StringComparison.Ordinal)))
+        foreach (var kv in context.RuntimeAnnotations.Where(kv => kv.Key.StartsWith(ExecutionAnnotationKeys.BranchMetricsPrefix, StringComparison.Ordinal)))
         {
             if (kv.Value is BranchMetrics fm)
             {
@@ -139,7 +139,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         {
             var contextKey = PipelineContextKeys.NodeObservabilityScope(nodeDef.Id);
             ObservabilitySurfaceLogMessages.AutoObservabilityScopeStored(logger, contextKey);
-            context.Items[contextKey] = autoObservabilityScope;
+            context.NodeObservabilityScopes[nodeDef.Id] = autoObservabilityScope;
         }
 
         return new NodeObservationScope(nodeDef.Id, nodeInstance.GetType().Name, startTs, activity, autoObservabilityScope);
@@ -212,9 +212,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         if (collector is null)
             return;
 
-        var startTime = context.Items.TryGetValue(PipelineContextKeys.PipelineStartTimeUtc, out var startTimeObj) && startTimeObj is DateTime startTimeDt
-            ? startTimeDt
-            : DateTime.UtcNow;
+        var startTime = context.PipelineStartTimeUtc;
 
         var pipelineRunId = Guid.NewGuid();
         var endTime = DateTime.UtcNow;

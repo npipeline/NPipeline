@@ -262,9 +262,7 @@ public sealed class NodeExecutor(
             var lineageUnwrap = nodeDef.SinkLineageUnwrap ??
                                 throw new InvalidOperationException(ErrorMessages.SinkNodeLineageUnwrapMissing(plan.NodeId));
 
-            effectiveInput = lineageUnwrap(input, context.Items.TryGetValue(PipelineContextKeys.LineageSink, out var ls)
-                ? (ILineageSink)ls
-                : null, plan.NodeId, graph.Lineage.LineageOptions, context.CancellationToken);
+            effectiveInput = lineageUnwrap(input, context.LineageSink, plan.NodeId, graph.Lineage.LineageOptions, context.CancellationToken);
         }
 
         await plan.ExecuteSink!(effectiveInput, context, context.CancellationToken).ConfigureAwait(false);
@@ -321,9 +319,9 @@ public sealed class NodeExecutor(
         {
             await foreach (var obj in untyped.ToAsyncEnumerable(ct).WithCancellation(ct))
 
-                // Consistent null handling: always yield a value for null items
-                // For reference types and nullable value types, yield null
-                // For non-nullable value types, yield default
+            // Consistent null handling: always yield a value for null items
+            // For reference types and nullable value types, yield null
+            // For non-nullable value types, yield default
             {
                 yield return obj is null
                     ? default!
@@ -338,13 +336,8 @@ public sealed class NodeExecutor(
 
     private static StatsCounter GetOrCreateCounter(PipelineContext context)
     {
-        if (!context.Items.TryGetValue(PipelineContextKeys.TotalProcessedItems, out var statsObj) || statsObj is not StatsCounter counter)
-        {
-            counter = new StatsCounter();
-            context.Items[PipelineContextKeys.TotalProcessedItems] = counter;
-        }
-
-        return counter;
+        context.ProcessedItemsCounter ??= new StatsCounter();
+        return context.ProcessedItemsCounter;
     }
 
     private static StreamingDataPipe<TOut> CreateTypedJoinPipeGeneric<TOut>(IAsyncEnumerable<object?> input, string streamName)
@@ -353,9 +346,9 @@ public sealed class NodeExecutor(
         {
             await foreach (var obj in input.WithCancellation(ct))
 
-                // Consistent null handling: always yield a value for null items
-                // For reference types and nullable value types, yield null
-                // For non-nullable value types, yield default
+            // Consistent null handling: always yield a value for null items
+            // For reference types and nullable value types, yield null
+            // For non-nullable value types, yield default
             {
                 yield return obj is null
                     ? default!

@@ -12,6 +12,7 @@ using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
+using NPipeline.State;
 
 namespace NPipeline.Execution;
 
@@ -120,11 +121,16 @@ public sealed class PipelineRunner(
         using var pipelineActivity = observabilitySurface.BeginPipeline<TDefinition>(context);
         PipelineGraph? graph = null;
 
-        // Initialize pipeline stats if missing using atomic TryAdd pattern
-        context.Items.TryAdd(PipelineContextKeys.PipelineStartTimeUtc, DateTime.UtcNow);
-
-        if (!context.Items.TryGetValue(PipelineContextKeys.TotalProcessedItems, out var statsObj) || statsObj is not StatsCounter)
-            context.Items[PipelineContextKeys.TotalProcessedItems] = new StatsCounter();
+        // Initialize per-run framework state.
+        context.PipelineStartTimeUtc = DateTime.UtcNow;
+        context.ProcessedItemsCounter = new StatsCounter();
+        context.GlobalRetryOptions = context.RetryOptions;
+        context.NodeRetryOverrides.Clear();
+        context.NodeExecutionAnnotations.Clear();
+        context.NodeObservabilityScopes.Clear();
+        context.RuntimeAnnotations.Clear();
+        context.IsParallelExecution = false;
+        context.LastRetryExhaustedException = null;
 
         // Rent pooled dictionaries for node outputs and instances
         var nodeOutputs = PipelineObjectPool.RentNodeOutputDictionary();
@@ -144,43 +150,50 @@ public sealed class PipelineRunner(
             {
                 var logger = context.LoggerFactory.CreateLogger(nameof(PipelineRunner));
                 PipelineRunnerLogMessages.StoringRetryOptions(logger, graph.ErrorHandling.RetryOptions.MaxItemRetries);
-                context.Items[PipelineContextKeys.GlobalRetryOptions] = graph.ErrorHandling.RetryOptions;
+                context.GlobalRetryOptions = graph.ErrorHandling.RetryOptions;
             }
             else
             {
                 var logger = context.LoggerFactory.CreateLogger(nameof(PipelineRunner));
                 PipelineRunnerLogMessages.RetryOptionsNull(logger);
+                context.GlobalRetryOptions = context.RetryOptions;
+            }
+
+            if (graph.ErrorHandling.NodeRetryOverrides is { Count: > 0 })
+            {
+                foreach (var kvp in graph.ErrorHandling.NodeRetryOverrides)
+                    context.NodeRetryOverrides[kvp.Key] = kvp.Value;
             }
 
             // Surface circuit breaker options to downstream execution strategies via context.Items.
             if (graph.ErrorHandling.CircuitBreakerOptions is not null)
             {
-                context.Items[PipelineContextKeys.CircuitBreakerOptions] = graph.ErrorHandling.CircuitBreakerOptions;
+                context.CircuitBreakerOptions = graph.ErrorHandling.CircuitBreakerOptions;
                 var memoryOptions = graph.ErrorHandling.CircuitBreakerMemoryOptions;
 
                 if (memoryOptions is not null)
-                    context.Items[PipelineContextKeys.CircuitBreakerMemoryOptions] = memoryOptions;
+                    context.CircuitBreakerMemoryOptions = memoryOptions;
                 else
-                    _ = context.Items.Remove(PipelineContextKeys.CircuitBreakerMemoryOptions);
+                    context.CircuitBreakerMemoryOptions = null;
 
                 if (graph.ErrorHandling.CircuitBreakerOptions.Enabled)
                 {
                     var managerLogger = context.LoggerFactory.CreateLogger(nameof(CircuitBreakerManager));
                     var circuitBreakerManager = context.CreateAndRegister(new CircuitBreakerManager(managerLogger, memoryOptions));
-                    context.Items[PipelineContextKeys.CircuitBreakerManager] = circuitBreakerManager;
+                    context.CircuitBreakerManager = circuitBreakerManager;
                     PipelineRunnerLogMessages.CircuitBreakerManagerCreated(managerLogger);
                 }
                 else
                 {
-                    _ = context.Items.Remove(PipelineContextKeys.CircuitBreakerManager);
-                    _ = context.Items.Remove(PipelineContextKeys.CircuitBreakerMemoryOptions);
+                    context.CircuitBreakerManager = null;
+                    context.CircuitBreakerMemoryOptions = null;
                 }
             }
             else
             {
-                _ = context.Items.Remove(PipelineContextKeys.CircuitBreakerOptions);
-                _ = context.Items.Remove(PipelineContextKeys.CircuitBreakerManager);
-                _ = context.Items.Remove(PipelineContextKeys.CircuitBreakerMemoryOptions);
+                context.CircuitBreakerOptions = null;
+                context.CircuitBreakerManager = null;
+                context.CircuitBreakerMemoryOptions = null;
             }
 
             var errorHandler = ResolvePipelineErrorHandler(graph, context.ErrorHandlerFactory);
@@ -192,10 +205,8 @@ public sealed class PipelineRunner(
 
             var pipelineLineageSink = ResolvePipelineLineageSink(graph, context.LineageFactory, context);
 
-            // Surface lineage sink into context.Items for downstream execution (NodeExecutor) via context.Items.
-            // Some tests (e.g., AggregateLineageTests) rely on builder.AddLineageSink without manually seeding context.Items.
-            if (lineageSink is not null)
-                context.Items.TryAdd(PipelineContextKeys.LineageSink, lineageSink);
+            context.LineageSink = lineageSink;
+            context.PipelineLineageSink = pipelineLineageSink;
 
             // Propagate resolved handlers into the context so execution strategies see them.
             if (errorHandler is not null)
@@ -225,7 +236,7 @@ public sealed class PipelineRunner(
             }
 
             if (context.Properties.TryGetValue(ExecutionAnnotationKeys.GlobalPropertyPrefix + "NPipeline.StateManager", out var sm))
-                context.Properties[PipelineContextKeys.StateManager] = sm; // alias without Global prefix for state package
+                context.StateManager = sm as IPipelineStateManager;
 
             // Wire a globally provided execution observer if present
             if (context.Properties.TryGetValue(ExecutionAnnotationKeys.ExecutionObserverProperty, out var eo))
@@ -249,7 +260,7 @@ public sealed class PipelineRunner(
 
             // Surface stateful node registry (similar to state manager) and register instantiated nodes
             if (context.Properties.TryGetValue("NPipeline.Global.NPipeline.State.StatefulRegistry", out var regObj))
-                context.Properties[PipelineContextKeys.StatefulRegistry] = regObj; // alias without Global prefix for state package
+                context.StatefulRegistry = regObj as IStatefulRegistry;
 
             // Register stateful nodes before any potential snapshot attempts
             executionCoordinator.RegisterStatefulNodes(nodeInstances, context);
@@ -262,14 +273,14 @@ public sealed class PipelineRunner(
             foreach (var nodeDef in sortedNodes.Select(id => nodeDefinitionMap[id]))
             {
                 context.CancellationToken.ThrowIfCancellationRequested();
-                using var _ = context.ScopedNode(nodeDef.Id);
+                using var nodeScopeHandle = context.ScopedNode(nodeDef.Id);
 
                 // Inject per-node execution annotations (e.g., parallel options) into context for execution strategies.
                 if (graph.ExecutionOptions.NodeExecutionAnnotations != null &&
                     graph.ExecutionOptions.NodeExecutionAnnotations.TryGetValue(nodeDef.Id, out var annotation))
-                    context.Items[PipelineContextKeys.NodeExecutionOptions(nodeDef.Id)] = annotation;
-                else if (context.Items.ContainsKey(PipelineContextKeys.NodeExecutionOptions(nodeDef.Id)))
-                    context.Items.Remove(PipelineContextKeys.NodeExecutionOptions(nodeDef.Id));
+                    context.NodeExecutionAnnotations[nodeDef.Id] = annotation;
+                else
+                    _ = context.NodeExecutionAnnotations.Remove(nodeDef.Id);
 
                 var nodeInstance = nodeInstances[nodeDef.Id];
                 var nodeScope = observabilitySurface.BeginNode(context, graph, nodeDef, nodeInstance);
@@ -317,11 +328,10 @@ public sealed class PipelineRunner(
                     {
                         var effectiveRetries = context.RetryOptions;
 
-                        if (context.Items.TryGetValue($"retry::{nodeDef.Id}", out var specific) && specific is PipelineRetryOptions prc)
+                        if (context.NodeRetryOverrides.TryGetValue(nodeDef.Id, out var prc))
                             effectiveRetries = prc;
-                        else if (context.Items.TryGetValue(PipelineContextKeys.GlobalRetryOptions, out var globalRetry) &&
-                                 globalRetry is PipelineRetryOptions grc)
-                            effectiveRetries = grc;
+                        else
+                            effectiveRetries = context.GlobalRetryOptions;
 
                         if (effectiveRetries.MaxNodeRestartAttempts <= 0)
                             PipelineRunnerLogMessages.ResilientStrategyWithoutRestartAttempts(logger, nodeDef.Id, effectiveRetries.MaxNodeRestartAttempts);
@@ -331,8 +341,7 @@ public sealed class PipelineRunner(
                     }
 
                     // Check if this is a parallel execution scenario where we want to preserve the original exception
-                    var isParallelExecution = context.Items.TryGetValue(PipelineContextKeys.ParallelExecution, out var parallelValue) &&
-                                              parallelValue is bool isParallel && isParallel;
+                    var isParallelExecution = context.IsParallelExecution;
 
                     if (isParallelExecution)
                     {
@@ -371,8 +380,7 @@ public sealed class PipelineRunner(
         catch (Exception ex)
         {
             // Check if this is a parallel execution scenario where we want to preserve the original exception
-            var isParallelExecution = context.Items.TryGetValue(PipelineContextKeys.ParallelExecution, out var parallelValue) &&
-                                      parallelValue is bool isParallel && isParallel;
+            var isParallelExecution = context.IsParallelExecution;
 
             if (isParallelExecution)
             {
@@ -418,7 +426,7 @@ public sealed class PipelineRunner(
             // Dispose all node instances unless DI owns their lifetime
             if (nodeInstances is not null)
             {
-                var diOwnsNodes = context.Items.TryGetValue(PipelineContextKeys.DiOwnedNodes, out var owned) && owned is bool b && b;
+                var diOwnsNodes = context.DiOwnedNodes;
 
                 if (!diOwnsNodes)
                 {
@@ -464,8 +472,8 @@ public sealed class PipelineRunner(
         if (graph.Lineage.LineageSinkType is not null)
             return lineageFactory.CreateLineageSink(graph.Lineage.LineageSinkType);
 
-        if (context.Items.TryGetValue(PipelineContextKeys.LineageSink, out var sink))
-            return (ILineageSink)sink;
+        if (context.LineageSink is not null)
+            return context.LineageSink;
 
         return null;
     }
@@ -478,8 +486,8 @@ public sealed class PipelineRunner(
         if (graph.Lineage.PipelineLineageSinkType is not null)
             return lineageFactory.CreatePipelineLineageSink(graph.Lineage.PipelineLineageSinkType);
 
-        if (context.Items.TryGetValue(PipelineContextKeys.PipelineLineageSink, out var sink))
-            return (IPipelineLineageSink)sink;
+        if (context.PipelineLineageSink is not null)
+            return context.PipelineLineageSink;
 
         // Provider-based default (no reflection):
         // When item-level lineage is enabled and no explicit sink is configured,

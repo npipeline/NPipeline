@@ -2,12 +2,13 @@ namespace NPipeline.Pipeline;
 
 /// <summary>
 ///     Well-known keys for PipelineContext.Items dictionary.
-///     Use these constants to avoid typos and enable IntelliSense.
+///     Use these constants for user/extension data and runtime annotation keys that remain string-indexed.
 /// </summary>
 /// <remarks>
 ///     <para>
-///         This class provides strongly-typed constants for all context keys used throughout NPipeline.
-///         By using these constants instead of string literals, you get compile-time safety and better IDE support.
+///         Framework-managed execution services (for example retry options, circuit breaker manager, and lineage sinks)
+///         are exposed as strongly-typed <see cref="PipelineContext" /> members.
+///         <see cref="PipelineContext.Items" /> remains available for user-defined and extension-defined values.
 ///     </para>
 ///     <para>
 ///         <strong>Reserved Key Prefixes:</strong>
@@ -100,9 +101,7 @@ namespace NPipeline.Pipeline;
 ///         <code>
 ///         // Safe: Using NPipeline constants
 ///         var context = PipelineContext.Default;
-///         var retryOptions = context.Items.TryGetValue(PipelineContextKeys.GlobalRetryOptions, out var options)
-///             ? (PipelineRetryOptions)options
-///             : null;
+///         var retryOptions = context.GlobalRetryOptions;
 /// 
 ///         Safe: User-defined key with clear naming
 ///         context.Items["MyApp.CustomSetting"] = "value";
