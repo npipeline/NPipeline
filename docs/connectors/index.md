@@ -37,6 +37,12 @@ These common attributes work across all connectors (CSV, Excel, PostgreSQL, SQL 
 
 The following connectors are available:
 
+- **[Azure Service Bus](./azure-service-bus.md)**: Read from and write to Azure Service Bus queues and topics.
+  - Queue and topic/subscription source and sink nodes with JSON serialization
+  - Explicit settlement support (Complete, Abandon, DeadLetter, Defer) via `ServiceBusMessage<T>`
+  - Session-enabled source processing with per-session ordering guarantees
+  - Multiple authentication modes (connection string, Azure AD, endpoint + key, named connections)
+  - Batching, dead-letter handling, lock renewal, and retry configuration
 - **[Azure Cosmos DB](./cosmos.md)**: Read from and write to Azure Cosmos DB databases.
   - Supports SQL API with parameterized queries and change feed streaming
   - Multi-API support for Mongo and Cassandra APIs
@@ -148,6 +154,7 @@ Explore the documentation for each specific connector to learn about its install
 
 ## Next Steps
 
+- **[Azure Service Bus Connector](azure-service-bus.md)**: Learn how to read from and write to Azure Service Bus queues and topics
 - **[Azure Cosmos DB Connector](cosmos.md)**: Learn how to read from and write to Azure Cosmos DB
 - **[AWS SQS Connector](aws-sqs.md)**: Learn how to read from and write to Amazon SQS queues
 - **[CSV Connector](csv.md)**: Learn how to read from and write to CSV files
