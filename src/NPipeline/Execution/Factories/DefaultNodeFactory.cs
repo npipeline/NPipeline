@@ -98,7 +98,7 @@ public sealed class DefaultNodeFactory(IErrorHandlerFactory? errorHandlerFactory
         if (instance is ITransformNode transformNode)
         {
             // Apply execution strategy if specified, falling back to SequentialExecutionStrategy.
-            transformNode.ExecutionStrategy = nodeDefinition.ExecutionStrategy ?? new SequentialExecutionStrategy();
+            transformNode.ExecutionStrategy = nodeDefinition.ExecutionStrategy ?? SequentialExecutionStrategy.Instance;
 
             // Apply error handler if specified.
             if (nodeDefinition.ErrorHandlerType is not null)

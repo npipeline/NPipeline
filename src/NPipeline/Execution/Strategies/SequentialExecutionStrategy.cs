@@ -16,6 +16,11 @@ namespace NPipeline.Execution.Strategies;
 /// </summary>
 public sealed class SequentialExecutionStrategy : IExecutionStrategy
 {
+    /// <summary>
+    ///     Shared singleton instance for the stateless sequential strategy.
+    /// </summary>
+    public static SequentialExecutionStrategy Instance { get; } = new();
+
     /// <inheritdoc />
     public Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(
         IDataPipe<TIn> input,
