@@ -12,6 +12,7 @@ namespace NPipeline.Connectors.Http.Tests.Nodes;
 
 public class HttpSinkNodeTests
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static HttpClient CreateClient(MockHttpMessageHandler handler)
     {
         return new HttpClient(handler);
@@ -50,7 +51,7 @@ public class HttpSinkNodeTests
         req.RequestUri!.AbsoluteUri.Should().Be("https://api.example.com/items");
 
         var body = handler.RequestBodies[0]!;
-        var item = JsonSerializer.Deserialize<Item>(body, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var item = JsonSerializer.Deserialize<Item>(body, JsonOptions);
         item!.Id.Should().Be(1);
         item.Name.Should().Be("Apple");
     }
@@ -171,7 +172,7 @@ public class HttpSinkNodeTests
 
         handler.Requests.Should().HaveCount(2);
         var body1 = handler.RequestBodies[0]!;
-        var batch1 = JsonSerializer.Deserialize<Item[]>(body1, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var batch1 = JsonSerializer.Deserialize<Item[]>(body1, JsonOptions);
         batch1.Should().HaveCount(3);
     }
 
@@ -275,7 +276,7 @@ public class HttpSinkNodeTests
         await act.Should().ThrowAsync<TaskCanceledException>();
     }
 
-    private record Item(int Id, string Name);
+    private sealed record Item(int Id, string Name);
 
     private sealed class DelayedResponseHandler(TimeSpan delay) : HttpMessageHandler
     {

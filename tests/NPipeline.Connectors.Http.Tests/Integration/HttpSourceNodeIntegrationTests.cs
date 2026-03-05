@@ -158,5 +158,5 @@ public class HttpSourceNodeIntegrationTests(WireMockFixture fixture)
         items[0].Id.Should().Be(99);
     }
 
-    private record Item(int Id, string Name);
+    private sealed record Item(int Id, string Name);
 }
