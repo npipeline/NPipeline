@@ -25,6 +25,7 @@ public sealed class MySqlConnectorIntegrationTests
         await using var cmd = new MySqlCommand(
             $"DROP TABLE IF EXISTS `{tableName}`",
             conn);
+
         _ = await cmd.ExecuteNonQueryAsync();
     }
 
@@ -45,23 +46,23 @@ public sealed class MySqlConnectorIntegrationTests
                 await conn.OpenAsync();
 
                 await using (var cmd = new MySqlCommand(
-                    $"CREATE TABLE IF NOT EXISTS `{sourceTable}` (id INT PRIMARY KEY, name VARCHAR(100), value DECIMAL(18,2))",
-                    conn))
+                                 $"CREATE TABLE IF NOT EXISTS `{sourceTable}` (id INT PRIMARY KEY, name VARCHAR(100), value DECIMAL(18,2))",
+                                 conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
 
                 await using (var cmd = new MySqlCommand(
-                    $"INSERT INTO `{sourceTable}` (id, name, value) VALUES (1, 'Test 1', 10.5), (2, 'Test 2', 20.5), (3, 'Test 3', 30.5)",
-                    conn))
+                                 $"INSERT INTO `{sourceTable}` (id, name, value) VALUES (1, 'Test 1', 10.5), (2, 'Test 2', 20.5), (3, 'Test 3', 30.5)",
+                                 conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
 
                 // Set up sink table
                 await using (var cmd = new MySqlCommand(
-                    $"CREATE TABLE IF NOT EXISTS `{sinkTable}` (id INT PRIMARY KEY, name VARCHAR(100), value DECIMAL(18,2))",
-                    conn))
+                                 $"CREATE TABLE IF NOT EXISTS `{sinkTable}` (id INT PRIMARY KEY, name VARCHAR(100), value DECIMAL(18,2))",
+                                 conn))
                 {
                     _ = await cmd.ExecuteNonQueryAsync();
                 }
@@ -81,8 +82,8 @@ public sealed class MySqlConnectorIntegrationTests
                 await conn.OpenAsync();
 
                 await using (var cmd = new MySqlCommand(
-                    $"SELECT COUNT(*) FROM `{sourceTable}`",
-                    conn))
+                                 $"SELECT COUNT(*) FROM `{sourceTable}`",
+                                 conn))
                 {
                     var count = Convert.ToInt64(await cmd.ExecuteScalarAsync());
                     Assert.Equal(3, count);
@@ -112,11 +113,13 @@ public sealed class MySqlConnectorIntegrationTests
                 await using var createCmd = new MySqlCommand(
                     $"CREATE TABLE IF NOT EXISTS `{tableName}` (id INT PRIMARY KEY, name VARCHAR(100))",
                     conn);
+
                 _ = await createCmd.ExecuteNonQueryAsync();
 
                 await using var insertCmd = new MySqlCommand(
                     $"INSERT INTO `{tableName}` (id, name) VALUES (10, 'Alice'), (20, 'Bob'), (30, 'Charlie')",
                     conn);
+
                 _ = await insertCmd.ExecuteNonQueryAsync();
             }
 
@@ -134,6 +137,7 @@ public sealed class MySqlConnectorIntegrationTests
                 await using var countCmd = new MySqlCommand(
                     $"SELECT COUNT(*) FROM `{tableName}`",
                     conn);
+
                 var count = Convert.ToInt64(await countCmd.ExecuteScalarAsync());
                 Assert.Equal(3, count);
             }
@@ -160,11 +164,13 @@ public sealed class MySqlConnectorIntegrationTests
                 await using var createCmd = new MySqlCommand(
                     $"CREATE TABLE IF NOT EXISTS `{tableName}` (id INT PRIMARY KEY, name VARCHAR(100))",
                     conn);
+
                 _ = await createCmd.ExecuteNonQueryAsync();
 
                 await using var insertCmd = new MySqlCommand(
                     $"INSERT INTO `{tableName}` (id, name) VALUES (1, 'Alice'), (2, 'Bob')",
                     conn);
+
                 _ = await insertCmd.ExecuteNonQueryAsync();
             }
 
@@ -204,11 +210,13 @@ public sealed class MySqlConnectorIntegrationTests
                 await using var createCmd = new MySqlCommand(
                     $"CREATE TABLE IF NOT EXISTS `{tableName}` (id INT PRIMARY KEY, name VARCHAR(100))",
                     conn);
+
                 _ = await createCmd.ExecuteNonQueryAsync();
 
                 await using var insertCmd = new MySqlCommand(
                     $"INSERT INTO `{tableName}` (id, name) VALUES (1, 'Original')",
                     conn);
+
                 _ = await insertCmd.ExecuteNonQueryAsync();
             }
 
@@ -231,6 +239,7 @@ public sealed class MySqlConnectorIntegrationTests
             await using var selectCmd = new MySqlCommand(
                 $"SELECT name FROM `{tableName}` WHERE id = 1",
                 conn2);
+
             var name = (string?)await selectCmd.ExecuteScalarAsync();
             Assert.Equal("Original", name);
         }

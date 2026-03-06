@@ -287,8 +287,8 @@ public class CircuitBreakerIntegrationTests
 
             // Assert
             result.Should().NotBeNull();
-            context.Items.Should().ContainKey(PipelineContextKeys.CircuitBreakerManager);
-            context.Items[PipelineContextKeys.CircuitBreakerManager].Should().BeAssignableTo<ICircuitBreakerManager>();
+            context.CircuitBreakerManager.Should().NotBeNull();
+            context.CircuitBreakerManager.Should().BeAssignableTo<ICircuitBreakerManager>();
         }
     }
 
@@ -309,7 +309,7 @@ public class CircuitBreakerIntegrationTests
 
             // Assert
             result.Should().NotBeNull();
-            context.Items.Should().NotContainKey(PipelineContextKeys.CircuitBreakerManager);
+            context.CircuitBreakerManager.Should().BeNull();
         }
     }
 
@@ -387,7 +387,7 @@ public class CircuitBreakerIntegrationTests
             await Task.Delay(options.OpenDuration + TimeSpan.FromMilliseconds(500));
 
             // Poll to ensure the circuit breaker has transitioned to HalfOpen
-            var manager = context.Items[PipelineContextKeys.CircuitBreakerManager] as ICircuitBreakerManager;
+            var manager = context.CircuitBreakerManager;
             var circuitBreaker = manager?.GetCircuitBreaker("recovery-node", options);
 
             // Add a small retry loop to account for timing variations
@@ -428,13 +428,13 @@ public class CircuitBreakerIntegrationTests
         var context = new PipelineContext(
             PipelineContextConfiguration.Default with { PipelineErrorHandler = new TestErrorHandler(PipelineErrorDecision.RestartNode) });
 
-        context.Items[PipelineContextKeys.CircuitBreakerOptions] = (options ?? new PipelineCircuitBreakerOptions(
+        context.CircuitBreakerOptions = (options ?? new PipelineCircuitBreakerOptions(
             3,
             TimeSpan.FromMinutes(1),
             TimeSpan.FromMinutes(5))).Validate();
 
         if (memoryOptions is not null)
-            context.Items[PipelineContextKeys.CircuitBreakerMemoryOptions] = memoryOptions.Validate();
+            context.CircuitBreakerMemoryOptions = memoryOptions.Validate();
 
         return context;
     }

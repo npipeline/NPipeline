@@ -301,14 +301,9 @@ public sealed class CsvMapperBuilderTests
         public Guid GuidValue { get; set; }
     }
 
-    private sealed class PocoWithNoParameterlessConstructor
+    private sealed class PocoWithNoParameterlessConstructor(int id)
     {
-        public PocoWithNoParameterlessConstructor(int id)
-        {
-            Id = id;
-        }
-
-        public int Id { get; set; }
+        public int Id { get; set; } = id;
     }
 
     #endregion

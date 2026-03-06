@@ -22,9 +22,9 @@ public sealed record PipelineGraph
     /// <param name="edges">The collection of all edges connecting the nodes.</param>
     /// <param name="preconfiguredNodeInstances">A dictionary of node instances that are created and configured at definition time.</param>
     public PipelineGraph(
-        ImmutableList<NodeDefinition> nodes,
-        ImmutableList<Edge> edges,
-        ImmutableDictionary<string, INode> preconfiguredNodeInstances)
+        ImmutableArray<NodeDefinition> nodes,
+        ImmutableArray<Edge> edges,
+        FrozenDictionary<string, INode> preconfiguredNodeInstances)
     {
         Nodes = nodes;
         Edges = edges;
@@ -42,17 +42,17 @@ public sealed record PipelineGraph
     /// <summary>
     ///     The collection of all node definitions in the graph.
     /// </summary>
-    public required ImmutableList<NodeDefinition> Nodes { get; init; }
+    public required ImmutableArray<NodeDefinition> Nodes { get; init; }
 
     /// <summary>
     ///     The collection of all edges connecting the nodes.
     /// </summary>
-    public required ImmutableList<Edge> Edges { get; init; }
+    public required ImmutableArray<Edge> Edges { get; init; }
 
     /// <summary>
     ///     A dictionary of node instances that are created and configured at definition time.
     /// </summary>
-    public required ImmutableDictionary<string, INode> PreconfiguredNodeInstances { get; init; }
+    public required FrozenDictionary<string, INode> PreconfiguredNodeInstances { get; init; }
 
     /// <summary>
     ///     A cached frozen dictionary mapping node IDs to their definitions for O(1) lookups during execution.
@@ -91,7 +91,7 @@ public sealed record PipelineGraph
     public PipelineGraph EnsureNodeDefinitionMapInitialized()
     {
         // If NodeDefinitionMap is empty but Nodes is not, create it from Nodes
-        if (NodeDefinitionMap.Count == 0 && Nodes.Count > 0)
+        if (NodeDefinitionMap.Count == 0 && Nodes.Length > 0)
             return this with { NodeDefinitionMap = Nodes.ToFrozenDictionary(n => n.Id) };
 
         return this;
@@ -107,7 +107,7 @@ public sealed class PipelineGraphBuilder
     private PipelineCircuitBreakerOptions? _circuitBreakerOptions;
     private IDeadLetterSink? _deadLetterSink;
     private Type? _deadLetterSinkType;
-    private ImmutableList<Edge> _edges = [];
+    private ImmutableArray<Edge> _edges = [];
     private bool _itemLevelLineageEnabled;
     private LineageOptions? _lineageOptions;
     private ILineageSink? _lineageSink;
@@ -115,12 +115,12 @@ public sealed class PipelineGraphBuilder
     private FrozenDictionary<string, NodeDefinition> _nodeDefinitionMap = FrozenDictionary<string, NodeDefinition>.Empty;
     private ImmutableDictionary<string, object> _nodeExecutionAnnotations = ImmutableDictionary<string, object>.Empty;
     private ImmutableDictionary<string, PipelineRetryOptions> _nodeRetryOverrides = ImmutableDictionary<string, PipelineRetryOptions>.Empty;
-    private ImmutableList<NodeDefinition> _nodes = [];
+    private ImmutableArray<NodeDefinition> _nodes = [];
     private IPipelineErrorHandler? _pipelineErrorHandler;
     private Type? _pipelineErrorHandlerType;
     private IPipelineLineageSink? _pipelineLineageSink;
     private Type? _pipelineLineageSinkType;
-    private ImmutableDictionary<string, INode> _preconfiguredNodeInstances = ImmutableDictionary<string, INode>.Empty;
+    private FrozenDictionary<string, INode> _preconfiguredNodeInstances = FrozenDictionary<string, INode>.Empty;
     private PipelineRetryOptions? _retryOptions;
     private IPipelineVisualizer? _visualizer;
 
@@ -145,7 +145,7 @@ public sealed class PipelineGraphBuilder
     /// </summary>
     /// <param name="nodes">The collection of node definitions.</param>
     /// <returns>The builder instance for method chaining.</returns>
-    public PipelineGraphBuilder WithNodes(ImmutableList<NodeDefinition> nodes)
+    public PipelineGraphBuilder WithNodes(ImmutableArray<NodeDefinition> nodes)
     {
         _nodes = nodes;
         return this;
@@ -167,7 +167,7 @@ public sealed class PipelineGraphBuilder
     /// </summary>
     /// <param name="edges">The collection of edges.</param>
     /// <returns>The builder instance for method chaining.</returns>
-    public PipelineGraphBuilder WithEdges(ImmutableList<Edge> edges)
+    public PipelineGraphBuilder WithEdges(ImmutableArray<Edge> edges)
     {
         _edges = edges;
         return this;
@@ -189,7 +189,7 @@ public sealed class PipelineGraphBuilder
     /// </summary>
     /// <param name="instances">The dictionary of preconfigured node instances.</param>
     /// <returns>The builder instance for method chaining.</returns>
-    public PipelineGraphBuilder WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode> instances)
+    public PipelineGraphBuilder WithPreconfiguredNodeInstances(FrozenDictionary<string, INode> instances)
     {
         _preconfiguredNodeInstances = instances;
         return this;
@@ -200,9 +200,9 @@ public sealed class PipelineGraphBuilder
     /// </summary>
     /// <param name="instances">The dictionary of preconfigured node instances.</param>
     /// <returns>The builder instance for method chaining.</returns>
-    public PipelineGraphBuilder WithPreconfiguredNodeInstances(IDictionary<string, INode> instances)
+    public PipelineGraphBuilder WithPreconfiguredNodeInstances(IReadOnlyDictionary<string, INode> instances)
     {
-        _preconfiguredNodeInstances = instances.ToImmutableDictionary();
+        _preconfiguredNodeInstances = instances.ToFrozenDictionary();
         return this;
     }
 

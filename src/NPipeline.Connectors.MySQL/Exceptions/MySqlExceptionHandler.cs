@@ -49,10 +49,12 @@ public static class MySqlExceptionHandler
 
         // ±25 % jitter to avoid thundering herd
         var jitterFactor = 0.75 + Random.Shared.NextDouble() * 0.5;
+
         var delayWithJitter = TimeSpan.FromMilliseconds(
             exponentialDelay.TotalMilliseconds * jitterFactor);
 
         const int maxDelaySeconds = 30;
+
         if (delayWithJitter.TotalSeconds > maxDelaySeconds)
             delayWithJitter = TimeSpan.FromSeconds(maxDelaySeconds);
 
@@ -83,22 +85,29 @@ public static class MySqlExceptionHandler
     /// <summary>
     ///     Gets the MySQL error code string from an exception.
     /// </summary>
-    public static string? GetErrorCode(Exception exception) =>
-        exception switch
+    public static string? GetErrorCode(Exception exception)
+    {
+        return exception switch
         {
             MySqlConnector.MySqlException mysqlEx => mysqlEx.Number.ToString(),
             MySqlException mysqlEx => mysqlEx.ErrorCode,
             _ => null,
         };
+    }
 
     /// <summary>
     ///     Returns a human-readable description for a MySQL error code.
     /// </summary>
-    public static string? GetErrorDescription(int errorCode) =>
-        ErrorDescriptions.TryGetValue(errorCode, out var description) ? description : null;
+    public static string? GetErrorDescription(int errorCode)
+    {
+        return ErrorDescriptions.TryGetValue(errorCode, out var description)
+            ? description
+            : null;
+    }
 
-    private static bool IsConnectionError(Exception exception) =>
-        exception switch
+    private static bool IsConnectionError(Exception exception)
+    {
+        return exception switch
         {
             MySqlConnectionException => true,
             MySqlConnector.MySqlException mysqlEx =>
@@ -107,4 +116,5 @@ public static class MySqlExceptionHandler
                 invalidOpEx.Message.Contains("connection", StringComparison.OrdinalIgnoreCase) => true,
             _ => false,
         };
+    }
 }

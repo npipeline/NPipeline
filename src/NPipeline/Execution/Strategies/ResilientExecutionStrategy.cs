@@ -121,13 +121,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                 "Node restarts require an error handler. Configure: builder.AddPipelineErrorHandler<T>()");
         }
 
-        // Determine effective retry options precedence
-        var effectiveRetries = context.RetryOptions;
-
-        if (context.Items.TryGetValue($"retry::{context.CurrentNodeId}", out var specific) && specific is PipelineRetryOptions prc)
-            effectiveRetries = prc;
-        else if (context.Items.TryGetValue(PipelineContextKeys.GlobalRetryOptions, out var globalRetry) && globalRetry is PipelineRetryOptions grc)
-            effectiveRetries = grc;
+        var effectiveRetries = RetryOptionsResolver.Resolve(context, context.CurrentNodeId);
 
         if (effectiveRetries.MaxNodeRestartAttempts <= 0)
         {
@@ -144,34 +138,13 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                 "Restart functionality is disabled for streaming inputs. Configure: builder.WithRetryOptions(o => o.WithMaxMaterializedItems(1000))");
         }
 
-        if (context.PipelineErrorHandler is null)
-        {
-            // If there is no graph-level error handler, there is no need for this resilience layer.
-            // We can just delegate directly to the inner strategy.
-            return await innerStrategy.ExecuteAsync(input, node, context, cancellationToken).ConfigureAwait(false);
-        }
-
         EnsureCircuitBreakerManagerIsAvailable(context);
 
         // If the input is a streaming pipe, we must materialize it to support restarts.
         // This is a performance trade-off for resiliency.
         if (input is IStreamingDataPipe)
         {
-            // Determine effective cap (prefer node-specific override captured in context.Items earlier by the runner)
-            // Pattern matching for retry options resolution with precedence:
-            // 1. Node-specific override (highest priority)
-            // 2. Graph-level retry options
-            // 3. Context-level retry options (lowest priority)
-            int? cap = null;
-
-            if (context.Items.TryGetValue($"retry::{context.CurrentNodeId}", out var ro) && ro is PipelineRetryOptions pro &&
-                pro.MaxMaterializedItems is not null)
-                cap = pro.MaxMaterializedItems;
-            else if (context.Items.TryGetValue(PipelineContextKeys.GlobalRetryOptions, out var gro) && gro is PipelineRetryOptions gpr &&
-                     gpr.MaxMaterializedItems is not null)
-                cap = gpr.MaxMaterializedItems;
-            else if (context.RetryOptions.MaxMaterializedItems is not null)
-                cap = context.RetryOptions.MaxMaterializedItems;
+            var cap = effectiveRetries.MaxMaterializedItems;
 
             // Always wrap in replayable pipe so restarts re-enumerate buffered items. Cap enforced when specified.
 #pragma warning disable CA2000 // Ownership transferred to PipelineContext via RegisterForDisposal
@@ -215,16 +188,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         // Capture retry options & nodeId at creation time so later enumeration (during sink execution) still uses correct values.
         var creationNodeId = context.CurrentNodeId;
 
-        // Determine effective retry options precedence using pattern matching:
-        // 1. Node-specific override stored in context.Items (retry::<nodeId>)
-        // 2. Graph-level configured retry options surfaced in context.Items[PipelineContextKeys.GlobalRetryOptions]
-        // 3. Context-level RetryOptions (may be default if not explicitly set on PipelineContext construction)
-        var effectiveAtCreation = context.RetryOptions;
-
-        if (context.Items.TryGetValue($"retry::{creationNodeId}", out var specificRetry) && specificRetry is PipelineRetryOptions nodeRetryOptions)
-            effectiveAtCreation = nodeRetryOptions;
-        else if (context.Items.TryGetValue(PipelineContextKeys.GlobalRetryOptions, out var globalRetry) && globalRetry is PipelineRetryOptions grc)
-            effectiveAtCreation = grc;
+        var effectiveAtCreation = RetryOptionsResolver.Resolve(context, creationNodeId);
 
         var resilientStream = CreateResilientStream<TIn, TOut>(StreamFactory, context, creationNodeId, effectiveAtCreation, cancellationToken);
         var pipe = new StreamingDataPipe<TOut>(resilientStream);
@@ -282,9 +246,9 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         var resilientActivity = context.Tracer.CurrentActivity;
 
         // Resolve circuit breaker instance for this node if enabled
-        if (context.Items.TryGetValue(PipelineContextKeys.CircuitBreakerOptions, out var cbo) && cbo is PipelineCircuitBreakerOptions cbr && cbr.Enabled)
+        if (context.CircuitBreakerOptions is { Enabled: true } cbr)
         {
-            if (context.Items.TryGetValue(PipelineContextKeys.CircuitBreakerManager, out var managerObj) && managerObj is ICircuitBreakerManager manager)
+            if (context.CircuitBreakerManager is ICircuitBreakerManager manager)
             {
                 circuitBreaker = manager.GetCircuitBreaker(nodeId, cbr);
                 ResilientExecutionStrategyLogMessages.CircuitBreakerResolved(logger, nodeId, circuitBreaker.State.ToString());
@@ -297,9 +261,9 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         {
             if (circuitBreaker is not null && !circuitBreaker.CanExecute())
             {
-                context.Items[PipelineContextKeys.DiagnosticsResilienceFailures(nodeId)] = failures;
-                context.Items[PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId)] = consecutiveFailures;
-                context.Items[PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId)] = true;
+                context.RuntimeAnnotations[PipelineContextKeys.DiagnosticsResilienceFailures(nodeId)] = failures;
+                context.RuntimeAnnotations[PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId)] = consecutiveFailures;
+                context.RuntimeAnnotations[PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId)] = true;
                 throw CreateCircuitBreakerOpenException(nodeId, circuitBreaker, "Execution blocked before attempt due to open circuit breaker.");
             }
 
@@ -351,9 +315,9 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
 
                         if (!breakerResult.Allowed)
                         {
-                            context.Items[PipelineContextKeys.DiagnosticsResilienceFailures(nodeId)] = failures;
-                            context.Items[PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId)] = consecutiveFailures;
-                            context.Items[PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId)] = true;
+                            context.RuntimeAnnotations[PipelineContextKeys.DiagnosticsResilienceFailures(nodeId)] = failures;
+                            context.RuntimeAnnotations[PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId)] = consecutiveFailures;
+                            context.RuntimeAnnotations[PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId)] = true;
                             throw CreateCircuitBreakerOpenException(nodeId, circuitBreaker, breakerResult.Message);
                         }
                     }
@@ -371,9 +335,9 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                             /* ignore */
                         }
 
-                        context.Items[PipelineContextKeys.DiagnosticsResilienceFailures(nodeId)] = failures;
-                        context.Items[PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId)] = consecutiveFailures;
-                        context.Items[PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId)] = true;
+                        context.RuntimeAnnotations[PipelineContextKeys.DiagnosticsResilienceFailures(nodeId)] = failures;
+                        context.RuntimeAnnotations[PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId)] = consecutiveFailures;
+                        context.RuntimeAnnotations[PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId)] = true;
 
                         // Log before throwing to capture the state
                         ResilientExecutionStrategyLogMessages.FailureLimitReached(logger, nodeId, failures, consecutiveFailures,
@@ -459,22 +423,17 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
 
     private static void EnsureCircuitBreakerManagerIsAvailable(PipelineContext context)
     {
-        if (!context.Items.TryGetValue(PipelineContextKeys.CircuitBreakerOptions, out var cbo) || cbo is not PipelineCircuitBreakerOptions options ||
-            !options.Enabled)
+        if (context.CircuitBreakerOptions is not { Enabled: true })
             return;
 
-        if (context.Items.TryGetValue(PipelineContextKeys.CircuitBreakerManager, out var existing) && existing is ICircuitBreakerManager)
+        if (context.CircuitBreakerManager is ICircuitBreakerManager)
             return;
 
         var logger = context.LoggerFactory.CreateLogger(nameof(CircuitBreakerManager));
-        CircuitBreakerMemoryManagementOptions? memoryOptions = null;
-
-        if (context.Items.TryGetValue(PipelineContextKeys.CircuitBreakerMemoryOptions, out var memoryOptionObject) &&
-            memoryOptionObject is CircuitBreakerMemoryManagementOptions configuredMemoryOptions)
-            memoryOptions = configuredMemoryOptions;
+        var memoryOptions = context.CircuitBreakerMemoryOptions;
 
         var manager = context.CreateAndRegister(new CircuitBreakerManager(logger, memoryOptions));
-        context.Items[PipelineContextKeys.CircuitBreakerManager] = manager;
+        context.CircuitBreakerManager = manager;
     }
 
     private static NodeExecutionException CreateCircuitBreakerOpenException(string nodeId, ICircuitBreaker circuitBreaker, string? reason)

@@ -9,8 +9,6 @@ namespace NPipeline.Observability;
 /// </summary>
 public sealed class LoggingMetricsSink : IMetricsSink
 {
-    private readonly ILogger _logger;
-
     // LoggerMessage delegates for high-performance logging
     private static readonly Action<ILogger, string, long, long, long, double, double, Exception?> s_logSuccessWithAverage =
         LoggerMessage.Define<string, long, long, long, double, double>(
@@ -54,6 +52,8 @@ public sealed class LoggingMetricsSink : IMetricsSink
             new EventId(7, nameof(LoggingMetricsSink)),
             "Node {NodeId} average item time: {AverageMs:F2} ms");
 
+    private readonly ILogger _logger;
+
     /// <summary>
     ///     Initializes a new instance of the <see cref="LoggingMetricsSink" /> class.
     /// </summary>
@@ -74,16 +74,16 @@ public sealed class LoggingMetricsSink : IMetricsSink
         ArgumentNullException.ThrowIfNull(nodeMetrics);
 
         using (_logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["NodeId"] = nodeMetrics.NodeId,
-            ["Success"] = nodeMetrics.Success,
-            ["ItemsProcessed"] = nodeMetrics.ItemsProcessed,
-            ["ItemsEmitted"] = nodeMetrics.ItemsEmitted,
-            ["DurationMs"] = nodeMetrics.DurationMs,
-            ["RetryCount"] = nodeMetrics.RetryCount,
-            ["ThreadId"] = nodeMetrics.ThreadId,
-            ["AverageItemProcessingMs"] = nodeMetrics.AverageItemProcessingMs,
-        }))
+               {
+                   ["NodeId"] = nodeMetrics.NodeId,
+                   ["Success"] = nodeMetrics.Success,
+                   ["ItemsProcessed"] = nodeMetrics.ItemsProcessed,
+                   ["ItemsEmitted"] = nodeMetrics.ItemsEmitted,
+                   ["DurationMs"] = nodeMetrics.DurationMs,
+                   ["RetryCount"] = nodeMetrics.RetryCount,
+                   ["ThreadId"] = nodeMetrics.ThreadId,
+                   ["AverageItemProcessingMs"] = nodeMetrics.AverageItemProcessingMs,
+               }))
         {
             if (nodeMetrics.Success)
             {
@@ -122,24 +122,16 @@ public sealed class LoggingMetricsSink : IMetricsSink
             }
 
             if (nodeMetrics.RetryCount > 0)
-            {
                 s_logRetryCount(_logger, nodeMetrics.NodeId, nodeMetrics.RetryCount, null);
-            }
 
             if (nodeMetrics.PeakMemoryUsageMb.HasValue)
-            {
                 s_logPeakMemory(_logger, nodeMetrics.NodeId, nodeMetrics.PeakMemoryUsageMb.Value, null);
-            }
 
             if (nodeMetrics.ProcessorTimeMs.HasValue)
-            {
                 s_logProcessorTime(_logger, nodeMetrics.NodeId, nodeMetrics.ProcessorTimeMs.Value, null);
-            }
 
             if (nodeMetrics.AverageItemProcessingMs.HasValue)
-            {
                 s_logAverageItemTime(_logger, nodeMetrics.NodeId, nodeMetrics.AverageItemProcessingMs.Value, null);
-            }
         }
 
         return Task.CompletedTask;

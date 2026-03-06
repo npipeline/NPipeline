@@ -154,7 +154,7 @@ public static class ServiceCollectionExtensions
         var context = new PipelineContext(config);
 
         // Indicate DI owns node disposal to avoid double-dispose in runner.
-        context.Items[PipelineContextKeys.DiOwnedNodes] = true;
+        context.DiOwnedNodes = true;
 
         await runner.RunAsync<TDefinition>(context).ConfigureAwait(false);
     }

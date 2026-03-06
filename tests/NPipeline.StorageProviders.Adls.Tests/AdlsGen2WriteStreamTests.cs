@@ -1,8 +1,8 @@
+using AwesomeAssertions;
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using FakeItEasy;
-using AwesomeAssertions;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Adls.Tests;

@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
 using NPipeline.Connectors.Json;
 using NPipeline.Pipeline;
-using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Models;
 using Sample_JsonConnector.Nodes;
 
@@ -17,7 +16,6 @@ namespace Sample_JsonConnector;
 ///     2. ValidationTransform validates customer records and filters invalid ones
 ///     3. DataTransform enriches and normalizes customer data
 ///     4. JsonSinkNode writes the processed data to a target JSON file
-///     
 ///     The pipeline demonstrates:
 ///     - Attribute-based mapping using Column attributes
 ///     - Different JSON formats (Array and NDJSON)
@@ -33,7 +31,6 @@ public class JsonConnectorPipeline : IPipelineDefinition
     ///     This method creates a JSON processing pipeline with multiple scenarios:
     ///     Scenario 1: JSON Array format with attribute-based mapping
     ///     Scenario 2: NDJSON format with custom configuration
-    ///     
     ///     The pipeline reads customer data from the input JSON file, validates and transforms it,
     ///     then writes the processed records to an output JSON file.
     /// </remarks>
@@ -84,6 +81,7 @@ public class JsonConnectorPipeline : IPipelineDefinition
         // Log pipeline configuration
         var logger = context.LoggerFactory.CreateLogger("JsonConnectorPipeline");
         logger.Log(LogLevel.Information, "JSON pipeline configured: {SourcePath} -> {TargetPath}", sourcePath, targetPath);
+
         logger.Log(LogLevel.Information, "JSON format: {Format}, Naming policy: {NamingPolicy}, Indented: {WriteIndented}",
             jsonConfiguration.Format, jsonConfiguration.PropertyNamingPolicy, jsonConfiguration.WriteIndented);
 

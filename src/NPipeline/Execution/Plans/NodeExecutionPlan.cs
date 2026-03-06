@@ -19,5 +19,6 @@ public sealed record NodeExecutionPlan(
     Func<IDataPipe, PipelineContext, CancellationToken, Task<IDataPipe>>? ExecuteTransform = null,
     Func<IEnumerable<IDataPipe>, PipelineContext, CancellationToken, Task<IDataPipe>>? ExecuteJoin = null,
     Func<IDataPipe, PipelineContext, CancellationToken, Task>? ExecuteSink = null,
-    Func<IDataPipe, PipelineContext, CancellationToken, Task<IDataPipe>>? ExecuteAggregate = null
+    Func<IDataPipe, PipelineContext, CancellationToken, Task<IDataPipe>>? ExecuteAggregate = null,
+    Func<IDataPipe, string, IDataPipe>? AdaptOutput = null
 );

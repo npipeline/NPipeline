@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Collections.Immutable;
 using AwesomeAssertions;
 using FakeItEasy;
@@ -99,7 +100,7 @@ public sealed class PipelineRunnerErrorTests
         {
             Nodes = [nodeDef],
             Edges = [],
-            PreconfiguredNodeInstances = ImmutableDictionary<string, INode>.Empty,
+            PreconfiguredNodeInstances = FrozenDictionary<string, INode>.Empty,
         };
 
         var cts = new CancellationTokenSource();
@@ -166,7 +167,7 @@ public sealed class PipelineRunnerErrorTests
         {
             Nodes = [nodeDef],
             Edges = [],
-            PreconfiguredNodeInstances = ImmutableDictionary<string, INode>.Empty,
+            PreconfiguredNodeInstances = FrozenDictionary<string, INode>.Empty,
         };
 
         _ = A.CallTo(() => _pipelineFactory.Create<TestPipelineDefinition>(A<PipelineContext>._))
@@ -225,7 +226,7 @@ public sealed class PipelineRunnerErrorTests
         {
             Nodes = [nodeDef],
             Edges = [],
-            PreconfiguredNodeInstances = ImmutableDictionary<string, INode>.Empty,
+            PreconfiguredNodeInstances = FrozenDictionary<string, INode>.Empty,
         };
 
         _ = A.CallTo(() => _pipelineFactory.Create<TestPipelineDefinition>(A<PipelineContext>._))

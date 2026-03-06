@@ -8,7 +8,7 @@ using NPipeline.Connectors.MySql.Exceptions;
 namespace NPipeline.Connectors.MySql.Mapping;
 
 /// <summary>
-///     Builds cached mapping delegates from <see cref="MySqlRow"/> to CLR types using attributes and convention.
+///     Builds cached mapping delegates from <see cref="MySqlRow" /> to CLR types using attributes and convention.
 ///     Uses compiled expression delegates for optimal performance during row mapping.
 /// </summary>
 internal static class MySqlMapperBuilder
@@ -27,7 +27,7 @@ internal static class MySqlMapperBuilder
             {
                 Property = p,
                 Attribute = (ColumnAttribute?)(p.GetCustomAttribute<MySqlColumnAttribute>()
-                             ?? (ColumnAttribute?)p.GetCustomAttribute<ColumnAttribute>()),
+                                               ?? (ColumnAttribute?)p.GetCustomAttribute<ColumnAttribute>()),
             })
             .ToList();
 
@@ -61,6 +61,7 @@ internal static class MySqlMapperBuilder
                             $"Failed to map column '{mapping.ColumnName}' to property '{mapping.PropertyName}' of type '{mapping.PropertyType.Name}'",
                             ex);
                     }
+
                     // If ThrowOnMappingError is false, skip this mapping
                 }
             }
@@ -101,16 +102,16 @@ internal static class MySqlMapperBuilder
         var rowParam = Expression.Parameter(typeof(MySqlRow), "row");
 
         var hasColumnMethod = typeof(MySqlRow).GetMethod(nameof(MySqlRow.HasColumn))
-            ?? throw new InvalidOperationException("MySqlRow.HasColumn not found");
+                              ?? throw new InvalidOperationException("MySqlRow.HasColumn not found");
 
         var getMethodBase = typeof(MySqlRow)
-            .GetMethods()
-            .FirstOrDefault(m => m.Name == nameof(MySqlRow.Get)
-                                 && m.IsGenericMethodDefinition
-                                 && m.GetGenericArguments().Length == 1
-                                 && m.GetParameters().Length == 2
-                                 && m.GetParameters()[0].ParameterType == typeof(string))
-            ?? throw new InvalidOperationException("MySqlRow.Get<T>(string, T) overload not found");
+                                .GetMethods()
+                                .FirstOrDefault(m => m.Name == nameof(MySqlRow.Get)
+                                                     && m.IsGenericMethodDefinition
+                                                     && m.GetGenericArguments().Length == 1
+                                                     && m.GetParameters().Length == 2
+                                                     && m.GetParameters()[0].ParameterType == typeof(string))
+                            ?? throw new InvalidOperationException("MySqlRow.Get<T>(string, T) overload not found");
 
         var getMethod = getMethodBase.MakeGenericMethod(property.PropertyType);
 

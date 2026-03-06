@@ -17,7 +17,7 @@ public static class ParallelMetricsExtensions
     /// </summary>
     public static bool TryGetParallelMetrics(this PipelineContext context, string nodeId, out ParallelExecutionMetrics metrics)
     {
-        if (context.Items.TryGetValue(Key(nodeId), out var value) && value is ParallelExecutionMetrics m)
+        if (context.RuntimeAnnotations.TryGetValue(Key(nodeId), out var value) && value is ParallelExecutionMetrics m)
         {
             metrics = m;
             return true;

@@ -42,14 +42,18 @@ public static class MySqlTransientErrorDetector
     }
 
     /// <summary>
-    ///     Gets the MySQL error number from a <see cref="MySqlConnector.MySqlException"/>.
+    ///     Gets the MySQL error number from a <see cref="MySqlConnector.MySqlException" />.
     /// </summary>
-    public static int? GetErrorCode(MySqlConnector.MySqlException exception) =>
-        exception.Number;
+    public static int? GetErrorCode(MySqlConnector.MySqlException exception)
+    {
+        return exception.Number;
+    }
 
     /// <summary>
     ///     Determines if a specific MySQL error number is transient.
     /// </summary>
-    public static bool IsTransientError(int errorCode) =>
-        TransientErrorCodes.Contains(errorCode);
+    public static bool IsTransientError(int errorCode)
+    {
+        return TransientErrorCodes.Contains(errorCode);
+    }
 }

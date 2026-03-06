@@ -23,7 +23,7 @@ public static class MergeStrategies
             if (dataPipe is not IDataPipe<T> typedPipe)
                 throw new InvalidCastException($"Cannot concatenate streams. Expected pipe of '{typeof(T).Name}', but found '{dataPipe.GetType().Name}'.");
 
-            await foreach (var item in typedPipe.WithCancellation(cancellationToken))
+            await foreach (var item in typedPipe.WithCancellation(cancellationToken).ConfigureAwait(false))
             {
                 yield return item;
             }

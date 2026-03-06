@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using NPipeline.Configuration;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Execution;
@@ -37,7 +36,7 @@ namespace NPipeline.Execution;
 ///     </para>
 ///     <list type="bullet">
 ///         <item>
-///             <description>Retry options have not changed in context.Items</description>
+///             <description>Retry options have not changed in typed context members</description>
 ///         </item>
 ///         <item>
 ///             <description>Tracer instance has not been replaced</description>
@@ -104,7 +103,7 @@ internal readonly struct PipelineContextImmutabilityGuard
     [Conditional("DEBUG")]
     public void Validate(PipelineContext context)
     {
-        // Check if retry options changed in context.Items
+        // Check if retry options changed in typed context members
         var currentRetryOptionsHash = GetCurrentRetryOptionsHash(context, _nodeId);
 
         if (currentRetryOptionsHash != _retryOptionsHash)
@@ -147,16 +146,9 @@ internal readonly struct PipelineContextImmutabilityGuard
     private static int GetCurrentRetryOptionsHash(PipelineContext context, string nodeId)
     {
         // Replicate the same retry options resolution logic used in CachedNodeExecutionContext.Create
-        if (context.Items.TryGetValue(PipelineContextKeys.NodeRetryOptions(nodeId), out var specific) &&
-            specific is PipelineRetryOptions nodeRetryOptions)
+        if (context.NodeRetryOverrides.TryGetValue(nodeId, out var nodeRetryOptions))
             return RuntimeHelpers.GetHashCode(nodeRetryOptions);
 
-        if (context.Items.TryGetValue(PipelineContextKeys.GlobalRetryOptions, out var global))
-        {
-            if (global is PipelineRetryOptions globalRetryOptions)
-                return RuntimeHelpers.GetHashCode(globalRetryOptions);
-        }
-
-        return RuntimeHelpers.GetHashCode(context.RetryOptions);
+        return RuntimeHelpers.GetHashCode(context.GlobalRetryOptions);
     }
 }

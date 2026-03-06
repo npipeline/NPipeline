@@ -1,6 +1,4 @@
-using System.Reflection;
 using AwesomeAssertions;
-using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.Execution.Services;
 
@@ -9,16 +7,13 @@ namespace NPipeline.Tests.Core.Execution;
 public sealed class NodeExecutorNullHandlingTests
 {
     [Fact]
-    public async Task CreateTypedJoinPipeGeneric_WithReferenceTypeNullItems_YieldsNull()
+    public async Task BuildOutputAdapter_WithReferenceTypeNullItems_YieldsNull()
     {
-        // Arrange
-        var method = typeof(NodeExecutor).GetMethod("CreateTypedJoinPipeGeneric", BindingFlags.NonPublic | BindingFlags.Static)!
-            .MakeGenericMethod(typeof(string));
-
+        var adapter = NodeInstantiationService.BuildOutputAdapter(typeof(string))!;
         var input = new List<object?> { "value1", null, "value3" }.ToAsyncEnumerable();
+        var inputPipe = new StreamingDataPipe<object?>(input);
 
-        // Act
-        var resultPipe = (IDataPipe)method.Invoke(null, [input, "test-stream"])!;
+        var resultPipe = adapter(inputPipe, "test-stream");
         var results = new List<string?>();
 
         await foreach (var item in resultPipe.ToAsyncEnumerable())
@@ -34,16 +29,13 @@ public sealed class NodeExecutorNullHandlingTests
     }
 
     [Fact]
-    public async Task CreateTypedJoinPipeGeneric_WithValueTypeNullItems_YieldsDefault()
+    public async Task BuildOutputAdapter_WithValueTypeNullItems_YieldsDefault()
     {
-        // Arrange
-        var method = typeof(NodeExecutor).GetMethod("CreateTypedJoinPipeGeneric", BindingFlags.NonPublic | BindingFlags.Static)!
-            .MakeGenericMethod(typeof(int));
-
+        var adapter = NodeInstantiationService.BuildOutputAdapter(typeof(int))!;
         var input = new List<object?> { 1, null, 3 }.ToAsyncEnumerable();
+        var inputPipe = new StreamingDataPipe<object?>(input);
 
-        // Act
-        var resultPipe = (IDataPipe)method.Invoke(null, [input, "test-stream"])!;
+        var resultPipe = adapter(inputPipe, "test-stream");
         var results = new List<int>();
 
         await foreach (var item in resultPipe.ToAsyncEnumerable())
@@ -59,16 +51,13 @@ public sealed class NodeExecutorNullHandlingTests
     }
 
     [Fact]
-    public async Task CreateTypedJoinPipeGeneric_WithNonNullableValueTypeNullItems_YieldsDefault()
+    public async Task BuildOutputAdapter_WithNonNullableValueTypeNullItems_YieldsDefault()
     {
-        // Arrange
-        var method = typeof(NodeExecutor).GetMethod("CreateTypedJoinPipeGeneric", BindingFlags.NonPublic | BindingFlags.Static)!
-            .MakeGenericMethod(typeof(int));
-
+        var adapter = NodeInstantiationService.BuildOutputAdapter(typeof(int))!;
         var input = new List<object?> { 1, null, 3 }.ToAsyncEnumerable();
+        var inputPipe = new StreamingDataPipe<object?>(input);
 
-        // Act
-        var resultPipe = (IDataPipe)method.Invoke(null, [input, "test-stream"])!;
+        var resultPipe = adapter(inputPipe, "test-stream");
         var results = new List<int>();
 
         await foreach (var item in resultPipe.ToAsyncEnumerable())
@@ -84,17 +73,13 @@ public sealed class NodeExecutorNullHandlingTests
     }
 
     [Fact]
-    public async Task AdaptJoinOutput_WithReferenceTypeNullItems_YieldsNull()
+    public async Task BuildOutputAdapter_WithReferenceTypeTypedPipe_YieldsNull()
     {
-        // Arrange
-        var method = typeof(NodeExecutor).GetMethod("AdaptJoinOutput", BindingFlags.NonPublic | BindingFlags.Static)!
-            .MakeGenericMethod(typeof(string));
-
+        var adapter = NodeInstantiationService.BuildOutputAdapter(typeof(string))!;
         var input = new List<string?> { "value1", null, "value3" }.ToAsyncEnumerable();
-        var inputPipe = new StreamingDataPipe<object?>(input);
+        var inputPipe = new StreamingDataPipe<string?>(input);
 
-        // Act
-        var resultPipe = (IDataPipe)method.Invoke(null, [inputPipe, "test-stream"])!;
+        var resultPipe = adapter(inputPipe, "test-stream");
         var results = new List<string?>();
 
         await foreach (var item in resultPipe.ToAsyncEnumerable())
@@ -110,17 +95,13 @@ public sealed class NodeExecutorNullHandlingTests
     }
 
     [Fact]
-    public async Task AdaptJoinOutput_WithValueTypeNullItems_YieldsDefault()
+    public async Task BuildOutputAdapter_WithValueTypeTypedPipe_YieldsDefault()
     {
-        // Arrange
-        var method = typeof(NodeExecutor).GetMethod("AdaptJoinOutput", BindingFlags.NonPublic | BindingFlags.Static)!
-            .MakeGenericMethod(typeof(int));
+        var adapter = NodeInstantiationService.BuildOutputAdapter(typeof(int))!;
+        var input = new List<int?> { 1, null, 3 }.ToAsyncEnumerable();
+        var inputPipe = new StreamingDataPipe<int?>(input);
 
-        var input = new List<object?> { 1, null, 3 }.ToAsyncEnumerable();
-        var inputPipe = new StreamingDataPipe<object?>(input);
-
-        // Act
-        var resultPipe = (IDataPipe)method.Invoke(null, [inputPipe, "test-stream"])!;
+        var resultPipe = adapter(inputPipe, "test-stream");
         var results = new List<int>();
 
         await foreach (var item in resultPipe.ToAsyncEnumerable())
@@ -136,17 +117,13 @@ public sealed class NodeExecutorNullHandlingTests
     }
 
     [Fact]
-    public async Task AdaptJoinOutput_WithNonNullableValueTypeNullItems_YieldsDefault()
+    public async Task BuildOutputAdapter_WithNonNullableValueTypeTypedPipe_YieldsDefault()
     {
-        // Arrange
-        var method = typeof(NodeExecutor).GetMethod("AdaptJoinOutput", BindingFlags.NonPublic | BindingFlags.Static)!
-            .MakeGenericMethod(typeof(int));
+        var adapter = NodeInstantiationService.BuildOutputAdapter(typeof(int))!;
+        var input = new List<int?> { 1, null, 3 }.ToAsyncEnumerable();
+        var inputPipe = new StreamingDataPipe<int?>(input);
 
-        var input = new List<object?> { 1, null, 3 }.ToAsyncEnumerable();
-        var inputPipe = new StreamingDataPipe<object?>(input);
-
-        // Act
-        var resultPipe = (IDataPipe)method.Invoke(null, [inputPipe, "test-stream"])!;
+        var resultPipe = adapter(inputPipe, "test-stream");
         var results = new List<int>();
 
         await foreach (var item in resultPipe.ToAsyncEnumerable())
@@ -162,16 +139,13 @@ public sealed class NodeExecutorNullHandlingTests
     }
 
     [Fact]
-    public async Task CreateTypedJoinPipeGeneric_WithBoolNullItems_YieldsDefaultFalse()
+    public async Task BuildOutputAdapter_WithBoolNullItems_YieldsDefaultFalse()
     {
-        // Arrange
-        var method = typeof(NodeExecutor).GetMethod("CreateTypedJoinPipeGeneric", BindingFlags.NonPublic | BindingFlags.Static)!
-            .MakeGenericMethod(typeof(bool));
-
+        var adapter = NodeInstantiationService.BuildOutputAdapter(typeof(bool))!;
         var input = new List<object?> { true, null, false }.ToAsyncEnumerable();
+        var inputPipe = new StreamingDataPipe<object?>(input);
 
-        // Act
-        var resultPipe = (IDataPipe)method.Invoke(null, [input, "test-stream"])!;
+        var resultPipe = adapter(inputPipe, "test-stream");
         var results = new List<bool>();
 
         await foreach (var item in resultPipe.ToAsyncEnumerable())
@@ -187,17 +161,13 @@ public sealed class NodeExecutorNullHandlingTests
     }
 
     [Fact]
-    public async Task AdaptJoinOutput_WithBoolNullItems_YieldsDefaultFalse()
+    public async Task BuildOutputAdapter_WithBoolTypedPipeNullItems_YieldsDefaultFalse()
     {
-        // Arrange
-        var method = typeof(NodeExecutor).GetMethod("AdaptJoinOutput", BindingFlags.NonPublic | BindingFlags.Static)!
-            .MakeGenericMethod(typeof(bool));
+        var adapter = NodeInstantiationService.BuildOutputAdapter(typeof(bool))!;
+        var input = new List<bool?> { true, null, false }.ToAsyncEnumerable();
+        var inputPipe = new StreamingDataPipe<bool?>(input);
 
-        var input = new List<object?> { true, null, false }.ToAsyncEnumerable();
-        var inputPipe = new StreamingDataPipe<object?>(input);
-
-        // Act
-        var resultPipe = (IDataPipe)method.Invoke(null, [inputPipe, "test-stream"])!;
+        var resultPipe = adapter(inputPipe, "test-stream");
         var results = new List<bool>();
 
         await foreach (var item in resultPipe.ToAsyncEnumerable())

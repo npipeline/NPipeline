@@ -1,8 +1,7 @@
 using System.Text;
 using System.Text.Json;
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
 using AwesomeAssertions;
+using Azure.Storage.Blobs.Models;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 
@@ -81,6 +80,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         // Arrange
         var containerName = GetUniqueContainerName();
         var blobName = "non-existent-file.txt";
+
         var uri = StorageUri.Parse(
             $"azure://{containerName}/{blobName}?accountName={AzuriteFixture.AccountName}&accountKey={AzuriteFixture.AccountKey}");
 
@@ -159,6 +159,7 @@ public sealed class AzureBlobStorageProviderIntegrationTests : IClassFixture<Azu
         var containerName = GetUniqueContainerName();
         var blobName = "new-file.txt";
         var content = "New file content";
+
         var uri = StorageUri.Parse(
             $"azure://{containerName}/{blobName}?accountName={AzuriteFixture.AccountName}&accountKey={AzuriteFixture.AccountKey}");
 

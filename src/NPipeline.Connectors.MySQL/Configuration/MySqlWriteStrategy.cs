@@ -18,7 +18,7 @@ public enum MySqlWriteStrategy
     /// <summary>
     ///     Write rows using <c>MySqlBulkLoader</c> via the <c>LOAD DATA LOCAL INFILE</c> protocol
     ///     for highest throughput (10–50× faster than batch INSERT).
-    ///     Requires both client (<see cref="MySqlConfiguration.AllowLoadLocalInfile"/>) and
+    ///     Requires both client (<see cref="MySqlConfiguration.AllowLoadLocalInfile" />) and
     ///     server <c>local_infile</c> to be enabled.
     /// </summary>
     BulkLoad,

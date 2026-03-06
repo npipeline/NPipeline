@@ -39,16 +39,16 @@ public sealed partial class PipelineBuilder
         // Build configuration objects from builder state
         var (errorHandlingConfig, lineageConfig, executionConfig) = BuildConfigurations();
 
-        // Create the immutable nodes list
-        var nodesList = NodeState.Nodes.Values.ToImmutableList();
+        // Create the immutable nodes array
+        var nodesList = NodeState.Nodes.Values.ToImmutableArray();
 
         // Create a cached frozen dictionary for O(1) node lookups during execution
         var nodeDefinitionMap = nodesList.ToFrozenDictionary(n => n.Id);
 
         var graph = PipelineGraphBuilder.Create()
             .WithNodes(nodesList)
-            .WithEdges(ConnectionState.Edges.ToImmutableList())
-            .WithPreconfiguredNodeInstances(NodeState.PreconfiguredNodeInstances.ToImmutableDictionary())
+            .WithEdges(ConnectionState.Edges.ToImmutableArray())
+            .WithPreconfiguredNodeInstances(NodeState.PreconfiguredNodeInstances.ToFrozenDictionary())
             .WithNodeDefinitionMap(nodeDefinitionMap)
             .WithErrorHandlingConfiguration(errorHandlingConfig)
             .WithLineageConfiguration(lineageConfig)
@@ -113,16 +113,16 @@ public sealed partial class PipelineBuilder
         // Build configuration objects from builder state
         var (errorHandlingConfig, lineageConfig, executionConfig) = BuildConfigurations();
 
-        // Create the immutable nodes list
-        var nodesList = NodeState.Nodes.Values.ToImmutableList();
+        // Create the immutable nodes array
+        var nodesList = NodeState.Nodes.Values.ToImmutableArray();
 
         // Create a cached frozen dictionary for O(1) node lookups during execution
         var nodeDefinitionMap = nodesList.ToFrozenDictionary(n => n.Id);
 
         var graph = PipelineGraphBuilder.Create()
             .WithNodes(nodesList)
-            .WithEdges(ConnectionState.Edges.ToImmutableList())
-            .WithPreconfiguredNodeInstances(NodeState.PreconfiguredNodeInstances.ToImmutableDictionary())
+            .WithEdges(ConnectionState.Edges.ToImmutableArray())
+            .WithPreconfiguredNodeInstances(NodeState.PreconfiguredNodeInstances.ToFrozenDictionary())
             .WithNodeDefinitionMap(nodeDefinitionMap)
             .WithErrorHandlingConfiguration(errorHandlingConfig)
             .WithLineageConfiguration(lineageConfig)

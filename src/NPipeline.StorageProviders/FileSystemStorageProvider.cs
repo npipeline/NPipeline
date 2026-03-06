@@ -17,6 +17,50 @@ namespace NPipeline.StorageProviders;
 public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProviderMetadataProvider, IDeletableStorageProvider, IMoveableStorageProvider
 {
     /// <summary>
+    ///     Deletes a file at the specified URI.
+    /// </summary>
+    /// <param name="uri">The URI of the file to delete.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    public Task DeleteAsync(StorageUri uri, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+
+        var path = ToLocalPath(uri);
+
+        if (File.Exists(path))
+            File.Delete(path);
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    ///     Moves a file from one location to another.
+    /// </summary>
+    /// <param name="sourceUri">The source URI.</param>
+    /// <param name="destinationUri">The destination URI.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    public Task MoveAsync(StorageUri sourceUri, StorageUri destinationUri, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sourceUri);
+        ArgumentNullException.ThrowIfNull(destinationUri);
+
+        var sourcePath = ToLocalPath(sourceUri);
+        var destPath = ToLocalPath(destinationUri);
+
+        // Ensure destination directory exists
+        var directory = Path.GetDirectoryName(destPath);
+
+        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            Directory.CreateDirectory(directory);
+
+        File.Move(sourcePath, destPath, true);
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
     ///     Gets the storage scheme supported by this provider.
     /// </summary>
     /// <value>
@@ -210,53 +254,6 @@ public sealed class FileSystemStorageProvider : IStorageProvider, IStorageProvid
             SupportsHierarchy = true,
             Capabilities = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase),
         };
-    }
-
-    /// <summary>
-    ///     Deletes a file at the specified URI.
-    /// </summary>
-    /// <param name="uri">The URI of the file to delete.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    public Task DeleteAsync(StorageUri uri, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-
-        var path = ToLocalPath(uri);
-
-        if (File.Exists(path))
-        {
-            File.Delete(path);
-        }
-
-        return Task.CompletedTask;
-    }
-
-    /// <summary>
-    ///     Moves a file from one location to another.
-    /// </summary>
-    /// <param name="sourceUri">The source URI.</param>
-    /// <param name="destinationUri">The destination URI.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    public Task MoveAsync(StorageUri sourceUri, StorageUri destinationUri, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(sourceUri);
-        ArgumentNullException.ThrowIfNull(destinationUri);
-
-        var sourcePath = ToLocalPath(sourceUri);
-        var destPath = ToLocalPath(destinationUri);
-
-        // Ensure destination directory exists
-        var directory = Path.GetDirectoryName(destPath);
-        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        File.Move(sourcePath, destPath, overwrite: true);
-
-        return Task.CompletedTask;
     }
 
     private static IAsyncEnumerable<StorageItem> ListAsyncCore(

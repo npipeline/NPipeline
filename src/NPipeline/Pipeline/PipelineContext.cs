@@ -1,10 +1,13 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using NPipeline.Configuration;
+using NPipeline.DataFlow.DataPipes;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
+using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Execution.Pooling;
 using NPipeline.Lineage;
+using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
@@ -144,6 +147,9 @@ public sealed class PipelineContext
         LineageFactory = config.LineageFactory ?? new DefaultLineageFactory(LoggerFactory);
         ObservabilityFactory = config.ObservabilityFactory ?? new DefaultObservabilityFactory();
         RetryOptions = config.RetryOptions ?? PipelineRetryOptions.Default;
+        GlobalRetryOptions = RetryOptions;
+        ProcessedItemsCounter = new StatsCounter();
+        PipelineStartTimeUtc = DateTime.UtcNow;
     }
 
     /// <summary>
@@ -176,6 +182,87 @@ public sealed class PipelineContext
     ///     </para>
     /// </remarks>
     public Dictionary<string, object> Items { get; }
+
+    /// <summary>
+    ///     Framework-managed services and execution state should be stored on strongly-typed members.
+    ///     <see cref="Items" /> is reserved for user-defined values.
+    /// </summary>
+    public StatsCounter ProcessedItemsCounter { get; internal set; }
+
+    /// <summary>
+    ///     Effective global retry options for the current pipeline run.
+    /// </summary>
+    public PipelineRetryOptions GlobalRetryOptions { get; internal set; }
+
+    /// <summary>
+    ///     Per-node retry option overrides indexed by node id.
+    /// </summary>
+    public Dictionary<string, PipelineRetryOptions> NodeRetryOverrides { get; } = new();
+
+    /// <summary>
+    ///     Per-node execution annotations indexed by node id (for example, strategy-specific options).
+    /// </summary>
+    public Dictionary<string, object> NodeExecutionAnnotations { get; } = new();
+
+    /// <summary>
+    ///     Per-node observability scopes indexed by node id.
+    /// </summary>
+    public Dictionary<string, IAutoObservabilityScope> NodeObservabilityScopes { get; } = new();
+
+    /// <summary>
+    ///     Framework-managed runtime annotations and diagnostics.
+    /// </summary>
+    public Dictionary<string, object> RuntimeAnnotations { get; } = new();
+
+    /// <summary>
+    ///     Optional preconfigured node instances to seed graph construction.
+    /// </summary>
+    public Dictionary<string, INode> PreconfiguredNodeInstances { get; } = new();
+
+    /// <summary>
+    ///     Indicates the current run uses parallel execution behavior.
+    /// </summary>
+    public bool IsParallelExecution { get; internal set; }
+
+    /// <summary>
+    ///     Indicates node lifetimes are owned externally (for example by DI container).
+    /// </summary>
+    public bool DiOwnedNodes { get; set; }
+
+    /// <summary>
+    ///     The last retry-exhausted exception observed in the pipeline.
+    /// </summary>
+    public RetryExhaustedException? LastRetryExhaustedException { get; internal set; }
+
+    /// <summary>
+    ///     The pipeline-level UTC start timestamp.
+    /// </summary>
+    public DateTime PipelineStartTimeUtc { get; internal set; }
+
+    /// <summary>
+    ///     Circuit-breaker options for the current run.
+    /// </summary>
+    public PipelineCircuitBreakerOptions? CircuitBreakerOptions { get; internal set; }
+
+    /// <summary>
+    ///     Circuit-breaker memory management options for the current run.
+    /// </summary>
+    public CircuitBreakerMemoryManagementOptions? CircuitBreakerMemoryOptions { get; internal set; }
+
+    /// <summary>
+    ///     Circuit-breaker manager for the current run.
+    /// </summary>
+    internal ICircuitBreakerManager? CircuitBreakerManager { get; set; }
+
+    /// <summary>
+    ///     Item-level lineage sink resolved for the current run.
+    /// </summary>
+    public ILineageSink? LineageSink { get; internal set; }
+
+    /// <summary>
+    ///     Pipeline-level lineage sink resolved for the current run.
+    /// </summary>
+    public IPipelineLineageSink? PipelineLineageSink { get; internal set; }
 
     /// <summary>
     ///     A dictionary for storing properties that can be used by extensions and plugins.
@@ -266,16 +353,12 @@ public sealed class PipelineContext
     /// <summary>
     ///     Gets the state manager for this pipeline run, if available.
     /// </summary>
-    public IPipelineStateManager? StateManager => Properties.TryGetValue(PipelineContextKeys.StateManager, out var sm) && sm is IPipelineStateManager manager
-        ? manager
-        : null;
+    public IPipelineStateManager? StateManager { get; internal set; }
 
     /// <summary>
     ///     Gets the stateful registry for this pipeline run, if available.
     /// </summary>
-    public IStatefulRegistry? StatefulRegistry => Properties.TryGetValue(PipelineContextKeys.StatefulRegistry, out var reg) && reg is IStatefulRegistry registry
-        ? registry
-        : null;
+    public IStatefulRegistry? StatefulRegistry { get; internal set; }
 
     /// <summary>
     ///     Registers an <see cref="IAsyncDisposable" /> resource to be disposed when the pipeline context is disposed.
@@ -366,6 +449,11 @@ public sealed class PipelineContext
 
     private void ReturnPooledDictionaries()
     {
+        NodeRetryOverrides.Clear();
+        NodeExecutionAnnotations.Clear();
+        NodeObservabilityScopes.Clear();
+        RuntimeAnnotations.Clear();
+
         if (_ownsParametersDictionary)
         {
             Parameters.Clear();

@@ -34,8 +34,8 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
         // Get observability scope if available
         IAutoObservabilityScope? observabilityScope = null;
 
-        if (context.Items.TryGetValue(PipelineContextKeys.NodeObservabilityScope(nodeId), out var scopeObj))
-            observabilityScope = scopeObj as IAutoObservabilityScope;
+        if (context.NodeObservabilityScopes.TryGetValue(nodeId, out var scope))
+            observabilityScope = scope;
 
         var flattenedSource = FlattenWithObservabilityAsync(batchedSource, observabilityScope, cancellationToken);
 
@@ -69,8 +69,8 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
         // Get observability scope if available
         IAutoObservabilityScope? observabilityScope = null;
 
-        if (context.Items.TryGetValue(PipelineContextKeys.NodeObservabilityScope(nodeId), out var scopeObj))
-            observabilityScope = scopeObj as IAutoObservabilityScope;
+        if (context.NodeObservabilityScopes.TryGetValue(nodeId, out var scope))
+            observabilityScope = scope;
 
         var flattenedSource = FlattenWithObservabilityAsync(batchedSource, observabilityScope, cancellationToken);
 

@@ -30,7 +30,7 @@ public sealed class CustomGraphRuleTests
 
         public IEnumerable<ValidationIssue> Evaluate(GraphValidationContext context)
         {
-            if (context.Graph.Nodes.Count > 0)
+            if (context.Graph.Nodes.Length > 0)
                 yield return new ValidationIssue(ValidationSeverity.Warning, "Custom rule executed", "Custom");
         }
     }

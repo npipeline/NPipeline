@@ -54,7 +54,7 @@ public class MySqlConfiguration
     public bool AllowUserVariables { get; set; }
 
     /// <summary>
-    ///     Gets or sets whether to convert MySQL zero date values to <see cref="DateTime.MinValue"/>.
+    ///     Gets or sets whether to convert MySQL zero date values to <see cref="DateTime.MinValue" />.
     /// </summary>
     public bool ConvertZeroDateTime { get; set; } = true;
 
@@ -73,7 +73,7 @@ public class MySqlConfiguration
     // Write Settings
 
     /// <summary>
-    ///     Gets or sets the write strategy used by the sink. Default is <see cref="MySqlWriteStrategy.Batch"/>.
+    ///     Gets or sets the write strategy used by the sink. Default is <see cref="MySqlWriteStrategy.Batch" />.
     /// </summary>
     public MySqlWriteStrategy WriteStrategy { get; set; } = MySqlWriteStrategy.Batch;
 
@@ -106,14 +106,14 @@ public class MySqlConfiguration
 
     /// <summary>
     ///     Gets or sets the action to take when a duplicate key is encountered.
-    ///     Used when <see cref="UseUpsert"/> is <c>true</c>.
+    ///     Used when <see cref="UseUpsert" /> is <c>true</c>.
     /// </summary>
     public OnDuplicateKeyAction OnDuplicateKeyAction { get; set; } = OnDuplicateKeyAction.Update;
 
     /// <summary>
     ///     Gets or sets the key columns for upsert matching.
-    ///     Required when <see cref="UseUpsert"/> is <c>true</c> and
-    ///     <see cref="OnDuplicateKeyAction"/> is <see cref="OnDuplicateKeyAction.Update"/>.
+    ///     Required when <see cref="UseUpsert" /> is <c>true</c> and
+    ///     <see cref="OnDuplicateKeyAction" /> is <see cref="OnDuplicateKeyAction.Update" />.
     /// </summary>
     public string[] UpsertKeyColumns { get; set; } = [];
 
@@ -136,7 +136,7 @@ public class MySqlConfiguration
 
     /// <summary>
     ///     Gets or sets whether to allow <c>LOAD DATA LOCAL INFILE</c>.
-    ///     Must be enabled on both client and server for <see cref="MySqlWriteStrategy.BulkLoad"/> to work.
+    ///     Must be enabled on both client and server for <see cref="MySqlWriteStrategy.BulkLoad" /> to work.
     /// </summary>
     public bool AllowLoadLocalInfile { get; set; }
 
@@ -215,13 +215,13 @@ public class MySqlConfiguration
     public DeliverySemantic DeliverySemantic { get; set; } = DeliverySemantic.AtLeastOnce;
 
     /// <summary>
-    ///     Gets or sets the checkpoint strategy. Default is <see cref="CheckpointStrategy.None"/>.
+    ///     Gets or sets the checkpoint strategy. Default is <see cref="CheckpointStrategy.None" />.
     /// </summary>
     public CheckpointStrategy CheckpointStrategy { get; set; } = CheckpointStrategy.None;
 
     /// <summary>
     ///     Gets or sets the checkpoint storage backend.
-    ///     Required when <see cref="CheckpointStrategy"/> is not None or InMemory.
+    ///     Required when <see cref="CheckpointStrategy" /> is not None or InMemory.
     /// </summary>
     public ICheckpointStorage? CheckpointStorage { get; set; }
 
@@ -333,10 +333,12 @@ public class MySqlConfiguration
             throw new ArgumentException("BulkLoadTimeout must be greater than zero.", nameof(BulkLoadTimeout));
 
         if (UseUpsert && OnDuplicateKeyAction == OnDuplicateKeyAction.Update
-            && (UpsertKeyColumns == null || UpsertKeyColumns.Length == 0))
+                      && (UpsertKeyColumns == null || UpsertKeyColumns.Length == 0))
+        {
             throw new ArgumentException(
                 "UpsertKeyColumns must be provided when UseUpsert is enabled with OnDuplicateKeyAction.Update.",
                 nameof(UpsertKeyColumns));
+        }
 
         ValidateCheckpointSettings();
     }

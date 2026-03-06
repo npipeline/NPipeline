@@ -96,7 +96,7 @@ public sealed class SftpStorageProvider : IStorageProvider, IStorageProviderMeta
 
             try
             {
-                return new SftpWriteStream(lease, path, true);
+                return new SftpWriteStream(lease, path);
             }
             catch
             {

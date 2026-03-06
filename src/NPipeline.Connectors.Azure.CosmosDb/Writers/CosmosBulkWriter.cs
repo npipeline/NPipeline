@@ -215,9 +215,11 @@ internal sealed class CosmosBulkWriter<T> : IDatabaseWriter<T>
             var failureCount = tasksToAwait.Count(t => t.IsFaulted);
 
             if (_logger is not null)
+            {
                 LogFlushPartialFailure(_logger, failureCount > 0
                     ? failureCount
                     : 1, totalCount, typeof(T).Name, ex);
+            }
         }
     }
 

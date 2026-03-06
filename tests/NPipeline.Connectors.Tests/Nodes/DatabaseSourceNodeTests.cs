@@ -82,7 +82,6 @@ public class DatabaseSourceNodeTests
     {
         private readonly IReadOnlyList<int> _data;
         private readonly Func<int, bool>? _shouldEmit;
-        private readonly ICheckpointStorage? _storage;
 
         public TestDatabaseSourceNode(
             IReadOnlyList<int> data,
@@ -97,7 +96,7 @@ public class DatabaseSourceNodeTests
             CheckpointStrategy = checkpointStrategy;
             _shouldEmit = shouldEmit;
             CheckpointId = checkpointId ?? GetType().Name;
-            _storage = checkpointStorage;
+            CheckpointStorage = checkpointStorage;
         }
 
         protected override bool StreamResults { get; }
@@ -106,7 +105,7 @@ public class DatabaseSourceNodeTests
 
         protected override string CheckpointId { get; }
 
-        protected override ICheckpointStorage? CheckpointStorage => _storage;
+        protected override ICheckpointStorage? CheckpointStorage { get; }
 
         protected override Task<IDatabaseConnection> GetConnectionAsync(CancellationToken cancellationToken)
         {

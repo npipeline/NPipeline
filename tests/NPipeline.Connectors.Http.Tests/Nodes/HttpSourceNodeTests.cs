@@ -319,7 +319,7 @@ public class HttpSourceNodeTests
         vals.Should().ContainSingle().Which.Should().Be("test-123");
     }
 
-    private record Item(int Id, string Name);
+    private sealed record Item(int Id, string Name);
 
     private sealed class DelayedResponseHandler(TimeSpan delay) : HttpMessageHandler
     {

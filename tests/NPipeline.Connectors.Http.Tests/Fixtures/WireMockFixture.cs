@@ -5,7 +5,7 @@ namespace NPipeline.Connectors.Http.Tests.Fixtures;
 
 /// <summary>
 ///     Starts a WireMock.Net in-process HTTP server on a random port for integration tests.
-///     Shared across all tests in the <see cref="HttpTestCollection" /> collection.
+///     Shared across all tests in the <see cref="HttpTestFixture" /> collection.
 /// </summary>
 public sealed class WireMockFixture : IDisposable
 {

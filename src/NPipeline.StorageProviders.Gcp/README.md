@@ -69,11 +69,11 @@ var provider = services
 
 ### Configuration Options
 
-| Option                  | Purpose                             | Default        |
-|-------------------------|-------------------------------------|----------------|
-| `DefaultProjectId`      | Project ID used for all operations  | (not required) |
-| `UseDefaultCredentials` | Use Application Default Credentials | `true`         |
-| `ServiceUrl`            | Custom GCS endpoint (for emulator)  | GCS production |
+| Option                  | Purpose                                  | Default           |
+|-------------------------|------------------------------------------|-------------------|
+| `DefaultProjectId`      | Project ID used for all operations       | (not required)    |
+| `UseDefaultCredentials` | Use Application Default Credentials      | `true`            |
+| `ServiceUrl`            | Custom GCS endpoint (for emulator)       | GCS production    |
 | `RetrySettings`         | Retry configuration for transient errors | `null` (disabled) |
 
 ## Usage Examples

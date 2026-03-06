@@ -78,9 +78,7 @@ public sealed class Program
                 Console.WriteLine(content);
             }
             else
-            {
                 Console.WriteLine($"Warning: Output file not found at {targetPath}");
-            }
         }
         catch (Exception ex)
         {
@@ -107,9 +105,7 @@ public sealed class Program
             var csprojFile = directory.GetFiles("*.csproj").FirstOrDefault();
 
             if (csprojFile != null)
-            {
                 return directory.FullName;
-            }
 
             directory = directory.Parent;
         }

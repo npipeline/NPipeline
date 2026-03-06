@@ -1,11 +1,11 @@
 using System.Runtime.CompilerServices;
+using AwesomeAssertions;
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Files.DataLake;
 using Azure.Storage.Files.DataLake.Models;
 using FakeItEasy;
-using AwesomeAssertions;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 

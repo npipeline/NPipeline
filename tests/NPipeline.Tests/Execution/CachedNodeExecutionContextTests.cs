@@ -43,7 +43,7 @@ public sealed class CachedNodeExecutionContextTests
             MaxNodeRestartAttempts: 3,
             MaxSequentialNodeAttempts: 5);
 
-        context.Items[PipelineContextKeys.NodeRetryOptions(nodeId)] = nodeRetryOptions;
+        context.NodeRetryOverrides[nodeId] = nodeRetryOptions;
 
         // Act
         var cached = CachedNodeExecutionContext.Create(context, nodeId);
@@ -58,15 +58,13 @@ public sealed class CachedNodeExecutionContextTests
     public void Create_WithGlobalRetryOptions_ShouldUseGlobalOptions()
     {
         // Arrange
-        var context = PipelineContext.Default;
-        var nodeId = "testNode";
-
         var globalRetryOptions = new PipelineRetryOptions(
             10,
             MaxNodeRestartAttempts: 2,
             MaxSequentialNodeAttempts: 0);
 
-        context.Items[PipelineContextKeys.GlobalRetryOptions] = globalRetryOptions;
+        var context = new PipelineContext(PipelineContextConfiguration.WithRetry(globalRetryOptions));
+        var nodeId = "testNode";
 
         // Act
         var cached = CachedNodeExecutionContext.Create(context, nodeId);
@@ -80,13 +78,12 @@ public sealed class CachedNodeExecutionContextTests
     public void Create_WithBothNodeAndGlobalOptions_ShouldPreferNodeOptions()
     {
         // Arrange
-        var context = PipelineContext.Default;
         var nodeId = "testNode";
         var nodeRetryOptions = new PipelineRetryOptions(5, MaxNodeRestartAttempts: 0, MaxSequentialNodeAttempts: 0);
         var globalRetryOptions = new PipelineRetryOptions(10, MaxNodeRestartAttempts: 0, MaxSequentialNodeAttempts: 0);
+        var context = new PipelineContext(PipelineContextConfiguration.WithRetry(globalRetryOptions));
 
-        context.Items[PipelineContextKeys.NodeRetryOptions(nodeId)] = nodeRetryOptions;
-        context.Items[PipelineContextKeys.GlobalRetryOptions] = globalRetryOptions;
+        context.NodeRetryOverrides[nodeId] = nodeRetryOptions;
 
         // Act
         var cached = CachedNodeExecutionContext.Create(context, nodeId);
@@ -239,8 +236,12 @@ public sealed class CachedNodeExecutionContextTests
             return NullLogger.Instance;
         }
 
-        public void AddProvider(ILoggerProvider provider) { }
+        public void AddProvider(ILoggerProvider provider)
+        {
+        }
 
-        public void Dispose() { }
+        public void Dispose()
+        {
+        }
     }
 }

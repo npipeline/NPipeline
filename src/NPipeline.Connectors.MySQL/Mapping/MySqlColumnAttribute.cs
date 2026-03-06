@@ -4,13 +4,13 @@ namespace NPipeline.Connectors.MySql.Mapping;
 
 /// <summary>
 ///     Specifies the MySQL column mapping for a property or field.
-///     Inherits from <see cref="ColumnAttribute"/>.
+///     Inherits from <see cref="ColumnAttribute" />.
 /// </summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
 public sealed class MySqlColumnAttribute : ColumnAttribute
 {
     /// <summary>
-    ///     Initializes a new instance of the <see cref="MySqlColumnAttribute"/> class.
+    ///     Initializes a new instance of the <see cref="MySqlColumnAttribute" /> class.
     /// </summary>
     /// <param name="name">The MySQL column name.</param>
     public MySqlColumnAttribute(string name)
@@ -19,7 +19,7 @@ public sealed class MySqlColumnAttribute : ColumnAttribute
     }
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="MySqlColumnAttribute"/> class
+    ///     Initializes a new instance of the <see cref="MySqlColumnAttribute" /> class
     ///     with an option to ignore the column entirely.
     /// </summary>
     public MySqlColumnAttribute()

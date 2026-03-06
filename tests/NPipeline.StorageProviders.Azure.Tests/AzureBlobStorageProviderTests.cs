@@ -5,11 +5,11 @@
 #pragma warning disable IDE0161 // Convert to file-scoped namespace
 #pragma warning disable IDE0290 // Use primary constructor
 #pragma warning disable IDE0300 // Method can be made synchronous
+using AwesomeAssertions;
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using FakeItEasy;
-using AwesomeAssertions;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 
@@ -199,6 +199,7 @@ internal sealed class PageAsyncEnumerator<T> : IAsyncEnumerator<Page<T>> where T
         return default;
     }
 }
+
 public class AzureBlobStorageProviderTests
 {
     private readonly BlobClient _fakeBlobClient;

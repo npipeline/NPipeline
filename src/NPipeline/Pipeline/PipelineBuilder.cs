@@ -303,31 +303,21 @@ public sealed partial class PipelineBuilder
                 break;
         }
 
-        // Create nested configuration objects based on the parameters
-        var identity = new NodeIdentity(id, name);
-        var typeSystem = new NodeTypeSystem(nodeType, kind, inType, outType);
-
-        // Only create execution config if we have execution-related parameters
-        var executionConfig = new NodeExecutionConfig(
-            DeclaredCardinality: meta.DeclaredCardinality
-        );
-
-        // Only create merge config if we have merge-related parameters
-        var mergeConfig = new NodeMergeConfig(
-            meta.MergeStrategy,
-            meta.HasCustomMerge,
-            isJoin,
-            customMerge
-        );
-
-        // Only create lineage config if we have lineage-related parameters
-        var lineageConfig = new NodeLineageConfig(
-            lineageAdapter,
-            meta.LineageMapperType,
-            sinkUnwrap
-        );
-
-        var def = new NodeDefinition(identity, typeSystem, executionConfig, mergeConfig, lineageConfig);
+        var def = new NodeDefinition(
+            id,
+            name,
+            nodeType,
+            kind,
+            inType,
+            outType,
+            DeclaredCardinality: meta.DeclaredCardinality,
+            MergeStrategy: meta.MergeStrategy,
+            HasCustomMerge: meta.HasCustomMerge,
+            IsJoin: isJoin,
+            CustomMerge: customMerge,
+            LineageAdapter: lineageAdapter,
+            LineageMapperType: meta.LineageMapperType,
+            SinkLineageUnwrap: sinkUnwrap);
 
         if (!NodeState.Nodes.TryAdd(id, def))
             throw new ArgumentException(ErrorMessages.NodeAlreadyAdded(id), id);

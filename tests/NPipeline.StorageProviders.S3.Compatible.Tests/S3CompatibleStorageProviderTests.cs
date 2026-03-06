@@ -434,7 +434,7 @@ public class S3CompatibleStorageProviderTests
 
         var items = new List<StorageItem>();
 
-        await foreach (var item in _provider.ListAsync(uri, false))
+        await foreach (var item in _provider.ListAsync(uri))
         {
             items.Add(item);
         }

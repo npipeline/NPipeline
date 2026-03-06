@@ -16,6 +16,11 @@ namespace NPipeline.Execution.Strategies;
 /// </summary>
 public sealed class SequentialExecutionStrategy : IExecutionStrategy
 {
+    /// <summary>
+    ///     Shared singleton instance for the stateless sequential strategy.
+    /// </summary>
+    public static SequentialExecutionStrategy Instance { get; } = new();
+
     /// <inheritdoc />
     public Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(
         IDataPipe<TIn> input,
@@ -43,12 +48,12 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
             // Get observability scope if available
             IAutoObservabilityScope? observabilityScope = null;
 
-            if (context.Items.TryGetValue(PipelineContextKeys.NodeObservabilityScope(nodeId), out var scopeObj))
-                observabilityScope = scopeObj as IAutoObservabilityScope;
+            if (context.NodeObservabilityScopes.TryGetValue(nodeId, out var scope))
+                observabilityScope = scope;
 
             try
             {
-                await foreach (var item in input.WithCancellation(ct))
+                await foreach (var item in input.WithCancellation(ct).ConfigureAwait(false))
                 {
                     // Track item processed
                     observabilityScope?.IncrementProcessed();

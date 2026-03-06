@@ -1,6 +1,7 @@
 # NPipeline.Connectors.Http
 
-HTTP/REST connector for NPipeline. Provides source and sink nodes for consuming paginated REST APIs and writing to HTTP endpoints with support for multiple pagination strategies, authentication schemes, rate limiting, retry, and OpenTelemetry observability.
+HTTP/REST connector for NPipeline. Provides source and sink nodes for consuming paginated REST APIs and writing to HTTP endpoints with support for multiple
+pagination strategies, authentication schemes, rate limiting, retry, and OpenTelemetry observability.
 
 ## Features
 
@@ -119,7 +120,8 @@ For detailed configuration reference, examples, and advanced usage, see the [HTT
 
 ## Sample Application
 
-See [`samples/Sample_HttpConnector`](../../samples/Sample_HttpConnector) for a complete example that fetches GitHub releases and posts summaries to a Slack webhook.
+See [`samples/Sample_HttpConnector`](../../samples/Sample_HttpConnector) for a complete example that fetches GitHub releases and posts summaries to a Slack
+webhook.
 
 ```bash
 GITHUB_TOKEN=ghp_... SLACK_WEBHOOK=https://hooks.slack.com/... \

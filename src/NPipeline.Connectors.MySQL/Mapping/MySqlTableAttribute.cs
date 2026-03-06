@@ -1,5 +1,3 @@
-using NPipeline.Connectors.Attributes;
-
 namespace NPipeline.Connectors.MySql.Mapping;
 
 /// <summary>
@@ -10,7 +8,7 @@ namespace NPipeline.Connectors.MySql.Mapping;
 public sealed class MySqlTableAttribute : Attribute
 {
     /// <summary>
-    ///     Initializes a new instance of the <see cref="MySqlTableAttribute"/> class.
+    ///     Initializes a new instance of the <see cref="MySqlTableAttribute" /> class.
     /// </summary>
     /// <param name="name">The MySQL table name.</param>
     public MySqlTableAttribute(string name)

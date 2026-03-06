@@ -13,7 +13,7 @@ namespace NPipeline.Execution;
 ///     <para>
 ///         <strong>Performance Optimization:</strong>
 ///         This class addresses the performance bottleneck identified in the optimization report where
-///         dictionary lookups (context.Items.TryGetValue) and IDisposable allocations (context.ScopedNode)
+///         dictionary lookups and IDisposable allocations (context.ScopedNode)
 ///         occur per-item during node execution. By caching these values at node scope, we achieve:
 ///     </para>
 ///     <list type="bullet">
@@ -146,7 +146,7 @@ public readonly struct CachedNodeExecutionContext
     ///     </list>
     ///     <para>
     ///         <strong>Immutability Guarantee:</strong>
-    ///         The cached context assumes that context.Items, context.RetryOptions, and related configuration
+    ///         The cached context assumes that context retry state and related configuration
     ///         do not change during node execution. Modifications to these values during node execution will
     ///         not be reflected in the cached context and may lead to inconsistent behavior.
     ///     </para>
@@ -159,18 +159,7 @@ public readonly struct CachedNodeExecutionContext
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(nodeId);
 
-        // Determine effective retry options with precedence:
-        // 1. Per-node override (highest priority)
-        // 2. Global retry options from context.Items
-        // 3. Context-level retry options (lowest priority)
-        var effectiveRetries = context.RetryOptions;
-
-        if (context.Items.TryGetValue(PipelineContextKeys.NodeRetryOptions(nodeId), out var specific) &&
-            specific is PipelineRetryOptions nodeRetryOptions)
-            effectiveRetries = nodeRetryOptions;
-        else if (context.Items.TryGetValue(PipelineContextKeys.GlobalRetryOptions, out var global) &&
-                 global is PipelineRetryOptions globalRetryOptions)
-            effectiveRetries = globalRetryOptions;
+        var effectiveRetries = RetryOptionsResolver.Resolve(context, nodeId);
 
         // Determine if tracing is enabled by checking if tracer is not the null implementation
         var tracingEnabled = context.Tracer is not NullPipelineTracer;

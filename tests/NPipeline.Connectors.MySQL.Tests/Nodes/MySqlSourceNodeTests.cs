@@ -55,24 +55,21 @@ public class MySqlSourceNodeTests
     public void Constructor_WithNullConnectionString_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(
-            () => new MySqlSourceNode<TestRecord>((string)null!, Query));
+        _ = Assert.Throws<ArgumentNullException>(() => new MySqlSourceNode<TestRecord>((string)null!, Query));
     }
 
     [Fact]
     public void Constructor_WithEmptyConnectionString_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(
-            () => new MySqlSourceNode<TestRecord>(string.Empty, Query));
+        _ = Assert.Throws<ArgumentNullException>(() => new MySqlSourceNode<TestRecord>(string.Empty, Query));
     }
 
     [Fact]
     public void Constructor_WithNullQuery_ShouldThrowArgumentNullException()
     {
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(
-            () => new MySqlSourceNode<TestRecord>(ConnectionString, null!));
+        _ = Assert.Throws<ArgumentNullException>(() => new MySqlSourceNode<TestRecord>(ConnectionString, null!));
     }
 
     [Fact]

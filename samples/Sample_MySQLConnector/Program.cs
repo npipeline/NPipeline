@@ -106,6 +106,7 @@ public sealed class Program
         foreach (var part in connectionString.Split(';'))
         {
             var kv = part.Trim().Split('=', 2);
+
             if (kv.Length == 2 && kv[0].Trim().Equals("Server", StringComparison.OrdinalIgnoreCase))
                 return kv[1].Trim();
         }
@@ -118,6 +119,7 @@ public sealed class Program
         foreach (var part in connectionString.Split(';'))
         {
             var kv = part.Trim().Split('=', 2);
+
             if (kv.Length == 2 && kv[0].Trim().Equals("Database", StringComparison.OrdinalIgnoreCase))
                 return kv[1].Trim();
         }
@@ -125,4 +127,3 @@ public sealed class Program
         return "unknown";
     }
 }
-

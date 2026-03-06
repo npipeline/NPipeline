@@ -42,7 +42,7 @@ public sealed class ParallelExecutionStrategyValueTaskTests
 
         using (context.ScopedNode("transform"))
         {
-            context.Items[PipelineContextKeys.NodeExecutionOptions("transform")] = new ParallelOptions
+            context.NodeExecutionAnnotations["transform"] = new ParallelOptions
             {
                 MaxDegreeOfParallelism = 1,
                 MaxQueueLength = 4,
@@ -74,7 +74,7 @@ public sealed class ParallelExecutionStrategyValueTaskTests
 
         using (context.ScopedNode("transform"))
         {
-            context.Items[PipelineContextKeys.NodeExecutionOptions("transform")] = new ParallelOptions
+            context.NodeExecutionAnnotations["transform"] = new ParallelOptions
             {
                 MaxDegreeOfParallelism = 1,
                 MaxQueueLength = 4,

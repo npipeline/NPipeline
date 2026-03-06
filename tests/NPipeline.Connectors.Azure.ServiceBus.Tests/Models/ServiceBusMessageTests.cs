@@ -335,7 +335,7 @@ public class ServiceBusMessageTests
                 return Task.CompletedTask;
             });
 
-            await message.NegativeAcknowledgeAsync(true);
+            await message.NegativeAcknowledgeAsync();
 
             abandonCalled.Should().BeTrue();
         }

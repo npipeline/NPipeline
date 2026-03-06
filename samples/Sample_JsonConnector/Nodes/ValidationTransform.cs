@@ -2,7 +2,6 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
-using Sample_JsonConnector;
 
 namespace Sample_JsonConnector.Nodes;
 

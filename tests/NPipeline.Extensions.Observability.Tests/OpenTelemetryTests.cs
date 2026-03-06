@@ -19,7 +19,7 @@ public sealed class OpenTelemetryPipelineTracerTests
         var listener = new ActivityListener
         {
             ShouldListenTo = source => source.Name.StartsWith("TestService", StringComparison.Ordinal),
-            Sample = (ref ActivityCreationOptions<ActivityContext> options) => ActivitySamplingResult.AllData,
+            Sample = (ref options) => ActivitySamplingResult.AllData,
         };
 
         ActivitySource.AddActivityListener(listener);

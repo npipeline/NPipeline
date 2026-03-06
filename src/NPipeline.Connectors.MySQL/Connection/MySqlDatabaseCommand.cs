@@ -10,56 +10,54 @@ namespace NPipeline.Connectors.MySql.Connection;
 /// </summary>
 internal sealed class MySqlDatabaseCommand(MySqlCommand command) : IDatabaseCommand
 {
-    private readonly MySqlCommand _command = command ?? throw new ArgumentNullException(nameof(command));
+    /// <summary>
+    ///     Gets the underlying <see cref="MySqlCommand" /> for MySQL-specific parameter access.
+    /// </summary>
+    internal MySqlCommand UnderlyingCommand { get; } = command ?? throw new ArgumentNullException(nameof(command));
 
     /// <inheritdoc />
     public string CommandText
     {
-        get => _command.CommandText;
-        set => _command.CommandText = value;
+        get => UnderlyingCommand.CommandText;
+        set => UnderlyingCommand.CommandText = value;
     }
 
     /// <inheritdoc />
     public int CommandTimeout
     {
-        get => _command.CommandTimeout;
-        set => _command.CommandTimeout = value;
+        get => UnderlyingCommand.CommandTimeout;
+        set => UnderlyingCommand.CommandTimeout = value;
     }
 
     /// <inheritdoc />
     public CommandType CommandType
     {
-        get => _command.CommandType;
-        set => _command.CommandType = value;
+        get => UnderlyingCommand.CommandType;
+        set => UnderlyingCommand.CommandType = value;
     }
-
-    /// <summary>
-    ///     Gets the underlying <see cref="MySqlCommand" /> for MySQL-specific parameter access.
-    /// </summary>
-    internal MySqlCommand UnderlyingCommand => _command;
 
     /// <inheritdoc />
     public void AddParameter(string name, object? value)
     {
-        _ = _command.Parameters.AddWithValue(name, value ?? DBNull.Value);
+        _ = UnderlyingCommand.Parameters.AddWithValue(name, value ?? DBNull.Value);
     }
 
     /// <inheritdoc />
     public async Task<IDatabaseReader> ExecuteReaderAsync(CancellationToken cancellationToken = default)
     {
-        var reader = await _command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        var reader = await UnderlyingCommand.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         return new MySqlDatabaseReader(reader);
     }
 
     /// <inheritdoc />
     public async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default)
     {
-        return await _command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        return await UnderlyingCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
-        await _command.DisposeAsync().ConfigureAwait(false);
+        await UnderlyingCommand.DisposeAsync().ConfigureAwait(false);
     }
 }

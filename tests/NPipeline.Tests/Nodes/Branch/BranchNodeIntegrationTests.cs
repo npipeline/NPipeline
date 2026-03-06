@@ -28,11 +28,8 @@ public sealed class BranchNodeIntegrationTests
         var collect1 = new InMemorySinkNode<int>();
         var collect2 = new InMemorySinkNode<int>();
 
-        ctx.Items[PipelineContextKeys.PreconfiguredNodes] = new Dictionary<string, INode>
-        {
-            { "s1", collect1 },
-            { "s2", collect2 },
-        };
+        ctx.PreconfiguredNodeInstances["s1"] = collect1;
+        ctx.PreconfiguredNodeInstances["s2"] = collect2;
 
         var runner = PipelineRunner.Create();
         await runner.RunAsync<CapacityBranchingPipeline>(ctx);

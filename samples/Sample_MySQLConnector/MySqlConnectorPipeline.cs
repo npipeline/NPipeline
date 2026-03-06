@@ -1,7 +1,6 @@
 using MySqlConnector;
 using NPipeline.Connectors.MySql;
 using NPipeline.Connectors.MySql.Configuration;
-using NPipeline.Connectors.MySql.Mapping;
 using NPipeline.Connectors.MySql.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders.Models;
@@ -259,6 +258,7 @@ public sealed class MySqlConnectorPipeline
 
         // Custom MySqlRow mapper
         var query = "SELECT product_id, product_name, category, unit_price, stock_quantity, is_active, created_at FROM `products`";
+
         var source = new MySqlSourceNode<Product>(_connectionString, query, row => new Product
         {
             ProductId = row.Get<int>("product_id"),

@@ -12,6 +12,8 @@ namespace NPipeline.Connectors.Http.Tests.Integration;
 [Collection("Http")]
 public class HttpSinkNodeIntegrationTests(WireMockFixture fixture)
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
     private static StreamingDataPipe<T> PipeOf<T>(params T[] items)
     {
         async IAsyncEnumerable<T> Generate()
@@ -47,8 +49,7 @@ public class HttpSinkNodeIntegrationTests(WireMockFixture fixture)
         logEntries.Should().HaveCount(1);
         var requestBody = logEntries.Single().RequestMessage.Body!;
 
-        var order = JsonSerializer.Deserialize<Order>(requestBody,
-            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var order = JsonSerializer.Deserialize<Order>(requestBody, JsonOptions);
 
         order!.Product.Should().Be("Widget");
     }
@@ -107,5 +108,5 @@ public class HttpSinkNodeIntegrationTests(WireMockFixture fixture)
         fixture.Server.LogEntries.Should().HaveCount(1);
     }
 
-    private record Order(int Id, string Product, decimal Price);
+    private sealed record Order(int Id, string Product, decimal Price);
 }

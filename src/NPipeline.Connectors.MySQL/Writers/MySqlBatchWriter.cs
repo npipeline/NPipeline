@@ -47,7 +47,10 @@ internal sealed class MySqlBatchWriter<T> : IDatabaseWriter<T>
         _mappings = BuildMappings();
         _valueFactory = BuildValueFactory(_mappings);
 
-        var maxByParamLimit = _mappings.Length == 0 ? 1 : MaxParametersPerCommand / _mappings.Length;
+        var maxByParamLimit = _mappings.Length == 0
+            ? 1
+            : MaxParametersPerCommand / _mappings.Length;
+
         var maxBatch = Math.Min(_configuration.MaxBatchSize, maxByParamLimit);
         _flushThreshold = Math.Clamp(_configuration.BatchSize, 1, maxBatch);
         _pendingRows = new List<object?[]>(_flushThreshold);
@@ -68,7 +71,9 @@ internal sealed class MySqlBatchWriter<T> : IDatabaseWriter<T>
         CancellationToken cancellationToken = default)
     {
         foreach (var item in items)
+        {
             await WriteAsync(item, cancellationToken).ConfigureAwait(false);
+        }
 
         if (_pendingRows.Count > 0)
             await FlushAsync(cancellationToken).ConfigureAwait(false);
@@ -123,12 +128,14 @@ internal sealed class MySqlBatchWriter<T> : IDatabaseWriter<T>
         foreach (var row in _pendingRows)
         {
             var names = new string[_mappings.Length];
+
             for (var i = 0; i < _mappings.Length; i++)
             {
                 var name = $"@p{paramIndex++}";
                 names[i] = name;
                 command.AddParameter(name, row[i] ?? DBNull.Value);
             }
+
             valueClauses.Add($"({string.Join(", ", names)})");
         }
 
@@ -171,11 +178,15 @@ internal sealed class MySqlBatchWriter<T> : IDatabaseWriter<T>
         return sb.ToString();
     }
 
-    private string BuildInsertPrefix() =>
-        $"INSERT INTO {QuoteIdentifier(_tableName)} ({BuildColumnList()}) VALUES";
+    private string BuildInsertPrefix()
+    {
+        return $"INSERT INTO {QuoteIdentifier(_tableName)} ({BuildColumnList()}) VALUES";
+    }
 
-    private string BuildColumnList() =>
-        string.Join(", ", _mappings.Select(m => QuoteIdentifier(m.ColumnName)));
+    private string BuildColumnList()
+    {
+        return string.Join(", ", _mappings.Select(m => QuoteIdentifier(m.ColumnName)));
+    }
 
     /// <summary>Quotes an identifier using MySQL backticks.</summary>
     private static string QuoteIdentifier(string identifier)
@@ -194,26 +205,32 @@ internal sealed class MySqlBatchWriter<T> : IDatabaseWriter<T>
         var mapped = _parameterMapper(item)?.ToArray() ?? Array.Empty<DatabaseParameter>();
 
         if (mapped.Length != _mappings.Length)
+        {
             throw new InvalidOperationException(
                 $"Custom parameter mapper for '{typeof(T).Name}' must return exactly {_mappings.Length} values.");
+        }
 
         return mapped.Select(p => p.Value).ToArray();
     }
 
-    private static PropertyMapping[] BuildMappings() =>
-    [
-        .. typeof(T)
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.CanWrite && !IsIgnored(p) && !IsAutoIncrement(p))
-            .Select(p => new PropertyMapping(GetColumnName(p), BuildGetter(p))),
-    ];
+    private static PropertyMapping[] BuildMappings()
+    {
+        return
+        [
+            .. typeof(T)
+                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanWrite && !IsIgnored(p) && !IsAutoIncrement(p))
+                .Select(p => new PropertyMapping(GetColumnName(p), BuildGetter(p))),
+        ];
+    }
 
     private static bool IsIgnored(PropertyInfo property)
     {
         var col = property.GetCustomAttribute<ColumnAttribute>();
         var mysqlCol = property.GetCustomAttribute<MySqlColumnAttribute>();
+
         return col?.Ignore == true || mysqlCol?.Ignore == true
-               || property.IsDefined(typeof(IgnoreColumnAttribute), true);
+                                   || property.IsDefined(typeof(IgnoreColumnAttribute), true);
     }
 
     private static bool IsAutoIncrement(PropertyInfo property)
@@ -242,14 +259,20 @@ internal sealed class MySqlBatchWriter<T> : IDatabaseWriter<T>
         return Expression.Lambda<Func<T, object?>>(body, param).Compile();
     }
 
-    private static Func<T, object?[]> BuildValueFactory(IReadOnlyList<PropertyMapping> mappings) =>
-        item =>
+    private static Func<T, object?[]> BuildValueFactory(IReadOnlyList<PropertyMapping> mappings)
+    {
+        return item =>
         {
             var values = new object?[mappings.Count];
+
             for (var i = 0; i < mappings.Count; i++)
+            {
                 values[i] = mappings[i].Getter(item);
+            }
+
             return values;
         };
+    }
 
     private sealed record PropertyMapping(string ColumnName, Func<T, object?> Getter);
 }

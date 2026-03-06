@@ -1,6 +1,7 @@
 using MySqlConnector;
 using NPipeline.Connectors.MySql.Configuration;
 using NPipeline.Connectors.MySql.Exceptions;
+using MySqlException = MySqlConnector.MySqlException;
 
 namespace NPipeline.Connectors.MySql.Connection;
 
@@ -10,7 +11,6 @@ namespace NPipeline.Connectors.MySql.Connection;
 /// </summary>
 internal sealed class MySqlConnectionPool : IMySqlConnectionPool
 {
-    private readonly string? _defaultConnectionString;
     private readonly Dictionary<string, string> _namedConnectionStrings;
     private bool _disposed;
 
@@ -19,7 +19,7 @@ internal sealed class MySqlConnectionPool : IMySqlConnectionPool
     /// </summary>
     public MySqlConnectionPool(string connectionString)
     {
-        _defaultConnectionString = BuildConnectionString(connectionString, null);
+        ConnectionString = BuildConnectionString(connectionString, null);
         _namedConnectionStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     }
 
@@ -28,18 +28,19 @@ internal sealed class MySqlConnectionPool : IMySqlConnectionPool
     /// </summary>
     public MySqlConnectionPool(IDictionary<string, string> namedConnections)
     {
-        _defaultConnectionString = null;
+        ConnectionString = null;
+
         _namedConnectionStrings = namedConnections
             .ToDictionary(kvp => kvp.Key, kvp => BuildConnectionString(kvp.Value, null),
                 StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
-    ///     Creates a pool from a <see cref="MySqlOptions"/> instance, injecting configuration overrides.
+    ///     Creates a pool from a <see cref="MySqlOptions" /> instance, injecting configuration overrides.
     /// </summary>
     public MySqlConnectionPool(MySqlOptions options, MySqlConfiguration? configuration = null)
     {
-        _defaultConnectionString = options.DefaultConnectionString is not null
+        ConnectionString = options.DefaultConnectionString is not null
             ? BuildConnectionString(options.DefaultConnectionString, configuration)
             : null;
 
@@ -51,18 +52,20 @@ internal sealed class MySqlConnectionPool : IMySqlConnectionPool
     }
 
     /// <inheritdoc />
-    public string? ConnectionString => _defaultConnectionString;
+    public string? ConnectionString { get; }
 
     /// <inheritdoc />
     public async Task<MySqlConnection> GetConnectionAsync(CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        if (_defaultConnectionString is null)
+        if (ConnectionString is null)
+        {
             throw new MySqlConnectionException(
                 "No default connection string is configured. Use a named connection instead.");
+        }
 
-        var connection = new MySqlConnection(_defaultConnectionString);
+        var connection = new MySqlConnection(ConnectionString);
         await OpenAsync(connection, cancellationToken).ConfigureAwait(false);
         return connection;
     }
@@ -74,8 +77,10 @@ internal sealed class MySqlConnectionPool : IMySqlConnectionPool
         ObjectDisposedException.ThrowIf(_disposed, this);
 
         if (!_namedConnectionStrings.TryGetValue(name, out var cs))
+        {
             throw new MySqlConnectionException(
                 $"No connection with name '{name}' is configured.");
+        }
 
         var connection = new MySqlConnection(cs);
         await OpenAsync(connection, cancellationToken).ConfigureAwait(false);
@@ -83,17 +88,22 @@ internal sealed class MySqlConnectionPool : IMySqlConnectionPool
     }
 
     /// <inheritdoc />
-    public bool HasNamedConnection(string name) =>
-        _namedConnectionStrings.ContainsKey(name);
+    public bool HasNamedConnection(string name)
+    {
+        return _namedConnectionStrings.ContainsKey(name);
+    }
 
     /// <inheritdoc />
-    public IEnumerable<string> GetNamedConnectionNames() =>
-        _namedConnectionStrings.Keys;
+    public IEnumerable<string> GetNamedConnectionNames()
+    {
+        return _namedConnectionStrings.Keys;
+    }
 
     /// <inheritdoc />
     public ValueTask DisposeAsync()
     {
         _disposed = true;
+
         // MySqlConnector manages pool lifecycle via static state; no instance cleanup needed here.
         return ValueTask.CompletedTask;
     }
@@ -108,9 +118,10 @@ internal sealed class MySqlConnectionPool : IMySqlConnectionPool
         {
             await connection.OpenAsync(ct).ConfigureAwait(false);
         }
-        catch (MySqlConnector.MySqlException ex)
+        catch (MySqlException ex)
         {
             await connection.DisposeAsync().ConfigureAwait(false);
+
             throw MySqlExceptionFactory.CreateConnection(
                 "Failed to open a MySQL connection.", ex);
         }
@@ -122,7 +133,7 @@ internal sealed class MySqlConnectionPool : IMySqlConnectionPool
     }
 
     /// <summary>
-    ///     Builds a connection string by overlaying <see cref="MySqlConfiguration"/> settings
+    ///     Builds a connection string by overlaying <see cref="MySqlConfiguration" /> settings
     ///     on top of the raw connection string supplied by the user.
     /// </summary>
     private static string BuildConnectionString(string rawConnectionString,

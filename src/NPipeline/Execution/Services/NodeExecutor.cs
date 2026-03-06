@@ -1,5 +1,3 @@
-using System.Reflection;
-using System.Runtime.CompilerServices;
 using NPipeline.Attributes.Lineage;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
@@ -142,12 +140,7 @@ public sealed class NodeExecutor(
             var expectedOut = nodeDef.OutputType ?? rawOutput.GetDataType();
 
             if (rawOutput.GetDataType() != expectedOut)
-            {
-                var adaptMethod = typeof(NodeExecutor).GetMethod(nameof(AdaptJoinOutput), BindingFlags.NonPublic | BindingFlags.Static)!
-                    .MakeGenericMethod(expectedOut);
-
-                rawOutput = (IDataPipe)adaptMethod.Invoke(null, [rawOutput, $"JoinResult_{plan.NodeId}"])!;
-            }
+                rawOutput = AdaptOutput(plan, rawOutput, expectedOut, $"JoinResult_{plan.NodeId}");
 
             output = lineageService.WrapNodeOutput(rawOutput, plan.NodeId, graph.Lineage.LineageOptions, HopDecisionFlags.Joined, context.CancellationToken);
         }
@@ -158,10 +151,7 @@ public sealed class NodeExecutor(
             // Ensure typed output if delegate returned an untyped/object pipe
             if (nodeDef.OutputType is not null && output.GetDataType() != nodeDef.OutputType)
             {
-                var adaptMethod = typeof(NodeExecutor).GetMethod(nameof(AdaptJoinOutput), BindingFlags.NonPublic | BindingFlags.Static)!
-                    .MakeGenericMethod(nodeDef.OutputType);
-
-                output = (IDataPipe)adaptMethod.Invoke(null, [output, $"JoinResult_{plan.NodeId}"])!;
+                output = AdaptOutput(plan, output, nodeDef.OutputType, $"JoinResult_{plan.NodeId}");
 
                 // If still mismatched after adaptation, capture diagnostic information
                 if (output.GetDataType() != nodeDef.OutputType)
@@ -206,12 +196,7 @@ public sealed class NodeExecutor(
 
             // Adapt aggregate output to declared OutputType prior to lineage wrapping so sinks get strongly typed pipes.
             if (nodeDef.OutputType is not null && output.GetDataType() != nodeDef.OutputType)
-            {
-                var adaptMethod = typeof(NodeExecutor).GetMethod(nameof(AdaptJoinOutput), BindingFlags.NonPublic | BindingFlags.Static)!
-                    .MakeGenericMethod(nodeDef.OutputType);
-
-                output = (IDataPipe)adaptMethod.Invoke(null, [output, $"AggregateResult_{plan.NodeId}"])!;
-            }
+                output = AdaptOutput(plan, output, nodeDef.OutputType, $"AggregateResult_{plan.NodeId}");
 
             output = lineageService.WrapNodeOutput(output, plan.NodeId, graph.Lineage.LineageOptions, HopDecisionFlags.Aggregated, context.CancellationToken);
         }
@@ -222,10 +207,7 @@ public sealed class NodeExecutor(
             // Ensure output pipe matches declared result type for downstream strict casting (e.g., SinkNode<T>).
             if (nodeDef.OutputType is not null && output.GetDataType() != nodeDef.OutputType)
             {
-                var adaptMethod = typeof(NodeExecutor).GetMethod(nameof(AdaptJoinOutput), BindingFlags.NonPublic | BindingFlags.Static)!
-                    .MakeGenericMethod(nodeDef.OutputType);
-
-                output = (IDataPipe)adaptMethod.Invoke(null, [output, $"AggregateResult_{plan.NodeId}"])!;
+                output = AdaptOutput(plan, output, nodeDef.OutputType, $"AggregateResult_{plan.NodeId}");
 
                 // If still mismatched after adaptation, capture diagnostic information
                 if (output.GetDataType() != nodeDef.OutputType)
@@ -262,9 +244,7 @@ public sealed class NodeExecutor(
             var lineageUnwrap = nodeDef.SinkLineageUnwrap ??
                                 throw new InvalidOperationException(ErrorMessages.SinkNodeLineageUnwrapMissing(plan.NodeId));
 
-            effectiveInput = lineageUnwrap(input, context.Items.TryGetValue(PipelineContextKeys.LineageSink, out var ls)
-                ? (ILineageSink)ls
-                : null, plan.NodeId, graph.Lineage.LineageOptions, context.CancellationToken);
+            effectiveInput = lineageUnwrap(input, context.LineageSink, plan.NodeId, graph.Lineage.LineageOptions, context.CancellationToken);
         }
 
         await plan.ExecuteSink!(effectiveInput, context, context.CancellationToken).ConfigureAwait(false);
@@ -295,76 +275,20 @@ public sealed class NodeExecutor(
         return await pipeMergeService.MergeAsync(nodeDef, targetNode, inputPipes, cancellationToken);
     }
 
-    private static StreamingDataPipe<TOut> AdaptJoinOutput<TOut>(IDataPipe untyped, string streamName)
+    private static IDataPipe AdaptOutput(NodeExecutionPlan plan, IDataPipe output, Type expectedType, string streamName)
     {
-        // If already correct type just return
-        if (untyped is IDataPipe<TOut> typedExisting)
+        if (plan.AdaptOutput is null)
         {
-            // If already correct type but not a StreamingDataPipe<TOut>, adapt by wrapping enumeration.
-            if (typedExisting is StreamingDataPipe<TOut> streaming)
-                return streaming;
-
-            async IAsyncEnumerable<TOut> Passthrough([EnumeratorCancellation] CancellationToken ct = default)
-            {
-                await foreach (var obj in typedExisting.ToAsyncEnumerable(ct).WithCancellation(ct))
-                {
-                    yield return obj is TOut t
-                        ? t
-                        : (TOut)obj!;
-                }
-            }
-
-            return new StreamingDataPipe<TOut>(Passthrough(), streamName);
+            throw new InvalidOperationException(
+                $"Node '{plan.NodeId}' returned output type '{output.GetDataType()}', expected '{expectedType}', but no adaptation delegate is available.");
         }
 
-        async IAsyncEnumerable<TOut> Cast([EnumeratorCancellation] CancellationToken ct = default)
-        {
-            await foreach (var obj in untyped.ToAsyncEnumerable(ct).WithCancellation(ct))
-
-                // Consistent null handling: always yield a value for null items
-                // For reference types and nullable value types, yield null
-                // For non-nullable value types, yield default
-            {
-                yield return obj is null
-                    ? default!
-                    : obj is TOut t
-                        ? t
-                        : (TOut)obj!;
-            }
-        }
-
-        return new StreamingDataPipe<TOut>(Cast(), streamName);
+        return plan.AdaptOutput(output, streamName);
     }
 
     private static StatsCounter GetOrCreateCounter(PipelineContext context)
     {
-        if (!context.Items.TryGetValue(PipelineContextKeys.TotalProcessedItems, out var statsObj) || statsObj is not StatsCounter counter)
-        {
-            counter = new StatsCounter();
-            context.Items[PipelineContextKeys.TotalProcessedItems] = counter;
-        }
-
-        return counter;
-    }
-
-    private static StreamingDataPipe<TOut> CreateTypedJoinPipeGeneric<TOut>(IAsyncEnumerable<object?> input, string streamName)
-    {
-        async IAsyncEnumerable<TOut> Cast([EnumeratorCancellation] CancellationToken ct = default)
-        {
-            await foreach (var obj in input.WithCancellation(ct))
-
-                // Consistent null handling: always yield a value for null items
-                // For reference types and nullable value types, yield null
-                // For non-nullable value types, yield default
-            {
-                yield return obj is null
-                    ? default!
-                    : obj is TOut t
-                        ? t
-                        : (TOut)obj!;
-            }
-        }
-
-        return new StreamingDataPipe<TOut>(Cast(), streamName);
+        context.ProcessedItemsCounter ??= new StatsCounter();
+        return context.ProcessedItemsCounter;
     }
 }

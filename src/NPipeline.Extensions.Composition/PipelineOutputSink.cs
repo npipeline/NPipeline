@@ -20,7 +20,7 @@ public sealed class PipelineOutputSink<T> : ISinkNode<T>
         T? outputItem = default;
         var itemReceived = false;
 
-        await foreach (var item in input.WithCancellation(cancellationToken))
+        await foreach (var item in input.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
             outputItem = item;
             itemReceived = true;

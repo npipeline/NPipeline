@@ -3,7 +3,6 @@ using FakeItEasy;
 using NPipeline.Connectors.MySql.Configuration;
 using NPipeline.Connectors.MySql.Writers;
 using NPipeline.StorageProviders.Abstractions;
-using NPipeline.StorageProviders.Models;
 
 namespace NPipeline.Connectors.MySql.Tests.Writers;
 
@@ -13,6 +12,42 @@ namespace NPipeline.Connectors.MySql.Tests.Writers;
 /// </summary>
 public sealed class MySqlBatchWriterTests
 {
+    #region DisposeAsync Tests
+
+    [Fact]
+    public async Task DisposeAsync_DoesNotDisposeConnection()
+    {
+        // Arrange
+        var connection = A.Fake<IDatabaseConnection>();
+        var configuration = new MySqlConfiguration();
+
+        var writer = new MySqlBatchWriter<TestEntity>(
+            connection,
+            "test_table",
+            null,
+            configuration);
+
+        // Act
+        await writer.DisposeAsync();
+
+        // Assert
+        A.CallTo(() => connection.DisposeAsync()).MustNotHaveHappened();
+    }
+
+    #endregion
+
+    #region Test Models
+
+    private sealed class TestEntity
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    #endregion
+
     #region Constructor Tests
 
     [Fact]
@@ -90,6 +125,7 @@ public sealed class MySqlBatchWriterTests
     {
         // Arrange
         var connection = A.Fake<IDatabaseConnection>();
+
         var configuration = new MySqlConfiguration
         {
             UseUpsert = true,
@@ -157,42 +193,6 @@ public sealed class MySqlBatchWriterTests
         // Assert
         A.CallTo(() => command.ExecuteNonQueryAsync(A<CancellationToken>._))
             .MustHaveHappenedOnceExactly();
-    }
-
-    #endregion
-
-    #region DisposeAsync Tests
-
-    [Fact]
-    public async Task DisposeAsync_DoesNotDisposeConnection()
-    {
-        // Arrange
-        var connection = A.Fake<IDatabaseConnection>();
-        var configuration = new MySqlConfiguration();
-
-        var writer = new MySqlBatchWriter<TestEntity>(
-            connection,
-            "test_table",
-            null,
-            configuration);
-
-        // Act
-        await writer.DisposeAsync();
-
-        // Assert
-        A.CallTo(() => connection.DisposeAsync()).MustNotHaveHappened();
-    }
-
-    #endregion
-
-    #region Test Models
-
-    private sealed class TestEntity
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public DateTime CreatedAt { get; set; }
-        public bool IsActive { get; set; }
     }
 
     #endregion

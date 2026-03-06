@@ -79,7 +79,7 @@ internal sealed class CountingPassthroughDataPipe<T> : IStreamingDataPipe<T>
                 {
                     // Store the RetryExhaustedException in the context for downstream nodes to access
                     if (_context is not null)
-                        _context.Items[PipelineContextKeys.LastRetryExhaustedException] = retryEx;
+                        _context.LastRetryExhaustedException = retryEx;
 
                     ExceptionDispatchInfo.Capture(retryEx).Throw();
                     yield break; // Never reached but required for compiler

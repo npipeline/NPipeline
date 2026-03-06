@@ -39,7 +39,7 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
     public async Task CompactAsync_PreservesRowCount()
     {
         // Arrange
-        await CreateSmallFilesAsync(5, 100);
+        await CreateSmallFilesAsync(5);
 
         var request = new TableCompactRequest
         {

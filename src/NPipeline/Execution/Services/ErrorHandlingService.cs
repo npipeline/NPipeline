@@ -1,4 +1,3 @@
-using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Graph;
 using NPipeline.Nodes;
@@ -125,8 +124,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
             // This handles cases where an upstream node failed with RetryExhaustedException but the current node
             // is seeing a different exception (like InvalidOperationException) when trying to process the data
 
-            if (context.Items.TryGetValue(PipelineContextKeys.LastRetryExhaustedException, out var retryExObj) &&
-                retryExObj is RetryExhaustedException contextRetryEx)
+            if (context.LastRetryExhaustedException is RetryExhaustedException contextRetryEx)
             {
                 // Use the RetryExhaustedException from context as the inner exception
                 throw new NodeExecutionException(nodeDef.Id, contextRetryEx.Message, contextRetryEx);
@@ -195,7 +193,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
         ArgumentNullException.ThrowIfNull(executeAsync);
 
         var retryCount = 0;
-        var effectiveRetryOptions = GetEffectiveRetryOptions(nodeDefinition, context);
+        var effectiveRetryOptions = RetryOptionsResolver.Resolve(context, nodeDefinition.Id);
         var maxRetries = effectiveRetryOptions.MaxNodeRestartAttempts;
         Exception? lastException = null;
 
@@ -215,8 +213,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
             lastException = ex;
 
             // Check if there's a RetryExhaustedException in the context after each retry attempt
-            if (context.Items.TryGetValue(PipelineContextKeys.LastRetryExhaustedException, out var retryExObj) &&
-                retryExObj is RetryExhaustedException contextRetryEx)
+            if (context.LastRetryExhaustedException is RetryExhaustedException contextRetryEx)
             {
                 // Use the RetryExhaustedException from the context as the inner exception
                 throw new NodeExecutionException(nodeDefinition.Id, contextRetryEx.Message, contextRetryEx);
@@ -291,8 +288,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
                 lastException = ex;
 
                 // Check if there's a RetryExhaustedException in the context after each retry attempt
-                if (context.Items.TryGetValue(PipelineContextKeys.LastRetryExhaustedException, out var retryExObj) &&
-                    retryExObj is RetryExhaustedException contextRetryEx)
+                if (context.LastRetryExhaustedException is RetryExhaustedException contextRetryEx)
                 {
                     // Use the RetryExhaustedException from the context as the inner exception
                     throw new NodeExecutionException(nodeDefinition.Id, contextRetryEx.Message, contextRetryEx);
@@ -339,30 +335,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
     /// <returns>True if execution is in parallel mode, otherwise false.</returns>
     private static bool IsParallelExecution(PipelineContext context)
     {
-        return context.Items.TryGetValue(PipelineContextKeys.ParallelExecution, out var parallelValue) &&
-               parallelValue is bool isParallel && isParallel;
-    }
-
-    /// <summary>
-    ///     Gets the effective retry options for a node based on node, graph, and context settings.
-    /// </summary>
-    /// <param name="nodeDefinition">The node definition.</param>
-    /// <param name="context">The pipeline context.</param>
-    /// <returns>The effective retry options.</returns>
-    private static PipelineRetryOptions GetEffectiveRetryOptions(NodeDefinition nodeDefinition, PipelineContext context)
-    {
-        // Check for node-specific retry options
-        if (context.Items.TryGetValue($"retry::{nodeDefinition.Id}", out var specific) &&
-            specific is PipelineRetryOptions specificOptions)
-            return specificOptions;
-
-        // Fall back to global retry options
-        if (context.Items.TryGetValue(PipelineContextKeys.GlobalRetryOptions, out var global) &&
-            global is PipelineRetryOptions globalOptions)
-            return globalOptions;
-
-        // Default retry options
-        return PipelineRetryOptions.Default;
+        return context.IsParallelExecution;
     }
 
     /// <summary>

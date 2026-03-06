@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using NPipeline.DataFlow;
 using NPipeline.Nodes;
 
@@ -31,15 +32,16 @@ public static class PipelineObjectPool
 {
     // Maximum capacity threshold - don't pool collections that have grown too large
     private const int MaxPooledCapacity = 100;
+    private const int MaxRetainedPerPool = 32;
 
     // Lightweight object pools using ConcurrentBag for thread-safe pooling
-    private static readonly ConcurrentBag<List<string>> StringListPool = new();
-    private static readonly ConcurrentBag<Dictionary<string, int>> StringIntDictionaryPool = new();
-    private static readonly ConcurrentBag<Dictionary<string, object>> StringObjectDictionaryPool = new();
-    private static readonly ConcurrentBag<Dictionary<string, INode>> NodeDictionaryPool = new();
-    private static readonly ConcurrentBag<Dictionary<string, IDataPipe?>> NodeOutputDictionaryPool = new();
-    private static readonly ConcurrentBag<Queue<string>> StringQueuePool = new();
-    private static readonly ConcurrentBag<HashSet<string>> StringHashSetPool = new();
+    private static readonly BoundedConcurrentBag<List<string>> StringListPool = new(MaxRetainedPerPool);
+    private static readonly BoundedConcurrentBag<Dictionary<string, int>> StringIntDictionaryPool = new(MaxRetainedPerPool);
+    private static readonly BoundedConcurrentBag<Dictionary<string, object>> StringObjectDictionaryPool = new(MaxRetainedPerPool);
+    private static readonly BoundedConcurrentBag<Dictionary<string, INode>> NodeDictionaryPool = new(MaxRetainedPerPool);
+    private static readonly BoundedConcurrentBag<Dictionary<string, IDataPipe?>> NodeOutputDictionaryPool = new(MaxRetainedPerPool);
+    private static readonly BoundedConcurrentBag<Queue<string>> StringQueuePool = new(MaxRetainedPerPool);
+    private static readonly BoundedConcurrentBag<HashSet<string>> StringHashSetPool = new(MaxRetainedPerPool);
 
     // Generic list pool using ConcurrentDictionary to maintain type-specific pools
     private static readonly ConcurrentDictionary<Type, object> GenericListPools = new();
@@ -72,7 +74,7 @@ public static class PipelineObjectPool
             return;
 
         list.Clear();
-        StringListPool.Add(list);
+        _ = StringListPool.TryAdd(list);
     }
 
     /// <summary>
@@ -86,7 +88,7 @@ public static class PipelineObjectPool
     /// <returns>A List&lt;T&gt; instance from the pool.</returns>
     public static List<T> RentList<T>(int capacityHint = 10)
     {
-        var pool = (ConcurrentBag<List<T>>)GenericListPools.GetOrAdd(typeof(T), _ => new ConcurrentBag<List<T>>());
+        var pool = (BoundedConcurrentBag<List<T>>)GenericListPools.GetOrAdd(typeof(T), _ => new BoundedConcurrentBag<List<T>>(MaxRetainedPerPool));
 
         if (pool.TryTake(out var list))
         {
@@ -108,8 +110,8 @@ public static class PipelineObjectPool
             return;
 
         list.Clear();
-        var pool = (ConcurrentBag<List<T>>)GenericListPools.GetOrAdd(typeof(T), _ => new ConcurrentBag<List<T>>());
-        pool.Add(list);
+        var pool = (BoundedConcurrentBag<List<T>>)GenericListPools.GetOrAdd(typeof(T), _ => new BoundedConcurrentBag<List<T>>(MaxRetainedPerPool));
+        _ = pool.TryAdd(list);
     }
 
     /// <summary>
@@ -140,7 +142,7 @@ public static class PipelineObjectPool
             return;
 
         dictionary.Clear();
-        StringIntDictionaryPool.Add(dictionary);
+        _ = StringIntDictionaryPool.TryAdd(dictionary);
     }
 
     /// <summary>
@@ -166,7 +168,7 @@ public static class PipelineObjectPool
             return;
 
         dictionary.Clear();
-        StringObjectDictionaryPool.Add(dictionary);
+        _ = StringObjectDictionaryPool.TryAdd(dictionary);
     }
 
     /// <summary>
@@ -192,7 +194,7 @@ public static class PipelineObjectPool
             return;
 
         dictionary.Clear();
-        NodeDictionaryPool.Add(dictionary);
+        _ = NodeDictionaryPool.TryAdd(dictionary);
     }
 
     /// <summary>
@@ -218,7 +220,7 @@ public static class PipelineObjectPool
             return;
 
         dictionary.Clear();
-        NodeOutputDictionaryPool.Add(dictionary);
+        _ = NodeOutputDictionaryPool.TryAdd(dictionary);
     }
 
     /// <summary>
@@ -249,7 +251,7 @@ public static class PipelineObjectPool
             return;
 
         queue.Clear();
-        StringQueuePool.Add(queue);
+        _ = StringQueuePool.TryAdd(queue);
     }
 
     /// <summary>
@@ -280,6 +282,39 @@ public static class PipelineObjectPool
             return;
 
         set.Clear();
-        StringHashSetPool.Add(set);
+        _ = StringHashSetPool.TryAdd(set);
+    }
+
+    private sealed class BoundedConcurrentBag<T>(int maxRetained)
+    {
+        private readonly ConcurrentBag<T> _items = new();
+        private readonly int _maxRetained = maxRetained;
+        private int _retainedCount;
+
+        public bool TryTake([MaybeNullWhen(false)] out T item)
+        {
+            if (_items.TryTake(out item))
+            {
+                _ = Interlocked.Decrement(ref _retainedCount);
+                return true;
+            }
+
+            item = default;
+            return false;
+        }
+
+        public bool TryAdd(T item)
+        {
+            var newCount = Interlocked.Increment(ref _retainedCount);
+
+            if (newCount > _maxRetained)
+            {
+                _ = Interlocked.Decrement(ref _retainedCount);
+                return false;
+            }
+
+            _items.Add(item);
+            return true;
+        }
     }
 }

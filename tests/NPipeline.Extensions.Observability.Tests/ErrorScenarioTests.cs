@@ -16,6 +16,7 @@ public sealed class ErrorScenarioTests
     private static ILogger<LoggingMetricsSink> CreateNodeLogger()
     {
         var logger = A.Fake<ILogger<LoggingMetricsSink>>();
+
         // LoggerMessage delegates check IsEnabled before logging
         A.CallTo(() => logger.IsEnabled(A<LogLevel>._)).Returns(true);
         return logger;
@@ -24,6 +25,7 @@ public sealed class ErrorScenarioTests
     private static ILogger<LoggingPipelineMetricsSink> CreatePipelineLogger()
     {
         var logger = A.Fake<ILogger<LoggingPipelineMetricsSink>>();
+
         // LoggerMessage delegates check IsEnabled before logging
         A.CallTo(() => logger.IsEnabled(A<LogLevel>._)).Returns(true);
         return logger;

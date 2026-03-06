@@ -1,5 +1,3 @@
-using NPipeline.Nodes;
-
 namespace NPipeline.Pipeline;
 
 /// <summary>
@@ -19,10 +17,9 @@ public sealed class PipelineFactory : IPipelineFactory
         definition.Define(builder, context);
 
         // Allow tests / advanced users to supply preconfigured node instances via context.
-        // Context.Items[PipelineContextKeys.PreconfiguredNodes] expected to be Dictionary<string, INode>.
-        if (context.Items.TryGetValue(PipelineContextKeys.PreconfiguredNodes, out var preCfg) && preCfg is Dictionary<string, INode> map)
+        if (context.PreconfiguredNodeInstances.Count > 0)
         {
-            foreach (var kvp in map)
+            foreach (var kvp in context.PreconfiguredNodeInstances)
 
                 // Best-effort: ignore duplicates (will throw) so wrap in try/catch.
             {

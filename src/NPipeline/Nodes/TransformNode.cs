@@ -44,7 +44,7 @@ public abstract class TransformNode<TIn, TOut>
     ///         Set this property directly or via the fluent API using <c>WithExecutionStrategy</c> extension method.
     ///     </para>
     /// </summary>
-    public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
+    public IExecutionStrategy ExecutionStrategy { get; set; } = SequentialExecutionStrategy.Instance;
 
     /// <inheritdoc />
     public INodeErrorHandler? ErrorHandler

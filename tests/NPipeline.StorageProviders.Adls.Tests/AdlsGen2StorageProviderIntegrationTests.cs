@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
-using Azure.Storage.Blobs.Models;
 using AwesomeAssertions;
+using Azure.Storage.Blobs.Models;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 

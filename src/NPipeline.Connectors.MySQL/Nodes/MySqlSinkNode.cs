@@ -1,8 +1,8 @@
 using NPipeline.Connectors.Configuration;
-using NPipeline.Connectors.Nodes;
 using NPipeline.Connectors.MySql.Configuration;
 using NPipeline.Connectors.MySql.Connection;
 using NPipeline.Connectors.MySql.Writers;
+using NPipeline.Connectors.Nodes;
 using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
@@ -73,7 +73,10 @@ public class MySqlSinkNode<T> : DatabaseSinkNode<T>
         _tableName = tableName;
         _writeStrategy = _configuration.WriteStrategy;
         _parameterMapper = customMapper;
-        _connectionName = string.IsNullOrWhiteSpace(connectionName) ? null : connectionName;
+
+        _connectionName = string.IsNullOrWhiteSpace(connectionName)
+            ? null
+            : connectionName;
 
         if (_configuration.ValidateIdentifiers)
             DatabaseIdentifierValidator.ValidateIdentifier(_tableName, nameof(_tableName));

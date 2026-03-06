@@ -49,11 +49,14 @@ internal sealed class MySqlDatabaseConnection(MySqlConnection connection) : IDat
         CancellationToken cancellationToken = default)
     {
         if (UnderlyingTransaction is not null)
+        {
             throw new InvalidOperationException(
                 "A transaction is already in progress. Commit or rollback the current transaction before starting a new one.");
+        }
 
         UnderlyingTransaction = (MySqlTransaction)await UnderlyingConnection
             .BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+
         _transactionWrapper = new MySqlDatabaseTransaction(UnderlyingTransaction, this);
         return _transactionWrapper;
     }

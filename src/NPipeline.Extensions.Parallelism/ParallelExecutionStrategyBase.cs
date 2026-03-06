@@ -54,23 +54,16 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
         var logger = context.LoggerFactory.CreateLogger(nameof(ParallelExecutionStrategyBase));
 
         // Check for per-node retry options first
-        if (context.Items.TryGetValue($"retryOptions::{nodeId}", out var perNodeOptions) && perNodeOptions is PipelineRetryOptions nodeOptions)
+        if (context.NodeRetryOverrides.TryGetValue(nodeId, out var nodeOptions))
         {
             ParallelExecutionStrategyLogMessages.PerNodeRetryOptionsFound(logger, nodeId, nodeOptions.MaxItemRetries);
             return nodeOptions;
         }
 
         // Check for global retry options stored by PipelineRunner
-        if (context.Items.TryGetValue(PipelineContextKeys.GlobalRetryOptions, out var globalOptions) &&
-            globalOptions is PipelineRetryOptions globalRetryOptions)
-        {
-            ParallelExecutionStrategyLogMessages.GlobalRetryOptionsUsed(logger, nodeId, globalRetryOptions.MaxItemRetries);
-            return globalRetryOptions;
-        }
-
-        // Fall back to context retry options
-        ParallelExecutionStrategyLogMessages.ContextRetryOptionsUsed(logger, nodeId, context.RetryOptions.MaxItemRetries);
-        return context.RetryOptions;
+        var globalRetryOptions = context.GlobalRetryOptions;
+        ParallelExecutionStrategyLogMessages.GlobalRetryOptionsUsed(logger, nodeId, globalRetryOptions.MaxItemRetries);
+        return globalRetryOptions;
     }
 
     /// <summary>
@@ -209,7 +202,7 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
         {
             workers.Add(Task.Run(async () =>
             {
-                await foreach (var next in reader.ReadAllAsync(cancellationToken))
+                await foreach (var next in reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
                 {
                     var result = await ExecuteWithRetryAsync(next, node, context, cachedContext, metrics, observer);
 
@@ -248,7 +241,7 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
     {
         try
         {
-            await foreach (var item in outChannel.Reader.ReadAllAsync(cancellationToken))
+            await foreach (var item in outChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             {
                 observabilityScope?.IncrementEmitted();
                 yield return item;
@@ -264,11 +257,11 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
             currentActivity?.SetTag("parallel.enqueued", metrics.Enqueued);
             currentActivity?.SetTag("parallel.processed", metrics.Processed);
 
-            // Store metrics in context.Items for downstream monitoring
-            context.Items[PipelineContextKeys.ParallelMetricsDroppedNewest(nodeId)] = metrics.DroppedNewest;
-            context.Items[PipelineContextKeys.ParallelMetricsDroppedOldest(nodeId)] = metrics.DroppedOldest;
-            context.Items[PipelineContextKeys.ParallelMetricsEnqueued(nodeId)] = metrics.Enqueued;
-            context.Items[PipelineContextKeys.ParallelMetricsProcessed(nodeId)] = metrics.Processed;
+            // Store metrics in context runtime annotations for downstream monitoring.
+            context.RuntimeAnnotations[PipelineContextKeys.ParallelMetricsDroppedNewest(nodeId)] = metrics.DroppedNewest;
+            context.RuntimeAnnotations[PipelineContextKeys.ParallelMetricsDroppedOldest(nodeId)] = metrics.DroppedOldest;
+            context.RuntimeAnnotations[PipelineContextKeys.ParallelMetricsEnqueued(nodeId)] = metrics.Enqueued;
+            context.RuntimeAnnotations[PipelineContextKeys.ParallelMetricsProcessed(nodeId)] = metrics.Processed;
         }
     }
 
@@ -280,8 +273,8 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
     /// <returns>The configured scope, or null when observability is not enabled.</returns>
     protected static IAutoObservabilityScope? TryGetNodeObservabilityScope(PipelineContext context, string nodeId)
     {
-        return context.Items.TryGetValue(PipelineContextKeys.NodeObservabilityScope(nodeId), out var scopeObj)
-            ? scopeObj as IAutoObservabilityScope
+        return context.NodeObservabilityScopes.TryGetValue(nodeId, out var scope)
+            ? scope
             : null;
     }
 }

@@ -170,17 +170,17 @@ NPipeline is modular - install only what you need.
 
 ### Connectors
 
-| Package                             | Purpose                                                      |
-|-------------------------------------|--------------------------------------------------------------|
-| **NPipeline.Connectors**            | Core abstractions for data format/storage decoupling         |
-| **NPipeline.Connectors.Csv**        | CSV source and sink nodes                                    |
-| **NPipeline.Connectors.Excel**      | Excel source and sink nodes for XLS and XLSX files           |
-| **NPipeline.Connectors.Json**       | JSON source and sink nodes for JSON array and NDJSON formats |
-| **NPipeline.Connectors.Postgres** | PostgreSQL database source and sink nodes                    |
-| **NPipeline.Connectors.SqlServer**  | SQL Server database source and sink nodes                    |
-| **NPipeline.Connectors.Aws.Sqs**    | AWS SQS source and sink nodes for message queue processing   |
-| **NPipeline.Connectors.Kafka**      | Kafka source and sink nodes with batching and transactional support |
-| **NPipeline.Connectors.RabbitMQ**   | RabbitMQ source and sink nodes with publisher confirms and dead-lettering |
+| Package                            | Purpose                                                                   |
+|------------------------------------|---------------------------------------------------------------------------|
+| **NPipeline.Connectors**           | Core abstractions for data format/storage decoupling                      |
+| **NPipeline.Connectors.Csv**       | CSV source and sink nodes                                                 |
+| **NPipeline.Connectors.Excel**     | Excel source and sink nodes for XLS and XLSX files                        |
+| **NPipeline.Connectors.Json**      | JSON source and sink nodes for JSON array and NDJSON formats              |
+| **NPipeline.Connectors.Postgres**  | PostgreSQL database source and sink nodes                                 |
+| **NPipeline.Connectors.SqlServer** | SQL Server database source and sink nodes                                 |
+| **NPipeline.Connectors.Aws.Sqs**   | AWS SQS source and sink nodes for message queue processing                |
+| **NPipeline.Connectors.Kafka**     | Kafka source and sink nodes with batching and transactional support       |
+| **NPipeline.Connectors.RabbitMQ**  | RabbitMQ source and sink nodes with publisher confirms and dead-lettering |
 
 ### Complete Package List
 

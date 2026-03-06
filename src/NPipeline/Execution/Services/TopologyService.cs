@@ -14,7 +14,7 @@ public sealed class TopologyService : ITopologyService
     public List<string> TopologicalSort(PipelineGraph graph)
     {
         // Rent pooled collections to reduce allocations
-        var sortedOrder = new List<string>(graph.Nodes.Count);
+        var sortedOrder = new List<string>(graph.Nodes.Length);
         var inDegree = PipelineObjectPool.RentStringIntDictionary();
         var queue = PipelineObjectPool.RentStringQueue();
 
@@ -59,7 +59,7 @@ public sealed class TopologyService : ITopologyService
             }
 
             // Check for cycles
-            if (sortedOrder.Count != graph.Nodes.Count)
+            if (sortedOrder.Count != graph.Nodes.Length)
                 throw new InvalidOperationException(ErrorMessages.CyclicDependencyDetected());
 
             return sortedOrder;

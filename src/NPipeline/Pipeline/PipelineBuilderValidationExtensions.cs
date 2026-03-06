@@ -240,13 +240,13 @@ public static class PipelineBuilderValidationExtensions
     /// </summary>
     private static PipelineGraph BuildGraphFromBuilder(PipelineBuilder builder)
     {
-        var nodesList = builder.NodeState.Nodes.Values.ToImmutableList();
+        var nodesList = builder.NodeState.Nodes.Values.ToImmutableArray();
         var nodeDefinitionMap = nodesList.ToFrozenDictionary(n => n.Id);
 
         var graph = PipelineGraphBuilder.Create()
             .WithNodes(nodesList)
-            .WithEdges(builder.ConnectionState.Edges.ToImmutableList())
-            .WithPreconfiguredNodeInstances(builder.NodeState.PreconfiguredNodeInstances.ToImmutableDictionary())
+            .WithEdges(builder.ConnectionState.Edges.ToImmutableArray())
+            .WithPreconfiguredNodeInstances(builder.NodeState.PreconfiguredNodeInstances.ToFrozenDictionary())
             .WithNodeDefinitionMap(nodeDefinitionMap)
             .Build();
 
