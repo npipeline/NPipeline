@@ -357,24 +357,8 @@ public sealed class PipelineContext
     /// </summary>
     public IPipelineStateManager? StateManager
     {
-        get
-        {
-            if (_stateManager is not null)
-                return _stateManager;
-
-            return Properties.TryGetValue(PipelineContextKeys.StateManager, out var sm) && sm is IPipelineStateManager manager
-                ? manager
-                : null;
-        }
-        internal set
-        {
-            _stateManager = value;
-
-            if (value is null)
-                _ = Properties.Remove(PipelineContextKeys.StateManager);
-            else
-                Properties[PipelineContextKeys.StateManager] = value;
-        }
+        get => _stateManager;
+        internal set => _stateManager = value;
     }
 
     /// <summary>
@@ -382,24 +366,8 @@ public sealed class PipelineContext
     /// </summary>
     public IStatefulRegistry? StatefulRegistry
     {
-        get
-        {
-            if (_statefulRegistry is not null)
-                return _statefulRegistry;
-
-            return Properties.TryGetValue(PipelineContextKeys.StatefulRegistry, out var reg) && reg is IStatefulRegistry registry
-                ? registry
-                : null;
-        }
-        internal set
-        {
-            _statefulRegistry = value;
-
-            if (value is null)
-                _ = Properties.Remove(PipelineContextKeys.StatefulRegistry);
-            else
-                Properties[PipelineContextKeys.StatefulRegistry] = value;
-        }
+        get => _statefulRegistry;
+        internal set => _statefulRegistry = value;
     }
 
     /// <summary>
