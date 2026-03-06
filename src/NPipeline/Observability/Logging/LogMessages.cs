@@ -97,8 +97,8 @@ internal static partial class ObservabilitySurfaceLogMessages
     [LoggerMessage(6, LogLevel.Information, "Executing node {NodeId} of type {NodeType}")]
     public static partial void NodeExecuting(ILogger logger, string nodeId, string nodeType);
 
-    [LoggerMessage(7, LogLevel.Debug, "Storing AutoObservabilityScope in context with key: {ContextKey}")]
-    public static partial void AutoObservabilityScopeStored(ILogger logger, string contextKey);
+    [LoggerMessage(7, LogLevel.Debug, "Storing AutoObservabilityScope in context for node: {NodeId}")]
+    public static partial void AutoObservabilityScopeStored(ILogger logger, string nodeId);
 
     [LoggerMessage(8, LogLevel.Information, "Finished executing node {NodeId}")]
     public static partial void NodeFinished(ILogger logger, string nodeId);
@@ -164,9 +164,6 @@ internal static partial class ParallelExecutionStrategyLogMessages
 
     [LoggerMessage(4, LogLevel.Debug, "Node {NodeId}, Using global retry options: MaxItemRetries={MaxRetries}")]
     public static partial void GlobalRetryOptionsUsed(ILogger logger, string nodeId, int maxRetries);
-
-    [LoggerMessage(5, LogLevel.Debug, "Node {NodeId}, Using context retry options: MaxItemRetries={MaxRetries}")]
-    public static partial void ContextRetryOptionsUsed(ILogger logger, string nodeId, int maxRetries);
 
     [LoggerMessage(6, LogLevel.Debug, "Node {NodeId} failed on attempt {Attempt}.")]
     public static partial void NodeFailure(ILogger logger, Exception exception, string nodeId, int attempt);
@@ -241,7 +238,7 @@ internal static partial class CompositeExecutionObserverLogMessages
 [ExcludeFromCodeCoverage]
 internal static partial class PipelineRunnerLogMessages
 {
-    [LoggerMessage(1, LogLevel.Debug, "Storing retry options in context.Items: MaxItemRetries={MaxItemRetries}")]
+    [LoggerMessage(1, LogLevel.Debug, "Setting global retry options on PipelineContext: MaxItemRetries={MaxItemRetries}")]
     public static partial void StoringRetryOptions(ILogger logger, int maxItemRetries);
 
     [LoggerMessage(2, LogLevel.Debug, "graph.ErrorHandling.RetryOptions is null")]

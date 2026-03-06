@@ -27,57 +27,15 @@ namespace NPipeline.Pipeline;
 ///         </item>
 ///         <item>
 ///             <term>
-///                 <c>nodes.*</c>
-///             </term>
-///             <description>Node configuration and lifecycle management (preconfigured instances, DI ownership)</description>
-///         </item>
-///         <item>
-///             <term>
-///                 <c>resilience.*</c>
-///             </term>
-///             <description>Retry, circuit breaker, and resilience configuration options</description>
-///         </item>
-///         <item>
-///             <term>
-///                 <c>stats.*</c>
-///             </term>
-///             <description>Pipeline execution statistics and counters</description>
-///         </item>
-///         <item>
-///             <term>
-///                 <c>diagnostics.*</c>
-///             </term>
-///             <description>Diagnostic and debugging information from execution</description>
-///         </item>
-///         <item>
-///             <term>
 ///                 <c>testing.*</c>
 ///             </term>
 ///             <description>Test data and test-specific configuration</description>
 ///         </item>
 ///         <item>
 ///             <term>
-///                 <c>lineage.*</c>
-///             </term>
-///             <description>Item and pipeline-level lineage tracking</description>
-///         </item>
-///         <item>
-///             <term>
 ///                 <c>NPipeline.*</c>
 ///             </term>
-///             <description>NPipeline-internal state management and special keys (state manager, registry, test data)</description>
-///         </item>
-///         <item>
-///             <term>
-///                 <c>retry::</c>
-///             </term>
-///             <description>Per-node retry configuration (format: "retry::{nodeId}")</description>
-///         </item>
-///         <item>
-///             <term>
-///                 <c>execopt::</c>
-///             </term>
-///             <description>Per-node execution strategy options (format: "execopt::{nodeId}")</description>
+///             <description>NPipeline-internal data (testing source data)</description>
 ///         </item>
 ///         <item>
 ///             <term>
@@ -99,11 +57,11 @@ namespace NPipeline.Pipeline;
 ///     </para>
 ///     <example>
 ///         <code>
-///         // Safe: Using NPipeline constants
+///         // Safe: Using strongly-typed PipelineContext properties
 ///         var context = PipelineContext.Default;
 ///         var retryOptions = context.GlobalRetryOptions;
 /// 
-///         Safe: User-defined key with clear naming
+///         // Safe: User-defined key with clear naming
 ///         context.Items["MyApp.CustomSetting"] = "value";
 /// 
 ///         // Unsafe: Using reserved prefix - may conflict
@@ -113,93 +71,9 @@ namespace NPipeline.Pipeline;
 /// </remarks>
 public static class PipelineContextKeys
 {
-    // ===== EXECUTION MODE =====
-    /// <summary>Indicates parallel execution mode (value: bool)</summary>
-    /// <remarks>Set to true when using parallel execution strategy to signal downstream components about execution model.</remarks>
-    public const string ParallelExecution = "parallel.execution";
-
-    // ===== CONFIGURATION =====
-    /// <summary>Pre-configured node instances (value: Dictionary&lt;string, INode&gt;)</summary>
-    /// <remarks>Used to inject pre-built node instances into the pipeline, typically for testing or advanced scenarios.</remarks>
-    public const string PreconfiguredNodes = "nodes.preconfigured";
-
-    /// <summary>Indicates DI container owns node lifecycle (value: bool)</summary>
-    /// <remarks>When true, the pipeline will not dispose node instances as the DI container owns their lifetime.</remarks>
-    public const string DiOwnedNodes = "nodes.owned.by.di";
-
-    // ===== RETRY & RESILIENCE =====
-    /// <summary>Global retry options (value: PipelineRetryOptions)</summary>
-    /// <remarks>Surface-level retry configuration that applies to all nodes unless overridden per-node.</remarks>
-    public const string GlobalRetryOptions = "resilience.retry.global.options";
-
-    /// <summary>Circuit breaker options (value: PipelineCircuitBreakerOptions)</summary>
-    /// <remarks>Circuit breaker configuration for resilient execution patterns.</remarks>
-    public const string CircuitBreakerOptions = "resilience.circuit.breaker.options";
-
-    /// <summary>Circuit breaker memory management options (value: CircuitBreakerMemoryManagementOptions)</summary>
-    /// <remarks>Advanced cleanup tuning for circuit breaker manager lifecycle.</remarks>
-    public const string CircuitBreakerMemoryOptions = "resilience.circuit.breaker.memory.options";
-
-    /// <summary>Circuit breaker manager (value: ICircuitBreakerManager)</summary>
-    /// <remarks>Circuit breaker manager for creating and managing circuit breaker instances.</remarks>
-    public const string CircuitBreakerManager = "resilience.circuit.breaker.manager";
-
-    // ===== STATISTICS & METRICS =====
-    /// <summary>Pipeline start time UTC (value: DateTime)</summary>
-    /// <remarks>Records when the pipeline execution started for metrics and diagnostics.</remarks>
-    public const string PipelineStartTimeUtc = "stats.pipeline.start.time.utc";
-
-    /// <summary>Total processed items counter (value: StatsCounter)</summary>
-    /// <remarks>Accumulates statistics about items processed throughout the pipeline execution.</remarks>
-    public const string TotalProcessedItems = "stats.processed.items.total";
-
-    /// <summary>Last retry exhausted exception (value: RetryExhaustedException)</summary>
-    /// <remarks>Stores the last exception when retry attempts have been exhausted for debugging and error handling.</remarks>
-    public const string LastRetryExhaustedException = "diagnostics.retry.exhausted.exception";
-
     /// <summary>Parent context for testing - format: "testing.parentContext" (value: PipelineContext)</summary>
     /// <remarks>Used by testing extensions to reference the parent pipeline context in nested scenarios.</remarks>
     public const string TestingParentContext = "testing.parentContext";
-
-    // ===== LINEAGE =====
-    /// <summary>Item-level lineage sink (value: ILineageSink)</summary>
-    /// <remarks>Stores the lineage sink instance for tracking item-level lineage during execution.</remarks>
-    public const string LineageSink = "lineage.item.sink";
-
-    /// <summary>Pipeline-level lineage sink (value: IPipelineLineageSink)</summary>
-    /// <remarks>Stores the pipeline-level lineage sink instance for tracking overall pipeline lineage.</remarks>
-    public const string PipelineLineageSink = "lineage.pipeline.sink";
-
-    // ===== STATE =====
-    /// <summary>State manager instance (value: IPipelineStateManager)</summary>
-    /// <remarks>Provides access to the pipeline state manager for tracking and managing pipeline state.</remarks>
-    public const string StateManager = "NPipeline.StateManager";
-
-    /// <summary>Stateful registry instance (value: IStatefulRegistry)</summary>
-    /// <remarks>Registry for stateful components and their state management requirements.</remarks>
-    public const string StatefulRegistry = "NPipeline.State.StatefulRegistry";
-
-    // ===== PER-NODE OPTIONS & METRICS =====
-    /// <summary>Per-node retry options - format: "retry::{nodeId}" (value: PipelineRetryOptions)</summary>
-    /// <remarks>Allows configuring retry behavior on a per-node basis, overriding global settings.</remarks>
-    public static string NodeRetryOptions(string nodeId)
-    {
-        return $"retry::{nodeId}";
-    }
-
-    /// <summary>Per-node execution options - format: "execopt::{nodeId}" (value: varies by strategy)</summary>
-    /// <remarks>Stores execution strategy-specific options for individual nodes (e.g., ParallelOptions).</remarks>
-    public static string NodeExecutionOptions(string nodeId)
-    {
-        return $"execopt::{nodeId}";
-    }
-
-    /// <summary>Per-node observability scope - format: "observability.scope::{nodeId}" (value: IAutoObservabilityScope)</summary>
-    /// <remarks>Stores the observability scope for a node to track item counts during execution.</remarks>
-    public static string NodeObservabilityScope(string nodeId)
-    {
-        return $"observability.scope::{nodeId}";
-    }
 
     // ===== PARALLEL EXECUTION METRICS =====
     /// <summary>Parallel execution metrics - format: "parallel.metrics::{nodeId}" (value: ParallelExecutionMetrics)</summary>

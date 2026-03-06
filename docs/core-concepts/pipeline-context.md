@@ -168,23 +168,60 @@ NPipeline will automatically detect if your node implements `IContextAwareNode` 
 
 The [`PipelineContext`](src/NPipeline/PipelineContext.cs) includes properties and methods for:
 
+### Data and Configuration Properties
+
 * **`CancellationToken`**: A token that signals if the pipeline execution has been requested to stop. Nodes should monitor this token and cease operations if cancellation is requested.
 * **`Parameters`**: A dictionary to hold any runtime parameters for the pipeline. These are typically set during pipeline initialization and remain constant throughout execution.
-* **`Items`**: A dictionary for sharing state between pipeline nodes. This is used for transient data that needs to be accessible by multiple nodes during execution.
-* **`Properties`**: A dictionary for storing properties that can be used by extensions and plugins. This provides a way to extend PipelineContext without modifying its core structure.
-* **`LoggerFactory`**: The logger factory for this pipeline run, providing consistent logging across all nodes.
-* **`Tracer`**: The tracer for this pipeline run, enabling distributed tracing.
+* **`Items`**: A dictionary for sharing user-defined state between pipeline nodes. This is used for transient data that needs to be accessible by multiple nodes during execution.
+* **`Properties`**: A dictionary for storing properties that can be used by extensions and plugins. Typically used by framework components rather than user code.
+
+### Retry and Execution Configuration
+
+* **`RetryOptions`**: Initial/default retry configuration for this pipeline run. Values here override builder defaults when provided.
+* **`GlobalRetryOptions`**: The effective global retry options for the current pipeline run. This is a strongly-typed alternative to accessing retry options through the `Items` dictionary.
+* **`NodeRetryOverrides`**: A dictionary for per-node retry option overrides, indexed by node ID.
+
+### Execution State and Management
+
+* **`ProcessedItemsCounter`**: A stats counter tracking processed items for the current pipeline run.
+* **`PipelineStartTimeUtc`**: The UTC timestamp when the pipeline execution started.
+* **`IsParallelExecution`**: Indicates whether the current run uses parallel execution behavior.
+* **`DiOwnedNodes`**: Indicates whether node lifetimes are owned externally (e.g., by a DI container).
+* **`CurrentNodeId`**: The ID of the node currently being executed. This is automatically managed by the pipeline runner.
+
+### Circuit Breaker Configuration
+
+* **`CircuitBreakerOptions`**: Circuit-breaker options for the current pipeline run, if configured.
+* **`CircuitBreakerMemoryOptions`**: Circuit-breaker memory management options for the current run.
+
+### Error Handling and Diagnostics
+
+* **`LastRetryExhaustedException`**: The last retry-exhausted exception observed in the pipeline, if any.
 * **`PipelineErrorHandler`**: The error handler for the entire pipeline.
 * **`DeadLetterSink`**: The sink for items that have failed processing and have been redirected.
 * **`ErrorHandlerFactory`**: The factory for creating error handlers and dead-letter sinks.
-* **`LineageFactory`**: The factory for creating lineage sinks and resolving lineage collectors.
-* **`ObservabilityFactory`**: The factory for resolving observability collectors.
-* **`RetryOptions`**: Execution / retry configuration for this pipeline run. Values here override builder defaults when provided.
-* **`CurrentNodeId`**: The ID of the node currently being executed. This is automatically managed by the pipeline runner.
+
+### Observability and Lineage
+
 * **`ExecutionObserver`**: Optional execution observer for instrumentation (node lifecycle, retries, queue/backpressure events).
-* **`StateManager`**: Gets the state manager for this pipeline run, if available. This is accessed through the Properties dictionary.
-* **`StatefulRegistry`**: Gets the stateful registry for this pipeline run, if available. This is accessed through the Properties dictionary.
-* **Logging/Metrics Interfaces**: References to logging or metrics services (e.g., `ILogger`, `IMetricsRecorder`) that nodes can use to report events or data.
+* **`LoggerFactory`**: The logger factory for this pipeline run, providing consistent logging across all nodes.
+* **`Tracer`**: The tracer for this pipeline run, enabling distributed tracing.
+* **`ObservabilityFactory`**: The factory for resolving observability collectors.
+* **`LineageFactory`**: The factory for creating lineage sinks and resolving lineage collectors.
+* **`LineageSink`**: Item-level lineage sink resolved for the current pipeline run.
+* **`PipelineLineageSink`**: Pipeline-level lineage sink resolved for the current pipeline run.
+
+### State Management
+
+* **`StateManager`**: Gets the state manager for this pipeline run, if available. Provides thread-safe state persistence and recovery capabilities. Strongly preferred over direct context mutation for shared state in parallel scenarios.
+* **`StatefulRegistry`**: Gets the stateful registry for this pipeline run, if available. Accesses registered stateful services.
+
+### Node Annotations and Metadata
+
+* **`NodeExecutionAnnotations`**: A dictionary for per-node execution annotations indexed by node ID (for example, strategy-specific options).
+* **`NodeObservabilityScopes`**: A dictionary for per-node observability scopes indexed by node ID.
+* **`RuntimeAnnotations`**: A dictionary for framework-managed runtime annotations and diagnostics.
+* **`PreconfiguredNodeInstances`**: Optional preconfigured node instances to seed graph construction, indexed by node ID.
 
 ## State Management Capabilities
 

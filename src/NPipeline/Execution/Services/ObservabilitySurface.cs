@@ -137,8 +137,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         // Store the scope in context so execution strategies can access it to track item counts
         if (autoObservabilityScope != null)
         {
-            var contextKey = PipelineContextKeys.NodeObservabilityScope(nodeDef.Id);
-            ObservabilitySurfaceLogMessages.AutoObservabilityScopeStored(logger, contextKey);
+            ObservabilitySurfaceLogMessages.AutoObservabilityScopeStored(logger, nodeDef.Id);
             context.NodeObservabilityScopes[nodeDef.Id] = autoObservabilityScope;
         }
 

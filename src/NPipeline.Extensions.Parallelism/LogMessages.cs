@@ -21,9 +21,6 @@ internal static partial class ParallelExecutionStrategyLogMessages
     [LoggerMessage(4, LogLevel.Debug, "Node {NodeId}, Using global retry options: MaxItemRetries={MaxRetries}")]
     public static partial void GlobalRetryOptionsUsed(ILogger logger, string nodeId, int maxRetries);
 
-    [LoggerMessage(5, LogLevel.Debug, "Node {NodeId}, Using context retry options: MaxItemRetries={MaxRetries}")]
-    public static partial void ContextRetryOptionsUsed(ILogger logger, string nodeId, int maxRetries);
-
     [LoggerMessage(6, LogLevel.Debug, "Node {NodeId} failed on attempt {Attempt}.")]
     public static partial void NodeFailure(ILogger logger, Exception exception, string nodeId, int attempt);
 }

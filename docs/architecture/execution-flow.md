@@ -237,7 +237,7 @@ When using `CachedNodeExecutionContext` (which all execution strategies do autom
 
 During the execution of a single node (from start to completion of all items), these context properties must not change:
 
-- **Retry Options** - Changes to `context.Items[PipelineContextKeys.NodeRetryOptions(...)]` or global retry options
+- **Retry Options** - Changes to `context.NodeRetryOverrides[...]` or `context.GlobalRetryOptions`
 - **Tracer Instance** - Replacing `context.Tracer`
 - **Logger Factory Instance** - Replacing `context.LoggerFactory`
 - **Cancellation Token** - Replacing `context.CancellationToken`
@@ -256,14 +256,14 @@ Context state can be modified **between node executions**, such as:
 
 ```csharp
 // ✅ Safe: Modify context before node execution starts
-context.Items[PipelineContextKeys.NodeRetryOptions(nodeId)] = newRetryOptions;
+context.NodeRetryOverrides[nodeId] = newRetryOptions;
 var result = await nodeExecutor.ExecuteAsync(node, item, context);
 
 // ❌ Don't: Modify context during node execution
 public async Task<TOut> ExecuteAsync(TIn item, PipelineContext context, CancellationToken ct)
 {
     // Don't do this - it may be cached and ignored!
-    context.Items[PipelineContextKeys.NodeRetryOptions(this.NodeId)] = newRetryOptions;
+    context.NodeRetryOverrides[this.NodeId] = newRetryOptions;
     // ... rest of node execution
 }
 ```

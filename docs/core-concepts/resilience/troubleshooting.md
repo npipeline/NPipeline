@@ -348,14 +348,12 @@ public class CircuitBreakerMonitor : IExecutionObserver
     }
 }
 
-// 2. Check circuit breaker statistics
-if (context.Items.TryGetValue(PipelineContextKeys.CircuitBreakerManager, out var managerObj) &&
-    managerObj is ICircuitBreakerManager manager)
+// 2. Monitor circuit breaker options configured for the pipeline
+var circuitBreakerOptions = context.CircuitBreakerOptions;
+if (circuitBreakerOptions != null)
 {
-    var circuitBreaker = manager.GetCircuitBreaker(nodeId, circuitBreakerOptions);
-    var stats = circuitBreaker.GetStatistics();
-    Console.WriteLine($"Circuit breaker stats: {stats.TotalOperations} total, " +
-                     $"{stats.FailureCount} failures, {stats.FailureRate:P2} failure rate");
+    Console.WriteLine($"Circuit breaker enabled: FailureThreshold={circuitBreakerOptions.FailureThreshold}, " +
+                     $"Timeout={circuitBreakerOptions.Timeout}");
 }
 
 // 3. Analyze failure patterns

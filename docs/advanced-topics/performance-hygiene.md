@@ -297,7 +297,7 @@ NPipeline uses `CachedNodeExecutionContext` to optimize per-item context access 
 public async Task<TOut> ExecuteAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
 {
     // ❌ WRONG: Context state is cached at node start; this modification may be ignored
-    context.Items[PipelineContextKeys.NodeRetryOptions(context.CurrentNodeId)] = newRetryOptions;
+    context.NodeRetryOverrides[context.CurrentNodeId] = newRetryOptions;
     
     // Proceed with transform
     var result = TransformItem(item);
@@ -325,7 +325,7 @@ public async Task<TOut> ExecuteAsync(TIn item, PipelineContext context, Cancella
 ```csharp
 // Configure everything upfront
 var context = new PipelineContext();
-context.Items[PipelineContextKeys.GlobalRetryOptions] = new PipelineRetryOptions(3, 2, 5);
+context.GlobalRetryOptions = new PipelineRetryOptions(3, 2, 5);
 context.LoggerFactory = new MyLoggerFactory();
 context.Tracer = new MyTracer();
 
@@ -341,7 +341,7 @@ await runner.RunAsync<MyPipeline>(context);
 await runner.RunAsync<MyPipeline>(contextA);
 
 // Modify context for next run
-contextB.Items[PipelineContextKeys.GlobalRetryOptions] = newOptions;
+contextB.GlobalRetryOptions = newOptions;
 
 // Pipeline 2 with configuration B
 await runner.RunAsync<MyPipeline>(contextB);

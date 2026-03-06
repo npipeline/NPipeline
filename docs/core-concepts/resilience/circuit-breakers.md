@@ -103,15 +103,15 @@ public sealed class CircuitBreakerOpenException : PipelineException
 
 ### Configuration Parameters
 
-* **`FailureThreshold`**: The threshold value used for circuit breaking (interpretation depends on ThresholdType).
-* **`OpenDuration`**: How long the breaker remains open before transitioning to Half-Open state.
-* **`SamplingWindow`**: Time window for rolling window failure tracking.
-* **`Enabled`**: Whether the circuit breaker is active.
-* **`ThresholdType`**: Type of failure threshold to use (ConsecutiveFailures, RollingWindowCount, RollingWindowRate, Hybrid).
-* **`FailureRateThreshold`**: Failure rate threshold (0.0-1.0) when using RollingWindowRate or Hybrid threshold types.
-* **`HalfOpenSuccessThreshold`**: Number of consecutive successes required in Half-Open state to transition to Closed.
-* **`HalfOpenMaxAttempts`**: Maximum number of operation attempts allowed in Half-Open state.
-* **`TrackOperationsInWindow`**: Whether to track operations in the rolling window for statistics.
+- **`FailureThreshold`**: The threshold value used for circuit breaking (interpretation depends on ThresholdType).
+- **`OpenDuration`**: How long the breaker remains open before transitioning to Half-Open state.
+- **`SamplingWindow`**: Time window for rolling window failure tracking.
+- **`Enabled`**: Whether the circuit breaker is active.
+- **`ThresholdType`**: Type of failure threshold to use (ConsecutiveFailures, RollingWindowCount, RollingWindowRate, Hybrid).
+- **`FailureRateThreshold`**: Failure rate threshold (0.0-1.0) when using RollingWindowRate or Hybrid threshold types.
+- **`HalfOpenSuccessThreshold`**: Number of consecutive successes required in Half-Open state to transition to Closed.
+- **`HalfOpenMaxAttempts`**: Maximum number of operation attempts allowed in Half-Open state.
+- **`TrackOperationsInWindow`**: Whether to track operations in the rolling window for statistics.
 
 ## Circuit Breaker State Machine
 
@@ -278,6 +278,7 @@ var options = new PipelineCircuitBreakerOptions(
 ```
 
 **State transitions:**
+
 - **Closed → Open**: Failure threshold exceeded
 - **Open → Half-Open**: After `OpenDuration` expires
 - **Half-Open → Closed**: After `HalfOpenSuccessThreshold` consecutive successes
@@ -445,6 +446,7 @@ The `CleanupTimeout` property controls the timeout for circuit breaker cleanup o
 - **Behavior**: If cleanup operations exceed this timeout, they are aborted to prevent system hangs
 
 When to adjust CleanupTimeout:
+
 - **Increase** (e.g., 60 seconds) for:
   - Systems with very large numbers of circuit breakers (>1000)
   - Environments with slow I/O or high contention
@@ -531,14 +533,8 @@ builder.ConfigureCircuitBreakerMemoryManagement(opts =>
     }
 );
 
-// Later, manually trigger cleanup when appropriate
-// (Requires access to CircuitBreakerManager from pipeline context)
-if (context.Items.TryGetValue(PipelineContextKeys.CircuitBreakerManager, out var manager) &&
-    manager is ICircuitBreakerManager cbManager)
-{
-    int removedCount = cbManager.TriggerCleanup();
-    logger.LogInformation("Cleaned up {Count} inactive circuit breakers", removedCount);
-}
+// Manual cleanup is not available in the public API
+// Configure memory management options before pipeline execution instead
 ```
 
 #### Scenario 4: Aggressive Memory Management
@@ -567,18 +563,6 @@ When cleanup runs, NPipeline:
 4. **Logs activity**: Records cleanup events at DEBUG/WARNING levels
 
 ### Monitoring Cleanup
-
-Track circuit breaker lifecycle in your observability infrastructure:
-
-```csharp
-// Get current tracking count
-if (context.Items.TryGetValue(PipelineContextKeys.CircuitBreakerManager, out var manager) &&
-    manager is ICircuitBreakerManager cbManager)
-{
-    int trackedCount = cbManager.GetTrackedCircuitBreakerCount();
-    metrics.Gauge("circuitbreaker.tracked_count", trackedCount);
-}
-```
 
 ### Performance Impact
 
@@ -716,13 +700,13 @@ For more troubleshooting help, see the [Troubleshooting guide](../resilience/tro
 
 ## Best Practices
 
-1. **Choose the right threshold type**: 
+1. **Choose the right threshold type**:
    - Use `ConsecutiveFailures` for simple scenarios
    - Use `RollingWindowCount` for high-volume operations
    - Use `RollingWindowRate` for rate-sensitive scenarios
    - Use `Hybrid` for comprehensive protection
 
-2. **Set appropriate sampling windows**: 
+2. **Set appropriate sampling windows**:
    - Shorter windows (1-5 minutes) for quick detection
    - Longer windows (10-30 minutes) for stability in volatile environments
 
@@ -742,8 +726,8 @@ For more troubleshooting help, see the [Troubleshooting guide](../resilience/tro
 
 ## See Also
 
-* **[Resilience Overview](./index.md)**: Comprehensive guide to building fault-tolerant pipelines
-* **[Error Handling](./error-handling.md)**: Learn about handling errors at node and pipeline levels
-* **[Retries](./retries.md)**: Configure retry behavior for items and node restarts
-* **[Dead-Letter Queues](./dead-letter-queues.md)**: Implement dead-letter queues for problematic items
-* **[Troubleshooting](./troubleshooting.md)**: Diagnose and resolve common resilience issues
+- **[Resilience Overview](./index.md)**: Comprehensive guide to building fault-tolerant pipelines
+- **[Error Handling](./error-handling.md)**: Learn about handling errors at node and pipeline levels
+- **[Retries](./retries.md)**: Configure retry behavior for items and node restarts
+- **[Dead-Letter Queues](./dead-letter-queues.md)**: Implement dead-letter queues for problematic items
+- **[Troubleshooting](./troubleshooting.md)**: Diagnose and resolve common resilience issues
