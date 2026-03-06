@@ -135,7 +135,7 @@ public sealed class PipelineRunner(
         {
             var pipeline = pipelineFactory.Create<TDefinition>(context);
             graph = pipeline.Graph;
-            nodeOutputs.EnsureCapacity(graph.Nodes.Count);
+            nodeOutputs.EnsureCapacity(graph.Nodes.Length);
 
             await VisualizeIfConfiguredAsync(graph, cancellationToken).ConfigureAwait(false);
             ApplyRetryOptions(graph, context);

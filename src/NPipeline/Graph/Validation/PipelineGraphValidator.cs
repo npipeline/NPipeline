@@ -148,7 +148,7 @@ public static class PipelineGraphValidator
             var incoming = context.Incoming;
             var nodeMap = g.Nodes.ToDictionary(n => n.Id);
 
-            if (g.Edges.Count == 0 && g.Nodes.Count > 0)
+            if (g.Edges.Length == 0 && g.Nodes.Length > 0)
             {
                 var hasSource = g.Nodes.Any(n => IsSourceNode(n.NodeType));
 
@@ -161,7 +161,7 @@ public static class PipelineGraphValidator
                 yield break;
             }
 
-            if (g.Edges.Count > 0)
+            if (g.Edges.Length > 0)
             {
                 var sourceCandidates = g.Nodes.Where(n => !incoming.ContainsKey(n.Id)).ToList();
 
@@ -213,7 +213,7 @@ public static class PipelineGraphValidator
 
                 var isolated = g.Nodes.Where(n => !incoming.ContainsKey(n.Id) && !outgoing.ContainsKey(n.Id)).ToList();
 
-                if (isolated.Count > 0 && g.Nodes.Count > 1)
+                if (isolated.Count > 0 && g.Nodes.Length > 1)
                 {
                     var details = string.Join(", ", isolated.Select(n => $"{n.Id} ('{n.Name}', {n.NodeType.Name})"));
                     yield return new ValidationIssue(ValidationSeverity.Error, $"Isolated nodes (no edges): {details}", "Reachability");
@@ -290,7 +290,7 @@ public static class PipelineGraphValidator
 
         public IEnumerable<ValidationIssue> Evaluate(GraphValidationContext context)
         {
-            if (context.Graph.Nodes.Count == 0)
+            if (context.Graph.Nodes.Length == 0)
                 yield break;
 
             // A sink is a node with no outgoing edges and kind Sink.

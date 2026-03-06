@@ -24,7 +24,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
     /// <inheritdoc />
     public Dictionary<string, INode> InstantiateNodes(PipelineGraph graph, INodeFactory nodeFactory)
     {
-        var nodeInstances = PipelineObjectPool.RentNodeDictionary(graph.Nodes.Count);
+        var nodeInstances = PipelineObjectPool.RentNodeDictionary(graph.Nodes.Length);
 
         try
         {
