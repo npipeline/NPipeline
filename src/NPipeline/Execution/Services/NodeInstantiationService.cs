@@ -18,6 +18,8 @@ public sealed class NodeInstantiationService : INodeInstantiationService
 {
     private static readonly MethodInfo AdaptOutputPipeGenericMethod = typeof(NodeInstantiationService)
         .GetMethod(nameof(AdaptOutputPipe), BindingFlags.NonPublic | BindingFlags.Static)!;
+    private static readonly MethodInfo UpcastTaskGenericMethod = typeof(NodeInstantiationService)
+        .GetMethod(nameof(UpcastTask), BindingFlags.NonPublic | BindingFlags.Static)!;
 
     /// <inheritdoc />
     public Dictionary<string, INode> InstantiateNodes(PipelineGraph graph, INodeFactory nodeFactory)
@@ -139,36 +141,16 @@ public sealed class NodeInstantiationService : INodeInstantiationService
     {
         var inType = def.InputType ?? throw new InvalidOperationException($"Missing InputType for transform node '{def.Id}'.");
         var outType = def.OutputType ?? throw new InvalidOperationException($"Missing OutputType for transform node '{def.Id}'.");
-
         var strategy = def.ExecutionStrategy ?? transformNode.ExecutionStrategy;
-        var execMethod = typeof(IExecutionStrategy).GetMethod(nameof(IExecutionStrategy.ExecuteAsync))!;
-        var closedExec = execMethod.MakeGenericMethod(inType, outType);
 
-        // Parameters for delegate
-        var pipeParam = Expression.Parameter(typeof(IDataPipe), "pipe");
-        var ctxParam = Expression.Parameter(typeof(PipelineContext), "ctx");
-        var ctParam = Expression.Parameter(typeof(CancellationToken), "ct");
-
-        // Casts
-        var typedInputInterface = typeof(IDataPipe<>).MakeGenericType(inType);
-        var castInput = Expression.Convert(pipeParam, typedInputInterface);
-        var typedNodeInterface = typeof(ITransformNode<,>).MakeGenericType(inType, outType);
-        var nodeConst = Expression.Constant(transformNode);
-        var castNode = Expression.Convert(nodeConst, typedNodeInterface);
-        var strategyConst = Expression.Constant(strategy);
-
-        var call = Expression.Call(strategyConst, closedExec, castInput, castNode, ctxParam, ctParam); // Task<IDataPipe<TOut>>
-
-        var upcastMethod = typeof(NodeInstantiationService)
-            .GetMethod("UpcastTask", BindingFlags.NonPublic | BindingFlags.Static)!
-            .MakeGenericMethod(outType);
-
-        var upcastCall = Expression.Call(upcastMethod, call); // Task<IDataPipe>
-
-        var lambda = Expression.Lambda<Func<IDataPipe, PipelineContext, CancellationToken, Task<IDataPipe>>>(upcastCall, pipeParam, ctxParam,
-            ctParam);
-
-        return lambda.Compile();
+        return BuildStrategyDelegate(
+            inType,
+            outType,
+            strategy,
+            typeof(IExecutionStrategy),
+            nameof(IExecutionStrategy.ExecuteAsync),
+            transformNode,
+            typeof(ITransformNode<,>));
     }
 
     private static Func<IDataPipe, PipelineContext, CancellationToken, Task<IDataPipe>> BuildStreamTransformDelegate(
@@ -185,67 +167,58 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         {
             // Use the original IExecutionStrategy for ITransformNode compatibility
             var strategy = def.ExecutionStrategy ?? streamTransformNode.ExecutionStrategy;
-            var execMethod = typeof(IExecutionStrategy).GetMethod(nameof(IExecutionStrategy.ExecuteAsync))!;
-            var closedExec = execMethod.MakeGenericMethod(inType, outType);
-
-            // Parameters for delegate
-            var pipeParam = Expression.Parameter(typeof(IDataPipe), "pipe");
-            var ctxParam = Expression.Parameter(typeof(PipelineContext), "ctx");
-            var ctParam = Expression.Parameter(typeof(CancellationToken), "ct");
-
-            // Casts
-            var typedInputInterface = typeof(IDataPipe<>).MakeGenericType(inType);
-            var castInput = Expression.Convert(pipeParam, typedInputInterface);
-            var typedNodeInterface = typeof(ITransformNode<,>).MakeGenericType(inType, outType);
-            var nodeConst = Expression.Constant(streamTransformNode);
-            var castNode = Expression.Convert(nodeConst, typedNodeInterface);
-            var strategyConst = Expression.Constant(strategy);
-
-            var call = Expression.Call(strategyConst, closedExec, castInput, castNode, ctxParam, ctParam); // Task<IDataPipe<TOut>>
-
-            var upcastMethod = typeof(NodeInstantiationService)
-                .GetMethod("UpcastTask", BindingFlags.NonPublic | BindingFlags.Static)!
-                .MakeGenericMethod(outType);
-
-            var upcastCall = Expression.Call(upcastMethod, call); // Task<IDataPipe>
-
-            var lambda = Expression.Lambda<Func<IDataPipe, PipelineContext, CancellationToken, Task<IDataPipe>>>(upcastCall, pipeParam, ctxParam,
-                ctParam);
-
-            return lambda.Compile();
+            return BuildStrategyDelegate(
+                inType,
+                outType,
+                strategy,
+                typeof(IExecutionStrategy),
+                nameof(IExecutionStrategy.ExecuteAsync),
+                streamTransformNode,
+                typeof(ITransformNode<,>));
         }
-        else
-        {
-            // Use the stream execution strategy
-            var execMethod = typeof(IStreamExecutionStrategy).GetMethod(nameof(IStreamExecutionStrategy.ExecuteAsync))!;
-            var closedExec = execMethod.MakeGenericMethod(inType, outType);
 
-            // Parameters for delegate
-            var pipeParam = Expression.Parameter(typeof(IDataPipe), "pipe");
-            var ctxParam = Expression.Parameter(typeof(PipelineContext), "ctx");
-            var ctParam = Expression.Parameter(typeof(CancellationToken), "ct");
+        // Use the stream execution strategy when supported.
+        return BuildStrategyDelegate(
+            inType,
+            outType,
+            streamStrategy,
+            typeof(IStreamExecutionStrategy),
+            nameof(IStreamExecutionStrategy.ExecuteAsync),
+            streamTransformNode,
+            typeof(IStreamTransformNode<,>));
+    }
 
-            // Casts
-            var typedInputInterface = typeof(IDataPipe<>).MakeGenericType(inType);
-            var castInput = Expression.Convert(pipeParam, typedInputInterface);
-            var typedNodeInterface = typeof(IStreamTransformNode<,>).MakeGenericType(inType, outType);
-            var nodeConst = Expression.Constant(streamTransformNode);
-            var castNode = Expression.Convert(nodeConst, typedNodeInterface);
-            var strategyConst = Expression.Constant(streamStrategy);
+    private static Func<IDataPipe, PipelineContext, CancellationToken, Task<IDataPipe>> BuildStrategyDelegate(
+        Type inType,
+        Type outType,
+        object strategy,
+        Type strategyInterface,
+        string executeMethodName,
+        INode nodeInstance,
+        Type nodeInterfaceDefinition)
+    {
+        var execMethod = strategyInterface.GetMethod(executeMethodName) ??
+            throw new InvalidOperationException($"Could not find '{executeMethodName}' on {strategyInterface.Name}.");
+        var closedExec = execMethod.MakeGenericMethod(inType, outType);
 
-            var call = Expression.Call(strategyConst, closedExec, castInput, castNode, ctxParam, ctParam); // Task<IDataPipe<TOut>>
+        var pipeParam = Expression.Parameter(typeof(IDataPipe), "pipe");
+        var ctxParam = Expression.Parameter(typeof(PipelineContext), "ctx");
+        var ctParam = Expression.Parameter(typeof(CancellationToken), "ct");
 
-            var upcastMethod = typeof(NodeInstantiationService)
-                .GetMethod("UpcastTask", BindingFlags.NonPublic | BindingFlags.Static)!
-                .MakeGenericMethod(outType);
+        var typedInputInterface = typeof(IDataPipe<>).MakeGenericType(inType);
+        var castInput = Expression.Convert(pipeParam, typedInputInterface);
+        var typedNodeInterface = nodeInterfaceDefinition.MakeGenericType(inType, outType);
+        var castNode = Expression.Convert(Expression.Constant(nodeInstance), typedNodeInterface);
+        var strategyConst = Expression.Constant(strategy);
 
-            var upcastCall = Expression.Call(upcastMethod, call); // Task<IDataPipe>
+        var call = Expression.Call(strategyConst, closedExec, castInput, castNode, ctxParam, ctParam);
+        var upcastCall = Expression.Call(UpcastTaskGenericMethod.MakeGenericMethod(outType), call);
 
-            var lambda = Expression.Lambda<Func<IDataPipe, PipelineContext, CancellationToken, Task<IDataPipe>>>(upcastCall, pipeParam, ctxParam,
-                ctParam);
-
-            return lambda.Compile();
-        }
+        return Expression.Lambda<Func<IDataPipe, PipelineContext, CancellationToken, Task<IDataPipe>>>(
+            upcastCall,
+            pipeParam,
+            ctxParam,
+            ctParam).Compile();
     }
 
     // Helper used by expression tree to upcast Task<IDataPipe<T>> to Task<IDataPipe>
