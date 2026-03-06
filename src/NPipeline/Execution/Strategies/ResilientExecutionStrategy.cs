@@ -139,13 +139,6 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                 "Restart functionality is disabled for streaming inputs. Configure: builder.WithRetryOptions(o => o.WithMaxMaterializedItems(1000))");
         }
 
-        if (context.PipelineErrorHandler is null)
-        {
-            // If there is no graph-level error handler, there is no need for this resilience layer.
-            // We can just delegate directly to the inner strategy.
-            return await innerStrategy.ExecuteAsync(input, node, context, cancellationToken).ConfigureAwait(false);
-        }
-
         EnsureCircuitBreakerManagerIsAvailable(context);
 
         // If the input is a streaming pipe, we must materialize it to support restarts.

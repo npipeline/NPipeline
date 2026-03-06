@@ -38,7 +38,7 @@ internal sealed class ResilienceConfigurationRule : IGraphRule
 
         // Find all nodes using ResilientExecutionStrategy
         var nodesWithResilience = graph.Nodes
-            .Where(n => n.ExecutionConfig.ExecutionStrategy is ResilientExecutionStrategy)
+            .Where(n => n.ExecutionStrategy is ResilientExecutionStrategy)
             .ToList();
 
         if (nodesWithResilience.Count == 0)
