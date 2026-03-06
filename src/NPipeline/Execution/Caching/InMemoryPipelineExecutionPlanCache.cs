@@ -26,7 +26,8 @@ namespace NPipeline.Execution.Caching;
 public sealed class InMemoryPipelineExecutionPlanCache : IPipelineExecutionPlanCache
 {
     private const int MaxCacheSize = 100;
-    private readonly ConcurrentDictionary<string, (Dictionary<string, NodeExecutionPlan> Plans, long LastAccess)> _cache = new();
+    private readonly record struct CacheKey(string TypeName, string GraphHash);
+    private readonly ConcurrentDictionary<CacheKey, (Dictionary<string, NodeExecutionPlan> Plans, long LastAccess)> _cache = new();
     private readonly object _evictionLock = new();
 
     /// <inheritdoc />
@@ -99,7 +100,7 @@ public sealed class InMemoryPipelineExecutionPlanCache : IPipelineExecutionPlanC
     /// </summary>
     private void EvictOldestEntry()
     {
-        string? oldestKey = null;
+        CacheKey? oldestKey = null;
         var oldestTimestamp = long.MaxValue;
 
         // Find the entry with the oldest timestamp
@@ -113,8 +114,8 @@ public sealed class InMemoryPipelineExecutionPlanCache : IPipelineExecutionPlanC
         }
 
         // Remove the oldest entry
-        if (oldestKey is not null)
-            _cache.TryRemove(oldestKey, out _);
+        if (oldestKey is { } key)
+            _cache.TryRemove(key, out _);
     }
 
     /// <summary>
@@ -127,9 +128,6 @@ public sealed class InMemoryPipelineExecutionPlanCache : IPipelineExecutionPlanC
     ///     - Hash of edge connections
     ///     This ensures that structurally identical pipelines share cached plans.
     /// </remarks>
-    private static string GenerateCacheKey(Type pipelineDefinitionType, PipelineGraph graph)
-    {
-        // Use the pre-computed graph hash to avoid expensive recomputation on every cache lookup
-        return $"{pipelineDefinitionType.FullName ?? pipelineDefinitionType.Name}|{graph.GraphHash}";
-    }
+    private static CacheKey GenerateCacheKey(Type pipelineDefinitionType, PipelineGraph graph) =>
+        new(pipelineDefinitionType.FullName ?? pipelineDefinitionType.Name, graph.GraphHash);
 }
