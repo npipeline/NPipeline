@@ -1,5 +1,5 @@
-using System.Collections.Immutable;
 using System.Collections.Frozen;
+using System.Collections.Immutable;
 using AwesomeAssertions;
 using FakeItEasy;
 using NPipeline.Configuration;

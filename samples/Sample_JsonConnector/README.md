@@ -110,7 +110,8 @@ public class LegacyCustomer
 }
 ```
 
-**Why this matters:** Legacy systems often use abbreviated or non-standard property names. Attributes allow you to maintain clean, readable property names in your
+**Why this matters:** Legacy systems often use abbreviated or non-standard property names. Attributes allow you to maintain clean, readable property names in
+your
 code while mapping to the actual JSON properties.
 
 #### Use Case 2: Excluding Internal Fields
@@ -236,17 +237,18 @@ The mapper is automatically built using `JsonMapperBuilder<T>` based on the attr
 
 ### When to Use Attributes vs Custom Mappers
 
-| Scenario                         | Recommended Approach                                                                        |
-|----------------------------------|---------------------------------------------------------------------------------------------|
-| Simple JSON with standard properties | Convention-based (no attributes needed)                                                     |
-| JSON with non-standard properties    | `ColumnAttribute`                                                                            |
-| Need to exclude properties       | `IgnoreColumnAttribute`                                                                      |
-| Complex transformation logic     | Custom mapper function                                                                      |
-| Type conversion beyond defaults  | Custom mapper function                                                                      |
+| Scenario                             | Recommended Approach                    |
+|--------------------------------------|-----------------------------------------|
+| Simple JSON with standard properties | Convention-based (no attributes needed) |
+| JSON with non-standard properties    | `ColumnAttribute`                       |
+| Need to exclude properties           | `IgnoreColumnAttribute`                 |
+| Complex transformation logic         | Custom mapper function                  |
+| Type conversion beyond defaults      | Custom mapper function                  |
 
 ## Common Attributes
 
-NPipeline now supports **common attributes** that work across all connectors (CSV, Excel, PostgreSQL, JSON, etc.). This allows you to use the same attributes for
+NPipeline now supports **common attributes** that work across all connectors (CSV, Excel, PostgreSQL, JSON, etc.). This allows you to use the same attributes
+for
 different data sources, making your code more portable and maintainable.
 
 ### What Are Common Attributes?
@@ -543,8 +545,8 @@ The output contains only valid records with:
 
 The pipeline accepts the following parameters:
 
-| Parameter    | Description                 | Default Value                  |
-|--------------|-----------------------------|--------------------------------|
+| Parameter    | Description                  | Default Value                   |
+|--------------|------------------------------|---------------------------------|
 | `SourcePath` | Path to the input JSON file  | `Data/customers.json`           |
 | `TargetPath` | Path to the output JSON file | `Data/processed_customers.json` |
 
@@ -655,13 +657,13 @@ External dependencies:
 
 The JSON Connector sample is similar to the CSV Connector sample but demonstrates JSON-specific features:
 
-| Feature               | CSV Connector                | JSON Connector                  |
-|------------------------|------------------------------|---------------------------------|
-| File Format            | CSV (comma-separated values)   | JSON (Array or NDJSON)          |
-| Attribute Support       | `CsvColumn`, `CsvIgnore`      | `Column`, `IgnoreColumn`         |
-| Configuration          | `CsvConfiguration`             | `JsonConfiguration`              |
-| Format Options         | Delimiter, HasHeader, etc.     | Format, NamingPolicy, Indented   |
-| Nested Data            | Limited                       | Full support                     |
-| Data Types             | String-based with conversion     | Native JSON types                |
+| Feature           | CSV Connector                | JSON Connector                 |
+|-------------------|------------------------------|--------------------------------|
+| File Format       | CSV (comma-separated values) | JSON (Array or NDJSON)         |
+| Attribute Support | `CsvColumn`, `CsvIgnore`     | `Column`, `IgnoreColumn`       |
+| Configuration     | `CsvConfiguration`           | `JsonConfiguration`            |
+| Format Options    | Delimiter, HasHeader, etc.   | Format, NamingPolicy, Indented |
+| Nested Data       | Limited                      | Full support                   |
+| Data Types        | String-based with conversion | Native JSON types              |
 
 Both connectors share the same attribute system (`Column` and `IgnoreColumn`) for cross-connector compatibility.

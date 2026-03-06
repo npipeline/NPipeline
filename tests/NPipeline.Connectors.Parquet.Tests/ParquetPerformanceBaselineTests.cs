@@ -471,6 +471,7 @@ public sealed class ParquetPerformanceBaselineTests
     private static void CleanupFile(string path)
     {
         if (File.Exists(path))
+        {
             try
             {
                 File.Delete(path);
@@ -479,6 +480,7 @@ public sealed class ParquetPerformanceBaselineTests
             {
                 /* ignore */
             }
+        }
 
         var directory = Path.GetDirectoryName(path);
 

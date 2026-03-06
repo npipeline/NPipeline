@@ -12,7 +12,7 @@ public sealed class MySqlRow
     private readonly IDatabaseReader _reader;
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="MySqlRow"/> class.
+    ///     Initializes a new instance of the <see cref="MySqlRow" /> class.
     /// </summary>
     /// <param name="reader">The underlying data reader.</param>
     /// <param name="caseInsensitive">Whether to perform case-insensitive column lookups.</param>
@@ -26,7 +26,9 @@ public sealed class MySqlRow
             : StringComparer.Ordinal);
 
         for (var i = 0; i < reader.FieldCount; i++)
+        {
             _columnIndexes[reader.GetName(i)] = i;
+        }
     }
 
     /// <summary>
@@ -42,8 +44,12 @@ public sealed class MySqlRow
         get
         {
             var names = new string[_reader.FieldCount];
+
             for (var i = 0; i < _reader.FieldCount; i++)
+            {
                 names[i] = _reader.GetName(i);
+            }
+
             return names;
         }
     }
@@ -51,28 +57,39 @@ public sealed class MySqlRow
     /// <summary>
     ///     Gets the name of the column at the specified ordinal.
     /// </summary>
-    public string GetName(int ordinal) => _reader.GetName(ordinal);
+    public string GetName(int ordinal)
+    {
+        return _reader.GetName(ordinal);
+    }
 
     /// <summary>
     ///     Gets the data type of the column at the specified ordinal.
     /// </summary>
-    public Type GetFieldType(int ordinal) => _reader.GetFieldType(ordinal);
+    public Type GetFieldType(int ordinal)
+    {
+        return _reader.GetFieldType(ordinal);
+    }
 
     /// <summary>
     ///     Checks whether the row contains the specified column.
     /// </summary>
-    public bool HasColumn(string name) => TryGetOrdinal(name, out _);
-
-    /// <summary>
-    ///     Gets the value of the specified column as type <typeparamref name="T"/>.
-    /// </summary>
-    public T Get<T>(string name, T defaultValue = default!)
+    public bool HasColumn(string name)
     {
-        return TryGet(name, out var value, defaultValue) ? value! : defaultValue;
+        return TryGetOrdinal(name, out _);
     }
 
     /// <summary>
-    ///     Gets the value of the specified column ordinal as type <typeparamref name="T"/>.
+    ///     Gets the value of the specified column as type <typeparamref name="T" />.
+    /// </summary>
+    public T Get<T>(string name, T defaultValue = default!)
+    {
+        return TryGet(name, out var value, defaultValue)
+            ? value!
+            : defaultValue;
+    }
+
+    /// <summary>
+    ///     Gets the value of the specified column ordinal as type <typeparamref name="T" />.
     /// </summary>
     public T Get<T>(int ordinal)
     {
@@ -117,7 +134,9 @@ public sealed class MySqlRow
     /// </summary>
     public object? GetValue(string name)
     {
-        return TryGetOrdinal(name, out var ordinal) ? GetValue(ordinal) : null;
+        return TryGetOrdinal(name, out var ordinal)
+            ? GetValue(ordinal)
+            : null;
     }
 
     /// <summary>

@@ -33,7 +33,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Snowflake.Data" Version="5.4.1" />
+        <PackageReference Include="Snowflake.Data" Version="5.4.1"/>
     </ItemGroup>
 
     <ItemGroup>

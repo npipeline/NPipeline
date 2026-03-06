@@ -200,9 +200,11 @@ public sealed class CosmosRow
     {
         // Try dictionary-backed data first
         if (_rowData != null)
+        {
             return _rowData.TryGetValue(name, out var value)
                 ? value
                 : null;
+        }
 
         // Try JSON document
         if (_document.ValueKind != JsonValueKind.Undefined && _document.ValueKind != JsonValueKind.Null)

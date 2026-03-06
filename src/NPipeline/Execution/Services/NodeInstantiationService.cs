@@ -18,6 +18,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
 {
     private static readonly MethodInfo AdaptOutputPipeGenericMethod = typeof(NodeInstantiationService)
         .GetMethod(nameof(AdaptOutputPipe), BindingFlags.NonPublic | BindingFlags.Static)!;
+
     private static readonly MethodInfo UpcastTaskGenericMethod = typeof(NodeInstantiationService)
         .GetMethod(nameof(UpcastTask), BindingFlags.NonPublic | BindingFlags.Static)!;
 
@@ -167,6 +168,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         {
             // Use the original IExecutionStrategy for ITransformNode compatibility
             var strategy = def.ExecutionStrategy ?? streamTransformNode.ExecutionStrategy;
+
             return BuildStrategyDelegate(
                 inType,
                 outType,
@@ -198,7 +200,8 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         Type nodeInterfaceDefinition)
     {
         var execMethod = strategyInterface.GetMethod(executeMethodName) ??
-            throw new InvalidOperationException($"Could not find '{executeMethodName}' on {strategyInterface.Name}.");
+                         throw new InvalidOperationException($"Could not find '{executeMethodName}' on {strategyInterface.Name}.");
+
         var closedExec = execMethod.MakeGenericMethod(inType, outType);
 
         var pipeParam = Expression.Parameter(typeof(IDataPipe), "pipe");

@@ -28,7 +28,8 @@ public class MySqlCdcCheckpointHandler
         MySqlConfiguration? configuration = null)
     {
         _checkpointManager = checkpointManager
-            ?? throw new ArgumentNullException(nameof(checkpointManager));
+                             ?? throw new ArgumentNullException(nameof(checkpointManager));
+
         _configuration = configuration;
     }
 
@@ -40,7 +41,9 @@ public class MySqlCdcCheckpointHandler
     {
         var checkpoint = await _checkpointManager.LoadAsync(cancellationToken).ConfigureAwait(false);
 
-        return checkpoint is null ? null : DeserializePosition(checkpoint.Value);
+        return checkpoint is null
+            ? null
+            : DeserializePosition(checkpoint.Value);
     }
 
     /// <summary>
@@ -60,7 +63,9 @@ public class MySqlCdcCheckpointHandler
 
         var metadata = new Dictionary<string, string>
         {
-            ["mode"] = UseGtid(position) ? "gtid" : "binlog",
+            ["mode"] = UseGtid(position)
+                ? "gtid"
+                : "binlog",
             ["updated_at"] = DateTimeOffset.UtcNow.ToString("O"),
         };
 
@@ -100,24 +105,32 @@ public class MySqlCdcCheckpointHandler
     /// <summary>
     ///     Flushes the in-memory checkpoint to storage.
     /// </summary>
-    public Task SaveAsync(CancellationToken cancellationToken = default) =>
-        _checkpointManager.SaveAsync(cancellationToken);
+    public Task SaveAsync(CancellationToken cancellationToken = default)
+    {
+        return _checkpointManager.SaveAsync(cancellationToken);
+    }
 
     /// <summary>
     ///     Clears the checkpoint.
     /// </summary>
-    public Task ClearAsync(CancellationToken cancellationToken = default) =>
-        _checkpointManager.ClearAsync(cancellationToken);
+    public Task ClearAsync(CancellationToken cancellationToken = default)
+    {
+        return _checkpointManager.ClearAsync(cancellationToken);
+    }
 
     // -------------------------------------------------------------------------
 
-    private bool UseGtid(BinlogPosition position) =>
-        position.GtidSet is not null
-        || _configuration?.CdcMode == CdcMode.Gtid
-        || (_configuration?.PreferGtidWhenAvailable == true && position.GtidSet is not null);
+    private bool UseGtid(BinlogPosition position)
+    {
+        return position.GtidSet is not null
+               || _configuration?.CdcMode == CdcMode.Gtid
+               || (_configuration?.PreferGtidWhenAvailable == true && position.GtidSet is not null);
+    }
 
-    private static string SerializePosition(BinlogPosition position) =>
-        JsonSerializer.Serialize(position, JsonOptions);
+    private static string SerializePosition(BinlogPosition position)
+    {
+        return JsonSerializer.Serialize(position, JsonOptions);
+    }
 
     private static BinlogPosition? DeserializePosition(string value)
     {

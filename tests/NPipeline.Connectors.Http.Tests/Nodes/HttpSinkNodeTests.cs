@@ -13,6 +13,7 @@ namespace NPipeline.Connectors.Http.Tests.Nodes;
 public class HttpSinkNodeTests
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
     private static HttpClient CreateClient(MockHttpMessageHandler handler)
     {
         return new HttpClient(handler);

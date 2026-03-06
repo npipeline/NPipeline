@@ -18,7 +18,7 @@ public interface IMySqlConnectionPool : IAsyncDisposable
     ///     Gets a connection from the pool asynchronously.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>An open <see cref="MySqlConnection"/>.</returns>
+    /// <returns>An open <see cref="MySqlConnection" />.</returns>
     Task<MySqlConnection> GetConnectionAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -26,7 +26,7 @@ public interface IMySqlConnectionPool : IAsyncDisposable
     /// </summary>
     /// <param name="name">The connection name.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>An open <see cref="MySqlConnection"/>.</returns>
+    /// <returns>An open <see cref="MySqlConnection" />.</returns>
     Task<MySqlConnection> GetConnectionAsync(string name, CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -236,8 +236,12 @@ public sealed class CachedNodeExecutionContextTests
             return NullLogger.Instance;
         }
 
-        public void AddProvider(ILoggerProvider provider) { }
+        public void AddProvider(ILoggerProvider provider)
+        {
+        }
 
-        public void Dispose() { }
+        public void Dispose()
+        {
+        }
     }
 }

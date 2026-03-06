@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
@@ -10,6 +11,7 @@ using NPipeline.Connectors.MySql.Exceptions;
 using NPipeline.Connectors.MySql.Mapping;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
+using MySqlException = NPipeline.Connectors.MySql.Exceptions.MySqlException;
 
 namespace NPipeline.Connectors.MySql.Writers;
 
@@ -166,7 +168,7 @@ internal sealed class MySqlBulkLoadWriter<T> : IDatabaseWriter<T>
         if (value is null || value == DBNull.Value)
             return "\\N"; // MySQL NULL in LOAD DATA
 
-        var str = Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
+        var str = Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
         var escape = _configuration.EscapeCharacter;
         var fieldTerminator = _configuration.FieldTerminator;
         var lineTerminator = _configuration.LineTerminator;
@@ -182,7 +184,7 @@ internal sealed class MySqlBulkLoadWriter<T> : IDatabaseWriter<T>
         if (_connection is MySqlDatabaseConnection mysqlConn)
             return mysqlConn.UnderlyingConnection;
 
-        throw new Exceptions.MySqlException(
+        throw new MySqlException(
             $"Expected connection of type '{nameof(MySqlDatabaseConnection)}' but got '{_connection.GetType().Name}'. " +
             "BulkLoad operations require access to the underlying MySqlConnection.",
             null,
@@ -198,26 +200,32 @@ internal sealed class MySqlBulkLoadWriter<T> : IDatabaseWriter<T>
         var mapped = _parameterMapper(item)?.ToArray() ?? Array.Empty<DatabaseParameter>();
 
         if (mapped.Length != _mappings.Length)
+        {
             throw new InvalidOperationException(
                 $"Custom parameter mapper for '{typeof(T).Name}' must return exactly {_mappings.Length} values.");
+        }
 
         return mapped.Select(p => p.Value).ToArray();
     }
 
-    private static PropertyMapping[] BuildMappings() =>
-    [
-        .. typeof(T)
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.CanWrite && !IsIgnored(p) && !IsAutoIncrement(p))
-            .Select(p => new PropertyMapping(GetColumnName(p), BuildGetter(p))),
-    ];
+    private static PropertyMapping[] BuildMappings()
+    {
+        return
+        [
+            .. typeof(T)
+                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanWrite && !IsIgnored(p) && !IsAutoIncrement(p))
+                .Select(p => new PropertyMapping(GetColumnName(p), BuildGetter(p))),
+        ];
+    }
 
     private static bool IsIgnored(PropertyInfo property)
     {
         var col = property.GetCustomAttribute<ColumnAttribute>();
         var mysqlCol = property.GetCustomAttribute<MySqlColumnAttribute>();
+
         return col?.Ignore == true || mysqlCol?.Ignore == true
-               || property.IsDefined(typeof(IgnoreColumnAttribute), true);
+                                   || property.IsDefined(typeof(IgnoreColumnAttribute), true);
     }
 
     private static bool IsAutoIncrement(PropertyInfo property)
@@ -246,14 +254,20 @@ internal sealed class MySqlBulkLoadWriter<T> : IDatabaseWriter<T>
         return Expression.Lambda<Func<T, object?>>(body, param).Compile();
     }
 
-    private static Func<T, object?[]> BuildValueFactory(IReadOnlyList<PropertyMapping> mappings) =>
-        item =>
+    private static Func<T, object?[]> BuildValueFactory(IReadOnlyList<PropertyMapping> mappings)
+    {
+        return item =>
         {
             var values = new object?[mappings.Count];
+
             for (var i = 0; i < mappings.Count; i++)
+            {
                 values[i] = mappings[i].Getter(item);
+            }
+
             return values;
         };
+    }
 
     private sealed record PropertyMapping(string ColumnName, Func<T, object?> Getter);
 }

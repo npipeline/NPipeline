@@ -65,8 +65,6 @@ public sealed class PipelineContext
     private List<IAsyncDisposable>? _disposables;
     private bool _disposed;
     private IExecutionObserver _executionObserver = NullExecutionObserver.Instance;
-    private IPipelineStateManager? _stateManager;
-    private IStatefulRegistry? _statefulRegistry;
 
     /// <summary>
     ///     Creates a new <see cref="PipelineContext" /> with the specified configuration.
@@ -355,20 +353,12 @@ public sealed class PipelineContext
     /// <summary>
     ///     Gets the state manager for this pipeline run, if available.
     /// </summary>
-    public IPipelineStateManager? StateManager
-    {
-        get => _stateManager;
-        internal set => _stateManager = value;
-    }
+    public IPipelineStateManager? StateManager { get; internal set; }
 
     /// <summary>
     ///     Gets the stateful registry for this pipeline run, if available.
     /// </summary>
-    public IStatefulRegistry? StatefulRegistry
-    {
-        get => _statefulRegistry;
-        internal set => _statefulRegistry = value;
-    }
+    public IStatefulRegistry? StatefulRegistry { get; internal set; }
 
     /// <summary>
     ///     Registers an <see cref="IAsyncDisposable" /> resource to be disposed when the pipeline context is disposed.

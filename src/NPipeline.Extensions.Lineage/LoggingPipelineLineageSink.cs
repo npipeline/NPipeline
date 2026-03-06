@@ -9,9 +9,6 @@ namespace NPipeline.Lineage;
 /// </summary>
 public sealed class LoggingPipelineLineageSink : IPipelineLineageSink
 {
-    private readonly JsonSerializerOptions _jsonOptions;
-    private readonly ILogger _logger;
-
     // LoggerMessage delegates for high-performance logging
     private static readonly Action<ILogger, string, Guid, string, Exception?> s_logLineageReport =
         LoggerMessage.Define<string, Guid, string>(
@@ -24,6 +21,9 @@ public sealed class LoggingPipelineLineageSink : IPipelineLineageSink
             LogLevel.Information,
             new EventId(2, nameof(LoggingPipelineLineageSink)),
             "Pipeline lineage report for {Pipeline} (RunId: {RunId}) with {NodeCount} nodes and {EdgeCount} edges");
+
+    private readonly JsonSerializerOptions _jsonOptions;
+    private readonly ILogger _logger;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="LoggingPipelineLineageSink" /> class.
@@ -57,12 +57,12 @@ public sealed class LoggingPipelineLineageSink : IPipelineLineageSink
             var json = JsonSerializer.Serialize(report, _jsonOptions);
 
             using (_logger.BeginScope(new Dictionary<string, object?>
-            {
-                ["Pipeline"] = report.Pipeline,
-                ["RunId"] = report.RunId,
-                ["NodeCount"] = report.Nodes.Count,
-                ["EdgeCount"] = report.Edges.Count,
-            }))
+                   {
+                       ["Pipeline"] = report.Pipeline,
+                       ["RunId"] = report.RunId,
+                       ["NodeCount"] = report.Nodes.Count,
+                       ["EdgeCount"] = report.Edges.Count,
+                   }))
             {
                 s_logLineageReport(_logger, report.Pipeline, report.RunId, json, null);
             }

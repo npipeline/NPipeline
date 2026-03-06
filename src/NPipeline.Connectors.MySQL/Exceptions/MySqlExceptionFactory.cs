@@ -6,7 +6,7 @@ namespace NPipeline.Connectors.MySql.Exceptions;
 public static class MySqlExceptionFactory
 {
     /// <summary>
-    ///     Creates a <see cref="MySqlException"/> from a generic exception.
+    ///     Creates a <see cref="MySqlException" /> from a generic exception.
     /// </summary>
     public static MySqlException Create(string message, Exception? innerException = null)
     {
@@ -25,7 +25,7 @@ public static class MySqlExceptionFactory
     }
 
     /// <summary>
-    ///     Creates a transient <see cref="MySqlException"/> from a generic exception.
+    ///     Creates a transient <see cref="MySqlException" /> from a generic exception.
     /// </summary>
     public static MySqlException CreateTransient(string message, Exception? innerException = null)
     {
@@ -44,7 +44,7 @@ public static class MySqlExceptionFactory
     }
 
     /// <summary>
-    ///     Creates a <see cref="MySqlConnectionException"/> from a generic exception.
+    ///     Creates a <see cref="MySqlConnectionException" /> from a generic exception.
     /// </summary>
     public static MySqlConnectionException CreateConnection(string message, Exception? innerException = null)
     {
@@ -66,7 +66,7 @@ public static class MySqlExceptionFactory
     }
 
     /// <summary>
-    ///     Creates a <see cref="MySqlMappingException"/> from a generic exception.
+    ///     Creates a <see cref="MySqlMappingException" /> from a generic exception.
     /// </summary>
     public static MySqlMappingException CreateMapping(string message, Exception? innerException = null)
     {

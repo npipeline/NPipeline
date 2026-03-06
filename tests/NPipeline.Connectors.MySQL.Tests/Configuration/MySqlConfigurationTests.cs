@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using NPipeline.Connectors.Checkpointing;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.MySql.Configuration;
 

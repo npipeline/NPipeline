@@ -152,7 +152,7 @@ try
     var listUri = StorageUri.Parse("sftp://localhost/upload/");
     Console.WriteLine("  Files in /upload/:");
 
-    await foreach (var item in provider.ListAsync(listUri, false))
+    await foreach (var item in provider.ListAsync(listUri))
     {
         var type = item.IsDirectory
             ? "DIR "

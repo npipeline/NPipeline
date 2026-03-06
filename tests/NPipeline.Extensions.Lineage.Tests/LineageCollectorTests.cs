@@ -245,9 +245,7 @@ public class LineageCollectorTests
             var lineageId = new Guid(guidBytes);
 
             if (collector.ShouldCollectLineage(lineageId, options))
-            {
                 sampledCount++;
-            }
         }
 
         // Assert

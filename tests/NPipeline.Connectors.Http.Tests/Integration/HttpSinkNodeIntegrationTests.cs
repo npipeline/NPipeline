@@ -13,6 +13,7 @@ namespace NPipeline.Connectors.Http.Tests.Integration;
 public class HttpSinkNodeIntegrationTests(WireMockFixture fixture)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
     private static StreamingDataPipe<T> PipeOf<T>(params T[] items)
     {
         async IAsyncEnumerable<T> Generate()

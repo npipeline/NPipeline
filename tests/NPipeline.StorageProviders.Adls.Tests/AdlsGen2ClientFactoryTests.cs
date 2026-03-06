@@ -1,5 +1,5 @@
-using Azure.Storage.Files.DataLake;
 using AwesomeAssertions;
+using Azure.Storage.Files.DataLake;
 using NPipeline.StorageProviders.Models;
 using Xunit;
 

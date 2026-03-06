@@ -73,11 +73,11 @@ public class Product
 
 ## Write Strategies
 
-| Strategy | Class | Notes |
-|----------|-------|-------|
-| PerRow | `MySqlPerRowWriter` | One `INSERT` per row; simplest, lowest throughput |
-| Batch | `MySqlBatchWriter` | Multi-row `INSERT VALUES (…),(…)` |
-| BulkLoad | `MySqlBulkLoadWriter` | `LOAD DATA LOCAL INFILE` — highest throughput |
+| Strategy | Class                 | Notes                                             |
+|----------|-----------------------|---------------------------------------------------|
+| PerRow   | `MySqlPerRowWriter`   | One `INSERT` per row; simplest, lowest throughput |
+| Batch    | `MySqlBatchWriter`    | Multi-row `INSERT VALUES (…),(…)`                 |
+| BulkLoad | `MySqlBulkLoadWriter` | `LOAD DATA LOCAL INFILE` — highest throughput     |
 
 Configure via `MySqlConfiguration.WriteStrategy`:
 
@@ -121,33 +121,33 @@ var sink   = new MySqlSinkNode<Product>(uri, "products");
 
 ## Configuration Reference
 
-| Property | Default | Description |
-|----------|---------|-------------|
-| `ConnectionTimeout` | 30 s | TCP connect timeout |
-| `CommandTimeout` | 30 s | SQL execution timeout |
-| `MinPoolSize` | 1 | Minimum open connections in pool |
-| `MaxPoolSize` | 10 | Maximum open connections in pool |
-| `WriteStrategy` | `PerRow` | `PerRow`, `Batch`, `BulkLoad` |
-| `BatchSize` | 100 | Rows per batch (Batch strategy) |
-| `MaxRetryAttempts` | 3 | Retry count on transient errors |
-| `RetryDelay` | 2 s | Initial retry back-off |
-| `UseUpsert` | `false` | Enable upsert semantics |
-| `UpsertKeyColumns` | `[]` | Columns forming the upsert key |
-| `OnDuplicateKeyAction` | `Update` | `Update`, `Ignore`, `Replace` |
-| `AllowUserVariables` | `true` | Allow `@variable` syntax |
-| `ConvertZeroDateTime` | `true` | Map MySQL `0000-00-00` to `DateTime.MinValue` |
-| `AllowLoadLocalInfile` | `false` | Enable `LOAD DATA LOCAL INFILE` (BulkLoad) |
+| Property               | Default  | Description                                   |
+|------------------------|----------|-----------------------------------------------|
+| `ConnectionTimeout`    | 30 s     | TCP connect timeout                           |
+| `CommandTimeout`       | 30 s     | SQL execution timeout                         |
+| `MinPoolSize`          | 1        | Minimum open connections in pool              |
+| `MaxPoolSize`          | 10       | Maximum open connections in pool              |
+| `WriteStrategy`        | `PerRow` | `PerRow`, `Batch`, `BulkLoad`                 |
+| `BatchSize`            | 100      | Rows per batch (Batch strategy)               |
+| `MaxRetryAttempts`     | 3        | Retry count on transient errors               |
+| `RetryDelay`           | 2 s      | Initial retry back-off                        |
+| `UseUpsert`            | `false`  | Enable upsert semantics                       |
+| `UpsertKeyColumns`     | `[]`     | Columns forming the upsert key                |
+| `OnDuplicateKeyAction` | `Update` | `Update`, `Ignore`, `Replace`                 |
+| `AllowUserVariables`   | `true`   | Allow `@variable` syntax                      |
+| `ConvertZeroDateTime`  | `true`   | Map MySQL `0000-00-00` to `DateTime.MinValue` |
+| `AllowLoadLocalInfile` | `false`  | Enable `LOAD DATA LOCAL INFILE` (BulkLoad)    |
 
 ## Transient Error Handling
 
 The connector automatically retries on the following MySQL error codes:
 
-| Code | Description |
-|------|-------------|
-| 1040 | Too many connections |
-| 1205 | Lock wait timeout exceeded |
-| 1213 | Deadlock found |
-| 2006 | MySQL server has gone away |
+| Code | Description                     |
+|------|---------------------------------|
+| 1040 | Too many connections            |
+| 1205 | Lock wait timeout exceeded      |
+| 1213 | Deadlock found                  |
+| 2006 | MySQL server has gone away      |
 | 2013 | Lost connection to MySQL server |
 
 ## Checkpointing
@@ -177,7 +177,8 @@ var source = new MySqlSourceNode<Product>(
 
 ## MariaDB Support
 
-Both `mysql://` and `mariadb://` StorageUri schemes resolve to `MySqlDatabaseStorageProvider`. The `MySqlConnector` driver is fully compatible with MariaDB 10.5+.
+Both `mysql://` and `mariadb://` StorageUri schemes resolve to `MySqlDatabaseStorageProvider`. The `MySqlConnector` driver is fully compatible with MariaDB
+10.5+.
 
 ## License
 

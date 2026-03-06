@@ -278,8 +278,10 @@ public sealed class NodeExecutor(
     private static IDataPipe AdaptOutput(NodeExecutionPlan plan, IDataPipe output, Type expectedType, string streamName)
     {
         if (plan.AdaptOutput is null)
+        {
             throw new InvalidOperationException(
                 $"Node '{plan.NodeId}' returned output type '{output.GetDataType()}', expected '{expectedType}', but no adaptation delegate is available.");
+        }
 
         return plan.AdaptOutput(output, streamName);
     }
@@ -289,5 +291,4 @@ public sealed class NodeExecutor(
         context.ProcessedItemsCounter ??= new StatsCounter();
         return context.ProcessedItemsCounter;
     }
-
 }

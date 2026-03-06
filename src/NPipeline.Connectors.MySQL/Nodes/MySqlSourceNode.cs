@@ -4,10 +4,10 @@ using System.Reflection;
 using MySqlConnector;
 using NPipeline.Connectors.Attributes;
 using NPipeline.Connectors.Configuration;
-using NPipeline.Connectors.Nodes;
 using NPipeline.Connectors.MySql.Configuration;
 using NPipeline.Connectors.MySql.Connection;
 using NPipeline.Connectors.MySql.Mapping;
+using NPipeline.Connectors.Nodes;
 using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
@@ -58,6 +58,7 @@ public class MySqlSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     {
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new ArgumentNullException(nameof(connectionString));
+
         if (string.IsNullOrWhiteSpace(query))
             throw new ArgumentNullException(nameof(query));
 
@@ -83,6 +84,7 @@ public class MySqlSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
     {
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new ArgumentNullException(nameof(connectionString));
+
         if (string.IsNullOrWhiteSpace(query))
             throw new ArgumentNullException(nameof(query));
 
@@ -109,6 +111,7 @@ public class MySqlSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
         string? connectionName = null)
     {
         ArgumentNullException.ThrowIfNull(connectionPool);
+
         if (string.IsNullOrWhiteSpace(query))
             throw new ArgumentNullException(nameof(query));
 
@@ -119,7 +122,11 @@ public class MySqlSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
         _query = query;
         _parameters = parameters ?? [];
         _continueOnError = continueOnError || _configuration.ContinueOnError || !_configuration.ThrowOnMappingError;
-        _connectionName = string.IsNullOrWhiteSpace(connectionName) ? null : connectionName;
+
+        _connectionName = string.IsNullOrWhiteSpace(connectionName)
+            ? null
+            : connectionName;
+
         _cachedMapper = ResolveDefaultMapper(null, _configuration);
     }
 
@@ -136,6 +143,7 @@ public class MySqlSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
         string? connectionName = null)
     {
         ArgumentNullException.ThrowIfNull(connectionPool);
+
         if (string.IsNullOrWhiteSpace(query))
             throw new ArgumentNullException(nameof(query));
 
@@ -146,7 +154,11 @@ public class MySqlSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
         _query = query;
         _parameters = parameters ?? [];
         _continueOnError = continueOnError || _configuration.ContinueOnError || !_configuration.ThrowOnMappingError;
-        _connectionName = string.IsNullOrWhiteSpace(connectionName) ? null : connectionName;
+
+        _connectionName = string.IsNullOrWhiteSpace(connectionName)
+            ? null
+            : connectionName;
+
         _cachedMapper = ResolveDefaultMapper(customMapper, _configuration);
     }
 
@@ -255,7 +267,9 @@ public class MySqlSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
         command.CommandTimeout = _configuration.CommandTimeout;
 
         foreach (var param in _parameters)
+        {
             command.AddParameter(param.Name, param.Value);
+        }
 
         return await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -333,9 +347,7 @@ public class MySqlSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
                 if (converted is not null
                     || binding.PropertyType.IsClass
                     || Nullable.GetUnderlyingType(binding.PropertyType) is not null)
-                {
                     binding.Setter(instance, converted);
-                }
             }
             catch
             {
@@ -377,20 +389,24 @@ public class MySqlSourceNode<T> : DatabaseSourceNode<IDatabaseReader, T>
             : Convert.ChangeType(value, underlyingType);
     }
 
-    private static IReadOnlyList<PropertyBinding> BuildBindings() =>
-    [
-        .. typeof(T)
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.CanWrite && !IsIgnored(p))
-            .Select(p => new PropertyBinding(p.PropertyType, GetColumnName(p), BuildSetter(p))),
-    ];
+    private static IReadOnlyList<PropertyBinding> BuildBindings()
+    {
+        return
+        [
+            .. typeof(T)
+                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanWrite && !IsIgnored(p))
+                .Select(p => new PropertyBinding(p.PropertyType, GetColumnName(p), BuildSetter(p))),
+        ];
+    }
 
     private static bool IsIgnored(PropertyInfo property)
     {
         var col = property.GetCustomAttribute<ColumnAttribute>();
         var mysqlCol = property.GetCustomAttribute<MySqlColumnAttribute>();
+
         return col?.Ignore == true || mysqlCol?.Ignore == true
-               || property.IsDefined(typeof(IgnoreColumnAttribute), true);
+                                   || property.IsDefined(typeof(IgnoreColumnAttribute), true);
     }
 
     private static Action<T, object?> BuildSetter(PropertyInfo property)

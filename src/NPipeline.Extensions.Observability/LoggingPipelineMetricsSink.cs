@@ -9,8 +9,6 @@ namespace NPipeline.Observability;
 /// </summary>
 public sealed class LoggingPipelineMetricsSink : IPipelineMetricsSink
 {
-    private readonly ILogger _logger;
-
     // LoggerMessage delegates for high-performance logging - pipeline level
     private static readonly Action<ILogger, string, Guid, long, long, Exception?> s_logPipelineSuccess =
         LoggerMessage.Define<string, Guid, long, long>(
@@ -60,6 +58,8 @@ public sealed class LoggingPipelineMetricsSink : IPipelineMetricsSink
             new EventId(8, nameof(LoggingPipelineMetricsSink)),
             "Overall pipeline throughput: {Throughput:F2} items/sec");
 
+    private readonly ILogger _logger;
+
     /// <summary>
     ///     Initializes a new instance of the <see cref="LoggingPipelineMetricsSink" /> class.
     /// </summary>
@@ -80,13 +80,13 @@ public sealed class LoggingPipelineMetricsSink : IPipelineMetricsSink
         ArgumentNullException.ThrowIfNull(pipelineMetrics);
 
         using (_logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["PipelineName"] = pipelineMetrics.PipelineName,
-            ["RunId"] = pipelineMetrics.RunId,
-            ["Success"] = pipelineMetrics.Success,
-            ["TotalItemsProcessed"] = pipelineMetrics.TotalItemsProcessed,
-            ["DurationMs"] = pipelineMetrics.DurationMs,
-        }))
+               {
+                   ["PipelineName"] = pipelineMetrics.PipelineName,
+                   ["RunId"] = pipelineMetrics.RunId,
+                   ["Success"] = pipelineMetrics.Success,
+                   ["TotalItemsProcessed"] = pipelineMetrics.TotalItemsProcessed,
+                   ["DurationMs"] = pipelineMetrics.DurationMs,
+               }))
         {
             if (pipelineMetrics.Success)
             {
@@ -133,19 +133,13 @@ public sealed class LoggingPipelineMetricsSink : IPipelineMetricsSink
                 }
 
                 if (nodeMetric.RetryCount > 0)
-                {
                     s_logNodeRetryCount(_logger, nodeMetric.NodeId, nodeMetric.RetryCount, null);
-                }
 
                 if (nodeMetric.ThroughputItemsPerSec.HasValue)
-                {
                     s_logNodeThroughput(_logger, nodeMetric.NodeId, nodeMetric.ThroughputItemsPerSec.Value, null);
-                }
 
                 if (nodeMetric.AverageItemProcessingMs.HasValue)
-                {
                     s_logNodeAverageTime(_logger, nodeMetric.NodeId, nodeMetric.AverageItemProcessingMs.Value, null);
-                }
             }
 
             // Calculate and log overall throughput

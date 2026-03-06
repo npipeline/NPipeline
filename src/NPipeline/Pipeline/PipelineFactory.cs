@@ -1,5 +1,3 @@
-using NPipeline.Nodes;
-
 namespace NPipeline.Pipeline;
 
 /// <summary>
@@ -23,7 +21,7 @@ public sealed class PipelineFactory : IPipelineFactory
         {
             foreach (var kvp in context.PreconfiguredNodeInstances)
 
-            // Best-effort: ignore duplicates (will throw) so wrap in try/catch.
+                // Best-effort: ignore duplicates (will throw) so wrap in try/catch.
             {
                 try
                 {

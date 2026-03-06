@@ -2,7 +2,6 @@ using Azure.Storage;
 using Azure.Storage.Blobs;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
-using NPipeline.StorageProviders.Models;
 using Xunit;
 
 namespace NPipeline.StorageProviders.Azure.Tests;
@@ -10,8 +9,10 @@ namespace NPipeline.StorageProviders.Azure.Tests;
 public sealed class AzuriteFixture : IAsyncLifetime
 {
     public const string AccountName = "devstoreaccount1";
+
     public const string AccountKey =
         "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
+
     public const int BlobPort = 10000;
 
     private IContainer? _azuriteContainer;
@@ -20,12 +21,6 @@ public sealed class AzuriteFixture : IAsyncLifetime
     public AzureBlobStorageProviderOptions Options { get; private set; } = null!;
     public AzureBlobStorageProvider Provider { get; private set; } = null!;
     public BlobServiceClient BlobServiceClient { get; private set; } = null!;
-
-    public string GetConnectionString()
-    {
-        return
-            $"DefaultEndpointsProtocol=http;AccountName={AccountName};AccountKey={AccountKey};BlobEndpoint=http://127.0.0.1:{_blobHostPort}/{AccountName}/;";
-    }
 
     public async Task InitializeAsync()
     {
@@ -72,11 +67,28 @@ public sealed class AzuriteFixture : IAsyncLifetime
         catch (Exception ex)
         {
             var logs = await _azuriteContainer.GetLogsAsync().ConfigureAwait(false);
+
             throw new InvalidOperationException(
                 $"Azurite failed to become ready on host port {_blobHostPort}. " +
                 $"Container logs:\n{logs.Stdout}\n{logs.Stderr}",
                 ex);
         }
+    }
+
+    public async Task DisposeAsync()
+    {
+        // Cleanup is handled by stopping and disposing the container
+        if (_azuriteContainer != null)
+        {
+            await _azuriteContainer.StopAsync();
+            await _azuriteContainer.DisposeAsync();
+        }
+    }
+
+    public string GetConnectionString()
+    {
+        return
+            $"DefaultEndpointsProtocol=http;AccountName={AccountName};AccountKey={AccountKey};BlobEndpoint=http://127.0.0.1:{_blobHostPort}/{AccountName}/;";
     }
 
     private static async Task WaitForAzuriteReadyAsync(
@@ -93,6 +105,7 @@ public sealed class AzuriteFixture : IAsyncLifetime
                     .GetBlobContainerClient("health-check")
                     .CreateIfNotExistsAsync(cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
+
                 return;
             }
             catch when (!cancellationToken.IsCancellationRequested)
@@ -102,15 +115,5 @@ public sealed class AzuriteFixture : IAsyncLifetime
         }
 
         throw new TimeoutException("Azurite did not become ready within the expected time.");
-    }
-
-    public async Task DisposeAsync()
-    {
-        // Cleanup is handled by stopping and disposing the container
-        if (_azuriteContainer != null)
-        {
-            await _azuriteContainer.StopAsync();
-            await _azuriteContainer.DisposeAsync();
-        }
     }
 }

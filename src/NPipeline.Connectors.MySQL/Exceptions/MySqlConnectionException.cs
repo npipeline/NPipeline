@@ -7,18 +7,26 @@ namespace NPipeline.Connectors.MySql.Exceptions;
 /// </summary>
 public class MySqlConnectionException : DatabaseConnectionException
 {
-    /// <summary>Initialises a new <see cref="MySqlConnectionException"/> with a message.</summary>
-    public MySqlConnectionException(string message) : base(message) { }
+    /// <summary>Initialises a new <see cref="MySqlConnectionException" /> with a message.</summary>
+    public MySqlConnectionException(string message) : base(message)
+    {
+    }
 
-    /// <summary>Initialises a new <see cref="MySqlConnectionException"/> with a message and inner exception.</summary>
+    /// <summary>Initialises a new <see cref="MySqlConnectionException" /> with a message and inner exception.</summary>
     public MySqlConnectionException(string message, Exception innerException)
-        : base(message, innerException) { }
+        : base(message, innerException)
+    {
+    }
 
-    /// <summary>Initialises a new <see cref="MySqlConnectionException"/> with an error code.</summary>
+    /// <summary>Initialises a new <see cref="MySqlConnectionException" /> with an error code.</summary>
     public MySqlConnectionException(string message, string? errorCode)
-        : base(message, errorCode, null) { }
+        : base(message, errorCode, null)
+    {
+    }
 
-    /// <summary>Initialises a new <see cref="MySqlConnectionException"/> with an error code and inner exception.</summary>
+    /// <summary>Initialises a new <see cref="MySqlConnectionException" /> with an error code and inner exception.</summary>
     public MySqlConnectionException(string message, string? errorCode, Exception innerException)
-        : base(message, errorCode, null, innerException) { }
+        : base(message, errorCode, null, innerException)
+    {
+    }
 }

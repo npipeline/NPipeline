@@ -7,6 +7,11 @@ namespace NPipeline.Connectors.Serialization;
 public interface IMessageSerializer
 {
     /// <summary>
+    ///     Gets the MIME content type produced by this serializer (e.g. "application/json", "application/x-msgpack").
+    /// </summary>
+    string ContentType { get; }
+
+    /// <summary>
     ///     Serializes a value to a byte buffer.
     /// </summary>
     /// <typeparam name="T">The type to serialize.</typeparam>
@@ -21,9 +26,4 @@ public interface IMessageSerializer
     /// <param name="data">The serialized byte buffer.</param>
     /// <returns>The deserialized value.</returns>
     T Deserialize<T>(ReadOnlyMemory<byte> data);
-
-    /// <summary>
-    ///     Gets the MIME content type produced by this serializer (e.g. "application/json", "application/x-msgpack").
-    /// </summary>
-    string ContentType { get; }
 }

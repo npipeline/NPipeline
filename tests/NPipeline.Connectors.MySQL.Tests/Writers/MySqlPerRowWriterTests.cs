@@ -13,6 +13,66 @@ namespace NPipeline.Connectors.MySql.Tests.Writers;
 /// </summary>
 public sealed class MySqlPerRowWriterTests
 {
+    #region FlushAsync Tests
+
+    [Fact]
+    public async Task FlushAsync_Always_ReturnsCompletedTask()
+    {
+        // Arrange
+        var connection = A.Fake<IDatabaseConnection>();
+        var configuration = new MySqlConfiguration();
+
+        var writer = new MySqlPerRowWriter<TestEntity>(
+            connection,
+            "test_table",
+            null,
+            configuration);
+
+        // Act
+        await writer.FlushAsync();
+
+        // Assert - should complete without error
+        _ = true.Should().BeTrue();
+    }
+
+    #endregion
+
+    #region DisposeAsync Tests
+
+    [Fact]
+    public async Task DisposeAsync_DoesNotDisposeConnection()
+    {
+        // Arrange
+        var connection = A.Fake<IDatabaseConnection>();
+        var configuration = new MySqlConfiguration();
+
+        var writer = new MySqlPerRowWriter<TestEntity>(
+            connection,
+            "test_table",
+            null,
+            configuration);
+
+        // Act
+        await writer.DisposeAsync();
+
+        // Assert - connection should not be disposed (owned by sink node)
+        A.CallTo(() => connection.DisposeAsync()).MustNotHaveHappened();
+    }
+
+    #endregion
+
+    #region Test Models
+
+    private sealed class TestEntity
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    #endregion
+
     #region Constructor Tests
 
     [Fact]
@@ -87,54 +147,6 @@ public sealed class MySqlPerRowWriterTests
 
     #endregion
 
-    #region FlushAsync Tests
-
-    [Fact]
-    public async Task FlushAsync_Always_ReturnsCompletedTask()
-    {
-        // Arrange
-        var connection = A.Fake<IDatabaseConnection>();
-        var configuration = new MySqlConfiguration();
-
-        var writer = new MySqlPerRowWriter<TestEntity>(
-            connection,
-            "test_table",
-            null,
-            configuration);
-
-        // Act
-        await writer.FlushAsync();
-
-        // Assert - should complete without error
-        _ = true.Should().BeTrue();
-    }
-
-    #endregion
-
-    #region DisposeAsync Tests
-
-    [Fact]
-    public async Task DisposeAsync_DoesNotDisposeConnection()
-    {
-        // Arrange
-        var connection = A.Fake<IDatabaseConnection>();
-        var configuration = new MySqlConfiguration();
-
-        var writer = new MySqlPerRowWriter<TestEntity>(
-            connection,
-            "test_table",
-            null,
-            configuration);
-
-        // Act
-        await writer.DisposeAsync();
-
-        // Assert - connection should not be disposed (owned by sink node)
-        A.CallTo(() => connection.DisposeAsync()).MustNotHaveHappened();
-    }
-
-    #endregion
-
     #region WriteAsync Tests
 
     [Fact]
@@ -198,10 +210,10 @@ public sealed class MySqlPerRowWriterTests
 
             return
             [
-                new("@Id", entity.Id),
-                new("@Name", entity.Name),
-                new("@CreatedAt", entity.CreatedAt),
-                new("@IsActive", entity.IsActive),
+                new DatabaseParameter("@Id", entity.Id),
+                new DatabaseParameter("@Name", entity.Name),
+                new DatabaseParameter("@CreatedAt", entity.CreatedAt),
+                new DatabaseParameter("@IsActive", entity.IsActive),
             ];
         };
 
@@ -227,18 +239,6 @@ public sealed class MySqlPerRowWriterTests
 
         A.CallTo(() => command.AddParameter(A<string>._, A<object?>._))
             .MustHaveHappenedANumberOfTimesMatching(n => n == 4);
-    }
-
-    #endregion
-
-    #region Test Models
-
-    private sealed class TestEntity
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public DateTime CreatedAt { get; set; }
-        public bool IsActive { get; set; }
     }
 
     #endregion

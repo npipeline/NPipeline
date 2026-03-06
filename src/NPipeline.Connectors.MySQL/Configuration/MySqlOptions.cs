@@ -57,7 +57,7 @@ public class MySqlOptions
     /// </summary>
     /// <param name="name">The connection name.</param>
     /// <param name="connectionString">The connection string.</param>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="name"/> or <paramref name="connectionString"/> is empty.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="name" /> or <paramref name="connectionString" /> is empty.</exception>
     public void AddOrUpdateConnection(string name, string connectionString)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -89,6 +89,8 @@ public class MySqlOptions
             yield return "default";
 
         foreach (var key in NamedConnections.Keys)
+        {
             yield return key;
+        }
     }
 }

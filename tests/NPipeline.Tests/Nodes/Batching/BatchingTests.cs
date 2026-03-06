@@ -84,9 +84,15 @@ public sealed class BatchingTests(ITestOutputHelper output)
         {
         }
 
-        public bool IsEnabled(LogLevel logLevel) => false;
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return false;
+        }
 
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+        {
+            return null;
+        }
     }
 
     #endregion

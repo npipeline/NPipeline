@@ -45,8 +45,7 @@ public class MySqlSinkNodeTests
         var configuration = new MySqlConfiguration { ValidateIdentifiers = true };
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentException>(
-            () => new MySqlSinkNode<TestRecord>(connectionString, tableName, configuration));
+        _ = Assert.Throws<ArgumentException>(() => new MySqlSinkNode<TestRecord>(connectionString, tableName, configuration));
     }
 
     [Fact]
@@ -58,8 +57,7 @@ public class MySqlSinkNodeTests
         var configuration = new MySqlConfiguration { ValidateIdentifiers = true };
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentException>(
-            () => new MySqlSinkNode<TestRecord>(connectionString, tableName, configuration));
+        _ = Assert.Throws<ArgumentException>(() => new MySqlSinkNode<TestRecord>(connectionString, tableName, configuration));
     }
 
     [Fact]

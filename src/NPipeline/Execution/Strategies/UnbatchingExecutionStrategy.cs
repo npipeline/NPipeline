@@ -23,7 +23,7 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
         // Therefore, input IDataPipe<TIn> can be treated as an IAsyncEnumerable<IEnumerable<TOut>>.
         if (input is not IAsyncEnumerable<IEnumerable<TOut>> batchedSource)
 
-        // This should not happen if the pipeline is configured correctly.
+            // This should not happen if the pipeline is configured correctly.
         {
             throw new InvalidOperationException(
                 $"The input for {nameof(UnbatchingExecutionStrategy)} must be an IAsyncEnumerable of IEnumerable<{typeof(TOut).Name}>.");
@@ -58,7 +58,7 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
         // Therefore, input IDataPipe<TIn> can be treated as an IAsyncEnumerable<IEnumerable<TOut>>.
         if (input is not IAsyncEnumerable<IEnumerable<TOut>> batchedSource)
 
-        // This should not happen if the pipeline is configured correctly.
+            // This should not happen if the pipeline is configured correctly.
         {
             throw new InvalidOperationException(
                 $"The input for {nameof(UnbatchingExecutionStrategy)} must be an IAsyncEnumerable of IEnumerable<{typeof(TOut).Name}>.");

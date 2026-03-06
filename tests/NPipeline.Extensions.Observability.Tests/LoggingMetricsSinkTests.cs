@@ -42,6 +42,7 @@ public sealed class LoggingMetricsSinkTests
     private static ILogger<LoggingMetricsSink> CreateLogger()
     {
         var logger = A.Fake<ILogger<LoggingMetricsSink>>();
+
         // LoggerMessage delegates check IsEnabled before logging
         A.CallTo(() => logger.IsEnabled(A<LogLevel>._)).Returns(true);
         return logger;

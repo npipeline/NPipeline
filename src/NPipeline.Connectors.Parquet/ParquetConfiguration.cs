@@ -108,8 +108,10 @@ public class ParquetConfiguration
             throw new InvalidOperationException($"{nameof(RowGroupSize)} must be greater than 0. Current value: {RowGroupSize}");
 
         if (MaxBufferedRows < RowGroupSize)
+        {
             throw new InvalidOperationException(
                 $"{nameof(MaxBufferedRows)} ({MaxBufferedRows}) must be greater than or equal to {nameof(RowGroupSize)} ({RowGroupSize})");
+        }
 
         if (TargetFileSizeBytes is { } targetSize && targetSize < 32L * 1024 * 1024)
             throw new InvalidOperationException($"{nameof(TargetFileSizeBytes)} must be at least 32 MiB when specified. Current value: {TargetFileSizeBytes}");

@@ -152,9 +152,11 @@ internal static class MongoMapperBuilder
     private static object? ConvertValue(object? value, Type targetType)
     {
         if (value == null)
+        {
             return targetType.IsValueType
                 ? Activator.CreateInstance(targetType)
                 : null;
+        }
 
         var sourceType = value.GetType();
 

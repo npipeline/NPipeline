@@ -101,7 +101,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         else
         {
             channel = Channel.CreateBounded<TOut>(new BoundedChannelOptions(outputCap.Value)
-            { SingleReader = false, SingleWriter = true, FullMode = BoundedChannelFullMode.Wait });
+                { SingleReader = false, SingleWriter = true, FullMode = BoundedChannelFullMode.Wait });
         }
 
         // Producer: feed block

@@ -1,6 +1,7 @@
 # NPipeline MySQL Connector Sample
 
-This sample demonstrates the **NPipeline MySQL Connector** — a fully-async MySQL/MariaDB connector built on top of [MySqlConnector](https://mysqlconnector.net/) (MIT).
+This sample demonstrates the **NPipeline MySQL Connector** — a fully-async MySQL/MariaDB connector built on top
+of [MySqlConnector](https://mysqlconnector.net/) (MIT).
 
 ## Prerequisites
 
@@ -33,14 +34,14 @@ dotnet run -- --connection-string "Server=myhost;Port=3306;Database=mydb;User=my
 
 ## What This Sample Demonstrates
 
-| Feature | Description |
-|---------|-------------|
-| **PerRow strategy** | Inserts one row at a time — useful for small writes with rich error control |
-| **Batch strategy** | Builds multi-row `INSERT VALUES (…),(…)` for high throughput |
-| **Upsert** | `INSERT … ON DUPLICATE KEY UPDATE`, `INSERT IGNORE`, `REPLACE INTO` |
-| **Attribute mapping** | `[MySqlTable]`, `[MySqlColumn]`, `[Column]`, `[IgnoreColumn]` |
-| **Custom mapper** | `Func<MySqlRow, T>` mapper passed directly to `MySqlSourceNode` |
-| **StorageUri** | `mysql://user:pass@host:port/db` and `mariadb://…` schemes |
+| Feature               | Description                                                                 |
+|-----------------------|-----------------------------------------------------------------------------|
+| **PerRow strategy**   | Inserts one row at a time — useful for small writes with rich error control |
+| **Batch strategy**    | Builds multi-row `INSERT VALUES (…),(…)` for high throughput                |
+| **Upsert**            | `INSERT … ON DUPLICATE KEY UPDATE`, `INSERT IGNORE`, `REPLACE INTO`         |
+| **Attribute mapping** | `[MySqlTable]`, `[MySqlColumn]`, `[Column]`, `[IgnoreColumn]`               |
+| **Custom mapper**     | `Func<MySqlRow, T>` mapper passed directly to `MySqlSourceNode`             |
+| **StorageUri**        | `mysql://user:pass@host:port/db` and `mariadb://…` schemes                  |
 
 ## Models
 

@@ -44,8 +44,10 @@ public class BatchAcknowledgmentOptions
     public void Validate()
     {
         if (BatchSize < 1 || BatchSize > MaxBatchSize)
+        {
             throw new InvalidOperationException(
                 $"BatchSize must be between 1 and {MaxBatchSize}.");
+        }
 
         if (FlushTimeoutMs < 0)
             throw new InvalidOperationException("FlushTimeoutMs must be non-negative.");

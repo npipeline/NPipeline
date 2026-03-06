@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using NPipeline.Configuration;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Execution;

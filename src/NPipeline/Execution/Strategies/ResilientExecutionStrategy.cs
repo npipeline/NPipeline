@@ -3,7 +3,6 @@ using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataPipes;
 using NPipeline.ErrorHandling;
-using NPipeline.Execution;
 using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Nodes;
 using NPipeline.Observability.Logging;

@@ -209,7 +209,9 @@ public sealed class PipelineRunner(
             return;
 
         foreach (var kvp in graph.ErrorHandling.NodeRetryOverrides)
+        {
             context.NodeRetryOverrides[kvp.Key] = kvp.Value;
+        }
     }
 
     private static void ConfigureCircuitBreaker(PipelineGraph graph, PipelineContext context)
@@ -495,7 +497,9 @@ public sealed class PipelineRunner(
         if (!context.DiOwnedNodes)
         {
             foreach (var node in nodeInstances.Values)
+            {
                 await node.DisposeAsync().ConfigureAwait(false);
+            }
         }
 
         nodeInstances.Clear();

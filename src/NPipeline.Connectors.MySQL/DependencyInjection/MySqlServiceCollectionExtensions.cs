@@ -71,8 +71,8 @@ public static class MySqlServiceCollectionExtensions
         string connectionString)
     {
         var options = services
-            .FirstOrDefault(sd => sd.ServiceType == typeof(MySqlOptions))
-            ?.ImplementationInstance as MySqlOptions
+                          .FirstOrDefault(sd => sd.ServiceType == typeof(MySqlOptions))
+                          ?.ImplementationInstance as MySqlOptions
                       ?? new MySqlOptions();
 
         options.AddOrUpdateConnection(name, connectionString);
@@ -89,8 +89,8 @@ public static class MySqlServiceCollectionExtensions
         string connectionString)
     {
         var options = services
-            .FirstOrDefault(sd => sd.ServiceType == typeof(MySqlOptions))
-            ?.ImplementationInstance as MySqlOptions
+                          .FirstOrDefault(sd => sd.ServiceType == typeof(MySqlOptions))
+                          ?.ImplementationInstance as MySqlOptions
                       ?? new MySqlOptions();
 
         options.DefaultConnectionString = connectionString;

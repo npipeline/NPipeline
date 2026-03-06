@@ -26,7 +26,6 @@ namespace NPipeline.Execution.Caching;
 public sealed class InMemoryPipelineExecutionPlanCache : IPipelineExecutionPlanCache
 {
     private const int MaxCacheSize = 100;
-    private readonly record struct CacheKey(string TypeName, string GraphHash);
     private readonly ConcurrentDictionary<CacheKey, (Dictionary<string, NodeExecutionPlan> Plans, long LastAccess)> _cache = new();
     private readonly object _evictionLock = new();
 
@@ -128,6 +127,10 @@ public sealed class InMemoryPipelineExecutionPlanCache : IPipelineExecutionPlanC
     ///     - Hash of edge connections
     ///     This ensures that structurally identical pipelines share cached plans.
     /// </remarks>
-    private static CacheKey GenerateCacheKey(Type pipelineDefinitionType, PipelineGraph graph) =>
-        new(pipelineDefinitionType.FullName ?? pipelineDefinitionType.Name, graph.GraphHash);
+    private static CacheKey GenerateCacheKey(Type pipelineDefinitionType, PipelineGraph graph)
+    {
+        return new CacheKey(pipelineDefinitionType.FullName ?? pipelineDefinitionType.Name, graph.GraphHash);
+    }
+
+    private readonly record struct CacheKey(string TypeName, string GraphHash);
 }

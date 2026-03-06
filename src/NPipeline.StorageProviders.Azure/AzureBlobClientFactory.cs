@@ -83,6 +83,7 @@ public class AzureBlobClientFactory
             if (credentialInfo?.SasToken is not null)
             {
                 var sasCredential = new AzureSasCredential(credentialInfo.SasToken);
+
                 return clientOptions is null
                     ? new BlobServiceClient(effectiveServiceUrl, sasCredential)
                     : new BlobServiceClient(effectiveServiceUrl, sasCredential, clientOptions);
@@ -92,6 +93,7 @@ public class AzureBlobClientFactory
             if (credentialInfo?.AccountKey is not null && credentialInfo.AccountName is not null)
             {
                 var keyCredential = new StorageSharedKeyCredential(credentialInfo.AccountName, credentialInfo.AccountKey);
+
                 return clientOptions is null
                     ? new BlobServiceClient(effectiveServiceUrl, keyCredential)
                     : new BlobServiceClient(effectiveServiceUrl, keyCredential, clientOptions);
