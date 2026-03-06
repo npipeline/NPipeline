@@ -379,7 +379,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
 
             async IAsyncEnumerable<TOut> Passthrough([EnumeratorCancellation] CancellationToken ct = default)
             {
-                await foreach (var obj in typedExisting.ToAsyncEnumerable(ct).WithCancellation(ct))
+                await foreach (var obj in typedExisting.ToAsyncEnumerable(ct).WithCancellation(ct).ConfigureAwait(false))
                 {
                     yield return obj is TOut t
                         ? t
@@ -392,7 +392,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
 
         async IAsyncEnumerable<TOut> Cast([EnumeratorCancellation] CancellationToken ct = default)
         {
-            await foreach (var item in untyped.ToAsyncEnumerable(ct).WithCancellation(ct))
+            await foreach (var item in untyped.ToAsyncEnumerable(ct).WithCancellation(ct).ConfigureAwait(false))
             {
                 yield return item is null
                     ? default!

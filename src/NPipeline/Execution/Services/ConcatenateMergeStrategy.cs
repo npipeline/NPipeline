@@ -22,7 +22,7 @@ public sealed class ConcatenateMergeStrategy<T> : IMergeStrategy<T>
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         foreach (var pipe in dataPipes)
-        await foreach (var item in pipe.WithCancellation(cancellationToken))
+        await foreach (var item in pipe.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
             yield return item;
         }

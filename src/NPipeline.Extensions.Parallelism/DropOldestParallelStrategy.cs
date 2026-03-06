@@ -80,7 +80,7 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
 
             try
             {
-                await foreach (var item in input.WithCancellation(cancellationToken))
+                await foreach (var item in input.WithCancellation(cancellationToken).ConfigureAwait(false))
                 {
                     if (queue.Writer.TryWrite(item))
                     {

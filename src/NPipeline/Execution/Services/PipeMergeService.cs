@@ -31,7 +31,7 @@ public sealed class PipeMergeService(IMergeStrategySelector strategySelector) : 
             {
                 foreach (var pipe in inputPipes)
                 {
-                    await foreach (var item in pipe.ToAsyncEnumerable(ct).WithCancellation(ct))
+                    await foreach (var item in pipe.ToAsyncEnumerable(ct).WithCancellation(ct).ConfigureAwait(false))
                     {
                         yield return item; // allow nulls (object?)
                     }

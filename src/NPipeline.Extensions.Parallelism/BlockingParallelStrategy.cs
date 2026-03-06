@@ -109,7 +109,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         {
             try
             {
-                await foreach (var item in input.WithCancellation(cancellationToken))
+                await foreach (var item in input.WithCancellation(cancellationToken).ConfigureAwait(false))
                 {
                     observabilityScope?.IncrementProcessed();
 
@@ -168,7 +168,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         {
             try
             {
-                await foreach (var item in channel.Reader.ReadAllAsync(ct))
+                await foreach (var item in channel.Reader.ReadAllAsync(ct).ConfigureAwait(false))
                 {
                     yield return item;
                 }

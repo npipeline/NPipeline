@@ -81,7 +81,7 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
 
             try
             {
-                await foreach (var item in input.WithCancellation(cancellationToken))
+                await foreach (var item in input.WithCancellation(cancellationToken).ConfigureAwait(false))
                 {
                     itemsSeen++;
 

@@ -202,7 +202,7 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
         {
             workers.Add(Task.Run(async () =>
             {
-                await foreach (var next in reader.ReadAllAsync(cancellationToken))
+                await foreach (var next in reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
                 {
                     var result = await ExecuteWithRetryAsync(next, node, context, cachedContext, metrics, observer);
 
@@ -241,7 +241,7 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
     {
         try
         {
-            await foreach (var item in outChannel.Reader.ReadAllAsync(cancellationToken))
+            await foreach (var item in outChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             {
                 observabilityScope?.IncrementEmitted();
                 yield return item;

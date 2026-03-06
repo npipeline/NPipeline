@@ -53,7 +53,7 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
 
             try
             {
-                await foreach (var item in input.WithCancellation(ct))
+                await foreach (var item in input.WithCancellation(ct).ConfigureAwait(false))
                 {
                     // Track item processed
                     observabilityScope?.IncrementProcessed();
