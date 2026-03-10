@@ -55,7 +55,7 @@ public sealed class MySource : SourceNode<MyData>
         _count = count;
     }
 
-    public async IAsyncEnumerable<MyData> ExecuteAsync(CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<MyData> TransformAsync(CancellationToken cancellationToken = default)
     {
         for (int i = 0; i < _count; i++)
         {
@@ -84,7 +84,7 @@ public sealed class MyTransform : TransformNode<MyData, MyData>
 
 public sealed class MySink : SinkNode<MyData>
 {
-    public async Task ExecuteAsync(IAsyncEnumerable<MyData> input, CancellationToken cancellationToken = default)
+    public async Task ConsumeAsync(IDataStream<MyData> input, CancellationToken cancellationToken = default)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {

@@ -311,7 +311,7 @@ public sealed class SqlServerReaderPipeline : IPipelineDefinition
 
 public sealed class ConsoleSinkNode : SinkNode<Order>
 {
-    public override async Task ExecuteAsync(
+    public override async Task ConsumeAsync(
         IDataStream<Order> input,
         PipelineContext context,
         IPipelineActivity parentActivity,
@@ -1846,7 +1846,7 @@ public sealed class ResilientSqlServerSourceNode<T> : SqlServerSourceNode<T>
         _logger = logger;
     }
 
-    public override async IAsyncEnumerable<T> ExecuteAsync(
+    public override async IAsyncEnumerable<T> TransformAsync(
         PipelineContext context,
         IPipelineActivity parentActivity,
         [EnumeratorCancellation] CancellationToken cancellationToken)

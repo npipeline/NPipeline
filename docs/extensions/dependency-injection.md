@@ -340,7 +340,7 @@ public sealed class TestStringSource : SourceNode<string>
 
 public sealed class TestStringSink : SinkNode<string>
 {
-    public override async Task ExecuteAsync(
+    public override async Task ConsumeAsync(
         IDataStream<string> input,
         PipelineContext context,
         CancellationToken cancellationToken)

@@ -225,7 +225,7 @@ public sealed class ExcelReaderPipeline : IPipelineDefinition
 
 public sealed class ConsoleSinkNode : SinkNode<Product>
 {
-    public override async Task ExecuteAsync(
+    public override async Task ConsumeAsync(
         IDataStream<Product> input,
         PipelineContext context,
         IPipelineActivity parentActivity,

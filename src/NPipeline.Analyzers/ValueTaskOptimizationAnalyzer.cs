@@ -10,7 +10,7 @@ namespace NPipeline.Analyzers;
 ///     Analyzer that detects TransformNode implementations that could benefit from ValueTask optimization.
 ///     This analyzer identifies classes that:
 ///     1. Inherit from TransformNode&lt;TIn, TOut&gt;
-///     2. Only override ExecuteAsync method
+///     2. Only override TransformAsync method
 ///     3. Use Task.FromResult() to wrap synchronous operations
 ///     4. Don't override ExecuteValueTaskAsync method
 ///     Such implementations can be optimized by overriding ExecuteValueTaskAsync to avoid unnecessary Task allocations.
@@ -26,7 +26,7 @@ public sealed class ValueTaskOptimizationAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor MissingValueTaskOptimizationRule = new(
         MissingValueTaskOptimizationId,
         "Consider overriding ExecuteValueTaskAsync for synchronous operations",
-        "TransformNode '{0}' uses Task.FromResult in ExecuteAsync but doesn't override ExecuteValueTaskAsync. "
+        "TransformNode '{0}' uses Task.FromResult in TransformAsync but doesn't override ExecuteValueTaskAsync. "
         + "Overriding ExecuteValueTaskAsync can improve performance by avoiding Task allocations for synchronous operations.",
         "Performance & Optimization",
         DiagnosticSeverity.Info,
@@ -59,7 +59,7 @@ public sealed class ValueTaskOptimizationAnalyzer : DiagnosticAnalyzer
         if (!InheritsFromTransformNode(typeSymbol))
             return;
 
-        // Check if ExecuteAsync is overridden
+        // Check if TransformAsync is overridden
         var executeAsyncMethod = FindExecuteAsyncOverride(typeSymbol);
 
         if (executeAsyncMethod == null)
@@ -116,7 +116,7 @@ public sealed class ValueTaskOptimizationAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    ///     Finds the ExecuteAsync method override in the type.
+    ///     Finds the TransformAsync method override in the type.
     /// </summary>
     private static IMethodSymbol? FindExecuteAsyncOverride(INamedTypeSymbol typeSymbol)
     {

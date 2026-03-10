@@ -207,7 +207,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
     }
 
     [Fact]
-    public void ShouldNotDetectWhenBothExecuteAsyncAndExecuteValueTaskAsyncAreOverridden()
+    public void ShouldNotDetectWhenBothTransformAsyncAndExecuteValueTaskAsyncAreOverridden()
     {
         var code = """
                    using System.Threading.Tasks;
@@ -231,11 +231,11 @@ public sealed class ValueTaskOptimizationAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         Assert.False(diagnostics.Any(d => d.Id == ValueTaskOptimizationAnalyzer.MissingValueTaskOptimizationId),
-            "Analyzer should not trigger when both ExecuteAsync and ExecuteValueTaskAsync are overridden");
+            "Analyzer should not trigger when both TransformAsync and ExecuteValueTaskAsync are overridden");
     }
 
     [Fact]
-    public void ShouldNotDetectWhenExecuteAsyncUsesAwait()
+    public void ShouldNotDetectWhenTransformAsyncUsesAwait()
     {
         var code = """
                    using System.Threading.Tasks;
@@ -255,11 +255,11 @@ public sealed class ValueTaskOptimizationAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         Assert.False(diagnostics.Any(d => d.Id == ValueTaskOptimizationAnalyzer.MissingValueTaskOptimizationId),
-            "Analyzer should not trigger when ExecuteAsync uses await");
+            "Analyzer should not trigger when TransformAsync uses await");
     }
 
     [Fact]
-    public void ShouldDetectWhenExecuteAsyncHasEmptyBodyButUsesTaskFromResult()
+    public void ShouldDetectWhenTransformAsyncHasEmptyBodyButUsesTaskFromResult()
     {
         var code = """
                    using System.Threading.Tasks;
@@ -282,7 +282,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
     }
 
     [Fact]
-    public void ShouldNotDetectWhenExecuteAsyncReturnsNull()
+    public void ShouldNotDetectWhenTransformAsyncReturnsNull()
     {
         var code = """
                    using System.Threading.Tasks;
@@ -301,11 +301,11 @@ public sealed class ValueTaskOptimizationAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         Assert.False(diagnostics.Any(d => d.Id == ValueTaskOptimizationAnalyzer.MissingValueTaskOptimizationId),
-            "Analyzer should not trigger when ExecuteAsync returns null");
+            "Analyzer should not trigger when TransformAsync returns null");
     }
 
     [Fact]
-    public void ShouldNotDetectWhenExecuteAsyncReturnsCompletedTask()
+    public void ShouldNotDetectWhenTransformAsyncReturnsCompletedTask()
     {
         var code = """
                    using System.Threading.Tasks;
@@ -324,7 +324,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         Assert.False(diagnostics.Any(d => d.Id == ValueTaskOptimizationAnalyzer.MissingValueTaskOptimizationId),
-            "Analyzer should not trigger when ExecuteAsync returns Task.CompletedTask");
+            "Analyzer should not trigger when TransformAsync returns Task.CompletedTask");
     }
 
     [Fact]
@@ -430,7 +430,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
     }
 
     [Fact]
-    public void ShouldNotDetectWhenExecuteValueTaskAsyncIsOverriddenButExecuteAsyncStillUsesTaskFromResult()
+    public void ShouldNotDetectWhenExecuteValueTaskAsyncIsOverriddenButTransformAsyncStillUsesTaskFromResult()
     {
         var code = """
                    using System.Threading.Tasks;
@@ -454,7 +454,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         Assert.False(diagnostics.Any(d => d.Id == ValueTaskOptimizationAnalyzer.MissingValueTaskOptimizationId),
-            "Analyzer should not trigger when ExecuteValueTaskAsync is overridden even if ExecuteAsync uses Task.FromResult");
+            "Analyzer should not trigger when ExecuteValueTaskAsync is overridden even if TransformAsync uses Task.FromResult");
     }
 
     private static IEnumerable<Diagnostic> GetDiagnostics(string code)

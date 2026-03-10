@@ -51,7 +51,7 @@ public sealed record SensorReading(DateTime Timestamp, double Value);
 
 public sealed class SensorReadingSource : SourceNode<SensorReading>
 {
-    public async IAsyncEnumerable<SensorReading> ExecuteAsync(CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<SensorReading> TransformAsync(CancellationToken cancellationToken = default)
     {
         for (int i = 0; i < 5; i++)
         {
@@ -66,7 +66,7 @@ public sealed class SensorReadingSource : SourceNode<SensorReading>
 
 public sealed class RawDataSink : SinkNode<SensorReading>
 {
-    public async Task ExecuteAsync(IAsyncEnumerable<SensorReading> input, CancellationToken cancellationToken = default)
+    public async Task ConsumeAsync(IDataStream<SensorReading> input, CancellationToken cancellationToken = default)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {

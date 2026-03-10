@@ -79,7 +79,7 @@ sequenceDiagram
 
     Source->>Channel: ReadAllAsync()
     Channel-->>Source: webhookData
-    Source->>Validation: ExecuteAsync(webhookData)
+    Source->>Validation: TransformAsync(webhookData)
     Validation->>Validation: Validate fields
     Validation-->>Processing: ValidatedWebhookData
     Processing->>Processing: Generate summary
@@ -332,7 +332,7 @@ The `WebhookSource` implements `ISourceNode<WebhookData>` and uses `System.Threa
 
 - Uses `Channel<T>` for thread-safe communication
 - Provides `EnqueueAsync()` method for external push operations
-- Returns `StreamingDataStream<T>` from `Initialize()` for pipeline consumption
+- Returns `StreamingDataStream<T>` from `OpenStream()` for pipeline consumption
 
 ### 3. Singleton Registration
 
@@ -412,7 +412,7 @@ The channel-based source node:
 - Implements `ISourceNode<WebhookData>`
 - Uses `Channel<WebhookData>` internally
 - Provides `EnqueueAsync()` for HTTP endpoints to push data
-- Returns `StreamingDataStream<WebhookData>` from `Initialize()`
+- Returns `StreamingDataStream<WebhookData>` from `OpenStream()`
 
 ### ValidationTransform
 

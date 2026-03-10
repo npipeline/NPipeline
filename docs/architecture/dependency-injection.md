@@ -82,7 +82,7 @@ var pipeline = PipelineBuilder.WithServiceProvider(serviceProvider)
     .BuildPipeline();
 
 var context = PipelineContext.Default;
-var result = await runner.ExecuteAsync(pipeline, context);
+var result = await runner.RunAsync<OrderPipeline>(context);
 ```
 
 ## Scoped Dependencies
@@ -100,7 +100,7 @@ using (var scope = serviceProvider.CreateScope())
         .AddSinkNode<OrderSinkNode>()
         .BuildPipeline();
 
-    await runner.ExecuteAsync(pipeline, context);
+    await runner.RunAsync<OrderPipeline>(context);
     // Scoped services are disposed here
 }
 ```

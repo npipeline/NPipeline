@@ -322,7 +322,7 @@ public sealed class SnowflakeReaderPipeline : IPipelineDefinition
 
 public sealed class ConsoleSinkNode : SinkNode<Order>
 {
-    public override async Task ExecuteAsync(
+    public override async Task ConsumeAsync(
         IDataStream<Order> input,
         PipelineContext context,
         IPipelineActivity parentActivity,

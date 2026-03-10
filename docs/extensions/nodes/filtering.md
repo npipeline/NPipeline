@@ -128,7 +128,7 @@ Filtered items raise `FilteringException`:
 ```csharp
 try
 {
-    await pipeline.ExecuteAsync();
+    await runner.RunAsync<MyPipelineDefinition>();
 }
 catch (FilteringException ex)
 {
@@ -186,7 +186,7 @@ builder.Connect(filterCustomer, sink);
 
 // Build and execute
 var pipeline = builder.Build();
-var result = await pipeline.ExecuteAsync();
+await runner.RunAsync<MyPipelineDefinition>();
 ```
 
 ## Performance Characteristics

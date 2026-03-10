@@ -89,7 +89,7 @@ public class MetricsCollectorSink : ISinkNode<Result>
         _metrics = metrics;
     }
 
-    public async Task ExecuteAsync(
+    public async Task ConsumeAsync(
         IDataStream<Result> input,
         PipelineContext context,
         CancellationToken cancellationToken)

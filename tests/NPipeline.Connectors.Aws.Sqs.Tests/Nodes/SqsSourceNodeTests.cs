@@ -292,10 +292,10 @@ public class SqsSourceNodeTests
         }
     }
 
-    public class Initialize
+    public class OpenStream
     {
         [Fact]
-        public async Task Initialize_WithValidContext_ReturnsDataStream()
+        public async Task OpenStream_WithValidContext_ReturnsDataStream()
         {
             // Arrange
             var configuration = CreateValidConfiguration();

@@ -574,7 +574,7 @@ The `DataTransform` applies these transformations:
 
 ### Adding New Validation Rules
 
-Extend the `ValidationTransform.ExecuteAsync` method to add custom validation logic:
+Extend the `ValidationTransform.TransformAsync` method to add custom validation logic:
 
 ```csharp
 // Example: Add phone number validation
@@ -587,7 +587,7 @@ if (!string.IsNullOrWhiteSpace(input.PhoneNumber) &&
 
 ### Adding New Transformations
 
-Extend the `DataTransform.ExecuteAsync` method to add custom transformations:
+Extend the `DataTransform.TransformAsync` method to add custom transformations:
 
 ```csharp
 // Example: Add geographic region calculation

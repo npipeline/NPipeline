@@ -108,7 +108,7 @@ public sealed class SqsReaderPipeline : IPipelineDefinition
 
 public sealed class ConsoleSinkNode : SinkNode<SqsMessage<OrderMessage>>
 {
-    public override async Task ExecuteAsync(
+    public override async Task ConsumeAsync(
         IDataStream<SqsMessage<OrderMessage>> input,
         PipelineContext context,
         IPipelineActivity parentActivity,
@@ -480,7 +480,7 @@ public sealed class SqsProcessingPipeline : IPipelineDefinition
 
 public sealed class OrderTransform : ITransformNode<SqsMessage<OrderMessage>, ProcessedOrder>
 {
-    public Task<ProcessedOrder> ExecuteAsync(
+    public Task<ProcessedOrder> TransformAsync(
         SqsMessage<OrderMessage> input,
         PipelineContext context,
         CancellationToken cancellationToken)

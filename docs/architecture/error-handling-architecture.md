@@ -217,7 +217,7 @@ for (int i = 0; i < 5; i++)
 {
     try
     {
-        await runner.ExecuteAsync(pipeline, context);
+        await runner.RunAsync<MyPipeline>(context);
     }
     catch (Exception ex)
     {

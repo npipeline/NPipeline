@@ -11,7 +11,7 @@ namespace NPipeline.Analyzers.Tests;
 public sealed class AnonymousObjectAllocationAnalyzerTests
 {
     [Fact]
-    public void ShouldDetectAnonymousObjectInExecuteAsyncMethod()
+    public void ShouldDetectAnonymousObjectInTransformAsyncMethod()
     {
         var code = """
                    using NPipeline.Nodes;
@@ -30,7 +30,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         var hasDiagnostic = diagnostics.Any(d => d.Id == AnonymousObjectAllocationAnalyzer.AnonymousObjectAllocationId);
-        Assert.True(hasDiagnostic, "Analyzer should detect anonymous object in ExecuteAsync method");
+        Assert.True(hasDiagnostic, "Analyzer should detect anonymous object in TransformAsync method");
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
 
                    public class TestSourceNode : ISourceNode<int>
                    {
-                       public async Task<IDataStream<int>> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+                       public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var numbers = Enumerable.Range(1, 100);
                            // NP9105: Anonymous object in hot path
@@ -249,7 +249,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public ValueTask<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public ValueTask<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            // NP9105: Anonymous object in ValueTask-returning method
                            var result = new { Input = input, Length = input.Length };

@@ -9,7 +9,7 @@ namespace NPipeline.Analyzers;
 /// <summary>
 ///     Analyzer that detects non-streaming patterns in SourceNode implementations that can lead to
 ///     memory issues and poor performance. These patterns should be avoided:
-///     1. Allocating and populating List&lt;T&gt; or Array in Initialize
+///     1. Allocating and populating List&lt;T&gt; or Array in OpenStream
 ///     2. Using .ToAsyncEnumerable() on materialized collections
 ///     3. Synchronous I/O operations
 ///     4. Not using async IAsyncEnumerable with yield return patterns
@@ -54,7 +54,7 @@ public sealed class SourceNodeStreamingAnalyzer : DiagnosticAnalyzer
         if (context.Node is not MethodDeclarationSyntax methodDeclaration)
             return;
 
-        // Check if this method is Initialize in a SourceNode implementation
+        // Check if this method is OpenStream in a SourceNode implementation
         var isSourceNodeInitializeMethod = IsSourceNodeInitializeMethod(methodDeclaration, context.SemanticModel);
 
         if (!isSourceNodeInitializeMethod)
@@ -78,7 +78,7 @@ public sealed class SourceNodeStreamingAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    ///     Determines if a method is Initialize in a SourceNode implementation.
+    ///     Determines if a method is OpenStream in a SourceNode implementation.
     /// </summary>
     private static bool IsSourceNodeInitializeMethod(MethodDeclarationSyntax method, SemanticModel semanticModel)
     {
@@ -139,7 +139,7 @@ public sealed class SourceNodeStreamingAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    ///     AST walker that detects non-streaming patterns in SourceNode Initialize methods.
+    ///     AST walker that detects non-streaming patterns in SourceNode OpenStream methods.
     /// </summary>
     private sealed class NonStreamingPatternWalker(SemanticModel semanticModel) : CSharpSyntaxWalker
     {

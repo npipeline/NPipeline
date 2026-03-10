@@ -87,7 +87,7 @@ using NPipeline.Pipeline;
 
 public class MySinkNode : SinkNode<MyData>
 {
-    public async Task ExecuteAsync(
+    public async Task ConsumeAsync(
         IDataStream<MyData> input,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -116,7 +116,7 @@ using NPipeline.Pipeline;
 
 public class MySourceNode : SourceNode<MyData>
 {
-    public IDataStream<MyData> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public IDataStream<MyData> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         static IAsyncEnumerable<MyData> Stream()
         {

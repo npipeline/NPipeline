@@ -54,7 +54,7 @@ public sealed class LoggingTapSink<T> : SinkNode<T>
     private readonly string _label;
     public LoggingTapSink(string label) => _label = label;
 
-    public async Task ExecuteAsync(IAsyncEnumerable<T> input, CancellationToken cancellationToken = default)
+    public async Task ConsumeAsync(IDataStream<T> input, CancellationToken cancellationToken = default)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {

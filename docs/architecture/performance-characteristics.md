@@ -210,7 +210,7 @@ var stopwatch = Stopwatch.StartNew();
 
 var pipeline = BuildPipeline();
 var context = PipelineContext.Default;
-var result = await runner.ExecuteAsync(pipeline, context);
+var result = await runner.RunAsync<MyPipeline>(context);
 
 stopwatch.Stop();
 Console.WriteLine($"Processed {result.ItemsProcessed} items in {stopwatch.ElapsedMilliseconds}ms");

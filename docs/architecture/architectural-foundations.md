@@ -79,7 +79,7 @@ public interface ISinkNode<in TInput> : INode
 **Data Flow Model:**
 
 - Source nodes return `IDataStream<TOutput>`, which implements `IAsyncEnumerable<TOutput>`
-- Transform nodes process items one at a time via `ExecuteAsync`
+- Transform nodes process items one at a time via `TransformAsync`
 - Sink nodes consume the entire input stream using `await foreach`
 
 The architectural design emphasizes:

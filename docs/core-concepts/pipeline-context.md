@@ -131,21 +131,21 @@ You have several options depending on your needs:
 
 ### Standard Access
 
-Nodes that implement `TransformNode<TInput, TOutput>` or `SinkNode<TInput>` can access the [`PipelineContext`](src/NPipeline/PipelineContext.cs) through their `ExecuteAsync` and `ExecuteAsync` methods, respectively.
+Nodes that implement `TransformNode<TInput, TOutput>` or `SinkNode<TInput>` can access the [`PipelineContext`](src/NPipeline/PipelineContext.cs) through their `TransformAsync` and `ConsumeAsync` methods, respectively.
 
 ```csharp
-public class ExecuteAsync<TInput, TOutput>
+public abstract class TransformNode<TInput, TOutput>
 {
-    IAsyncEnumerable<TOutput> ExecuteAsync(
-        IAsyncEnumerable<TInput> input,
+    protected abstract Task<TOutput> TransformAsync(
+        TInput input,
         PipelineContext context,
         CancellationToken cancellationToken = default);
 }
 
-public class SinkNode<TInput>
+public abstract class SinkNode<TInput>
 {
-    Task ExecuteAsync(
-        IAsyncEnumerable<TInput> input,
+    protected abstract Task ConsumeAsync(
+        IDataStream<TInput> input,
         PipelineContext context,
         CancellationToken cancellationToken = default);
 }
@@ -271,7 +271,7 @@ public sealed record DataItem(Guid Id, string Payload);
 
 public sealed class MyTransformWithContext : ITransformNode<DataItem, DataItem>
 {
-    public async IAsyncEnumerable<DataItem> ExecuteAsync(
+    public async IAsyncEnumerable<DataItem> TransformAsync(
         IAsyncEnumerable<DataItem> input,
         PipelineContext context,
         CancellationToken cancellationToken = default)
@@ -299,7 +299,7 @@ public sealed class MyTransformWithContext : ITransformNode<DataItem, DataItem>
 
 public sealed class MySource : SourceNode<DataItem>
 {
-    public override IDataStream<DataItem> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
+    public override IDataStream<DataItem> OpenStream(PipelineContext context, CancellationToken cancellationToken = default)
     {
         static IAsyncEnumerable<DataItem> Stream()
         {
@@ -320,7 +320,7 @@ public sealed class MySource : SourceNode<DataItem>
 
 public sealed class MySink : SinkNode<DataItem>
 {
-    public override async Task ExecuteAsync(
+    public override async Task ConsumeAsync(
         IDataStream<DataItem> input,
         PipelineContext context,
         CancellationToken cancellationToken = default)
@@ -398,7 +398,7 @@ public sealed class ConfigurableSource : SourceNode<string>, IContextAwareNode
         _context = context;
     }
 
-    public override IDataStream<string> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
+    public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken = default)
     {
         var config = _context.GetOrAdd("MyConfig", () => new MyConfig());
         Console.WriteLine($"Source (RunId: {config.RunId}): Producing up to {config.BatchSize} items.");
@@ -446,7 +446,7 @@ public sealed class ContextAwareSink : SinkNode<string>, IContextAwareNode
         _context = context;
     }
 
-    public override async Task ExecuteAsync(
+    public override async Task ConsumeAsync(
         IDataStream<string> input,
         PipelineContext context,
         CancellationToken cancellationToken = default)

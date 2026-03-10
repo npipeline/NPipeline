@@ -11,7 +11,7 @@ namespace NPipeline.Analyzers.Tests;
 public sealed class LinqInHotPathsAnalyzerTests
 {
     [Fact]
-    public void ShouldDetectLinqInExecuteAsyncMethod()
+    public void ShouldDetectLinqInTransformAsyncMethod()
     {
         var code = """
                    using System.Linq;
@@ -32,7 +32,7 @@ public sealed class LinqInHotPathsAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
-        Assert.True(hasDiagnostic, "Analyzer should detect LINQ in ExecuteAsync method");
+        Assert.True(hasDiagnostic, "Analyzer should detect LINQ in TransformAsync method");
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public sealed class LinqInHotPathsAnalyzerTests
 
                    public class TestSourceNode : ISourceNode<int>
                    {
-                       public async Task<IDataStream<int>> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+                       public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var numbers = Enumerable.Range(1, 100);
                            // NP9102: LINQ in hot path
@@ -320,7 +320,7 @@ public sealed class LinqInHotPathsAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public ValueTask<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public ValueTask<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            // NP9102: LINQ in ValueTask-returning method
                            var result = input.Split(' ').Where(x => x.Length > 0).ToList();

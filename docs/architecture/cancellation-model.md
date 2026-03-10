@@ -13,9 +13,9 @@ Cancellation in NPipeline is cooperative and propagates through all nodes, allow
 Cancellation tokens flow from the top-level execution down to every node:
 
 ```text
-PipelineRunner.ExecuteAsync(cancellationToken)
+PipelineRunner.RunAsync<TPipeline>(cancellationToken)
         ↓
-    Source.Initialize(cancellationToken)
+    Source.OpenStream(cancellationToken)
         ↓
     Transform.ProcessAsync(item, cancellationToken)
         ↓
@@ -29,7 +29,7 @@ PipelineRunner.ExecuteAsync(cancellationToken)
 ```csharp
 // User initiates cancellation
 var cts = new CancellationTokenSource();
-var executionTask = runner.ExecuteAsync(pipeline, context, cts.Token);
+var executionTask = runner.RunAsync<MyPipeline>(context, cts.Token);
 
 // Later, request cancellation
 cts.Cancel();
@@ -108,8 +108,8 @@ Respect token during processing:
 ```csharp
 public class SinkNode : ISinkNode<int>
 {
-    public async Task ExecuteAsync(
-        IAsyncEnumerable<int> input,
+    public async Task ConsumeAsync(
+        IDataStream<int> input,
         PipelineContext context,
         CancellationToken cancellationToken = default)
     {
@@ -132,7 +132,7 @@ var cts = CancellationTokenSource.CreateLinkedTokenSource(
     existingToken,
     new CancellationTokenSource(TimeSpan.FromSeconds(30)).Token);
 
-await runner.ExecuteAsync(pipeline, context, cts.Token);
+await runner.RunAsync<MyPipeline>(context, cts.Token);
 ```
 
 **Manual Cancellation:**
@@ -140,7 +140,7 @@ await runner.ExecuteAsync(pipeline, context, cts.Token);
 ```csharp
 var cts = new CancellationTokenSource();
 
-var executionTask = runner.ExecuteAsync(pipeline, context, cts.Token);
+var executionTask = runner.RunAsync<MyPipeline>(context, cts.Token);
 
 await Task.Delay(5000);
 cts.Cancel(); // Stop after 5 seconds

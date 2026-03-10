@@ -223,7 +223,7 @@ public sealed class CsvReaderPipeline : IPipelineDefinition
 
 public sealed class ConsoleSinkNode : SinkNode<User>
 {
-    public override async Task ExecuteAsync(
+    public override async Task ConsumeAsync(
         IDataStream<User> input,
         PipelineContext context,
         IPipelineActivity parentActivity,

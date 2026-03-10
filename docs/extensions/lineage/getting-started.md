@@ -89,7 +89,7 @@ public class OrderPipeline : IPipelineDefinition
 
 public sealed class OrderSource : SourceNode<Order>
 {
-    public IDataStream<Order> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
+    public IDataStream<Order> OpenStream(PipelineContext context, CancellationToken cancellationToken = default)
     {
         static async IAsyncEnumerable<Order> GenerateOrders()
         {

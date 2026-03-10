@@ -77,7 +77,7 @@ public sealed class UppercaseTransform : TransformNode<string, string>
 // This node will consume the final string and print it to the console.
 public sealed class ConsoleSink : SinkNode<string>
 {
-    public override async Task ExecuteAsync(
+    public override async Task ConsumeAsync(
         IDataStream<string> input,
         PipelineContext context,
         CancellationToken cancellationToken = default)
@@ -162,7 +162,7 @@ public override IDataStream<string> OpenStream(...)  // Notice: Not async!
 }
 ```
 
-The method is called `Initialize`, not `InitializeAsync`, because it returns synchronously — no await is involved!
+The method is called `OpenStream`, not `OpenStreamAsync`, because it returns synchronously — no await is involved!
 
 **Phase 1 (Synchronous):** The source creates a pipe immediately
 
@@ -184,7 +184,7 @@ await foreach (var item in input.WithCancellation(cancellationToken))  // Async 
 * **Simplicity:** Pipe creation is fast and synchronous
 * **Type Safety:** Direct `IDataStream<T>` returns enable better type compatibility
 * **Performance:** No unnecessary Task allocations
-* **Clarity:** "ExecuteAsync" signals you're in the async pipeline system, but the pipe is ready to use immediately
+* **Clarity:** `OpenStream` creates the pipe synchronously; data flows asynchronously only when the sink iterates it
 
 Think of it like opening a file: `File.OpenRead()` is synchronous and returns immediately, but `stream.ReadAsync()` is asynchronous when you actually read data from it.
 

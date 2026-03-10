@@ -688,11 +688,11 @@ public class SqsSinkNodeTests
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"ExecuteAsync exception: {ex}");
+                Console.WriteLine($"ConsumeAsync exception: {ex}");
                 capturedException = ex;
             }
 
-            Console.WriteLine($"After ExecuteAsync: capturedRequest={capturedRequest != null}, capturedException={capturedException != null}");
+            Console.WriteLine($"After ConsumeAsync: capturedRequest={capturedRequest != null}, capturedException={capturedException != null}");
 
             // Assert
             if (capturedException != null)

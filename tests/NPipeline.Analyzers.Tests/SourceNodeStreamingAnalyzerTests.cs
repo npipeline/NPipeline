@@ -180,7 +180,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
                    {
                        public IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                        {
-                           var items = new List<string>(); // Should NOT trigger diagnostic (not Initialize)
+                           var items = new List<string>(); // Should NOT trigger diagnostic (not OpenStream)
                            return new InMemoryDataStream<string>(items);
                        }
                    }
@@ -193,7 +193,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
     }
 
     [Fact]
-    public void ShouldNotAnalyzeNonInitializeMethods()
+    public void ShouldNotAnalyzeNonOpenStreamMethods()
     {
         var code = """
                    using System.Collections.Generic;
@@ -205,7 +205,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
                    {
                        public IDataStream<string> SomeOtherMethod(PipelineContext context, CancellationToken cancellationToken)
                        {
-                           var items = new List<string>(); // Should NOT trigger diagnostic (not Initialize)
+                           var items = new List<string>(); // Should NOT trigger diagnostic (not OpenStream)
                            return new InMemoryDataStream<string>(items);
                        }
 
@@ -226,7 +226,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         var hasDiagnostic = diagnostics.Any(d => d.Id == SourceNodeStreamingAnalyzer.SourceNodeStreamingId);
-        Assert.False(hasDiagnostic, "Analyzer should not analyze non-Initialize methods");
+        Assert.False(hasDiagnostic, "Analyzer should not analyze non-OpenStream methods");
     }
 
     [Fact]

@@ -135,7 +135,7 @@ var pipeline = PipelineBuilder.Create()
     .Build();
 
 // Execute the pipeline
-await pipeline.ExecuteAsync(context);
+await runner.RunAsync<MyPipelineDefinition>(context);
 ```
 
 ### Different Queue Policies

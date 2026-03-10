@@ -173,7 +173,7 @@ var builder = new PipelineBuilder();
 var pipeline = builder.Build();
 
 // Then execute the pipeline
-await pipeline.ExecuteAsync(source, context);
+await runner.RunAsync<MyPipelineDefinition>(context);
 ```
 
 ---
@@ -333,13 +333,13 @@ builder.WithRetryOptions(options =>
 
 ### NP9301: SinkNode Input Not Consumed
 
-**Message:** `[NP9301] SinkNode '{0}' overrides ExecuteAsync but doesn't consume input parameter. Sink nodes should process all items from input data stream.`
+**Message:** `[NP9301] SinkNode '{0}' overrides ConsumeAsync but doesn't consume input parameter. Sink nodes should process all items from input data stream.`
 
 **Category:** Data Integrity - Input Consumption
 
 **Severity:** Error
 
-**Cause:** Your SinkNode implementation overrides ExecuteAsync but doesn't consume the input parameter. Sink nodes are designed to process all items from their input data stream, but your implementation ignores the input.
+**Cause:** Your SinkNode implementation overrides ConsumeAsync but doesn't consume the input parameter. Sink nodes are designed to process all items from their input data stream, but your implementation ignores the input.
 
 This can cause:
 
@@ -537,7 +537,7 @@ var retryOptions = new PipelineRetryOptions(
 var context = PipelineContext.WithRetry(retryOptions);
 var pipeline = builder.Build();
 
-await pipeline.ExecuteAsync(source, context);
+await runner.RunAsync<MyPipelineDefinition>(context);
 ```
 
 **Configuration Guidance:** Always set `MaxMaterializedItems` to a positive bounded value. Setting it to `null` (unbounded) will cause `InvalidOperationException` when `RestartNode` is attempted, as the system cannot safely buffer items for replay without defined limits. See the [Getting Started with Resilience](../core-concepts/resilience/getting-started.md) guide for detailed explanation of why bounded buffers are required for resilience guarantees.
@@ -563,7 +563,7 @@ await pipeline.ExecuteAsync(source, context);
 
 **Cause:** Your SourceNode implementation contains patterns that can lead to memory issues and poor performance when processing large datasets. The analyzer detects these problematic patterns:
 
-1. **`List<T>` or `Array` allocation and population** in Initialize methods
+1. **`List<T>` or `Array` allocation and population** in OpenStream methods
 2. **.ToAsyncEnumerable()** calls on materialized collections
 3. **Synchronous I/O operations** like File.ReadAllText, File.WriteAllBytes, etc.
 4. **.ToList() and .ToArray()** calls that materialize collections in memory
@@ -598,7 +598,7 @@ public class BadSourceNode : SourceNode<string>
         // NP9107: Materializing collection with ToList()
         foreach (var item in items.ToList())
         {
-            // This pattern is no longer valid with Initialize method
+            // This pattern is no longer valid with OpenStream method
         }
 
         return new DataStream<string>(items.ToAsyncEnumerable());
@@ -660,20 +660,20 @@ public class GoodSourceNode : SourceNode<string>
 
 ### NP9401: StreamTransformNodeSuggestionAnalyzer
 
-**Message:** `[NP9401] Class '{0}' implements ITransformNode but ExecuteAsync returns IAsyncEnumerable<{1}>&gt;. Consider implementing IStreamTransformNode<{2}, {1}>&gt; instead for better interface segregation.`
+**Message:** `[NP9401] Class '{0}' implements ITransformNode but TransformAsync returns IAsyncEnumerable<{1}>&gt;. Consider implementing IStreamTransformNode<{2}, {1}>&gt; instead for better interface segregation.`
 
 **Category:** Best Practice
 
 **Severity:** Warning
 
-**Cause:** Your transform node implementation returns `IAsyncEnumerable<T>` from `ExecuteAsync`, which is a common pattern for streaming transformations. However, this can lead to confusion and potential misuse. The analyzer suggests implementing `IStreamTransformNode<TInput, TOutput>` instead.
+**Cause:** Your transform node implementation returns `IAsyncEnumerable<T>` from `TransformAsync`, which is a common pattern for streaming transformations. However, this can lead to confusion and potential misuse. The analyzer suggests implementing `IStreamTransformNode<TInput, TOutput>` instead.
 
 **Solution:** Implement `IStreamTransformNode<TInput, TOutput>` for your transform node. This provides a clear interface for streaming transformations and improves code clarity.
 
 **Example:**
 
 ```csharp
-// PROBLEM: Node returns IAsyncEnumerable<T> from ExecuteAsync
+// PROBLEM: Node returns IAsyncEnumerable<T> from TransformAsync
 public class BadTransformNode : TransformNode<string, string>
 {
     public override async Task<IAsyncEnumerable<string>> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)

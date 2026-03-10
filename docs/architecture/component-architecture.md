@@ -260,7 +260,7 @@ Produces initial `IDataStream<T>` containing all source data synchronously.
 **TransformNode Execution:**
 
 ```csharp
-public abstract Task<T> ExecuteAsync(
+public abstract Task<T> TransformAsync(
     T item,
     PipelineContext context,
     CancellationToken cancellationToken);
@@ -271,7 +271,7 @@ Called for each item; returns transformed item or throws to fail.
 **SinkNode Execution:**
 
 ```csharp
-public abstract Task ExecuteAsync(
+public abstract Task ConsumeAsync(
     IDataStream<T> input,
     PipelineContext context,
     CancellationToken cancellationToken);

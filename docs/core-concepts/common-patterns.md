@@ -54,7 +54,7 @@ public sealed class RegionEnricher : TransformNode<RawCustomer, EnrichedCustomer
 
 public sealed class DatabaseSink : SinkNode<EnrichedCustomer>
 {
-    public override async Task ExecuteAsync(
+    public override async Task ConsumeAsync(
         IDataStream<EnrichedCustomer> input,
         PipelineContext context,
         IPipelineActivity parentActivity,
@@ -169,7 +169,7 @@ public sealed class MetricsAggregator : SinkNode<SalesData>
     private decimal _total;
     private int _count;
 
-    public override async Task ExecuteAsync(
+    public override async Task ConsumeAsync(
         IDataStream<SalesData> input,
         PipelineContext context,
         IPipelineActivity parentActivity,
@@ -210,7 +210,7 @@ public sealed class BatchDatabaseSink : SinkNode<Customer>
 {
     private const int BatchSize = 100;
 
-    public override async Task ExecuteAsync(
+    public override async Task ConsumeAsync(
         IDataStream<Customer> input,
         PipelineContext context,
         IPipelineActivity parentActivity,

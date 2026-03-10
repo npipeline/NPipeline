@@ -289,7 +289,7 @@ public class Program
         {
             try
             {
-                await pipeline.ExecuteAsync(item, context, CancellationToken.None);
+                await runner.RunAsync<MyPipeline>(context, CancellationToken.None);
                 Console.WriteLine($"✓ Successfully processed: {item}");
             }
             catch (Exception ex)
@@ -542,7 +542,7 @@ public class DeadLetterReprocessor
                     _logger.LogInformation("Reprocessing item: {ItemId}", deadLetterEntry.Id);
 
                     // Attempt to reprocess the item
-                    var result = await _targetNode.ExecuteAsync(
+                    var result = await _targetNode.TransformAsync(
                         item,
                         PipelineContext.Default,
                         cancellationToken);

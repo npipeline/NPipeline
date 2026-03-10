@@ -175,7 +175,7 @@ LINQ in hot paths causes:
 #### Problematic Patterns
 
 ```csharp
-// PROBLEM: LINQ in ExecuteAsync method
+// PROBLEM: LINQ in TransformAsync method
 public class BadTransform : ITransformNode<Input, Output>
 {
     protected override async Task<Output> TransformAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
@@ -398,7 +398,7 @@ Anonymous object allocations cause:
 #### Problematic Patterns
 
 ```csharp
-// PROBLEM: Anonymous objects in ExecuteAsync
+// PROBLEM: Anonymous objects in ConsumeAsync
 protected override async Task ConsumeAsync(IDataStream<Output> output, PipelineContext context, CancellationToken cancellationToken)
 {
     foreach (var item in inputItems)

@@ -250,7 +250,7 @@ public class CustomTapNode<T> : TapNode<T>
         _logic = logic;
     }
 
-    public override async Task<T> ExecuteAsync(T item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<T> TransformAsync(T item, PipelineContext context, CancellationToken cancellationToken)
     {
         // Custom tap logic before sending to sink
         await _logic.ProcessAsync(item, cancellationToken);

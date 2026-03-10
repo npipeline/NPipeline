@@ -18,14 +18,14 @@ NPipeline follows a clear separation of concerns:
 
 **Synchronous Phase:** Source Node Initialization
 
-- Source nodes' `Initialize()` method returns `IDataStream<T>` synchronously
+- Source nodes' `OpenStream()` method returns `IDataStream<T>` synchronously
 - The source immediately creates and returns the data stream without waiting
 - No Task allocation for source execution
 
 **Asynchronous Phase:** Transform & Sink Execution
 
-- Transform nodes' `ExecuteAsync()` method returns `Task<TOut>` asynchronously
-- Sink nodes' `ExecuteAsync()` method returns `Task` asynchronously
+- Transform nodes' `TransformAsync()` method returns `Task<TOut>` asynchronously
+- Sink nodes' `ConsumeAsync()` method returns `Task` asynchronously
 - Data flows through pipes when nodes consume it
 - Sinks iterate through pipes with `await foreach`
 - Transforms process items as they arrive

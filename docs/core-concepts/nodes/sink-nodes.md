@@ -44,7 +44,7 @@ public sealed class ConsoleSink<T> : ISinkNode<T>
 
 ### Data Stream Consumption
 
-The `ExecuteAsync` method receives an `IDataStream<TIn>` which represents the final stream of items produced by the previous node in the pipeline. Sink nodes iterate through this stream and perform appropriate operations.
+The `ConsumeAsync` method receives an `IDataStream<TIn>` which represents the final stream of items produced by the previous node in the pipeline. Sink nodes iterate through this stream and perform appropriate operations.
 
 ### Streaming Iteration
 
@@ -72,7 +72,7 @@ Always respect the `cancellationToken` parameter to allow graceful shutdown of y
 
 > **⚠️ Important**
 >
-> Always check the cancellation token in your sink's `ExecuteAsync` method. Failure to do so can cause hangs during pipeline shutdown or when users request cancellation.
+> Always check the cancellation token in your sink's `ConsumeAsync` method. Failure to do so can cause hangs during pipeline shutdown or when users request cancellation.
 
 ## Common Sink Patterns
 
@@ -225,7 +225,7 @@ public class LineageAwareSink : ISinkNode<Output>
         _lineageUnwrap = lineageUnwrap;
     }
     
-    public async Task ExecuteAsync(
+    public async Task ConsumeAsync(
         IDataStream<Output> input, 
         PipelineContext context, 
         CancellationToken cancellationToken)

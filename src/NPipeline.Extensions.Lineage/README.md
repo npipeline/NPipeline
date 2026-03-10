@@ -67,7 +67,7 @@ builder.UseLoggingPipelineLineageSink();
 
 // Build and execute the pipeline
 var pipeline = builder.Build();
-await pipeline.ExecuteAsync(serviceProvider);
+await runner.RunAsync<MyPipelineDefinition>(context);
 ```
 
 ## Configuration

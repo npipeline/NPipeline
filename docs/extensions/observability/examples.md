@@ -42,7 +42,7 @@ public class SimplePipeline : IPipelineDefinition
 // Source node that generates numbers
 public sealed class NumberSource : SourceNode<int>
 {
-    public IDataStream<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
+    public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken = default)
     {
         static async IAsyncEnumerable<int> Generate()
         {
@@ -909,7 +909,7 @@ public sealed class EtlPipeline : IPipelineDefinition
 // Source: Read from CSV
 public sealed class CsvDataSource : SourceNode<RawData>
 {
-    public IDataStream<RawData> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
+    public IDataStream<RawData> OpenStream(PipelineContext context, CancellationToken cancellationToken = default)
     {
         static async IAsyncEnumerable<RawData> ReadFromCsv()
         {

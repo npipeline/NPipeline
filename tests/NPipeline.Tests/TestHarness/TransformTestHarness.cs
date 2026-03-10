@@ -6,7 +6,7 @@ using NPipeline.Pipeline;
 namespace NPipeline.Tests.TestHarness;
 
 /// <summary>
-///     Test harness utilities for running transform nodes in unit tests without relying on now-removed generic ExecuteAsync.
+///     Test harness utilities for running transform nodes in unit tests without relying on the generic execution strategy directly.
 /// </summary>
 public static class TransformTestHarness
 {

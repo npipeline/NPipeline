@@ -16,7 +16,7 @@ Data processing analyzers protect the integrity of data flow through your pipeli
 
 This analyzer detects non-streaming patterns in SourceNode implementations that can lead to memory issues and poor performance. The analyzer identifies the following problematic patterns:
 
-1. **List and Array allocation and population** in Initialize methods
+1. **List and Array allocation and population** in OpenStream methods
 2. **.ToAsyncEnumerable()** calls on materialized collections
 3. **Synchronous I/O operations** like File.ReadAllText, File.WriteAllBytes, etc.
 4. **.ToList() and .ToArray()** calls that materialize collections in memory
@@ -66,7 +66,7 @@ public class GoodSourceNode : SourceNode<string>
 **Severity:** Error  
 **Category:** Data Integrity - Input Consumption  
 
-This analyzer detects when a SinkNode implementation overrides ExecuteAsync but doesn't consume the input parameter. Sink nodes are designed to process all items from the input data stream, but your implementation ignores the input.
+This analyzer detects when a SinkNode implementation overrides ConsumeAsync but doesn't consume the input parameter. Sink nodes are designed to process all items from the input data stream, but your implementation ignores the input.
 
 #### Why This Matters
 

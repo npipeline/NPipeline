@@ -17,22 +17,22 @@ Convert string representations to numeric types:
 ```csharp
 // String to Integer
 var stringToIntNode = TypeConversions.StringToInt();
-var result = await stringToIntNode.ExecuteAsync("42", context, cancellationToken);
+var result = await stringToIntNode.TransformAsync("42", context, cancellationToken);
 // result = 42
 
 // String to Double
 var stringToDoubleNode = TypeConversions.StringToDouble();
-var result = await stringToDoubleNode.ExecuteAsync("42.5", context, cancellationToken);
+var result = await stringToDoubleNode.TransformAsync("42.5", context, cancellationToken);
 // result = 42.5
 
 // String to Decimal
 var stringToDecimalNode = TypeConversions.StringToDecimal();
-var result = await stringToDecimalNode.ExecuteAsync("42.50", context, cancellationToken);
+var result = await stringToDecimalNode.TransformAsync("42.50", context, cancellationToken);
 // result = 42.50m
 
 // String to Long
 var stringToLongNode = TypeConversions.StringToLong();
-var result = await stringToLongNode.ExecuteAsync("9223372036854775807", context, cancellationToken);
+var result = await stringToLongNode.TransformAsync("9223372036854775807", context, cancellationToken);
 // result = 9223372036854775807L
 ```
 
@@ -291,7 +291,7 @@ public class ImportPipeline
         {
             try
             {
-                var record = await converter.ExecuteAsync(line, PipelineContext.Default, CancellationToken.None);
+                var record = await converter.TransformAsync(line, PipelineContext.Default, CancellationToken.None);
                 await ProcessRecord(record);
             }
             catch (TypeConversionException ex)

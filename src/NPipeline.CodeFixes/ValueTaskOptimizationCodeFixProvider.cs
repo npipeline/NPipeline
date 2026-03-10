@@ -88,7 +88,7 @@ public sealed class ValueTaskOptimizationCodeFixProvider : CodeFixProvider
     }
 
     /// <summary>
-    ///     Finds the ExecuteAsync method in the class.
+    ///     Finds the TransformAsync method in the class.
     /// </summary>
     private static MethodDeclarationSyntax? FindExecuteAsyncMethod(
         ClassDeclarationSyntax classDeclaration)
@@ -112,7 +112,7 @@ public sealed class ValueTaskOptimizationCodeFixProvider : CodeFixProvider
     }
 
     /// <summary>
-    ///     Generates an ExecuteValueTaskAsync method based on the existing ExecuteAsync method.
+    ///     Generates an ExecuteValueTaskAsync method based on the existing TransformAsync method.
     /// </summary>
     private static MethodDeclarationSyntax GenerateExecuteValueTaskAsyncMethod(MethodDeclarationSyntax executeAsyncMethod)
     {
@@ -147,7 +147,7 @@ public sealed class ValueTaskOptimizationCodeFixProvider : CodeFixProvider
     }
 
     /// <summary>
-    ///     Generates the body for ExecuteValueTaskAsync based on ExecuteAsync implementation.
+    ///     Generates the body for ExecuteValueTaskAsync based on TransformAsync implementation.
     /// </summary>
     private static BlockSyntax GenerateExecuteValueTaskAsyncBody(MethodDeclarationSyntax executeAsyncMethod)
     {
