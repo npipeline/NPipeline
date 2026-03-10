@@ -30,7 +30,7 @@ public class ConsoleSink<T> : SinkNode<T>
     }
 
     /// <inheritdoc />
-    public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
         _logger?.LogInformation("ConsoleSink: Starting to output {Prefix} items", _prefix);
 

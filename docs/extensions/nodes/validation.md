@@ -292,7 +292,7 @@ Validation errors are captured and can be handled:
 ```csharp
 try
 {
-    await pipeline.ExecuteAsync();
+    await runner.RunAsync<MyPipelineDefinition>();
 }
 catch (ValidationException ex)
 {

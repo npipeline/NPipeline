@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
 using NPipeline.Observability;
@@ -22,8 +22,8 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
     public static SequentialExecutionStrategy Instance { get; } = new();
 
     /// <inheritdoc />
-    public Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(
-        IDataPipe<TIn> input,
+    public Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(
+        IDataStream<TIn> input,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -38,7 +38,7 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
         var immutabilityGuard = PipelineContextImmutabilityGuard.Create(context, cached);
 
         // Use Task.FromResult for already-completed synchronous result
-        return Task.FromResult<IDataPipe<TOut>>(new StreamingDataPipe<TOut>(Iterate(cancellationToken)));
+        return Task.FromResult<IDataStream<TOut>>(new DataStream<TOut>(Iterate(cancellationToken)));
 
         async IAsyncEnumerable<TOut> Iterate([EnumeratorCancellation] CancellationToken ct)
         {
@@ -77,7 +77,7 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                         try
                         {
                             var work = valueTaskTransform?.ExecuteValueTaskAsync(item, context, ct)
-                                       ?? new ValueTask<TOut>(node.ExecuteAsync(item, context, ct));
+                                       ?? new ValueTask<TOut>(node.TransformAsync(item, context, ct));
 
                             output = await work.ConfigureAwait(false);
                             produced = true;

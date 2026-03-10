@@ -2,7 +2,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution.Plans;
 using NPipeline.Execution.Pooling;
 using NPipeline.Graph;
@@ -136,7 +136,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         return plans;
     }
 
-    private static Func<IDataPipe, PipelineContext, CancellationToken, Task<IDataPipe>> BuildTransformDelegate(
+    private static Func<IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildTransformDelegate(
         NodeDefinition def,
         ITransformNode transformNode)
     {
@@ -154,7 +154,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
             typeof(ITransformNode<,>));
     }
 
-    private static Func<IDataPipe, PipelineContext, CancellationToken, Task<IDataPipe>> BuildStreamTransformDelegate(
+    private static Func<IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildStreamTransformDelegate(
         NodeDefinition def,
         IStreamTransformNode streamTransformNode)
     {
@@ -190,7 +190,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
             typeof(IStreamTransformNode<,>));
     }
 
-    private static Func<IDataPipe, PipelineContext, CancellationToken, Task<IDataPipe>> BuildStrategyDelegate(
+    private static Func<IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildStrategyDelegate(
         Type inType,
         Type outType,
         object strategy,
@@ -204,11 +204,11 @@ public sealed class NodeInstantiationService : INodeInstantiationService
 
         var closedExec = execMethod.MakeGenericMethod(inType, outType);
 
-        var pipeParam = Expression.Parameter(typeof(IDataPipe), "pipe");
+        var pipeParam = Expression.Parameter(typeof(IDataStream), "pipe");
         var ctxParam = Expression.Parameter(typeof(PipelineContext), "ctx");
         var ctParam = Expression.Parameter(typeof(CancellationToken), "ct");
 
-        var typedInputInterface = typeof(IDataPipe<>).MakeGenericType(inType);
+        var typedInputInterface = typeof(IDataStream<>).MakeGenericType(inType);
         var castInput = Expression.Convert(pipeParam, typedInputInterface);
         var typedNodeInterface = nodeInterfaceDefinition.MakeGenericType(inType, outType);
         var castNode = Expression.Convert(Expression.Constant(nodeInstance), typedNodeInterface);
@@ -217,21 +217,21 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         var call = Expression.Call(strategyConst, closedExec, castInput, castNode, ctxParam, ctParam);
         var upcastCall = Expression.Call(UpcastTaskGenericMethod.MakeGenericMethod(outType), call);
 
-        return Expression.Lambda<Func<IDataPipe, PipelineContext, CancellationToken, Task<IDataPipe>>>(
+        return Expression.Lambda<Func<IDataStream, PipelineContext, CancellationToken, Task<IDataStream>>>(
             upcastCall,
             pipeParam,
             ctxParam,
             ctParam).Compile();
     }
 
-    // Helper used by expression tree to upcast Task<IDataPipe<T>> to Task<IDataPipe>
-    private static async Task<IDataPipe> UpcastTask<T>(Task<IDataPipe<T>> task)
+    // Helper used by expression tree to upcast Task<IDataStream<T>> to Task<IDataStream>
+    private static async Task<IDataStream> UpcastTask<T>(Task<IDataStream<T>> task)
     {
         var result = await task.ConfigureAwait(false); // eliminate Task.Result (CA1849)
         return result;
     }
 
-    private static Func<PipelineContext, CancellationToken, Task<IDataPipe>> BuildSourceDelegate(
+    private static Func<PipelineContext, CancellationToken, Task<IDataStream>> BuildSourceDelegate(
         NodeDefinition def,
         INode instance)
     {
@@ -246,14 +246,14 @@ public sealed class NodeInstantiationService : INodeInstantiationService
                 $"Source node '{def.Id}' does not implement {sourceInterface.Name}.");
         }
 
-        // Get the Initialize method
+        // Get the OpenStream method
         var executeMethod = sourceInterface.GetMethod(
-            nameof(ISourceNode<int>.Initialize),
+            nameof(ISourceNode<int>.OpenStream),
             BindingFlags.Public | BindingFlags.Instance,
             null,
             [typeof(PipelineContext), typeof(CancellationToken)],
             null) ?? throw new InvalidOperationException(
-            $"Could not find Initialize method on {sourceInterface.Name}.");
+            $"Could not find OpenStream method on {sourceInterface.Name}.");
 
         // Build a delegate that calls the method and upcasts the result
         var ctxParam = Expression.Parameter(typeof(PipelineContext), "ctx");
@@ -262,24 +262,24 @@ public sealed class NodeInstantiationService : INodeInstantiationService
         var instanceExpr = Expression.Constant(instance);
         var typedInstanceExpr = Expression.Convert(instanceExpr, sourceInterface);
 
-        var callExpr = Expression.Call(typedInstanceExpr, executeMethod, ctxParam, ctParam); // IDataPipe<TOut>
+        var callExpr = Expression.Call(typedInstanceExpr, executeMethod, ctxParam, ctParam); // IDataStream<TOut>
 
-        // Upcast to non-generic IDataPipe so we can wrap in Task.FromResult
-        var castExpr = Expression.Convert(callExpr, typeof(IDataPipe));
+        // Upcast to non-generic IDataStream so we can wrap in Task.FromResult
+        var castExpr = Expression.Convert(callExpr, typeof(IDataStream));
 
         var fromResultMethod = typeof(Task)
             .GetMethod(nameof(Task.FromResult), BindingFlags.Public | BindingFlags.Static)!
-            .MakeGenericMethod(typeof(IDataPipe));
+            .MakeGenericMethod(typeof(IDataStream));
 
-        var wrappedCall = Expression.Call(fromResultMethod, castExpr); // Task<IDataPipe>
+        var wrappedCall = Expression.Call(fromResultMethod, castExpr); // Task<IDataStream>
 
-        var lambda = Expression.Lambda<Func<PipelineContext, CancellationToken, Task<IDataPipe>>>(
+        var lambda = Expression.Lambda<Func<PipelineContext, CancellationToken, Task<IDataStream>>>(
             wrappedCall, ctxParam, ctParam);
 
         return lambda.Compile();
     }
 
-    private static Func<IDataPipe, PipelineContext, CancellationToken, Task> BuildSinkDelegate(
+    private static Func<IDataStream, PipelineContext, CancellationToken, Task> BuildSinkDelegate(
         NodeDefinition def,
         INode instance)
     {
@@ -294,21 +294,21 @@ public sealed class NodeInstantiationService : INodeInstantiationService
                 $"Sink node '{def.Id}' does not implement {sinkInterface.Name}.");
         }
 
-        // Get the ExecuteAsync method
+        // Get the ConsumeAsync method
         var executeMethod = sinkInterface.GetMethod(
-            nameof(ISinkNode<int>.ExecuteAsync),
+            nameof(ISinkNode<int>.ConsumeAsync),
             BindingFlags.Public | BindingFlags.Instance,
             null,
-            [typeof(IDataPipe<>).MakeGenericType(inputType), typeof(PipelineContext), typeof(CancellationToken)],
+            [typeof(IDataStream<>).MakeGenericType(inputType), typeof(PipelineContext), typeof(CancellationToken)],
             null) ?? throw new InvalidOperationException(
-            $"Could not find ExecuteAsync method on {sinkInterface.Name}.");
+            $"Could not find ConsumeAsync method on {sinkInterface.Name}.");
 
         // Build a delegate that casts input and calls the method
-        var inputParam = Expression.Parameter(typeof(IDataPipe), "input");
+        var inputParam = Expression.Parameter(typeof(IDataStream), "input");
         var ctxParam = Expression.Parameter(typeof(PipelineContext), "ctx");
         var ctParam = Expression.Parameter(typeof(CancellationToken), "ct");
 
-        var typedInputInterface = typeof(IDataPipe<>).MakeGenericType(inputType);
+        var typedInputInterface = typeof(IDataStream<>).MakeGenericType(inputType);
         var castInputExpr = Expression.Convert(inputParam, typedInputInterface);
 
         var instanceExpr = Expression.Constant(instance);
@@ -316,13 +316,13 @@ public sealed class NodeInstantiationService : INodeInstantiationService
 
         var callExpr = Expression.Call(typedInstanceExpr, executeMethod, castInputExpr, ctxParam, ctParam);
 
-        var lambda = Expression.Lambda<Func<IDataPipe, PipelineContext, CancellationToken, Task>>(
+        var lambda = Expression.Lambda<Func<IDataStream, PipelineContext, CancellationToken, Task>>(
             callExpr, inputParam, ctxParam, ctParam);
 
         return lambda.Compile();
     }
 
-    private static Func<IEnumerable<IDataPipe>, PipelineContext, CancellationToken, Task<IDataPipe>> BuildJoinDelegate(
+    private static Func<IEnumerable<IDataStream>, PipelineContext, CancellationToken, Task<IDataStream>> BuildJoinDelegate(
         NodeDefinition def,
         IJoinNode joinNode)
     {
@@ -331,11 +331,11 @@ public sealed class NodeInstantiationService : INodeInstantiationService
             var merged = inputs.First(); // merge already performed upstream
             var stream = merged.ToAsyncEnumerable(ct);
             var joined = await joinNode.ExecuteAsync(stream, ctx, ct).ConfigureAwait(false);
-            return new StreamingDataPipe<object?>(joined, $"JoinResult_{def.Id}");
+            return new DataStream<object?>(joined, $"JoinResult_{def.Id}");
         };
     }
 
-    private static Func<IDataPipe, PipelineContext, CancellationToken, Task<IDataPipe>> BuildAggregateDelegate(
+    private static Func<IDataStream, PipelineContext, CancellationToken, Task<IDataStream>> BuildAggregateDelegate(
         NodeDefinition def,
         IAggregateNode aggregateNode)
     {
@@ -345,7 +345,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
             var result = await aggregateNode.ExecuteAsync(stream, ct);
 
             if (result is IAsyncEnumerable<object?> asyncEnum)
-                return new StreamingDataPipe<object?>(asyncEnum, $"AggregateResult_{def.Id}");
+                return new DataStream<object?>(asyncEnum, $"AggregateResult_{def.Id}");
 
             List<object?> list;
 
@@ -354,30 +354,30 @@ public sealed class NodeInstantiationService : INodeInstantiationService
             else
                 list = [];
 
-            return new StreamingDataPipe<object?>(list.ToAsyncEnumerable(), $"AggregateResult_{def.Id}");
+            return new DataStream<object?>(list.ToAsyncEnumerable(), $"AggregateResult_{def.Id}");
         };
     }
 
-    internal static Func<IDataPipe, string, IDataPipe>? BuildOutputAdapter(Type? outputType)
+    internal static Func<IDataStream, string, IDataStream>? BuildOutputAdapter(Type? outputType)
     {
         if (outputType is null)
             return null;
 
-        var pipeParam = Expression.Parameter(typeof(IDataPipe), "pipe");
+        var pipeParam = Expression.Parameter(typeof(IDataStream), "pipe");
         var streamNameParam = Expression.Parameter(typeof(string), "streamName");
 
         var closedMethod = AdaptOutputPipeGenericMethod.MakeGenericMethod(outputType);
         var call = Expression.Call(closedMethod, pipeParam, streamNameParam);
-        var castToIDataPipe = Expression.Convert(call, typeof(IDataPipe));
+        var castToIDataStream = Expression.Convert(call, typeof(IDataStream));
 
-        return Expression.Lambda<Func<IDataPipe, string, IDataPipe>>(castToIDataPipe, pipeParam, streamNameParam).Compile();
+        return Expression.Lambda<Func<IDataStream, string, IDataStream>>(castToIDataStream, pipeParam, streamNameParam).Compile();
     }
 
-    private static StreamingDataPipe<TOut> AdaptOutputPipe<TOut>(IDataPipe untyped, string streamName)
+    private static DataStream<TOut> AdaptOutputPipe<TOut>(IDataStream untyped, string streamName)
     {
-        if (untyped is IDataPipe<TOut> typedExisting)
+        if (untyped is IDataStream<TOut> typedExisting)
         {
-            if (typedExisting is StreamingDataPipe<TOut> streaming)
+            if (typedExisting is DataStream<TOut> streaming)
                 return streaming;
 
             async IAsyncEnumerable<TOut> Passthrough([EnumeratorCancellation] CancellationToken ct = default)
@@ -390,7 +390,7 @@ public sealed class NodeInstantiationService : INodeInstantiationService
                 }
             }
 
-            return new StreamingDataPipe<TOut>(Passthrough(), streamName);
+            return new DataStream<TOut>(Passthrough(), streamName);
         }
 
         async IAsyncEnumerable<TOut> Cast([EnumeratorCancellation] CancellationToken ct = default)
@@ -405,6 +405,6 @@ public sealed class NodeInstantiationService : INodeInstantiationService
             }
         }
 
-        return new StreamingDataPipe<TOut>(Cast(), streamName);
+        return new DataStream<TOut>(Cast(), streamName);
     }
 }

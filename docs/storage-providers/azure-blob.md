@@ -26,7 +26,7 @@ The Azure Blob Storage provider provides seamless integration with Azure Blob St
 Use the Azure Blob Storage provider when your application needs to:
 
 - Store and retrieve data in Azure Blob Storage
-- Integrate cloud storage into NPipeline data pipelines
+- Integrate cloud storage into NPipeline data streamlines
 - Leverage Azure's scalability and durability for data storage
 - Handle large files through streaming and block blob uploads
 - Work with Azure Storage Emulator (Azurite) for local development

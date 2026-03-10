@@ -1,5 +1,5 @@
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -14,11 +14,11 @@ public class NumberGenerator : SourceNode<int>
     /// <summary>
     ///     Generates numbers from 1 to 100.
     /// </summary>
-    public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("[NumberGenerator] Initializing number generation (1-100)");
 
         var numbers = Enumerable.Range(1, 100).ToList();
-        return new InMemoryDataPipe<int>(numbers, "number-generator");
+        return new InMemoryDataStream<int>(numbers, "number-generator");
     }
 }

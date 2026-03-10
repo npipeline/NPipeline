@@ -27,7 +27,7 @@ public sealed class RabbitMqConnectorPipeline : IPipelineDefinition
 /// </summary>
 public sealed class OrderEnricher : TransformNode<RabbitMqMessage<OrderEvent>, EnrichedOrder>
 {
-    public override Task<EnrichedOrder> ExecuteAsync(
+    public override Task<EnrichedOrder> TransformAsync(
         RabbitMqMessage<OrderEvent> input,
         PipelineContext context,
         CancellationToken cancellationToken)

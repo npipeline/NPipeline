@@ -101,7 +101,7 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IMergeStrategySelector, MergeStrategySelector>();
         services.TryAddScoped<IPipeMergeService>(sp => new PipeMergeService(sp.GetRequiredService<IMergeStrategySelector>()));
         services.TryAddScoped<ILineageService, LineageService>();
-        services.TryAddScoped<DataPipeWrapperService>();
+        services.TryAddScoped<DataStreamWrapperService>();
         services.TryAddScoped<INodeExecutor, NodeExecutor>();
         services.TryAddScoped<IExecutionAnnotationsService, ExecutionAnnotationsService>();
         services.TryAddScoped<ITopologyService, TopologyService>();

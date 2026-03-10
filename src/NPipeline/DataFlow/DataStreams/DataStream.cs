@@ -1,13 +1,13 @@
 using System.Runtime.CompilerServices;
 
-namespace NPipeline.DataFlow.DataPipes;
+namespace NPipeline.DataFlow.DataStreams;
 
 /// <summary>
-///     An implementation of <see cref="IDataPipe" /> that enables true, non-buffering streaming.
+///     An implementation of <see cref="IDataStream" /> that enables true, non-buffering streaming.
 ///     It wraps an <see cref="IAsyncEnumerable{T}" /> and processes items lazily as they are requested by the consumer.
 ///     This is the recommended implementation for all transform nodes to ensure low memory overhead.
 /// </summary>
-public sealed class StreamingDataPipe<T>(IAsyncEnumerable<T> stream, string streamName = "DefaultStream") : IStreamingDataPipe<T>, IAsyncDisposable
+public sealed class DataStream<T>(IAsyncEnumerable<T> stream, string streamName = "DefaultStream") : IForwardOnlyDataStream<T>, IAsyncDisposable
 {
     private readonly IAsyncEnumerable<T> _stream = stream ?? throw new ArgumentNullException(nameof(stream));
     private bool _disposed;

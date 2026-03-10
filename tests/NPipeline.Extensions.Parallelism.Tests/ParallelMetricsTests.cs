@@ -3,7 +3,7 @@
 using System.Collections.Concurrent;
 using AwesomeAssertions;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Extensions.Testing;
@@ -65,16 +65,16 @@ public class ParallelMetricsTests
 
     private sealed class FastSource : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var items = Enumerable.Range(0, 1000).ToAsyncEnumerable(); // 1000 items to provide pressure
-            return new StreamingDataPipe<int>(items, "ints");
+            return new DataStream<int>(items, "ints");
         }
     }
 
     private sealed class SlowTransform : TransformNode<int, int>
     {
-        public override async Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Slow transform to force queue pressure and drops
             await Task.Delay(50, cancellationToken); // 50ms to provide pressure
@@ -93,7 +93,7 @@ public class ParallelMetricsTests
 
     private sealed class FlakyTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return AttemptCounts.AddOrUpdate(item, 1, (_, i) => i + 1) >= 3
                 ? Task.FromResult(item * 2)

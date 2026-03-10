@@ -1,6 +1,6 @@
 using System.Text;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders.Abstractions;
@@ -37,7 +37,7 @@ public class GcsDocumentSource : SourceNode<string>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the document contents.</returns>
-    public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         // Get configuration from context parameters
         var bucket = context.Parameters.TryGetValue("Bucket", out var bucketObj)
@@ -53,7 +53,7 @@ public class GcsDocumentSource : SourceNode<string>
         var documents = ReadDocumentsAsync(bucket, prefix, cancellationToken).GetAwaiter().GetResult();
         Console.WriteLine($"Read {documents.Count} documents from GCS");
 
-        return new InMemoryDataPipe<string>(documents, "GcsDocumentSource");
+        return new InMemoryDataStream<string>(documents, "GcsDocumentSource");
     }
 
     private async Task<List<string>> ReadDocumentsAsync(string bucket, string prefix, CancellationToken cancellationToken)

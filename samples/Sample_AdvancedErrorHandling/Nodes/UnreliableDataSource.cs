@@ -1,5 +1,5 @@
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -19,7 +19,7 @@ public class UnreliableDataSource : SourceNode<SourceData>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the generated data.</returns>
-    public override IDataPipe<SourceData> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<SourceData> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("Generating data with intermittent failures...");
 
@@ -49,7 +49,7 @@ public class UnreliableDataSource : SourceNode<SourceData>
 
         Console.WriteLine($"Successfully generated {dataItems.Count} data items (with some failures simulated for downstream processing)");
 
-        // Return a InMemoryDataPipe containing our data items
-        return new InMemoryDataPipe<SourceData>(dataItems, "UnreliableDataSource");
+        // Return a InMemoryDataStream containing our data items
+        return new InMemoryDataStream<SourceData>(dataItems, "UnreliableDataSource");
     }
 }

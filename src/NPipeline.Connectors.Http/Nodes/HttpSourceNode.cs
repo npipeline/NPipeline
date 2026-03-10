@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NPipeline.Connectors.Http.Configuration;
 using NPipeline.Connectors.Http.Metrics;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -79,10 +79,10 @@ public sealed partial class HttpSourceNode<T> : SourceNode<T>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var stream = FetchAllPagesAsync(cancellationToken);
-        return new StreamingDataPipe<T>(stream, $"HttpSourceNode<{typeof(T).Name}>");
+        return new DataStream<T>(stream, $"HttpSourceNode<{typeof(T).Name}>");
     }
 
     private async IAsyncEnumerable<T> FetchAllPagesAsync(

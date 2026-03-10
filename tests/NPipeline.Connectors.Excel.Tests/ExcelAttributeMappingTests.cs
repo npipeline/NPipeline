@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using NPipeline.Connectors.Attributes;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Models;
@@ -41,12 +41,12 @@ public sealed class ExcelAttributeMappingTests
 
             // Write
             var sink = new ExcelSinkNode<SimplePoco>(uri, resolver, config);
-            IDataPipe<SimplePoco> input = new StreamingDataPipe<SimplePoco>(data.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<SimplePoco> input = new DataStream<SimplePoco>(data.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read
             var source = new ExcelSourceNode<SimplePoco>(uri, resolver, config);
-            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = new List<SimplePoco>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -104,12 +104,12 @@ public sealed class ExcelAttributeMappingTests
 
             // Write
             var sink = new ExcelSinkNode<PocoWithAttributes>(uri, resolver, config);
-            IDataPipe<PocoWithAttributes> input = new StreamingDataPipe<PocoWithAttributes>(data.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<PocoWithAttributes> input = new DataStream<PocoWithAttributes>(data.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read
             var source = new ExcelSourceNode<PocoWithAttributes>(uri, resolver, config);
-            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = new List<PocoWithAttributes>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -167,12 +167,12 @@ public sealed class ExcelAttributeMappingTests
 
             // Write
             var sink = new ExcelSinkNode<PocoWithIgnore>(uri, resolver, config);
-            IDataPipe<PocoWithIgnore> input = new StreamingDataPipe<PocoWithIgnore>(data.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<PocoWithIgnore> input = new DataStream<PocoWithIgnore>(data.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read
             var source = new ExcelSourceNode<PocoWithIgnore>(uri, resolver, config);
-            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = new List<PocoWithIgnore>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -228,12 +228,12 @@ public sealed class ExcelAttributeMappingTests
 
             // Write
             var sink = new ExcelSinkNode<PocoWithMixedCase>(uri, resolver, config);
-            IDataPipe<PocoWithMixedCase> input = new StreamingDataPipe<PocoWithMixedCase>(data.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<PocoWithMixedCase> input = new DataStream<PocoWithMixedCase>(data.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read
             var source = new ExcelSourceNode<PocoWithMixedCase>(uri, resolver, config);
-            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = new List<PocoWithMixedCase>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -287,12 +287,12 @@ public sealed class ExcelAttributeMappingTests
 
             // Write
             var sink = new ExcelSinkNode<PocoWithNullableTypes>(uri, resolver, config);
-            IDataPipe<PocoWithNullableTypes> input = new StreamingDataPipe<PocoWithNullableTypes>(data.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<PocoWithNullableTypes> input = new DataStream<PocoWithNullableTypes>(data.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read
             var source = new ExcelSourceNode<PocoWithNullableTypes>(uri, resolver, config);
-            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = new List<PocoWithNullableTypes>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -361,12 +361,12 @@ public sealed class ExcelAttributeMappingTests
 
             // Write
             var sink = new ExcelSinkNode<PocoWithVariousTypes>(uri, resolver, config);
-            IDataPipe<PocoWithVariousTypes> input = new StreamingDataPipe<PocoWithVariousTypes>(data.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<PocoWithVariousTypes> input = new DataStream<PocoWithVariousTypes>(data.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read
             var source = new ExcelSourceNode<PocoWithVariousTypes>(uri, resolver, config);
-            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = new List<PocoWithVariousTypes>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -423,8 +423,8 @@ public sealed class ExcelAttributeMappingTests
 
             // Write
             var sink = new ExcelSinkNode<SimplePoco>(uri, resolver, config);
-            IDataPipe<SimplePoco> input = new StreamingDataPipe<SimplePoco>(data.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<SimplePoco> input = new DataStream<SimplePoco>(data.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read with explicit row mapper
             Func<ExcelRow, SimplePoco> rowMapper = row => new SimplePoco
@@ -437,7 +437,7 @@ public sealed class ExcelAttributeMappingTests
             };
 
             var source = new ExcelSourceNode<SimplePoco>(uri, rowMapper, resolver, config);
-            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = new List<SimplePoco>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -488,12 +488,12 @@ public sealed class ExcelAttributeMappingTests
 
             // Write
             var sink = new ExcelSinkNode<PocoWithCommonAttributes>(uri, resolver, config);
-            IDataPipe<PocoWithCommonAttributes> input = new StreamingDataPipe<PocoWithCommonAttributes>(data.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<PocoWithCommonAttributes> input = new DataStream<PocoWithCommonAttributes>(data.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read
             var source = new ExcelSourceNode<PocoWithCommonAttributes>(uri, resolver, config);
-            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = new List<PocoWithCommonAttributes>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -545,14 +545,14 @@ public sealed class ExcelAttributeMappingTests
 
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<PocoWithCommonAttributes>(uri, resolver, config);
-            IDataPipe<PocoWithCommonAttributes> input = new StreamingDataPipe<PocoWithCommonAttributes>(data.ToAsyncEnumerable());
+            IDataStream<PocoWithCommonAttributes> input = new DataStream<PocoWithCommonAttributes>(data.ToAsyncEnumerable());
 
             // Act
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read back to verify
             var source = new ExcelSourceNode<PocoWithCommonAttributes>(uri, resolver, config);
-            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = new List<PocoWithCommonAttributes>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -599,12 +599,12 @@ public sealed class ExcelAttributeMappingTests
 
             // Write
             var sink = new ExcelSinkNode<PocoWithCommonIgnore>(uri, resolver, config);
-            IDataPipe<PocoWithCommonIgnore> input = new StreamingDataPipe<PocoWithCommonIgnore>(data.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<PocoWithCommonIgnore> input = new DataStream<PocoWithCommonIgnore>(data.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read
             var source = new ExcelSourceNode<PocoWithCommonIgnore>(uri, resolver, config);
-            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = new List<PocoWithCommonIgnore>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -654,14 +654,14 @@ public sealed class ExcelAttributeMappingTests
 
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<PocoWithCommonIgnore>(uri, resolver, config);
-            IDataPipe<PocoWithCommonIgnore> input = new StreamingDataPipe<PocoWithCommonIgnore>(data.ToAsyncEnumerable());
+            IDataStream<PocoWithCommonIgnore> input = new DataStream<PocoWithCommonIgnore>(data.ToAsyncEnumerable());
 
             // Act
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read back to verify
             var source = new ExcelSourceNode<PocoWithCommonIgnore>(uri, resolver, config);
-            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = new List<PocoWithCommonIgnore>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -713,12 +713,12 @@ public sealed class ExcelAttributeMappingTests
 
             // Write
             var sink = new ExcelSinkNode<PocoWithMixedAttributes>(uri, resolver, config);
-            IDataPipe<PocoWithMixedAttributes> input = new StreamingDataPipe<PocoWithMixedAttributes>(data.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<PocoWithMixedAttributes> input = new DataStream<PocoWithMixedAttributes>(data.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read
             var source = new ExcelSourceNode<PocoWithMixedAttributes>(uri, resolver, config);
-            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = new List<PocoWithMixedAttributes>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -770,14 +770,14 @@ public sealed class ExcelAttributeMappingTests
 
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<PocoWithMixedAttributes>(uri, resolver, config);
-            IDataPipe<PocoWithMixedAttributes> input = new StreamingDataPipe<PocoWithMixedAttributes>(data.ToAsyncEnumerable());
+            IDataStream<PocoWithMixedAttributes> input = new DataStream<PocoWithMixedAttributes>(data.ToAsyncEnumerable());
 
             // Act
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read back to verify
             var source = new ExcelSourceNode<PocoWithMixedAttributes>(uri, resolver, config);
-            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = new List<PocoWithMixedAttributes>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -952,12 +952,12 @@ public sealed class ExcelAttributeMappingTests
 
             // Write
             var sink = new ExcelSinkNode<SimplePoco>(uri, resolver, config);
-            IDataPipe<SimplePoco> input = new StreamingDataPipe<SimplePoco>(originalData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<SimplePoco> input = new DataStream<SimplePoco>(originalData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read
             var source = new ExcelSourceNode<SimplePoco>(uri, resolver, config);
-            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = new List<SimplePoco>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -1011,12 +1011,12 @@ public sealed class ExcelAttributeMappingTests
 
             // Write
             var sink = new ExcelSinkNode<PocoWithAttributes>(uri, resolver, config);
-            IDataPipe<PocoWithAttributes> input = new StreamingDataPipe<PocoWithAttributes>(originalData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<PocoWithAttributes> input = new DataStream<PocoWithAttributes>(originalData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read
             var source = new ExcelSourceNode<PocoWithAttributes>(uri, resolver, config);
-            var outPipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = new List<PocoWithAttributes>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))

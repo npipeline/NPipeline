@@ -11,8 +11,8 @@ namespace NPipeline.Extensions.Composition;
 public sealed class PipelineOutputSink<T> : ISinkNode<T>
 {
     /// <inheritdoc />
-    public async Task ExecuteAsync(
-        IDataPipe<T> input,
+    public async Task ConsumeAsync(
+        IDataStream<T> input,
         PipelineContext context,
         CancellationToken cancellationToken)
     {

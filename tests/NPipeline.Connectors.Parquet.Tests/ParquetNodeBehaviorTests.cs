@@ -1,5 +1,5 @@
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Models;
@@ -41,7 +41,7 @@ public sealed class ParquetNodeBehaviorTests
             // Act
             var act = async () =>
             {
-                var pipe = source.Initialize(PipelineContext.Default, cts.Token);
+                var pipe = source.OpenStream(PipelineContext.Default, cts.Token);
                 await pipe.ToListAsync();
             };
 
@@ -69,11 +69,11 @@ public sealed class ParquetNodeBehaviorTests
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ParquetSinkNode<TestRecord>(uri, resolver);
 
-            var data = new StreamingDataPipe<TestRecord>(
+            var data = new DataStream<TestRecord>(
                 new[] { new TestRecord { Id = 1, Name = "Test" } }.ToAsyncEnumerable());
 
             // Act
-            var act = () => sink.ExecuteAsync(data, PipelineContext.Default, cts.Token);
+            var act = () => sink.ConsumeAsync(data, PipelineContext.Default, cts.Token);
 
             // Assert
             await act.Should().ThrowAsync<OperationCanceledException>();
@@ -121,7 +121,7 @@ public sealed class ParquetNodeBehaviorTests
             var source = new ParquetSourceNode<TestRecord>(uri, resolver, config);
 
             // Act
-            var pipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var pipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = await pipe.ToListAsync();
 
             // Assert - all rows should be present since they're valid
@@ -174,7 +174,7 @@ public sealed class ParquetNodeBehaviorTests
             // Act
             var act = async () =>
             {
-                var pipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+                var pipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
                 await pipe.ToListAsync();
             };
 
@@ -215,7 +215,7 @@ public sealed class ParquetNodeBehaviorTests
             var source = new ParquetSourceNode<TestRecord>(uri, resolver);
 
             // Act
-            var pipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var pipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = await pipe.ToListAsync();
 
             // Assert - files should be processed in alphabetical order by path
@@ -254,7 +254,7 @@ public sealed class ParquetNodeBehaviorTests
             var source = new ParquetSourceNode<TestRecord>(uri, resolver, config);
 
             // Act
-            var pipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var pipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = await pipe.ToListAsync();
 
             // Assert
@@ -293,7 +293,7 @@ public sealed class ParquetNodeBehaviorTests
             var source = new ParquetSourceNode<TestRecord>(uri, resolver, config);
 
             // Act
-            var pipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var pipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = await pipe.ToListAsync();
 
             // Assert - both files should be discovered
@@ -323,18 +323,18 @@ public sealed class ParquetNodeBehaviorTests
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ParquetSinkNode<TestRecord>(uri, resolver);
 
-            var emptyData = new StreamingDataPipe<TestRecord>(
+            var emptyData = new DataStream<TestRecord>(
                 Enumerable.Empty<TestRecord>().ToAsyncEnumerable());
 
             // Act
-            await sink.ExecuteAsync(emptyData, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(emptyData, PipelineContext.Default, CancellationToken.None);
 
             // Assert - file should exist but be empty
             File.Exists(tempFile).Should().BeTrue();
 
             // Read back should return empty
             var source = new ParquetSourceNode<TestRecord>(uri, resolver);
-            var pipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var pipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = await pipe.ToListAsync();
             results.Should().BeEmpty();
         }
@@ -358,7 +358,7 @@ public sealed class ParquetNodeBehaviorTests
             var source = new ParquetSourceNode<TestRecord>(uri, resolver);
 
             // Act
-            var pipe = source.Initialize(PipelineContext.Default, CancellationToken.None);
+            var pipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
             var results = await pipe.ToListAsync();
 
             // Assert
@@ -380,8 +380,8 @@ public sealed class ParquetNodeBehaviorTests
         var uri = StorageUri.FromFilePath(path);
         var resolver = StorageProviderFactory.CreateResolver();
         var sink = new ParquetSinkNode<TestRecord>(uri, resolver);
-        var data = new StreamingDataPipe<TestRecord>(records.ToAsyncEnumerable());
-        await sink.ExecuteAsync(data, PipelineContext.Default, CancellationToken.None);
+        var data = new DataStream<TestRecord>(records.ToAsyncEnumerable());
+        await sink.ConsumeAsync(data, PipelineContext.Default, CancellationToken.None);
     }
 
     private static void CleanupFile(string path)

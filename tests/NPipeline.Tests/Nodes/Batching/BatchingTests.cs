@@ -29,7 +29,7 @@ public sealed class BatchingTests(ITestOutputHelper output)
         // Act
         var results = new List<IReadOnlyCollection<int>>();
 
-        await foreach (var batch in batchingNode.ExecuteAsync(source, context, CancellationToken.None))
+        await foreach (var batch in batchingNode.TransformAsync(source, context, CancellationToken.None))
         {
             results.Add(batch);
         }
@@ -64,7 +64,7 @@ public sealed class BatchingTests(ITestOutputHelper output)
         // Act
         var results = new List<int>();
 
-        await foreach (var item in unbatchingNode.ExecuteAsync(source, context, CancellationToken.None))
+        await foreach (var item in unbatchingNode.TransformAsync(source, context, CancellationToken.None))
         {
             results.Add(item);
         }
@@ -112,7 +112,7 @@ public sealed class BatchingTests(ITestOutputHelper output)
         // Act
         var results = new List<IReadOnlyCollection<int>>();
 
-        await foreach (var batch in batchingNode.ExecuteAsync(source, context, CancellationToken.None))
+        await foreach (var batch in batchingNode.TransformAsync(source, context, CancellationToken.None))
         {
             results.Add(batch);
         }
@@ -135,7 +135,7 @@ public sealed class BatchingTests(ITestOutputHelper output)
         // Act
         var results = new List<IReadOnlyCollection<int>>();
 
-        await foreach (var batch in batchingNode.ExecuteAsync(source, context, CancellationToken.None))
+        await foreach (var batch in batchingNode.TransformAsync(source, context, CancellationToken.None))
         {
             results.Add(batch);
         }
@@ -173,7 +173,7 @@ public sealed class BatchingTests(ITestOutputHelper output)
         var stopwatch = Stopwatch.StartNew();
         var results = new List<IReadOnlyCollection<int>>();
 
-        await foreach (var batch in batchingNode.ExecuteAsync(source, context, CancellationToken.None))
+        await foreach (var batch in batchingNode.TransformAsync(source, context, CancellationToken.None))
         {
             results.Add(batch);
         }
@@ -199,7 +199,7 @@ public sealed class BatchingTests(ITestOutputHelper output)
         // Act
         var results = new List<IReadOnlyCollection<int>>();
 
-        await foreach (var batch in batchingNode.ExecuteAsync(source, context, CancellationToken.None))
+        await foreach (var batch in batchingNode.TransformAsync(source, context, CancellationToken.None))
         {
             results.Add(batch);
         }

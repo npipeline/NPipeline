@@ -1,5 +1,5 @@
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -15,9 +15,9 @@ public sealed class SalesDataSourceNode : SourceNode<SalesRecord>
         _count = count;
     }
 
-    public override IDataPipe<SalesRecord> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<SalesRecord> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
-        return new InMemoryDataPipe<SalesRecord>(GenerateRecords().ToList(), "sales-data");
+        return new InMemoryDataStream<SalesRecord>(GenerateRecords().ToList(), "sales-data");
     }
 
     private IEnumerable<SalesRecord> GenerateRecords()

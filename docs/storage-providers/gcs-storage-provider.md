@@ -25,7 +25,7 @@ The GCS provider offers:
 Use the GCS provider when your application needs to:
 
 - Store and retrieve data in Google Cloud Storage
-- Integrate cloud storage into NPipeline data pipelines
+- Integrate cloud storage into NPipeline data streamlines
 - Leverage GCS's scalability and durability for data storage
 - Handle large files through streaming and resumable uploads
 - Work with GCS emulators (fake-gcs-server) for local development

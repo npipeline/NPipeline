@@ -48,7 +48,7 @@ public sealed class ErrorHandlingAndPersistenceTests
                 context,
                 () =>
                 {
-                    _ = node.Initialize(context, context.CancellationToken);
+                    _ = node.OpenStream(context, context.CancellationToken);
                     return Task.CompletedTask;
                 },
                 context.CancellationToken));
@@ -78,7 +78,7 @@ public sealed class ErrorHandlingAndPersistenceTests
     {
         public int Attempts { get; private set; }
 
-        public IDataPipe<object> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public IDataStream<object> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             Attempts++;
             throw new InvalidOperationException("fail");
@@ -92,10 +92,10 @@ public sealed class ErrorHandlingAndPersistenceTests
 
     private sealed class DummyStrategy : IExecutionStrategy
     {
-        public Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(IDataPipe<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context,
+        public Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(IDataStream<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context,
             CancellationToken cancellationToken)
         {
-            return Task.FromResult<IDataPipe<TOut>>(new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<TOut>(new List<TOut>(), "empty"));
+            return Task.FromResult<IDataStream<TOut>>(new NPipeline.DataFlow.DataStreams.InMemoryDataStream<TOut>(new List<TOut>(), "empty"));
         }
     }
 

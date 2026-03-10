@@ -38,7 +38,7 @@ public class TimeWindowedAggregator : TransformNode<SensorReading, ProcessingSta
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The processing statistics.</returns>
-    public override async Task<ProcessingStats> ExecuteAsync(
+    public override async Task<ProcessingStats> TransformAsync(
         SensorReading reading,
         PipelineContext context,
         CancellationToken cancellationToken)

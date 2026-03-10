@@ -100,7 +100,7 @@ public sealed class PipelineRunnerBuilder
             new NodeExecutor(
                 new LineageService(),
                 new PipeMergeService(new MergeStrategySelector()),
-                new DataPipeWrapperService()),
+                new DataStreamWrapperService()),
             new TopologyService(),
             new NodeInstantiationService());
 

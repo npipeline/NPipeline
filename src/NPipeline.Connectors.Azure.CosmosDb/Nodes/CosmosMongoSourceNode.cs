@@ -3,7 +3,7 @@ using NPipeline.Connectors.Azure.CosmosDb.Api.Mongo;
 using NPipeline.Connectors.Azure.CosmosDb.Configuration;
 using NPipeline.Connectors.Azure.CosmosDb.Mapping;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -68,10 +68,10 @@ public sealed class CosmosMongoSourceNode<T> : SourceNode<T>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var stream = ReadAsync(cancellationToken);
-        return new StreamingDataPipe<T>(stream, $"{GetType().Name}<{typeof(T).Name}>");
+        return new DataStream<T>(stream, $"{GetType().Name}<{typeof(T).Name}>");
     }
 
     private async IAsyncEnumerable<T> ReadAsync([EnumeratorCancellation] CancellationToken cancellationToken)

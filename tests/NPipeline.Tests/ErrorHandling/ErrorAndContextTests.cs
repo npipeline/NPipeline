@@ -2,7 +2,7 @@ using System.Reflection;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Nodes;
@@ -47,16 +47,16 @@ public sealed class ErrorAndContextTests
     // Test Nodes
     private sealed class FaultySourceNode : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var numbers = Enumerable.Range(1, 5).ToAsyncEnumerable();
-            return new StreamingDataPipe<int>(numbers);
+            return new DataStream<int>(numbers);
         }
     }
 
     private sealed class CrashingNode : TransformNode<int, int>
     {
-        public override async Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Yield(); // Ensure asynchronicity
 
@@ -71,7 +71,7 @@ public sealed class ErrorAndContextTests
     {
         public List<int> Results { get; } = [];
 
-        public override async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var item in input)

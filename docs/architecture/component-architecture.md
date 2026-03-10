@@ -118,7 +118,7 @@ public class PipelineContext
 **Usage Example:**
 
 ```csharp
-public override Task<TOut> ExecuteAsync(
+public override Task<TOut> TransformAsync(
     TIn item,
     PipelineContext context,
     CancellationToken cancellationToken)
@@ -250,17 +250,17 @@ NPipeline uses a **plan-based execution model** for optimal performance. During 
 **SourceNode Execution:**
 
 ```csharp
-public abstract IDataPipe<T> Initialize(
+public abstract IDataStream<T> OpenStream(
     PipelineContext context,
     CancellationToken cancellationToken);
 ```
 
-Produces initial `IDataPipe<T>` containing all source data synchronously.
+Produces initial `IDataStream<T>` containing all source data synchronously.
 
 **TransformNode Execution:**
 
 ```csharp
-public abstract Task<T> ExecuteAsync(
+public abstract Task<T> TransformAsync(
     T item,
     PipelineContext context,
     CancellationToken cancellationToken);
@@ -271,13 +271,13 @@ Called for each item; returns transformed item or throws to fail.
 **SinkNode Execution:**
 
 ```csharp
-public abstract Task ExecuteAsync(
-    IDataPipe<T> input,
+public abstract Task ConsumeAsync(
+    IDataStream<T> input,
     PipelineContext context,
     CancellationToken cancellationToken);
 ```
 
-Consumes entire data pipe for final processing (save, send, etc).
+Consumes entire data stream for final processing (save, send, etc).
 
 ## Component Interaction Flow
 

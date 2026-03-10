@@ -82,7 +82,7 @@ public sealed class Program
             Console.WriteLine();
 
             var pipeline = new PostgresConnectorPipeline(connectionString);
-            await pipeline.ExecuteAsync(new PipelineContext());
+            await pipeline.ConsumeAsync(new PipelineContext());
 
             Console.WriteLine();
             Console.WriteLine("Pipeline execution completed successfully!");

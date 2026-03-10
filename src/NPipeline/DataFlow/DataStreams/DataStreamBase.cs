@@ -1,19 +1,19 @@
 using System.Runtime.CompilerServices;
 
-namespace NPipeline.DataFlow.DataPipes;
+namespace NPipeline.DataFlow.DataStreams;
 
 /// <summary>
 ///     Base class for decorating data pipes with cross-cutting concerns (counting, tracing, etc).
 /// </summary>
 /// <typeparam name="T">The type of data flowing through the pipe.</typeparam>
-public abstract class DataPipeBase<T> : IStreamingDataPipe<T>
+public abstract class DataStreamBase<T> : IForwardOnlyDataStream<T>
 {
     /// <summary>
-    ///     Initializes a new instance of the <see cref="DataPipeBase{T}" /> class.
+    ///     Initializes a new instance of the <see cref="DataStreamBase{T}" /> class.
     /// </summary>
     /// <param name="inner">The inner data pipe to decorate.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="inner" /> is null.</exception>
-    protected DataPipeBase(IDataPipe<T> inner)
+    protected DataStreamBase(IDataStream<T> inner)
     {
         ArgumentNullException.ThrowIfNull(inner);
         Inner = inner;
@@ -22,7 +22,7 @@ public abstract class DataPipeBase<T> : IStreamingDataPipe<T>
     /// <summary>
     ///     The inner data pipe being decorated.
     /// </summary>
-    protected IDataPipe<T> Inner { get; }
+    protected IDataStream<T> Inner { get; }
 
     /// <summary>
     ///     Gets the name of the stream. By default, returns the inner pipe's stream name.

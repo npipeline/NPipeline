@@ -5,7 +5,7 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.Branching;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -74,13 +74,13 @@ public class BranchBenchmarks
 
     private sealed class GenSource : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)
                 : 0;
 
-            return new StreamingDataPipe<int>(Stream(cancellationToken), "gen");
+            return new DataStream<int>(Stream(cancellationToken), "gen");
 
             async IAsyncEnumerable<int> Stream([EnumeratorCancellation] CancellationToken ct)
             {
@@ -97,7 +97,7 @@ public class BranchBenchmarks
 
     private sealed class PassThroughTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item);
         }
@@ -105,7 +105,7 @@ public class BranchBenchmarks
 
     private sealed class FastSink : SinkNode<int>
     {
-        public override async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
@@ -117,7 +117,7 @@ public class BranchBenchmarks
 
     private sealed class SlowSink : SinkNode<int>
     {
-        public override async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             var delayUs = context.Parameters.TryGetValue("slowDelayMicros", out var v)

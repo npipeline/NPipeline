@@ -34,5 +34,5 @@ public interface ITransformNode<in TIn, TOut> : ITransformNode
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The transformed output item.</returns>
-    Task<TOut> ExecuteAsync(TIn item, PipelineContext context, CancellationToken cancellationToken);
+    Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken);
 }

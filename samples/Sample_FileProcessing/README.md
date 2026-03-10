@@ -90,7 +90,7 @@ public void Define(PipelineBuilder builder, PipelineContext context)
 ### TextFileSource Node
 
 ```csharp
-public override async Task<IDataPipe<string>> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+public override async Task<IDataStream<string>> OpenStream(PipelineContext context, CancellationToken cancellationToken)
 {
     var filePath = context.Parameters.TryGetValue("FilePath", out var contextPath)
         ? contextPath.ToString()
@@ -100,7 +100,7 @@ public override async Task<IDataPipe<string>> ExecuteAsync(PipelineContext conte
     var lineStream = ReadLinesAsync(filePath, cancellationToken);
 
     // Return a streaming data pipe that will process lines as they are requested
-    return new StreamingDataPipe<string>(lineStream, "TextFileSource");
+    return new StreamingDataStream<string>(lineStream, "TextFileSource");
 }
 ```
 

@@ -447,7 +447,7 @@ public class OrderPipeline : IPipelineDefinition
 ### Push-to-Pull Bridge
 
 Azure Service Bus uses `ServiceBusProcessor`, which is push-based (messages are delivered to handler
-callbacks). NPipeline pipelines are pull-based (`IDataPipe<T>` / `ReadAsync`). The connector bridges
+callbacks). NPipeline pipelines are pull-based (`IDataStream<T>` / `ReadAsync`). The connector bridges
 these models using a bounded `System.Threading.Channels.Channel<T>`:
 
 ```
@@ -458,7 +458,7 @@ ServiceBusProcessor
   Channel<TMessage>   ← bounded, provides backpressure
         │
         ▼
-  IDataPipe<T>.ReadAsync
+  IDataStream<T>.ReadAsync
   (pipeline pull)
 ```
 

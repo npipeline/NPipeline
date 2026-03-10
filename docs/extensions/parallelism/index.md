@@ -43,7 +43,7 @@ using Microsoft.Extensions.Logging;
 
 public sealed class IntensiveTransform : TransformNode<int, int>
 {
-    public override async Task<int> ExecuteAsync(
+    public override async Task<int> TransformAsync(
         int item,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -113,7 +113,7 @@ using Microsoft.Extensions.Logging;
 
 public sealed class IntensiveTransform : TransformNode<int, int>
 {
-    public override async Task<int> ExecuteAsync(
+    public override async Task<int> TransformAsync(
         int item,
         PipelineContext context,
         CancellationToken cancellationToken)

@@ -27,7 +27,7 @@ The SFTP provider offers:
 Use the SFTP provider when your application needs to:
 
 - Store and retrieve data from SFTP servers
-- Integrate SFTP storage into NPipeline data pipelines
+- Integrate SFTP storage into NPipeline data streamlines
 - Work with on-premises or managed SFTP storage systems
 - Handle large files through streaming and connection pooling
 - Support both password and key-based SSH authentication

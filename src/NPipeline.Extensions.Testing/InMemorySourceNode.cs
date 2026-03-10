@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -68,17 +68,17 @@ public sealed class InMemorySourceNode<T> : SourceNode<T>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         if (!_useContext)
-            return new InMemoryDataPipe<T>(_items!);
+            return new InMemoryDataStream<T>(_items!);
 
         var items = ResolveFromContext(context, context.CurrentNodeId)
                     ?? throw new InvalidOperationException(
                         $"No source data configured for node '{context.CurrentNodeId}' of type '{typeof(T).Name}'. " +
                         $"Set data via context.SetSourceData<{typeof(T).Name}>(...) before running, or use InMemorySourceNode<T>(IEnumerable<T>) constructor.");
 
-        return new InMemoryDataPipe<T>(items);
+        return new InMemoryDataStream<T>(items);
     }
 
     /// <summary>

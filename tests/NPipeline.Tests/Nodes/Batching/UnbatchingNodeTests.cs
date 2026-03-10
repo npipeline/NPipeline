@@ -46,7 +46,7 @@ public sealed class UnbatchingNodeTests
         // Act - calling ExecuteAsync with stream of batches should work
         var results = new List<int>();
 
-        await foreach (var item in node.ExecuteAsync(batches, context, CancellationToken.None))
+        await foreach (var item in node.TransformAsync(batches, context, CancellationToken.None))
         {
             results.Add(item);
         }
@@ -67,7 +67,7 @@ public sealed class UnbatchingNodeTests
         // Act
         var results = new List<string>();
 
-        await foreach (var item in node.ExecuteAsync(batches, context, CancellationToken.None))
+        await foreach (var item in node.TransformAsync(batches, context, CancellationToken.None))
         {
             results.Add(item);
         }

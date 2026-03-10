@@ -176,7 +176,7 @@ public class OrderProcessor : TransformNode<OrderEvent, OrderEvent>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The unchanged order event.</returns>
-    public override async Task<OrderEvent> ExecuteAsync(
+    public override async Task<OrderEvent> TransformAsync(
         OrderEvent orderEvent,
         PipelineContext context,
         CancellationToken cancellationToken)

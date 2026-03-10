@@ -27,7 +27,7 @@ In the most common scenario, a single pipeline processes a stream of data items 
 ```csharp
 var context = new PipelineContext();
 var pipeline = builder.Build();
-await pipeline.ExecuteAsync(dataSource, context);
+await runner.RunAsync<MyPipelineDefinition>(context);
 ```
 
 In this case:

@@ -15,7 +15,7 @@ namespace NPipeline.Extensions.Testing;
 public class PassThroughTransformNode<TIn, TOut> : TransformNode<TIn, TOut>
 {
     /// <inheritdoc />
-    public override Task<TOut> ExecuteAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

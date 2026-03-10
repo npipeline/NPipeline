@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Extensions.Testing.Tests;
@@ -25,10 +25,10 @@ public class InMemorySinkNodeTests
         var sink = new InMemorySinkNode<int>();
         var context = PipelineContext.Default;
         var items = new[] { 1, 2, 3 };
-        var dataPipe = new InMemoryDataPipe<int>(items);
+        var dataStream = new InMemoryDataStream<int>(items);
 
         // Act
-        await sink.ExecuteAsync(dataPipe, context, CancellationToken.None);
+        await sink.ConsumeAsync(dataStream, context, CancellationToken.None);
 
         // Assert
         sink.Items.Should().BeEquivalentTo(items);
@@ -45,13 +45,13 @@ public class InMemorySinkNodeTests
         var cts = new CancellationTokenSource();
 
         // Create a data pipe that will trigger cancellation
-        var dataPipe = new InMemoryDataPipe<int>([1, 2, 3]);
+        var dataStream = new InMemoryDataStream<int>([1, 2, 3]);
 
         // Cancel before execution
         cts.Cancel();
 
         // Act & Assert
-        await Assert.ThrowsAsync<OperationCanceledException>(() => sink.ExecuteAsync(dataPipe, context, cts.Token));
+        await Assert.ThrowsAsync<OperationCanceledException>(() => sink.ConsumeAsync(dataStream, context, cts.Token));
 
         // The completion task should also be canceled
         await Assert.ThrowsAsync<OperationCanceledException>(() => sink.Completion);
@@ -65,11 +65,11 @@ public class InMemorySinkNodeTests
         var context = PipelineContext.Default;
 
         // Create a data pipe that throws an exception during enumeration
-        var dataPipe = new ThrowingDataPipe<int>(new InvalidOperationException("Test exception"));
+        var dataStream = new ThrowingDataStream<int>(new InvalidOperationException("Test exception"));
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sink.ExecuteAsync(dataPipe, context, CancellationToken.None));
+            sink.ConsumeAsync(dataStream, context, CancellationToken.None));
 
         exception.Message.Should().Be("Test exception");
 
@@ -129,10 +129,10 @@ public class InMemorySinkNodeTests
         var sink = new InMemorySinkNode<int>();
         var context = PipelineContext.Default;
         var items = new[] { 1, 2, 3 };
-        var dataPipe = new InMemoryDataPipe<int>(items);
+        var dataStream = new InMemoryDataStream<int>(items);
 
         // Act
-        await sink.ExecuteAsync(dataPipe, context, CancellationToken.None);
+        await sink.ConsumeAsync(dataStream, context, CancellationToken.None);
 
         // Assert
         context.Items.Should().ContainKey(typeof(InMemorySinkNode<int>).FullName!);
@@ -151,10 +151,10 @@ public class InMemorySinkNodeTests
         var context = PipelineContext.Default;
         context.Items[PipelineContextKeys.TestingParentContext] = parentContext;
         var items = new[] { 1, 2, 3 };
-        var dataPipe = new InMemoryDataPipe<int>(items);
+        var dataStream = new InMemoryDataStream<int>(items);
 
         // Act
-        await sink.ExecuteAsync(dataPipe, context, CancellationToken.None);
+        await sink.ConsumeAsync(dataStream, context, CancellationToken.None);
 
         // Assert
         // Check parent context
@@ -166,15 +166,15 @@ public class InMemorySinkNodeTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithEmptyDataPipe_ShouldCompleteWithEmptyList()
+    public async Task ConsumeAsync_WithEmptyStream_ShouldCompleteWithEmptyList()
     {
         // Arrange
         var sink = new InMemorySinkNode<int>();
         var context = PipelineContext.Default;
-        var dataPipe = new InMemoryDataPipe<int>([]);
+        var dataStream = new InMemoryDataStream<int>([]);
 
         // Act
-        await sink.ExecuteAsync(dataPipe, context, CancellationToken.None);
+        await sink.ConsumeAsync(dataStream, context, CancellationToken.None);
 
         // Assert
         sink.Items.Should().BeEmpty();
@@ -189,10 +189,10 @@ public class InMemorySinkNodeTests
         var sink = new InMemorySinkNode<int>();
         var context = PipelineContext.Default;
         var items = new[] { 1, 2, 3 };
-        var dataPipe = new InMemoryDataPipe<int>(items);
+        var dataStream = new InMemoryDataStream<int>(items);
 
         // Act
-        var executionTask = sink.ExecuteAsync(dataPipe, context, CancellationToken.None);
+        var executionTask = sink.ConsumeAsync(dataStream, context, CancellationToken.None);
         var completionResult = await sink.Completion;
 
         // Wait for execution to complete
@@ -202,19 +202,19 @@ public class InMemorySinkNodeTests
         completionResult.Should().BeEquivalentTo(items);
 
         // Verify it's a snapshot by modifying the original items list
-        // (This is more of a conceptual test since InMemoryDataPipe creates its own copy)
+        // (This is more of a conceptual test since InMemoryDataStream creates its own copy)
         completionResult.Should().NotBeSameAs(items);
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithNullDataPipe_ShouldThrowArgumentNullException()
+    public async Task ConsumeAsync_WithNullStream_ShouldThrowArgumentNullException()
     {
         // Arrange
         var sink = new InMemorySinkNode<int>();
         var context = PipelineContext.Default;
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sink.ExecuteAsync(null!, context, CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sink.ConsumeAsync(null!, context, CancellationToken.None));
     }
 
     [Fact]
@@ -222,23 +222,23 @@ public class InMemorySinkNodeTests
     {
         // Arrange
         var sink = new InMemorySinkNode<int>();
-        var dataPipe = new InMemoryDataPipe<int>([1, 2, 3]);
+        var dataStream = new InMemoryDataStream<int>([1, 2, 3]);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sink.ExecuteAsync(dataPipe, null!, CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sink.ConsumeAsync(dataStream, null!, CancellationToken.None));
     }
 
     // Helper class for testing exception scenarios
-    private sealed class ThrowingDataPipe<T> : IDataPipe<T>
+    private sealed class ThrowingDataStream<T> : IDataStream<T>
     {
         private readonly Exception _exception;
 
-        public ThrowingDataPipe(Exception exception)
+        public ThrowingDataStream(Exception exception)
         {
             _exception = exception;
         }
 
-        public string StreamName => "ThrowingDataPipe";
+        public string StreamName => "ThrowingDataStream";
 
         public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {

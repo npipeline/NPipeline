@@ -18,7 +18,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
@@ -48,7 +48,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
@@ -78,7 +78,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
@@ -107,7 +107,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async ValueTask<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public async ValueTask<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
@@ -138,7 +138,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
@@ -167,7 +167,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
@@ -257,11 +257,11 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestSourceNode : ISourceNode<int>
                    {
-                       public async Task<IDataPipe<int>> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+                       public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
-                               return await GetDataAsync();
+                               return GetData();
                            }
                            // NP9104: Exception handling in source node
                            catch (Exception ex)
@@ -287,8 +287,8 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestAggregateNode : IAggregateNode<int>
                    {
-                       public async Task<IDataPipe<int>> ExecuteAsync(
-                           IDataPipe<int> input, 
+                       public async Task<IDataStream<int>> ExecuteAsync(
+                           IDataStream<int> input, 
                            PipelineContext context, 
                            CancellationToken cancellationToken)
                        {
@@ -320,7 +320,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
@@ -440,7 +440,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public ValueTask<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public ValueTask<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
@@ -470,7 +470,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestSourceNode : ISourceNode<int>
                    {
-                       public async Task<IDataPipe<int>> RunAsync(PipelineContext context, CancellationToken cancellationToken)
+                       public async Task<IDataStream<int>> RunAsync(PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
@@ -530,13 +530,13 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task Initialize(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task OpenStream(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
                                return await ProcessAsync(input);
                            }
-                           // NP9104: Exception handling in Initialize method
+                           // NP9104: Exception handling in OpenStream method
                            catch (Exception ex)
                            {
                                _logger.LogError(ex, "Processing failed");
@@ -549,7 +549,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         var hasDiagnostic = diagnostics.Any(d => d.Id == InefficientExceptionHandlingAnalyzer.InefficientExceptionHandlingId);
-        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in Initialize method");
+        Assert.True(hasDiagnostic, "Analyzer should detect exception handling in OpenStream method");
     }
 
     [Fact]
@@ -590,7 +590,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {

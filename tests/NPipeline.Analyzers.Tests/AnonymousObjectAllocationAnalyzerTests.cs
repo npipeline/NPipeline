@@ -11,14 +11,14 @@ namespace NPipeline.Analyzers.Tests;
 public sealed class AnonymousObjectAllocationAnalyzerTests
 {
     [Fact]
-    public void ShouldDetectAnonymousObjectInExecuteAsyncMethod()
+    public void ShouldDetectAnonymousObjectInTransformAsyncMethod()
     {
         var code = """
                    using NPipeline.Nodes;
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            // NP9105: Anonymous object in hot path
                            var result = new { Id = input, Processed = true, Timestamp = DateTime.UtcNow };
@@ -30,7 +30,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         var hasDiagnostic = diagnostics.Any(d => d.Id == AnonymousObjectAllocationAnalyzer.AnonymousObjectAllocationId);
-        Assert.True(hasDiagnostic, "Analyzer should detect anonymous object in ExecuteAsync method");
+        Assert.True(hasDiagnostic, "Analyzer should detect anonymous object in TransformAsync method");
     }
 
     [Fact]
@@ -70,12 +70,12 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
 
                    public class TestSourceNode : ISourceNode<int>
                    {
-                       public async Task<IDataPipe<int>> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+                       public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var numbers = Enumerable.Range(1, 100);
                            // NP9105: Anonymous object in hot path
                            var enriched = numbers.Select(x => new { Value = x, IsEven = x % 2 == 0 }).ToList();
-                           return new InMemoryDataPipe<int>(enriched.Select(e => e.Value));
+                           return new InMemoryDataStream<int>(enriched.Select(e => e.Value));
                        }
                    }
                    """;
@@ -167,15 +167,15 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
 
                    public class TestAggregateNode : IAggregateNode<int>
                    {
-                       public async Task<IDataPipe<int>> ExecuteAsync(
-                           IDataPipe<int> input, 
+                       public async Task<IDataStream<int>> ExecuteAsync(
+                           IDataStream<int> input, 
                            PipelineContext context, 
                            CancellationToken cancellationToken)
                        {
                            var items = new List<int>();
                            // NP9105: Anonymous object in aggregate node
                            var aggregated = items.Select(x => new { Value = x, Category = x > 0 ? "Positive" : "Negative" }).ToList();
-                           return new InMemoryDataPipe<int>(aggregated.Select(a => a.Value));
+                           return new InMemoryDataStream<int>(aggregated.Select(a => a.Value));
                        }
                    }
                    """;
@@ -194,7 +194,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = input.Split(' ');
                            for (int i = 0; i < items.Length; i++)
@@ -225,7 +225,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = input.Split(' ');
                            // NP9105: Anonymous object in LINQ expression
@@ -249,7 +249,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public ValueTask<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public ValueTask<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            // NP9105: Anonymous object in ValueTask-returning method
                            var result = new { Input = input, Length = input.Length };
@@ -335,7 +335,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = input.Split(' ');
                            // NP9105: Multiple anonymous object allocations in hot path
@@ -360,7 +360,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = input.Split(' ');
                            foreach (var item in items)
@@ -390,7 +390,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = input.Split(' ');
                            int i = 0;

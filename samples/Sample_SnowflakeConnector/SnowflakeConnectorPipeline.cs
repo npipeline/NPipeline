@@ -1,6 +1,6 @@
 using NPipeline.Connectors.Snowflake.Configuration;
 using NPipeline.Connectors.Snowflake.Nodes;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using Snowflake.Data.Client;
 
@@ -78,7 +78,7 @@ public sealed class SnowflakeConnectorPipeline
     /// <summary>
     ///     Executes the pipeline with the given context and cancellation token.
     /// </summary>
-    public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
+    public async Task ConsumeAsync(PipelineContext context, CancellationToken cancellationToken = default)
     {
         Console.WriteLine("Starting Snowflake Connector Pipeline...");
         Console.WriteLine();
@@ -265,8 +265,8 @@ public sealed class SnowflakeConnectorPipeline
         Console.WriteLine($"  Writing {customers.Count} customers using Batch strategy...");
 
         var startTime = DateTime.Now;
-        var dataPipe = new InMemoryDataPipe<Customer>(customers);
-        await sinkNode.ExecuteAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<Customer>(customers);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
         var elapsed = DateTime.Now - startTime;
 
         Console.WriteLine($"  ✓ Inserted {customers.Count} customers in {elapsed.TotalSeconds:F2}s");
@@ -329,8 +329,8 @@ public sealed class SnowflakeConnectorPipeline
         Console.WriteLine($"  Writing {orders.Count} orders using PerRow strategy...");
 
         var startTime = DateTime.Now;
-        var dataPipe = new InMemoryDataPipe<Order>(orders);
-        await sinkNode.ExecuteAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<Order>(orders);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
         var elapsed = DateTime.Now - startTime;
 
         Console.WriteLine($"  ✓ Inserted {orders.Count} orders in {elapsed.TotalSeconds:F2}s");
@@ -384,8 +384,8 @@ public sealed class SnowflakeConnectorPipeline
         Console.WriteLine($"  Bulk loading {orders.Count} orders using PUT + COPY INTO...");
 
         var startTime = DateTime.Now;
-        var dataPipe = new InMemoryDataPipe<Order>(orders);
-        await sinkNode.ExecuteAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<Order>(orders);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
         var elapsed = DateTime.Now - startTime;
 
         Console.WriteLine($"  ✓ Loaded {orders.Count} orders via PUT+COPY in {elapsed.TotalSeconds:F2}s");
@@ -423,7 +423,7 @@ public sealed class SnowflakeConnectorPipeline
 
         var customers = new List<Customer>();
 
-        await foreach (var customer in sourceNode.Initialize(null!, cancellationToken))
+        await foreach (var customer in sourceNode.OpenStream(null!, cancellationToken))
         {
             customers.Add(customer);
             Console.WriteLine($"    - Read: {customer.FullName} (ID: {customer.Id}, Email: {customer.Email})");
@@ -469,7 +469,7 @@ public sealed class SnowflakeConnectorPipeline
 
         var summaries = new List<OrderSummary>();
 
-        await foreach (var summary in sourceNode.Initialize(null!, cancellationToken))
+        await foreach (var summary in sourceNode.OpenStream(null!, cancellationToken))
         {
             summaries.Add(summary);
             Console.WriteLine($"    - {summary.CustomerName}: {summary.TotalOrders} orders, ${summary.TotalAmount:N2}");
@@ -554,8 +554,8 @@ public sealed class SnowflakeConnectorPipeline
         Console.WriteLine($"  Merging {enrichedCustomers.Count} enriched customer records...");
 
         var startTime = DateTime.Now;
-        var dataPipe = new InMemoryDataPipe<EnrichedCustomer>(enrichedCustomers);
-        await sinkNode.ExecuteAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<EnrichedCustomer>(enrichedCustomers);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
         var elapsed = DateTime.Now - startTime;
 
         Console.WriteLine($"  ✓ Merged {enrichedCustomers.Count} customer updates in {elapsed.TotalSeconds:F2}s");

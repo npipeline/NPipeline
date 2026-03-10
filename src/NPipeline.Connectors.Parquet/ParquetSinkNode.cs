@@ -71,7 +71,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
     }
 
     /// <inheritdoc />
-    public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
         var provider = _provider ?? StorageProviderFactory.GetProviderOrThrow(
             _resolver ?? throw new InvalidOperationException("No storage resolver configured for ParquetSinkNode."),
@@ -90,7 +90,7 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
 
     private async Task WriteParquetAsync(
         IStorageProvider provider,
-        IDataPipe<T> input,
+        IDataStream<T> input,
         CancellationToken cancellationToken)
     {
         var observer = _configuration.Observer;

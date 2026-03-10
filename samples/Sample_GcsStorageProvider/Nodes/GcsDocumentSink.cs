@@ -37,7 +37,7 @@ public class GcsDocumentSink : SinkNode<string>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task representing the sink execution.</returns>
-    public override async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
     {
         // Get configuration from context parameters
         var bucket = context.Parameters.TryGetValue("Bucket", out var bucketObj)

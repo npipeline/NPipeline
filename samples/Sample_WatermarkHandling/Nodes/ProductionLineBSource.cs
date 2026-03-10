@@ -50,14 +50,14 @@ public class ProductionLineBSource : SourceNode<SensorReading>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A data pipe containing the sensor readings.</returns>
-    public override IDataPipe<SensorReading> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<SensorReading> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Starting Production Line B Source with LoRaWAN sensors and NTP synchronization");
 
         try
         {
             var channel = Channel.CreateUnbounded<SensorReading>();
-            var dataPipe = new ChannelDataPipe<SensorReading>(channel, "ProductionLineB-Source");
+            var dataStream = new ChannelDataStream<SensorReading>(channel, "ProductionLineB-Source");
 
             // Start generating data in the background
             _ = Task.Run(async () =>
@@ -72,7 +72,7 @@ public class ProductionLineBSource : SourceNode<SensorReading>
                             break;
                         }
 
-                        await dataPipe.WriteAsync(reading, cancellationToken);
+                        await dataStream.WriteAsync(reading, cancellationToken);
                     }
                 }
                 catch (OperationCanceledException)
@@ -89,7 +89,7 @@ public class ProductionLineBSource : SourceNode<SensorReading>
                 }
             }, cancellationToken);
 
-            return dataPipe;
+            return dataStream;
         }
         catch (Exception ex)
         {

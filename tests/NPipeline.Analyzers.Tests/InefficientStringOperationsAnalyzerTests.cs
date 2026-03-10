@@ -250,8 +250,8 @@ public sealed class InefficientStringOperationsAnalyzerTests
 
                    public class TestAggregateNode : IAggregateNode<int>
                    {
-                       public async Task<IDataPipe<int>> ExecuteAsync(
-                           IDataPipe<int> input, 
+                       public async Task<IDataStream<int>> ExecuteAsync(
+                           IDataStream<int> input, 
                            PipelineContext context, 
                            CancellationToken cancellationToken)
                        {
@@ -355,7 +355,7 @@ public sealed class InefficientStringOperationsAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public ValueTask<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public ValueTask<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            // NP9104: String concatenation in ValueTask-returning method
                            var result = "Processed: " + input + " at " + DateTime.Now;
@@ -400,13 +400,13 @@ public sealed class InefficientStringOperationsAnalyzerTests
 
                    public class TestSourceNode : ISourceNode<int>
                    {
-                       public async Task<IDataPipe<int>> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+                       public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                        {
-                           // NP9104: String concatenation in RunAsync method
+                           // NP9104: String concatenation in OpenStream method
                            var message = "Starting source node at " + DateTime.Now;
-                           await LogAsync(message);
+                           LogAsync(message);
                            
-                           return new InMemoryDataPipe<int>(new List<int> { 1, 2, 3 });
+                           return new InMemoryDataStream<int>(new List<int> { 1, 2, 3 });
                        }
                        
                        private async Task LogAsync(string message) { /* ... */ }

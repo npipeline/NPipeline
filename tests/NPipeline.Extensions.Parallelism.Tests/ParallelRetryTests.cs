@@ -62,7 +62,7 @@ public class ParallelRetryTests
 
     private sealed class FlakyParallelTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             var attempt = SharedTestState.AttemptCounts.AddOrUpdate(item, 1, (_, i) => i + 1);
             throw new InvalidOperationException($"fail-{item}-{attempt}");

@@ -277,7 +277,7 @@ public class CircuitBreakerIntegrationTests
         var context = CreatePipelineContextWithCircuitBreaker();
         var innerStrategy = new SequentialExecutionStrategy();
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
-        await using var input = new InMemoryDataPipe<int>([1, 2, 3], "test-input");
+        await using var input = new InMemoryDataStream<int>([1, 2, 3], "test-input");
         var node = new TestTransformNode();
 
         // Act
@@ -299,7 +299,7 @@ public class CircuitBreakerIntegrationTests
         var context = CreatePipelineContextWithoutCircuitBreaker();
         var innerStrategy = new SequentialExecutionStrategy();
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
-        await using var input = new InMemoryDataPipe<int>([1, 2, 3], "test-input");
+        await using var input = new InMemoryDataStream<int>([1, 2, 3], "test-input");
         var node = new TestTransformNode();
 
         // Act
@@ -322,11 +322,11 @@ public class CircuitBreakerIntegrationTests
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
 
         // Increase input items to ensure we have enough failures to trip circuit breaker
-        await using var input = new InMemoryDataPipe<int>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "test-input");
+        await using var input = new InMemoryDataStream<int>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "test-input");
         var node = new FailingTransformNode(10); // Fail more times to ensure circuit breaker trips
 
         // Act & Assert
-        // ExecuteAsync returns a lazy IDataPipe, so we need to consume it to trigger circuit breaker
+        // ExecuteAsync returns a lazy IDataStream, so we need to consume it to trigger circuit breaker
         using (context.ScopedNode("test-node"))
         {
             await using var result = await resilientStrategy.ExecuteAsync(input, node, context, CancellationToken.None);
@@ -369,7 +369,7 @@ public class CircuitBreakerIntegrationTests
         using (context.ScopedNode("recovery-node"))
         {
             // Act 1: trigger breaker
-            await using (var initialInput = new InMemoryDataPipe<int>([1], "first"))
+            await using (var initialInput = new InMemoryDataStream<int>([1], "first"))
             {
                 await using var result = await resilientStrategy.ExecuteAsync(initialInput, node, context, CancellationToken.None);
 
@@ -401,7 +401,7 @@ public class CircuitBreakerIntegrationTests
             }
 
             // Act 2: half-open should permit execution and recover to closed
-            await using var recoveryInput = new InMemoryDataPipe<int>([2], "second");
+            await using var recoveryInput = new InMemoryDataStream<int>([2], "second");
             await using var recoveryResult = await resilientStrategy.ExecuteAsync(recoveryInput, node, context, CancellationToken.None);
 
             var outputs = new List<string>();
@@ -451,7 +451,7 @@ public class CircuitBreakerIntegrationTests
 
     private sealed class TestTransformNode : TransformNode<int, string>
     {
-        public override async Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(1, cancellationToken).ConfigureAwait(false);
             return $"processed-{item}";
@@ -462,7 +462,7 @@ public class CircuitBreakerIntegrationTests
     {
         private int _currentAttempt;
 
-        public override async Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(1, cancellationToken).ConfigureAwait(false);
             _currentAttempt++;
@@ -477,7 +477,7 @@ public class CircuitBreakerIntegrationTests
     {
         private int _attempts;
 
-        public override Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             _attempts++;
 

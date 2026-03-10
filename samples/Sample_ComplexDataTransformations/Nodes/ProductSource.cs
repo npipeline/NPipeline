@@ -1,5 +1,5 @@
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -17,7 +17,7 @@ public class ProductSource : SourceNode<Product>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the generated products.</returns>
-    public override IDataPipe<Product> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<Product> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("Generating product data...");
 
@@ -46,6 +46,6 @@ public class ProductSource : SourceNode<Product>
         }
 
         Console.WriteLine($"Generated {products.Count} products");
-        return new InMemoryDataPipe<Product>(products, "ProductSource");
+        return new InMemoryDataStream<Product>(products, "ProductSource");
     }
 }

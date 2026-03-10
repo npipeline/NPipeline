@@ -37,7 +37,7 @@ public class LineTransform : TransformNode<string, string>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A task that represents the asynchronous operation, returning the transformed line.</returns>
-    public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
     {
         try
         {

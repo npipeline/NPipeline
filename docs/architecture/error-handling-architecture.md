@@ -20,7 +20,7 @@ For practical implementation guidance, see [Error Handling](../core-concepts/res
 By default, errors propagate up the pipeline and stop execution. This is often the right behavior for critical failures, but may be too harsh for transient errors or data validation issues.
 
 ```csharp
-var sourcePipe = source.Initialize(context, ct);      // Returns 100 items (synchronous)
+var sourcePipe = source.OpenStream(context, ct);      // Returns 100 items (synchronous)
 var transformPipe = new TransformPipe(sourcePipe, transform); // Processing...
 
 // Error occurs on item #50
@@ -61,7 +61,7 @@ public class SafeTransform : ITransformNode<Input, Output>
         _logger = logger;
     }
 
-    public async Task<Output> ExecuteAsync(
+    public async Task<Output> TransformAsync(
         Input item,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -97,7 +97,7 @@ public class OrderTransform : ITransformNode<Order, ProcessedOrder>
 {
     public INodeErrorHandler? ErrorHandler { get; set; }
 
-    public async Task<ProcessedOrder> ExecuteAsync(
+    public async Task<ProcessedOrder> TransformAsync(
         Order item,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -159,7 +159,7 @@ Track errors using the current node ID and lineage tracking:
 
 ```csharp
 // Access current node information during error handling
-public override async Task<ProcessedOrder> ExecuteAsync(
+public override async Task<ProcessedOrder> TransformAsync(
     Order item,
     PipelineContext context,
     CancellationToken cancellationToken)
@@ -217,7 +217,7 @@ for (int i = 0; i < 5; i++)
 {
     try
     {
-        await runner.ExecuteAsync(pipeline, context);
+        await runner.RunAsync<MyPipeline>(context);
     }
     catch (Exception ex)
     {

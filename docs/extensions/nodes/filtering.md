@@ -128,7 +128,7 @@ Filtered items raise `FilteringException`:
 ```csharp
 try
 {
-    await pipeline.ExecuteAsync();
+    await runner.RunAsync<MyPipelineDefinition>();
 }
 catch (FilteringException ex)
 {
@@ -186,7 +186,7 @@ builder.Connect(filterCustomer, sink);
 
 // Build and execute
 var pipeline = builder.Build();
-var result = await pipeline.ExecuteAsync();
+await runner.RunAsync<MyPipelineDefinition>();
 ```
 
 ## Performance Characteristics
@@ -289,7 +289,7 @@ public async Task FilterNode_ShouldFilterInactiveItems()
     {
         try
         {
-            var result = await filter.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+            var result = await filter.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
             activeItems.Add(result);
         }
         catch (FilteringException)

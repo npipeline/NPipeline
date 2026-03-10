@@ -13,15 +13,15 @@ A source node is responsible for generating the initial data stream that enters 
 ```csharp
 public interface ISourceNode<out TOut> : INode
 {
-    IDataPipe<TOut> Initialize(PipelineContext context, CancellationToken cancellationToken);
+    IDataStream<TOut> OpenStream(PipelineContext context, CancellationToken cancellationToken);
 }
 ```
 
-The `Initialize` method returns the data pipe synchronously. It does not return a `Task`, enabling efficient synchronous pipe creation.
+The `OpenStream` method returns the data stream synchronously. It does not return a `Task`, enabling efficient synchronous pipe creation.
 
 > **💡 Key Insight**
 >
-> Source nodes return data pipes synchronously, not Tasks. This enables lazy evaluation - the data is only read when a downstream node (transform or sink) actually consumes the pipe.
+> Source nodes return data streams synchronously, not Tasks. This enables lazy evaluation - the data is only read when a downstream node (transform or sink) actually consumes the pipe.
 
 ## Implementation Example
 
@@ -30,7 +30,7 @@ A simple source that produces a sequence of numbers:
 ```csharp
 using NPipeline;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -45,7 +45,7 @@ public sealed class NumberSource : ISourceNode<int>
         _count = count;
     }
 
-    public IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         static IAsyncEnumerable<int> Stream(int start, int count, CancellationToken ct)
         {
@@ -61,16 +61,16 @@ public sealed class NumberSource : ISourceNode<int>
             }
         }
 
-        return new StreamingDataPipe<int>(Stream(_start, _count, cancellationToken));
+        return new DataStream<int>(Stream(_start, _count, cancellationToken));
     }
 }
 ```
 
 ## Key Concepts
 
-### Data Pipe Output
+### Data Stream Output
 
-The `Initialize` method returns an `IDataPipe<TOut>` directly (synchronously). The `IDataPipe<T>` abstraction allows NPipeline to support different streaming models (buffered, streaming, etc.) while maintaining a consistent interface.
+The `OpenStream` method returns an `IDataStream<TOut>` directly (synchronously). The `IDataStream<T>` abstraction allows NPipeline to support different streaming models (buffered, streaming, etc.) while maintaining a consistent interface.
 
 ### Cancellation Support
 
@@ -94,7 +94,7 @@ public sealed class FileReaderSource : ISourceNode<string>
         _filePath = filePath;
     }
 
-    public IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         static IAsyncEnumerable<string> Stream(string path, CancellationToken ct)
         {
@@ -111,7 +111,7 @@ public sealed class FileReaderSource : ISourceNode<string>
             }
         }
 
-        return new StreamingDataPipe<string>(Stream(_filePath, cancellationToken));
+        return new DataStream<string>(Stream(_filePath, cancellationToken));
     }
 }
 ```
@@ -128,9 +128,9 @@ public sealed class DatabaseSource : ISourceNode<CustomerRecord>
         _connectionString = connectionString;
     }
 
-    public IDataPipe<CustomerRecord> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public IDataStream<CustomerRecord> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
-        return new StreamingDataPipe<CustomerRecord>(FetchRecordsAsync(cancellationToken));
+        return new DataStream<CustomerRecord>(FetchRecordsAsync(cancellationToken));
     }
 
     private async IAsyncEnumerable<CustomerRecord> FetchRecordsAsync([EnumeratorCancellation] CancellationToken cancellationToken)

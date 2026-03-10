@@ -197,7 +197,7 @@ public class AsyncTransform : TransformNode<Data, Data>
 {
     private readonly HttpClient _client;
     
-    public override async Task<Data> ExecuteAsync(Data input, PipelineContext context, CancellationToken ct)
+    public override async Task<Data> TransformAsync(Data input, PipelineContext context, CancellationToken ct)
     {
         // Efficient async I/O
         var result = await _client.GetAsync($"/api/data/{input.Id}", ct);
@@ -414,7 +414,7 @@ public class MonitoredCompositeTransform<TIn, TOut, TDefinition> : CompositeTran
 {
     private readonly IMetrics _metrics;
     
-    public override async Task<TOut> ExecuteAsync(TIn item, PipelineContext context, CancellationToken ct)
+    public override async Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
         

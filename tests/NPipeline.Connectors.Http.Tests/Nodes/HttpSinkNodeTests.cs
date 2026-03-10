@@ -5,7 +5,7 @@ using NPipeline.Connectors.Http.Configuration;
 using NPipeline.Connectors.Http.Nodes;
 using NPipeline.Connectors.Http.Retry;
 using NPipeline.Connectors.Http.Tests.Helpers;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Connectors.Http.Tests.Nodes;
@@ -19,7 +19,7 @@ public class HttpSinkNodeTests
         return new HttpClient(handler);
     }
 
-    private static StreamingDataPipe<T> PipeOf<T>(params T[] items)
+    private static DataStream<T> PipeOf<T>(params T[] items)
     {
         async IAsyncEnumerable<T> Generate()
         {
@@ -31,7 +31,7 @@ public class HttpSinkNodeTests
             await Task.CompletedTask;
         }
 
-        return new StreamingDataPipe<T>(Generate(), "test");
+        return new DataStream<T>(Generate(), "test");
     }
 
     [Fact]
@@ -44,7 +44,7 @@ public class HttpSinkNodeTests
         var node = new HttpSinkNode<Item>(config, httpClient);
 
         await using var pipe = PipeOf(new Item(1, "Apple"));
-        await node.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        await node.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         handler.Requests.Should().HaveCount(1);
         var req = handler.Requests[0];
@@ -72,7 +72,7 @@ public class HttpSinkNodeTests
         var node = new HttpSinkNode<Item>(config, httpClient);
 
         await using var pipe = PipeOf(new Item(1, "Apple"));
-        await node.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        await node.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         handler.Requests[0].Method.Should().Be(HttpMethod.Put);
     }
@@ -92,7 +92,7 @@ public class HttpSinkNodeTests
         var node = new HttpSinkNode<Item>(config, httpClient);
 
         await using var pipe = PipeOf(new Item(1, "Apple"));
-        await node.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        await node.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         handler.Requests[0].Method.Should().Be(HttpMethod.Patch);
     }
@@ -114,7 +114,7 @@ public class HttpSinkNodeTests
         var node = new HttpSinkNode<Item>(config, httpClient);
 
         await using var pipe = PipeOf(new Item(1, "Apple"), new Item(2, "Banana"));
-        await node.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        await node.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         handler.Requests[0].RequestUri!.AbsolutePath.Should().Be("/items/1");
         handler.Requests[1].RequestUri!.AbsolutePath.Should().Be("/items/2");
@@ -138,7 +138,7 @@ public class HttpSinkNodeTests
             httpClientFactory);
 
         await using var pipe = PipeOf(new Item(42, "Answer"));
-        await node.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        await node.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         handler.Requests.Should().HaveCount(1);
         handler.Requests[0].RequestUri!.AbsolutePath.Should().Be("/items/42");
@@ -169,7 +169,7 @@ public class HttpSinkNodeTests
             new Item(4, "D"),
             new Item(5, "E"));
 
-        await node.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        await node.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         handler.Requests.Should().HaveCount(2);
         var body1 = handler.RequestBodies[0]!;
@@ -187,7 +187,7 @@ public class HttpSinkNodeTests
         var node = new HttpSinkNode<Item>(config, httpClient);
 
         await using var pipe = PipeOf<Item>();
-        await node.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        await node.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         handler.Requests.Should().BeEmpty();
     }
@@ -207,7 +207,7 @@ public class HttpSinkNodeTests
         var node = new HttpSinkNode<Item>(config, httpClient);
 
         await using var pipe = PipeOf(new Item(1, "Apple"));
-        var act = async () => await node.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        var act = async () => await node.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         await act.Should().ThrowAsync<HttpRequestException>();
     }
@@ -228,7 +228,7 @@ public class HttpSinkNodeTests
         var node = new HttpSinkNode<Item>(config, httpClient);
 
         await using var pipe = PipeOf(new Item(1, "Apple"));
-        var act = async () => await node.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        var act = async () => await node.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         await act.Should().NotThrowAsync();
     }
@@ -249,7 +249,7 @@ public class HttpSinkNodeTests
         var node = new HttpSinkNode<Item>(config, httpClient);
 
         await using var pipe = PipeOf(new Item(1, "A"), new Item(2, "B"));
-        await node.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        await node.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         var body = handler.RequestBodies[0]!;
         using var doc = JsonDocument.Parse(body);
@@ -272,7 +272,7 @@ public class HttpSinkNodeTests
         var node = new HttpSinkNode<Item>(config, httpClient);
 
         await using var pipe = PipeOf(new Item(1, "slow"));
-        var act = async () => await node.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        var act = async () => await node.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         await act.Should().ThrowAsync<TaskCanceledException>();
     }

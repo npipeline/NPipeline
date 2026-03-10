@@ -4,7 +4,7 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow.Windowing;
 using NPipeline.Execution;
 using NPipeline.Nodes;
@@ -234,13 +234,13 @@ public class MemoryEfficiencyBenchmarks
 
     private sealed class DataGeneratorSource : SourceNode<ComplexDataItem>
     {
-        public override IDataPipe<ComplexDataItem> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<ComplexDataItem> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)
                 : 0;
 
-            return new StreamingDataPipe<ComplexDataItem>(
+            return new DataStream<ComplexDataItem>(
                 BenchmarkDataGenerators.GenerateComplexData(count, 1, cancellationToken),
                 "dataGenerator");
         }
@@ -248,7 +248,7 @@ public class MemoryEfficiencyBenchmarks
 
     private sealed class StreamingTransform : TransformNode<ComplexDataItem, ProcessedItem>
     {
-        public override async Task<ProcessedItem> ExecuteAsync(ComplexDataItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<ProcessedItem> TransformAsync(ComplexDataItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Process item without materializing intermediate collections
             await Task.Yield(); // Simulate some processing work
@@ -265,7 +265,7 @@ public class MemoryEfficiencyBenchmarks
 
     private sealed class MaterializingTransform : TransformNode<ComplexDataItem, ProcessedItem>
     {
-        public override async Task<ProcessedItem> ExecuteAsync(ComplexDataItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<ProcessedItem> TransformAsync(ComplexDataItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Materialize entire item in memory for processing
             var materializedData = item.Data.ToArray(); // Forces allocation
@@ -288,7 +288,7 @@ public class MemoryEfficiencyBenchmarks
 
     private sealed class HybridTransform : TransformNode<ComplexDataItem, ProcessedItem>
     {
-        public override async Task<ProcessedItem> ExecuteAsync(ComplexDataItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<ProcessedItem> TransformAsync(ComplexDataItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Selective materialization based on item properties
             if (item.Data.Length > 512) // Only materialize large items
@@ -326,7 +326,7 @@ public class MemoryEfficiencyBenchmarks
         // Pre-allocated reusable buffer to minimize allocations
         private readonly byte[] _reusableBuffer = new byte[2048];
 
-        public override async Task<ProcessedItem> ExecuteAsync(ComplexDataItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<ProcessedItem> TransformAsync(ComplexDataItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Process with minimal allocations
             var dataSize = Math.Min(item.Data.Length, _reusableBuffer.Length);
@@ -351,7 +351,7 @@ public class MemoryEfficiencyBenchmarks
 
     private sealed class HighAllocationTransform : TransformNode<ComplexDataItem, ProcessedItem>
     {
-        public override async Task<ProcessedItem> ExecuteAsync(ComplexDataItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<ProcessedItem> TransformAsync(ComplexDataItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Intentionally allocate multiple intermediate objects
             var buffers = new List<byte[]>();
@@ -384,7 +384,7 @@ public class MemoryEfficiencyBenchmarks
 
     private sealed class BatchProcessingTransform : TransformNode<IReadOnlyCollection<ComplexDataItem>, ProcessedItem>
     {
-        public override async Task<ProcessedItem> ExecuteAsync(IReadOnlyCollection<ComplexDataItem> batch, PipelineContext context,
+        public override async Task<ProcessedItem> TransformAsync(IReadOnlyCollection<ComplexDataItem> batch, PipelineContext context,
             CancellationToken cancellationToken)
         {
             // Process entire batch efficiently
@@ -466,7 +466,7 @@ public class MemoryEfficiencyBenchmarks
 
     private sealed class BlackHoleSink<T> : SinkNode<T>
     {
-        public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
             {

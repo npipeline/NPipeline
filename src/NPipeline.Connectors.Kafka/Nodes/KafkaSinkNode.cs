@@ -136,7 +136,7 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>
     }
 
     /// <inheritdoc />
-    public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
         _logger = context.LoggerFactory.CreateLogger(nameof(KafkaSinkNode<T>));
 
@@ -154,7 +154,7 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>
             await ExecuteSequentialAsync(input, _logger, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task ExecuteSequentialAsync(IDataPipe<T> input, ILogger logger, CancellationToken cancellationToken)
+    private async Task ExecuteSequentialAsync(IDataStream<T> input, ILogger logger, CancellationToken cancellationToken)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {
@@ -165,7 +165,7 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>
         Flush(cancellationToken);
     }
 
-    private async Task ExecuteBatchedAsync(IDataPipe<T> input, ILogger logger, CancellationToken cancellationToken)
+    private async Task ExecuteBatchedAsync(IDataStream<T> input, ILogger logger, CancellationToken cancellationToken)
     {
         Task? flushTask = null;
 
@@ -206,7 +206,7 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>
         await FlushBatchAsync(logger, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task ExecuteTransactionalAsync(IDataPipe<T> input, ILogger logger, CancellationToken cancellationToken)
+    private async Task ExecuteTransactionalAsync(IDataStream<T> input, ILogger logger, CancellationToken cancellationToken)
     {
         _producer.BeginTransaction();
 

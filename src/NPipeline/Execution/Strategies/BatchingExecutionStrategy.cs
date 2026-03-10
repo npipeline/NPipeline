@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Pipeline;
@@ -42,8 +42,8 @@ namespace NPipeline.Execution.Strategies;
 /// // Example bulk insert sink
 /// public class BulkInsertSink : SinkNode&lt;IReadOnlyCollection&lt;Product&gt;&gt;
 /// {
-///     public override async Task ExecuteAsync(
-///         IDataPipe&lt;IReadOnlyCollection&lt;Product&gt;&gt; input,
+///     public override async Task ConsumeAsync(
+///         IDataStream&lt;IReadOnlyCollection&lt;Product&gt;&gt; input,
 ///         PipelineContext context,
 ///         CancellationToken cancellationToken)
 ///     {
@@ -89,8 +89,8 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
     ///     must be <see cref="IReadOnlyCollection{T}" /> where T is the input item type, or an
     ///     <see cref="InvalidOperationException" /> will be thrown.
     /// </remarks>
-    public Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(
-        IDataPipe<TIn> input,
+    public Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(
+        IDataStream<TIn> input,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -115,17 +115,17 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
 
         // The type system is a bit tricky here. We know TOut is IReadOnlyCollection<TIn>,
         // but we need to cast it to satisfy the compiler.
-        var outputPipe = new StreamingDataPipe<TOut>((IAsyncEnumerable<TOut>)batchedStream);
+        var outputPipe = new DataStream<TOut>((IAsyncEnumerable<TOut>)batchedStream);
 
         // Use Task.FromResult for already-completed synchronous result
-        return Task.FromResult<IDataPipe<TOut>>(outputPipe);
+        return Task.FromResult<IDataStream<TOut>>(outputPipe);
     }
 
     /// <summary>
     ///     Executes the batching strategy for stream transform nodes.
     /// </summary>
-    public Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(
-        IDataPipe<TIn> input,
+    public Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(
+        IDataStream<TIn> input,
         IStreamTransformNode<TIn, TOut> node,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -150,17 +150,17 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
 
         // The type system is a bit tricky here. We know TOut is IReadOnlyCollection<TIn>,
         // but we need to cast it to satisfy the compiler.
-        var outputPipe = new StreamingDataPipe<TOut>((IAsyncEnumerable<TOut>)batchedStream);
+        var outputPipe = new DataStream<TOut>((IAsyncEnumerable<TOut>)batchedStream);
 
         // Use Task.FromResult for already-completed synchronous result
-        return Task.FromResult<IDataPipe<TOut>>(outputPipe);
+        return Task.FromResult<IDataStream<TOut>>(outputPipe);
     }
 
     /// <summary>
     ///     Batches items with observability support.
     /// </summary>
     private static async IAsyncEnumerable<IReadOnlyCollection<T>> BatchWithObservabilityAsync<T>(
-        IDataPipe<T> input,
+        IDataStream<T> input,
         int batchSize,
         TimeSpan timespan,
         IAutoObservabilityScope? observabilityScope,

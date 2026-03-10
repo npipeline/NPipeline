@@ -280,7 +280,7 @@ You can read this data into your pipeline as follows:
 ```csharp
 using NPipeline;
 using NPipeline.Connectors.SqlServer;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow;
 using NPipeline.Execution;
 using NPipeline.Nodes;
@@ -311,8 +311,8 @@ public sealed class SqlServerReaderPipeline : IPipelineDefinition
 
 public sealed class ConsoleSinkNode : SinkNode<Order>
 {
-    public override async Task ExecuteAsync(
-        IDataPipe<Order> input,
+    public override async Task ConsumeAsync(
+        IDataStream<Order> input,
         PipelineContext context,
         IPipelineActivity parentActivity,
         CancellationToken cancellationToken)
@@ -1276,7 +1276,7 @@ public sealed record OrderSummary(int OrderId, string StatusCategory, decimal To
 
 public sealed class OrderTransformer : TransformNode<Order, OrderSummary>
 {
-    public override Task<OrderSummary> ExecuteAsync(
+    public override Task<OrderSummary> TransformAsync(
         Order item,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -1846,7 +1846,7 @@ public sealed class ResilientSqlServerSourceNode<T> : SqlServerSourceNode<T>
         _logger = logger;
     }
 
-    public override async IAsyncEnumerable<T> ExecuteAsync(
+    public override async IAsyncEnumerable<T> TransformAsync(
         PipelineContext context,
         IPipelineActivity parentActivity,
         [EnumeratorCancellation] CancellationToken cancellationToken)

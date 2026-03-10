@@ -9,7 +9,7 @@ using NPipeline.Connectors.Azure.ServiceBus.Configuration;
 using NPipeline.Connectors.Azure.ServiceBus.Connection;
 using NPipeline.Connectors.Azure.ServiceBus.Models;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -86,7 +86,7 @@ public sealed class ServiceBusSubscriptionSourceNode<T> : SourceNode<ServiceBusM
     }
 
     /// <inheritdoc />
-    public override IDataPipe<ServiceBusMessage<T>> Initialize(
+    public override IDataStream<ServiceBusMessage<T>> OpenStream(
         PipelineContext context,
         CancellationToken cancellationToken)
     {
@@ -106,7 +106,7 @@ public sealed class ServiceBusSubscriptionSourceNode<T> : SourceNode<ServiceBusM
         var stream = ConsumeFromChannelAsync(cancellationToken);
         var entityName = $"{_configuration.TopicName}/{_configuration.SubscriptionName}";
 
-        return new StreamingDataPipe<ServiceBusMessage<T>>(stream,
+        return new DataStream<ServiceBusMessage<T>>(stream,
             $"ServiceBusSubscriptionSourceNode<{typeof(T).Name}>[{entityName}]");
     }
 

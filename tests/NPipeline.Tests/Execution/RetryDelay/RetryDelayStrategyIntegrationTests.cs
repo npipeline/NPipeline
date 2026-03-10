@@ -31,7 +31,7 @@ public sealed class RetryDelayStrategyIntegrationTests
         var innerStrategy = new SequentialExecutionStrategy();
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
 
-        await using var input = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1, 2, 3], "test-input");
+        await using var input = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1, 2, 3], "test-input");
         var node = new FailingTransformNode(2); // Fail twice, then succeed
 
         var stopwatch = Stopwatch.StartNew();
@@ -73,7 +73,7 @@ public sealed class RetryDelayStrategyIntegrationTests
         var innerStrategy = new SequentialExecutionStrategy();
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
 
-        await using var input = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1, 2, 3], "test-input");
+        await using var input = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1, 2, 3], "test-input");
         var node = new FailingTransformNode(2); // Fail twice, then succeed
 
         var stopwatch = Stopwatch.StartNew();
@@ -112,7 +112,7 @@ public sealed class RetryDelayStrategyIntegrationTests
         var innerStrategy = new SequentialExecutionStrategy();
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
 
-        await using var input = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1, 2, 3], "test-input");
+        await using var input = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1, 2, 3], "test-input");
         var node = new FailingTransformNode(2); // Fail twice, then succeed
 
         var stopwatch = Stopwatch.StartNew();
@@ -154,7 +154,7 @@ public sealed class RetryDelayStrategyIntegrationTests
         var innerStrategy = new SequentialExecutionStrategy();
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
 
-        await using var input = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1, 2, 3], "test-input");
+        await using var input = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1, 2, 3], "test-input");
         var node = new FailingTransformNode(2); // Fail twice, then succeed
 
         var stopwatch = Stopwatch.StartNew();
@@ -198,7 +198,7 @@ public sealed class RetryDelayStrategyIntegrationTests
         var innerStrategy = new SequentialExecutionStrategy();
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
 
-        await using var input = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1, 2, 3], "test-input");
+        await using var input = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1, 2, 3], "test-input");
         var node = new FailingTransformNode(10); // Always fail
 
         using var cts = new CancellationTokenSource();
@@ -247,7 +247,7 @@ public sealed class RetryDelayStrategyIntegrationTests
         var innerStrategy = new SequentialExecutionStrategy();
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
 
-        await using var input = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1, 2, 3], "test-input");
+        await using var input = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1, 2, 3], "test-input");
         var node = new FailingTransformNode(10); // Always fail
 
         // Act & Assert
@@ -275,7 +275,7 @@ public sealed class RetryDelayStrategyIntegrationTests
         var innerStrategy = new SequentialExecutionStrategy();
         var resilientStrategy = new ResilientExecutionStrategy(innerStrategy);
 
-        await using var input = new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1, 2, 3], "test-input");
+        await using var input = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1, 2, 3], "test-input");
         var node = new FailingTransformNode(2); // Fail twice, then succeed
 
         var stopwatch = Stopwatch.StartNew();
@@ -321,7 +321,7 @@ public sealed class RetryDelayStrategyIntegrationTests
 
     private sealed class TestTransformNode : TransformNode<int, string>
     {
-        public override async Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(1, cancellationToken).ConfigureAwait(false);
             return $"processed-{item}";
@@ -332,7 +332,7 @@ public sealed class RetryDelayStrategyIntegrationTests
     {
         private int _currentAttempt;
 
-        public override async Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(1, cancellationToken).ConfigureAwait(false);
             _currentAttempt++;

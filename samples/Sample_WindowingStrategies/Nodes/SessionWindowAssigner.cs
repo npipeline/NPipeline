@@ -48,7 +48,7 @@ public class SessionWindowAssigner : TransformNode<UserEvent, UserSession>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A user session when timeout is reached, null otherwise.</returns>
-    public override Task<UserSession> ExecuteAsync(
+    public override Task<UserSession> TransformAsync(
         UserEvent userEvent,
         PipelineContext context,
         CancellationToken cancellationToken)

@@ -55,8 +55,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPerson>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Empty(results);
@@ -74,8 +74,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPerson>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);
@@ -96,8 +96,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPerson>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);
@@ -116,8 +116,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPerson>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);
@@ -136,8 +136,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPersonLong>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);
@@ -157,8 +157,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPerson>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);
@@ -180,8 +180,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPerson>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);
@@ -203,8 +203,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPerson>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);
@@ -225,8 +225,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPerson>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);
@@ -245,8 +245,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPerson>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(3, results.Count);
@@ -267,8 +267,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPerson>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(3, results.Count);
@@ -289,8 +289,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPersonWithTags>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);
@@ -318,8 +318,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPerson>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(1000, results.Count);
@@ -341,8 +341,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         // Act & Assert
         await Assert.ThrowsAnyAsync<JsonException>(async () =>
         {
-            var dataPipe = node.Initialize(_context, CancellationToken.None);
-            await dataPipe.ToListAsync(CancellationToken.None);
+            var dataStream = node.OpenStream(_context, CancellationToken.None);
+            await dataStream.ToListAsync(CancellationToken.None);
         });
     }
 
@@ -360,8 +360,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         // Act & Assert
         await Assert.ThrowsAnyAsync<JsonException>(async () =>
         {
-            var dataPipe = node.Initialize(_context, CancellationToken.None);
-            await dataPipe.ToListAsync(CancellationToken.None);
+            var dataStream = node.OpenStream(_context, CancellationToken.None);
+            await dataStream.ToListAsync(CancellationToken.None);
         });
     }
 
@@ -377,8 +377,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPerson>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);
@@ -400,8 +400,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPerson>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Empty(results);
@@ -419,8 +419,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPerson>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);
@@ -440,8 +440,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPerson>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(2, results.Count);
@@ -462,8 +462,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPerson>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);
@@ -482,8 +482,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPerson>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);
@@ -504,8 +504,8 @@ public sealed class JsonEdgeCaseTests : IDisposable
         var node = new JsonSourceNode<TestPerson>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);

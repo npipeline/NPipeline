@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Models;
@@ -26,12 +26,12 @@ public sealed class ExcelSourceNodeTests
             // Write test data using ExcelSinkNode
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<int>(uri, resolver, config);
-            IDataPipe<int> input = new StreamingDataPipe<int>(Enumerable.Range(1, 5).ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<int> input = new DataStream<int>(Enumerable.Range(1, 5).ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode
             var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<int>();
 
@@ -74,12 +74,12 @@ public sealed class ExcelSourceNodeTests
 
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<TestRecord>(uri, resolver, config);
-            IDataPipe<TestRecord> input = new StreamingDataPipe<TestRecord>(testData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<TestRecord> input = new DataStream<TestRecord>(testData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode
             var src = new ExcelSourceNode<TestRecord>(uri, MapTestRecordFromHeaders, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<TestRecord>();
 
@@ -127,8 +127,8 @@ public sealed class ExcelSourceNodeTests
 
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<TestRecord>(uri, resolver, writeConfig);
-            IDataPipe<TestRecord> input = new StreamingDataPipe<TestRecord>(testData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<TestRecord> input = new DataStream<TestRecord>(testData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read with FirstRowIsHeader = false
             var readConfig = new ExcelConfiguration
@@ -137,7 +137,7 @@ public sealed class ExcelSourceNodeTests
             };
 
             var src = new ExcelSourceNode<TestRecord>(uri, MapTestRecordFromIndexes, resolver, readConfig);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<TestRecord>();
 
@@ -175,12 +175,12 @@ public sealed class ExcelSourceNodeTests
             // Write test data
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<int>(uri, resolver, config);
-            IDataPipe<int> input = new StreamingDataPipe<int>(Enumerable.Range(1, 3).ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<int> input = new DataStream<int>(Enumerable.Range(1, 3).ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode with sheet name
             var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<int>();
 
@@ -217,12 +217,12 @@ public sealed class ExcelSourceNodeTests
             // Write test data
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<int>(uri, resolver, config);
-            IDataPipe<int> input = new StreamingDataPipe<int>(Enumerable.Range(1, 3).ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<int> input = new DataStream<int>(Enumerable.Range(1, 3).ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode with null sheet name
             var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<int>();
 
@@ -284,12 +284,12 @@ public sealed class ExcelSourceNodeTests
 
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<ComplexRecord>(uri, resolver, config);
-            IDataPipe<ComplexRecord> input = new StreamingDataPipe<ComplexRecord>(testData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<ComplexRecord> input = new DataStream<ComplexRecord>(testData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode
             var src = new ExcelSourceNode<ComplexRecord>(uri, MapComplexRecordFromHeaders, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<ComplexRecord>();
 
@@ -349,12 +349,12 @@ public sealed class ExcelSourceNodeTests
 
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<NullableRecord>(uri, resolver, config);
-            IDataPipe<NullableRecord> input = new StreamingDataPipe<NullableRecord>(testData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<NullableRecord> input = new DataStream<NullableRecord>(testData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode
             var src = new ExcelSourceNode<NullableRecord>(uri, MapNullableRecordFromHeaders, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<NullableRecord>();
 
@@ -402,12 +402,12 @@ public sealed class ExcelSourceNodeTests
 
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<TestRecord>(uri, resolver, config);
-            IDataPipe<TestRecord> input = new StreamingDataPipe<TestRecord>(testData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<TestRecord> input = new DataStream<TestRecord>(testData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode - headers should match case-insensitively
             var src = new ExcelSourceNode<TestRecord>(uri, MapTestRecordFromHeaders, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<TestRecord>();
 
@@ -446,13 +446,13 @@ public sealed class ExcelSourceNodeTests
             // Write test data
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<int>(uri, resolver, config);
-            IDataPipe<int> input = new StreamingDataPipe<int>(Enumerable.Range(1, 1000).ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<int> input = new DataStream<int>(Enumerable.Range(1, 1000).ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode with cancellation
             var cts = new CancellationTokenSource();
             var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, cts.Token);
+            var outPipe = src.OpenStream(PipelineContext.Default, cts.Token);
 
             var result = new List<int>();
             var count = 0;
@@ -496,7 +496,7 @@ public sealed class ExcelSourceNodeTests
 
             // Read using ExcelSourceNode with missing file
             var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<int>();
 
@@ -533,8 +533,8 @@ public sealed class ExcelSourceNodeTests
             // Write test data to one sheet
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<int>(uri, resolver, writeConfig);
-            IDataPipe<int> input = new StreamingDataPipe<int>(Enumerable.Range(1, 3).ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<int> input = new DataStream<int>(Enumerable.Range(1, 3).ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Try to read from non-existent sheet
             var readConfig = new ExcelConfiguration
@@ -544,7 +544,7 @@ public sealed class ExcelSourceNodeTests
             };
 
             var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, readConfig);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<int>();
 
@@ -581,12 +581,12 @@ public sealed class ExcelSourceNodeTests
             var testData = new List<string> { "Apple", "Banana", "Cherry" };
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<string>(uri, resolver, config);
-            IDataPipe<string> input = new StreamingDataPipe<string>(testData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<string> input = new DataStream<string>(testData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode
             var src = new ExcelSourceNode<string>(uri, MapStringRow, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<string>();
 
@@ -628,12 +628,12 @@ public sealed class ExcelSourceNodeTests
 
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<DateTimeRecord>(uri, resolver, config);
-            IDataPipe<DateTimeRecord> input = new StreamingDataPipe<DateTimeRecord>(testData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<DateTimeRecord> input = new DataStream<DateTimeRecord>(testData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode
             var src = new ExcelSourceNode<DateTimeRecord>(uri, MapDateTimeRecordFromHeaders, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<DateTimeRecord>();
 
@@ -678,12 +678,12 @@ public sealed class ExcelSourceNodeTests
 
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<BoolRecord>(uri, resolver, config);
-            IDataPipe<BoolRecord> input = new StreamingDataPipe<BoolRecord>(testData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<BoolRecord> input = new DataStream<BoolRecord>(testData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode
             var src = new ExcelSourceNode<BoolRecord>(uri, MapBoolRecordFromHeaders, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<BoolRecord>();
 
@@ -728,12 +728,12 @@ public sealed class ExcelSourceNodeTests
 
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<DecimalRecord>(uri, resolver, config);
-            IDataPipe<DecimalRecord> input = new StreamingDataPipe<DecimalRecord>(testData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            IDataStream<DecimalRecord> input = new DataStream<DecimalRecord>(testData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
 
             // Read using ExcelSourceNode
             var src = new ExcelSourceNode<DecimalRecord>(uri, MapDecimalRecordFromHeaders, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var result = new List<DecimalRecord>();
 

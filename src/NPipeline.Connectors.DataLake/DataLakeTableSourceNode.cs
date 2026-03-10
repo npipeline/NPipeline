@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 using NPipeline.Connectors.DataLake.Manifest;
 using NPipeline.Connectors.Parquet;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
@@ -139,14 +139,14 @@ public sealed class DataLakeTableSourceNode<T> : SourceNode<T>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var provider = _provider ?? StorageProviderFactory.GetProviderOrThrow(
             _resolver ?? DefaultResolver.Value,
             _tableBasePath);
 
         var stream = ReadAllAsync(provider, cancellationToken);
-        return new StreamingDataPipe<T>(stream, $"DataLakeTableSourceNode<{typeof(T).Name}>");
+        return new DataStream<T>(stream, $"DataLakeTableSourceNode<{typeof(T).Name}>");
     }
 
     private async IAsyncEnumerable<T> ReadAllAsync(
@@ -203,9 +203,9 @@ public sealed class DataLakeTableSourceNode<T> : SourceNode<T>
         // Use ParquetSourceNode to read the file
         var sourceNode = new ParquetSourceNode<T>(provider, fileUri, _configuration);
 
-        var dataPipe = sourceNode.Initialize(PipelineContext.Default, cancellationToken);
+        var dataStream = sourceNode.OpenStream(PipelineContext.Default, cancellationToken);
 
-        await foreach (var item in dataPipe.WithCancellation(cancellationToken))
+        await foreach (var item in dataStream.WithCancellation(cancellationToken))
         {
             yield return item;
         }

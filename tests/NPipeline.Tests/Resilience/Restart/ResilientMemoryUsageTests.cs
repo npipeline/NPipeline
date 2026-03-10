@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
@@ -172,9 +172,9 @@ public sealed class ResilientMemoryUsageTests
 
     private sealed class LargeStreamSource : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new StreamingDataPipe<int>(Stream(cancellationToken));
+            return new DataStream<int>(Stream(cancellationToken));
 
             static async IAsyncEnumerable<int> Stream([EnumeratorCancellation] CancellationToken ct)
             {
@@ -191,9 +191,9 @@ public sealed class ResilientMemoryUsageTests
 
     private sealed class MediumStreamSource : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new StreamingDataPipe<int>(Stream(cancellationToken));
+            return new DataStream<int>(Stream(cancellationToken));
 
             static async IAsyncEnumerable<int> Stream([EnumeratorCancellation] CancellationToken ct)
             {
@@ -210,9 +210,9 @@ public sealed class ResilientMemoryUsageTests
 
     private sealed class SmallStreamSource : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new StreamingDataPipe<int>(Stream(cancellationToken));
+            return new DataStream<int>(Stream(cancellationToken));
 
             static async IAsyncEnumerable<int> Stream([EnumeratorCancellation] CancellationToken ct)
             {
@@ -229,7 +229,7 @@ public sealed class ResilientMemoryUsageTests
 
     private sealed class MemoryIntensiveTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate some memory-intensive processing
             var data = new byte[1024]; // 1KB per item

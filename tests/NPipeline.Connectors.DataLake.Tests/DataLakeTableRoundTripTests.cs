@@ -1,7 +1,7 @@
 using NPipeline.Connectors.DataLake.Partitioning;
 using NPipeline.Connectors.Parquet.Attributes;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Abstractions;
@@ -46,7 +46,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
             var records = CreateTestRecords(i * 10, 10);
             await using var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec);
             snapshotIds.Add(writer.SnapshotId);
-            await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<SalesRecord>(records), CancellationToken.None);
         }
 
         // Act
@@ -87,7 +87,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         // Act
         await using var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec);
-        await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records), CancellationToken.None);
+        await writer.AppendAsync(new InMemoryDataStream<SalesRecord>(records), CancellationToken.None);
 
         // Assert
         var partitionPath = Path.Combine(_tempDir, "event_date=2025-01-15");
@@ -111,7 +111,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         // Act
         await using var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec);
-        await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records), CancellationToken.None);
+        await writer.AppendAsync(new InMemoryDataStream<SalesRecord>(records), CancellationToken.None);
 
         // Assert
         Directory.Exists(Path.Combine(_tempDir, "event_date=2025-01-15", "region=EU")).Should().BeTrue();
@@ -133,12 +133,12 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
         // Act - Write
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<SalesRecord>(records), CancellationToken.None);
         }
 
         // Act - Read
         var source = new DataLakeTableSourceNode<SalesRecord>(_provider, _tableUri);
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         // Assert
         result.Should().HaveCount(50);
@@ -177,12 +177,12 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
         // Act - Write
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<SalesRecord>(records), CancellationToken.None);
         }
 
         // Act - Read
         var source = new DataLakeTableSourceNode<SalesRecord>(_provider, _tableUri);
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         // Assert
         result.Should().HaveCount(20);
@@ -204,7 +204,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records1), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<SalesRecord>(records1), CancellationToken.None);
         }
 
         // Capture time after first write
@@ -217,12 +217,12 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records2), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<SalesRecord>(records2), CancellationToken.None);
         }
 
         // Act - Read as of time after first write (before second write was committed)
         var source = new DataLakeTableSourceNode<SalesRecord>(_provider, _tableUri, timeAfterFirstWrite);
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         // Assert - Should only have first 10 records
         result.Should().HaveCount(10);
@@ -242,7 +242,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
             snapshotId1 = writer.SnapshotId;
-            await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records1), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<SalesRecord>(records1), CancellationToken.None);
         }
 
         // Second write
@@ -250,12 +250,12 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records2), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<SalesRecord>(records2), CancellationToken.None);
         }
 
         // Act - Read first snapshot
         var source = new DataLakeTableSourceNode<SalesRecord>(_provider, _tableUri, snapshotId1);
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         // Assert
         result.Should().HaveCount(10);
@@ -277,7 +277,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records1), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<SalesRecord>(records1), CancellationToken.None);
         }
 
         // Second append
@@ -285,12 +285,12 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records2), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<SalesRecord>(records2), CancellationToken.None);
         }
 
         // Act - Read all
         var source = new DataLakeTableSourceNode<SalesRecord>(_provider, _tableUri);
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         // Assert
         result.Should().HaveCount(50);
@@ -309,7 +309,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records1), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<SalesRecord>(records1), CancellationToken.None);
         }
 
         // Second append - date2
@@ -318,12 +318,12 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records2), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<SalesRecord>(records2), CancellationToken.None);
         }
 
         // Act - Read all
         var source = new DataLakeTableSourceNode<SalesRecord>(_provider, _tableUri);
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         // Assert
         result.Should().HaveCount(35);
@@ -345,12 +345,12 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
         // Act - Write
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<SalesRecord>(records), CancellationToken.None);
         }
 
         // Act - Read
         var source = new DataLakeTableSourceNode<SalesRecord>(_provider, _tableUri);
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         // Assert
         result.Should().HaveCount(5000);
@@ -392,12 +392,12 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
         // Act - Write
         await using (var writer = new DataLakeTableWriter<SalesRecord>(_provider, _tableUri, spec))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<SalesRecord>(records), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<SalesRecord>(records), CancellationToken.None);
         }
 
         // Act - Read
         var source = new DataLakeTableSourceNode<SalesRecord>(_provider, _tableUri);
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         // Assert
         result.Should().HaveCount(900);

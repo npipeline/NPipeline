@@ -54,19 +54,19 @@ public interface INode : IAsyncDisposable
 // Source nodes produce output streams
 public interface ISourceNode<out TOutput> : INode
 {
-    IDataPipe<TOutput> Initialize(PipelineContext context, CancellationToken cancellationToken);
+    IDataStream<TOutput> OpenStream(PipelineContext context, CancellationToken cancellationToken);
 }
 
 // Transform nodes process individual items
 public interface ITransformNode<in TInput, out TOutput> : INode
 {
-    Task<TOutput> ExecuteAsync(TInput item, PipelineContext context, CancellationToken cancellationToken);
+    Task<TOutput> TransformAsync(TInput item, PipelineContext context, CancellationToken cancellationToken);
 }
 
 // Sink nodes consume entire streams
 public interface ISinkNode<in TInput> : INode
 {
-    Task ExecuteAsync(IDataPipe<TInput> input, PipelineContext context, CancellationToken cancellationToken);
+    Task ConsumeAsync(IDataStream<TInput> input, PipelineContext context, CancellationToken cancellationToken);
 }
 ```
 
@@ -78,8 +78,8 @@ public interface ISinkNode<in TInput> : INode
 
 **Data Flow Model:**
 
-- Source nodes return `IDataPipe<TOutput>`, which implements `IAsyncEnumerable<TOutput>`
-- Transform nodes process items one at a time via `ExecuteAsync`
+- Source nodes return `IDataStream<TOutput>`, which implements `IAsyncEnumerable<TOutput>`
+- Transform nodes process items one at a time via `TransformAsync`
 - Sink nodes consume the entire input stream using `await foreach`
 
 The architectural design emphasizes:
@@ -96,10 +96,10 @@ For detailed information about node implementations, interfaces, and examples, s
 NPipeline uses `IAsyncEnumerable<T>` for **lazy, streaming data flow**:
 
 ```csharp
-public interface IDataPipe<T> : IAsyncEnumerable<T>
+public interface IDataStream<T> : IAsyncEnumerable<T>
 {
-    // IDataPipe<T> implements IAsyncEnumerable<T> directly
-    // Iterate using: await foreach (var item in dataPipe)
+    // IDataStream<T> implements IAsyncEnumerable<T> directly
+    // Iterate using: await foreach (var item in dataStream)
 }
 ```
 
@@ -122,14 +122,14 @@ public interface IDataPipe<T> : IAsyncEnumerable<T>
 
 **Composable**
 
-- Each transform creates a new data pipe
+- Each transform creates a new data stream
 - Pipes can be layered and composed
 
 ### Example: How Streaming Works
 
 ```csharp
 // Step 1: Source creates pipe (synchronous - no await needed)
-var sourcePipe = sourceNode.Initialize(context, cancellationToken);
+var sourcePipe = sourceNode.OpenStream(context, cancellationToken);
 
 // Step 2: Transform wraps pipe (but doesn't process yet)
 var transformPipe = new TransformPipe(sourcePipe, transformNode);

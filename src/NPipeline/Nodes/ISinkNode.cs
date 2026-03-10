@@ -16,5 +16,5 @@ public interface ISinkNode<in TIn> : INode
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    Task ExecuteAsync(IDataPipe<TIn> input, PipelineContext context, CancellationToken cancellationToken);
+    Task ConsumeAsync(IDataStream<TIn> input, PipelineContext context, CancellationToken cancellationToken);
 }

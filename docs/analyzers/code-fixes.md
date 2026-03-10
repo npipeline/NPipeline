@@ -131,10 +131,10 @@ This code fix converts non-streaming SourceNode implementations to proper stream
 ```csharp
 public class BadSourceNode : SourceNode<Output>
 {
-    public override IDataPipe<Output> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<Output> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var items = LoadAllItems();
-        return new StreamingDataPipe<Output>(items.ToAsyncEnumerable());
+        return new DataStream<Output>(items.ToAsyncEnumerable());
     }
 }
 ```
@@ -144,9 +144,9 @@ public class BadSourceNode : SourceNode<Output>
 ```csharp
 public class GoodSourceNode : SourceNode<Output>
 {
-    public override IDataPipe<Output> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<Output> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
-        return new StreamingDataPipe<Output>(GetItemsAsync(cancellationToken));
+        return new DataStream<Output>(GetItemsAsync(cancellationToken));
     }
     
     private async IAsyncEnumerable<Output> GetItemsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
@@ -168,7 +168,7 @@ This code fix converts direct dependency instantiation to proper constructor inj
 ```csharp
 public class BadTransform : TransformNode<Input, Output>
 {
-    protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
+    protected override async Task<Output> TransformAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
     {
         var processor = new DataProcessor();
         var result = await processor.ProcessAsync(input);
@@ -189,7 +189,7 @@ public class GoodTransform : TransformNode<Input, Output>
         _processor = processor;
     }
     
-    protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
+    protected override async Task<Output> TransformAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
     {
         var result = await _processor.ProcessAsync(input);
         return new Output(result);
@@ -206,7 +206,7 @@ This code fix adds proper input consumption patterns to SinkNode implementations
 ```csharp
 public class BadSinkNode : SinkNode<Input>
 {
-    protected override async Task ExecuteAsync(IDataPipe<Input> input, PipelineContext context, CancellationToken cancellationToken)
+    protected override async Task ConsumeAsync(IDataStream<Input> input, PipelineContext context, CancellationToken cancellationToken)
     {
         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
     }
@@ -218,7 +218,7 @@ public class BadSinkNode : SinkNode<Input>
 ```csharp
 public class GoodSinkNode : SinkNode<Input>
 {
-    protected override async Task ExecuteAsync(IDataPipe<Input> input, PipelineContext context, CancellationToken cancellationToken)
+    protected override async Task ConsumeAsync(IDataStream<Input> input, PipelineContext context, CancellationToken cancellationToken)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {

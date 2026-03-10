@@ -31,7 +31,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NPipeline;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Nodes;
@@ -44,12 +44,12 @@ namespace NpipelineHelloWorld;
 // This node will produce a single "Hello World!" string.
 public sealed class HelloWorldSource : SourceNode<string>
 {
-    public override IDataPipe<string> Initialize(
+    public override IDataStream<string> OpenStream(
         PipelineContext context,
         CancellationToken cancellationToken = default)
     {
         Console.WriteLine("Source: Producing 'Hello World!'");
-        return new StreamingDataPipe<string>(ProduceMessages());
+        return new DataStream<string>(ProduceMessages());
     }
 
     private async IAsyncEnumerable<string> ProduceMessages()
@@ -62,7 +62,7 @@ public sealed class HelloWorldSource : SourceNode<string>
 // This node will convert the incoming string to uppercase.
 public sealed class UppercaseTransform : TransformNode<string, string>
 {
-    public override Task<string> ExecuteAsync(
+    public override Task<string> TransformAsync(
         string item,
         PipelineContext context,
         CancellationToken cancellationToken = default)
@@ -77,8 +77,8 @@ public sealed class UppercaseTransform : TransformNode<string, string>
 // This node will consume the final string and print it to the console.
 public sealed class ConsoleSink : SinkNode<string>
 {
-    public override async Task ExecuteAsync(
-        IDataPipe<string> input,
+    public override async Task ConsumeAsync(
+        IDataStream<string> input,
         PipelineContext context,
         CancellationToken cancellationToken = default)
     {
@@ -155,19 +155,19 @@ This simple example illustrates the fundamental flow of data through an NPipelin
 You may have noticed something interesting about our source node:
 
 ```csharp
-public override IDataPipe<string> Initialize(...)  // Notice: Not async!
+public override IDataStream<string> OpenStream(...)  // Notice: Not async!
 {
     // Returns a pipe synchronously - no await here
-    return new StreamingDataPipe<string>(Stream());
+    return new DataStream<string>(Stream());
 }
 ```
 
-The method is called `Initialize`, not `InitializeAsync`, because it returns synchronously — no await is involved!
+The method is called `OpenStream`, not `OpenStreamAsync`, because it returns synchronously — no await is involved!
 
 **Phase 1 (Synchronous):** The source creates a pipe immediately
 
 ```csharp
-var pipe = source.Initialize(context, cancellationToken);  // Returns instantly
+var pipe = source.OpenStream(context, cancellationToken);  // Returns instantly
 ```
 
 **Phase 2 (Asynchronous):** The sink consumes data asynchronously
@@ -182,14 +182,14 @@ await foreach (var item in input.WithCancellation(cancellationToken))  // Async 
 **Why This Design?**
 
 * **Simplicity:** Pipe creation is fast and synchronous
-* **Type Safety:** Direct `IDataPipe<T>` returns enable better type compatibility
+* **Type Safety:** Direct `IDataStream<T>` returns enable better type compatibility
 * **Performance:** No unnecessary Task allocations
-* **Clarity:** "ExecuteAsync" signals you're in the async pipeline system, but the pipe is ready to use immediately
+* **Clarity:** `OpenStream` creates the pipe synchronously; data flows asynchronously only when the sink iterates it
 
 Think of it like opening a file: `File.OpenRead()` is synchronous and returns immediately, but `stream.ReadAsync()` is asynchronous when you actually read data from it.
 
 ## Next Steps
 
-* **[Core Concepts](../core-concepts/index.md)**: Deep dive into the `IDataPipe`, `INode`, `IPipelineDefinition`, and `PipelineContext`
+* **[Core Concepts](../core-concepts/index.md)**: Deep dive into the `IDataStream`, `INode`, `IPipelineDefinition`, and `PipelineContext`
 * **[Common Patterns](../core-concepts/common-patterns.md)**: See practical examples of real-world pipeline implementations
 * **[Installation](installation.md)**: Review the installation options and available extensions

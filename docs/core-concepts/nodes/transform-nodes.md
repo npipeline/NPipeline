@@ -13,7 +13,7 @@ Transform nodes take an input stream of `TInput` items, perform some operation o
 ```csharp
 public interface ITransformNode<TIn, TOut> : INode
 {
-    Task<TOut> ExecuteAsync(TIn item, PipelineContext context, CancellationToken cancellationToken);
+    Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken);
 }
 ```
 
@@ -38,7 +38,7 @@ public interface IStreamTransformNode<TIn, TOut> : INode
     IExecutionStrategy ExecutionStrategy { get; set; }
     INodeErrorHandler? ErrorHandler { get; set; }
 
-    IAsyncEnumerable<TOut> ExecuteAsync(
+    IAsyncEnumerable<TOut> TransformAsync(
         IAsyncEnumerable<TIn> items,
         PipelineContext context,
         CancellationToken cancellationToken);
@@ -84,7 +84,7 @@ public sealed class BatchingTransform<T> : IStreamTransformNode<T, IReadOnlyColl
     public IExecutionStrategy ExecutionStrategy { get; set; } = new BatchingExecutionStrategy();
     public INodeErrorHandler? ErrorHandler { get; set; }
 
-    public IAsyncEnumerable<IReadOnlyCollection<T>> ExecuteAsync(
+    public IAsyncEnumerable<IReadOnlyCollection<T>> TransformAsync(
         IAsyncEnumerable<T> items,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -111,7 +111,7 @@ public sealed class UnbatchingTransform<T> : IStreamTransformNode<IEnumerable<T>
     public IExecutionStrategy ExecutionStrategy { get; set; } = new UnbatchingExecutionStrategy();
     public INodeErrorHandler? ErrorHandler { get; set; }
 
-    public IAsyncEnumerable<T> ExecuteAsync(
+    public IAsyncEnumerable<T> TransformAsync(
         IAsyncEnumerable<IEnumerable<T>> batches,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -142,7 +142,7 @@ public sealed class SquareTransform : ITransformNode<int, int>
     /// Processes each integer by squaring it.
     /// Uses Task.FromResult for synchronous work to avoid unnecessary Task allocation.
     /// </summary>
-    public Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+    public Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
     {
         // Synchronous calculation - no async work needed
         return Task.FromResult(item * item);
@@ -172,7 +172,7 @@ public sealed class EnrichmentTransform : ITransformNode<Order, EnrichedOrder>
     /// Enriches each order with customer information from lookup service.
     /// Uses async/await pattern as external service call is inherently asynchronous.
     /// </summary>
-    public async Task<EnrichedOrder> ExecuteAsync(Order order, PipelineContext context, CancellationToken cancellationToken)
+    public async Task<EnrichedOrder> TransformAsync(Order order, PipelineContext context, CancellationToken cancellationToken)
     {
         // Fetch customer data from external service (async operation)
         var customerInfo = await _lookupService.GetCustomerAsync(order.CustomerId, cancellationToken);
@@ -214,7 +214,7 @@ public sealed class ValidationTransform : ITransformNode<RawData, ValidatedData>
     /// Validates raw data and converts to validated format.
     /// Uses ValueTask for synchronous validation to avoid heap allocation.
     /// </summary>
-    public ValueTask<ValidatedData> ExecuteAsync(RawData item, PipelineContext context, CancellationToken cancellationToken)
+    public ValueTask<ValidatedData> TransformAsync(RawData item, PipelineContext context, CancellationToken cancellationToken)
     {
         // Synchronous validation - check for empty or null values
         if (string.IsNullOrWhiteSpace(item.Value))
@@ -255,7 +255,7 @@ public sealed class ConversionTransform : ITransformNode<string, int>
     /// Converts string to integer with validation.
     /// Uses ValueTask to avoid allocation when conversion succeeds synchronously.
     /// </summary>
-    public ValueTask<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+    public ValueTask<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
     {
         // Try to parse the string to integer
         if (int.TryParse(item, out var result))
@@ -293,7 +293,7 @@ public sealed class EnrichmentTransform : ITransformNode<Order, EnrichedOrder>
         _lookupService = lookupService;
     }
 
-    public async Task<EnrichedOrder> ExecuteAsync(Order order, PipelineContext context, CancellationToken cancellationToken)
+    public async Task<EnrichedOrder> TransformAsync(Order order, PipelineContext context, CancellationToken cancellationToken)
     {
         var customerInfo = await _lookupService.GetCustomerAsync(order.CustomerId, cancellationToken);
         return new EnrichedOrder

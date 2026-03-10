@@ -50,7 +50,7 @@ var pipeline = new PipelineBuilder()
     .AddSink<ConsoleSinkNode<GithubRelease>, GithubRelease>("console_sink")
     .Build();
 
-await pipeline.ExecuteAsync();
+await runner.RunAsync<MyPipelineDefinition>();
 ```
 
 ### Writing to a REST Endpoint
@@ -76,7 +76,7 @@ var pipeline = new PipelineBuilder()
     .AddSink(sink, "slack_sink")
     .Build();
 
-await pipeline.ExecuteAsync();
+await runner.RunAsync<MyPipelineDefinition>();
 ```
 
 ### Using with Dependency Injection

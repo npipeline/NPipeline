@@ -14,7 +14,7 @@ public class PassThroughTransformNodeTests
         var item = "test";
 
         // Act
-        var result = await node.ExecuteAsync(item, context, CancellationToken.None);
+        var result = await node.TransformAsync(item, context, CancellationToken.None);
 
         // Assert
         result.Should().Be(item);
@@ -29,7 +29,7 @@ public class PassThroughTransformNodeTests
         var item = "test" as object;
 
         // Act
-        var result = await node.ExecuteAsync(item, context, CancellationToken.None);
+        var result = await node.TransformAsync(item, context, CancellationToken.None);
 
         // Assert
         result.Should().Be(item as string);
@@ -44,7 +44,7 @@ public class PassThroughTransformNodeTests
         var item = 42;
 
         // Act
-        var result = await node.ExecuteAsync(item, context, CancellationToken.None);
+        var result = await node.TransformAsync(item, context, CancellationToken.None);
 
         // Assert
         result.Should().Be(item);
@@ -59,7 +59,7 @@ public class PassThroughTransformNodeTests
         string? item = null;
 
         // Act
-        var result = await node.ExecuteAsync(item!, context, CancellationToken.None);
+        var result = await node.TransformAsync(item!, context, CancellationToken.None);
 
         // Assert
         result.Should().BeNull();
@@ -74,7 +74,7 @@ public class PassThroughTransformNodeTests
         int? item = null;
 
         // Act
-        var result = await node.ExecuteAsync(item, context, CancellationToken.None);
+        var result = await node.TransformAsync(item, context, CancellationToken.None);
 
         // Assert
         result.Should().Be(0); // Default value for int when null is cast
@@ -89,7 +89,7 @@ public class PassThroughTransformNodeTests
         var item = "not a number";
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidCastException>(() => node.ExecuteAsync(item, context, CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidCastException>(() => node.TransformAsync(item, context, CancellationToken.None));
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public class PassThroughTransformNodeTests
         var item = new List<string> { "test" };
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidCastException>(() => node.ExecuteAsync(item, context, CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidCastException>(() => node.TransformAsync(item, context, CancellationToken.None));
     }
 
     [Fact]
@@ -113,7 +113,7 @@ public class PassThroughTransformNodeTests
         var item = "test";
 
         // Act
-        var result = await node.ExecuteAsync(item, context, CancellationToken.None);
+        var result = await node.TransformAsync(item, context, CancellationToken.None);
 
         // Assert
         result.Should().Be(item);
@@ -129,7 +129,7 @@ public class PassThroughTransformNodeTests
         var item = new TestObject { Name = "test", Value = 42 };
 
         // Act
-        var result = await node.ExecuteAsync(item, context, CancellationToken.None);
+        var result = await node.TransformAsync(item, context, CancellationToken.None);
 
         // Assert
         result.Should().Be(item);
@@ -147,7 +147,7 @@ public class PassThroughTransformNodeTests
         var item = new TestObject { Name = "test", Value = 42 };
 
         // Act
-        var result = await node.ExecuteAsync(item, context, CancellationToken.None);
+        var result = await node.TransformAsync(item, context, CancellationToken.None);
 
         // Assert
         result.Should().Be(item);
@@ -170,7 +170,7 @@ public class PassThroughTransformNodeTests
         cts.Cancel();
 
         // Act & Assert
-        await Assert.ThrowsAsync<OperationCanceledException>(() => node.ExecuteAsync(item, context, cts.Token));
+        await Assert.ThrowsAsync<OperationCanceledException>(() => node.TransformAsync(item, context, cts.Token));
     }
 
     [Fact]
@@ -193,7 +193,7 @@ public class PassThroughTransformNodeTests
         var item = "test";
 
         // Act
-        var result = await node.ExecuteAsync(item, context, CancellationToken.None);
+        var result = await node.TransformAsync(item, context, CancellationToken.None);
 
         // Assert
         result.Should().Be(item);
@@ -213,7 +213,7 @@ public class PassThroughTransformNodeTests
         // Act & Assert
         // Even though context is null, the transform should still work
         // since it doesn't use the context
-        var result = await node.ExecuteAsync(item, null!, CancellationToken.None);
+        var result = await node.TransformAsync(item, null!, CancellationToken.None);
         result.Should().Be(item);
     }
 

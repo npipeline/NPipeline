@@ -17,15 +17,15 @@ public sealed class NodeConfigurationExtensionsTests
 
     private sealed class TestSourceNode : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new InMemoryDataPipe<int>(new[] { 1, 2, 3 });
+            return new InMemoryDataStream<int>(new[] { 1, 2, 3 });
         }
     }
 
     private sealed class TestTransformNode : TransformNode<int, string>
     {
-        public override Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item.ToString());
         }
@@ -35,8 +35,8 @@ public sealed class NodeConfigurationExtensionsTests
     {
         public List<string> Items { get; } = new();
 
-        public override async Task ExecuteAsync(
-            IDataPipe<string> input,
+        public override async Task ConsumeAsync(
+            IDataStream<string> input,
             PipelineContext context,
             CancellationToken cancellationToken)
         {

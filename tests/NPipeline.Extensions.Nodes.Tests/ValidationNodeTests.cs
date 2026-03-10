@@ -16,7 +16,7 @@ public sealed class ValidationNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Should().BeSameAs(data);
@@ -35,7 +35,7 @@ public sealed class ValidationNodeTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ValidationException>(async () =>
-            await node.ExecuteAsync(data, context, CancellationToken.None));
+            await node.TransformAsync(data, context, CancellationToken.None));
 
         ex.PropertyPath.Should().Contain("Name");
         ex.RuleName.Should().Be("NotEmpty");
@@ -59,7 +59,7 @@ public sealed class ValidationNodeTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ValidationException>(async () =>
-            await node.ExecuteAsync(data, context, CancellationToken.None));
+            await node.TransformAsync(data, context, CancellationToken.None));
 
         ex.Message.Should().Contain("Age must be at least 18");
         ex.Message.Should().Contain("15");
@@ -77,7 +77,7 @@ public sealed class ValidationNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Should().BeSameAs(data);
@@ -96,7 +96,7 @@ public sealed class ValidationNodeTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ValidationException>(async () =>
-            await node.ExecuteAsync(data, context, CancellationToken.None));
+            await node.TransformAsync(data, context, CancellationToken.None));
 
         ex.RuleName.Should().Be("NotEmpty");
     }
@@ -116,7 +116,7 @@ public sealed class ValidationNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Should().BeSameAs(data);
@@ -138,7 +138,7 @@ public sealed class ValidationNodeTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ValidationException>(async () =>
-            await node.ExecuteAsync(data, context, CancellationToken.None));
+            await node.TransformAsync(data, context, CancellationToken.None));
 
         ex.PropertyPath.Should().Contain("Email");
         ex.RuleName.Should().Be("NotEmpty");
@@ -153,7 +153,7 @@ public sealed class ValidationNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Should().BeSameAs(data);
@@ -173,7 +173,7 @@ public sealed class ValidationNodeTests
 
         // Act & Assert
         await Assert.ThrowsAsync<OperationCanceledException>(async () =>
-            await node.ExecuteAsync(data, context, cts.Token));
+            await node.TransformAsync(data, context, cts.Token));
     }
 
     [Fact]

@@ -39,7 +39,7 @@ using NPipeline.Extensions.Testing.AwesomeAssertions;
 using AwesomeAssertions;
 
 // Execute a pipeline
-var result = await pipeline.ExecuteAsync();
+var result = await new PipelineTestHarness<MyPipeline>().RunAsync();
 
 // Assert successful execution
 Expect(result).ToBeSuccessful()
@@ -91,7 +91,7 @@ public async Task Pipeline_Should_Process_Data_Correctly()
         .Build();
 
     // Act
-    var result = await pipeline.ExecuteAsync();
+    var result = await new PipelineTestHarness<MyPipeline>().RunAsync();
 
     // Assert
     Expect(result).ToBeSuccessful()

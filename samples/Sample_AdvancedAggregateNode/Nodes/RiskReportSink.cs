@@ -43,8 +43,8 @@ public class RiskReportSink : SinkNode<object>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token for async operation.</param>
     /// <returns>A task representing sink operation.</returns>
-    public override async Task ExecuteAsync(
-        IDataPipe<object> input,
+    public override async Task ConsumeAsync(
+        IDataStream<object> input,
         PipelineContext context,
         CancellationToken cancellationToken)
     {

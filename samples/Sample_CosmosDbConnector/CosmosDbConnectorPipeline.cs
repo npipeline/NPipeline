@@ -2,7 +2,7 @@ using System.Diagnostics;
 using Microsoft.Azure.Cosmos;
 using NPipeline.Connectors.Azure.CosmosDb.Configuration;
 using NPipeline.Connectors.Azure.CosmosDb.Nodes;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 
 namespace Sample_CosmosDbConnector;
 
@@ -86,7 +86,7 @@ public sealed class CosmosDbConnectorPipeline
     // Main entry point
     // -----------------------------------------------------------------------------------------
 
-    public async Task ExecuteAsync(IServiceProvider _, CancellationToken cancellationToken)
+    public async Task ConsumeAsync(IServiceProvider _, CancellationToken cancellationToken)
     {
         await BootstrapAsync(cancellationToken);
         await DemonstrateBatchWriteAsync(cancellationToken);
@@ -168,8 +168,8 @@ public sealed class CosmosDbConnectorPipeline
         Console.WriteLine($"  Writing {products.Count} products using Batch strategy (batch size 5)...");
 
         var sw = Stopwatch.StartNew();
-        var dataPipe = new InMemoryDataPipe<Product>(products);
-        await sinkNode.ExecuteAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<Product>(products);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
         sw.Stop();
 
         Console.WriteLine($"  ✓ Batch write completed in {sw.ElapsedMilliseconds} ms");
@@ -208,7 +208,7 @@ public sealed class CosmosDbConnectorPipeline
         Console.WriteLine($"  Query: {query}");
         Console.WriteLine();
 
-        var pipe = sourceNode.Initialize(null!, cancellationToken);
+        var pipe = sourceNode.OpenStream(null!, cancellationToken);
 
         var count = 0;
 
@@ -249,7 +249,7 @@ public sealed class CosmosDbConnectorPipeline
             "SELECT * FROM c",
             configuration: configuration);
 
-        var pipe = sourceNode.Initialize(null!, cancellationToken);
+        var pipe = sourceNode.OpenStream(null!, cancellationToken);
 
         var updated = new List<Product>();
 
@@ -267,8 +267,8 @@ public sealed class CosmosDbConnectorPipeline
 
         Console.WriteLine($"  Applying 10 % price increase to {updated.Count} product(s) via Upsert...");
 
-        var dataPipe = new InMemoryDataPipe<Product>(updated);
-        await sinkNode.ExecuteAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<Product>(updated);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
 
         Console.WriteLine($"  ✓ Upsert completed — {updated.Count} document(s) created-or-replaced");
         Console.WriteLine();
@@ -305,8 +305,8 @@ public sealed class CosmosDbConnectorPipeline
         Console.WriteLine($"  Writing {products.Count} products to '{BulkContainerId}' using Bulk strategy...");
 
         var sw = Stopwatch.StartNew();
-        var dataPipe = new InMemoryDataPipe<Product>(products);
-        await sinkNode.ExecuteAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<Product>(products);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
         sw.Stop();
 
         Console.WriteLine($"  ✓ Bulk write completed in {sw.ElapsedMilliseconds} ms");
@@ -351,8 +351,8 @@ public sealed class CosmosDbConnectorPipeline
 
         try
         {
-            var dataPipe = new InMemoryDataPipe<Product>(products);
-            await sinkNode.ExecuteAsync(dataPipe, null!, cancellationToken);
+            var dataStream = new InMemoryDataStream<Product>(products);
+            await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
         }
         catch (Exception ex)
         {

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -39,7 +39,7 @@ public class SensorSource : SourceNode<SensorReading>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the sensor readings.</returns>
-    public override IDataPipe<SensorReading> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<SensorReading> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Generating {_readingCount} sensor readings from {_deviceCount} devices with {_interval.TotalMilliseconds}ms intervals");
 
@@ -84,6 +84,6 @@ public class SensorSource : SourceNode<SensorReading>
             Console.WriteLine($"  {group.Key}: {group.Count()} readings");
         }
 
-        return new InMemoryDataPipe<SensorReading>(readings, "SensorSource");
+        return new InMemoryDataStream<SensorReading>(readings, "SensorSource");
     }
 }

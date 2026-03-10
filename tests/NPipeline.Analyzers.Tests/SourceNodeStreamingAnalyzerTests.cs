@@ -24,11 +24,11 @@ public sealed class SourceNodeStreamingAnalyzerTests
 
                    public class TestSourceNode : SourceNode<string>
                    {
-                       public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = new List<string>(); // Should trigger diagnostic
                            items.Add("test");
-                           return new InMemoryDataPipe<string>(items);
+                           return new InMemoryDataStream<string>(items);
                        }
                    }
                    """;
@@ -49,14 +49,14 @@ public sealed class SourceNodeStreamingAnalyzerTests
 
                    public class TestSourceNode : SourceNode<int>
                    {
-                       public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = new int[10]; // Should trigger diagnostic
                            for (int i = 0; i < 10; i++)
                            {
                                items[i] = i;
                            }
-                           return new InMemoryDataPipe<int>(items);
+                           return new InMemoryDataStream<int>(items);
                        }
                    }
                    """;
@@ -79,10 +79,10 @@ public sealed class SourceNodeStreamingAnalyzerTests
 
                    public class TestSourceNode : SourceNode<string>
                    {
-                       public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = new List<string> { "test1", "test2" };
-                           return new StreamingDataPipe<string>(items.ToAsyncEnumerable()); // Should trigger diagnostic
+                           return new DataStream<string>(items.ToAsyncEnumerable()); // Should trigger diagnostic
                        }
                    }
                    """;
@@ -104,10 +104,10 @@ public sealed class SourceNodeStreamingAnalyzerTests
 
                    public class TestSourceNode : SourceNode<string>
                    {
-                       public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var lines = File.ReadAllLines("test.txt"); // Should trigger diagnostic
-                           return new InMemoryDataPipe<string>(lines);
+                           return new InMemoryDataStream<string>(lines);
                        }
                    }
                    """;
@@ -130,10 +130,10 @@ public sealed class SourceNodeStreamingAnalyzerTests
 
                    public class TestSourceNode : SourceNode<int>
                    {
-                       public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = Enumerable.Range(1, 100).ToList(); // Should trigger diagnostic
-                           return new InMemoryDataPipe<int>(items);
+                           return new InMemoryDataStream<int>(items);
                        }
                    }
                    """;
@@ -155,10 +155,10 @@ public sealed class SourceNodeStreamingAnalyzerTests
 
                    public class TestSourceNode : SourceNode<int>
                    {
-                       public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var items = Enumerable.Range(1, 100).ToArray(); // Should trigger diagnostic
-                           return new InMemoryDataPipe<int>(items);
+                           return new InMemoryDataStream<int>(items);
                        }
                    }
                    """;
@@ -178,10 +178,10 @@ public sealed class SourceNodeStreamingAnalyzerTests
 
                    public class TestClass
                    {
-                       public IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+                       public IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                        {
-                           var items = new List<string>(); // Should NOT trigger diagnostic (not Initialize)
-                           return new InMemoryDataPipe<string>(items);
+                           var items = new List<string>(); // Should NOT trigger diagnostic (not OpenStream)
+                           return new InMemoryDataStream<string>(items);
                        }
                    }
                    """;
@@ -193,7 +193,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
     }
 
     [Fact]
-    public void ShouldNotAnalyzeNonInitializeMethods()
+    public void ShouldNotAnalyzeNonOpenStreamMethods()
     {
         var code = """
                    using System.Collections.Generic;
@@ -203,16 +203,16 @@ public sealed class SourceNodeStreamingAnalyzerTests
 
                    public class TestSourceNode : SourceNode<string>
                    {
-                       public IDataPipe<string> SomeOtherMethod(PipelineContext context, CancellationToken cancellationToken)
+                       public IDataStream<string> SomeOtherMethod(PipelineContext context, CancellationToken cancellationToken)
                        {
-                           var items = new List<string>(); // Should NOT trigger diagnostic (not Initialize)
-                           return new InMemoryDataPipe<string>(items);
+                           var items = new List<string>(); // Should NOT trigger diagnostic (not OpenStream)
+                           return new InMemoryDataStream<string>(items);
                        }
 
-                       public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                        {
                            // Proper streaming implementation
-                           return new StreamingDataPipe<string>(GetItemsAsync(cancellationToken));
+                           return new DataStream<string>(GetItemsAsync(cancellationToken));
                        }
 
                        private async IAsyncEnumerable<string> GetItemsAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
@@ -226,7 +226,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         var hasDiagnostic = diagnostics.Any(d => d.Id == SourceNodeStreamingAnalyzer.SourceNodeStreamingId);
-        Assert.False(hasDiagnostic, "Analyzer should not analyze non-Initialize methods");
+        Assert.False(hasDiagnostic, "Analyzer should not analyze non-OpenStream methods");
     }
 
     [Fact]
@@ -239,10 +239,10 @@ public sealed class SourceNodeStreamingAnalyzerTests
 
                    public class TestSourceNode : SourceNode<string>
                    {
-                       public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                        {
                            // Proper streaming implementation - should NOT trigger diagnostic
-                           return new StreamingDataPipe<string>(GetItemsAsync(cancellationToken));
+                           return new DataStream<string>(GetItemsAsync(cancellationToken));
                        }
 
                        private async IAsyncEnumerable<string> GetItemsAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
@@ -271,10 +271,10 @@ public sealed class SourceNodeStreamingAnalyzerTests
 
                    public class TestSourceNode : SourceNode<string>
                    {
-                       public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var lines = await File.ReadAllLinesAsync("test.txt", cancellationToken); // Should NOT trigger diagnostic (async)
-                           return new InMemoryDataPipe<string>(lines);
+                           return new InMemoryDataStream<string>(lines);
                        }
                    }
                    """;
@@ -295,7 +295,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
             MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Task).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(File).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(IDataPipe<>).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(IDataStream<>).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(SourceNode<>).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(PipelineContext).Assembly.Location),
         };

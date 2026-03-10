@@ -3,7 +3,7 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
 using NPipeline.Extensions.Parallelism;
 using NPipeline.Nodes;
@@ -341,13 +341,13 @@ public class ParallelismScalingBenchmarks
 
     private sealed class DataGeneratorSource : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)
                 : 0;
 
-            return new StreamingDataPipe<int>(
+            return new DataStream<int>(
                 BenchmarkDataGenerators.GenerateIntegers(count, cancellationToken),
                 "dataGenerator");
         }
@@ -355,7 +355,7 @@ public class ParallelismScalingBenchmarks
 
     private sealed class ProcessingTransform : TransformNode<int, ProcessedResult>
     {
-        public override async Task<ProcessedResult> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<ProcessedResult> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate moderate processing work
             await Task.Delay(1, cancellationToken);
@@ -372,7 +372,7 @@ public class ParallelismScalingBenchmarks
 
     private sealed class CPUBoundTransform : TransformNode<int, ProcessedResult>
     {
-        public override Task<ProcessedResult> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<ProcessedResult> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate CPU-bound work
             var result = 0;
@@ -394,7 +394,7 @@ public class ParallelismScalingBenchmarks
 
     private sealed class IOBoundTransform : TransformNode<int, ProcessedResult>
     {
-        public override async Task<ProcessedResult> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<ProcessedResult> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate IO-bound work
             await Task.Delay(10, cancellationToken);
@@ -413,7 +413,7 @@ public class ParallelismScalingBenchmarks
     {
         private readonly Random _random = new();
 
-        public override async Task<ProcessedResult> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<ProcessedResult> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Randomly choose between CPU-bound and IO-bound work
             if (_random.NextDouble() < 0.5)
@@ -450,7 +450,7 @@ public class ParallelismScalingBenchmarks
 
     private sealed class BatchProcessingTransform : TransformNode<IReadOnlyCollection<int>, ProcessedResult>
     {
-        public override async Task<ProcessedResult> ExecuteAsync(IReadOnlyCollection<int> batch, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<ProcessedResult> TransformAsync(IReadOnlyCollection<int> batch, PipelineContext context, CancellationToken cancellationToken)
         {
             // Process entire batch
             var sum = 0;
@@ -473,7 +473,7 @@ public class ParallelismScalingBenchmarks
 
     private sealed class BlackHoleSink<T> : SinkNode<T>
     {
-        public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
             {

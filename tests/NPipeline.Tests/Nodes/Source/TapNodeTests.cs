@@ -24,7 +24,7 @@ public sealed class TapNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await tapNode.ExecuteAsync(testItem, context, CancellationToken.None);
+        var result = await tapNode.TransformAsync(testItem, context, CancellationToken.None);
 
         // Assert - item should pass through unchanged
         _ = result.Should().Be(testItem);
@@ -40,7 +40,7 @@ public sealed class TapNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        _ = await tapNode.ExecuteAsync(testItem, context, CancellationToken.None);
+        _ = await tapNode.TransformAsync(testItem, context, CancellationToken.None);
 
         // Assert - sink should have received the item
         _ = sink.ReceivedItems.Should().HaveCount(1);
@@ -61,7 +61,7 @@ public sealed class TapNodeTests
 
         foreach (var item in testItems)
         {
-            results.Add(await tapNode.ExecuteAsync(item, context, CancellationToken.None));
+            results.Add(await tapNode.TransformAsync(item, context, CancellationToken.None));
         }
 
         // Assert - all items pass through unchanged
@@ -79,7 +79,7 @@ public sealed class TapNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await tapNode.ExecuteAsync(originalData, context, CancellationToken.None);
+        var result = await tapNode.TransformAsync(originalData, context, CancellationToken.None);
 
         // Assert - should return same reference
         _ = result.Should().BeSameAs(originalData);
@@ -98,7 +98,7 @@ public sealed class TapNodeTests
 
         // Act & Assert
         // Even if sink fails, TapNode should propagate the exception
-        _ = await tapNode.Invoking(tn => tn.ExecuteAsync(testItem, context, CancellationToken.None))
+        _ = await tapNode.Invoking(tn => tn.TransformAsync(testItem, context, CancellationToken.None))
             .Should().ThrowAsync<InvalidOperationException>();
     }
 
@@ -115,7 +115,7 @@ public sealed class TapNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await tapNode.ExecuteAsync(999, context, CancellationToken.None);
+        var result = await tapNode.TransformAsync(999, context, CancellationToken.None);
 
         // Assert
         _ = result.Should().Be(999);
@@ -131,7 +131,7 @@ public sealed class TapNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await tapNode.ExecuteAsync(3.14, context, CancellationToken.None);
+        var result = await tapNode.TransformAsync(3.14, context, CancellationToken.None);
 
         // Assert
         _ = result.Should().Be(3.14);
@@ -148,7 +148,7 @@ public sealed class TapNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await tapNode.ExecuteAsync(complexData, context, CancellationToken.None);
+        var result = await tapNode.TransformAsync(complexData, context, CancellationToken.None);
 
         // Assert
         _ = result.Should().Be(complexData);
@@ -165,7 +165,7 @@ public sealed class TapNodeTests
         int? nullableValue = 42;
 
         // Act
-        var result = await tapNode.ExecuteAsync(nullableValue, context, CancellationToken.None);
+        var result = await tapNode.TransformAsync(nullableValue, context, CancellationToken.None);
 
         // Assert
         _ = result.Should().Be(42);
@@ -181,7 +181,7 @@ public sealed class TapNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await tapNode.ExecuteAsync(null, context, CancellationToken.None);
+        var result = await tapNode.TransformAsync(null, context, CancellationToken.None);
 
         // Assert
         _ = result.Should().BeNull();
@@ -202,7 +202,7 @@ public sealed class TapNodeTests
         using CancellationTokenSource cts = new();
 
         // Act
-        var result = await tapNode.ExecuteAsync(123, context, cts.Token);
+        var result = await tapNode.TransformAsync(123, context, cts.Token);
 
         // Assert
         _ = result.Should().Be(123);
@@ -220,7 +220,7 @@ public sealed class TapNodeTests
         cts.Cancel();
 
         // Act & Assert - should throw OperationCanceledException
-        _ = await tapNode.Invoking(tn => tn.ExecuteAsync(123, context, cts.Token))
+        _ = await tapNode.Invoking(tn => tn.TransformAsync(123, context, cts.Token))
             .Should().ThrowAsync<OperationCanceledException>();
     }
 
@@ -261,8 +261,8 @@ public sealed class TapNodeTests
     {
         public List<T> ReceivedItems { get; } = [];
 
-        public override async Task ExecuteAsync(
-            IDataPipe<T> input,
+        public override async Task ConsumeAsync(
+            IDataStream<T> input,
             PipelineContext context,
             CancellationToken cancellationToken)
         {
@@ -275,8 +275,8 @@ public sealed class TapNodeTests
 
     private sealed class FailingSink<T> : SinkNode<T>
     {
-        public override Task ExecuteAsync(
-            IDataPipe<T> input,
+        public override Task ConsumeAsync(
+            IDataStream<T> input,
             PipelineContext context,
             CancellationToken cancellationToken)
         {
@@ -288,8 +288,8 @@ public sealed class TapNodeTests
     {
         public bool IsDisposed { get; private set; }
 
-        public override async Task ExecuteAsync(
-            IDataPipe<T> input,
+        public override async Task ConsumeAsync(
+            IDataStream<T> input,
             PipelineContext context,
             CancellationToken cancellationToken)
         {

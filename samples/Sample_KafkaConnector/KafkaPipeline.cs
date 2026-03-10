@@ -100,7 +100,7 @@ public sealed class KafkaConnectorPipeline : IPipelineDefinition
 public sealed class MessageEnricher : TransformNode<KafkaMessage<SampleMessage>, SampleMessage>
 {
     /// <inheritdoc />
-    public override Task<SampleMessage> ExecuteAsync(
+    public override Task<SampleMessage> TransformAsync(
         KafkaMessage<SampleMessage> input,
         PipelineContext context,
         CancellationToken cancellationToken)

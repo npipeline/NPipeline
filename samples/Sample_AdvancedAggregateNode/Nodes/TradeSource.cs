@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using Sample_AdvancedAggregateNode.Models;
@@ -61,7 +61,7 @@ public class TradeSource : SourceNode<FinancialTrade>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token to stop trade generation.</param>
     /// <returns>A data pipe containing financial trades.</returns>
-    public override IDataPipe<FinancialTrade> Initialize(
+    public override IDataStream<FinancialTrade> OpenStream(
         PipelineContext context,
         CancellationToken cancellationToken)
     {
@@ -94,7 +94,7 @@ public class TradeSource : SourceNode<FinancialTrade>
             Console.WriteLine($"TradeSource: Stopped after generating {tradeCount} trades");
         }
 
-        return new StreamingDataPipe<FinancialTrade>(GenerateTrades(cancellationToken), "TradeSource");
+        return new DataStream<FinancialTrade>(GenerateTrades(cancellationToken), "TradeSource");
     }
 
     /// <summary>

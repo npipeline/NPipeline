@@ -17,11 +17,11 @@ namespace NPipeline.DataFlow;
 ///         - Optional lineage tracking for provenance
 ///     </para>
 ///     <para>
-///         For external code, use the strongly-typed <see cref="IDataPipe{T}" /> interface
+///         For external code, use the strongly-typed <see cref="IDataStream{T}" /> interface
 ///         which implements <see cref="IAsyncEnumerable{T}" />.
 ///     </para>
 /// </remarks>
-public interface IDataPipe : IAsyncDisposable
+public interface IDataStream : IAsyncDisposable
 {
     /// <summary>
     ///     Gets the name of the data stream represented by this pipe.
@@ -37,14 +37,14 @@ public interface IDataPipe : IAsyncDisposable
     /// <summary>
     ///     Converts the pipe to a non-generic async enumerable.
     ///     This method is for internal framework use and should not be called directly by external code.
-    ///     External code should use the typed <see cref="IDataPipe{T}" /> interface directly,
+    ///     External code should use the typed <see cref="IDataStream{T}" /> interface directly,
     ///     which implements <see cref="IAsyncEnumerable{T}" />.
     /// </summary>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>An async enumerable of objects.</returns>
     /// <remarks>
     ///     This is marked public in the interface (due to C# constraints on interface implementation)
-    ///     but should be treated as internal. The main public API is the typed IDataPipe&lt;T&gt;.
+    ///     but should be treated as internal. The main public API is the typed IDataStream&lt;T&gt;.
     /// </remarks>
     IAsyncEnumerable<object?> ToAsyncEnumerable(CancellationToken cancellationToken = default);
 }
@@ -77,8 +77,8 @@ public interface IDataPipe : IAsyncDisposable
 /// // Consuming a data pipe in a sink node
 /// public class ConsoleSink : SinkNode&lt;string&gt;
 /// {
-///     public override async Task ExecuteAsync(
-///         IDataPipe&lt;string&gt; input,
+///     public override async Task ConsumeAsync(
+///         IDataStream&lt;string&gt; input,
 ///         PipelineContext context,
 ///         CancellationToken cancellationToken)
 ///     {
@@ -94,16 +94,16 @@ public interface IDataPipe : IAsyncDisposable
 /// {
 ///     private readonly List&lt;int&gt; _data;
 /// 
-///     public override Task&lt;IDataPipe&lt;int&gt;&gt; ExecuteAsync(
+///     public override Task&lt;IDataStream&lt;int&gt;&gt; ExecuteAsync(
 ///         PipelineContext context,
 ///         CancellationToken cancellationToken)
 ///     {
-///         return Task.FromResult&lt;IDataPipe&lt;int&gt;&gt;(
-///             new InMemoryDataPipe&lt;int&gt;(_data, "numbers"));
+///         return Task.FromResult&lt;IDataStream&lt;int&gt;&gt;(
+///             new InMemoryDataStream&lt;int&gt;(_data, "numbers"));
 ///     }
 /// }
 /// </code>
 /// </example>
-public interface IDataPipe<out T> : IDataPipe, IAsyncEnumerable<T>
+public interface IDataStream<out T> : IDataStream, IAsyncEnumerable<T>
 {
 }

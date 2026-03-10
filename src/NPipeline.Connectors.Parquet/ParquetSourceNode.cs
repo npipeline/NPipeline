@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using NPipeline.Connectors.Parquet.Mapping;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
@@ -124,7 +124,7 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var provider = _provider ?? StorageProviderFactory.GetProviderOrThrow(
             _resolver ?? DefaultResolver.Value,
@@ -139,7 +139,7 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
         }
 
         var stream = ReadAll(provider, _uri, _configuration, cancellationToken);
-        return new StreamingDataPipe<T>(stream, $"ParquetSourceNode<{typeof(T).Name}>");
+        return new DataStream<T>(stream, $"ParquetSourceNode<{typeof(T).Name}>");
     }
 
     private async IAsyncEnumerable<T> ReadAll(

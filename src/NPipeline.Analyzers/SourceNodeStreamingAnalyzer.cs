@@ -9,7 +9,7 @@ namespace NPipeline.Analyzers;
 /// <summary>
 ///     Analyzer that detects non-streaming patterns in SourceNode implementations that can lead to
 ///     memory issues and poor performance. These patterns should be avoided:
-///     1. Allocating and populating List&lt;T&gt; or Array in Initialize
+///     1. Allocating and populating List&lt;T&gt; or Array in OpenStream
 ///     2. Using .ToAsyncEnumerable() on materialized collections
 ///     3. Synchronous I/O operations
 ///     4. Not using async IAsyncEnumerable with yield return patterns
@@ -31,7 +31,7 @@ public sealed class SourceNodeStreamingAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Warning,
         true,
         "Non-streaming patterns in SourceNode implementations can cause memory issues and performance problems. "
-        + "Use streaming patterns: IAsyncEnumerable with yield return, StreamingDataPipe, async I/O operations, "
+        + "Use streaming patterns: IAsyncEnumerable with yield return, DataStream, async I/O operations, "
         + "and avoid materializing collections in memory. "
         + "https://npipeline.dev/docs/performance/source-node-streaming-patterns.");
 
@@ -54,7 +54,7 @@ public sealed class SourceNodeStreamingAnalyzer : DiagnosticAnalyzer
         if (context.Node is not MethodDeclarationSyntax methodDeclaration)
             return;
 
-        // Check if this method is Initialize in a SourceNode implementation
+        // Check if this method is OpenStream in a SourceNode implementation
         var isSourceNodeInitializeMethod = IsSourceNodeInitializeMethod(methodDeclaration, context.SemanticModel);
 
         if (!isSourceNodeInitializeMethod)
@@ -78,12 +78,12 @@ public sealed class SourceNodeStreamingAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    ///     Determines if a method is Initialize in a SourceNode implementation.
+    ///     Determines if a method is OpenStream in a SourceNode implementation.
     /// </summary>
     private static bool IsSourceNodeInitializeMethod(MethodDeclarationSyntax method, SemanticModel semanticModel)
     {
-        // Check if method name is Initialize
-        if (method.Identifier.Text != "Initialize")
+        // Check if method name is OpenStream
+        if (method.Identifier.Text != "OpenStream")
             return false;
 
         // Get the method symbol to check signature
@@ -106,9 +106,9 @@ public sealed class SourceNodeStreamingAnalyzer : DiagnosticAnalyzer
         if (!hasPipelineContext || !hasCancellationToken)
             return false;
 
-        // Check return type is IDataPipe<T> (be more lenient)
+        // Check return type is IDataStream<T> (be more lenient)
         var returnType = methodSymbol.ReturnType;
-        var hasCorrectReturnType = returnType.Name == "IDataPipe" || returnType.OriginalDefinition?.Name == "IDataPipe";
+        var hasCorrectReturnType = returnType.Name == "IDataStream" || returnType.OriginalDefinition?.Name == "IDataStream";
 
         if (!hasCorrectReturnType)
             return false;
@@ -139,7 +139,7 @@ public sealed class SourceNodeStreamingAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    ///     AST walker that detects non-streaming patterns in SourceNode Initialize methods.
+    ///     AST walker that detects non-streaming patterns in SourceNode OpenStream methods.
     /// </summary>
     private sealed class NonStreamingPatternWalker(SemanticModel semanticModel) : CSharpSyntaxWalker
     {

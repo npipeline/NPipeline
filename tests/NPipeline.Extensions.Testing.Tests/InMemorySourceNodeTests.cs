@@ -59,7 +59,7 @@ public class InMemorySourceNodeTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithEmbeddedItems_ShouldReturnDataPipeWithItems()
+    public async Task OpenStream_WithEmbeddedItems_ShouldReturnDataStreamWithItems()
     {
         // Arrange
         var items = new[] { 1, 2, 3 };
@@ -67,7 +67,7 @@ public class InMemorySourceNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = node.Initialize(context, CancellationToken.None);
+        var result = node.OpenStream(context, CancellationToken.None);
 
         // Assert
         result.Should().NotBeNull();
@@ -82,7 +82,7 @@ public class InMemorySourceNodeTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithNodeScopedContextData_ShouldReturnDataPipeWithItems()
+    public async Task OpenStream_WithNodeScopedContextData_ShouldReturnDataStreamWithItems()
     {
         // Arrange
         var context = PipelineContext.Default;
@@ -94,7 +94,7 @@ public class InMemorySourceNodeTests
         var node = new InMemorySourceNode<int>();
 
         // Act
-        var result = node.Initialize(context, CancellationToken.None);
+        var result = node.OpenStream(context, CancellationToken.None);
 
         // Assert
         result.Should().NotBeNull();
@@ -109,7 +109,7 @@ public class InMemorySourceNodeTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithTypeScopedContextData_ShouldReturnDataPipeWithItems()
+    public async Task OpenStream_WithTypeScopedContextData_ShouldReturnDataStreamWithItems()
     {
         // Arrange
         var context = PipelineContext.Default;
@@ -121,7 +121,7 @@ public class InMemorySourceNodeTests
         var node = new InMemorySourceNode<int>();
 
         // Act
-        var result = node.Initialize(context, CancellationToken.None);
+        var result = node.OpenStream(context, CancellationToken.None);
 
         // Assert
         result.Should().NotBeNull();
@@ -151,7 +151,7 @@ public class InMemorySourceNodeTests
         var node = new InMemorySourceNode<int>();
 
         // Act
-        var result = node.Initialize(context, CancellationToken.None);
+        var result = node.OpenStream(context, CancellationToken.None);
 
         // Assert
         result.Should().NotBeNull();
@@ -176,7 +176,7 @@ public class InMemorySourceNodeTests
         var node = new InMemorySourceNode<int>();
 
         // Act & Assert
-        var exception = Assert.Throws<InvalidOperationException>(() => node.Initialize(context, CancellationToken.None));
+        var exception = Assert.Throws<InvalidOperationException>(() => node.OpenStream(context, CancellationToken.None));
 
         exception.Message.Should().Contain("No source data configured");
         exception.Message.Should().Contain("testNode");

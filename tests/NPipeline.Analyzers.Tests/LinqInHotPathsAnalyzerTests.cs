@@ -11,7 +11,7 @@ namespace NPipeline.Analyzers.Tests;
 public sealed class LinqInHotPathsAnalyzerTests
 {
     [Fact]
-    public void ShouldDetectLinqInExecuteAsyncMethod()
+    public void ShouldDetectLinqInTransformAsyncMethod()
     {
         var code = """
                    using System.Linq;
@@ -19,7 +19,7 @@ public sealed class LinqInHotPathsAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            // NP9102: LINQ in hot path
                            var items = input.Split(' ');
@@ -32,7 +32,7 @@ public sealed class LinqInHotPathsAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         var hasDiagnostic = diagnostics.Any(d => d.Id == LinqInHotPathsAnalyzer.LinqInHotPathsId);
-        Assert.True(hasDiagnostic, "Analyzer should detect LINQ in ExecuteAsync method");
+        Assert.True(hasDiagnostic, "Analyzer should detect LINQ in TransformAsync method");
     }
 
     [Fact]
@@ -70,12 +70,12 @@ public sealed class LinqInHotPathsAnalyzerTests
 
                    public class TestSourceNode : ISourceNode<int>
                    {
-                       public async Task<IDataPipe<int>> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+                       public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                        {
                            var numbers = Enumerable.Range(1, 100);
                            // NP9102: LINQ in hot path
                            var filtered = numbers.Where(x => x % 2 == 0).ToList();
-                           return new InMemoryDataPipe<int>(filtered);
+                           return new InMemoryDataStream<int>(filtered);
                        }
                    }
                    """;
@@ -169,15 +169,15 @@ public sealed class LinqInHotPathsAnalyzerTests
 
                    public class TestAggregateNode : IAggregateNode<int>
                    {
-                       public async Task<IDataPipe<int>> ExecuteAsync(
-                           IDataPipe<int> input, 
+                       public async Task<IDataStream<int>> ExecuteAsync(
+                           IDataStream<int> input, 
                            PipelineContext context, 
                            CancellationToken cancellationToken)
                        {
                            var items = new List<int>();
                            // NP9102: LINQ in aggregate node
                            var filtered = items.Where(x => x > 0).OrderBy(x => x).ToList();
-                           return new InMemoryDataPipe<int>(filtered);
+                           return new InMemoryDataStream<int>(filtered);
                        }
                    }
                    """;
@@ -266,7 +266,7 @@ public sealed class LinqInHotPathsAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            // NP9102: Multiple LINQ operations in hot path
                            var words = input.Split(' ').Where(x => x.Length > 2).ToList();
@@ -291,7 +291,7 @@ public sealed class LinqInHotPathsAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            // NP9102: Chained LINQ operations in hot path
                            var result = input.Split(' ')
@@ -320,7 +320,7 @@ public sealed class LinqInHotPathsAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public ValueTask<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public ValueTask<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            // NP9102: LINQ in ValueTask-returning method
                            var result = input.Split(' ').Where(x => x.Length > 0).ToList();
@@ -356,7 +356,7 @@ public sealed class LinqInHotPathsAnalyzerTests
 
                          public class TestTransformNode : ITransformNode<string, string>
                          {
-                             public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                             public async Task<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                              {
                                  // NP9102: {{method}} in hot path
                                  var items = input.Split(' ');
@@ -381,7 +381,7 @@ public sealed class LinqInHotPathsAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task<string> ExecuteAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            // This should not trigger NP9102 - custom Where method, not System.Linq
                            var items = input.Split(' ');

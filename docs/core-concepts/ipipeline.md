@@ -1,13 +1,13 @@
 ---
 title: Pipeline
-description: Learn about Pipeline, the executable instance of your data pipeline.
+description: Learn about Pipeline, the executable instance of your data streamline.
 sidebar_position: 1
 slug: /core-concepts/ipipeline
 ---
 
 # Pipeline
 
-The `Pipeline` class represents the compiled, executable form of your data pipeline. It is the final object you interact with to trigger the execution of all the sources, transforms, and sinks you have defined using the [Defining Pipelines](defining-pipelines.md) approaches.
+The `Pipeline` class represents the compiled, executable form of your data streamline. It is the final object you interact with to trigger the execution of all the sources, transforms, and sinks you have defined using the [Defining Pipelines](defining-pipelines.md) approaches.
 
 ## What is a Pipeline?
 
@@ -16,7 +16,7 @@ Think of `Pipeline` as the "runnable" version of your pipeline definition. After
 This instance encapsulates all the logic required to:
 
 * Start source nodes to begin producing data.
-* Manage the flow of data between nodes through data pipes.
+* Manage the flow of data between nodes through data streams.
 * Ensure data is transformed and processed in the correct order.
 * Terminate the pipeline gracefully once all data has been processed.
 

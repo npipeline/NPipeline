@@ -163,7 +163,7 @@ public sealed class CustomLineageSinkPipeline : IPipelineDefinition
 /// </summary>
 public sealed class ProcessingTransform : TransformNode<ValidatedOrder, ProcessedOrder>
 {
-    public override Task<ProcessedOrder> ExecuteAsync(ValidatedOrder validatedOrder, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<ProcessedOrder> TransformAsync(ValidatedOrder validatedOrder, PipelineContext context, CancellationToken cancellationToken)
     {
         var result = validatedOrder.IsValid
             ? ProcessingResult.Success

@@ -36,7 +36,7 @@ public sealed class Program
             Console.WriteLine();
 
             var pipeline = new MongoDbConnectorPipeline(connectionString);
-            await pipeline.ExecuteAsync(host.Services, CancellationToken.None);
+            await pipeline.ConsumeAsync(host.Services, CancellationToken.None);
 
             Console.WriteLine("Pipeline execution completed successfully!");
         }

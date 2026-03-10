@@ -45,14 +45,14 @@ public class NasdaqMarketDataSource : SourceNode<MarketDataTick>
     /// <param name="context">The pipeline context</param>
     /// <param name="cancellationToken">The cancellation token</param>
     /// <returns>A data pipe containing the market data</returns>
-    public override IDataPipe<MarketDataTick> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<MarketDataTick> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Starting NASDAQ Market Data Source");
 
         try
         {
             var channel = Channel.CreateUnbounded<MarketDataTick>();
-            var dataPipe = new ChannelDataPipe<MarketDataTick>(channel, "NASDAQ-Source");
+            var dataStream = new ChannelDataStream<MarketDataTick>(channel, "NASDAQ-Source");
 
             // Start generating data in the background
             _ = Task.Run(async () =>
@@ -67,7 +67,7 @@ public class NasdaqMarketDataSource : SourceNode<MarketDataTick>
                             break;
                         }
 
-                        await dataPipe.WriteAsync(tick, cancellationToken);
+                        await dataStream.WriteAsync(tick, cancellationToken);
                     }
                 }
                 catch (OperationCanceledException)
@@ -84,7 +84,7 @@ public class NasdaqMarketDataSource : SourceNode<MarketDataTick>
                 }
             }, cancellationToken);
 
-            return dataPipe;
+            return dataStream;
         }
         catch (Exception ex)
         {

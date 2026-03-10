@@ -45,7 +45,7 @@ public sealed class SelfJoinExtensionsTests
 
     private sealed class OutputRecordSink(ConcurrentQueue<OutputRecord> store) : SinkNode<OutputRecord>
     {
-        public override async Task ExecuteAsync(IDataPipe<OutputRecord> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<OutputRecord> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))

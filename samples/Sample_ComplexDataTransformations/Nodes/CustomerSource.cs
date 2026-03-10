@@ -1,6 +1,6 @@
 using System.Globalization;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -18,7 +18,7 @@ public class CustomerSource : SourceNode<Customer>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the generated customers.</returns>
-    public override IDataPipe<Customer> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<Customer> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("Generating customer data...");
 
@@ -44,6 +44,6 @@ public class CustomerSource : SourceNode<Customer>
         }
 
         Console.WriteLine($"Generated {customers.Count} customers");
-        return new InMemoryDataPipe<Customer>(customers, "CustomerSource");
+        return new InMemoryDataStream<Customer>(customers, "CustomerSource");
     }
 }

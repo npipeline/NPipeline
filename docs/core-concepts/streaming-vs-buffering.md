@@ -6,7 +6,7 @@ sidebar_position: 7
 
 # Streaming vs. Buffering
 
-In NPipeline, understanding the concepts of streaming and buffering is crucial for designing efficient and performant data pipelines. These concepts dictate how data items are handled as they move between nodes, directly impacting memory consumption, latency, and overall throughput.
+In NPipeline, understanding the concepts of streaming and buffering is crucial for designing efficient and performant data streamlines. These concepts dictate how data items are handled as they move between nodes, directly impacting memory consumption, latency, and overall throughput.
 
 ## Visual Comparison: Streaming vs Buffering
 
@@ -74,7 +74,7 @@ public sealed record EventData(int Id, string Message);
 
 public sealed class StreamSource : SourceNode<EventData>
 {
-    public async IAsyncEnumerable<EventData> ExecuteAsync(CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<EventData> TransformAsync(CancellationToken cancellationToken = default)
     {
         for (int i = 0; i < 5; i++)
         {
@@ -89,7 +89,7 @@ public sealed class StreamSource : SourceNode<EventData>
 
 public sealed class StreamTransform : TransformNode<EventData, string>
 {
-    public async IAsyncEnumerable<string> ExecuteAsync(IAsyncEnumerable<EventData> input, CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<string> TransformAsync(IAsyncEnumerable<EventData> input, CancellationToken cancellationToken = default)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {
@@ -103,7 +103,7 @@ public sealed class StreamTransform : TransformNode<EventData, string>
 
 public sealed class StreamSink : SinkNode<string>
 {
-    public async Task ExecuteAsync(IAsyncEnumerable<string> input, CancellationToken cancellationToken = default)
+    public async Task ConsumeAsync(IDataStream<string> input, CancellationToken cancellationToken = default)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {
@@ -168,7 +168,7 @@ public sealed record Message(int Id, string Content);
 
 public sealed class CountingSource : SourceNode<Message>
 {
-    public async IAsyncEnumerable<Message> ExecuteAsync(CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<Message> TransformAsync(CancellationToken cancellationToken = default)
     {
         for (int i = 0; i < 10; i++)
         {
@@ -183,7 +183,7 @@ public sealed class CountingSource : SourceNode<Message>
 
 public sealed class BatchSink : SinkNode<IReadOnlyList<Message>>
 {
-    public async Task ExecuteAsync(IAsyncEnumerable<IReadOnlyList<Message>> input, CancellationToken cancellationToken = default)
+    public async Task ConsumeAsync(IDataStream<IReadOnlyList<Message>> input, CancellationToken cancellationToken = default)
     {
         await foreach (var batch in input.WithCancellation(cancellationToken))
         {

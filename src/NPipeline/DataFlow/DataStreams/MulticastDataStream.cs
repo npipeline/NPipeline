@@ -2,12 +2,12 @@ using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using NPipeline.DataFlow.Branching;
 
-namespace NPipeline.DataFlow.DataPipes;
+namespace NPipeline.DataFlow.DataStreams;
 
 /// <summary>
-///     Simple adapter that wraps an IAsyncEnumerable&lt;T&gt; to implement IDataPipe&lt;T&gt;.
+///     Simple adapter that wraps an IAsyncEnumerable&lt;T&gt; to implement IDataStream&lt;T&gt;.
 /// </summary>
-internal sealed class AsyncEnumerableDataPipe<T>(IAsyncEnumerable<T> source, string streamName) : IStreamingDataPipe<T>
+internal sealed class AsyncEnumerableDataStream<T>(IAsyncEnumerable<T> source, string streamName) : IForwardOnlyDataStream<T>
 {
     public string StreamName { get; } = streamName;
 
@@ -46,7 +46,7 @@ internal interface IHasBranchMetrics
     BranchMetrics Metrics { get; }
 }
 
-internal sealed class MulticastDataPipe<T> : DataPipeBase<T>, IHasBranchMetrics
+internal sealed class MulticastDataStream<T> : DataStreamBase<T>, IHasBranchMetrics
 {
     private readonly Channel<T>[] _channels;
     private readonly CancellationTokenSource _cts = new();
@@ -55,8 +55,8 @@ internal sealed class MulticastDataPipe<T> : DataPipeBase<T>, IHasBranchMetrics
     private bool _disposed;
     private int _nextSubscriber;
 
-    private MulticastDataPipe(IAsyncEnumerable<T> source, int subscriberCount, int? perSubscriberBuffer, string streamName, BranchMetrics metrics)
-        : base(new AsyncEnumerableDataPipe<T>(source, streamName))
+    private MulticastDataStream(IAsyncEnumerable<T> source, int subscriberCount, int? perSubscriberBuffer, string streamName, BranchMetrics metrics)
+        : base(new AsyncEnumerableDataStream<T>(source, streamName))
     {
         _channels = new Channel<T>[subscriberCount];
         Metrics = metrics;
@@ -113,10 +113,10 @@ internal sealed class MulticastDataPipe<T> : DataPipeBase<T>, IHasBranchMetrics
         await base.DisposeAsync().ConfigureAwait(false);
     }
 
-    public static MulticastDataPipe<T> Create(IAsyncEnumerable<T> source, int subscriberCount, int? perSubscriberBuffer, string streamName,
+    public static MulticastDataStream<T> Create(IAsyncEnumerable<T> source, int subscriberCount, int? perSubscriberBuffer, string streamName,
         BranchMetrics metrics)
     {
-        return new MulticastDataPipe<T>(source, subscriberCount, perSubscriberBuffer, streamName, metrics);
+        return new MulticastDataStream<T>(source, subscriberCount, perSubscriberBuffer, streamName, metrics);
     }
 
     private async Task PumpAsync()

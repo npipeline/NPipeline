@@ -195,7 +195,7 @@ You can read this data into your pipeline as follows:
 using NPipeline;
 using NPipeline.Connectors;
 using NPipeline.Connectors.Excel;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow;
 using NPipeline.Execution;
 using NPipeline.Nodes;
@@ -225,8 +225,8 @@ public sealed class ExcelReaderPipeline : IPipelineDefinition
 
 public sealed class ConsoleSinkNode : SinkNode<Product>
 {
-    public override async Task ExecuteAsync(
-        IDataPipe<Product> input,
+    public override async Task ConsumeAsync(
+        IDataStream<Product> input,
         PipelineContext context,
         IPipelineActivity parentActivity,
         CancellationToken cancellationToken)
@@ -500,7 +500,7 @@ public sealed record ProductSummary(string Name, string Category, string PriceRa
 
 public sealed class ProductSummarizer : TransformNode<Product, ProductSummary>
 {
-    public override Task<ProductSummary> ExecuteAsync(
+    public override Task<ProductSummary> TransformAsync(
         Product item,
         PipelineContext context,
         CancellationToken cancellationToken)

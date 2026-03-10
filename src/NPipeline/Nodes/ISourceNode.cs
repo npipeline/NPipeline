@@ -14,6 +14,6 @@ public interface ISourceNode<out TOut> : INode
     /// </summary>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>An <see cref="IDataPipe{TOut}" /> that produces the output data for downstream nodes.</returns>
-    IDataPipe<TOut> Initialize(PipelineContext context, CancellationToken cancellationToken);
+    /// <returns>An <see cref="IDataStream{TOut}" /> that produces the output data for downstream nodes.</returns>
+    IDataStream<TOut> OpenStream(PipelineContext context, CancellationToken cancellationToken);
 }

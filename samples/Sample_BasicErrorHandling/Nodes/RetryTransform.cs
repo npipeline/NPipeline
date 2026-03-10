@@ -31,7 +31,7 @@ public class RetryTransform : TransformNode<string, string>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task containing the transformed string.</returns>
-    public override async Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine($"RetryTransform: Processing item: {item}");
 

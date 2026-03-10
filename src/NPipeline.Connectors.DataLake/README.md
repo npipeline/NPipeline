@@ -95,7 +95,7 @@ using NPipeline.Connectors.DataLake.Partitioning;
 using NPipeline.Connectors.Parquet;
 using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Models;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 
 var resolver = StorageProviderFactory.CreateResolver();
 var provider = StorageProviderFactory.GetProviderOrThrow(
@@ -122,8 +122,8 @@ await using var writer = new DataLakeTableWriter<SalesRecord>(
 
 Console.WriteLine($"Snapshot ID: {writer.SnapshotId}");
 
-var dataPipe = new InMemoryDataPipe<SalesRecord>(records, "SalesData");
-await writer.AppendAsync(dataPipe, CancellationToken.None);
+var dataStream = new InMemoryDataStream<SalesRecord>(records, "SalesData");
+await writer.AppendAsync(dataStream, CancellationToken.None);
 ```
 
 **Generated directory structure:**

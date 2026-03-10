@@ -20,7 +20,7 @@ public class EnrichedSink : SinkNode<EnrichedSensorReading>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task representing the sink execution.</returns>
-    public override async Task ExecuteAsync(IDataPipe<EnrichedSensorReading> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<EnrichedSensorReading> input, PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine();
         Console.WriteLine("═══════════════════════════════════════════════════════════════");

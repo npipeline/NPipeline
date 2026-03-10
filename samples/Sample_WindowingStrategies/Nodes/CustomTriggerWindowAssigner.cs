@@ -56,7 +56,7 @@ public class CustomTriggerWindowAssigner : TransformNode<UserSession, IReadOnlyL
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A collection of sessions forming a custom-triggered window when conditions are met.</returns>
-    public override Task<IReadOnlyList<UserSession>> ExecuteAsync(
+    public override Task<IReadOnlyList<UserSession>> TransformAsync(
         UserSession session,
         PipelineContext context,
         CancellationToken cancellationToken)

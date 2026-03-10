@@ -65,7 +65,7 @@ public sealed class BranchNode<T> : TransformNode<T, T>
     }
 
     /// <inheritdoc />
-    public override async Task<T> ExecuteAsync(T item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<T> TransformAsync(T item, PipelineContext context, CancellationToken cancellationToken)
     {
         // Lazily cache handlers on first execute - handlers list is finalized after this point
         List<Func<T, Task>> handlers;

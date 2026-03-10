@@ -74,7 +74,7 @@ public class MockValidationPipeline : IPipelineDefinition
 
 public class MockValidator : TransformNode<Customer, ValidatedCustomer>
 {
-    public override Task<ValidatedCustomer> ExecuteAsync(Customer input, PipelineContext context, CancellationToken ct)
+    public override Task<ValidatedCustomer> TransformAsync(Customer input, PipelineContext context, CancellationToken ct)
     {
         MockValidationPipeline.CallCount++;
         return Task.FromResult(new ValidatedCustomer(input, true, new List<string>()));
@@ -175,7 +175,7 @@ public class CollectorSink<T> : ISinkNode<T>
 {
     public List<T> CollectedItems { get; } = new();
     
-    public async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken ct)
+    public async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken ct)
     {
         CollectedItems.Clear();
         await foreach (var item in input.WithCancellation(ct))
@@ -206,9 +206,9 @@ public class StubSource<T> : ISourceNode<T>
         _items = items;
     }
     
-    public IDataPipe<T> Initialize(PipelineContext context, CancellationToken ct)
+    public IDataStream<T> OpenStream(PipelineContext context, CancellationToken ct)
     {
-        return new InMemoryDataPipe<T>(_items, "StubSource");
+        return new InMemoryDataStream<T>(_items, "StubSource");
     }
     
     public ValueTask DisposeAsync()
@@ -229,7 +229,7 @@ public class SpyTransform<T> : TransformNode<T, T>
     public List<T> ProcessedItems { get; } = new();
     public int CallCount { get; private set; }
     
-    public override Task<T> ExecuteAsync(T input, PipelineContext context, CancellationToken ct)
+    public override Task<T> TransformAsync(T input, PipelineContext context, CancellationToken ct)
     {
         CallCount++;
         ProcessedItems.Add(input);

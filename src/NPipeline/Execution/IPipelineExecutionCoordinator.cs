@@ -82,7 +82,7 @@ public interface IPipelineExecutionCoordinator
         PipelineGraph graph,
         PipelineContext context,
         ILookup<string, Edge> inputLookup,
-        IDictionary<string, IDataPipe?> nodeOutputs,
+        IDictionary<string, IDataStream?> nodeOutputs,
         IReadOnlyDictionary<string, INode> nodeInstances,
         IReadOnlyDictionary<string, NodeDefinition> nodeDefinitionMap);
 }

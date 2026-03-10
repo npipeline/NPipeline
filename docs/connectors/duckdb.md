@@ -37,7 +37,7 @@ For the core NPipeline package and other available extensions, see the [Installa
 ```csharp
 var sink = new DuckDBSinkNode<SalesRecord>("analytics.duckdb", "sales");
 
-await sink.ExecuteAsync(inputPipe, PipelineContext.Default, CancellationToken.None);
+await sink.ConsumeAsync(inputPipe, PipelineContext.Default, CancellationToken.None);
 ```
 
 ### Read from DuckDB
@@ -47,7 +47,7 @@ var source = new DuckDBSourceNode<SalesRecord>(
     "analytics.duckdb",
     "SELECT * FROM sales WHERE region = 'EU'");
 
-await foreach (var record in source.Initialize(PipelineContext.Default, CancellationToken.None))
+await foreach (var record in source.OpenStream(PipelineContext.Default, CancellationToken.None))
 {
     Console.WriteLine($"{record.Product}: {record.Amount:C}");
 }

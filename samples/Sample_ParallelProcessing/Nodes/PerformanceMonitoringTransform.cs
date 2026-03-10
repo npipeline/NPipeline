@@ -22,7 +22,7 @@ public class PerformanceMonitoringTransform : TransformNode<ProcessedWorkItem, P
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task containing the processed work item with recorded metrics.</returns>
-    public override async Task<ProcessedWorkItem> ExecuteAsync(ProcessedWorkItem item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<ProcessedWorkItem> TransformAsync(ProcessedWorkItem item, PipelineContext context, CancellationToken cancellationToken)
     {
         var startTime = DateTime.UtcNow;
         var threadId = Thread.CurrentThread.ManagedThreadId;

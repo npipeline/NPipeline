@@ -1,6 +1,6 @@
 using System.Threading.Channels;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -23,8 +23,8 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
     }
 
     /// <inheritdoc />
-    public override Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(
-        IDataPipe<TIn> input,
+    public override Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(
+        IDataStream<TIn> input,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -153,7 +153,7 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
 
         _ = Task.WhenAll(workers).ContinueWith(t => { outChannel.Writer.TryComplete(t.Exception); }, cancellationToken);
 
-        return Task.FromResult<IDataPipe<TOut>>(
-            new StreamingDataPipe<TOut>(CreateOutputEnumerable(outChannel, nodeId, context, metrics, currentActivity, cancellationToken, observabilityScope)));
+        return Task.FromResult<IDataStream<TOut>>(
+            new DataStream<TOut>(CreateOutputEnumerable(outChannel, nodeId, context, metrics, currentActivity, cancellationToken, observabilityScope)));
     }
 }

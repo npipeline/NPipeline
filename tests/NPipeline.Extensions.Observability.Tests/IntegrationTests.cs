@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Extensions.DependencyInjection;
@@ -135,7 +135,7 @@ public sealed class IntegrationTests
         Assert.NotNull(sourceMetrics);
         Assert.True(sourceMetrics.Success);
 
-        // Source nodes use CountingPassthroughDataPipe which doesn't report to IObservabilityCollector
+        // Source nodes use CountingPassthroughDataStream which doesn't report to IObservabilityCollector
         // Only transform nodes use AutoObservabilityScope for item tracking during item iteration
         Assert.Equal(0, sourceMetrics.ItemsProcessed);
         Assert.Equal(0, sourceMetrics.ItemsEmitted);
@@ -185,7 +185,7 @@ public sealed class IntegrationTests
         Assert.NotNull(sourceMetrics);
         Assert.True(sourceMetrics.Success);
 
-        // Source nodes use CountingPassthroughDataPipe which doesn't report to IObservabilityCollector
+        // Source nodes use CountingPassthroughDataStream which doesn't report to IObservabilityCollector
         // Only transform nodes use AutoObservabilityScope for item tracking
         Assert.Equal(0, sourceMetrics.ItemsProcessed);
         Assert.Equal(0, sourceMetrics.ItemsEmitted);
@@ -1288,7 +1288,7 @@ public sealed class IntegrationTests
 
     private sealed class TestTransformNode<T> : TransformNode<T, T>
     {
-        public override Task<T> ExecuteAsync(T item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<T> TransformAsync(T item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item);
         }
@@ -1298,7 +1298,7 @@ public sealed class IntegrationTests
     {
         private int _count;
 
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             _count++;
 
@@ -1314,7 +1314,7 @@ public sealed class IntegrationTests
     {
         private int _count;
 
-        public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
             {
@@ -1331,11 +1331,11 @@ public sealed class IntegrationTests
 
     private sealed class TestSlowSourceNode : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             // Generate items slowly to allow cancellation
             var items = Enumerable.Range(1, 100).ToList();
-            return new InMemoryDataPipe<int>(items, "source-output");
+            return new InMemoryDataStream<int>(items, "source-output");
         }
     }
 
@@ -1421,25 +1421,25 @@ public sealed class IntegrationTests
 
     private sealed class TestSourceNode : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var items = Enumerable.Range(1, 10).ToList();
-            return new InMemoryDataPipe<int>(items, "source-output");
+            return new InMemoryDataStream<int>(items, "source-output");
         }
     }
 
     private sealed class TestSourceNodeSmall : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var items = Enumerable.Range(1, 5).ToList();
-            return new InMemoryDataPipe<int>(items, "source-output");
+            return new InMemoryDataStream<int>(items, "source-output");
         }
     }
 
     private sealed class TestTransformNode : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item * 2);
         }
@@ -1447,7 +1447,7 @@ public sealed class IntegrationTests
 
     private sealed class TestFailingTransformNode : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             throw new InvalidOperationException("Intentional failure");
         }
@@ -1455,7 +1455,7 @@ public sealed class IntegrationTests
 
     private sealed class TestSinkNode : SinkNode<int>
     {
-        public override async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
             {
@@ -1466,7 +1466,7 @@ public sealed class IntegrationTests
 
     private sealed class TestSinkNode<T> : SinkNode<T>
     {
-        public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
             {

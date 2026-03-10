@@ -32,7 +32,7 @@ The [`BatchingNode<T>`](src/NPipeline/Nodes/BatchingNode.cs) is a stream transfo
 
 ### How It Works: Stream-Based Processing
 
-The `BatchingNode<T>` implements [`IStreamTransformNode<T, IReadOnlyCollection<T>>`](src/NPipeline/Nodes/IStreamTransformNode.cs) and uses [`BatchingExecutionStrategy`](src/NPipeline/Execution/Strategies/BatchingExecutionStrategy.cs) to handle batching logic. The `ExecuteAsync` method operates on entire input streams, collecting items until either the configured batch size is reached or a timeout expires, then emits the collected batch as `IReadOnlyCollection<T>`.
+The `BatchingNode<T>` implements [`IStreamTransformNode<T, IReadOnlyCollection<T>>`](src/NPipeline/Nodes/IStreamTransformNode.cs) and uses [`BatchingExecutionStrategy`](src/NPipeline/Execution/Strategies/BatchingExecutionStrategy.cs) to handle batching logic. The `TransformAsync` method operates on entire input streams, collecting items until either the configured batch size is reached or a timeout expires, then emits the collected batch as `IReadOnlyCollection<T>`.
 
 ### Configuration
 
@@ -56,10 +56,10 @@ using NPipeline.Pipeline;
 /// </summary>
 public sealed class IntSource : SourceNode<int>
 {
-    public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
-        // Create streaming data pipe immediately (synchronous operation)
-        return new StreamingDataPipe<int>(GenerateNumbers());
+        // Create streaming data stream immediately (synchronous operation)
+        return new DataStream<int>(GenerateNumbers());
 
         static async IAsyncEnumerable<int> GenerateNumbers()
         {
@@ -85,8 +85,8 @@ public sealed class BatchConsumerSink : SinkNode<IReadOnlyCollection<int>>
     /// Processes each batch as it arrives from batching node.
     /// Uses await foreach to efficiently iterate through batch stream.
     /// </summary>
-    public async Task ExecuteAsync(
-        IDataPipe<IReadOnlyCollection<int>> input, 
+    public async Task ConsumeAsync(
+        IDataStream<IReadOnlyCollection<int>> input, 
         PipelineContext context, 
         CancellationToken cancellationToken)
     {
@@ -192,9 +192,9 @@ public sealed class BatchExtensionPipelineDefinition : IPipelineDefinition
 /// </summary>
 public sealed class MySource : SourceNode<int>
 {
-    public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
-        return new StreamingDataPipe<int>(GenerateItems());
+        return new DataStream<int>(GenerateItems());
 
         static async IAsyncEnumerable<int> GenerateItems()
         {
@@ -217,8 +217,8 @@ public sealed class MyBatchProcessingSink : SinkNode<IReadOnlyCollection<int>>
     /// <summary>
     /// Processes each batch as it arrives from batching node.
     /// </summary>
-    public async Task ExecuteAsync(
-        IDataPipe<IReadOnlyCollection<int>> input, 
+    public async Task ConsumeAsync(
+        IDataStream<IReadOnlyCollection<int>> input, 
         PipelineContext context, 
         CancellationToken cancellationToken)
     {

@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace NPipeline.Analyzers;
 
 /// <summary>
-///     Analyzer that detects when a class implements ITransformNode but its ExecuteAsync method returns IAsyncEnumerable&lt;T&gt;.
+///     Analyzer that detects when a class implements ITransformNode but its TransformAsync method returns IAsyncEnumerable&lt;T&gt;.
 ///     It suggests using IStreamTransformNode instead for better interface segregation.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -21,11 +21,11 @@ public sealed class StreamTransformNodeSuggestionAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor Rule = new(
         StreamTransformNodeSuggestionId,
         "Consider using IStreamTransformNode for stream-based transformations",
-        "Class '{0}' implements ITransformNode but ExecuteAsync returns IAsyncEnumerable<{1}>. Consider implementing IStreamTransformNode<{2}, {1}> instead for better interface segregation.",
+        "Class '{0}' implements ITransformNode but TransformAsync returns IAsyncEnumerable<{1}>. Consider implementing IStreamTransformNode<{2}, {1}> instead for better interface segregation.",
         "Design & Architecture",
         DiagnosticSeverity.Info,
         true,
-        "When ExecuteAsync returns IAsyncEnumerable, node is performing stream-based transformations. "
+        "When TransformAsync returns IAsyncEnumerable, node is performing stream-based transformations. "
         + "IStreamTransformNode is designed specifically for this use case and provides better interface segregation. "
         + "Using IStreamTransformNode makes intent clearer and allows for more optimized execution strategies. "
         + "https://npipeline.dev/docs/core-concepts/nodes/stream-transform-nodes.");

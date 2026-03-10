@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -160,9 +160,9 @@ public sealed class PipelineTests
 
     private sealed class DummySource : ISourceNode<int>
     {
-        public IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new StreamingDataPipe<int>(Stream());
+            return new DataStream<int>(Stream());
 
             static async IAsyncEnumerable<int> Stream()
             {

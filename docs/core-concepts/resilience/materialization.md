@@ -51,13 +51,13 @@ This parameter is critical because it determines:
 
 **:warning: Critical Warning**: Setting `MaxMaterializedItems` to `null` (unbounded) causes `InvalidOperationException` when `RestartNode` is attempted. The system validates configuration at runtime and throws a clear exception if unbounded materialization is detected with a restart decision. For detailed explanation of why unbounded buffers break resilience guarantees, see the [Getting Started with Resilience](./getting-started.md) guide.
 
-## CappedReplayableDataPipe Implementation
+## CappedReplayableDataStream Implementation
 
-NPipeline uses the [`CappedReplayableDataPipe`](../../../src/NPipeline/DataFlow/DataPipes/CappedReplayableDataPipe.cs) to implement materialization:
+NPipeline uses the [`CappedReplayableDataStream`](../../../src/NPipeline/DataFlow/DataStreams/CappedReplayableDataStream.cs) to implement materialization:
 
 ```mermaid
 graph TD
-    A[Input Stream] --> B[CappedReplayableDataPipe]
+    A[Input Stream] --> B[CappedReplayableDataStream]
     B --> C[Internal Buffer]
     C --> D[Processing Pipeline]
 
@@ -76,7 +76,7 @@ graph TD
     style J fill:#ffebee
 ```
 
-The `CappedReplayableDataPipe` provides:
+The `CappedReplayableDataStream` provides:
 
 - **Replay capability**: Can be re-enumerated multiple times
 - **Memory limits**: Enforces `MaxMaterializedItems` when specified

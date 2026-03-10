@@ -244,8 +244,8 @@ await using var writer = new DataLakeTableWriter<SalesRecord>(
 
 Console.WriteLine($"Snapshot ID: {writer.SnapshotId}");
 
-var dataPipe = new InMemoryDataPipe<SalesRecord>(records, "SalesData");
-await writer.AppendAsync(dataPipe, CancellationToken.None);
+var dataStream = new InMemoryDataStream<SalesRecord>(records, "SalesData");
+await writer.AppendAsync(dataStream, CancellationToken.None);
 // Manifest is flushed when the writer is disposed
 ```
 

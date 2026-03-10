@@ -23,7 +23,7 @@ public class DatabaseSourceNode : ISourceNode<Order>
         _connectionString = connectionString;
     }
 
-    public IDataPipe<Order> Initialize(
+    public IDataStream<Order> OpenStream(
         PipelineContext context,
         CancellationToken cancellationToken = default)
     {
@@ -47,7 +47,7 @@ public class DatabaseSourceNode : ISourceNode<Order>
             }
         }
 
-        return new StreamingDataPipe<Order>(StreamOrders(cancellationToken), "DatabaseSource");
+        return new DataStream<Order>(StreamOrders(cancellationToken), "DatabaseSource");
     }
 }
 ```
@@ -63,7 +63,7 @@ public class EnrichmentTransform : ITransformNode<Order, EnrichedOrder>
         _enrichmentService = enrichmentService;
     }
 
-    public async Task<EnrichedOrder> ExecuteAsync(
+    public async Task<EnrichedOrder> TransformAsync(
         Order input,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -89,8 +89,8 @@ public class MetricsCollectorSink : ISinkNode<Result>
         _metrics = metrics;
     }
 
-    public async Task ExecuteAsync(
-        IDataPipe<Result> input,
+    public async Task ConsumeAsync(
+        IDataStream<Result> input,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
@@ -164,7 +164,7 @@ context.Items["userId"] = 12345;
 context.Items["requestId"] = Guid.NewGuid();
 
 // Access in transform
-public async Task<Output> ExecuteAsync(
+public async Task<Output> TransformAsync(
     Input input,
     PipelineContext context,
     CancellationToken cancellationToken)

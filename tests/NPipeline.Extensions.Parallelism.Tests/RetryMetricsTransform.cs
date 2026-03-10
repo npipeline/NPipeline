@@ -8,7 +8,7 @@ namespace NPipeline.Extensions.Parallelism.Tests;
 
 public sealed class RetryMetricsTransform : TransformNode<int, int>
 {
-    public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
     {
         var count = SharedTestState.AttemptCounts.AddOrUpdate(item, 1, (_, c) => c + 1);
 

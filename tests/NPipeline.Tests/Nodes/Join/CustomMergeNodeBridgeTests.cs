@@ -3,7 +3,7 @@ using System.Reflection;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -33,26 +33,26 @@ public sealed class CustomMergeNodeBridgeTests
 
     private sealed class TestSourceNode1 : SourceNode<string>
     {
-        public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var items = new[] { "X1", "X2" };
-            return new StreamingDataPipe<string>(items.ToAsyncEnumerable(), "S1");
+            return new DataStream<string>(items.ToAsyncEnumerable(), "S1");
         }
     }
 
     private sealed class TestSourceNode2 : SourceNode<string>
     {
-        public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var items = new[] { "Y1", "Y2" };
-            return new StreamingDataPipe<string>(items.ToAsyncEnumerable(), "S2");
+            return new DataStream<string>(items.ToAsyncEnumerable(), "S2");
         }
     }
 
     // Inherit from CustomMergeNode<T> so untyped path is used (no reflection fallback needed)
     private sealed class BridgedCustomMergeSink(ConcurrentQueue<string> store) : CustomMergeNode<string>, ISinkNode<string>
     {
-        public async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context,
+        public async Task ConsumeAsync(IDataStream<string> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))
@@ -61,18 +61,18 @@ public sealed class CustomMergeNodeBridgeTests
             }
         }
 
-        public Task ExecuteUntypedAsync(IDataPipe input, PipelineContext context, CancellationToken cancellationToken)
+        public Task ExecuteUntypedAsync(IDataStream input, PipelineContext context, CancellationToken cancellationToken)
         {
-            if (input is not IDataPipe<string> typed)
+            if (input is not IDataStream<string> typed)
                 throw new InvalidOperationException("Unexpected pipe type");
 
-            return ExecuteAsync(typed, context, cancellationToken);
+            return ConsumeAsync(typed, context, cancellationToken);
         }
 
-        public override async Task<IDataPipe<string>> MergeAsync(IEnumerable<IDataPipe> pipes, CancellationToken cancellationToken)
+        public override async Task<IDataStream<string>> MergeAsync(IEnumerable<IDataStream> pipes, CancellationToken cancellationToken)
         {
             // Custom: alternate full reversed streams starting with last pipe first
-            var list = pipes.Select(c => c as IDataPipe<string>).Where(c => c != null)!.ToList();
+            var list = pipes.Select(c => c as IDataStream<string>).Where(c => c != null)!.ToList();
             list.Reverse();
             var merged = new List<string>();
 
@@ -83,7 +83,7 @@ public sealed class CustomMergeNodeBridgeTests
                 merged.AddRange(items);
             }
 
-            return new StreamingDataPipe<string>(merged.ToAsyncEnumerable(), "BridgedMerged");
+            return new DataStream<string>(merged.ToAsyncEnumerable(), "BridgedMerged");
         }
     }
 

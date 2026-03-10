@@ -28,7 +28,7 @@ public sealed class NodeParameterlessConstructorAnalyzerTests
                            _dependency = dependency;
                        }
 
-                       public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return Task.FromResult(item.Length);
                        }
@@ -55,7 +55,7 @@ public sealed class NodeParameterlessConstructorAnalyzerTests
                        {
                        }
 
-                       public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return Task.FromResult(item.Length);
                        }
@@ -78,7 +78,7 @@ public sealed class NodeParameterlessConstructorAnalyzerTests
 
                    public class TestNode : TransformNode<string, int>
                    {
-                       public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return Task.FromResult(item.Length);
                        }
@@ -110,14 +110,14 @@ public sealed class NodeParameterlessConstructorAnalyzerTests
                            _count = count;
                        }
 
-                       public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                        {
                            async IAsyncEnumerable<int> Generate()
                            {
                                for (int i = 0; i < _count; i++)
                                    yield return i;
                            }
-                           return new StreamingDataPipe<int>(Generate(), "test");
+                           return new DataStream<int>(Generate(), "test");
                        }
                    }
                    """;
@@ -147,7 +147,7 @@ public sealed class NodeParameterlessConstructorAnalyzerTests
                            _logger = logger;
                        }
 
-                       public override async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context, CancellationToken cancellationToken)
+                       public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            await foreach (var item in input.WithCancellation(cancellationToken))
                            {
@@ -229,7 +229,7 @@ public sealed class NodeParameterlessConstructorAnalyzerTests
                            _dependency = dependency;
                        }
 
-                       public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return Task.FromResult(item.Length);
                        }

@@ -35,7 +35,7 @@ internal sealed class ValueTaskTransformAdapter<TIn, TOut> : ITransformNode<TIn,
 
     public INodeErrorHandler? ErrorHandler { get; set; }
 
-    public Task<TOut> ExecuteAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
+    public Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
     {
         return ValueTaskHelpers.ToTask(_producer(item, context, cancellationToken));
     }

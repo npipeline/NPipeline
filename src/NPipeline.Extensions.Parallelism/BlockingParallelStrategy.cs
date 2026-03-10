@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using System.Threading.Tasks.Dataflow;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -25,8 +25,8 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
     }
 
     /// <inheritdoc />
-    public override Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(
-        IDataPipe<TIn> input,
+    public override Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(
+        IDataStream<TIn> input,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -162,7 +162,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
             channel.Writer.TryComplete();
         }, cancellationToken);
 
-        return Task.FromResult<IDataPipe<TOut>>(new StreamingDataPipe<TOut>(ReadOut(cancellationToken)));
+        return Task.FromResult<IDataStream<TOut>>(new DataStream<TOut>(ReadOut(cancellationToken)));
 
         async IAsyncEnumerable<TOut> ReadOut([EnumeratorCancellation] CancellationToken ct)
         {

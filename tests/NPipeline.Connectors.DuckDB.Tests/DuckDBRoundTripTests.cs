@@ -1,7 +1,7 @@
 using NPipeline.Connectors.DuckDB.Configuration;
 using NPipeline.Connectors.DuckDB.Nodes;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Connectors.DuckDB.Tests;
@@ -38,13 +38,13 @@ public sealed class DuckDBRoundTripTests : IDisposable
         // Write
         var sink = new DuckDBSinkNode<TestRecord>(_dbPath, "round_trip");
 
-        await sink.ExecuteAsync(
-            new StreamingDataPipe<TestRecord>(original.ToAsyncEnumerable()),
+        await sink.ConsumeAsync(
+            new DataStream<TestRecord>(original.ToAsyncEnumerable()),
             PipelineContext.Default, CancellationToken.None);
 
         // Read
         var source = new DuckDBSourceNode<TestRecord>(_dbPath, "SELECT * FROM round_trip ORDER BY \"Id\"");
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         // Assert
         result.Should().HaveCount(100);
@@ -69,14 +69,14 @@ public sealed class DuckDBRoundTripTests : IDisposable
 
         var sink = new DuckDBSinkNode<NullableTestRecord>(_dbPath, "nullable_trip");
 
-        await sink.ExecuteAsync(
-            new StreamingDataPipe<NullableTestRecord>(original.ToAsyncEnumerable()),
+        await sink.ConsumeAsync(
+            new DataStream<NullableTestRecord>(original.ToAsyncEnumerable()),
             PipelineContext.Default, CancellationToken.None);
 
         var source = new DuckDBSourceNode<NullableTestRecord>(
             _dbPath, "SELECT * FROM nullable_trip ORDER BY \"Id\"");
 
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         result.Should().HaveCount(3);
         result[0].Name.Should().Be("First");
@@ -97,14 +97,14 @@ public sealed class DuckDBRoundTripTests : IDisposable
 
         var sink = new DuckDBSinkNode<CustomColumnRecord>(_dbPath, "custom_cols");
 
-        await sink.ExecuteAsync(
-            new StreamingDataPipe<CustomColumnRecord>(original.ToAsyncEnumerable()),
+        await sink.ConsumeAsync(
+            new DataStream<CustomColumnRecord>(original.ToAsyncEnumerable()),
             PipelineContext.Default, CancellationToken.None);
 
         var source = new DuckDBSourceNode<CustomColumnRecord>(
             _dbPath, "SELECT * FROM custom_cols ORDER BY record_id");
 
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         result.Should().HaveCount(2);
         result[0].RecordId.Should().Be(1);
@@ -138,12 +138,12 @@ public sealed class DuckDBRoundTripTests : IDisposable
 
         var sink = new DuckDBSinkNode<AllTypesRecord>(_dbPath, "all_types");
 
-        await sink.ExecuteAsync(
-            new StreamingDataPipe<AllTypesRecord>(original.ToAsyncEnumerable()),
+        await sink.ConsumeAsync(
+            new DataStream<AllTypesRecord>(original.ToAsyncEnumerable()),
             PipelineContext.Default, CancellationToken.None);
 
         var source = new DuckDBSourceNode<AllTypesRecord>(_dbPath, "SELECT * FROM all_types");
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         result.Should().HaveCount(1);
         var r = result[0];
@@ -169,12 +169,12 @@ public sealed class DuckDBRoundTripTests : IDisposable
 
         var sink = new DuckDBSinkNode<TestRecord>(_dbPath, "large_dataset");
 
-        await sink.ExecuteAsync(
-            new StreamingDataPipe<TestRecord>(original.ToAsyncEnumerable()),
+        await sink.ConsumeAsync(
+            new DataStream<TestRecord>(original.ToAsyncEnumerable()),
             PipelineContext.Default, CancellationToken.None);
 
         var source = new DuckDBSourceNode<TestRecord>(_dbPath, "SELECT COUNT(*) AS \"Id\", '' AS \"Name\", 0.0 AS \"Value\" FROM large_dataset");
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         result.Should().HaveCount(1);
         result[0].Id.Should().Be(10_000);
@@ -196,14 +196,14 @@ public sealed class DuckDBRoundTripTests : IDisposable
 
         var sink = new DuckDBSinkNode<TestRecord>(_dbPath, "sql_trip", config);
 
-        await sink.ExecuteAsync(
-            new StreamingDataPipe<TestRecord>(original.ToAsyncEnumerable()),
+        await sink.ConsumeAsync(
+            new DataStream<TestRecord>(original.ToAsyncEnumerable()),
             PipelineContext.Default, CancellationToken.None);
 
         var source = new DuckDBSourceNode<TestRecord>(
             _dbPath, "SELECT * FROM sql_trip ORDER BY \"Id\"");
 
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         result.Should().HaveCount(20);
         result[0].Name.Should().Be("Sql1");

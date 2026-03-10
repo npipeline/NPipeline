@@ -1,5 +1,5 @@
 using System.Text.Json;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Abstractions;
@@ -60,10 +60,10 @@ public class JsonSinkNodeTests : IDisposable
             new() { Id = 2, Name = "Bob" },
         };
 
-        var dataPipe = new InMemoryDataPipe<Customer>(items);
+        var dataStream = new InMemoryDataStream<Customer>(items);
 
         // Act
-        await node.ExecuteAsync(dataPipe, _context, CancellationToken.None);
+        await node.ConsumeAsync(dataStream, _context, CancellationToken.None);
 
         // Assert
         var content = await File.ReadAllTextAsync(jsonFile);
@@ -91,10 +91,10 @@ public class JsonSinkNodeTests : IDisposable
             new() { Id = 2, Name = "Bob" },
         };
 
-        var dataPipe = new InMemoryDataPipe<Customer>(items);
+        var dataStream = new InMemoryDataStream<Customer>(items);
 
         // Act
-        await node.ExecuteAsync(dataPipe, _context, CancellationToken.None);
+        await node.ConsumeAsync(dataStream, _context, CancellationToken.None);
 
         // Assert
         var lines = await File.ReadAllLinesAsync(jsonFile);
@@ -127,10 +127,10 @@ public class JsonSinkNodeTests : IDisposable
             new() { Id = 1, Name = "Alice" },
         };
 
-        var dataPipe = new InMemoryDataPipe<Customer>(items);
+        var dataStream = new InMemoryDataStream<Customer>(items);
 
         // Act
-        await node.ExecuteAsync(dataPipe, _context, CancellationToken.None);
+        await node.ConsumeAsync(dataStream, _context, CancellationToken.None);
 
         // Assert
         var content = await File.ReadAllTextAsync(jsonFile);
@@ -158,10 +158,10 @@ public class JsonSinkNodeTests : IDisposable
             new() { Id = 1, Name = "Alice" },
         };
 
-        var dataPipe = new InMemoryDataPipe<Customer>(items);
+        var dataStream = new InMemoryDataStream<Customer>(items);
 
         // Act
-        await node.ExecuteAsync(dataPipe, _context, CancellationToken.None);
+        await node.ConsumeAsync(dataStream, _context, CancellationToken.None);
 
         // Assert
         var content = await File.ReadAllTextAsync(jsonFile);
@@ -183,10 +183,10 @@ public class JsonSinkNodeTests : IDisposable
             new() { Id = 1, Name = null },
         };
 
-        var dataPipe = new InMemoryDataPipe<Customer>(items);
+        var dataStream = new InMemoryDataStream<Customer>(items);
 
         // Act
-        await node.ExecuteAsync(dataPipe, _context, CancellationToken.None);
+        await node.ConsumeAsync(dataStream, _context, CancellationToken.None);
 
         // Assert
         var content = await File.ReadAllTextAsync(jsonFile);
@@ -208,14 +208,14 @@ public class JsonSinkNodeTests : IDisposable
             new() { Id = 2, Name = "Bob" },
         };
 
-        var dataPipe = new InMemoryDataPipe<Customer>(items);
+        var dataStream = new InMemoryDataStream<Customer>(items);
 
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
         // Act & Assert
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            node.ExecuteAsync(dataPipe, _context, cts.Token));
+            node.ConsumeAsync(dataStream, _context, cts.Token));
     }
 
     [Fact]
@@ -232,10 +232,10 @@ public class JsonSinkNodeTests : IDisposable
             new() { Id = 1, Name = "Alice" },
         };
 
-        var dataPipe = new InMemoryDataPipe<Customer>(items);
+        var dataStream = new InMemoryDataStream<Customer>(items);
 
         // Act
-        await node.ExecuteAsync(dataPipe, _context, CancellationToken.None);
+        await node.ConsumeAsync(dataStream, _context, CancellationToken.None);
 
         // Assert
         var content = await File.ReadAllTextAsync(jsonFile);
@@ -263,10 +263,10 @@ public class JsonSinkNodeTests : IDisposable
             },
         };
 
-        var dataPipe = new InMemoryDataPipe<ComplexCustomer>(items);
+        var dataStream = new InMemoryDataStream<ComplexCustomer>(items);
 
         // Act
-        await node.ExecuteAsync(dataPipe, _context, CancellationToken.None);
+        await node.ConsumeAsync(dataStream, _context, CancellationToken.None);
 
         // Assert
         var content = await File.ReadAllTextAsync(jsonFile);
@@ -292,10 +292,10 @@ public class JsonSinkNodeTests : IDisposable
             items.Add(new Customer { Id = i, Name = $"Customer{i}" });
         }
 
-        var dataPipe = new InMemoryDataPipe<Customer>(items);
+        var dataStream = new InMemoryDataStream<Customer>(items);
 
         // Act
-        await node.ExecuteAsync(dataPipe, _context, CancellationToken.None);
+        await node.ConsumeAsync(dataStream, _context, CancellationToken.None);
 
         // Assert
         var content = await File.ReadAllTextAsync(jsonFile);
@@ -324,10 +324,10 @@ public class JsonSinkNodeTests : IDisposable
             new() { Id = 1, Name = "Alice" },
         };
 
-        var dataPipe = new InMemoryDataPipe<Customer>(items);
+        var dataStream = new InMemoryDataStream<Customer>(items);
 
         // Act
-        await node.ExecuteAsync(dataPipe, _context, CancellationToken.None);
+        await node.ConsumeAsync(dataStream, _context, CancellationToken.None);
 
         // Assert
         var content = await File.ReadAllTextAsync(jsonFile);
@@ -350,10 +350,10 @@ public class JsonSinkNodeTests : IDisposable
             new() { Id = 1, Name = "New" },
         };
 
-        var dataPipe = new InMemoryDataPipe<Customer>(items);
+        var dataStream = new InMemoryDataStream<Customer>(items);
 
         // Act
-        await node.ExecuteAsync(dataPipe, _context, CancellationToken.None);
+        await node.ConsumeAsync(dataStream, _context, CancellationToken.None);
 
         // Assert
         var content = await File.ReadAllTextAsync(jsonFile);

@@ -1,5 +1,5 @@
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -17,7 +17,7 @@ public class CpuIntensiveDataSource : SourceNode<CpuIntensiveWorkItem>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the generated work items.</returns>
-    public override IDataPipe<CpuIntensiveWorkItem> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<CpuIntensiveWorkItem> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("Generating CPU-intensive work items...");
 
@@ -42,7 +42,7 @@ public class CpuIntensiveDataSource : SourceNode<CpuIntensiveWorkItem>
         Console.WriteLine($"Data size range: {workItems.Min(w => w.DataSize)} - {workItems.Max(w => w.DataSize)}");
         Console.WriteLine($"Complexity range: {workItems.Min(w => w.Complexity)} - {workItems.Max(w => w.Complexity)}");
 
-        // Return a InMemoryDataPipe containing our work items
-        return new InMemoryDataPipe<CpuIntensiveWorkItem>(workItems, "CpuIntensiveDataSource");
+        // Return a InMemoryDataStream containing our work items
+        return new InMemoryDataStream<CpuIntensiveWorkItem>(workItems, "CpuIntensiveDataSource");
     }
 }

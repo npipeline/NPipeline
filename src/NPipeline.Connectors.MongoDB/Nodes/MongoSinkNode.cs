@@ -152,8 +152,8 @@ public class MongoSinkNode<T> : SinkNode<T>, IAsyncDisposable
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public override async Task ExecuteAsync(
-        IDataPipe<T> input,
+    public override async Task ConsumeAsync(
+        IDataStream<T> input,
         PipelineContext context,
         CancellationToken cancellationToken)
     {

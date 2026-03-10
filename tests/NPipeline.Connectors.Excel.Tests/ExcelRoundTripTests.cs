@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Models;
@@ -28,12 +28,12 @@ public sealed class ExcelRoundTripTests
             // Write data
             var originalData = Enumerable.Range(1, 5).ToList();
             var sink = new ExcelSinkNode<int>(uri, resolver, config);
-            IDataPipe<int> writeInput = new StreamingDataPipe<int>(originalData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
+            IDataStream<int> writeInput = new DataStream<int>(originalData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
             var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<int>();
 
@@ -77,12 +77,12 @@ public sealed class ExcelRoundTripTests
             };
 
             var sink = new ExcelSinkNode<TestRecord>(uri, resolver, config);
-            IDataPipe<TestRecord> writeInput = new StreamingDataPipe<TestRecord>(originalData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
+            IDataStream<TestRecord> writeInput = new DataStream<TestRecord>(originalData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
             var src = new ExcelSourceNode<TestRecord>(uri, MapTestRecordFromHeaders, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<TestRecord>();
 
@@ -154,12 +154,12 @@ public sealed class ExcelRoundTripTests
             };
 
             var sink = new ExcelSinkNode<ComplexRecord>(uri, resolver, config);
-            IDataPipe<ComplexRecord> writeInput = new StreamingDataPipe<ComplexRecord>(originalData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
+            IDataStream<ComplexRecord> writeInput = new DataStream<ComplexRecord>(originalData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
             var src = new ExcelSourceNode<ComplexRecord>(uri, MapComplexRecordFromHeaders, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<ComplexRecord>();
 
@@ -238,12 +238,12 @@ public sealed class ExcelRoundTripTests
             };
 
             var sink = new ExcelSinkNode<MixedTypeRecord>(uri, resolver, config);
-            IDataPipe<MixedTypeRecord> writeInput = new StreamingDataPipe<MixedTypeRecord>(originalData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
+            IDataStream<MixedTypeRecord> writeInput = new DataStream<MixedTypeRecord>(originalData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
             var src = new ExcelSourceNode<MixedTypeRecord>(uri, MapMixedTypeRecordFromHeaders, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<MixedTypeRecord>();
 
@@ -310,12 +310,12 @@ public sealed class ExcelRoundTripTests
             };
 
             var sink = new ExcelSinkNode<TestRecord>(uri, resolver, writeConfig);
-            IDataPipe<TestRecord> writeInput = new StreamingDataPipe<TestRecord>(originalData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
+            IDataStream<TestRecord> writeInput = new DataStream<TestRecord>(originalData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back with read configuration
             var src = new ExcelSourceNode<TestRecord>(uri, MapTestRecordFromHeaders, resolver, readConfig);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<TestRecord>();
 
@@ -365,12 +365,12 @@ public sealed class ExcelRoundTripTests
             };
 
             var sink = new ExcelSinkNode<NullableRecord>(uri, resolver, config);
-            IDataPipe<NullableRecord> writeInput = new StreamingDataPipe<NullableRecord>(originalData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
+            IDataStream<NullableRecord> writeInput = new DataStream<NullableRecord>(originalData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
             var src = new ExcelSourceNode<NullableRecord>(uri, MapNullableRecordFromHeaders, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<NullableRecord>();
 
@@ -415,12 +415,12 @@ public sealed class ExcelRoundTripTests
             var originalData = Enumerable.Range(1, 100).ToList();
 
             var sink = new ExcelSinkNode<int>(uri, resolver, config);
-            IDataPipe<int> writeInput = new StreamingDataPipe<int>(originalData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
+            IDataStream<int> writeInput = new DataStream<int>(originalData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
             var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<int>();
 
@@ -460,12 +460,12 @@ public sealed class ExcelRoundTripTests
             var originalData = new List<TestRecord>();
 
             var sink = new ExcelSinkNode<TestRecord>(uri, resolver, config);
-            IDataPipe<TestRecord> writeInput = new StreamingDataPipe<TestRecord>(originalData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
+            IDataStream<TestRecord> writeInput = new DataStream<TestRecord>(originalData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
             var src = new ExcelSourceNode<TestRecord>(uri, MapTestRecordFromHeaders, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<TestRecord>();
 
@@ -509,12 +509,12 @@ public sealed class ExcelRoundTripTests
             };
 
             var sink = new ExcelSinkNode<TestRecord>(uri, resolver, config);
-            IDataPipe<TestRecord> writeInput = new StreamingDataPipe<TestRecord>(originalData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
+            IDataStream<TestRecord> writeInput = new DataStream<TestRecord>(originalData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
             var src = new ExcelSourceNode<TestRecord>(uri, MapTestRecordFromHeaders, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<TestRecord>();
 
@@ -557,12 +557,12 @@ public sealed class ExcelRoundTripTests
             var originalData = Enumerable.Range(1, 5).ToList();
 
             var sink = new ExcelSinkNode<int>(uri, resolver, config);
-            IDataPipe<int> writeInput = new StreamingDataPipe<int>(originalData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
+            IDataStream<int> writeInput = new DataStream<int>(originalData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back from custom sheet
             var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<int>();
 
@@ -605,12 +605,12 @@ public sealed class ExcelRoundTripTests
             };
 
             var sink = new ExcelSinkNode<DateTimeRecord>(uri, resolver, config);
-            IDataPipe<DateTimeRecord> writeInput = new StreamingDataPipe<DateTimeRecord>(originalData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
+            IDataStream<DateTimeRecord> writeInput = new DataStream<DateTimeRecord>(originalData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
             var src = new ExcelSourceNode<DateTimeRecord>(uri, MapDateTimeRecordFromHeaders, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<DateTimeRecord>();
 
@@ -655,12 +655,12 @@ public sealed class ExcelRoundTripTests
             };
 
             var sink = new ExcelSinkNode<DecimalRecord>(uri, resolver, config);
-            IDataPipe<DecimalRecord> writeInput = new StreamingDataPipe<DecimalRecord>(originalData.ToAsyncEnumerable());
-            await sink.ExecuteAsync(writeInput, PipelineContext.Default, CancellationToken.None);
+            IDataStream<DecimalRecord> writeInput = new DataStream<DecimalRecord>(originalData.ToAsyncEnumerable());
+            await sink.ConsumeAsync(writeInput, PipelineContext.Default, CancellationToken.None);
 
             // Read data back
             var src = new ExcelSourceNode<DecimalRecord>(uri, MapDecimalRecordFromHeaders, resolver, config);
-            var outPipe = src.Initialize(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
 
             var readData = new List<DecimalRecord>();
 

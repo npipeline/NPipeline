@@ -16,7 +16,7 @@ public class ParallelCpuTransform : TransformNode<CpuIntensiveWorkItem, Processe
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task containing the processed work item result.</returns>
-    public override async Task<ProcessedWorkItem> ExecuteAsync(CpuIntensiveWorkItem item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<ProcessedWorkItem> TransformAsync(CpuIntensiveWorkItem item, PipelineContext context, CancellationToken cancellationToken)
     {
         var startTime = DateTime.UtcNow;
         var threadId = Environment.CurrentManagedThreadId;

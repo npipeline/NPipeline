@@ -16,7 +16,7 @@ Data processing analyzers protect the integrity of data flow through your pipeli
 
 This analyzer detects non-streaming patterns in SourceNode implementations that can lead to memory issues and poor performance. The analyzer identifies the following problematic patterns:
 
-1. **List and Array allocation and population** in Initialize methods
+1. **List and Array allocation and population** in OpenStream methods
 2. **.ToAsyncEnumerable()** calls on materialized collections
 3. **Synchronous I/O operations** like File.ReadAllText, File.WriteAllBytes, etc.
 4. **.ToList() and .ToArray()** calls that materialize collections in memory
@@ -39,9 +39,9 @@ For SourceNode implementations, use IAsyncEnumerable with yield return for prope
 // CORRECT: Using IAsyncEnumerable with yield return
 public class GoodSourceNode : SourceNode<string>
 {
-    public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
-        return new StreamingDataPipe<string>(ReadLines("large-file.txt", cancellationToken));
+        return new DataStream<string>(ReadLines("large-file.txt", cancellationToken));
     }
     
     // Helper method that yields lines one at a time
@@ -66,7 +66,7 @@ public class GoodSourceNode : SourceNode<string>
 **Severity:** Error  
 **Category:** Data Integrity - Input Consumption  
 
-This analyzer detects when a SinkNode implementation overrides ExecuteAsync but doesn't consume the input parameter. Sink nodes are designed to process all items from the input data pipe, but your implementation ignores the input.
+This analyzer detects when a SinkNode implementation overrides ConsumeAsync but doesn't consume the input parameter. Sink nodes are designed to process all items from the input data stream, but your implementation ignores the input.
 
 #### Why This Matters
 
@@ -83,7 +83,7 @@ SinkNode is the terminal component in a pipeline that processes all data flowing
 // CORRECT: Process all items from input
 public class MySinkNode : SinkNode<string>
 {
-    public override async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {
@@ -108,5 +108,5 @@ dotnet_diagnostic.NP9301.severity = error
 ## See Also
 
 - [Streaming vs Buffering](../../core-concepts/streaming-vs-buffering)
-- [Data Pipes](../../core-concepts/data-pipes)
+- [Data Streams](../../core-concepts/data-streams)
 - [Performance Characteristics](../../architecture/performance-characteristics)

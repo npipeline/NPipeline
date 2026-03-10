@@ -37,7 +37,7 @@ public class SessionAnalyticsCalculator : TransformNode<IReadOnlyCollection<User
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>Comprehensive session metrics for the analyzed sessions.</returns>
-    public override Task<SessionMetrics> ExecuteAsync(
+    public override Task<SessionMetrics> TransformAsync(
         IReadOnlyCollection<UserSession> sessions,
         PipelineContext context,
         CancellationToken cancellationToken)

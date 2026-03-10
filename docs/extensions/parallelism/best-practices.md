@@ -139,7 +139,7 @@ Implement proper error handling for parallel operations:
 ```csharp
 public class ResilientTransform : TransformNode<int, int>
 {
-    public override async Task<int> ExecuteAsync(
+    public override async Task<int> TransformAsync(
         int input,
         PipelineContext context,
         CancellationToken ct)

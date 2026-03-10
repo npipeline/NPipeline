@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using Sample_HttpPost.Models;
@@ -12,7 +12,7 @@ namespace Sample_HttpPost.Nodes;
 ///     Channel-based source node that receives webhook data from HTTP POST requests.
 ///     This node demonstrates the push-to-pull bridge pattern where:
 ///     - HTTP POST requests push data into a Channel&lt;WebhookData&gt;
-///     - The pipeline pulls data from the channel as IDataPipe&lt;WebhookData&gt;
+///     - The pipeline pulls data from the channel as IDataStream&lt;WebhookData&gt;
 /// </summary>
 /// <remarks>
 ///     This source must be registered as a singleton in the DI container so that
@@ -60,7 +60,7 @@ public class WebhookSource : ISourceNode<WebhookData>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing webhook data from the channel.</returns>
-    public IDataPipe<WebhookData> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public IDataStream<WebhookData> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         _logger.LogInformation("WebhookSource initialized and ready to process webhooks");
 
@@ -99,7 +99,7 @@ public class WebhookSource : ISourceNode<WebhookData>
             );
         }
 
-        return new StreamingDataPipe<WebhookData>(ReadFromChannel(cancellationToken), "WebhookSource");
+        return new DataStream<WebhookData>(ReadFromChannel(cancellationToken), "WebhookSource");
     }
 
     /// <summary>

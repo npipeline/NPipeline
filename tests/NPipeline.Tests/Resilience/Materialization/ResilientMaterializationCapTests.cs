@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
@@ -54,9 +54,9 @@ public sealed class ResilientMaterializationCapTests
 
     private sealed class StreamingSource : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new StreamingDataPipe<int>(Stream(cancellationToken));
+            return new DataStream<int>(Stream(cancellationToken));
 
             static async IAsyncEnumerable<int> Stream([EnumeratorCancellation] CancellationToken ct)
             {

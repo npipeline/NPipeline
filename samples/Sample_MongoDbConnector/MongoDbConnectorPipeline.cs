@@ -3,7 +3,7 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using NPipeline.Connectors.MongoDB.Configuration;
 using NPipeline.Connectors.MongoDB.Nodes;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 
 namespace Sample_MongoDbConnector;
 
@@ -76,7 +76,7 @@ public sealed class MongoDbConnectorPipeline
     // Main entry point
     // -----------------------------------------------------------------------------------------
 
-    public async Task ExecuteAsync(IServiceProvider _, CancellationToken cancellationToken)
+    public async Task ConsumeAsync(IServiceProvider _, CancellationToken cancellationToken)
     {
         await DemonstrateSourceReadAsync(cancellationToken);
         await DemonstrateTransformAndWriteAsync(cancellationToken);
@@ -112,7 +112,7 @@ public sealed class MongoDbConnectorPipeline
         Console.WriteLine("  Reading pending orders from 'orders' collection...");
         Console.WriteLine();
 
-        var pipe = sourceNode.Initialize(null!, cancellationToken);
+        var pipe = sourceNode.OpenStream(null!, cancellationToken);
 
         var count = 0;
 
@@ -149,7 +149,7 @@ public sealed class MongoDbConnectorPipeline
             _connectionString,
             sourceConfig);
 
-        var pipe = sourceNode.Initialize(null!, cancellationToken);
+        var pipe = sourceNode.OpenStream(null!, cancellationToken);
 
         // Transform orders to processed orders
         var processedOrders = new List<ProcessedOrder>();
@@ -186,10 +186,10 @@ public sealed class MongoDbConnectorPipeline
             _connectionString,
             sinkConfig);
 
-        var dataPipe = new InMemoryDataPipe<ProcessedOrder>(processedOrders);
+        var dataStream = new InMemoryDataStream<ProcessedOrder>(processedOrders);
 
         var sw = Stopwatch.StartNew();
-        await sinkNode.ExecuteAsync(dataPipe, null!, cancellationToken);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
         sw.Stop();
 
         Console.WriteLine($"  ✓ Wrote {processedOrders.Count} processed order(s) in {sw.ElapsedMilliseconds} ms");
@@ -234,8 +234,8 @@ public sealed class MongoDbConnectorPipeline
         Console.WriteLine($"  Writing {bulkOrders.Count} orders using BulkWrite strategy (OrderedWrites = false)...");
 
         var sw = Stopwatch.StartNew();
-        var dataPipe = new InMemoryDataPipe<ProcessedOrder>(bulkOrders);
-        await sinkNode.ExecuteAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<ProcessedOrder>(bulkOrders);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
         sw.Stop();
 
         var throughput = bulkOrders.Count / Math.Max(sw.Elapsed.TotalSeconds, 0.001);
@@ -294,8 +294,8 @@ public sealed class MongoDbConnectorPipeline
         Console.WriteLine($"  Upserting {upsertOrders.Count} order(s) (will update existing or insert new)...");
 
         var sw = Stopwatch.StartNew();
-        var dataPipe = new InMemoryDataPipe<ProcessedOrder>(upsertOrders);
-        await sinkNode.ExecuteAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<ProcessedOrder>(upsertOrders);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
         sw.Stop();
 
         Console.WriteLine($"  ✓ Upsert completed in {sw.ElapsedMilliseconds} ms");

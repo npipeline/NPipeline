@@ -3,7 +3,7 @@ using NPipeline.Connectors.DataLake.Partitioning;
 using NPipeline.Connectors.DataLake.Snapshot;
 using NPipeline.Connectors.Parquet;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;
@@ -86,7 +86,7 @@ public sealed class DataLakeTableWriter<T> : IAsyncDisposable
     /// <param name="data">The data to append.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task AppendAsync(IDataPipe<T> data, CancellationToken cancellationToken = default)
+    public async Task AppendAsync(IDataStream<T> data, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(data);
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -169,7 +169,7 @@ public sealed class DataLakeTableWriter<T> : IAsyncDisposable
         return await reader.GetSnapshotIdsAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task AppendPartitionedAsync(IDataPipe<T> data, CancellationToken cancellationToken)
+    private async Task AppendPartitionedAsync(IDataStream<T> data, CancellationToken cancellationToken)
     {
         var partitionBuffers = new Dictionary<string, List<T>>(StringComparer.OrdinalIgnoreCase);
         long totalBufferedRows = 0;
@@ -241,9 +241,9 @@ public sealed class DataLakeTableWriter<T> : IAsyncDisposable
         var sinkNode = new ParquetSinkNode<T>(_provider, fileUri, _configuration);
 
         // Create a data pipe from the buffer
-        var dataPipe = new InMemoryDataPipe<T>(buffer);
+        var dataStream = new InMemoryDataStream<T>(buffer);
 
-        await sinkNode.ExecuteAsync(dataPipe, PipelineContext.Default, cancellationToken)
+        await sinkNode.ConsumeAsync(dataStream, PipelineContext.Default, cancellationToken)
             .ConfigureAwait(false);
 
         // Get file size (best effort)
@@ -303,7 +303,7 @@ public sealed class DataLakeTableWriter<T> : IAsyncDisposable
         }
     }
 
-    private async Task AppendUnpartitionedAsync(IDataPipe<T> data, CancellationToken cancellationToken)
+    private async Task AppendUnpartitionedAsync(IDataStream<T> data, CancellationToken cancellationToken)
     {
         var buffer = new List<T>(_configuration.RowGroupSize);
 

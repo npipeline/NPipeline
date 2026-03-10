@@ -18,14 +18,14 @@ NPipeline follows a clear separation of concerns:
 
 **Synchronous Phase:** Source Node Initialization
 
-- Source nodes' `Initialize()` method returns `IDataPipe<T>` synchronously
-- The source immediately creates and returns the data pipe without waiting
+- Source nodes' `OpenStream()` method returns `IDataStream<T>` synchronously
+- The source immediately creates and returns the data stream without waiting
 - No Task allocation for source execution
 
 **Asynchronous Phase:** Transform & Sink Execution
 
-- Transform nodes' `ExecuteAsync()` method returns `Task<TOut>` asynchronously
-- Sink nodes' `ExecuteAsync()` method returns `Task` asynchronously
+- Transform nodes' `TransformAsync()` method returns `Task<TOut>` asynchronously
+- Sink nodes' `ConsumeAsync()` method returns `Task` asynchronously
 - Data flows through pipes when nodes consume it
 - Sinks iterate through pipes with `await foreach`
 - Transforms process items as they arrive
@@ -260,7 +260,7 @@ context.NodeRetryOverrides[nodeId] = newRetryOptions;
 var result = await nodeExecutor.ExecuteAsync(node, item, context);
 
 // ❌ Don't: Modify context during node execution
-public async Task<TOut> ExecuteAsync(TIn item, PipelineContext context, CancellationToken ct)
+public async Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken ct)
 {
     // Don't do this - it may be cached and ignored!
     context.NodeRetryOverrides[this.NodeId] = newRetryOptions;
@@ -290,5 +290,5 @@ For more guidance, see [Performance Hygiene: Avoid Context Mutations](../advance
 
 ## Next Steps
 
-- **[Data Flow Details](data-flow.md)** - Understand how data pipes and lazy evaluation work
+- **[Data Flow Details](data-flow.md)** - Understand how data streams and lazy evaluation work
 - **[Performance Characteristics](performance-characteristics.md)** - Learn about throughput and scalability

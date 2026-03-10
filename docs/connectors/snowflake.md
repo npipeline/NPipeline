@@ -292,7 +292,7 @@ You can read this data into your pipeline as follows:
 ```csharp
 using NPipeline;
 using NPipeline.Connectors.Snowflake;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow;
 using NPipeline.Execution;
 using NPipeline.Nodes;
@@ -322,8 +322,8 @@ public sealed class SnowflakeReaderPipeline : IPipelineDefinition
 
 public sealed class ConsoleSinkNode : SinkNode<Order>
 {
-    public override async Task ExecuteAsync(
-        IDataPipe<Order> input,
+    public override async Task ConsumeAsync(
+        IDataStream<Order> input,
         PipelineContext context,
         IPipelineActivity parentActivity,
         CancellationToken cancellationToken)

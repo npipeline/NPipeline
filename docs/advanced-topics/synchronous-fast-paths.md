@@ -64,7 +64,7 @@ public sealed class CachedTransform : TransformNode<string, UserData>
     /// Fast path: cache hit - no Task allocation
     /// Slow path: cache miss - async database call
     /// </summary>
-    public override ValueTask<UserData> ExecuteAsync(
+    public override ValueTask<UserData> TransformAsync(
         string userId, 
         PipelineContext context, 
         CancellationToken cancellationToken)
@@ -120,7 +120,7 @@ public sealed class UserEnrichmentTransform : TransformNode<UserId, EnrichedUser
     /// Enriches user data with profile information.
     /// Uses cache-first strategy to minimize database calls.
     /// </summary>
-    public override ValueTask<EnrichedUser> ExecuteAsync(
+    public override ValueTask<EnrichedUser> TransformAsync(
         UserId userId,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -228,7 +228,7 @@ public sealed class SimpleCalculationTransform : TransformNode<int, int>
     /// Performs square operation on input integer.
     /// Pure synchronous work - no async operations needed.
     /// </summary>
-    public override ValueTask<int> ExecuteAsync(
+    public override ValueTask<int> TransformAsync(
         int item,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -268,7 +268,7 @@ public sealed class DataFormatTransform : TransformNode<RawData, FormattedData>
     /// Fast path: local cache hit
     /// Slow path: network service call
     /// </summary>
-    public override ValueTask<FormattedData> ExecuteAsync(
+    public override ValueTask<FormattedData> TransformAsync(
         RawData item,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -411,7 +411,7 @@ NPipeline provides a two-method pattern that gets you all the ValueTask performa
 public sealed class OptimizedTransform : TransformNode<Order, Order>
 {
     // Keep public method returning Task<T> for API stability
-    public override Task<Order> ExecuteAsync(Order item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<Order> TransformAsync(Order item, PipelineContext context, CancellationToken cancellationToken)
     {
         return FromValueTask(ExecuteValueTaskAsync(item, context, cancellationToken));
     }
@@ -434,7 +434,7 @@ public sealed class OptimizedTransform : TransformNode<Order, Order>
 **Benefits of this approach:**
 
 - **You get 90% of the performance win** - Execution strategies automatically detect and use `ExecuteValueTaskAsync`
-- **No ValueTask constraints exposed** - `ExecuteAsync` returns `Task<T>`, so external callers don't see ValueTask limitations
+- **No ValueTask constraints exposed** - `TransformAsync` returns `Task<T>`, so external callers don't see ValueTask limitations
 - **API stability** - Public contract stays the same; optimization is an implementation detail
 - **Automatic detection** - Framework handles routing to the ValueTask path transparently
 

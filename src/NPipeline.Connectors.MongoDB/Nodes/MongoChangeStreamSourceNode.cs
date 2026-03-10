@@ -5,7 +5,7 @@ using NPipeline.Connectors.MongoDB.ChangeStream;
 using NPipeline.Connectors.MongoDB.Exceptions;
 using NPipeline.Connectors.MongoDB.Mapping;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -142,11 +142,11 @@ public class MongoChangeStreamSourceNode<T> : SourceNode<T>, IAsyncDisposable
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A streaming data pipe containing the change stream events.</returns>
-    public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         _configuration.Validate();
         var stream = StreamChangesAsync(cancellationToken);
-        return new StreamingDataPipe<T>(stream, $"{GetType().Name}");
+        return new DataStream<T>(stream, $"{GetType().Name}");
     }
 
     private IMongoClient GetClientAsync()

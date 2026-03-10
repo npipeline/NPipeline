@@ -4,7 +4,7 @@ using NPipeline.Connectors.RabbitMQ.Connection;
 using NPipeline.Connectors.RabbitMQ.Nodes;
 using NPipeline.Connectors.RabbitMQ.Serialization;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using RabbitMQ.Client;
 
@@ -66,8 +66,8 @@ public sealed class RabbitMqSinkNodeIntegrationTests : IAsyncDisposable
             logger: NullLogger<RabbitMqSinkNode<TestMessage>>.Instance);
 
         // Act
-        var pipe = CreateDataPipe(items);
-        await sinkNode.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        var pipe = CreateDataStream(items);
+        await sinkNode.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         // Assert - consume and verify
         var consumeChannel = await connection.CreateChannelAsync();
@@ -114,7 +114,7 @@ public sealed class RabbitMqSinkNodeIntegrationTests : IAsyncDisposable
             logger: NullLogger<RabbitMqSinkNode<TestMessage>>.Instance);
 
         // Act
-        await sinkNode.ExecuteAsync(CreateDataPipe(items), new PipelineContext(), CancellationToken.None);
+        await sinkNode.ConsumeAsync(CreateDataStream(items), new PipelineContext(), CancellationToken.None);
 
         // Assert
         var consumeChannel = await connection.CreateChannelAsync();
@@ -126,7 +126,7 @@ public sealed class RabbitMqSinkNodeIntegrationTests : IAsyncDisposable
         await consumeChannel.CloseAsync();
     }
 
-    private static IDataPipe<T> CreateDataPipe<T>(IEnumerable<T> items)
+    private static IDataStream<T> CreateDataStream<T>(IEnumerable<T> items)
     {
         async IAsyncEnumerable<T> Enumerate()
         {
@@ -138,7 +138,7 @@ public sealed class RabbitMqSinkNodeIntegrationTests : IAsyncDisposable
             }
         }
 
-        return new StreamingDataPipe<T>(Enumerate(), "test-pipe");
+        return new DataStream<T>(Enumerate(), "test-pipe");
     }
 
     private sealed record TestMessage(string Name, int Value);

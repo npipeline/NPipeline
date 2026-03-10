@@ -1,5 +1,5 @@
 using System.Text.Json;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Abstractions;
@@ -66,18 +66,18 @@ public sealed class JsonIntegrationTests : IDisposable
         var sourceConfig = new JsonConfiguration { Format = JsonFormat.Array };
         var sourceUri = StorageUri.FromFilePath(inputFile);
         var sourceNode = new JsonSourceNode<TestPerson>(_provider, sourceUri, sourceConfig);
-        var sourcePipe = sourceNode.Initialize(_context, CancellationToken.None);
+        var sourcePipe = sourceNode.OpenStream(_context, CancellationToken.None);
         var readData = await sourcePipe.ToListAsync(CancellationToken.None);
 
         // Write to output
         var sinkConfig = new JsonConfiguration { Format = JsonFormat.Array };
         var sinkUri = StorageUri.FromFilePath(outputFile);
         var sinkNode = new JsonSinkNode<TestPerson>(_provider, sinkUri, sinkConfig);
-        await sinkNode.ExecuteAsync(sourcePipe, _context, CancellationToken.None);
+        await sinkNode.ConsumeAsync(sourcePipe, _context, CancellationToken.None);
 
         // Read back from output
         var outputSourceNode = new JsonSourceNode<TestPerson>(_provider, sinkUri, sourceConfig);
-        var outputPipe = outputSourceNode.Initialize(_context, CancellationToken.None);
+        var outputPipe = outputSourceNode.OpenStream(_context, CancellationToken.None);
         var outputData = await outputPipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -111,18 +111,18 @@ public sealed class JsonIntegrationTests : IDisposable
         var sourceConfig = new JsonConfiguration { Format = JsonFormat.NewlineDelimited };
         var sourceUri = StorageUri.FromFilePath(inputFile);
         var sourceNode = new JsonSourceNode<TestPerson>(_provider, sourceUri, sourceConfig);
-        var sourcePipe = sourceNode.Initialize(_context, CancellationToken.None);
+        var sourcePipe = sourceNode.OpenStream(_context, CancellationToken.None);
         var readData = await sourcePipe.ToListAsync(CancellationToken.None);
 
         // Write to output
         var sinkConfig = new JsonConfiguration { Format = JsonFormat.NewlineDelimited };
         var sinkUri = StorageUri.FromFilePath(outputFile);
         var sinkNode = new JsonSinkNode<TestPerson>(_provider, sinkUri, sinkConfig);
-        await sinkNode.ExecuteAsync(sourcePipe, _context, CancellationToken.None);
+        await sinkNode.ConsumeAsync(sourcePipe, _context, CancellationToken.None);
 
         // Read back from output
         var outputSourceNode = new JsonSourceNode<TestPerson>(_provider, sinkUri, sourceConfig);
-        var outputPipe = outputSourceNode.Initialize(_context, CancellationToken.None);
+        var outputPipe = outputSourceNode.OpenStream(_context, CancellationToken.None);
         var outputData = await outputPipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -159,7 +159,7 @@ public sealed class JsonIntegrationTests : IDisposable
 
         var sourceUri = StorageUri.FromFilePath(inputFile);
         var sourceNode = new JsonSourceNode<TestPerson>(_provider, sourceUri, sourceConfig);
-        var sourcePipe = sourceNode.Initialize(_context, CancellationToken.None);
+        var sourcePipe = sourceNode.OpenStream(_context, CancellationToken.None);
 
         // Write to output
         var sinkConfig = new JsonConfiguration
@@ -170,11 +170,11 @@ public sealed class JsonIntegrationTests : IDisposable
 
         var sinkUri = StorageUri.FromFilePath(outputFile);
         var sinkNode = new JsonSinkNode<TestPerson>(_provider, sinkUri, sinkConfig);
-        await sinkNode.ExecuteAsync(sourcePipe, _context, CancellationToken.None);
+        await sinkNode.ConsumeAsync(sourcePipe, _context, CancellationToken.None);
 
         // Read back from output
         var outputSourceNode = new JsonSourceNode<TestPerson>(_provider, sinkUri, sourceConfig);
-        var outputPipe = outputSourceNode.Initialize(_context, CancellationToken.None);
+        var outputPipe = outputSourceNode.OpenStream(_context, CancellationToken.None);
         var outputData = await outputPipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -204,17 +204,17 @@ public sealed class JsonIntegrationTests : IDisposable
         var sourceConfig = new JsonConfiguration { Format = JsonFormat.Array };
         var sourceUri = StorageUri.FromFilePath(inputFile);
         var sourceNode = new JsonSourceNode<TestPerson>(_provider, sourceUri, sourceConfig);
-        var sourcePipe = sourceNode.Initialize(_context, CancellationToken.None);
+        var sourcePipe = sourceNode.OpenStream(_context, CancellationToken.None);
 
         // Write to output
         var sinkConfig = new JsonConfiguration { Format = JsonFormat.Array };
         var sinkUri = StorageUri.FromFilePath(outputFile);
         var sinkNode = new JsonSinkNode<TestPerson>(_provider, sinkUri, sinkConfig);
-        await sinkNode.ExecuteAsync(sourcePipe, _context, CancellationToken.None);
+        await sinkNode.ConsumeAsync(sourcePipe, _context, CancellationToken.None);
 
         // Read back from output
         var outputSourceNode = new JsonSourceNode<TestPerson>(_provider, sinkUri, sourceConfig);
-        var outputPipe = outputSourceNode.Initialize(_context, CancellationToken.None);
+        var outputPipe = outputSourceNode.OpenStream(_context, CancellationToken.None);
         var outputData = await outputPipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -235,18 +235,18 @@ public sealed class JsonIntegrationTests : IDisposable
         var inputData = new List<TestPerson>();
 
         // Act - Create empty source pipe
-        var sourcePipe = new InMemoryDataPipe<TestPerson>(inputData);
+        var sourcePipe = new InMemoryDataStream<TestPerson>(inputData);
 
         // Write to output
         var sinkConfig = new JsonConfiguration { Format = JsonFormat.Array };
         var sinkUri = StorageUri.FromFilePath(outputFile);
         var sinkNode = new JsonSinkNode<TestPerson>(_provider, sinkUri, sinkConfig);
-        await sinkNode.ExecuteAsync(sourcePipe, _context, CancellationToken.None);
+        await sinkNode.ConsumeAsync(sourcePipe, _context, CancellationToken.None);
 
         // Read back from output
         var sourceConfig = new JsonConfiguration { Format = JsonFormat.Array };
         var sourceNode = new JsonSourceNode<TestPerson>(_provider, sinkUri, sourceConfig);
-        var outputPipe = sourceNode.Initialize(_context, CancellationToken.None);
+        var outputPipe = sourceNode.OpenStream(_context, CancellationToken.None);
         var outputData = await outputPipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -272,17 +272,17 @@ public sealed class JsonIntegrationTests : IDisposable
         var sourceConfig = new JsonConfiguration { Format = JsonFormat.Array };
         var sourceUri = StorageUri.FromFilePath(inputFile);
         var sourceNode = new JsonSourceNode<TestPerson>(_provider, sourceUri, sourceConfig);
-        var sourcePipe = sourceNode.Initialize(_context, CancellationToken.None);
+        var sourcePipe = sourceNode.OpenStream(_context, CancellationToken.None);
 
         // Write to output
         var sinkConfig = new JsonConfiguration { Format = JsonFormat.Array };
         var sinkUri = StorageUri.FromFilePath(outputFile);
         var sinkNode = new JsonSinkNode<TestPerson>(_provider, sinkUri, sinkConfig);
-        await sinkNode.ExecuteAsync(sourcePipe, _context, CancellationToken.None);
+        await sinkNode.ConsumeAsync(sourcePipe, _context, CancellationToken.None);
 
         // Read back from output
         var outputSourceNode = new JsonSourceNode<TestPerson>(_provider, sinkUri, sourceConfig);
-        var outputPipe = outputSourceNode.Initialize(_context, CancellationToken.None);
+        var outputPipe = outputSourceNode.OpenStream(_context, CancellationToken.None);
         var outputData = await outputPipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -314,7 +314,7 @@ public sealed class JsonIntegrationTests : IDisposable
         var sourceConfig = new JsonConfiguration { Format = JsonFormat.Array };
         var sourceUri = StorageUri.FromFilePath(inputFile);
         var sourceNode = new JsonSourceNode<TestPerson>(_provider, sourceUri, sourceConfig);
-        var sourcePipe = sourceNode.Initialize(_context, CancellationToken.None);
+        var sourcePipe = sourceNode.OpenStream(_context, CancellationToken.None);
 
         // Write to output with indentation
         var sinkConfig = new JsonConfiguration
@@ -325,7 +325,7 @@ public sealed class JsonIntegrationTests : IDisposable
 
         var sinkUri = StorageUri.FromFilePath(outputFile);
         var sinkNode = new JsonSinkNode<TestPerson>(_provider, sinkUri, sinkConfig);
-        await sinkNode.ExecuteAsync(sourcePipe, _context, CancellationToken.None);
+        await sinkNode.ConsumeAsync(sourcePipe, _context, CancellationToken.None);
 
         // Read output file content
         var outputContent = await File.ReadAllTextAsync(outputFile);
@@ -355,17 +355,17 @@ public sealed class JsonIntegrationTests : IDisposable
         var sourceConfig = new JsonConfiguration { Format = JsonFormat.Array };
         var sourceUri = StorageUri.FromFilePath(inputFile);
         var sourceNode = new JsonSourceNode<TestMixedTypes>(_provider, sourceUri, sourceConfig);
-        var sourcePipe = sourceNode.Initialize(_context, CancellationToken.None);
+        var sourcePipe = sourceNode.OpenStream(_context, CancellationToken.None);
 
         // Write to output
         var sinkConfig = new JsonConfiguration { Format = JsonFormat.Array };
         var sinkUri = StorageUri.FromFilePath(outputFile);
         var sinkNode = new JsonSinkNode<TestMixedTypes>(_provider, sinkUri, sinkConfig);
-        await sinkNode.ExecuteAsync(sourcePipe, _context, CancellationToken.None);
+        await sinkNode.ConsumeAsync(sourcePipe, _context, CancellationToken.None);
 
         // Read back from output
         var outputSourceNode = new JsonSourceNode<TestMixedTypes>(_provider, sinkUri, sourceConfig);
-        var outputPipe = outputSourceNode.Initialize(_context, CancellationToken.None);
+        var outputPipe = outputSourceNode.OpenStream(_context, CancellationToken.None);
         var outputData = await outputPipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -398,14 +398,14 @@ public sealed class JsonIntegrationTests : IDisposable
         var sourceConfig = new JsonConfiguration { Format = JsonFormat.Array };
         var sourceUri = StorageUri.FromFilePath(inputFile);
         var sourceNode = new JsonSourceNode<TestPerson>(_provider, sourceUri, sourceConfig);
-        var sourcePipe = sourceNode.Initialize(_context, cts.Token);
+        var sourcePipe = sourceNode.OpenStream(_context, cts.Token);
 
         // Write to output
         var sinkConfig = new JsonConfiguration { Format = JsonFormat.Array };
         var sinkUri = StorageUri.FromFilePath(outputFile);
         var sinkNode = new JsonSinkNode<TestPerson>(_provider, sinkUri, sinkConfig);
 
-        var writeTask = sinkNode.ExecuteAsync(sourcePipe, _context, cts.Token);
+        var writeTask = sinkNode.ConsumeAsync(sourcePipe, _context, cts.Token);
 
         // Cancel after starting the task
         cts.Cancel();

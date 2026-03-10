@@ -18,7 +18,7 @@ public class ConsoleSink : SinkNode<EnrichedPerson>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task representing the sink execution.</returns>
-    public override async Task ExecuteAsync(IDataPipe<EnrichedPerson> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<EnrichedPerson> input, PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("Starting to process enriched person records in ConsoleSink");
         Console.WriteLine();

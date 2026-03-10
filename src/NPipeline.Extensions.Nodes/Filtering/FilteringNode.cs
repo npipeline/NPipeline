@@ -83,7 +83,7 @@ public sealed class FilteringNode<T> : TransformNode<T, T>
     ///     Executes filtering on the item.
     ///     Throws <see cref="FilteringException" /> if any predicate fails.
     /// </summary>
-    public override Task<T> ExecuteAsync(T item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<T> TransformAsync(T item, PipelineContext context, CancellationToken cancellationToken)
     {
         return FromValueTask(ExecuteValueTaskAsync(item, context, cancellationToken));
     }

@@ -58,8 +58,8 @@ public class JsonSourceNodeTests : IDisposable
         var node = new JsonSourceNode<Customer>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(2, results.Count);
@@ -82,8 +82,8 @@ public class JsonSourceNodeTests : IDisposable
         var node = new JsonSourceNode<Customer>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Equal(2, results.Count);
@@ -111,8 +111,8 @@ public class JsonSourceNodeTests : IDisposable
         });
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);
@@ -134,8 +134,8 @@ public class JsonSourceNodeTests : IDisposable
         // Act & Assert
         await Assert.ThrowsAnyAsync<JsonException>(async () =>
         {
-            var dataPipe = node.Initialize(_context, CancellationToken.None);
-            await dataPipe.ToListAsync();
+            var dataStream = node.OpenStream(_context, CancellationToken.None);
+            await dataStream.ToListAsync();
         });
     }
 
@@ -152,8 +152,8 @@ public class JsonSourceNodeTests : IDisposable
         var node = new JsonSourceNode<Customer>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);
@@ -176,12 +176,12 @@ public class JsonSourceNodeTests : IDisposable
         var cts = new CancellationTokenSource();
 
         // Act & Assert
-        var dataPipe = node.Initialize(_context, cts.Token);
+        var dataStream = node.OpenStream(_context, cts.Token);
         var results = new List<Customer>();
 
         await Assert.ThrowsAsync<OperationCanceledException>(async () =>
         {
-            await foreach (var item in dataPipe.WithCancellation(cts.Token))
+            await foreach (var item in dataStream.WithCancellation(cts.Token))
             {
                 results.Add(item);
 
@@ -211,8 +211,8 @@ public class JsonSourceNodeTests : IDisposable
         var node = new JsonSourceNode<Customer>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);
@@ -232,8 +232,8 @@ public class JsonSourceNodeTests : IDisposable
         var node = new JsonSourceNode<SnakeCaseCustomer>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var items = await dataPipe.ToListAsync();
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var items = await dataStream.ToListAsync();
 
         // Assert
         Assert.Single(items);
@@ -254,8 +254,8 @@ public class JsonSourceNodeTests : IDisposable
         var node = new JsonSourceNode<Customer>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);
@@ -276,8 +276,8 @@ public class JsonSourceNodeTests : IDisposable
         var node = new JsonSourceNode<Customer>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);
@@ -303,8 +303,8 @@ public class JsonSourceNodeTests : IDisposable
         });
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
-        var results = await dataPipe.ToListAsync(CancellationToken.None);
+        var dataStream = node.OpenStream(_context, CancellationToken.None);
+        var results = await dataStream.ToListAsync(CancellationToken.None);
 
         // Assert
         Assert.Single(results);

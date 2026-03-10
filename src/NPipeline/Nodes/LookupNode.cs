@@ -47,7 +47,7 @@ public abstract class LookupNode<TIn, TKey, TValue, TOut> : TransformNode<TIn, T
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The transformed output item.</returns>
-    public override async Task<TOut> ExecuteAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
     {
         var key = ExtractKey(item, context);
         var lookupValue = await LookupAsync(key, context, cancellationToken).ConfigureAwait(false);

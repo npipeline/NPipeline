@@ -21,7 +21,7 @@ public class MonitoringTransform : TransformNode<SourceData, SourceData>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task containing the processed SourceData.</returns>
-    public override async Task<SourceData> ExecuteAsync(SourceData item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<SourceData> TransformAsync(SourceData item, PipelineContext context, CancellationToken cancellationToken)
     {
         _totalProcessed++;
 

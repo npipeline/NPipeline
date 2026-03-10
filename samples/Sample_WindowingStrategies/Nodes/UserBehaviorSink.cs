@@ -43,8 +43,8 @@ public class UserBehaviorSink : SinkNode<object>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A task representing the completion of the sink processing.</returns>
-    public override async Task ExecuteAsync(
-        IDataPipe<object> input,
+    public override async Task ConsumeAsync(
+        IDataStream<object> input,
         PipelineContext context,
         CancellationToken cancellationToken)
     {

@@ -1,13 +1,13 @@
 ---
 title: Welcome to NPipeline
-description: Explore the official documentation for NPipeline, a high-performance, graph-based streaming data pipeline library for .NET.
+description: Explore the official documentation for NPipeline, a high-performance, graph-based streaming data streamline library for .NET.
 slug: /
 sidebar_position: 0
 ---
 
 # Welcome to NPipeline
 
-NPipeline is a powerful and flexible .NET library for building high-performance, graph-based streaming data pipelines. It empowers developers to construct complex data processing workflows with clear, intuitive graph-based architecture—perfect for low-latency, high-throughput applications that demand both reliability and performance.
+NPipeline is a powerful and flexible .NET library for building high-performance, graph-based streaming data streamlines. It empowers developers to construct complex data processing workflows with clear, intuitive graph-based architecture—perfect for low-latency, high-throughput applications that demand both reliability and performance.
 
 **Key Benefits:**
 
@@ -51,7 +51,7 @@ Performance is a cornerstone of NPipeline. It is built to:
 - **Scalability:** The graph-based approach and efficient resource management allow pipelines to scale with increasing data volumes.
 - **Zero-Allocation Fast Paths:** Transform operations with synchronous execution paths (cache hits, simple calculations) eliminate heap allocations entirely. In high-cache-hit scenarios, this can drastically reduce garbage collection pressure, cutting out thousands of allocations per second in high-throughput pipelines.
 
-By focusing on these aspects, NPipeline provides a powerful foundation for building data pipelines that are not only functional but also performant and maintainable.
+By focusing on these aspects, NPipeline provides a powerful foundation for building data streamlines that are not only functional but also performant and maintainable.
 
 #### Zero-Allocation Fast Paths: A Competitive Advantage
 
@@ -79,7 +79,7 @@ One of NPipeline's most powerful features for high-performance scenarios is its 
 New to NPipeline? Get started in three simple steps:
 
 - [Installation](getting-started/installation.md) - Set up NPipeline (2 minutes)
-- [Your First Pipeline](getting-started/quick-start.md) - Build a simple data pipeline (5 minutes)
+- [Your First Pipeline](getting-started/quick-start.md) - Build a simple data streamline (5 minutes)
 - [Learning Paths](getting-started/learning-paths.md) - Choose your learning path based on experience level (8 minutes)
 
 ---

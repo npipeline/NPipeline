@@ -2,25 +2,25 @@ using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using NPipeline.DataFlow.Branching;
 
-namespace NPipeline.DataFlow.DataPipes;
+namespace NPipeline.DataFlow.DataStreams;
 
 /// <summary>
 ///     Multicast data pipe that integrates counting directly into the pump.
 ///     This eliminates one layer of wrapping by combining counting and multicasting.
 /// </summary>
-internal sealed class CountingMulticastDataPipe<T> : IStreamingDataPipe<T>, IHasBranchMetrics
+internal sealed class CountingMulticastDataStream<T> : IForwardOnlyDataStream<T>, IHasBranchMetrics
 {
     private readonly Channel<T>[] _channels;
     private readonly StatsCounter _counter;
     private readonly CancellationTokenSource _cts = new();
     private readonly int[] _pendingPerChannel;
     private readonly Task _pumpTask;
-    private readonly IDataPipe<T> _source;
+    private readonly IDataStream<T> _source;
     private bool _disposed;
     private int _nextSubscriber;
 
-    public CountingMulticastDataPipe(
-        IDataPipe<T> source,
+    public CountingMulticastDataStream(
+        IDataStream<T> source,
         StatsCounter counter,
         int subscriberCount,
         int? perSubscriberBuffer,

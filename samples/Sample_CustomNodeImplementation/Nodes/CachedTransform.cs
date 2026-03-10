@@ -44,7 +44,7 @@ public class CachedTransform : TransformNode<SensorData, ProcessedSensorData>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task containing the processed sensor data.</returns>
-    public override async Task<ProcessedSensorData> ExecuteAsync(SensorData item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<ProcessedSensorData> TransformAsync(SensorData item, PipelineContext context, CancellationToken cancellationToken)
     {
         _processedCount++;
 

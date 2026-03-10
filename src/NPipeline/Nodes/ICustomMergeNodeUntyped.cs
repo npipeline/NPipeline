@@ -13,5 +13,5 @@ public interface ICustomMergeNodeUntyped : INode
     /// <param name="pipes">The input data pipes to merge.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A data pipe containing the merged output stream.</returns>
-    Task<IDataPipe> MergeAsyncUntyped(IEnumerable<IDataPipe> pipes, CancellationToken cancellationToken);
+    Task<IDataStream> MergeAsyncUntyped(IEnumerable<IDataStream> pipes, CancellationToken cancellationToken);
 }

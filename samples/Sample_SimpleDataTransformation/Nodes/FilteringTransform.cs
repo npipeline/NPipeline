@@ -17,7 +17,7 @@ public class FilteringTransform : TransformNode<Person, Person>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task containing the filtered Person object.</returns>
-    public override async Task<Person> ExecuteAsync(Person item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<Person> TransformAsync(Person item, PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Filtering Person: {item.FirstName} {item.LastName} (Age: {item.Age}, City: {item.City})");
 

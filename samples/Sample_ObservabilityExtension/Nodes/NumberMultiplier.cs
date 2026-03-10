@@ -12,7 +12,7 @@ public class NumberMultiplier : TransformNode<int, int>
     /// <summary>
     ///     Doubles the input number.
     /// </summary>
-    public override async Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
     {
         var result = item * 2;
 

@@ -35,7 +35,7 @@ public sealed class TypeConversionNode<TIn, TOut> : TransformNode<TIn, TOut>
     /// <summary>
     ///     Executes the conversion asynchronously.
     /// </summary>
-    public override Task<TOut> ExecuteAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

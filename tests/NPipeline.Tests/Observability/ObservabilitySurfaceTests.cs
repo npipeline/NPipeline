@@ -118,9 +118,9 @@ public sealed class ObservabilitySurfaceTests
 
     private sealed class DummyNode : ISourceNode<object>
     {
-        public IDataPipe<object> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public IDataStream<object> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<object>(new List<object> { 1, 2, 3 }, "dummy");
+            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<object>(new List<object> { 1, 2, 3 }, "dummy");
         }
 
         public ValueTask DisposeAsync()

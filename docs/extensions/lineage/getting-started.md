@@ -68,7 +68,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Lineage;
 using NPipeline.Lineage.DependencyInjection;
 using NPipeline.Nodes;
@@ -89,7 +89,7 @@ public class OrderPipeline : IPipelineDefinition
 
 public sealed class OrderSource : SourceNode<Order>
 {
-    public IDataPipe<Order> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
+    public IDataStream<Order> OpenStream(PipelineContext context, CancellationToken cancellationToken = default)
     {
         static async IAsyncEnumerable<Order> GenerateOrders()
         {
@@ -99,13 +99,13 @@ public sealed class OrderSource : SourceNode<Order>
             }
         }
 
-        return new StreamingDataPipe<Order>(GenerateOrders());
+        return new DataStream<Order>(GenerateOrders());
     }
 }
 
 public sealed class OrderValidationTransform : TransformNode<Order, ValidatedOrder>
 {
-    public override Task<ValidatedOrder> ExecuteAsync(Order item, PipelineContext context, CancellationToken cancellationToken = default)
+    public override Task<ValidatedOrder> TransformAsync(Order item, PipelineContext context, CancellationToken cancellationToken = default)
     {
         var isValid = item.Amount > 0 && item.CustomerId.Length > 0;
         return Task.FromResult(new ValidatedOrder(item, isValid));
@@ -114,7 +114,7 @@ public sealed class OrderValidationTransform : TransformNode<Order, ValidatedOrd
 
 public sealed class OrderSink : SinkNode<ValidatedOrder>
 {
-    public async Task ExecuteAsync(IDataPipe<ValidatedOrder> input, PipelineContext context, IPipelineActivity parentActivity, CancellationToken cancellationToken = default)
+    public async Task ConsumeAsync(IDataStream<ValidatedOrder> input, PipelineContext context, IPipelineActivity parentActivity, CancellationToken cancellationToken = default)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {

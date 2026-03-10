@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using System.Runtime.ExceptionServices;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution.Annotations;
 using NPipeline.Execution.Caching;
@@ -315,7 +315,7 @@ public sealed class PipelineRunner(
         IReadOnlyDictionary<string, INode> nodeInstances,
         IReadOnlyDictionary<string, NodeDefinition> nodeDefinitionMap,
         IReadOnlyDictionary<string, NodeExecutionPlan> executionPlans,
-        IDictionary<string, IDataPipe?> nodeOutputs)
+        IDictionary<string, IDataStream?> nodeOutputs)
     {
         var inputLookup = executionCoordinator.BuildInputLookup(graph);
         var sortedNodes = executionCoordinator.TopologicalSort(graph);
@@ -371,7 +371,7 @@ public sealed class PipelineRunner(
         NodeObservationScope nodeScope,
         IReadOnlyDictionary<string, NodeExecutionPlan> executionPlans,
         ILookup<string, Edge> inputLookup,
-        IDictionary<string, IDataPipe?> nodeOutputs,
+        IDictionary<string, IDataStream?> nodeOutputs,
         IReadOnlyDictionary<string, INode> nodeInstances,
         IReadOnlyDictionary<string, NodeDefinition> nodeDefinitionMap)
     {
@@ -474,7 +474,7 @@ public sealed class PipelineRunner(
         PipelineContext context,
         PipelineGraph? graph,
         IPipelineActivity pipelineActivity,
-        Dictionary<string, IDataPipe?> nodeOutputs,
+        Dictionary<string, IDataStream?> nodeOutputs,
         Dictionary<string, INode>? nodeInstances,
         bool pipelineCompleted)
         where TDefinition : IPipelineDefinition, new()

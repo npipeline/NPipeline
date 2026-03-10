@@ -31,7 +31,7 @@ public class DataTransform : TransformNode<Customer, Customer>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">A cancellation token to observe.</param>
     /// <returns>A task containing the transformed customer record.</returns>
-    public override Task<Customer> ExecuteAsync(
+    public override Task<Customer> TransformAsync(
         Customer input,
         PipelineContext context,
         CancellationToken cancellationToken = default)

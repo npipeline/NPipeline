@@ -40,7 +40,7 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation with the output data pipe.</returns>
-    public abstract Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(IDataPipe<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context,
+    public abstract Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(IDataStream<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context,
         CancellationToken cancellationToken);
 
     /// <summary>
@@ -150,7 +150,7 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
     {
         return node is IValueTaskTransform<TIn, TOut> fastPath
             ? fastPath.ExecuteValueTaskAsync(item, context, cancellationToken)
-            : new ValueTask<TOut>(node.ExecuteAsync(item, context, cancellationToken));
+            : new ValueTask<TOut>(node.TransformAsync(item, context, cancellationToken));
     }
 
     private static async Task<NodeErrorDecision> HandleNodeErrorAsync<TIn, TOut>(ITransformNode<TIn, TOut> node, string nodeId, TIn item, Exception exception,

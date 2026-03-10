@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 
 namespace NPipeline.Execution.Services;
 
@@ -10,18 +10,18 @@ namespace NPipeline.Execution.Services;
 public sealed class ConcatenateMergeStrategy<T> : IMergeStrategy<T>
 {
     /// <inheritdoc />
-    public IDataPipe<T> Merge(IEnumerable<IDataPipe<T>> pipes, CancellationToken cancellationToken)
+    public IDataStream<T> Merge(IEnumerable<IDataStream<T>> pipes, CancellationToken cancellationToken)
     {
-        List<IDataPipe<T>> typedPipes = [..pipes];
+        List<IDataStream<T>> typedPipes = [..pipes];
         var concatenatedStream = ConcatenateStreams(typedPipes, cancellationToken);
-        return new StreamingDataPipe<T>(concatenatedStream, "ConcatenatedStream");
+        return new DataStream<T>(concatenatedStream, "ConcatenatedStream");
     }
 
     private static async IAsyncEnumerable<T> ConcatenateStreams(
-        IReadOnlyList<IDataPipe<T>> dataPipes,
+        IReadOnlyList<IDataStream<T>> dataStreams,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        foreach (var pipe in dataPipes)
+        foreach (var pipe in dataStreams)
         await foreach (var item in pipe.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
             yield return item;

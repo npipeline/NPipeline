@@ -1,6 +1,6 @@
 using NPipeline.Attributes.Lineage;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution.Plans;
 using NPipeline.Graph;
 using NPipeline.Lineage;
@@ -15,7 +15,7 @@ namespace NPipeline.Execution.Services;
 public sealed class NodeExecutor(
     ILineageService lineageService,
     IPipeMergeService pipeMergeService,
-    DataPipeWrapperService dataPipeWrapperService)
+    DataStreamWrapperService dataStreamWrapperService)
     : INodeExecutor
 {
     /// <summary>
@@ -26,7 +26,7 @@ public sealed class NodeExecutor(
         PipelineGraph graph,
         PipelineContext context,
         ILookup<string, Edge> inputLookup,
-        IDictionary<string, IDataPipe?> nodeOutputs,
+        IDictionary<string, IDataStream?> nodeOutputs,
         IReadOnlyDictionary<string, INode> nodeInstances,
         IReadOnlyDictionary<string, NodeDefinition> nodeDefinitionMap)
     {
@@ -52,7 +52,7 @@ public sealed class NodeExecutor(
     private async Task ExecuteSourcePlanAsync(NodeExecutionPlan plan,
         PipelineGraph graph,
         PipelineContext context,
-        IDictionary<string, IDataPipe?> nodeOutputs)
+        IDictionary<string, IDataStream?> nodeOutputs)
     {
         var output = await plan.ExecuteSource!(context, context.CancellationToken);
 
@@ -60,7 +60,7 @@ public sealed class NodeExecutor(
             output = lineageService.WrapSourceStream(output, plan.NodeId, graph.Lineage.LineageOptions);
 
         var counter = GetOrCreateCounter(context);
-        output = dataPipeWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
+        output = dataStreamWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
         context.RegisterForDisposal(output);
         nodeOutputs[plan.NodeId] = output;
     }
@@ -69,14 +69,14 @@ public sealed class NodeExecutor(
         PipelineGraph graph,
         PipelineContext context,
         ILookup<string, Edge> inputLookup,
-        IDictionary<string, IDataPipe?> nodeOutputs,
+        IDictionary<string, IDataStream?> nodeOutputs,
         IReadOnlyDictionary<string, INode> nodeInstances,
         IReadOnlyDictionary<string, NodeDefinition> nodeDefinitionMap,
         NodeDefinition nodeDef,
         INode instance)
     {
         var input = await GetNodeInputAsync(plan.NodeId, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken);
-        IDataPipe transformed;
+        IDataStream transformed;
 
         if (graph.Lineage.ItemLevelLineageEnabled)
         {
@@ -103,7 +103,7 @@ public sealed class NodeExecutor(
         }
 
         var counter = GetOrCreateCounter(context);
-        transformed = dataPipeWrapperService.WrapWithCountingAndBranching(transformed, counter, context, graph, plan.NodeId);
+        transformed = dataStreamWrapperService.WrapWithCountingAndBranching(transformed, counter, context, graph, plan.NodeId);
         var disposable = transformed as IAsyncDisposable;
         context.RegisterForDisposal(disposable);
 
@@ -114,7 +114,7 @@ public sealed class NodeExecutor(
         PipelineGraph graph,
         PipelineContext context,
         ILookup<string, Edge> inputLookup,
-        IDictionary<string, IDataPipe?> nodeOutputs,
+        IDictionary<string, IDataStream?> nodeOutputs,
         IReadOnlyDictionary<string, INode> nodeInstances,
         IReadOnlyDictionary<string, NodeDefinition> nodeDefinitionMap,
         NodeDefinition nodeDef,
@@ -127,13 +127,13 @@ public sealed class NodeExecutor(
             .ToList();
 
         var merged = await pipeMergeService.MergeAsync(nodeDef, instance, joinInputPipes, context.CancellationToken);
-        IDataPipe output;
+        IDataStream output;
 
         if (graph.Lineage.ItemLevelLineageEnabled)
         {
             var unwrapped = lineageService.UnwrapLineageStream(merged.ToAsyncEnumerable(context.CancellationToken), context.CancellationToken);
 #pragma warning disable CA2000 // Temp pipe registered for disposal immediately
-            var tempPipe = new StreamingDataPipe<object>(unwrapped, $"JoinInput_{plan.NodeId}");
+            var tempPipe = new DataStream<object>(unwrapped, $"JoinInput_{plan.NodeId}");
 #pragma warning restore CA2000
             context.RegisterForDisposal(tempPipe);
             var rawOutput = await plan.ExecuteJoin!([tempPipe], context, context.CancellationToken);
@@ -166,7 +166,7 @@ public sealed class NodeExecutor(
         }
 
         var counter = GetOrCreateCounter(context);
-        output = dataPipeWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
+        output = dataStreamWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
         var disposable = output as IAsyncDisposable;
         context.RegisterForDisposal(disposable);
 
@@ -177,19 +177,19 @@ public sealed class NodeExecutor(
         PipelineGraph graph,
         PipelineContext context,
         ILookup<string, Edge> inputLookup,
-        IDictionary<string, IDataPipe?> nodeOutputs,
+        IDictionary<string, IDataStream?> nodeOutputs,
         IReadOnlyDictionary<string, INode> nodeInstances,
         IReadOnlyDictionary<string, NodeDefinition> nodeDefinitionMap,
         NodeDefinition nodeDef)
     {
         var input = await GetNodeInputAsync(plan.NodeId, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken);
-        IDataPipe output;
+        IDataStream output;
 
         if (graph.Lineage.ItemLevelLineageEnabled)
         {
             var unwrapped = lineageService.UnwrapLineageStream(input.ToAsyncEnumerable(), context.CancellationToken);
 #pragma warning disable CA2000 // Temp pipe registered for disposal immediately
-            var tempPipe = new StreamingDataPipe<object?>(unwrapped, $"AggInput_{plan.NodeId}");
+            var tempPipe = new DataStream<object?>(unwrapped, $"AggInput_{plan.NodeId}");
 #pragma warning restore CA2000
             context.RegisterForDisposal(tempPipe);
             output = await plan.ExecuteAggregate!(tempPipe, context, context.CancellationToken);
@@ -222,7 +222,7 @@ public sealed class NodeExecutor(
         }
 
         var counter = GetOrCreateCounter(context);
-        output = dataPipeWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
+        output = dataStreamWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
         context.RegisterForDisposal(output as IAsyncDisposable ?? input);
         nodeOutputs[plan.NodeId] = output;
     }
@@ -231,7 +231,7 @@ public sealed class NodeExecutor(
         PipelineGraph graph,
         PipelineContext context,
         ILookup<string, Edge> inputLookup,
-        IDictionary<string, IDataPipe?> nodeOutputs,
+        IDictionary<string, IDataStream?> nodeOutputs,
         IReadOnlyDictionary<string, INode> nodeInstances,
         IReadOnlyDictionary<string, NodeDefinition> nodeDefinitionMap,
         NodeDefinition nodeDef)
@@ -251,7 +251,7 @@ public sealed class NodeExecutor(
         nodeOutputs[plan.NodeId] = null; // sinks produce no downstream pipe
     }
 
-    private async Task<IDataPipe> GetNodeInputAsync(string nodeId, ILookup<string, Edge> inputLookup, IDictionary<string, IDataPipe?> nodeOutputs,
+    private async Task<IDataStream> GetNodeInputAsync(string nodeId, ILookup<string, Edge> inputLookup, IDictionary<string, IDataStream?> nodeOutputs,
         IReadOnlyDictionary<string, INode> nodeInstances, IReadOnlyDictionary<string, NodeDefinition> nodeDefinitions, CancellationToken cancellationToken)
     {
         var inputEdges = inputLookup[nodeId].ToList();
@@ -275,7 +275,7 @@ public sealed class NodeExecutor(
         return await pipeMergeService.MergeAsync(nodeDef, targetNode, inputPipes, cancellationToken);
     }
 
-    private static IDataPipe AdaptOutput(NodeExecutionPlan plan, IDataPipe output, Type expectedType, string streamName)
+    private static IDataStream AdaptOutput(NodeExecutionPlan plan, IDataStream output, Type expectedType, string streamName)
     {
         if (plan.AdaptOutput is null)
         {

@@ -40,7 +40,7 @@ public sealed class ConsoleSink : SinkNode<ProcessedTransaction>
     }
 
     /// <inheritdoc />
-    public override async Task ExecuteAsync(IDataPipe<ProcessedTransaction> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<ProcessedTransaction> input, PipelineContext context, CancellationToken cancellationToken)
     {
         _logger.LogInformation("ConsoleSink: Starting to output processed transactions");
 

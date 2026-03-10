@@ -37,7 +37,7 @@ public class DeadLetterQueueSink : SinkNode<SourceData>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task representing the sink execution.</returns>
-    public override async Task ExecuteAsync(IDataPipe<SourceData> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<SourceData> input, PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("Starting Dead Letter Queue Sink processing...");
 

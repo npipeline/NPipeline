@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Attributes.Nodes;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -102,19 +102,19 @@ public sealed class EnhancedJoinNodeTests
 
     private sealed class UserSourceWithExtra : SourceNode<User>
     {
-        public override IDataPipe<User> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<User> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var users = new[] { new User(1, "Alice"), new User(2, "Bob"), new User(3, "Charlie") };
-            return new StreamingDataPipe<User>(users.ToAsyncEnumerable(), "UserStream");
+            return new DataStream<User>(users.ToAsyncEnumerable(), "UserStream");
         }
     }
 
     private sealed class UserProfileSourceWithExtra : SourceNode<UserProfile>
     {
-        public override IDataPipe<UserProfile> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<UserProfile> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var profiles = new[] { new UserProfile(2, "Bob's Profile"), new UserProfile(1, "Alice's Profile"), new UserProfile(4, "Extra Profile") };
-            return new StreamingDataPipe<UserProfile>(profiles.ToAsyncEnumerable(), "ProfileStream");
+            return new DataStream<UserProfile>(profiles.ToAsyncEnumerable(), "ProfileStream");
         }
     }
 
@@ -145,7 +145,7 @@ public sealed class EnhancedJoinNodeTests
 
     private sealed class EnrichedUserSink(ConcurrentQueue<EnrichedUser> store) : SinkNode<EnrichedUser>
     {
-        public override async Task ExecuteAsync(IDataPipe<EnrichedUser> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<EnrichedUser> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))

@@ -69,7 +69,7 @@ public abstract class ValidationNode<T> : TransformNode<T, T>
     ///     Executes all validation rules on the item asynchronously.
     ///     Throws <see cref="ValidationException" /> if any rule fails.
     /// </summary>
-    public override Task<T> ExecuteAsync(
+    public override Task<T> TransformAsync(
         T item,
         PipelineContext context,
         CancellationToken cancellationToken)

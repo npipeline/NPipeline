@@ -51,14 +51,14 @@ public class PriorityMergeStrategy : IMergeStrategy<MarketDataTick>
     /// <param name="pipes">Collection of input data pipes from various exchanges</param>
     /// <param name="cancellationToken">Token for cancellation support</param>
     /// <returns>Output data pipe containing merged market data</returns>
-    public IDataPipe<MarketDataTick> Merge(IEnumerable<IDataPipe<MarketDataTick>> pipes, CancellationToken cancellationToken = default)
+    public IDataStream<MarketDataTick> Merge(IEnumerable<IDataStream<MarketDataTick>> pipes, CancellationToken cancellationToken = default)
     {
         var pipeList = pipes.ToList();
 
         if (pipeList.Count == 0)
         {
             _logger?.LogWarning("Priority merge invoked with no input pipes");
-            return new ChannelDataPipe<MarketDataTick>(Channel.CreateBounded<MarketDataTick>(1), "PriorityMergeEmpty");
+            return new ChannelDataStream<MarketDataTick>(Channel.CreateBounded<MarketDataTick>(1), "PriorityMergeEmpty");
         }
 
         Metrics?.UpdateActiveSources(pipeList.Count);
@@ -121,11 +121,11 @@ public class PriorityMergeStrategy : IMergeStrategy<MarketDataTick>
             }
         }, CancellationToken.None);
 
-        return new ChannelDataPipe<MarketDataTick>(outputChannel, "PriorityMergeOutput");
+        return new ChannelDataStream<MarketDataTick>(outputChannel, "PriorityMergeOutput");
     }
 
     private async Task ForwardPipeAsync(
-        IDataPipe<MarketDataTick> pipe,
+        IDataStream<MarketDataTick> pipe,
         ChannelWriter<MarketDataTick> inboundWriter,
         CancellationToken cancellationToken)
     {

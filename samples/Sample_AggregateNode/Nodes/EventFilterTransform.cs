@@ -53,7 +53,7 @@ public class EventFilterTransform : TransformNode<AnalyticsEvent, FilteredAnalyt
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A FilteredAnalyticsEvent indicating whether the event is relevant and why.</returns>
-    public override async Task<FilteredAnalyticsEvent> ExecuteAsync(AnalyticsEvent item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<FilteredAnalyticsEvent> TransformAsync(AnalyticsEvent item, PipelineContext context, CancellationToken cancellationToken)
     {
         _totalEventsProcessed++;
 

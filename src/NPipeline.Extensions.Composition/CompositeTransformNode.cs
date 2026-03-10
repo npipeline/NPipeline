@@ -33,7 +33,7 @@ public sealed class CompositeTransformNode<TIn, TOut, TDefinition>
     /// <summary>
     ///     Executes the sub-pipeline for the given input item.
     /// </summary>
-    public override async Task<TOut> ExecuteAsync(
+    public override async Task<TOut> TransformAsync(
         TIn item,
         PipelineContext context,
         CancellationToken cancellationToken)

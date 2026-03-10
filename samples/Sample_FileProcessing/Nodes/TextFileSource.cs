@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -17,8 +17,8 @@ public class TextFileSource : SourceNode<string>
     /// </summary>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>An <see cref="IDataPipe{TOut}" /> that produces the output data for downstream nodes.</returns>
-    public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    /// <returns>An <see cref="IDataStream{TOut}" /> that produces the output data for downstream nodes.</returns>
+    public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         // Get file path from context parameters
         if (!context.Parameters.TryGetValue("FilePath", out var filePathObj))
@@ -39,7 +39,7 @@ public class TextFileSource : SourceNode<string>
             var lineStream = ReadLinesAsync(filePath, cancellationToken);
 
             // Return a streaming data pipe that will process lines as they are requested
-            return new StreamingDataPipe<string>(lineStream, "TextFileSource");
+            return new DataStream<string>(lineStream, "TextFileSource");
         }
         catch (Exception ex)
         {

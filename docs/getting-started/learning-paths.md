@@ -19,7 +19,7 @@ sidebar_position: 4
 New to NPipeline? Get started in three simple steps:
 
 - [Installation](./installation.md) - Set up NPipeline (2 minutes)
-- [Your First Pipeline](./quick-start.md) - Build a simple data pipeline (5 minutes)
+- [Your First Pipeline](./quick-start.md) - Build a simple data streamline (5 minutes)
 - [Why NPipeline?](../) - Understand the benefits and philosophy (8 minutes)
 
 ---
@@ -27,7 +27,7 @@ New to NPipeline? Get started in three simple steps:
 ## Beginner Path (2-3 hours)
 
 <details>
-<summary><strong>Perfect for developers new to data pipelines. Click to expand learning modules.</strong></summary>
+<summary><strong>Perfect for developers new to data streamlines. Click to expand learning modules.</strong></summary>
 
 ---
 

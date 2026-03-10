@@ -47,7 +47,7 @@ public class ProcessOrderTransform : ITransformNode<Order, ProcessedOrder>
         _notificationService = notificationService;
     }
 
-    public async Task<ProcessedOrder> ExecuteAsync(
+    public async Task<ProcessedOrder> TransformAsync(
         Order input,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -82,7 +82,7 @@ var pipeline = PipelineBuilder.WithServiceProvider(serviceProvider)
     .BuildPipeline();
 
 var context = PipelineContext.Default;
-var result = await runner.ExecuteAsync(pipeline, context);
+var result = await runner.RunAsync<OrderPipeline>(context);
 ```
 
 ## Scoped Dependencies
@@ -100,7 +100,7 @@ using (var scope = serviceProvider.CreateScope())
         .AddSinkNode<OrderSinkNode>()
         .BuildPipeline();
 
-    await runner.ExecuteAsync(pipeline, context);
+    await runner.RunAsync<OrderPipeline>(context);
     // Scoped services are disposed here
 }
 ```
@@ -123,7 +123,7 @@ public class EnrichedOrderTransform : ITransformNode<Order, EnrichedOrder>
         _cache = cache;
     }
 
-    public async Task<EnrichedOrder> ExecuteAsync(
+    public async Task<EnrichedOrder> TransformAsync(
         Order input,
         PipelineContext context,
         CancellationToken cancellationToken)

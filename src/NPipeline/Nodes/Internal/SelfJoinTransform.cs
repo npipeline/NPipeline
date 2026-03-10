@@ -34,7 +34,7 @@ internal sealed class SelfJoinTransform<TIn, TOut> : TransformNode<TIn, TOut>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A task representing the wrapped item.</returns>
-    public override Task<TOut> ExecuteAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var result = _factory(item);

@@ -3,20 +3,20 @@ using System.Runtime.ExceptionServices;
 using NPipeline.ErrorHandling;
 using NPipeline.Pipeline;
 
-namespace NPipeline.DataFlow.DataPipes;
+namespace NPipeline.DataFlow.DataStreams;
 
 /// <summary>
 ///     Data pipe that combines counting with passthrough (no branching).
 ///     This eliminates one layer of wrapping when no multicast is needed.
 /// </summary>
-internal sealed class CountingPassthroughDataPipe<T> : IStreamingDataPipe<T>
+internal sealed class CountingPassthroughDataStream<T> : IForwardOnlyDataStream<T>
 {
     private readonly PipelineContext? _context;
     private readonly StatsCounter _counter;
-    private readonly IDataPipe<T> _inner;
+    private readonly IDataStream<T> _inner;
     private bool _disposed;
 
-    public CountingPassthroughDataPipe(IDataPipe<T> inner, StatsCounter counter, PipelineContext? context = null)
+    public CountingPassthroughDataStream(IDataStream<T> inner, StatsCounter counter, PipelineContext? context = null)
     {
         ArgumentNullException.ThrowIfNull(inner);
         ArgumentNullException.ThrowIfNull(counter);

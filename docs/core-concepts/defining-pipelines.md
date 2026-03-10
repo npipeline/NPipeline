@@ -1,6 +1,6 @@
 ---
 title: Defining Pipelines
-description: Comprehensive guide to defining and constructing data pipelines using NPipeline's fluent PipelineBuilder API and class-based IPipelineDefinition approach.
+description: Comprehensive guide to defining and constructing data streamlines using NPipeline's fluent PipelineBuilder API and class-based IPipelineDefinition approach.
 sidebar_position: 5
 ---
 
@@ -17,7 +17,7 @@ Both approaches ultimately produce the same result: an executable [`IPipeline`](
 
 ## The PipelineBuilder: Fluent API
 
-The `PipelineBuilder` is a fluent API that provides a simple and expressive way to define the structure of your data pipeline. It is the primary tool for adding nodes, connecting them, and compiling the final, runnable `IPipeline` instance.
+The `PipelineBuilder` is a fluent API that provides a simple and expressive way to define the structure of your data streamline. It is the primary tool for adding nodes, connecting them, and compiling the final, runnable `IPipeline` instance.
 
 ### The Core Workflow
 
@@ -43,16 +43,16 @@ Let's walk through a complete example using PipelineBuilder:
 ```csharp
 using NPipeline;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
 // Define your custom nodes
 public sealed class HelloWorldSource : SourceNode<string>
 {
-    public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
-        return new StreamingDataPipe<string>(GenerateMessages());
+        return new DataStream<string>(GenerateMessages());
 
         static async IAsyncEnumerable<string> GenerateMessages()
         {
@@ -69,7 +69,7 @@ public sealed class HelloWorldSource : SourceNode<string>
 
 public sealed class UppercaseTransform : ITransformNode<string, string>
 {
-    public Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+    public Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
     {
         var uppercase = item.ToUpperInvariant();
         return Task.FromResult(uppercase);
@@ -78,7 +78,7 @@ public sealed class UppercaseTransform : ITransformNode<string, string>
 
 public sealed class ConsoleSink : ISinkNode<string>
 {
-    public async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+    public async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
     {
         await foreach (var message in input.WithCancellation(cancellationToken))
         {
@@ -303,7 +303,7 @@ This modular design allows you to create complex data processing workflows from 
 
 ## Related Topics
 
-- **[Pipeline](ipipeline.md)**: Learn about the executable instance of your data pipeline
+- **[Pipeline](ipipeline.md)**: Learn about the executable instance of your data streamline
 - **[Pipeline Context](pipeline-context.md)**: Understand how to pass state and configuration to your pipeline nodes
 - **[Nodes Overview](nodes/index.md)**: Learn about source, transform, and sink nodes
 - **[Execution Strategies](pipeline-execution/execution-strategies.md)**: Control how nodes process data

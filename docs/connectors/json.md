@@ -233,7 +233,7 @@ You can read this data into your pipeline as follows:
 using NPipeline;
 using NPipeline.Connectors;
 using NPipeline.Connectors.Json;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow;
 using NPipeline.Execution;
 using NPipeline.Nodes;
@@ -263,8 +263,8 @@ public sealed class JsonReaderPipeline : IPipelineDefinition
 
 public sealed class ConsoleSinkNode : SinkNode<User>
 {
-    public override async Task ExecuteAsync(
-        IDataPipe<User> input,
+    public override async Task ConsumeAsync(
+        IDataStream<User> input,
         PipelineContext context,
         IPipelineActivity parentActivity,
         CancellationToken cancellationToken)
@@ -661,7 +661,7 @@ public sealed record UserSummary(string Name, string Domain);
 
 public sealed class UserSummarizer : TransformNode<User, UserSummary>
 {
-    public override Task<UserSummary> ExecuteAsync(
+    public override Task<UserSummary> TransformAsync(
         User item,
         PipelineContext context,
         CancellationToken cancellationToken)

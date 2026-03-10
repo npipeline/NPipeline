@@ -24,7 +24,7 @@ public class SensorDataEnrichmentTransform : TransformNode<SensorMaintenanceJoin
         _logger = logger;
     }
 
-    public override Task<EnrichedSensorData> ExecuteAsync(SensorMaintenanceJoin item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<EnrichedSensorData> TransformAsync(SensorMaintenanceJoin item, PipelineContext context, CancellationToken cancellationToken)
     {
         if (_logger != null)
             _enrichingData(_logger, item.SensorReading.DeviceId, item.MaintenanceEvent.MaintenanceType, null);

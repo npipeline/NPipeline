@@ -77,7 +77,7 @@ public SqsSourceNode(IAmazonSQS sqsClient, SqsConfiguration configuration)
 ```csharp
 using NPipeline.Connectors.Aws.Sqs.Configuration;
 using NPipeline.Connectors.Aws.Sqs.Nodes;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow;
 using NPipeline.Execution;
 using NPipeline.Nodes;
@@ -108,8 +108,8 @@ public sealed class SqsReaderPipeline : IPipelineDefinition
 
 public sealed class ConsoleSinkNode : SinkNode<SqsMessage<OrderMessage>>
 {
-    public override async Task ExecuteAsync(
-        IDataPipe<SqsMessage<OrderMessage>> input,
+    public override async Task ConsumeAsync(
+        IDataStream<SqsMessage<OrderMessage>> input,
         PipelineContext context,
         IPipelineActivity parentActivity,
         CancellationToken cancellationToken)
@@ -227,7 +227,7 @@ var config = new SqsConfiguration
 // In a transform node
 public class ManualAckTransform : ITransformNode<SqsMessage<OrderMessage>, SqsMessage<OrderMessage>>
 {
-    public async Task<SqsMessage<OrderMessage>> ExecuteAsync(
+    public async Task<SqsMessage<OrderMessage>> TransformAsync(
         SqsMessage<OrderMessage> input,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -480,7 +480,7 @@ public sealed class SqsProcessingPipeline : IPipelineDefinition
 
 public sealed class OrderTransform : ITransformNode<SqsMessage<OrderMessage>, ProcessedOrder>
 {
-    public Task<ProcessedOrder> ExecuteAsync(
+    public Task<ProcessedOrder> TransformAsync(
         SqsMessage<OrderMessage> input,
         PipelineContext context,
         CancellationToken cancellationToken)

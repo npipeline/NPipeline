@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Nodes;
@@ -77,9 +77,9 @@ public class CompositeErrorHandlingTests
 
     private sealed class ErrorSource : ISourceNode<int>
     {
-        public IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new InMemoryDataPipe<int>([1], "ErrorSource");
+            return new InMemoryDataStream<int>([1], "ErrorSource");
         }
 
         public ValueTask DisposeAsync()
@@ -91,7 +91,7 @@ public class CompositeErrorHandlingTests
 
     private sealed class ErrorTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             throw new InvalidOperationException("Test error in sub-pipeline");
         }
@@ -129,7 +129,7 @@ public class CompositeErrorHandlingTests
 
     private sealed class TestSink : ISinkNode<int>
     {
-        public async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context, CancellationToken cancellationToken)
+        public async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
             {
@@ -146,7 +146,7 @@ public class CompositeErrorHandlingTests
 
     private sealed class SlowTransform : TransformNode<int, int>
     {
-        public override async Task<int> ExecuteAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
             return input;
@@ -196,9 +196,9 @@ public class CompositeErrorHandlingTests
 
     private sealed class EmptySource : ISourceNode<int>
     {
-        public IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new InMemoryDataPipe<int>([], "EmptySource");
+            return new InMemoryDataStream<int>([], "EmptySource");
         }
 
         public ValueTask DisposeAsync()
@@ -229,9 +229,9 @@ public class CompositeErrorHandlingTests
 
     private sealed class NullableSource : ISourceNode<string?>
     {
-        public IDataPipe<string?> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public IDataStream<string?> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new InMemoryDataPipe<string?>(["test"], "NullableSource");
+            return new InMemoryDataStream<string?>(["test"], "NullableSource");
         }
 
         public ValueTask DisposeAsync()
@@ -243,7 +243,7 @@ public class CompositeErrorHandlingTests
 
     private sealed class NullReturningTransform : TransformNode<string?, string?>
     {
-        public override Task<string?> ExecuteAsync(string? input, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<string?> TransformAsync(string? input, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult<string?>(null);
         }
@@ -266,7 +266,7 @@ public class CompositeErrorHandlingTests
     {
         public static string? ReceivedValue { get; private set; }
 
-        public async Task ExecuteAsync(IDataPipe<string?> input, PipelineContext context, CancellationToken cancellationToken)
+        public async Task ConsumeAsync(IDataStream<string?> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))
             {
@@ -315,7 +315,7 @@ public class CompositeErrorHandlingTests
 
     private sealed class ToStringTransform : TransformNode<int, string>
     {
-        public override Task<string> ExecuteAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<string> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(input.ToString());
         }

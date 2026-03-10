@@ -3,7 +3,7 @@ namespace NPipeline.DataFlow;
 /// <summary>
 ///     A marker interface to identify data pipes that stream their data and may not be replayable.
 /// </summary>
-public interface IStreamingDataPipe : IDataPipe
+public interface IForwardOnlyDataStream : IDataStream
 {
 }
 
@@ -15,9 +15,9 @@ public interface IStreamingDataPipe : IDataPipe
 ///     <para>
 ///         Streaming data pipes provide lazy evaluation of data without buffering.
 ///         They are not replayable - once consumed, the data is gone.
-///         This interface combines <see cref="IDataPipe{T}" /> with the streaming marker.
+///         This interface combines <see cref="IDataStream{T}" /> with the streaming marker.
 ///     </para>
 /// </remarks>
-public interface IStreamingDataPipe<out T> : IDataPipe<T>, IStreamingDataPipe
+public interface IForwardOnlyDataStream<out T> : IDataStream<T>, IForwardOnlyDataStream
 {
 }

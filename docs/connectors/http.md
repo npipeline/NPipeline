@@ -598,7 +598,7 @@ var pipeline = new PipelineBuilder()
     .AddSink(new HttpSinkNode<ReleaseReport>(sinkConfig, httpClientFactory), "report_sink")
     .Build();
 
-await pipeline.ExecuteAsync();
+await runner.RunAsync<MyPipelineDefinition>();
 ```
 
 ### Retry and Rate Limiting Example

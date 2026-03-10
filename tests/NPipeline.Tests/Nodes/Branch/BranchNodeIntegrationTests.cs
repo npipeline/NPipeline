@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.Branching;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
 using NPipeline.Extensions.Testing;
 using NPipeline.Nodes;
@@ -243,7 +243,7 @@ public sealed class BranchNodeIntegrationTests
 
     private sealed class SlowPassThrough : TransformNode<int, int>
     {
-        public override async Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(2, cancellationToken);
             return item;
@@ -265,7 +265,7 @@ public sealed class BranchNodeIntegrationTests
 
         public List<int> Items { get; } = [];
 
-        public override async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))
@@ -280,7 +280,7 @@ public sealed class BranchNodeIntegrationTests
     {
         public List<int> Items { get; } = [];
 
-        public override async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))
@@ -292,9 +292,9 @@ public sealed class BranchNodeIntegrationTests
 
     private sealed class NumSource : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new StreamingDataPipe<int>(Produce(cancellationToken), "nums");
+            return new DataStream<int>(Produce(cancellationToken), "nums");
 
             static async IAsyncEnumerable<int> Produce([EnumeratorCancellation] CancellationToken ct)
             {

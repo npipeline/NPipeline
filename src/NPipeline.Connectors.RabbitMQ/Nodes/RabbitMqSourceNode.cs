@@ -10,7 +10,7 @@ using NPipeline.Connectors.RabbitMQ.Models;
 using NPipeline.Connectors.RabbitMQ.Topology;
 using NPipeline.Connectors.Serialization;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using RabbitMQ.Client;
@@ -53,10 +53,10 @@ public sealed class RabbitMqSourceNode<T> : SourceNode<RabbitMqMessage<T>>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<RabbitMqMessage<T>> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<RabbitMqMessage<T>> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var stream = ConsumeMessagesAsync(cancellationToken);
-        return new StreamingDataPipe<RabbitMqMessage<T>>(stream, $"RabbitMqSourceNode<{typeof(T).Name}>");
+        return new DataStream<RabbitMqMessage<T>>(stream, $"RabbitMqSourceNode<{typeof(T).Name}>");
     }
 
     private async IAsyncEnumerable<RabbitMqMessage<T>> ConsumeMessagesAsync(

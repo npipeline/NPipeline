@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace NPipeline.Analyzers;
 
 /// <summary>
-///     Analyzer that detects when a SinkNode-derived class overrides ExecuteAsync but doesn't consume input parameter.
+///     Analyzer that detects when a SinkNode-derived class overrides ConsumeAsync but doesn't consume input parameter.
 ///     This helps identify potential bugs where sink nodes ignore their input data.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -21,7 +21,7 @@ public sealed class SinkNodeInputConsumptionAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor SinkNodeInputNotConsumedRule = new(
         SinkNodeInputNotConsumedId,
         "SinkNode should consume input parameter",
-        "SinkNode '{0}' overrides ExecuteAsync but doesn't consume input parameter. Sink nodes should process all items from input data pipe.",
+        "SinkNode '{0}' overrides ConsumeAsync but doesn't consume input parameter. Sink nodes should process all items from input data pipe.",
         "Data Integrity & Correctness",
         DiagnosticSeverity.Error,
         true,
@@ -48,7 +48,7 @@ public sealed class SinkNodeInputConsumptionAnalyzer : DiagnosticAnalyzer
         if (!IsSinkNodeImplementation(namedTypeSymbol))
             return;
 
-        // Find ExecuteAsync method override
+        // Find ConsumeAsync method override
         var executeAsyncMethod = FindExecuteAsyncOverride(namedTypeSymbol);
 
         if (executeAsyncMethod == null)
@@ -102,11 +102,11 @@ public sealed class SinkNodeInputConsumptionAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    ///     Finds the ExecuteAsync method override in the type.
+    ///     Finds the ConsumeAsync method override in the type.
     /// </summary>
     private static IMethodSymbol? FindExecuteAsyncOverride(INamedTypeSymbol typeSymbol)
     {
-        return typeSymbol.GetMembers("ExecuteAsync")
+        return typeSymbol.GetMembers("ConsumeAsync")
             .OfType<IMethodSymbol>()
             .FirstOrDefault(m => m.IsOverride || IsInterfaceImplementation(m));
     }

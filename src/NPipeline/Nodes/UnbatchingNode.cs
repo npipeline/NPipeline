@@ -43,7 +43,7 @@ public sealed class UnbatchingNode<T> : IStreamTransformNode<IEnumerable<T>, T>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The output stream of individual items.</returns>
-    public async IAsyncEnumerable<T> ExecuteAsync(
+    public async IAsyncEnumerable<T> TransformAsync(
         IAsyncEnumerable<IEnumerable<T>> items,
         PipelineContext context,
         [EnumeratorCancellation] CancellationToken cancellationToken)

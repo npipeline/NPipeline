@@ -22,7 +22,7 @@ public sealed class ExceptionThrowingNode<TIn> : TransformNode<TIn, TIn>
     }
 
     /// <inheritdoc />
-    public override Task<TIn> ExecuteAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<TIn> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
     {
         throw _exceptionToThrow;
     }

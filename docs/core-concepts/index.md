@@ -11,7 +11,7 @@ This section provides practical guides and implementation patterns for building 
 
 For deeper exploration of architectural decisions and internal mechanics, see [Architecture Overview](../architecture/index.md).
 
-NPipeline is designed with a few key concepts at its heart. Understanding these will help you build powerful and efficient data pipelines.
+NPipeline is designed with a few key concepts at its heart. Understanding these will help you build powerful and efficient data streamlines.
 
 ---
 
@@ -23,13 +23,13 @@ Start here to understand the core building blocks of NPipeline.
 | :--- | :--- |
 | **[Pipeline](ipipeline.md)** | The executable instance of a pipeline. It's responsible for running nodes in correct order. |
 | **[Pipeline Context](pipeline-context.md)** | An object that flows through pipeline, carrying shared state, cancellation tokens, and other contextual information. |
-| **[Data Pipes](data-pipes.md)** | The fundamental mechanism for transferring items between nodes, providing type-safe asynchronous streaming. |
+| **[Data Streams](data-streams.md)** | The fundamental mechanism for transferring items between nodes, providing type-safe asynchronous streaming. |
 
 ---
 
 ## 2. Building Pipelines
 
-Learn how to define and construct your data pipelines.
+Learn how to define and construct your data streamlines.
 
 | Concept | Description |
 | :--- | :--- |

@@ -30,16 +30,16 @@ namespace NPipeline.Nodes;
 /// // Round-robin merge of two streams
 /// public class RoundRobinMerge : CustomMergeNode&lt;int&gt;
 /// {
-///     public override async Task&lt;IDataPipe&lt;int&gt;&gt; MergeAsync(
-///         IEnumerable&lt;IDataPipe&gt; pipes,
+///     public override async Task&lt;IDataStream&lt;int&gt;&gt; MergeAsync(
+///         IEnumerable&lt;IDataStream&gt; pipes,
 ///         CancellationToken cancellationToken)
 ///     {
-///         var typedPipes = pipes.Cast&lt;IDataPipe&lt;int&gt;&gt;().ToList();
-///         return new StreamingDataPipe&lt;int&gt;(RoundRobinIterator(typedPipes, cancellationToken));
+///         var typedPipes = pipes.Cast&lt;IDataStream&lt;int&gt;&gt;().ToList();
+///         return new DataStream&lt;int&gt;(RoundRobinIterator(typedPipes, cancellationToken));
 ///     }
 /// 
 ///     private async IAsyncEnumerable&lt;int&gt; RoundRobinIterator(
-///         IList&lt;IDataPipe&lt;int&gt;&gt; pipes,
+///         IList&lt;IDataStream&lt;int&gt;&gt; pipes,
 ///         [EnumeratorCancellation] CancellationToken ct)
 ///     {
 ///         var enumerators = pipes
@@ -81,7 +81,7 @@ public abstract class CustomMergeNode<TIn> : ICustomMergeNode<TIn>, ICustomMerge
     ///     Your implementation should consume from the input pipes and emit a single output pipe.
     ///     The framework will handle disposal of both input and output pipes.
     /// </remarks>
-    public abstract Task<IDataPipe<TIn>> MergeAsync(IEnumerable<IDataPipe> pipes, CancellationToken cancellationToken);
+    public abstract Task<IDataStream<TIn>> MergeAsync(IEnumerable<IDataStream> pipes, CancellationToken cancellationToken);
 
     /// <summary>
     ///     Asynchronously disposes of the node resources.
@@ -99,7 +99,7 @@ public abstract class CustomMergeNode<TIn> : ICustomMergeNode<TIn>, ICustomMerge
     /// <param name="pipes">The input data pipes to merge.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A data pipe containing the merged output stream.</returns>
-    public async Task<IDataPipe> MergeAsyncUntyped(IEnumerable<IDataPipe> pipes, CancellationToken cancellationToken)
+    public async Task<IDataStream> MergeAsyncUntyped(IEnumerable<IDataStream> pipes, CancellationToken cancellationToken)
     {
         return await MergeAsync(pipes, cancellationToken).ConfigureAwait(false);
     }

@@ -6,7 +6,7 @@ using NPipeline.Connectors.DuckDB.Connection;
 using NPipeline.Connectors.DuckDB.Exceptions;
 using NPipeline.Connectors.DuckDB.Mapping;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -141,12 +141,12 @@ public sealed class DuckDBSourceNode<T> : SourceNode<T>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         _configuration.Validate();
 
         var stream = StreamRowsAsync(cancellationToken);
-        return new StreamingDataPipe<T>(stream, $"DuckDBSourceNode<{typeof(T).Name}>");
+        return new DataStream<T>(stream, $"DuckDBSourceNode<{typeof(T).Name}>");
     }
 
     private async IAsyncEnumerable<T> StreamRowsAsync(

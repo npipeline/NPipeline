@@ -7,7 +7,7 @@ using NPipeline.Connectors.Kafka.Models;
 using NPipeline.Connectors.Kafka.Retry;
 using NPipeline.Connectors.Kafka.Serialization;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -86,10 +86,10 @@ public sealed class KafkaSourceNode<T> : SourceNode<KafkaMessage<T>>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<KafkaMessage<T>> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<KafkaMessage<T>> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var stream = ConsumeMessagesAsync(cancellationToken);
-        return new StreamingDataPipe<KafkaMessage<T>>(stream, $"KafkaSourceNode<{typeof(T).Name}>");
+        return new DataStream<KafkaMessage<T>>(stream, $"KafkaSourceNode<{typeof(T).Name}>");
     }
 
     private async IAsyncEnumerable<KafkaMessage<T>> ConsumeMessagesAsync(

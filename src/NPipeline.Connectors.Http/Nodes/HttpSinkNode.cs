@@ -105,8 +105,8 @@ public sealed partial class HttpSinkNode<T> : SinkNode<T>
     }
 
     /// <inheritdoc />
-    public override async Task ExecuteAsync(
-        IDataPipe<T> input,
+    public override async Task ConsumeAsync(
+        IDataStream<T> input,
         PipelineContext context,
         CancellationToken cancellationToken)
     {

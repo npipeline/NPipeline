@@ -159,7 +159,7 @@ var enrichHandle = builder.AddEnrichment<Order>()
 
 // Build and execute
 var pipeline = builder.Build();
-var result = await pipeline.ExecuteAsync();
+await runner.RunAsync<MyPipelineDefinition>();
 ```
 
 ## Common Patterns
@@ -220,7 +220,7 @@ Nodes integrate seamlessly with NPipeline's error handling:
 // Validation errors automatically create exceptions
 try
 {
-    await pipeline.ExecuteAsync();
+    await runner.RunAsync<MyPipelineDefinition>();
 }
 catch (ValidationException ex)
 {

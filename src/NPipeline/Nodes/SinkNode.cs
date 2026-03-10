@@ -13,7 +13,7 @@ namespace NPipeline.Nodes;
 ///         and write it to external systems. Sink nodes are terminal nodes—they produce no output.
 ///     </para>
 ///     <para>
-///         You only need to implement <see cref="ExecuteAsync" />, which receives an <see cref="IDataPipe{TIn}" />
+///         You only need to implement <see cref="ConsumeAsync" />, which receives an <see cref="IDataStream{TIn}" />
 ///         containing all items to process. Iterate using <c>await foreach</c> to consume them.
 ///         The framework handles stream lifecycle and cleanup.
 ///     </para>
@@ -23,8 +23,8 @@ namespace NPipeline.Nodes;
 /// // Sink that writes to console
 /// public class ConsoleSink : SinkNode&lt;string&gt;
 /// {
-///     public override async Task ExecuteAsync(
-///         IDataPipe&lt;string&gt; input,
+///     public override async Task ConsumeAsync(
+///         IDataStream&lt;string&gt; input,
 ///         PipelineContext context,
 ///         CancellationToken cancellationToken)
 ///     {
@@ -42,8 +42,8 @@ namespace NPipeline.Nodes;
 /// 
 ///     public FileSink(string filePath) => _filePath = filePath;
 /// 
-///     public override async Task ExecuteAsync(
-///         IDataPipe&lt;string&gt; input,
+///     public override async Task ConsumeAsync(
+///         IDataStream&lt;string&gt; input,
 ///         PipelineContext context,
 ///         CancellationToken cancellationToken)
 ///     {
@@ -63,8 +63,8 @@ namespace NPipeline.Nodes;
 /// 
 ///     public DatabaseSink(string connectionString) => _connectionString = connectionString;
 /// 
-///     public override async Task ExecuteAsync(
-///         IDataPipe&lt;Product&gt; input,
+///     public override async Task ConsumeAsync(
+///         IDataStream&lt;Product&gt; input,
 ///         PipelineContext context,
 ///         CancellationToken cancellationToken)
 ///     {
@@ -92,7 +92,7 @@ public abstract class SinkNode<TIn> : ISinkNode<TIn>, INodeTypeMetadata
     public Type? OutputType => null;
 
     /// <inheritdoc />
-    public abstract Task ExecuteAsync(IDataPipe<TIn> input, PipelineContext context, CancellationToken cancellationToken);
+    public abstract Task ConsumeAsync(IDataStream<TIn> input, PipelineContext context, CancellationToken cancellationToken);
 
     /// <summary>
     ///     Asynchronously disposes of the node. This can be overridden by derived classes to release resources.

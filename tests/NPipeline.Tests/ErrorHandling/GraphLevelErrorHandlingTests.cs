@@ -49,7 +49,7 @@ public sealed class GraphLevelErrorHandlingTests
     {
         private int _callCount;
 
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             _callCount++;
 

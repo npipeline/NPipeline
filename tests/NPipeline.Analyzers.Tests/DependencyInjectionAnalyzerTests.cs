@@ -28,7 +28,7 @@ public sealed class DependencyInjectionAnalyzerTests
                    {
                        private readonly BadService _badService = new BadService(); // Should trigger diagnostic
 
-                       public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return Task.FromResult(_badService.Process(item));
                        }
@@ -63,7 +63,7 @@ public sealed class DependencyInjectionAnalyzerTests
                    {
                        private readonly BadService _badService = new BadService(); // Should trigger diagnostic
 
-                       public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return Task.FromResult(_badService.Process(item));
                        }
@@ -98,7 +98,7 @@ public sealed class DependencyInjectionAnalyzerTests
                            _service = new BadService(); // Should trigger diagnostic - Static singleton assignment
                        }
 
-                       public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+                       public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
                        {
                            throw new NotImplementedException();
                        }
@@ -134,7 +134,7 @@ public sealed class DependencyInjectionAnalyzerTests
                            _serviceProvider = serviceProvider;
                        }
 
-                       public override Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            var badService = _serviceProvider.GetService(typeof(BadService)) as BadService; // Should trigger diagnostic
                            return Task.CompletedTask;
@@ -159,7 +159,7 @@ public sealed class DependencyInjectionAnalyzerTests
 
                    public class GoodTransformNode : TransformNode<string, string>
                    {
-                       public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            var dto = new TestDto(); // Should NOT trigger diagnostic - DTO instantiation is OK
                            return Task.FromResult(dto.Value);
@@ -195,7 +195,7 @@ public sealed class DependencyInjectionAnalyzerTests
                            _service = service;
                        }
 
-                       public override Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return Task.CompletedTask;
                        }
@@ -258,7 +258,7 @@ public sealed class DependencyInjectionAnalyzerTests
                            _staticService = new BadService(); // Should trigger diagnostic - Static singleton assignment
                        }
 
-                       public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            var serviceProvider = context.Items["ServiceProvider"] as IServiceProvider;
                            var service = serviceProvider.GetService(typeof(BadService)) as BadService; // Should trigger diagnostic - Service locator
@@ -289,7 +289,7 @@ public sealed class DependencyInjectionAnalyzerTests
                    {
                        private readonly BadService _badService = new BadService(); // Should trigger diagnostic
 
-                       public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return Task.FromResult(_badService.Process(item));
                        }
@@ -299,7 +299,7 @@ public sealed class DependencyInjectionAnalyzerTests
                    {
                        private readonly BadService _anotherBadService = new BadService(); // Should trigger diagnostic
 
-                       public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return Task.FromResult(_anotherBadService.Process(item));
                        }

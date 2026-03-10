@@ -40,8 +40,8 @@ public class RealTimeAlertingSink : SinkNode<AlertEvent>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A task representing the completion of the sink operation.</returns>
-    public override async Task ExecuteAsync(
-        IDataPipe<AlertEvent> input,
+    public override async Task ConsumeAsync(
+        IDataStream<AlertEvent> input,
         PipelineContext context,
         CancellationToken cancellationToken)
     {

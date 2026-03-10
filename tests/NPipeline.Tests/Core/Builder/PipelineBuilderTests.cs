@@ -215,7 +215,7 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
     // Test Node Implementations
     private sealed class TestSourceNode : SourceNode<string>
     {
-        public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
@@ -223,7 +223,7 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
 
     private sealed class TestTransformNode : TransformNode<string, int>
     {
-        public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
@@ -231,7 +231,7 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
 
     private sealed class TestSinkNode : SinkNode<int>
     {
-        public override Task ExecuteAsync(IDataPipe<int> input, PipelineContext context,
+        public override Task ConsumeAsync(IDataStream<int> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
@@ -249,15 +249,15 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
 
     private sealed class AutoSourceNode : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new NPipeline.DataFlow.DataPipes.InMemoryDataPipe<int>([1]);
+            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1]);
         }
     }
 
     private sealed class AutoTransformNode : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item);
         }
@@ -265,7 +265,7 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
 
     private sealed class AutoSinkNode : SinkNode<int>
     {
-        public override async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))

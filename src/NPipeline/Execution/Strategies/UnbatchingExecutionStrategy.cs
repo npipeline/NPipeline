@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Pipeline;
@@ -13,14 +13,14 @@ namespace NPipeline.Execution.Strategies;
 public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExecutionStrategy
 {
     /// <inheritdoc />
-    public Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(
-        IDataPipe<TIn> input,
+    public Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(
+        IDataStream<TIn> input,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
         // This strategy is designed to work with UnbatchingNode<T>, where TIn is IEnumerable<TOut>.
-        // Therefore, input IDataPipe<TIn> can be treated as an IAsyncEnumerable<IEnumerable<TOut>>.
+        // Therefore, input IDataStream<TIn> can be treated as an IAsyncEnumerable<IEnumerable<TOut>>.
         if (input is not IAsyncEnumerable<IEnumerable<TOut>> batchedSource)
 
             // This should not happen if the pipeline is configured correctly.
@@ -39,23 +39,23 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
 
         var flattenedSource = FlattenWithObservabilityAsync(batchedSource, observabilityScope, cancellationToken);
 
-        var outputPipe = new StreamingDataPipe<TOut>(flattenedSource, input.StreamName);
+        var outputPipe = new DataStream<TOut>(flattenedSource, input.StreamName);
 
         // Use Task.FromResult for already-completed synchronous result
-        return Task.FromResult<IDataPipe<TOut>>(outputPipe);
+        return Task.FromResult<IDataStream<TOut>>(outputPipe);
     }
 
     /// <summary>
     ///     Executes unbatching strategy for stream transform nodes.
     /// </summary>
-    public Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(
-        IDataPipe<TIn> input,
+    public Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(
+        IDataStream<TIn> input,
         IStreamTransformNode<TIn, TOut> node,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
         // This strategy is designed to work with UnbatchingNode<T>, where TIn is IEnumerable<TOut>.
-        // Therefore, input IDataPipe<TIn> can be treated as an IAsyncEnumerable<IEnumerable<TOut>>.
+        // Therefore, input IDataStream<TIn> can be treated as an IAsyncEnumerable<IEnumerable<TOut>>.
         if (input is not IAsyncEnumerable<IEnumerable<TOut>> batchedSource)
 
             // This should not happen if the pipeline is configured correctly.
@@ -74,10 +74,10 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
 
         var flattenedSource = FlattenWithObservabilityAsync(batchedSource, observabilityScope, cancellationToken);
 
-        var outputPipe = new StreamingDataPipe<TOut>(flattenedSource, input.StreamName);
+        var outputPipe = new DataStream<TOut>(flattenedSource, input.StreamName);
 
         // Use Task.FromResult for already-completed synchronous result
-        return Task.FromResult<IDataPipe<TOut>>(outputPipe);
+        return Task.FromResult<IDataStream<TOut>>(outputPipe);
     }
 
     /// <summary>

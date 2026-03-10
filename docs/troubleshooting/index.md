@@ -52,7 +52,7 @@ class MyPipeline : IPipelineDefinition
 Verify your source node returns data:
 
 ```csharp
-public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
+public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
 {
     static IAsyncEnumerable<T> GetDataAsync(CancellationToken ct)
     {
@@ -69,7 +69,7 @@ public override IDataPipe<T> Initialize(PipelineContext context, CancellationTok
         }
     }
 
-    return new StreamingDataPipe<T>(GetDataAsync(cancellationToken));
+    return new DataStream<T>(GetDataAsync(cancellationToken));
 }
 ```
 
@@ -79,7 +79,7 @@ Ensure transform yields data for each input:
 
 ```csharp
 // BAD - Might not yield for all items
-public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
+public override Task<Item> TransformAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     if (item.IsSpecial)
         return Task.FromResult(item);
@@ -87,7 +87,7 @@ public override Task<Item> ExecuteAsync(Item item, PipelineContext context, Canc
 }
 
 // GOOD - Explicit for all paths
-public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
+public override Task<Item> TransformAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     if (item.IsSpecial)
         return Task.FromResult(Transform(item));
@@ -161,7 +161,7 @@ builder.Connect(source, transform);
 1. **Measure each stage:**
 
 ```csharp
-public override async Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
+public override async Task<Item> TransformAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     var sw = Stopwatch.StartNew();
     try
@@ -184,14 +184,14 @@ public override async Task<Item> ExecuteAsync(Item item, PipelineContext context
 
 ```csharp
 // BAD - Blocking I/O
-public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
+public override Task<Item> TransformAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     var data = database.GetData(item.Id); // Synchronous blocking
     return Task.FromResult(Transform(data));
 }
 
 // GOOD - Async I/O
-public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
+public override Task<Item> TransformAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     var data = await database.GetDataAsync(item.Id, cancellationToken); // Async
     return Task.FromResult(Transform(data));
@@ -237,7 +237,7 @@ async IAsyncEnumerable<Item> ReadAsync()
 
 ```csharp
 // BAD - Connections not disposed
-public override async Task ExecuteAsync(IDataPipe<Item> input, PipelineContext context, CancellationToken cancellationToken)
+public override async Task ConsumeAsync(IDataStream<Item> input, PipelineContext context, CancellationToken cancellationToken)
 {
     var connection = new SqlConnection(_connString);
     await connection.OpenAsync(cancellationToken);
@@ -246,7 +246,7 @@ public override async Task ExecuteAsync(IDataPipe<Item> input, PipelineContext c
 }
 
 // GOOD - Properly disposed
-public override async Task ExecuteAsync(IDataPipe<Item> input, PipelineContext context, CancellationToken cancellationToken)
+public override async Task ConsumeAsync(IDataStream<Item> input, PipelineContext context, CancellationToken cancellationToken)
 {
     using var connection = new SqlConnection(_connString);
     await connection.OpenAsync(cancellationToken);
@@ -259,7 +259,7 @@ public override async Task ExecuteAsync(IDataPipe<Item> input, PipelineContext c
 
 ```csharp
 // BAD - Context grows unbounded
-public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
+public override Task<Item> TransformAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     if (!context.Items.ContainsKey("cache"))
         context.Items["cache"] = new Dictionary<int, Item>();
@@ -270,7 +270,7 @@ public override Task<Item> ExecuteAsync(Item item, PipelineContext context, Canc
 }
 
 // GOOD - Limited cache or external state
-public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
+public override Task<Item> TransformAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     // Use bounded cache or external storage
     _cache.AddOrUpdate(item.Id, item,
@@ -325,7 +325,7 @@ catch (Exception ex)
 
 ```csharp
 // BAD - Ignores cancellation
-public override async Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
+public override async Task<Item> TransformAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     for (int i = 0; i < 1000000; i++)
     {
@@ -335,7 +335,7 @@ public override async Task<Item> ExecuteAsync(Item item, PipelineContext context
 }
 
 // GOOD - Checks cancellation
-public override async Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
+public override async Task<Item> TransformAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     for (int i = 0; i < 1000000; i++)
     {
@@ -388,7 +388,7 @@ private async Task<T> ExecuteWithRetryAsync<T>(
 1. **Add detailed logging:**
 
 ```csharp
-public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
+public override Task<Item> TransformAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     logger.LogDebug($"Input: {JsonSerializer.Serialize(item)}");
     var result = Transform(item);
@@ -407,7 +407,7 @@ public async Task TransformHandlesNullValues()
     var context = new PipelineContext();
 
     var input = new Item { Value = null };
-    var output = await transform.ExecuteAsync(input, context, CancellationToken.None);
+    var output = await transform.TransformAsync(input, context, CancellationToken.None);
 
     Assert.NotNull(output);
     Assert.Null(output.Value);
@@ -424,7 +424,7 @@ public async Task TransformHandlesNullValues()
 
 ```csharp
 // BAD - Implicit filtering
-public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
+public override Task<Item> TransformAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     if (item.IsValid)
         return Task.FromResult(Transform(item));
@@ -432,7 +432,7 @@ public override Task<Item> ExecuteAsync(Item item, PipelineContext context, Canc
 }
 
 // GOOD - Explicit handling
-public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
+public override Task<Item> TransformAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     if (!item.IsValid)
     {
@@ -447,11 +447,11 @@ public override Task<Item> ExecuteAsync(Item item, PipelineContext context, Canc
 
 ```csharp
 // BAD - Only reads first item
-var result = source.Initialize(context, CancellationToken.None);
+var result = source.OpenStream(context, CancellationToken.None);
 var first = (await result.GetAsyncEnumerator().MoveNextAsync()).Current;
 
 // GOOD - Consumes all items
-var result = source.Initialize(context, CancellationToken.None);
+var result = source.OpenStream(context, CancellationToken.None);
 await foreach (var item in result)
 {
     // Process all items
@@ -495,7 +495,7 @@ public class MyTransform : TransformNode<Item, Item>
         _options = options;
     }
 
-    public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<Item> TransformAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
     {
         var timeout = _options.Value.Timeout; // Use injected settings
         return Task.FromResult(item);

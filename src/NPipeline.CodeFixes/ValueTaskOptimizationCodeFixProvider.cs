@@ -88,7 +88,7 @@ public sealed class ValueTaskOptimizationCodeFixProvider : CodeFixProvider
     }
 
     /// <summary>
-    ///     Finds the ExecuteAsync method in the class.
+    ///     Finds the TransformAsync method in the class.
     /// </summary>
     private static MethodDeclarationSyntax? FindExecuteAsyncMethod(
         ClassDeclarationSyntax classDeclaration)
@@ -97,9 +97,9 @@ public sealed class ValueTaskOptimizationCodeFixProvider : CodeFixProvider
         {
             if (member is MethodDeclarationSyntax methodDeclaration)
             {
-                if (methodDeclaration.Identifier.Text == "ExecuteAsync")
+                if (methodDeclaration.Identifier.Text == "TransformAsync")
                 {
-                    // Verify this is the TransformNode ExecuteAsync method with 3 parameters
+                    // Verify this is the TransformNode TransformAsync method with 3 parameters
                     if (methodDeclaration.ParameterList?.Parameters.Count == 3)
                         return methodDeclaration;
                 }
@@ -112,7 +112,7 @@ public sealed class ValueTaskOptimizationCodeFixProvider : CodeFixProvider
     }
 
     /// <summary>
-    ///     Generates an ExecuteValueTaskAsync method based on the existing ExecuteAsync method.
+    ///     Generates an ExecuteValueTaskAsync method based on the existing TransformAsync method.
     /// </summary>
     private static MethodDeclarationSyntax GenerateExecuteValueTaskAsyncMethod(MethodDeclarationSyntax executeAsyncMethod)
     {
@@ -147,7 +147,7 @@ public sealed class ValueTaskOptimizationCodeFixProvider : CodeFixProvider
     }
 
     /// <summary>
-    ///     Generates the body for ExecuteValueTaskAsync based on ExecuteAsync implementation.
+    ///     Generates the body for ExecuteValueTaskAsync based on TransformAsync implementation.
     /// </summary>
     private static BlockSyntax GenerateExecuteValueTaskAsyncBody(MethodDeclarationSyntax executeAsyncMethod)
     {
@@ -167,11 +167,11 @@ public sealed class ValueTaskOptimizationCodeFixProvider : CodeFixProvider
             }
             else
             {
-                // For complex async operations, just call ExecuteAsync and convert to ValueTask
+                // For complex async operations, just call TransformAsync and convert to ValueTask
                 var callExecuteAsync = SyntaxFactory.ExpressionStatement(
                     SyntaxFactory.AwaitExpression(
                         SyntaxFactory.InvocationExpression(
-                            SyntaxFactory.IdentifierName("ExecuteAsync"),
+                            SyntaxFactory.IdentifierName("TransformAsync"),
                             SyntaxFactory.ArgumentList(
                                 SyntaxFactory.SeparatedList(
                                     executeAsyncMethod.ParameterList?.Parameters.Select(p =>

@@ -4,13 +4,13 @@ using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Attributes.Nodes;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
-namespace NPipeline.Tests.DataFlow.DataPipes;
+namespace NPipeline.Tests.DataFlow.DataStreams;
 
 public sealed class MergeStrategyTests
 {
@@ -63,20 +63,20 @@ public sealed class MergeStrategyTests
 
     private sealed class TestSourceNode1 : SourceNode<string>
     {
-        public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             string[] items = ["A1", "A2"];
-            StreamingDataPipe<string> pipe = new(items.ToAsyncEnumerable(), "TestStream1");
+            DataStream<string> pipe = new(items.ToAsyncEnumerable(), "TestStream1");
             return pipe;
         }
     }
 
     private sealed class TestSourceNode2 : SourceNode<string>
     {
-        public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             string[] items = ["B1", "B2"];
-            StreamingDataPipe<string> pipe = new(items.ToAsyncEnumerable(), "TestStream2");
+            DataStream<string> pipe = new(items.ToAsyncEnumerable(), "TestStream2");
             return pipe;
         }
     }
@@ -84,7 +84,7 @@ public sealed class MergeStrategyTests
     [MergeStrategy(MergeType.Concatenate)]
     private sealed class ConcatenateTestSink(ConcurrentQueue<string> store) : SinkNode<string>
     {
-        public override async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))
             {
@@ -95,7 +95,7 @@ public sealed class MergeStrategyTests
 
     private sealed class InterleaveTestSink(ConcurrentQueue<string> store) : SinkNode<string>
     {
-        public override async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))
             {

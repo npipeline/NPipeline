@@ -44,7 +44,7 @@ public class SynchronousFastPathTransform : TransformNode<PerformanceDataItem, P
     /// <summary>
     ///     Processes the performance data item using optimal sync/async paths based on complexity.
     /// </summary>
-    public override async Task<ProcessedPerformanceItem> ExecuteAsync(PerformanceDataItem item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<ProcessedPerformanceItem> TransformAsync(PerformanceDataItem item, PipelineContext context, CancellationToken cancellationToken)
     {
         var memoryBefore = GC.GetTotalMemory(false);
         var stopwatch = Stopwatch.StartNew();

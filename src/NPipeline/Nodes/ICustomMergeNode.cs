@@ -15,6 +15,6 @@ public interface ICustomMergeNode<TIn> : INode
     /// </summary>
     /// <param name="pipes">The collection of input data pipes to merge.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>A task that represents the asynchronous merge operation, resulting in a single <see cref="IDataPipe{T}" />.</returns>
-    Task<IDataPipe<TIn>> MergeAsync(IEnumerable<IDataPipe> pipes, CancellationToken cancellationToken);
+    /// <returns>A task that represents the asynchronous merge operation, resulting in a single <see cref="IDataStream{T}" />.</returns>
+    Task<IDataStream<TIn>> MergeAsync(IEnumerable<IDataStream> pipes, CancellationToken cancellationToken);
 }

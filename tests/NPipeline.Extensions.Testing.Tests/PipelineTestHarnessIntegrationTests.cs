@@ -293,7 +293,7 @@ public sealed class PipelineTestHarnessIntegrationTests
 
     private sealed class ToUpperTransform : TransformNode<string, string>
     {
-        public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item.ToUpperInvariant());
         }
@@ -301,7 +301,7 @@ public sealed class PipelineTestHarnessIntegrationTests
 
     private sealed class MultiplyByTwoTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item * 2);
         }
@@ -309,7 +309,7 @@ public sealed class PipelineTestHarnessIntegrationTests
 
     private sealed class AddOneTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item + 1);
         }
@@ -317,7 +317,7 @@ public sealed class PipelineTestHarnessIntegrationTests
 
     private sealed class AddTenTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item + 10);
         }
@@ -325,7 +325,7 @@ public sealed class PipelineTestHarnessIntegrationTests
 
     private sealed class SubtractOneTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item - 1);
         }
@@ -333,7 +333,7 @@ public sealed class PipelineTestHarnessIntegrationTests
 
     private sealed class FailOnTwoTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             if (item == 2)
                 throw new InvalidOperationException("Intentional failure on item 2");
@@ -344,7 +344,7 @@ public sealed class PipelineTestHarnessIntegrationTests
 
     private sealed class ParameterizedMultiplyTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             if (!context.Parameters.TryGetValue("multiplier", out var multiplierObj) || multiplierObj is not int multiplier)
                 throw new InvalidOperationException("Missing or invalid 'multiplier' parameter");

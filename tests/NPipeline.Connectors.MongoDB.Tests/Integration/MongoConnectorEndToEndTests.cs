@@ -4,7 +4,7 @@ using NPipeline.Connectors.MongoDB.Attributes;
 using NPipeline.Connectors.MongoDB.Configuration;
 using NPipeline.Connectors.MongoDB.Nodes;
 using NPipeline.Connectors.MongoDB.Tests.Fixtures;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Connectors.MongoDB.Tests.Integration;
@@ -47,7 +47,7 @@ public class MongoConnectorEndToEndTests(MongoTestContainerFixture fixture)
     {
         var results = new List<T>();
 
-        await foreach (var item in source.Initialize(ctx ?? new PipelineContext(), CancellationToken.None))
+        await foreach (var item in source.OpenStream(ctx ?? new PipelineContext(), CancellationToken.None))
         {
             results.Add(item);
         }
@@ -157,9 +157,9 @@ public class MongoConnectorEndToEndTests(MongoTestContainerFixture fixture)
             .Select(i => new ProductRecord { Name = $"item{i}", Value = i })
             .ToAsyncEnumerable();
 
-        await using var pipe = new StreamingDataPipe<ProductRecord>(stream, "test");
+        await using var pipe = new DataStream<ProductRecord>(stream, "test");
 
-        await sink.ExecuteAsync(pipe, DefaultContext(), CancellationToken.None);
+        await sink.ConsumeAsync(pipe, DefaultContext(), CancellationToken.None);
 
         (await CountAsync(db, colName)).Should().Be(50);
     }
@@ -190,8 +190,8 @@ public class MongoConnectorEndToEndTests(MongoTestContainerFixture fixture)
         await using var sink = new MongoSinkNode<ProductRecord>(client, snkConfig);
 
         var ctx = DefaultContext();
-        var pipe = source.Initialize(ctx, CancellationToken.None);
-        await sink.ExecuteAsync(pipe, ctx, CancellationToken.None);
+        var pipe = source.OpenStream(ctx, CancellationToken.None);
+        await sink.ConsumeAsync(pipe, ctx, CancellationToken.None);
 
         (await CountAsync(db, sinkCol)).Should().Be(25);
     }
@@ -228,7 +228,7 @@ public class MongoConnectorEndToEndTests(MongoTestContainerFixture fixture)
 
         var count = 0;
 
-        await foreach (var _ in source.Initialize(DefaultContext(), CancellationToken.None))
+        await foreach (var _ in source.OpenStream(DefaultContext(), CancellationToken.None))
         {
             count++;
         }

@@ -57,7 +57,7 @@ public sealed class NotificationTransform : TransformNode<string, string>
         _emailService = emailService;
     }
 
-    public override async Task<string> ExecuteAsync(
+    public override async Task<string> TransformAsync(
         string item,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -156,7 +156,7 @@ using Xunit;
 
 public sealed class ParsingTransform : TransformNode<string, int>
 {
-    public override Task<int> ExecuteAsync(
+    public override Task<int> TransformAsync(
         string item,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -205,7 +205,7 @@ public class ParsingTransformTests
 
 ## Best Practices for Advanced Testing
 
-- **Isolate What You're Testing:** Use mocks and fakes to ensure your test focuses on a single unit of logic (e.g., one node's `ExecuteAsync` method).
+- **Isolate What You're Testing:** Use mocks and fakes to ensure your test focuses on a single unit of logic (e.g., one node's `TransformAsync` or `ConsumeAsync` method).
 - **Test Both Success and Failure:** Don't just test the happy path. Write tests for invalid input, exceptions, cancellations, and other failure modes.
 - **Use `[Theory]` for Parameterized Tests:** For nodes with complex conditional logic, use xUnit's `[Theory]` attribute to test many different inputs and expected outputs concisely.
 - **Keep Tests Fast:** Avoid `Task.Delay`, network calls, or file system access in your unit tests. Rely on mocks to simulate these operations.

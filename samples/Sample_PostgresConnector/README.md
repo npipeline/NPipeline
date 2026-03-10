@@ -376,7 +376,7 @@ var sql = "SELECT customer_id, first_name, last_name, email FROM customers ORDER
 var sourceNode = new PostgresSourceNode<Customer>(connectionString, sql, configuration: config);
 
 var context = new PipelineContext();
-await foreach (var customer in sourceNode.Initialize(context, cancellationToken))
+await foreach (var customer in sourceNode.OpenStream(context, cancellationToken))
 {
     Console.WriteLine($"Customer: {customer.FullName}");
 }
@@ -395,7 +395,7 @@ var config = new PostgresConfiguration
 var sinkNode = new PostgresSinkNode<Customer>(connectionString, "customers_copy", configuration: config);
 var context = new PipelineContext();
 
-await sinkNode.ExecuteAsync(sourceNode.Initialize(context, cancellationToken), context, cancellationToken);
+await sinkNode.ConsumeAsync(sourceNode.OpenStream(context, cancellationToken), context, cancellationToken);
 ```
 
 ### Attribute-Based Mapping

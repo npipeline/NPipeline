@@ -1,4 +1,4 @@
-namespace NPipeline.DataFlow.DataPipes;
+namespace NPipeline.DataFlow.DataStreams;
 
 /// <summary>
 ///     Stats holder used for atomic total item counting.

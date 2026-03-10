@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Execution.Lineage.Strategies;
@@ -412,18 +412,18 @@ public sealed partial class PipelineBuilder
 
         return (transformInput, nodeId, declaredCardinality, options, cancellationToken) =>
         {
-            var typedInput = (IDataPipe<LineagePacket<TIn>>)transformInput;
-            var unwrappedPipe = new StreamingDataPipe<TIn>(UnwrapIterator(typedInput), $"Unwrapped_{typedInput.StreamName}");
+            var typedInput = (IDataStream<LineagePacket<TIn>>)transformInput;
+            var unwrappedPipe = new DataStream<TIn>(UnwrapIterator(typedInput), $"Unwrapped_{typedInput.StreamName}");
             return (unwrappedPipe, RewrapFunc);
 
-            IDataPipe RewrapFunc(IDataPipe outputPipe)
+            IDataStream RewrapFunc(IDataStream outputPipe)
             {
-                var typedOutputPipe = (IDataPipe<TOut>)outputPipe;
+                var typedOutputPipe = (IDataStream<TOut>)outputPipe;
                 var rewrappedStream = RewrapStrategy(typedInput, typedOutputPipe, nodeId, declaredCardinality, options, cancellationToken);
-                return new StreamingDataPipe<LineagePacket<TOut>>(rewrappedStream, $"Rewrapped_{outputPipe.StreamName}");
+                return new DataStream<LineagePacket<TOut>>(rewrappedStream, $"Rewrapped_{outputPipe.StreamName}");
             }
 
-            static async IAsyncEnumerable<TIn> UnwrapIterator(IDataPipe<LineagePacket<TIn>> inputStream)
+            static async IAsyncEnumerable<TIn> UnwrapIterator(IDataStream<LineagePacket<TIn>> inputStream)
             {
                 await foreach (var packet in inputStream.WithCancellation(CancellationToken.None).ConfigureAwait(false))
                 {
@@ -460,12 +460,12 @@ public sealed partial class PipelineBuilder
             var lineageInputType = lineageInput.GetType();
             IAsyncEnumerable<TIn> stream;
 
-            if (lineageInput is IDataPipe<LineagePacket<TIn>> stronglyTyped)
+            if (lineageInput is IDataStream<LineagePacket<TIn>> stronglyTyped)
                 stream = Project(stronglyTyped, ct);
             else
             {
                 var candidateInterface = lineageInputType.GetInterfaces().FirstOrDefault(i =>
-                    i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IDataPipe<>) && i.GetGenericArguments()[0].IsGenericType &&
+                    i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IDataStream<>) && i.GetGenericArguments()[0].IsGenericType &&
                     i.GetGenericArguments()[0].GetGenericTypeDefinition() == typeof(LineagePacket<>));
 
                 if (candidateInterface is not null)
@@ -477,9 +477,9 @@ public sealed partial class PipelineBuilder
                 }
             }
 
-            return new StreamingDataPipe<TIn>(stream, $"Unwrapped_{lineageInput.StreamName}");
+            return new DataStream<TIn>(stream, $"Unwrapped_{lineageInput.StreamName}");
 
-            async IAsyncEnumerable<TIn> Project(IDataPipe<LineagePacket<TIn>> input, [EnumeratorCancellation] CancellationToken token)
+            async IAsyncEnumerable<TIn> Project(IDataStream<LineagePacket<TIn>> input, [EnumeratorCancellation] CancellationToken token)
             {
                 await foreach (var packet in input.WithCancellation(token).ConfigureAwait(false))
                 {
@@ -500,7 +500,7 @@ public sealed partial class PipelineBuilder
                 }
             }
 
-            async IAsyncEnumerable<TIn> ProjectDynamic(IDataPipe dynamicPipe, [EnumeratorCancellation] CancellationToken token)
+            async IAsyncEnumerable<TIn> ProjectDynamic(IDataStream dynamicPipe, [EnumeratorCancellation] CancellationToken token)
             {
                 PropertyInfo? dataProp = null, collectProp = null, lineageIdProp = null, pathProp = null, hopsProp = null;
                 Type? lastObservedType = null;

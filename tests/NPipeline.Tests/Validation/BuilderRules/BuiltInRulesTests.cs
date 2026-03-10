@@ -1,7 +1,7 @@
 using System.Reflection;
 using AwesomeAssertions;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Execution.Strategies;
@@ -98,9 +98,9 @@ public sealed class BuiltInRulesTests
 
     private sealed class IntSource : ISourceNode<int>
     {
-        public IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            IDataPipe<int> pipe = new StreamingDataPipe<int>(Stream());
+            IDataStream<int> pipe = new DataStream<int>(Stream());
 
             return pipe;
 
@@ -123,7 +123,7 @@ public sealed class BuiltInRulesTests
         public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
         public INodeErrorHandler? ErrorHandler { get; set; }
 
-        public Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item.ToString());
         }
@@ -136,7 +136,7 @@ public sealed class BuiltInRulesTests
 
     private sealed class StringSink : ISinkNode<string>
     {
-        public Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+        public Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.CompletedTask;
         }
@@ -150,7 +150,7 @@ public sealed class BuiltInRulesTests
 
     private sealed class BadSink : ISinkNode<int>
     {
-        public Task ExecuteAsync(IDataPipe<int> input, PipelineContext context, CancellationToken cancellationToken)
+        public Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.CompletedTask;
         }

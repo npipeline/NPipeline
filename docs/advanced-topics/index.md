@@ -6,13 +6,13 @@ sidebar_position: 1
 
 # Advanced Topics
 
-This section covers advanced techniques and best practices for building high-performance, production-grade data pipelines with NPipeline.
+This section covers advanced techniques and best practices for building high-performance, production-grade data streamlines with NPipeline.
 
 ## Performance Optimization
 
 ### [Performance Hygiene](./performance-hygiene.md)
 
-Learn best practices for building efficient, low-allocation data pipelines. Covers:
+Learn best practices for building efficient, low-allocation data streamlines. Covers:
 
 - Memory allocation minimization strategies
 - Buffer reuse patterns

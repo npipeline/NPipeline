@@ -134,7 +134,7 @@ public class BadTransformNode : TransformNode<string, string>
 {
     private readonly BadService _badService = new BadService(); // NP9404: Direct instantiation
 
-    public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
     {
         return Task.FromResult(_badService.Process(item));
     }
@@ -161,7 +161,7 @@ public class BadSinkNode : SinkNode<string>
         _serviceProvider = serviceProvider;
     }
 
-    public override async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
     {
         var badService = _serviceProvider.GetService(typeof(BadService)) as BadService; // NP9404: Service locator
         await foreach (var item in input.WithCancellation(cancellationToken))
@@ -185,7 +185,7 @@ public class GoodTransformNode : TransformNode<string, string>
         _badService = badService;
     }
 
-    public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
     {
         return Task.FromResult(_badService.Process(item));
     }
@@ -208,7 +208,7 @@ public class GoodSinkNode : SinkNode<string>
         _repository = repository;
     }
 
-    public override async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {

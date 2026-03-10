@@ -75,8 +75,8 @@ public sealed class ServiceBusTopicSinkNode<T> : SinkNode<T>
     }
 
     /// <inheritdoc />
-    public override async Task ExecuteAsync(
-        IDataPipe<T> input,
+    public override async Task ConsumeAsync(
+        IDataStream<T> input,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
@@ -86,7 +86,7 @@ public sealed class ServiceBusTopicSinkNode<T> : SinkNode<T>
             await ExecuteSequentialAsync(input, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task ExecuteSequentialAsync(IDataPipe<T> input, CancellationToken ct)
+    private async Task ExecuteSequentialAsync(IDataStream<T> input, CancellationToken ct)
     {
         await foreach (var item in input.WithCancellation(ct))
         {
@@ -107,7 +107,7 @@ public sealed class ServiceBusTopicSinkNode<T> : SinkNode<T>
         }
     }
 
-    private async Task ExecuteBatchedAsync(IDataPipe<T> input, CancellationToken ct)
+    private async Task ExecuteBatchedAsync(IDataStream<T> input, CancellationToken ct)
     {
         var batch = new List<(object Body, T OriginalItem)>(_configuration.BatchSize);
 

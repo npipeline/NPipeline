@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.Branching;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
 using NPipeline.Pipeline;
@@ -10,9 +10,9 @@ namespace NPipeline.Execution.Services;
 
 /// <summary>
 ///     Provides wrapping that combines counting and multicasting in a single operation.
-///     This eliminates one layer of DataPipe wrapping compared to wrapping counting and multicasting separately.
+///     This eliminates one layer of DataStream wrapping compared to wrapping counting and multicasting separately.
 /// </summary>
-public sealed class DataPipeWrapperService
+public sealed class DataStreamWrapperService
 {
     // Cache of per-T multicast wrappers (single reflection on miss, zero reflection on hot path).
     private static readonly ConcurrentDictionary<Type, IOptimizedWrapper> WrapperCache = new();
@@ -26,8 +26,8 @@ public sealed class DataPipeWrapperService
     /// <param name="graph">The pipeline graph.</param>
     /// <param name="nodeId">The ID of the current node.</param>
     /// <returns>An optimized data pipe with counting and optional multicasting.</returns>
-    public IDataPipe WrapWithCountingAndBranching(
-        IDataPipe pipe,
+    public IDataStream WrapWithCountingAndBranching(
+        IDataStream pipe,
         StatsCounter counter,
         PipelineContext context,
         PipelineGraph graph,
@@ -66,8 +66,8 @@ public sealed class DataPipeWrapperService
     // Internal wrapper abstraction avoids per-call reflection.
     private interface IOptimizedWrapper
     {
-        IDataPipe WrapPassthrough(IDataPipe pipe, StatsCounter counter, PipelineContext? context);
-        IDataPipe WrapMulticast(IDataPipe pipe, StatsCounter counter, int subscribers, BranchOptions? options, BranchMetrics metrics);
+        IDataStream WrapPassthrough(IDataStream pipe, StatsCounter counter, PipelineContext? context);
+        IDataStream WrapMulticast(IDataStream pipe, StatsCounter counter, int subscribers, BranchOptions? options, BranchMetrics metrics);
 
         static IOptimizedWrapper Create(Type t)
         {
@@ -78,16 +78,16 @@ public sealed class DataPipeWrapperService
 
     private sealed class OptimizedWrapper<T> : IOptimizedWrapper
     {
-        public IDataPipe WrapPassthrough(IDataPipe pipe, StatsCounter counter, PipelineContext? context)
+        public IDataStream WrapPassthrough(IDataStream pipe, StatsCounter counter, PipelineContext? context)
         {
-            var typed = (IDataPipe<T>)pipe;
-            return new CountingPassthroughDataPipe<T>(typed, counter, context);
+            var typed = (IDataStream<T>)pipe;
+            return new CountingPassthroughDataStream<T>(typed, counter, context);
         }
 
-        public IDataPipe WrapMulticast(IDataPipe pipe, StatsCounter counter, int subscribers, BranchOptions? options, BranchMetrics metrics)
+        public IDataStream WrapMulticast(IDataStream pipe, StatsCounter counter, int subscribers, BranchOptions? options, BranchMetrics metrics)
         {
-            var typed = (IDataPipe<T>)pipe;
-            return new CountingMulticastDataPipe<T>(typed, counter, subscribers, options?.PerSubscriberBufferCapacity, metrics);
+            var typed = (IDataStream<T>)pipe;
+            return new CountingMulticastDataStream<T>(typed, counter, subscribers, options?.PerSubscriberBufferCapacity, metrics);
         }
     }
 }

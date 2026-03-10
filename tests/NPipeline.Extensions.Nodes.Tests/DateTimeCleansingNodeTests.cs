@@ -14,7 +14,7 @@ public class DateTimeCleansingNodeTests
 
         var unspecifiedDt = new DateTime(2025, 1, 1, 12, 0, 0);
         var item = new TestObject { DateTime = unspecifiedDt };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(DateTimeKind.Utc, result.DateTime.Kind);
     }
 
@@ -36,7 +36,7 @@ public class DateTimeCleansingNodeTests
 
         var localDt = new DateTime(2025, 1, 1, 12, 0, 0, DateTimeKind.Local);
         var item = new TestObject { DateTime = localDt };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(DateTimeKind.Utc, result.DateTime.Kind);
     }
 
@@ -48,7 +48,7 @@ public class DateTimeCleansingNodeTests
 
         var localDt = new DateTime(2025, 1, 1, 12, 0, 0, DateTimeKind.Local);
         var item = new TestObject { NullableDateTime = localDt };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(DateTimeKind.Utc, result.NullableDateTime!.Value.Kind);
     }
 
@@ -64,7 +64,7 @@ public class DateTimeCleansingNodeTests
 
         var utcDt = new DateTime(2025, 1, 1, 12, 0, 0, DateTimeKind.Utc);
         var item = new TestObject { DateTime = utcDt };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(DateTimeKind.Local, result.DateTime.Kind);
     }
 
@@ -76,7 +76,7 @@ public class DateTimeCleansingNodeTests
 
         var utcDt = new DateTime(2025, 1, 1, 12, 0, 0, DateTimeKind.Utc);
         var item = new TestObject { NullableDateTime = utcDt };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(DateTimeKind.Local, result.NullableDateTime!.Value.Kind);
     }
 
@@ -91,7 +91,7 @@ public class DateTimeCleansingNodeTests
         node.StripTime(x => x.DateTime);
 
         var item = new TestObject { DateTime = new DateTime(2025, 1, 1, 14, 30, 45) };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(0, result.DateTime.Hour);
         Assert.Equal(0, result.DateTime.Minute);
         Assert.Equal(0, result.DateTime.Second);
@@ -104,7 +104,7 @@ public class DateTimeCleansingNodeTests
         node.StripTime(x => x.NullableDateTime);
 
         var item = new TestObject { NullableDateTime = new DateTime(2025, 1, 1, 14, 30, 45) };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(0, result.NullableDateTime!.Value.Hour);
         Assert.Equal(0, result.NullableDateTime!.Value.Minute);
         Assert.Equal(0, result.NullableDateTime!.Value.Second);
@@ -121,7 +121,7 @@ public class DateTimeCleansingNodeTests
         node.Truncate(x => x.DateTime, TimeSpan.FromSeconds(1));
 
         var item = new TestObject { DateTime = new DateTime(2025, 1, 1, 12, 0, 0, 500) };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(0, result.DateTime.Millisecond);
     }
 
@@ -132,7 +132,7 @@ public class DateTimeCleansingNodeTests
         node.Truncate(x => x.NullableDateTime, TimeSpan.FromSeconds(1));
 
         var item = new TestObject { NullableDateTime = new DateTime(2025, 1, 1, 12, 0, 0, 500) };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(0, result.NullableDateTime!.Value.Millisecond);
     }
 
@@ -147,7 +147,7 @@ public class DateTimeCleansingNodeTests
         node.RoundToMinute(x => x.DateTime);
 
         var item = new TestObject { DateTime = new DateTime(2025, 1, 1, 12, 0, 30) };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(1, result.DateTime.Minute);
     }
 
@@ -158,7 +158,7 @@ public class DateTimeCleansingNodeTests
         node.RoundToMinute(x => x.DateTime);
 
         var item = new TestObject { DateTime = new DateTime(2025, 1, 1, 12, 0, 45) };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(1, result.DateTime.Minute);
     }
 
@@ -173,7 +173,7 @@ public class DateTimeCleansingNodeTests
         node.RoundToHour(x => x.DateTime);
 
         var item = new TestObject { DateTime = new DateTime(2025, 1, 1, 12, 30, 0) };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(13, result.DateTime.Hour);
     }
 
@@ -184,7 +184,7 @@ public class DateTimeCleansingNodeTests
         node.RoundToHour(x => x.DateTime);
 
         var item = new TestObject { DateTime = new DateTime(2025, 1, 1, 12, 45, 0) };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(13, result.DateTime.Hour);
     }
 
@@ -199,7 +199,7 @@ public class DateTimeCleansingNodeTests
         node.RoundToDay(x => x.DateTime);
 
         var item = new TestObject { DateTime = new DateTime(2025, 1, 1, 14, 0, 0) };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(2, result.DateTime.Day);
     }
 
@@ -210,7 +210,7 @@ public class DateTimeCleansingNodeTests
         node.RoundToDay(x => x.DateTime);
 
         var item = new TestObject { DateTime = new DateTime(2025, 1, 1, 14, 0, 0) };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(2, result.DateTime.Day);
     }
 
@@ -226,7 +226,7 @@ public class DateTimeCleansingNodeTests
         node.DefaultIfMinValue(x => x.DateTime, defaultDate);
 
         var item = new TestObject { DateTime = DateTime.MinValue };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(defaultDate, result.DateTime);
     }
 
@@ -239,7 +239,7 @@ public class DateTimeCleansingNodeTests
         node.DefaultIfMinValue(x => x.DateTime, defaultDate);
 
         var item = new TestObject { DateTime = originalDate };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(originalDate, result.DateTime);
     }
 
@@ -255,7 +255,7 @@ public class DateTimeCleansingNodeTests
         node.DefaultIfMaxValue(x => x.DateTime, defaultDate);
 
         var item = new TestObject { DateTime = DateTime.MaxValue };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(defaultDate, result.DateTime);
     }
 
@@ -268,7 +268,7 @@ public class DateTimeCleansingNodeTests
         node.DefaultIfMaxValue(x => x.DateTime, defaultDate);
 
         var item = new TestObject { DateTime = originalDate };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(originalDate, result.DateTime);
     }
 
@@ -284,7 +284,7 @@ public class DateTimeCleansingNodeTests
         node.DefaultIfNull(x => x.NullableDateTime, defaultDate);
 
         var item = new TestObject { NullableDateTime = null };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(defaultDate, result.NullableDateTime);
     }
 
@@ -297,7 +297,7 @@ public class DateTimeCleansingNodeTests
         node.DefaultIfNull(x => x.NullableDateTime, originalDate);
 
         var item = new TestObject { NullableDateTime = originalDate };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(originalDate, result.NullableDateTime);
     }
 
@@ -314,7 +314,7 @@ public class DateTimeCleansingNodeTests
             .StripTime(x => x.DateTime);
 
         var item = new TestObject { DateTime = new DateTime(2025, 1, 1, 14, 30, 45) };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal(DateTimeKind.Utc, result.DateTime.Kind);
         Assert.Equal(0, result.DateTime.Hour);
     }
@@ -328,7 +328,7 @@ public class DateTimeCleansingNodeTests
             .RoundToHour(x => x.DateTime);
 
         var item = new TestObject { DateTime = new DateTime(2025, 1, 1, 12, 30, 45) };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
 
         // After both roundings
         Assert.True(result.DateTime.Hour >= 12);

@@ -623,7 +623,7 @@ await using var source = new MongoChangeStreamSourceNode<Order>(
 var context = new PipelineContext();
 using var cts = new CancellationTokenSource();
 
-await foreach (var order in source.Initialize(context, cts.Token))
+await foreach (var order in source.OpenStream(context, cts.Token))
 {
     Console.WriteLine($"Change detected: {order.Id}");
 }
@@ -829,7 +829,7 @@ public class MongoConnectorTests : IAsyncLifetime
 
 ### In-Memory Testing
 
-For unit tests, mock the data pipe directly:
+For unit tests, mock the data stream directly:
 
 ```csharp
 var testData = new List<Order>
@@ -837,8 +837,8 @@ var testData = new List<Order>
     new() { Id = "1", Customer = "Test", Amount = 100m, Status = "pending" }
 };
 
-var dataPipe = new InMemoryDataPipe<Order>(testData);
-await sinkNode.ExecuteAsync(dataPipe, context, CancellationToken.None);
+var dataStream = new InMemoryDataStream<Order>(testData);
+await sinkNode.ConsumeAsync(dataStream, context, CancellationToken.None);
 ```
 
 ## Best Practices

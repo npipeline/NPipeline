@@ -21,7 +21,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
 
                    public class TestTransform : TransformNode<string, int>
                    {
-                       public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return Task.FromResult(item.Length); // Should trigger diagnostic
                        }
@@ -44,7 +44,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
 
                    public class TestTransform : TransformNode<string, int>
                    {
-                       public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            var result = item?.Trim().Length ?? 0;
                            return Task.FromResult(result * 2); // Should trigger diagnostic
@@ -68,7 +68,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
 
                    public class TestTransform : TransformNode<string, string>
                    {
-                       public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return string.IsNullOrEmpty(item) 
                                ? Task.FromResult("empty") // Should trigger diagnostic
@@ -93,7 +93,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
 
                    public class TestTransform : TransformNode<string, int>
                    {
-                       public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return item switch
                            {
@@ -121,7 +121,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
 
                    public class TestTransform : TransformNode<string, int>
                    {
-                       public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return Task<int>.FromResult(item.Length); // Should trigger diagnostic
                        }
@@ -144,7 +144,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
 
                    public class TestTransform : TransformNode<string, int>
                    {
-                       public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return Task.FromResult(item.Length); // Should NOT trigger diagnostic
                        }
@@ -172,7 +172,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
 
                    public class TestTransform : TransformNode<string, int>
                    {
-                       public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return Task.Run(() => item.Length); // Should NOT trigger diagnostic
                        }
@@ -207,7 +207,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
     }
 
     [Fact]
-    public void ShouldNotDetectWhenBothExecuteAsyncAndExecuteValueTaskAsyncAreOverridden()
+    public void ShouldNotDetectWhenBothTransformAsyncAndExecuteValueTaskAsyncAreOverridden()
     {
         var code = """
                    using System.Threading.Tasks;
@@ -216,7 +216,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
 
                    public class TestTransform : TransformNode<string, int>
                    {
-                       public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return Task.FromResult(item.Length); // Should NOT trigger diagnostic
                        }
@@ -231,11 +231,11 @@ public sealed class ValueTaskOptimizationAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         Assert.False(diagnostics.Any(d => d.Id == ValueTaskOptimizationAnalyzer.MissingValueTaskOptimizationId),
-            "Analyzer should not trigger when both ExecuteAsync and ExecuteValueTaskAsync are overridden");
+            "Analyzer should not trigger when both TransformAsync and ExecuteValueTaskAsync are overridden");
     }
 
     [Fact]
-    public void ShouldNotDetectWhenExecuteAsyncUsesAwait()
+    public void ShouldNotDetectWhenTransformAsyncUsesAwait()
     {
         var code = """
                    using System.Threading.Tasks;
@@ -244,7 +244,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
 
                    public class TestTransform : TransformNode<string, int>
                    {
-                       public override async Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override async Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            await Task.Delay(1); // Truly async
                            return item.Length; // Should NOT trigger diagnostic
@@ -255,11 +255,11 @@ public sealed class ValueTaskOptimizationAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         Assert.False(diagnostics.Any(d => d.Id == ValueTaskOptimizationAnalyzer.MissingValueTaskOptimizationId),
-            "Analyzer should not trigger when ExecuteAsync uses await");
+            "Analyzer should not trigger when TransformAsync uses await");
     }
 
     [Fact]
-    public void ShouldDetectWhenExecuteAsyncHasEmptyBodyButUsesTaskFromResult()
+    public void ShouldDetectWhenTransformAsyncHasEmptyBodyButUsesTaskFromResult()
     {
         var code = """
                    using System.Threading.Tasks;
@@ -268,7 +268,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
 
                    public class TestTransform : TransformNode<string, int>
                    {
-                       public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return Task.FromResult(0); // Should trigger diagnostic
                        }
@@ -282,7 +282,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
     }
 
     [Fact]
-    public void ShouldNotDetectWhenExecuteAsyncReturnsNull()
+    public void ShouldNotDetectWhenTransformAsyncReturnsNull()
     {
         var code = """
                    using System.Threading.Tasks;
@@ -291,7 +291,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
 
                    public class TestTransform : TransformNode<string, int>
                    {
-                       public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return null; // Should NOT trigger diagnostic
                        }
@@ -301,11 +301,11 @@ public sealed class ValueTaskOptimizationAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         Assert.False(diagnostics.Any(d => d.Id == ValueTaskOptimizationAnalyzer.MissingValueTaskOptimizationId),
-            "Analyzer should not trigger when ExecuteAsync returns null");
+            "Analyzer should not trigger when TransformAsync returns null");
     }
 
     [Fact]
-    public void ShouldNotDetectWhenExecuteAsyncReturnsCompletedTask()
+    public void ShouldNotDetectWhenTransformAsyncReturnsCompletedTask()
     {
         var code = """
                    using System.Threading.Tasks;
@@ -314,7 +314,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
 
                    public class TestTransform : TransformNode<string, int>
                    {
-                       public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return Task.CompletedTask; // Should NOT trigger diagnostic
                        }
@@ -324,7 +324,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         Assert.False(diagnostics.Any(d => d.Id == ValueTaskOptimizationAnalyzer.MissingValueTaskOptimizationId),
-            "Analyzer should not trigger when ExecuteAsync returns Task.CompletedTask");
+            "Analyzer should not trigger when TransformAsync returns Task.CompletedTask");
     }
 
     [Fact]
@@ -337,7 +337,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
 
                    public class TestTransform : TransformNode<string, int>
                    {
-                       public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            var result1 = Task.FromResult(item.Length); // Should trigger diagnostic
                            var result2 = Task.FromResult(item.Length * 2); // Should trigger diagnostic
@@ -362,7 +362,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
 
                    public class TestTransform : TransformNode<string, int>
                    {
-                       public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return string.IsNullOrEmpty(item) 
                                ? Task.FromResult(0) // Should trigger diagnostic
@@ -388,7 +388,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
 
                    public class TestTransform : TransformNode<string, int>
                    {
-                       public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            Func<int> lambda = () => item.Length;
                            return Task.FromResult(lambda()); // Should trigger diagnostic
@@ -412,7 +412,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
 
                    public class TestTransform : TransformNode<string, int>
                    {
-                       public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            int LocalFunction()
                            {
@@ -430,7 +430,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
     }
 
     [Fact]
-    public void ShouldNotDetectWhenExecuteValueTaskAsyncIsOverriddenButExecuteAsyncStillUsesTaskFromResult()
+    public void ShouldNotDetectWhenExecuteValueTaskAsyncIsOverriddenButTransformAsyncStillUsesTaskFromResult()
     {
         var code = """
                    using System.Threading.Tasks;
@@ -439,7 +439,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
 
                    public class TestTransform : TransformNode<string, int>
                    {
-                       public override Task<int> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
                        {
                            return Task.FromResult(item.Length); // Should NOT trigger diagnostic
                        }
@@ -454,7 +454,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         Assert.False(diagnostics.Any(d => d.Id == ValueTaskOptimizationAnalyzer.MissingValueTaskOptimizationId),
-            "Analyzer should not trigger when ExecuteValueTaskAsync is overridden even if ExecuteAsync uses Task.FromResult");
+            "Analyzer should not trigger when ExecuteValueTaskAsync is overridden even if TransformAsync uses Task.FromResult");
     }
 
     private static IEnumerable<Diagnostic> GetDiagnostics(string code)

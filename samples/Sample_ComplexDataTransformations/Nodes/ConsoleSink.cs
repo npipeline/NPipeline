@@ -20,7 +20,7 @@ public class ConsoleSink : SinkNode<object>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public override async Task ExecuteAsync(IDataPipe<object> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<object> input, PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("ConsoleSink started processing items...");
 

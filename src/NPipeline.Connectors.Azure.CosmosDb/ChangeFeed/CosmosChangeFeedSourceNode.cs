@@ -6,7 +6,7 @@ using Newtonsoft.Json.Linq;
 using NPipeline.Connectors.Azure.CosmosDb.Configuration;
 using NPipeline.Connectors.Azure.CosmosDb.Mapping;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using ChangeFeedStartFrom = Microsoft.Azure.Cosmos.ChangeFeedStartFrom;
@@ -131,10 +131,10 @@ public class CosmosChangeFeedSourceNode<T> : SourceNode<T>, IAsyncDisposable
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A streaming data pipe containing the change feed data.</returns>
-    public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var stream = StreamChangeFeedAsync(cancellationToken);
-        return new StreamingDataPipe<T>(stream, $"{GetType().Name}");
+        return new DataStream<T>(stream, $"{GetType().Name}");
     }
 
     /// <summary>

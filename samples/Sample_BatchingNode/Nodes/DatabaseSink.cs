@@ -35,8 +35,8 @@ public class DatabaseSink : SinkNode<BatchProcessingResult>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task representing the sink execution.</returns>
-    public override async Task ExecuteAsync(
-        IDataPipe<BatchProcessingResult> input,
+    public override async Task ConsumeAsync(
+        IDataStream<BatchProcessingResult> input,
         PipelineContext context,
         CancellationToken cancellationToken)
     {

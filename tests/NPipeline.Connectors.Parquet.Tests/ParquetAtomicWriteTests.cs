@@ -1,5 +1,5 @@
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Models;
@@ -24,11 +24,11 @@ public sealed class ParquetAtomicWriteTests
             var sink = new ParquetSinkNode<TestRecord>(uri, resolver, config);
 
             // Create data that throws after some items
-            var throwingData = new StreamingDataPipe<TestRecord>(
+            var throwingData = new DataStream<TestRecord>(
                 GenerateRecordsWithException(100, 50).ToAsyncEnumerable());
 
             // Act
-            var act = () => sink.ExecuteAsync(
+            var act = () => sink.ConsumeAsync(
                 throwingData,
                 PipelineContext.Default,
                 CancellationToken.None);
@@ -68,14 +68,14 @@ public sealed class ParquetAtomicWriteTests
             var records = GenerateRecords(500).ToList();
 
             // Act
-            await sink.ExecuteAsync(
-                new StreamingDataPipe<TestRecord>(records.ToAsyncEnumerable()),
+            await sink.ConsumeAsync(
+                new DataStream<TestRecord>(records.ToAsyncEnumerable()),
                 PipelineContext.Default,
                 CancellationToken.None);
 
             // Assert - all data should be readable
             var source = new ParquetSourceNode<TestRecord>(uri, resolver);
-            var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
             result.Should().HaveCount(500);
         }
         finally
@@ -117,8 +117,8 @@ public sealed class ParquetAtomicWriteTests
             };
 
             // Act
-            await sink.ExecuteAsync(
-                new StreamingDataPipe<TestRecord>(records.ToAsyncEnumerable()),
+            await sink.ConsumeAsync(
+                new DataStream<TestRecord>(records.ToAsyncEnumerable()),
                 PipelineContext.Default,
                 CancellationToken.None);
 
@@ -127,7 +127,7 @@ public sealed class ParquetAtomicWriteTests
 
             // Should be able to read from final path
             var source = new ParquetSourceNode<TestRecord>(uri, resolver);
-            var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
             result.Should().HaveCount(1);
         }
         finally
@@ -154,8 +154,8 @@ public sealed class ParquetAtomicWriteTests
             var records = new[] { new TestRecord { Id = 1, Name = "Test" } };
 
             // Act
-            await sink.ExecuteAsync(
-                new StreamingDataPipe<TestRecord>(records.ToAsyncEnumerable()),
+            await sink.ConsumeAsync(
+                new DataStream<TestRecord>(records.ToAsyncEnumerable()),
                 PipelineContext.Default,
                 CancellationToken.None);
 
@@ -185,8 +185,8 @@ public sealed class ParquetAtomicWriteTests
             var records = new[] { new TestRecord { Id = 1, Name = "Test" } };
 
             // Act
-            await sink.ExecuteAsync(
-                new StreamingDataPipe<TestRecord>(records.ToAsyncEnumerable()),
+            await sink.ConsumeAsync(
+                new DataStream<TestRecord>(records.ToAsyncEnumerable()),
                 PipelineContext.Default,
                 CancellationToken.None);
 
@@ -195,7 +195,7 @@ public sealed class ParquetAtomicWriteTests
 
             // Should be readable
             var source = new ParquetSourceNode<TestRecord>(uri, resolver);
-            var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
             result.Should().HaveCount(1);
         }
         finally
@@ -225,11 +225,11 @@ public sealed class ParquetAtomicWriteTests
             // Cancel immediately before writing
             cts.Cancel();
 
-            var data = new StreamingDataPipe<TestRecord>(
+            var data = new DataStream<TestRecord>(
                 GenerateRecords(10).ToAsyncEnumerable());
 
             // Act
-            var act = () => sink.ExecuteAsync(
+            var act = () => sink.ConsumeAsync(
                 data,
                 PipelineContext.Default,
                 cts.Token);
@@ -263,11 +263,11 @@ public sealed class ParquetAtomicWriteTests
             // Cancel immediately
             cts.Cancel();
 
-            var data = new StreamingDataPipe<TestRecord>(
+            var data = new DataStream<TestRecord>(
                 GenerateRecords(10).ToAsyncEnumerable());
 
             // Act
-            var act = () => sink.ExecuteAsync(
+            var act = () => sink.ConsumeAsync(
                 data,
                 PipelineContext.Default,
                 cts.Token);

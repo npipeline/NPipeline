@@ -48,7 +48,7 @@ public class ValidationPipeline : IPipelineDefinition
 // ValidatorNode that throws on invalid data
 public class ValidatorNode : TransformNode<Data, Data>
 {
-    public override Task<Data> ExecuteAsync(Data input, PipelineContext context, CancellationToken ct)
+    public override Task<Data> TransformAsync(Data input, PipelineContext context, CancellationToken ct)
     {
         if (!input.IsValid)
         {
@@ -110,7 +110,7 @@ public class ResilientSubPipeline : IPipelineDefinition
 
 public class ResilientTransform : TransformNode<Data, Result>
 {
-    public override async Task<Result> ExecuteAsync(Data input, PipelineContext context, CancellationToken ct)
+    public override async Task<Result> TransformAsync(Data input, PipelineContext context, CancellationToken ct)
     {
         try
         {
@@ -232,7 +232,7 @@ public class HybridSubPipeline : IPipelineDefinition
 
 public class SafeTransform : TransformNode<Data, Data>
 {
-    public override async Task<Data> ExecuteAsync(Data input, PipelineContext context, CancellationToken ct)
+    public override async Task<Data> TransformAsync(Data input, PipelineContext context, CancellationToken ct)
     {
         try
         {
@@ -250,7 +250,7 @@ public class SafeTransform : TransformNode<Data, Data>
 
 public class VerifierTransform : TransformNode<Data, Data>
 {
-    public override Task<Data> ExecuteAsync(Data input, PipelineContext context, CancellationToken ct)
+    public override Task<Data> TransformAsync(Data input, PipelineContext context, CancellationToken ct)
     {
         // Throws on critical errors
         if (input.IsCriticallyInvalid)
@@ -295,7 +295,7 @@ Enrich errors with context:
 ```csharp
 public class ContextEnrichingTransform : TransformNode<Data, Data>
 {
-    public override async Task<Data> ExecuteAsync(Data input, PipelineContext context, CancellationToken ct)
+    public override async Task<Data> TransformAsync(Data input, PipelineContext context, CancellationToken ct)
     {
         try
         {
@@ -405,7 +405,7 @@ catch (OperationCanceledException)
 ```csharp
 public class CancellableTransform : TransformNode<Data, Data>
 {
-    public override async Task<Data> ExecuteAsync(Data input, PipelineContext context, CancellationToken ct)
+    public override async Task<Data> TransformAsync(Data input, PipelineContext context, CancellationToken ct)
     {
         // Check cancellation before expensive operation
         ct.ThrowIfCancellationRequested();
@@ -428,7 +428,7 @@ Don't catch errors you can't handle:
 
 ```csharp
 ✅ Good: Let critical errors propagate
-public override Task<Data> ExecuteAsync(Data input, PipelineContext context, CancellationToken ct)
+public override Task<Data> TransformAsync(Data input, PipelineContext context, CancellationToken ct)
 {
     // Let critical errors propagate
     ValidateCritical(input);
@@ -445,7 +445,7 @@ public override Task<Data> ExecuteAsync(Data input, PipelineContext context, Can
 }
 
 ❌ Bad: Catch everything
-public override Task<Data> ExecuteAsync(Data input, PipelineContext context, CancellationToken ct)
+public override Task<Data> TransformAsync(Data input, PipelineContext context, CancellationToken ct)
 {
     try
     {
@@ -487,7 +487,7 @@ public class LoggingTransform : TransformNode<Data, Data>
         _logger = logger;
     }
     
-    public override async Task<Data> ExecuteAsync(Data input, PipelineContext context, CancellationToken ct)
+    public override async Task<Data> TransformAsync(Data input, PipelineContext context, CancellationToken ct)
     {
         try
         {

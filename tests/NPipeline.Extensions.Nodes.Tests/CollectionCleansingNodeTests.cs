@@ -15,7 +15,7 @@ public class CollectionCleansingNodeTests
         node.RemoveWhitespace(x => x.Items);
 
         var item = new TestObject { Items = ["a", "   ", "b", "\t", "c"] };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.NotNull(result.Items);
         Assert.Equal(3, result.Items.Count());
     }
@@ -31,7 +31,7 @@ public class CollectionCleansingNodeTests
         node.Reverse(x => x.Numbers);
 
         var item = new TestObject { Numbers = [1, 2, 3, 4, 5] };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.NotNull(result.Numbers);
         var resultList = result.Numbers.ToList();
         Assert.Equal(5, resultList[0]);
@@ -56,7 +56,7 @@ public class CollectionCleansingNodeTests
         node.RemoveNulls(x => x.Items);
 
         var item = new TestObject { Items = ["a", null, "b", null, "c"] };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.NotNull(result.Items);
         Assert.Equal(3, result.Items.Where(x => x != null).Count());
     }
@@ -68,7 +68,7 @@ public class CollectionCleansingNodeTests
         node.RemoveNulls(x => x.Items);
 
         var item = new TestObject { Items = ["a", "b", "c"] };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.NotNull(result.Items);
         Assert.Equal(3, result.Items.Count());
     }
@@ -84,7 +84,7 @@ public class CollectionCleansingNodeTests
         node.RemoveDuplicates(x => x.Items);
 
         var item = new TestObject { Items = ["a", "b", "a", "c", "b"] };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.NotNull(result.Items);
         var resultList = result.Items.OfType<string>().ToList();
         Assert.Equal(3, resultList.Count);
@@ -100,7 +100,7 @@ public class CollectionCleansingNodeTests
         node.RemoveDuplicates(x => x.Items);
 
         var item = new TestObject { Items = ["a", "b", "c"] };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.NotNull(result.Items);
         Assert.Equal(3, result.Items.Count());
     }
@@ -116,7 +116,7 @@ public class CollectionCleansingNodeTests
         node.RemoveEmpty(x => x.Items);
 
         var item = new TestObject { Items = ["a", "", "b", "", "c"] };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.NotNull(result.Items);
         Assert.Equal(3, result.Items.OfType<string>().Count());
     }
@@ -128,7 +128,7 @@ public class CollectionCleansingNodeTests
         node.RemoveEmpty(x => x.Items);
 
         var item = new TestObject { Items = ["a", "b", "c"] };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.NotNull(result.Items);
         Assert.Equal(3, result.Items.Count());
     }
@@ -144,7 +144,7 @@ public class CollectionCleansingNodeTests
         node.Sort(x => x.Numbers);
 
         var item = new TestObject { Numbers = [3, 1, 4, 1, 5, 9] };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.NotNull(result.Numbers);
         var resultList = result.Numbers.ToList();
         Assert.True(resultList[0] <= resultList[1] && resultList[1] <= resultList[2]);
@@ -157,7 +157,7 @@ public class CollectionCleansingNodeTests
         node.Sort(x => x.NonNullableItems);
 
         var item = new TestObject { NonNullableItems = ["c", "a", "b"] };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.NotNull(result.NonNullableItems);
         var resultList = result.NonNullableItems.ToList();
         Assert.True(resultList[0] == "a" && resultList[1] == "b" && resultList[2] == "c");
@@ -174,7 +174,7 @@ public class CollectionCleansingNodeTests
         node.Take(x => x.Numbers, 3);
 
         var item = new TestObject { Numbers = [1, 2, 3, 4, 5] };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.NotNull(result.Numbers);
         Assert.Equal(3, result.Numbers.Count());
     }
@@ -186,7 +186,7 @@ public class CollectionCleansingNodeTests
         node.Take(x => x.Numbers, 10);
 
         var item = new TestObject { Numbers = [1, 2, 3] };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.NotNull(result.Numbers);
         Assert.Equal(3, result.Numbers.Count());
     }
@@ -202,7 +202,7 @@ public class CollectionCleansingNodeTests
         node.Skip(x => x.Numbers, 2);
 
         var item = new TestObject { Numbers = [1, 2, 3, 4, 5] };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.NotNull(result.Numbers);
         Assert.Equal(3, result.Numbers.Count());
         var resultList = result.Numbers.ToList();
@@ -216,7 +216,7 @@ public class CollectionCleansingNodeTests
         node.Skip(x => x.Numbers, 10);
 
         var item = new TestObject { Numbers = [1, 2, 3] };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.NotNull(result.Numbers);
         Assert.Empty(result.Numbers);
     }

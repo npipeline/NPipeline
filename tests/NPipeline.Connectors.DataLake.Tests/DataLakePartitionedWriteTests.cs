@@ -3,7 +3,7 @@ using NPipeline.Connectors.DataLake.Partitioning;
 using NPipeline.Connectors.Parquet;
 using NPipeline.Connectors.Parquet.Attributes;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Abstractions;
@@ -51,7 +51,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         // Act
         await using (var writer = new DataLakeTableWriter<OrderRecord>(_provider, _tableUri, spec))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<OrderRecord>(records), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<OrderRecord>(records), CancellationToken.None);
         }
 
         // Assert — no partition subdirectories created; file is at root or directly in tableUri path
@@ -62,7 +62,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
 
         // Readable via DataLakeTableSourceNode
         var source = new DataLakeTableSourceNode<OrderRecord>(_provider, _tableUri);
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
         result.Should().HaveCount(50);
     }
 
@@ -79,7 +79,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
 
         // Act
         await using var writer = new DataLakeTableWriter<OrderRecord>(_provider, _tableUri, spec);
-        await writer.AppendAsync(new InMemoryDataPipe<OrderRecord>(records), CancellationToken.None);
+        await writer.AppendAsync(new InMemoryDataStream<OrderRecord>(records), CancellationToken.None);
 
         // Assert — directory follows event_date=yyyy-MM-dd pattern
         var expectedDir = Path.Combine(_tempDir, "event_date=2025-03-10");
@@ -101,12 +101,12 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         // Act
         await using (var writer = new DataLakeTableWriter<OrderRecord>(_provider, _tableUri, spec))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<OrderRecord>(records), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<OrderRecord>(records), CancellationToken.None);
         }
 
         // Read back
         var source = new DataLakeTableSourceNode<OrderRecord>(_provider, _tableUri);
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         result.Should().HaveCount(100);
         result.Should().AllSatisfy(r => r.EventDate.Should().Be(new DateOnly(2025, 3, 10)));
@@ -122,7 +122,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         // Act
         await using (var writer = new DataLakeTableWriter<OrderRecord>(_provider, _tableUri, spec))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<OrderRecord>(records), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<OrderRecord>(records), CancellationToken.None);
         }
 
         // Assert manifest
@@ -164,7 +164,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
 
         // Act
         await using var writer = new DataLakeTableWriter<OrderRecord>(_provider, _tableUri, spec);
-        await writer.AppendAsync(new InMemoryDataPipe<OrderRecord>(records), CancellationToken.None);
+        await writer.AppendAsync(new InMemoryDataStream<OrderRecord>(records), CancellationToken.None);
 
         // Assert all three nested combinations exist
         Directory.Exists(Path.Combine(_tempDir, "event_date=2025-01-15", "region=EU"))
@@ -195,7 +195,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
 
         // Act
         await using var writer = new DataLakeTableWriter<DetailedRecord>(_provider, _tableUri, spec);
-        await writer.AppendAsync(new InMemoryDataPipe<DetailedRecord>(records), CancellationToken.None);
+        await writer.AppendAsync(new InMemoryDataStream<DetailedRecord>(records), CancellationToken.None);
 
         // Assert
         Directory.Exists(Path.Combine(_tempDir, "year=2025", "month=1", "region=EU")).Should().BeTrue();
@@ -215,12 +215,12 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         // Act
         await using (var writer = new DataLakeTableWriter<OrderRecord>(_provider, _tableUri, spec))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<OrderRecord>(combined), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<OrderRecord>(combined), CancellationToken.None);
         }
 
         // Read back and verify partitioning
         var source = new DataLakeTableSourceNode<OrderRecord>(_provider, _tableUri);
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         result.Count(r => r.Region == "EU").Should().Be(30);
         result.Count(r => r.Region == "US").Should().Be(20);
@@ -242,7 +242,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         // Act
         await using (var writer = new DataLakeTableWriter<OrderRecord>(_provider, _tableUri, spec))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<OrderRecord>(records), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<OrderRecord>(records), CancellationToken.None);
         }
 
         // Assert — one manifest entry per partition
@@ -310,7 +310,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         // Act
         await using (var writer = new DataLakeTableWriter<OrderRecord>(_provider, _tableUri, spec))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<OrderRecord>(records), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<OrderRecord>(records), CancellationToken.None);
         }
 
         // Assert — files follow part-NNNNN-xxxxxxxx.parquet convention
@@ -357,12 +357,12 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         // Act — should complete without OOM or unbounded accumulation
         await using (var writer = new DataLakeTableWriter<OrderRecord>(_provider, _tableUri, spec, config))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<OrderRecord>(records), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<OrderRecord>(records), CancellationToken.None);
         }
 
         // Assert — all rows were written
         var source = new DataLakeTableSourceNode<OrderRecord>(_provider, _tableUri);
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         result.Should().HaveCount(distinctRegions * rowsPerRegion,
             "all rows across all partitions must be persisted even under buffer pressure");
@@ -382,7 +382,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         // Act
         await using (var writer = new DataLakeTableWriter<OrderRecord>(_provider, _tableUri, spec))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<OrderRecord>(records), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<OrderRecord>(records), CancellationToken.None);
         }
 
         // Assert — each region has its own directory
@@ -412,12 +412,12 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         // Act
         await using (var writer = new DataLakeTableWriter<OrderRecord>(_provider, _tableUri, spec, config))
         {
-            await writer.AppendAsync(new InMemoryDataPipe<OrderRecord>(records), CancellationToken.None);
+            await writer.AppendAsync(new InMemoryDataStream<OrderRecord>(records), CancellationToken.None);
         }
 
         // Assert — all records recoverable
         var source = new DataLakeTableSourceNode<OrderRecord>(_provider, _tableUri);
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         result.Should().HaveCount(90);
 
@@ -450,8 +450,8 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
             _tableUri, spec, resolver);
 
         // Act
-        await sink.ExecuteAsync(
-            new InMemoryDataPipe<OrderRecord>(records),
+        await sink.ConsumeAsync(
+            new InMemoryDataStream<OrderRecord>(records),
             PipelineContext.Default,
             CancellationToken.None);
 
@@ -471,8 +471,8 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
             _provider, _tableUri, spec);
 
         // Act
-        await sink.ExecuteAsync(
-            new InMemoryDataPipe<OrderRecord>(records),
+        await sink.ConsumeAsync(
+            new InMemoryDataStream<OrderRecord>(records),
             PipelineContext.Default,
             CancellationToken.None);
 

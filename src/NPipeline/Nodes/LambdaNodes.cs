@@ -1,5 +1,5 @@
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Nodes;
@@ -49,7 +49,7 @@ public sealed class LambdaTransformNode<TIn, TOut>(Func<TIn, TOut> transform) : 
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task containing the transformed item.</returns>
-    public override Task<TOut> ExecuteAsync(TIn input, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<TOut> TransformAsync(TIn input, PipelineContext context, CancellationToken cancellationToken)
     {
         return Task.FromResult(_transform(input));
     }
@@ -113,7 +113,7 @@ public sealed class AsyncLambdaTransformNode<TIn, TOut>(
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous transformation.</returns>
-    public override async Task<TOut> ExecuteAsync(TIn input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<TOut> TransformAsync(TIn input, PipelineContext context, CancellationToken cancellationToken)
     {
         return await _transform(input, cancellationToken);
     }
@@ -207,10 +207,10 @@ public sealed class LambdaSourceNode<TOut> : SourceNode<TOut>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A data pipe containing all items produced by the factory.</returns>
-    public override IDataPipe<TOut> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<TOut> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var items = _factory(cancellationToken);
-        return new StreamingDataPipe<TOut>(items);
+        return new DataStream<TOut>(items);
     }
 }
 
@@ -292,7 +292,7 @@ public sealed class LambdaSinkNode<TIn> : SinkNode<TIn>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous sink operation.</returns>
-    public override async Task ExecuteAsync(IDataPipe<TIn> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<TIn> input, PipelineContext context, CancellationToken cancellationToken)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {

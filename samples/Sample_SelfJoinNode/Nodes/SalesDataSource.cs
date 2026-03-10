@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using Microsoft.Extensions.Logging;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -40,7 +40,7 @@ public class SalesDataSource : SourceNode<SalesData>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<SalesData> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<SalesData> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         _logger?.LogInformation("SalesDataSource: Generating sales data from {StartYear} to {EndYear}", _startYear, _endYear);
 
@@ -108,6 +108,6 @@ public class SalesDataSource : SourceNode<SalesData>
 
         _logger?.LogInformation("SalesDataSource: Generated {Count} sales records", salesData.Count);
 
-        return new InMemoryDataPipe<SalesData>(salesData, "SalesDataSource");
+        return new InMemoryDataStream<SalesData>(salesData, "SalesDataSource");
     }
 }

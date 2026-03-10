@@ -172,14 +172,14 @@ public sealed class JsonConfigurationTests : IDisposable
         var arrayConfig = new JsonConfiguration { Format = JsonFormat.Array };
         var arrayUri = StorageUri.FromFilePath(arrayFile);
         var arrayNode = new JsonSourceNode<TestPerson>(_provider, arrayUri, arrayConfig);
-        var arrayPipe = arrayNode.Initialize(_context, CancellationToken.None);
+        var arrayPipe = arrayNode.OpenStream(_context, CancellationToken.None);
         var arrayResults = await arrayPipe.ToListAsync(CancellationToken.None);
 
         // Read as NDJSON
         var ndjsonConfig = new JsonConfiguration { Format = JsonFormat.NewlineDelimited };
         var ndjsonUri = StorageUri.FromFilePath(ndjsonFile);
         var ndjsonNode = new JsonSourceNode<TestPerson>(_provider, ndjsonUri, ndjsonConfig);
-        var ndjsonPipe = ndjsonNode.Initialize(_context, CancellationToken.None);
+        var ndjsonPipe = ndjsonNode.OpenStream(_context, CancellationToken.None);
         var ndjsonResults = await ndjsonPipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -203,7 +203,7 @@ public sealed class JsonConfigurationTests : IDisposable
 
         var uri = StorageUri.FromFilePath(snakeCaseFile);
         var node = new JsonSourceNode<SnakeCasePerson>(_provider, uri, config);
-        var pipe = node.Initialize(_context, CancellationToken.None);
+        var pipe = node.OpenStream(_context, CancellationToken.None);
         var results = await pipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -234,11 +234,11 @@ public sealed class JsonConfigurationTests : IDisposable
         var uri = StorageUri.FromFilePath(file);
 
         var smallBufferNode = new JsonSourceNode<TestPerson>(_provider, uri, smallBufferConfig);
-        var smallBufferPipe = smallBufferNode.Initialize(_context, CancellationToken.None);
+        var smallBufferPipe = smallBufferNode.OpenStream(_context, CancellationToken.None);
         var smallBufferResults = await smallBufferPipe.ToListAsync(CancellationToken.None);
 
         var largeBufferNode = new JsonSourceNode<TestPerson>(_provider, uri, largeBufferConfig);
-        var largeBufferPipe = largeBufferNode.Initialize(_context, CancellationToken.None);
+        var largeBufferPipe = largeBufferNode.OpenStream(_context, CancellationToken.None);
         var largeBufferResults = await largeBufferPipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -265,7 +265,7 @@ public sealed class JsonConfigurationTests : IDisposable
         var sourceConfig = new JsonConfiguration { Format = JsonFormat.Array };
         var sourceUri = StorageUri.FromFilePath(inputFile);
         var sourceNode = new JsonSourceNode<TestPerson>(_provider, sourceUri, sourceConfig);
-        var sourcePipe = sourceNode.Initialize(_context, CancellationToken.None);
+        var sourcePipe = sourceNode.OpenStream(_context, CancellationToken.None);
 
         var sinkConfig = new JsonConfiguration
         {
@@ -275,7 +275,7 @@ public sealed class JsonConfigurationTests : IDisposable
 
         var sinkUri = StorageUri.FromFilePath(outputFile);
         var sinkNode = new JsonSinkNode<TestPerson>(_provider, sinkUri, sinkConfig);
-        await sinkNode.ExecuteAsync(sourcePipe, _context, CancellationToken.None);
+        await sinkNode.ConsumeAsync(sourcePipe, _context, CancellationToken.None);
 
         var outputContent = await File.ReadAllTextAsync(outputFile);
 
@@ -300,7 +300,7 @@ public sealed class JsonConfigurationTests : IDisposable
 
         var uri = StorageUri.FromFilePath(file);
         var node = new JsonSourceNode<TestPerson>(_provider, uri, config);
-        var pipe = node.Initialize(_context, CancellationToken.None);
+        var pipe = node.OpenStream(_context, CancellationToken.None);
         var results = await pipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -334,7 +334,7 @@ public sealed class JsonConfigurationTests : IDisposable
 
         var sourceUri = StorageUri.FromFilePath(inputFile);
         var sourceNode = new JsonSourceNode<TestPerson>(_provider, sourceUri, sourceConfig);
-        var sourcePipe = sourceNode.Initialize(_context, CancellationToken.None);
+        var sourcePipe = sourceNode.OpenStream(_context, CancellationToken.None);
 
         var sinkConfig = new JsonConfiguration
         {
@@ -345,11 +345,11 @@ public sealed class JsonConfigurationTests : IDisposable
 
         var sinkUri = StorageUri.FromFilePath(outputFile);
         var sinkNode = new JsonSinkNode<TestPerson>(_provider, sinkUri, sinkConfig);
-        await sinkNode.ExecuteAsync(sourcePipe, _context, CancellationToken.None);
+        await sinkNode.ConsumeAsync(sourcePipe, _context, CancellationToken.None);
 
         // Read back
         var outputSourceNode = new JsonSourceNode<TestPerson>(_provider, sinkUri, sourceConfig);
-        var outputPipe = outputSourceNode.Initialize(_context, CancellationToken.None);
+        var outputPipe = outputSourceNode.OpenStream(_context, CancellationToken.None);
         var outputData = await outputPipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -382,7 +382,7 @@ public sealed class JsonConfigurationTests : IDisposable
         var config = new JsonConfiguration { Format = JsonFormat.Array, BufferSize = bufferSize };
         var uri = StorageUri.FromFilePath(file);
         var node = new JsonSourceNode<TestPerson>(_provider, uri, config);
-        var pipe = node.Initialize(_context, CancellationToken.None);
+        var pipe = node.OpenStream(_context, CancellationToken.None);
         var results = await pipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -400,7 +400,7 @@ public sealed class JsonConfigurationTests : IDisposable
         var config = new JsonConfiguration { Format = JsonFormat.NewlineDelimited };
         var uri = StorageUri.FromFilePath(file);
         var node = new JsonSourceNode<TestPerson>(_provider, uri, config);
-        var pipe = node.Initialize(_context, CancellationToken.None);
+        var pipe = node.OpenStream(_context, CancellationToken.None);
         var results = await pipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -421,7 +421,7 @@ public sealed class JsonConfigurationTests : IDisposable
         var config = new JsonConfiguration { Format = JsonFormat.Array };
         var uri = StorageUri.FromFilePath(file);
         var node = new JsonSourceNode<TestPerson>(_provider, uri, config);
-        var pipe = node.Initialize(_context, CancellationToken.None);
+        var pipe = node.OpenStream(_context, CancellationToken.None);
         var results = await pipe.ToListAsync(CancellationToken.None);
 
         // Assert

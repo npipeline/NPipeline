@@ -25,15 +25,15 @@ public sealed class ResilienceIdempotencyTests
 
     private sealed class Src : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new InMemoryDataPipe<int>(new[] { 1 }.ToList(), "s");
+            return new InMemoryDataStream<int>(new[] { 1 }.ToList(), "s");
         }
     }
 
     private sealed class T : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item);
         }
@@ -41,7 +41,7 @@ public sealed class ResilienceIdempotencyTests
 
     private sealed class Sink : SinkNode<int>
     {
-        public override Task ExecuteAsync(IDataPipe<int> input, PipelineContext context,
+        public override Task ConsumeAsync(IDataStream<int> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             return Task.CompletedTask;

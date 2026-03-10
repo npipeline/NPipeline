@@ -1,5 +1,5 @@
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -31,7 +31,7 @@ public class OrderCustomerJoinNode : SourceNode<EnrichedOrder>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing enriched orders.</returns>
-    public override IDataPipe<EnrichedOrder> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<EnrichedOrder> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine($"[OrderCustomerJoinNode] Joining {_orders.Length} orders with {_customers.Length} customers...");
 
@@ -61,7 +61,7 @@ public class OrderCustomerJoinNode : SourceNode<EnrichedOrder>
         }
 
         Console.WriteLine($"[OrderCustomerJoinNode] Created {enrichedOrders.Count} enriched orders");
-        return new InMemoryDataPipe<EnrichedOrder>(enrichedOrders, "OrderCustomerJoinNode");
+        return new InMemoryDataStream<EnrichedOrder>(enrichedOrders, "OrderCustomerJoinNode");
     }
 
     /// <summary>

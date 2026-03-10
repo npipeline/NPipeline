@@ -217,7 +217,7 @@ Implement custom nodes for specialized data transfer:
 ```csharp
 public class CustomPipelineInputSource<T> : ISourceNode<T>
 {
-    public IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         // Custom input retrieval logic
     }
@@ -225,7 +225,7 @@ public class CustomPipelineInputSource<T> : ISourceNode<T>
 
 public class CustomPipelineOutputSink<T> : ISinkNode<T>
 {
-    public async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
+    public async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
         // Custom output capture logic
     }

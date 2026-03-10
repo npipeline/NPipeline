@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Nodes;
@@ -19,7 +19,7 @@ namespace NPipeline.Execution.Strategies;
 ///     <para>
 ///         Performance considerations:
 ///         - Materializes streaming inputs only when necessary for resilience
-///         - Uses CappedReplayableDataPipe for efficient restart support
+///         - Uses CappedReplayableDataStream for efficient restart support
 ///         - Implements circuit breaker pattern to prevent cascading failures
 ///         - Provides configurable retry limits with exponential backoff
 ///     </para>
@@ -103,7 +103,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
     ///         - Mitigation: Configurable caps limit memory usage
     ///     </para>
     /// </remarks>
-    public async Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(IDataPipe<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context,
+    public async Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(IDataStream<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context,
         CancellationToken cancellationToken)
     {
         // Create a resilience activity to track and tag resilience-related telemetry
@@ -131,7 +131,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         }
 
         // Check for streaming inputs without materialization
-        if (input is IStreamingDataPipe && effectiveRetries.MaxMaterializedItems is null or <= 0)
+        if (input is IForwardOnlyDataStream && effectiveRetries.MaxMaterializedItems is null or <= 0)
         {
             throw new InvalidOperationException(
                 $"Node '{context.CurrentNodeId}' has streaming inputs but MaxMaterializedItems is {effectiveRetries.MaxMaterializedItems} (must be > 0). " +
@@ -142,13 +142,13 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
 
         // If the input is a streaming pipe, we must materialize it to support restarts.
         // This is a performance trade-off for resiliency.
-        if (input is IStreamingDataPipe)
+        if (input is IForwardOnlyDataStream)
         {
             var cap = effectiveRetries.MaxMaterializedItems;
 
             // Always wrap in replayable pipe so restarts re-enumerate buffered items. Cap enforced when specified.
 #pragma warning disable CA2000 // Ownership transferred to PipelineContext via RegisterForDisposal
-            var replay = new CappedReplayableDataPipe<TIn>(input, cap, cap is not null
+            var replay = new CappedReplayableDataStream<TIn>(input, cap, cap is not null
                 ? input.StreamName + ":capped"
                 : input.StreamName + ":replay");
 #pragma warning restore CA2000
@@ -168,11 +168,11 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                         break; // enforcement done by pipe; break early once exceeded triggers exception.
 
                     // Reset enumerator by creating a new replay pipe over the same underlying source buffer.
-                    // Since CappedReplayableDataPipe stores buffered items internally, we can reuse it directly (subsequent enumeration will replay buffer).
+                    // Since CappedReplayableDataStream stores buffered items internally, we can reuse it directly (subsequent enumeration will replay buffer).
                 }
 
                 // Reset enumerator by creating a new replay pipe over the same underlying source buffer.
-                // Since CappedReplayableDataPipe stores buffered items internally, we can reuse it directly (subsequent enumeration will replay buffer).
+                // Since CappedReplayableDataStream stores buffered items internally, we can reuse it directly (subsequent enumeration will replay buffer).
             }
 
             input = replay;
@@ -180,7 +180,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
 
         // The streamFactory is a function that can be called to regenerate the source stream.
         // This is necessary for RestartNode decision.
-        Task<IDataPipe<TOut>> StreamFactory()
+        Task<IDataStream<TOut>> StreamFactory()
         {
             return innerStrategy.ExecuteAsync(input, node, context, cancellationToken);
         }
@@ -191,7 +191,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         var effectiveAtCreation = RetryOptionsResolver.Resolve(context, creationNodeId);
 
         var resilientStream = CreateResilientStream<TIn, TOut>(StreamFactory, context, creationNodeId, effectiveAtCreation, cancellationToken);
-        var pipe = new StreamingDataPipe<TOut>(resilientStream);
+        var pipe = new DataStream<TOut>(resilientStream);
         context.RegisterForDisposal(pipe);
         return pipe;
     }
@@ -225,7 +225,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
     ///         - Early exit conditions to avoid unnecessary processing
     ///     </para>
     /// </remarks>
-    private static async IAsyncEnumerable<TOut> CreateResilientStream<TIn, TOut>(Func<Task<IDataPipe<TOut>>> streamFactory, PipelineContext context,
+    private static async IAsyncEnumerable<TOut> CreateResilientStream<TIn, TOut>(Func<Task<IDataStream<TOut>>> streamFactory, PipelineContext context,
         string creationNodeId, PipelineRetryOptions capturedRetryOptions, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var logger = context.LoggerFactory.CreateLogger(nameof(ResilientExecutionStrategy));

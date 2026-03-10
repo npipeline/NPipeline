@@ -14,5 +14,5 @@ public interface IMergeStrategy<T>
     /// <param name="pipes">The data pipes to merge.</param>
     /// <param name="cancellationToken">Cancellation token for the operation.</param>
     /// <returns>A merged data pipe containing all items from the input pipes.</returns>
-    IDataPipe<T> Merge(IEnumerable<IDataPipe<T>> pipes, CancellationToken cancellationToken);
+    IDataStream<T> Merge(IEnumerable<IDataStream<T>> pipes, CancellationToken cancellationToken);
 }

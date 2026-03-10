@@ -27,7 +27,7 @@ public class HttpSourceNodeTests
         var config = new HttpSourceConfiguration { BaseUri = new Uri("https://api.example.com/items") };
         var node = new HttpSourceNode<Item>(config, httpClient);
 
-        var pipe = node.Initialize(new PipelineContext(), CancellationToken.None);
+        var pipe = node.OpenStream(new PipelineContext(), CancellationToken.None);
         var items = new List<Item>();
 
         await foreach (var item in pipe)
@@ -56,7 +56,7 @@ public class HttpSourceNodeTests
 
         var node = new HttpSourceNode<Item>(config, httpClient);
 
-        var pipe = node.Initialize(new PipelineContext(), CancellationToken.None);
+        var pipe = node.OpenStream(new PipelineContext(), CancellationToken.None);
         var items = new List<Item>();
 
         await foreach (var item in pipe)
@@ -84,7 +84,7 @@ public class HttpSourceNodeTests
 
         var node = new HttpSourceNode<Item>(config, httpClient);
 
-        var pipe = node.Initialize(new PipelineContext(), CancellationToken.None);
+        var pipe = node.OpenStream(new PipelineContext(), CancellationToken.None);
         var items = new List<Item>();
 
         await foreach (var item in pipe)
@@ -113,7 +113,7 @@ public class HttpSourceNodeTests
 
         var node = new HttpSourceNode<Item>(config, httpClient);
 
-        var pipe = node.Initialize(new PipelineContext(), CancellationToken.None);
+        var pipe = node.OpenStream(new PipelineContext(), CancellationToken.None);
         var items = new List<Item>();
 
         await foreach (var item in pipe)
@@ -154,7 +154,7 @@ public class HttpSourceNodeTests
 
         var items = new List<Item>();
 
-        await foreach (var item in node.Initialize(new PipelineContext(), CancellationToken.None))
+        await foreach (var item in node.OpenStream(new PipelineContext(), CancellationToken.None))
         {
             items.Add(item);
         }
@@ -202,7 +202,7 @@ public class HttpSourceNodeTests
 
         var items = new List<Item>();
 
-        await foreach (var item in node.Initialize(new PipelineContext(), CancellationToken.None))
+        await foreach (var item in node.OpenStream(new PipelineContext(), CancellationToken.None))
         {
             items.Add(item);
         }
@@ -230,7 +230,7 @@ public class HttpSourceNodeTests
 
         var act = async () =>
         {
-            await foreach (var _ in node.Initialize(new PipelineContext(), CancellationToken.None))
+            await foreach (var _ in node.OpenStream(new PipelineContext(), CancellationToken.None))
             {
             }
         };
@@ -255,7 +255,7 @@ public class HttpSourceNodeTests
 
         var act = async () =>
         {
-            await foreach (var _ in node.Initialize(new PipelineContext(), cts.Token))
+            await foreach (var _ in node.OpenStream(new PipelineContext(), cts.Token))
             {
             }
         };
@@ -279,7 +279,7 @@ public class HttpSourceNodeTests
 
         var act = async () =>
         {
-            await foreach (var _ in node.Initialize(new PipelineContext(), CancellationToken.None))
+            await foreach (var _ in node.OpenStream(new PipelineContext(), CancellationToken.None))
             {
             }
         };
@@ -310,7 +310,7 @@ public class HttpSourceNodeTests
 
         var node = new HttpSourceNode<Item>(config, httpClient);
 
-        await foreach (var _ in node.Initialize(new PipelineContext(), CancellationToken.None))
+        await foreach (var _ in node.OpenStream(new PipelineContext(), CancellationToken.None))
         {
         }
 

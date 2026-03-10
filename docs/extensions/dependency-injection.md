@@ -6,7 +6,7 @@ sidebar_position: 1
 
 # Dependency Injection
 
-Managing dependencies in complex data pipelines can be challenging. The `NPipeline.Extensions.DependencyInjection` package provides seamless integration with the standard `Microsoft.Extensions.DependencyInjection` framework, allowing you to register your pipelines and nodes with a service container and have their dependencies automatically resolved.
+Managing dependencies in complex data streamlines can be challenging. The `NPipeline.Extensions.DependencyInjection` package provides seamless integration with the standard `Microsoft.Extensions.DependencyInjection` framework, allowing you to register your pipelines and nodes with a service container and have their dependencies automatically resolved.
 
 ## Installation
 
@@ -260,7 +260,7 @@ Let's consider a pipeline where a transform node relies on an external service, 
 ```csharp
 using NPipeline;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
@@ -290,7 +290,7 @@ public sealed class NotificationTransform : TransformNode<string, string>
         _emailService = emailService;
     }
 
-    public override Task<string> ExecuteAsync(
+    public override Task<string> TransformAsync(
         string item,
         PipelineContext context,
         CancellationToken cancellationToken = default)
@@ -309,14 +309,14 @@ public sealed class NotificationTransform : TransformNode<string, string>
 ```csharp
 using NPipeline;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
 
 public sealed class TestStringSource : SourceNode<string>
 {
-    public override IDataPipe<string> Initialize(
+    public override IDataStream<string> OpenStream(
         PipelineContext context,
         CancellationToken cancellationToken)
     {
@@ -334,14 +334,14 @@ public sealed class TestStringSource : SourceNode<string>
             }
         }
 
-        return new StreamingDataPipe<string>(Stream());
+        return new DataStream<string>(Stream());
     }
 }
 
 public sealed class TestStringSink : SinkNode<string>
 {
-    public override async Task ExecuteAsync(
-        IDataPipe<string> input,
+    public override async Task ConsumeAsync(
+        IDataStream<string> input,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
@@ -425,7 +425,7 @@ public class MyDataService : IDataService
 
 public class MyDependentTransform(IDataService dataService) : TransformNode<int, string>
 {
-    public override Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
     {
         var data = dataService.FetchDataAsync(item).Result;
         return Task.FromResult($"Transformed: {data}");

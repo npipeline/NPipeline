@@ -18,7 +18,7 @@ namespace Sample_WindowingStrategies;
 /// </summary>
 public class SessionToCollectionNode : TransformNode<UserSession, IReadOnlyCollection<UserSession>>
 {
-    public override Task<IReadOnlyCollection<UserSession>> ExecuteAsync(
+    public override Task<IReadOnlyCollection<UserSession>> TransformAsync(
         UserSession session,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -47,7 +47,7 @@ public class SessionToCollectionNode : TransformNode<UserSession, IReadOnlyColle
 /// </summary>
 public class DynamicListToCollectionNode : TransformNode<IReadOnlyList<UserSession>, IReadOnlyCollection<UserSession>>
 {
-    public override Task<IReadOnlyCollection<UserSession>> ExecuteAsync(
+    public override Task<IReadOnlyCollection<UserSession>> TransformAsync(
         IReadOnlyList<UserSession> sessions,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -73,7 +73,7 @@ public class DynamicListToCollectionNode : TransformNode<IReadOnlyList<UserSessi
 /// </summary>
 public class CustomTriggerListToCollectionNode : TransformNode<IReadOnlyList<UserSession>, IReadOnlyCollection<UserSession>>
 {
-    public override Task<IReadOnlyCollection<UserSession>> ExecuteAsync(
+    public override Task<IReadOnlyCollection<UserSession>> TransformAsync(
         IReadOnlyList<UserSession> sessions,
         PipelineContext context,
         CancellationToken cancellationToken)

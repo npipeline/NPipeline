@@ -105,7 +105,7 @@ public sealed class SqsConnectorPipeline : IPipelineDefinition
 public sealed class OrderProcessor : TransformNode<SqsMessage<Order>, IAcknowledgableMessage<ProcessedOrder>>
 {
     /// <inheritdoc />
-    public override async Task<IAcknowledgableMessage<ProcessedOrder>> ExecuteAsync(
+    public override async Task<IAcknowledgableMessage<ProcessedOrder>> TransformAsync(
         SqsMessage<Order> input,
         PipelineContext context,
         CancellationToken cancellationToken)

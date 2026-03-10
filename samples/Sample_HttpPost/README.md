@@ -2,7 +2,7 @@
 
 This sample demonstrates how to receive HTTP POST requests and flow the data through a pipeline using a channel-based source node. It showcases the *
 *push-to-pull bridge pattern** where HTTP POST requests push data into a `Channel<T>`, which is then read by a channel-based source node and exposed as
-`IDataPipe<T>` for processing through the pipeline.
+`IDataStream<T>` for processing through the pipeline.
 
 ## Overview
 
@@ -79,7 +79,7 @@ sequenceDiagram
 
     Source->>Channel: ReadAllAsync()
     Channel-->>Source: webhookData
-    Source->>Validation: ExecuteAsync(webhookData)
+    Source->>Validation: TransformAsync(webhookData)
     Validation->>Validation: Validate fields
     Validation-->>Processing: ValidatedWebhookData
     Processing->>Processing: Generate summary
@@ -332,7 +332,7 @@ The `WebhookSource` implements `ISourceNode<WebhookData>` and uses `System.Threa
 
 - Uses `Channel<T>` for thread-safe communication
 - Provides `EnqueueAsync()` method for external push operations
-- Returns `StreamingDataPipe<T>` from `Initialize()` for pipeline consumption
+- Returns `StreamingDataStream<T>` from `OpenStream()` for pipeline consumption
 
 ### 3. Singleton Registration
 
@@ -412,7 +412,7 @@ The channel-based source node:
 - Implements `ISourceNode<WebhookData>`
 - Uses `Channel<WebhookData>` internally
 - Provides `EnqueueAsync()` for HTTP endpoints to push data
-- Returns `StreamingDataPipe<WebhookData>` from `Initialize()`
+- Returns `StreamingDataStream<WebhookData>` from `OpenStream()`
 
 ### ValidationTransform
 

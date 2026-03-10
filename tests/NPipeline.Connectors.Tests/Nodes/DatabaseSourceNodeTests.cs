@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using NPipeline.Connectors.Checkpointing;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.Nodes;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders.Abstractions;
 using Xunit;
@@ -13,13 +13,13 @@ namespace NPipeline.Connectors.Tests.Nodes;
 public class DatabaseSourceNodeTests
 {
     [Fact]
-    public void Initialize_WithStreamingResults_ReturnsStreamingDataPipe()
+    public void Initialize_WithStreamingResults_ReturnsStreamingDataStream()
     {
         var node = new TestDatabaseSourceNode(new[] { 1, 2, 3 }, true);
 
-        var result = node.Initialize(new PipelineContext(), CancellationToken.None);
+        var result = node.OpenStream(new PipelineContext(), CancellationToken.None);
 
-        result.Should().BeOfType<StreamingDataPipe<int>>();
+        result.Should().BeOfType<DataStream<int>>();
     }
 
     [Fact]
@@ -27,10 +27,10 @@ public class DatabaseSourceNodeTests
     {
         var node = new TestDatabaseSourceNode(new[] { 1, 2, 3 }, false);
 
-        var result = node.Initialize(new PipelineContext(), CancellationToken.None);
+        var result = node.OpenStream(new PipelineContext(), CancellationToken.None);
 
-        var dataPipe = result.Should().BeOfType<InMemoryDataPipe<int>>().Subject;
-        dataPipe.Items.Should().Equal(1, 2, 3);
+        var dataStream = result.Should().BeOfType<InMemoryDataStream<int>>().Subject;
+        dataStream.Items.Should().Equal(1, 2, 3);
     }
 
     [Fact]
@@ -41,10 +41,10 @@ public class DatabaseSourceNodeTests
             false,
             shouldEmit: value => value % 2 == 0);
 
-        var result = node.Initialize(new PipelineContext(), CancellationToken.None);
+        var result = node.OpenStream(new PipelineContext(), CancellationToken.None);
 
-        var dataPipe = result.Should().BeOfType<InMemoryDataPipe<int>>().Subject;
-        dataPipe.Items.Should().Equal(2, 4);
+        var dataStream = result.Should().BeOfType<InMemoryDataStream<int>>().Subject;
+        dataStream.Items.Should().Equal(2, 4);
     }
 
     [Fact]
@@ -66,11 +66,11 @@ public class DatabaseSourceNodeTests
             checkpointStorage: storage);
 
         // Act
-        var result = node.Initialize(new PipelineContext(), CancellationToken.None);
+        var result = node.OpenStream(new PipelineContext(), CancellationToken.None);
 
         // Assert — only rows 3 and 4 should be emitted
-        var dataPipe = result.Should().BeOfType<InMemoryDataPipe<int>>().Subject;
-        dataPipe.Items.Should().Equal(3, 4);
+        var dataStream = result.Should().BeOfType<InMemoryDataStream<int>>().Subject;
+        dataStream.Items.Should().Equal(3, 4);
 
         // Checkpoint should now reflect all rows processed (position 4)
         var finalCheckpoint = await storage.LoadAsync(pipelineId, checkpointId);

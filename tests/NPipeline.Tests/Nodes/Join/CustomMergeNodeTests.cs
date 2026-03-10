@@ -3,7 +3,7 @@ using System.Reflection;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -39,42 +39,42 @@ public sealed class CustomMergeNodeTests
 
     private sealed class TestSourceNode1 : SourceNode<string>
     {
-        public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var items = new[] { "A1", "A2" };
-            var pipe = new StreamingDataPipe<string>(items.ToAsyncEnumerable(), "TestStream1");
+            var pipe = new DataStream<string>(items.ToAsyncEnumerable(), "TestStream1");
             return pipe;
         }
     }
 
     private sealed class TestSourceNode2 : SourceNode<string>
     {
-        public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var items = new[] { "B1", "B2" };
-            var pipe = new StreamingDataPipe<string>(items.ToAsyncEnumerable(), "TestStream2");
+            var pipe = new DataStream<string>(items.ToAsyncEnumerable(), "TestStream2");
             return pipe;
         }
     }
 
     private sealed class CustomMergeSink(ConcurrentQueue<string> store) : SinkNode<string>, ICustomMergeNode<string>
     {
-        public async Task<IDataPipe<string>> MergeAsync(IEnumerable<IDataPipe> pipes, CancellationToken cancellationToken)
+        public async Task<IDataStream<string>> MergeAsync(IEnumerable<IDataStream> pipes, CancellationToken cancellationToken)
         {
             // Custom logic: reverse the items from each stream and concatenate
             var allItems = new List<string>();
 
-            foreach (var pipe in pipes.Cast<IDataPipe<string>>())
+            foreach (var pipe in pipes.Cast<IDataStream<string>>())
             {
                 var items = await pipe.ToListAsync(cancellationToken);
                 items.Reverse();
                 allItems.AddRange(items);
             }
 
-            return new StreamingDataPipe<string>(allItems.ToAsyncEnumerable(), "CustomMergedStream");
+            return new DataStream<string>(allItems.ToAsyncEnumerable(), "CustomMergedStream");
         }
 
-        public override async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<string> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))

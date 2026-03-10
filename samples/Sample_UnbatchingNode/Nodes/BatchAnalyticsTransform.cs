@@ -41,7 +41,7 @@ public class BatchAnalyticsTransform : TransformNode<IReadOnlyCollection<MarketD
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A batch analytics wrapper containing the results and original events.</returns>
-    public override Task<BatchAnalyticsWrapper> ExecuteAsync(
+    public override Task<BatchAnalyticsWrapper> TransformAsync(
         IReadOnlyCollection<MarketDataEvent> batch,
         PipelineContext context,
         CancellationToken cancellationToken)
