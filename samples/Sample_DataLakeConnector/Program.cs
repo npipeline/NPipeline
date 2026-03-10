@@ -44,7 +44,7 @@ public static class Program
         var sourceNode = new DataLakeTableSourceNode<SalesRecord>(provider, tableUri);
         var count = 0;
 
-        await foreach (var record in sourceNode.Initialize(PipelineContext.Default, CancellationToken.None))
+        await foreach (var record in sourceNode.OpenStream(PipelineContext.Default, CancellationToken.None))
         {
             if (count++ >= 5)
                 break;

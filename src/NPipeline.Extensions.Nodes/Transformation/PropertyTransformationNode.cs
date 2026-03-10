@@ -70,7 +70,7 @@ public abstract class PropertyTransformationNode<T> : TransformNode<T, T>
     ///     Executes transformations on the item asynchronously.
     ///     Applies all registered rules in order.
     /// </summary>
-    public override Task<T> ExecuteAsync(
+    public override Task<T> TransformAsync(
         T item,
         PipelineContext context,
         CancellationToken cancellationToken)

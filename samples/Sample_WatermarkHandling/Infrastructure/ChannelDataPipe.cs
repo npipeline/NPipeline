@@ -10,7 +10,7 @@ namespace Sample_WatermarkHandling.Infrastructure;
 ///     Provides lock-free producer-consumer pattern with configurable backpressure handling.
 /// </summary>
 /// <typeparam name="T">The type of data flowing through the pipe</typeparam>
-public sealed class ChannelDataPipe<T> : IDataPipe<T>, IAsyncDisposable
+public sealed class ChannelDataPipe<T> : IDataStream<T>, IAsyncDisposable
 {
     private readonly Channel<T> _channel;
     private bool _disposed;

@@ -33,7 +33,7 @@ public class ConsoleSink : SinkNode<WindowedResult>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task representing the sink execution.</returns>
-    public override async Task ExecuteAsync(IDataPipe<WindowedResult> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<WindowedResult> input, PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("=== Starting ConsoleSink - Processing Windowed Results ===");
         Console.WriteLine();

@@ -156,7 +156,7 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
         // Act - Consume from source and produce to sink
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var context = new PipelineContext();
-        var dataPipe = sourceNode.Initialize(context, cts.Token);
+        var dataPipe = sourceNode.OpenStream(context, cts.Token);
 
         var processedMessages = new List<TestMessage>();
 
@@ -272,7 +272,7 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
         // Act - Consume and acknowledge messages
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var context = new PipelineContext();
-        var dataPipe = sourceNode.Initialize(context, cts.Token);
+        var dataPipe = sourceNode.OpenStream(context, cts.Token);
 
         var consumedMessages = new List<KafkaMessage<TestMessage>>();
 
@@ -332,7 +332,7 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
         // Act - Consume in batches
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var context = new PipelineContext();
-        var dataPipe = sourceNode.Initialize(context, cts.Token);
+        var dataPipe = sourceNode.OpenStream(context, cts.Token);
 
         var consumedCount = 0;
 

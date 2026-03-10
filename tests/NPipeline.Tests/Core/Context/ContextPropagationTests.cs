@@ -86,7 +86,7 @@ public sealed class ContextPropagationTests
 
     private sealed class IdCapturingTransform(List<string> observedIds) : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             observedIds.Add(context.CurrentNodeId);
             return Task.FromResult(item);
@@ -115,7 +115,7 @@ public sealed class ContextPropagationTests
 
     private sealed class FailingTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             if (item == 42)
                 throw new InvalidOperationException("boom");
@@ -173,9 +173,9 @@ public sealed class ContextPropagationTests
 
     private sealed class SimpleRedirectSource : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new StreamingDataPipe<int>(new[] { 1, 42, 3 }.ToAsyncEnumerable());
+            return new DataStream<int>(new[] { 1, 42, 3 }.ToAsyncEnumerable());
         }
     }
 }

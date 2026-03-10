@@ -28,7 +28,7 @@ public class DatabaseSink : SinkNode<ProcessedOrder>
     /// <param name="input">The input data pipe containing processed orders.</param>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
-    public override async Task ExecuteAsync(IDataPipe<ProcessedOrder> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<ProcessedOrder> input, PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine($"[DatabaseSink] Connecting to database '{_databaseName}'...");
 

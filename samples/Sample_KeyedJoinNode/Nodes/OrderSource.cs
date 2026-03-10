@@ -33,7 +33,7 @@ public class OrderSource : SourceNode<Order>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<Order> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<Order> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         _logger?.LogInformation("OrderSource: Starting to generate {MaxOrders} orders", _maxOrders);
 
@@ -79,6 +79,6 @@ public class OrderSource : SourceNode<Order>
 
         _logger?.LogInformation("OrderSource: Finished generating {MaxOrders} orders", _maxOrders);
 
-        return new InMemoryDataPipe<Order>(orders, "OrderSource");
+        return new InMemoryDataStream<Order>(orders, "OrderSource");
     }
 }

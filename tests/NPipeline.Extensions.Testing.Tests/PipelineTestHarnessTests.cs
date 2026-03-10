@@ -177,7 +177,7 @@ public class PipelineTestHarnessTests
 
     private sealed class AlwaysFailsTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             throw new InvalidOperationException("Expected failure for test");
         }

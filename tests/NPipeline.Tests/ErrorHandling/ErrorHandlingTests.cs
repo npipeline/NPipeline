@@ -43,7 +43,7 @@ public sealed class ErrorHandlingTests(ITestOutputHelper output)
 
     public sealed class FailingNode : TransformNode<string, string>
     {
-        public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
         {
             if (item == "fail")
                 throw new InvalidOperationException("Failed on purpose");

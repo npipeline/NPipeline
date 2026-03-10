@@ -2,19 +2,19 @@ using System.Runtime.CompilerServices;
 
 namespace NPipeline.DataFlow.DataPipes;
 
-internal sealed class CappedReplayableDataPipe<T> : DataPipeBase<T>
+internal sealed class CappedReplayableDataStream<T> : DataStreamBase<T>
 {
     private readonly List<T> _buffer;
     private readonly int? _cap;
     private bool _sourceDrained;
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="CappedReplayableDataPipe{T}" /> class.
+    ///     Initializes a new instance of the <see cref="CappedReplayableDataStream{T}" /> class.
     /// </summary>
     /// <param name="source">The source data pipe to wrap.</param>
     /// <param name="cap">The maximum number of items to buffer. When null, buffers all items.</param>
     /// <param name="name">The name of this data pipe for identification and tracing purposes.</param>
-    public CappedReplayableDataPipe(IDataPipe<T> source, int? cap, string name) : base(source)
+    public CappedReplayableDataStream(IDataStream<T> source, int? cap, string name) : base(source)
     {
         _cap = cap;
         StreamName = name;
@@ -55,7 +55,7 @@ internal sealed class CappedReplayableDataPipe<T> : DataPipeBase<T>
         _sourceDrained = true;
     }
 
-    // IDataPipe<T>
+    // IDataStream<T>
     public IAsyncEnumerable<T> ToAsyncEnumerableTyped()
     {
         // Intentionally not propagating a caller token here; explicit None clarifies choice per CA2016 guidance.

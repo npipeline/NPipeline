@@ -43,7 +43,7 @@ public sealed class BatchingNode<T>(int batchSize, TimeSpan timespan) : IStreamT
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The output stream of batched items.</returns>
-    public async IAsyncEnumerable<IReadOnlyCollection<T>> ExecuteAsync(
+    public async IAsyncEnumerable<IReadOnlyCollection<T>> TransformAsync(
         IAsyncEnumerable<T> items,
         PipelineContext context,
         [EnumeratorCancellation] CancellationToken cancellationToken)

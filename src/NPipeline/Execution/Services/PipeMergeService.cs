@@ -13,14 +13,14 @@ namespace NPipeline.Execution.Services;
 /// </summary>
 public sealed class PipeMergeService(IMergeStrategySelector strategySelector) : IPipeMergeService
 {
-    private static readonly ConcurrentDictionary<(Type DataType, MergeType MergeType), Func<IEnumerable<IDataPipe>, CancellationToken, IDataPipe>>
+    private static readonly ConcurrentDictionary<(Type DataType, MergeType MergeType), Func<IEnumerable<IDataStream>, CancellationToken, IDataStream>>
         MergeDelegateCache = new();
 
     /// <inheritdoc />
-    public async Task<IDataPipe> MergeAsync(
+    public async Task<IDataStream> MergeAsync(
         NodeDefinition nodeDef,
         INode nodeInstance,
-        IEnumerable<IDataPipe> inputPipes,
+        IEnumerable<IDataStream> inputPipes,
         CancellationToken cancellationToken = default)
     {
         // Special-case join nodes: they intentionally accept heterogeneous input types (the two sides of the join)
@@ -38,7 +38,7 @@ public sealed class PipeMergeService(IMergeStrategySelector strategySelector) : 
                 }
             }
 
-            return new StreamingDataPipe<object?>(Hetero(cancellationToken), $"JoinMerge_{nodeDef.Id}");
+            return new DataStream<object?>(Hetero(cancellationToken), $"JoinMerge_{nodeDef.Id}");
         }
 
         // Check for custom merge first
@@ -65,7 +65,7 @@ public sealed class PipeMergeService(IMergeStrategySelector strategySelector) : 
     /// </summary>
     /// <remarks>
     ///     This method uses expression trees to dynamically generate code that:
-    ///     1. Filters input pipes to only those that implement IDataPipe&lt;T&gt; for the expected data type
+    ///     1. Filters input pipes to only those that implement IDataStream&lt;T&gt; for the expected data type
     ///     2. Casts the filtered pipes to the correct generic type
     ///     3. Invokes the appropriate merge strategy's Merge method
     ///     The generated delegate is cached to avoid repeated compilation overhead.
@@ -75,10 +75,10 @@ public sealed class PipeMergeService(IMergeStrategySelector strategySelector) : 
     /// <param name="dataType">The expected data type for the merge operation.</param>
     /// <param name="mergeType">The merge strategy to use (Interleave, Concatenate, etc.).</param>
     /// <returns>A compiled delegate that performs the merge operation.</returns>
-    private Func<IEnumerable<IDataPipe>, CancellationToken, IDataPipe> BuildMergeDelegate(Type dataType, MergeType mergeType)
+    private Func<IEnumerable<IDataStream>, CancellationToken, IDataStream> BuildMergeDelegate(Type dataType, MergeType mergeType)
     {
         // Define delegate parameters
-        var pipesParam = Expression.Parameter(typeof(IEnumerable<IDataPipe>), "pipes");
+        var pipesParam = Expression.Parameter(typeof(IEnumerable<IDataStream>), "pipes");
         var ctParam = Expression.Parameter(typeof(CancellationToken), "ct");
 
         // Step 1: Get the merge strategy from the selector
@@ -86,20 +86,20 @@ public sealed class PipeMergeService(IMergeStrategySelector strategySelector) : 
         var getStrategyMethod = typeof(IMergeStrategySelector).GetMethod(nameof(IMergeStrategySelector.GetStrategy))!;
         var getStrategyCall = Expression.Call(strategySelectorExpr, getStrategyMethod, Expression.Constant(dataType), Expression.Constant(mergeType));
 
-        // Step 2: Prepare variable for typed pipes (IEnumerable<IDataPipe<T>>)
-        var typedPipesVar = Expression.Variable(typeof(IEnumerable<>).MakeGenericType(typeof(IDataPipe<>).MakeGenericType(dataType)), "typedPipes");
+        // Step 2: Prepare variable for typed pipes (IEnumerable<IDataStream<T>>)
+        var typedPipesVar = Expression.Variable(typeof(IEnumerable<>).MakeGenericType(typeof(IDataStream<>).MakeGenericType(dataType)), "typedPipes");
 
         // Step 3: Build a predicate to filter pipes by their generic type
-        // This is necessary because pipesParam is IEnumerable<IDataPipe> (non-generic),
-        // but we need only those pipes that implement IDataPipe<T> for the expected type.
+        // This is necessary because pipesParam is IEnumerable<IDataStream> (non-generic),
+        // but we need only those pipes that implement IDataStream<T> for the expected type.
         // This handles heterogeneous inputs (e.g., join nodes) where not all pipes have the same type.
-        var pipeVar = Expression.Parameter(typeof(IDataPipe), "p");
+        var pipeVar = Expression.Parameter(typeof(IDataStream), "p");
         var getTypeCall = Expression.Call(pipeVar, typeof(object).GetMethod("GetType")!);
         var interfacesCall = Expression.Call(getTypeCall, typeof(Type).GetMethod("GetInterfaces")!);
         var ifaceVar = Expression.Parameter(typeof(Type), "iface");
-        var targetGeneric = typeof(IDataPipe<>);
+        var targetGeneric = typeof(IDataStream<>);
 
-        // Predicate: iface.IsGenericType && iface.GetGenericTypeDefinition() == IDataPipe<> && iface.GetGenericArguments()[0] == dataType
+        // Predicate: iface.IsGenericType && iface.GetGenericTypeDefinition() == IDataStream<> && iface.GetGenericArguments()[0] == dataType
         var isMatchLambda = Expression.Lambda<Func<Type, bool>>(
             Expression.AndAlso(
                 Expression.Property(ifaceVar, nameof(Type.IsGenericType)),
@@ -116,17 +116,17 @@ public sealed class PipeMergeService(IMergeStrategySelector strategySelector) : 
             .MakeGenericMethod(typeof(Type));
 
         var anyCall = Expression.Call(anyMethod, interfacesCall, isMatchLambda);
-        var whereLambda = Expression.Lambda<Func<IDataPipe, bool>>(anyCall, pipeVar);
+        var whereLambda = Expression.Lambda<Func<IDataStream, bool>>(anyCall, pipeVar);
 
         var whereMethod = typeof(Enumerable).GetMethods().First(m => m.Name == nameof(Enumerable.Where) && m.GetParameters().Length == 2)
-            .MakeGenericMethod(typeof(IDataPipe));
+            .MakeGenericMethod(typeof(IDataStream));
 
         var filtered = Expression.Call(whereMethod, pipesParam, whereLambda);
 
         // Step 5: Cast filtered pipes to the correct generic type
-        // typedPipes = filtered.Cast<IDataPipe<T>>()
+        // typedPipes = filtered.Cast<IDataStream<T>>()
         var castMethod = typeof(Enumerable).GetMethods().First(m => m.Name == nameof(Enumerable.Cast) && m.IsGenericMethod)
-            .MakeGenericMethod(typeof(IDataPipe<>).MakeGenericType(dataType));
+            .MakeGenericMethod(typeof(IDataStream<>).MakeGenericType(dataType));
 
         var castCall = Expression.Call(castMethod, filtered);
         var assignTypedPipes = Expression.Assign(typedPipesVar, castCall);
@@ -146,7 +146,7 @@ public sealed class PipeMergeService(IMergeStrategySelector strategySelector) : 
         );
 
         // Step 8: Compile and return the delegate
-        var lambda = Expression.Lambda<Func<IEnumerable<IDataPipe>, CancellationToken, IDataPipe>>(block, pipesParam, ctParam);
+        var lambda = Expression.Lambda<Func<IEnumerable<IDataStream>, CancellationToken, IDataStream>>(block, pipesParam, ctParam);
         return lambda.Compile();
     }
 }

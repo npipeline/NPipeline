@@ -12,7 +12,7 @@ namespace NPipeline.Extensions.Composition;
 public sealed class PipelineInputSource<T> : ISourceNode<T>
 {
     /// <inheritdoc />
-    public IDataPipe<T> Initialize(
+    public IDataStream<T> OpenStream(
         PipelineContext context,
         CancellationToken cancellationToken)
     {
@@ -27,13 +27,13 @@ public sealed class PipelineInputSource<T> : ISourceNode<T>
         if (item is T typedItem)
         {
             // Return single item as a data pipe
-            return new InMemoryDataPipe<T>([typedItem], "CompositeInput");
+            return new InMemoryDataStream<T>([typedItem], "CompositeInput");
         }
 
         if (item is null)
         {
             if (IsNullableType())
-                return new InMemoryDataPipe<T>([default!], "CompositeInput");
+                return new InMemoryDataStream<T>([default!], "CompositeInput");
 
             throw new InvalidCastException(
                 $"Input item is null. Expected {typeof(T)}.");

@@ -58,7 +58,7 @@ public sealed class CustomerValidator : TransformNode<Customer, ValidatedCustome
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A validated customer with validation results.</returns>
-    public override Task<ValidatedCustomer> ExecuteAsync(
+    public override Task<ValidatedCustomer> TransformAsync(
         Customer customer,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -94,7 +94,7 @@ public sealed class CustomerEnricher : TransformNode<ValidatedCustomer, Enriched
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>An enriched customer with loyalty information.</returns>
-    public override Task<EnrichedCustomer> ExecuteAsync(
+    public override Task<EnrichedCustomer> TransformAsync(
         ValidatedCustomer validatedCustomer,
         PipelineContext context,
         CancellationToken cancellationToken)

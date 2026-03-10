@@ -29,7 +29,7 @@ public class InMemorySinkNode<T> : SinkNode<T>
     public Task<IReadOnlyList<T>> Completion => _completionSource.Task;
 
     /// <inheritdoc />
-    public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
         // Validate parameters early to provide clear ArgumentNullException as expected by tests
         ArgumentNullException.ThrowIfNull(input);

@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 namespace NPipeline.DataFlow.DataPipes;
 
 /// <summary>
-///     An implementation of <see cref="IDataPipe{T}" /> that wraps an in-memory list of items.
+///     An implementation of <see cref="IDataStream{T}" /> that wraps an in-memory list of items.
 ///     This is useful for testing or for scenarios where the entire dataset is already in memory.
 /// </summary>
 /// <remarks>
@@ -14,8 +14,8 @@ namespace NPipeline.DataFlow.DataPipes;
 ///     </para>
 /// </remarks>
 /// <typeparam name="T">The type of data held by the pipe.</typeparam>
-public sealed class InMemoryDataPipe<T>(IReadOnlyList<T> items, string streamName = "", int yieldIntervalItems = 100)
-    : IDataPipe<T>, IAsyncDisposable, IDisposable
+public sealed class InMemoryDataStream<T>(IReadOnlyList<T> items, string streamName = "", int yieldIntervalItems = 100)
+    : IDataStream<T>, IAsyncDisposable, IDisposable
 {
     /// <summary>
     ///     The underlying list of items.

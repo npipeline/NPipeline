@@ -47,7 +47,7 @@ public sealed class Program
             Console.WriteLine();
 
             var pipeline = new SqlServerConnectorPipeline(connectionString);
-            await pipeline.ExecuteAsync(null!, CancellationToken.None);
+            await pipeline.ConsumeAsync(null!, CancellationToken.None);
 
             Console.WriteLine();
             Console.WriteLine("Pipeline execution completed successfully!");

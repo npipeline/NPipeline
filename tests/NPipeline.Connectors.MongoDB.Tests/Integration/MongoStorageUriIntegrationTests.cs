@@ -158,7 +158,7 @@ public class MongoStorageUriIntegrationTests(MongoTestContainerFixture fixture)
 
         var results = new List<NameRecord>();
 
-        await foreach (var item in source.Initialize(DefaultContext(), CancellationToken.None))
+        await foreach (var item in source.OpenStream(DefaultContext(), CancellationToken.None))
         {
             results.Add(item);
         }

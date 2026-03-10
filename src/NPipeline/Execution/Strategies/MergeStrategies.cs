@@ -15,12 +15,12 @@ public static class MergeStrategies
     ///     It processes all items from the first stream, then all from the second, and so on.
     /// </summary>
     public static async IAsyncEnumerable<T> Concatenate<T>(
-        IEnumerable<IDataPipe> dataPipes,
+        IEnumerable<IDataStream> dataPipes,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         foreach (var dataPipe in dataPipes)
         {
-            if (dataPipe is not IDataPipe<T> typedPipe)
+            if (dataPipe is not IDataStream<T> typedPipe)
                 throw new InvalidCastException($"Cannot concatenate streams. Expected pipe of '{typeof(T).Name}', but found '{dataPipe.GetType().Name}'.");
 
             await foreach (var item in typedPipe.WithCancellation(cancellationToken).ConfigureAwait(false))
@@ -36,7 +36,7 @@ public static class MergeStrategies
     ///     This is ideal for responsive, real-time processing.
     /// </summary>
     public static async IAsyncEnumerable<T> Interleave<T>(
-        IEnumerable<IDataPipe> dataPipes,
+        IEnumerable<IDataStream> dataPipes,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await foreach (var item in InterleaveBounded<T>(dataPipes, null, cancellationToken).ConfigureAwait(false))
@@ -56,7 +56,7 @@ public static class MergeStrategies
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A single merged asynchronous stream.</returns>
     public static async IAsyncEnumerable<T> InterleaveBounded<T>(
-        IEnumerable<IDataPipe> dataPipes,
+        IEnumerable<IDataStream> dataPipes,
         int? capacity = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -72,7 +72,7 @@ public static class MergeStrategies
         var producerTasks = dataPipes
             .Select(dataPipe => Task.Run(async () =>
             {
-                if (dataPipe is not IDataPipe<T> typedPipe)
+                if (dataPipe is not IDataStream<T> typedPipe)
                 {
                     channel.Writer.TryComplete(
                         new InvalidCastException($"Cannot interleave streams. Expected pipe of '{typeof(T).Name}', but found '{dataPipe.GetType().Name}'."));

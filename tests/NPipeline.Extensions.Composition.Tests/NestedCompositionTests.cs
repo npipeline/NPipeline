@@ -62,9 +62,9 @@ public class NestedCompositionTests
 
     private sealed class IntSource : ISourceNode<int>
     {
-        public IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new InMemoryDataPipe<int>([1, 2, 3], "IntSource");
+            return new InMemoryDataStream<int>([1, 2, 3], "IntSource");
         }
 
         public ValueTask DisposeAsync()
@@ -76,9 +76,9 @@ public class NestedCompositionTests
 
     private sealed class SmallIntSource : ISourceNode<int>
     {
-        public IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new InMemoryDataPipe<int>([1, 2], "SmallIntSource");
+            return new InMemoryDataStream<int>([1, 2], "SmallIntSource");
         }
 
         public ValueTask DisposeAsync()
@@ -92,7 +92,7 @@ public class NestedCompositionTests
     {
         public static readonly List<int> CollectedValues = [];
 
-        public async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context, CancellationToken cancellationToken)
+        public async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
             CollectedValues.Clear();
 
@@ -111,7 +111,7 @@ public class NestedCompositionTests
 
     private sealed class DoubleTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(input * 2);
         }
@@ -245,7 +245,7 @@ public class NestedCompositionTests
     {
         public static string? CapturedValue { get; private set; }
 
-        public override Task<int> ExecuteAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             CapturedValue = context.Parameters.TryGetValue("NestedValue", out var value)
                 ? value?.ToString()

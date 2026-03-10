@@ -19,7 +19,7 @@ public class RiskAssessmentNode : TransformNode<SensorReadingWithCalibration, En
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task containing the enriched sensor reading with risk assessment.</returns>
-    public override async Task<EnrichedSensorReading> ExecuteAsync(SensorReadingWithCalibration item, PipelineContext context,
+    public override async Task<EnrichedSensorReading> TransformAsync(SensorReadingWithCalibration item, PipelineContext context,
         CancellationToken cancellationToken)
     {
         // Simulate processing delay

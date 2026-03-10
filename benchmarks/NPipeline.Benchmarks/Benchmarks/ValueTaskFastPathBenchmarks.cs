@@ -172,13 +172,13 @@ public class ValueTaskFastPathBenchmarks
 
     private sealed class CacheTestSource : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)
                 : 0;
 
-            return new StreamingDataPipe<int>(GenerateItems(count, cancellationToken), "cacheTest");
+            return new DataStream<int>(GenerateItems(count, cancellationToken), "cacheTest");
         }
 
         private static async IAsyncEnumerable<int> GenerateItems(int count, [EnumeratorCancellation] CancellationToken ct)
@@ -197,7 +197,7 @@ public class ValueTaskFastPathBenchmarks
     {
         private readonly Dictionary<int, string> _cache = [];
 
-        public override Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate cache lookup with Task-based approach
             if (_cache.TryGetValue(item, out var cached))
@@ -229,7 +229,7 @@ public class ValueTaskFastPathBenchmarks
             return new ValueTask<string>(result);
         }
 
-        public override Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return FromValueTask(ExecuteValueTaskAsync(item, context, cancellationToken));
         }
@@ -250,7 +250,7 @@ public class ValueTaskFastPathBenchmarks
             return new ValueTask<string>(result);
         }
 
-        public override Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return FromValueTask(ExecuteValueTaskAsync(item, context, cancellationToken));
         }
@@ -276,7 +276,7 @@ public class ValueTaskFastPathBenchmarks
             return result;
         }
 
-        public override Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return FromValueTask(ExecuteValueTaskAsync(item, context, cancellationToken));
         }
@@ -302,7 +302,7 @@ public class ValueTaskFastPathBenchmarks
             return new ValueTask<string>(result);
         }
 
-        public override Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return FromValueTask(ExecuteValueTaskAsync(item, context, cancellationToken));
         }
@@ -312,7 +312,7 @@ public class ValueTaskFastPathBenchmarks
     {
         private readonly Dictionary<int, string> _cache = [];
 
-        public override async Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Traditional async approach with unnecessary allocations
             if (_cache.TryGetValue(item, out var cached))
@@ -332,7 +332,7 @@ public class ValueTaskFastPathBenchmarks
 
     private sealed class BlackHoleSink<T> : SinkNode<T>
     {
-        public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
             {

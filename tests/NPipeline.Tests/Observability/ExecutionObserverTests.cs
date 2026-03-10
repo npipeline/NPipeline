@@ -165,9 +165,9 @@ public sealed class ExecutionObserverTests
 
     private sealed class TestSource : ISourceNode<int>, IAsyncDisposable
     {
-        public IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new StreamingDataPipe<int>(Stream(cancellationToken));
+            return new DataStream<int>(Stream(cancellationToken));
 
             static async IAsyncEnumerable<int> Stream([EnumeratorCancellation] CancellationToken ct)
             {
@@ -192,7 +192,7 @@ public sealed class ExecutionObserverTests
         public IExecutionStrategy ExecutionStrategy { get; set; } = new ParallelExecutionStrategy(1);
         public INodeErrorHandler? ErrorHandler { get; set; } = new TestItemRetryHandler();
 
-        public Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken ct)
+        public Task<int> TransformAsync(int item, PipelineContext context, CancellationToken ct)
         {
             _count++;
 
@@ -207,24 +207,24 @@ public sealed class ExecutionObserverTests
             return ValueTask.CompletedTask;
         }
 
-        public Task<IDataPipe<int>> ExecuteAsync(IDataPipe<int> input, PipelineContext context, IPipelineActivity parentActivity,
+        public Task<IDataStream<int>> ExecuteAsync(IDataStream<int> input, PipelineContext context, IPipelineActivity parentActivity,
             CancellationToken cancellationToken)
         {
-            return Task.FromResult<IDataPipe<int>>(new StreamingDataPipe<int>(Out(cancellationToken)));
+            return Task.FromResult<IDataStream<int>>(new DataStream<int>(Out(cancellationToken)));
 
             async IAsyncEnumerable<int> Out([EnumeratorCancellation] CancellationToken ct)
             {
                 await foreach (var i in input.WithCancellation(ct))
                 {
-                    yield return await ExecuteAsync(i, context, ct);
+                    yield return await TransformAsync(i, context, ct);
                 }
             }
         }
 
-        public async Task<IDataPipe> ExecuteUntypedAsync(IDataPipe input, PipelineContext context, IPipelineActivity parentActivity,
+        public async Task<IDataStream> ExecuteUntypedAsync(IDataStream input, PipelineContext context, IPipelineActivity parentActivity,
             CancellationToken cancellationToken)
         {
-            return await ExecuteAsync((IDataPipe<int>)input, context, parentActivity, cancellationToken);
+            return await ExecuteAsync((IDataStream<int>)input, context, parentActivity, cancellationToken);
         }
     }
 

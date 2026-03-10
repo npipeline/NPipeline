@@ -168,7 +168,7 @@ public sealed class MulticastDataPipeTests
         // Arrange
         var source = GetTestStream();
         BranchMetrics metrics = new();
-        IDataPipe<int> pipe = CreateMulticastDataPipe(source, 1, null, "TestStream", metrics);
+        IDataStream<int> pipe = CreateMulticastDataPipe(source, 1, null, "TestStream", metrics);
         List<object> enumeratedItems = [];
 
         // Act
@@ -356,7 +356,7 @@ public sealed class MulticastDataPipeTests
 
     #region Helper Methods
 
-    private static MulticastDataPipe<T> CreateMulticastDataPipe<T>(
+    private static MulticastDataStream<T> CreateMulticastDataPipe<T>(
         IAsyncEnumerable<T> source,
         int subscriberCount,
         int? perSubscriberBuffer,
@@ -364,11 +364,11 @@ public sealed class MulticastDataPipeTests
         BranchMetrics metrics)
     {
         // Use reflection to create instance since constructor is internal
-        var constructor = typeof(MulticastDataPipe<T>)
+        var constructor = typeof(MulticastDataStream<T>)
             .GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance)
             .First();
 
-        return (MulticastDataPipe<T>)constructor.Invoke([source, subscriberCount, perSubscriberBuffer, streamName, metrics]);
+        return (MulticastDataStream<T>)constructor.Invoke([source, subscriberCount, perSubscriberBuffer, streamName, metrics]);
     }
 
     private static async IAsyncEnumerable<int> GetTestStream()

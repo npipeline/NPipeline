@@ -126,7 +126,7 @@ public sealed class CsvSourceNode<T> : SourceNode<T>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var provider = _provider ?? StorageProviderFactory.GetProviderOrThrow(
             _resolver ?? DefaultResolver.Value,
@@ -141,7 +141,7 @@ public sealed class CsvSourceNode<T> : SourceNode<T>
         }
 
         var stream = Read(provider, _uri, _csvConfiguration, _encoding, cancellationToken);
-        return new StreamingDataPipe<T>(stream, $"CsvSourceNode<{typeof(T).Name}>");
+        return new DataStream<T>(stream, $"CsvSourceNode<{typeof(T).Name}>");
     }
 
     private async IAsyncEnumerable<T> Read(

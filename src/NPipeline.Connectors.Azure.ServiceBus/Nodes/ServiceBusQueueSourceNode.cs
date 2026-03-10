@@ -24,7 +24,7 @@ namespace NPipeline.Connectors.Azure.ServiceBus.Nodes;
 /// <remarks>
 ///     <para>
 ///         Uses <see cref="ServiceBusProcessor" /> with a bounded <see cref="Channel{T}" /> to bridge the
-///         push-based SDK delivery model to the pull-based NPipeline <see cref="IDataPipe{T}" /> contract.
+///         push-based SDK delivery model to the pull-based NPipeline <see cref="IDataStream{T}" /> contract.
 ///     </para>
 ///     <para>
 ///         Each message handler blocks on a per-message <see cref="TaskCompletionSource{T}" /> until
@@ -102,7 +102,7 @@ public sealed class ServiceBusQueueSourceNode<T> : SourceNode<ServiceBusMessage<
     }
 
     /// <inheritdoc />
-    public override IDataPipe<ServiceBusMessage<T>> Initialize(
+    public override IDataStream<ServiceBusMessage<T>> OpenStream(
         PipelineContext context,
         CancellationToken cancellationToken)
     {
@@ -122,7 +122,7 @@ public sealed class ServiceBusQueueSourceNode<T> : SourceNode<ServiceBusMessage<
 
         var stream = ConsumeFromChannelAsync(cancellationToken);
 
-        return new StreamingDataPipe<ServiceBusMessage<T>>(stream,
+        return new DataStream<ServiceBusMessage<T>>(stream,
             $"ServiceBusQueueSourceNode<{typeof(T).Name}>");
     }
 

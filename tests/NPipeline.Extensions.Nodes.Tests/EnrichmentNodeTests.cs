@@ -46,7 +46,7 @@ public sealed class EnrichmentNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Description.Should().Be("Two");
@@ -70,7 +70,7 @@ public sealed class EnrichmentNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Description.Should().Be("Unchanged");
@@ -94,7 +94,7 @@ public sealed class EnrichmentNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Description.Should().Be("One");
@@ -117,7 +117,7 @@ public sealed class EnrichmentNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Description.Should().BeNull();
@@ -139,7 +139,7 @@ public sealed class EnrichmentNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Description.Should().Be("ID: 42");
@@ -159,7 +159,7 @@ public sealed class EnrichmentNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Description.Should().Be("John (1)");
@@ -180,7 +180,7 @@ public sealed class EnrichmentNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Name.Should().Be("DefaultName");
@@ -197,7 +197,7 @@ public sealed class EnrichmentNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Name.Should().Be("John");
@@ -214,7 +214,7 @@ public sealed class EnrichmentNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Name.Should().Be("DefaultName");
@@ -231,7 +231,7 @@ public sealed class EnrichmentNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Name.Should().Be("DefaultName");
@@ -248,7 +248,7 @@ public sealed class EnrichmentNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Age.Should().Be(18);
@@ -265,7 +265,7 @@ public sealed class EnrichmentNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Age.Should().Be(18);
@@ -283,7 +283,7 @@ public sealed class EnrichmentNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Tags.Should().Equal("default");
@@ -301,7 +301,7 @@ public sealed class EnrichmentNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Tags.Should().Equal("default");
@@ -327,7 +327,7 @@ public sealed class EnrichmentNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Description.Should().Be("Active");
@@ -351,7 +351,7 @@ public sealed class EnrichmentNodeTests
 
         // Act & Assert
         await Assert.ThrowsAsync<OperationCanceledException>(async () =>
-            await node.ExecuteAsync(data, context, cts.Token));
+            await node.TransformAsync(data, context, cts.Token));
     }
 
     [Fact]
@@ -363,7 +363,7 @@ public sealed class EnrichmentNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Should().BeSameAs(data);

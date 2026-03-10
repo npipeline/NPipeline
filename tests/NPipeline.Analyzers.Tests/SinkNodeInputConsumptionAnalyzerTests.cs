@@ -24,7 +24,7 @@ public class SinkNodeInputConsumptionAnalyzerTests
                        {
                            public class TestSink : ISinkNode<int>
                            {
-                               public Task ExecuteAsync(IDataPipe<int> input, PipelineContext context, CancellationToken cancellationToken)
+                               public Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
                                {
                                    // Input parameter not consumed - this should trigger NP9301
                                    return Task.CompletedTask;
@@ -60,7 +60,7 @@ public class SinkNodeInputConsumptionAnalyzerTests
                        {
                            public class TestSink : ISinkNode<int>
                            {
-                               public async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context, CancellationToken cancellationToken)
+                               public async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
                                {
                                    await foreach (var item in input.WithCancellation(cancellationToken))
                                    {
@@ -97,7 +97,7 @@ public class SinkNodeInputConsumptionAnalyzerTests
                        {
                            public class NotASink : IAsyncDisposable
                            {
-                               public Task ExecuteAsync(IDataPipe<int> input, PipelineContext context, CancellationToken cancellationToken)
+                               public Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
                                {
                                    // This class doesn't implement ISinkNode, so no diagnostic should be reported
                                    return Task.CompletedTask;

@@ -6,7 +6,7 @@ namespace NPipeline.Tests.DataFlow.DataPipes;
 
 /// <summary>
 ///     Tests for common DataPipe interface contracts.
-///     Validates that all DataPipe implementations correctly implement IDataPipe and IDataPipe&lt;T&gt; interfaces.
+///     Validates that all DataPipe implementations correctly implement IDataStream and IDataStream&lt;T&gt; interfaces.
 /// </summary>
 public sealed class PipeTests
 {
@@ -15,10 +15,10 @@ public sealed class PipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        Common.InMemoryDataPipe<int> pipe = new(items);
+        Common.InMemoryDataStream<int> pipe = new(items);
 
         // Act & Assert
-        _ = pipe.Should().BeAssignableTo<IDataPipe>();
+        _ = pipe.Should().BeAssignableTo<IDataStream>();
     }
 
     [Fact]
@@ -26,10 +26,10 @@ public sealed class PipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        Common.InMemoryDataPipe<int> pipe = new(items);
+        Common.InMemoryDataStream<int> pipe = new(items);
 
         // Act & Assert
-        _ = pipe.Should().BeAssignableTo<IDataPipe<int>>();
+        _ = pipe.Should().BeAssignableTo<IDataStream<int>>();
     }
 
     [Fact]
@@ -37,10 +37,10 @@ public sealed class PipeTests
     {
         // Arrange
         var stream = GetTestStream();
-        StreamingDataPipe<int> pipe = new(stream);
+        DataStream<int> pipe = new(stream);
 
         // Act & Assert
-        _ = pipe.Should().BeAssignableTo<IDataPipe>();
+        _ = pipe.Should().BeAssignableTo<IDataStream>();
     }
 
     [Fact]
@@ -48,10 +48,10 @@ public sealed class PipeTests
     {
         // Arrange
         var stream = GetTestStream();
-        StreamingDataPipe<int> pipe = new(stream);
+        DataStream<int> pipe = new(stream);
 
         // Act & Assert
-        _ = pipe.Should().BeAssignableTo<IDataPipe<int>>();
+        _ = pipe.Should().BeAssignableTo<IDataStream<int>>();
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public sealed class PipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        IDataPipe pipe = new Common.InMemoryDataPipe<int>(items);
+        IDataStream pipe = new Common.InMemoryDataStream<int>(items);
         List<object> enumeratedItems = [];
 
         // Act
@@ -77,7 +77,7 @@ public sealed class PipeTests
     {
         // Arrange
         var stream = GetTestStream();
-        IDataPipe pipe = new StreamingDataPipe<int>(stream);
+        IDataStream pipe = new DataStream<int>(stream);
         List<object> enumeratedItems = [];
 
         // Act
@@ -95,7 +95,7 @@ public sealed class PipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        IDataPipe pipe = new Common.InMemoryDataPipe<int>(items);
+        IDataStream pipe = new Common.InMemoryDataStream<int>(items);
 
         // Act & Assert
         _ = pipe.GetDataType().Should().Be<int>();
@@ -106,7 +106,7 @@ public sealed class PipeTests
     {
         // Arrange
         var stream = GetTestStream();
-        IDataPipe pipe = new StreamingDataPipe<int>(stream);
+        IDataStream pipe = new DataStream<int>(stream);
 
         // Act & Assert
         _ = pipe.GetDataType().Should().Be<int>();
@@ -117,7 +117,7 @@ public sealed class PipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        IAsyncEnumerable<int> pipe = new Common.InMemoryDataPipe<int>(items);
+        IAsyncEnumerable<int> pipe = new Common.InMemoryDataStream<int>(items);
         List<int> enumeratedItems = [];
 
         // Act
@@ -135,7 +135,7 @@ public sealed class PipeTests
     {
         // Arrange
         var stream = GetTestStream();
-        IAsyncEnumerable<int> pipe = new StreamingDataPipe<int>(stream);
+        IAsyncEnumerable<int> pipe = new DataStream<int>(stream);
         List<int> enumeratedItems = [];
 
         // Act
@@ -153,7 +153,7 @@ public sealed class PipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        IAsyncDisposable pipe = new Common.InMemoryDataPipe<int>(items);
+        IAsyncDisposable pipe = new Common.InMemoryDataStream<int>(items);
 
         // Act & Assert
         var act = async () => await pipe.DisposeAsync();
@@ -165,7 +165,7 @@ public sealed class PipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        IDisposable pipe = new Common.InMemoryDataPipe<int>(items);
+        IDisposable pipe = new Common.InMemoryDataStream<int>(items);
 
         // Act & Assert
         var act = () => pipe.Dispose();
@@ -177,7 +177,7 @@ public sealed class PipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        Common.InMemoryDataPipe<int> pipe = new(items);
+        Common.InMemoryDataStream<int> pipe = new(items);
 
         // Act & Assert
         pipe.Should().BeAssignableTo<IDisposable>();
@@ -189,7 +189,7 @@ public sealed class PipeTests
     {
         // Arrange
         var stream = GetTestStream();
-        IAsyncDisposable pipe = new StreamingDataPipe<int>(stream);
+        IAsyncDisposable pipe = new DataStream<int>(stream);
 
         // Act & Assert
         var act = async () => await pipe.DisposeAsync();
@@ -201,7 +201,7 @@ public sealed class PipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        Common.InMemoryDataPipe<int> pipe = new(items);
+        Common.InMemoryDataStream<int> pipe = new(items);
 
         // Act & Assert
         _ = pipe.StreamName.Should().Be("TestStream");
@@ -212,7 +212,7 @@ public sealed class PipeTests
     {
         // Arrange
         var stream = GetTestStream();
-        StreamingDataPipe<int> pipe = new(stream, "TestStream");
+        DataStream<int> pipe = new(stream, "TestStream");
 
         // Act & Assert
         _ = pipe.StreamName.Should().Be("TestStream");
@@ -223,11 +223,11 @@ public sealed class PipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        IDataPipe<int> sourcePipe = new Common.InMemoryDataPipe<int>(items);
-        CappedReplayableDataPipe<int> pipe = new(sourcePipe, 5, "TestPipe");
+        IDataStream<int> sourcePipe = new Common.InMemoryDataStream<int>(items);
+        CappedReplayableDataStream<int> pipe = new(sourcePipe, 5, "TestPipe");
 
         // Act & Assert
-        _ = pipe.Should().BeAssignableTo<IDataPipe>();
+        _ = pipe.Should().BeAssignableTo<IDataStream>();
     }
 
     [Fact]
@@ -235,11 +235,11 @@ public sealed class PipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        IDataPipe<int> sourcePipe = new Common.InMemoryDataPipe<int>(items);
-        CappedReplayableDataPipe<int> pipe = new(sourcePipe, 5, "TestPipe");
+        IDataStream<int> sourcePipe = new Common.InMemoryDataStream<int>(items);
+        CappedReplayableDataStream<int> pipe = new(sourcePipe, 5, "TestPipe");
 
         // Act & Assert
-        _ = pipe.Should().BeAssignableTo<IDataPipe<int>>();
+        _ = pipe.Should().BeAssignableTo<IDataStream<int>>();
     }
 
     [Fact]
@@ -247,8 +247,8 @@ public sealed class PipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        IDataPipe<int> sourcePipe = new Common.InMemoryDataPipe<int>(items);
-        IDataPipe pipe = new CappedReplayableDataPipe<int>(sourcePipe, 5, "TestPipe");
+        IDataStream<int> sourcePipe = new Common.InMemoryDataStream<int>(items);
+        IDataStream pipe = new CappedReplayableDataStream<int>(sourcePipe, 5, "TestPipe");
 
         // Act & Assert
         _ = pipe.GetDataType().Should().Be<int>();
@@ -259,8 +259,8 @@ public sealed class PipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        IDataPipe<int> sourcePipe = new Common.InMemoryDataPipe<int>(items);
-        IDataPipe pipe = new CappedReplayableDataPipe<int>(sourcePipe, 5, "TestPipe");
+        IDataStream<int> sourcePipe = new Common.InMemoryDataStream<int>(items);
+        IDataStream pipe = new CappedReplayableDataStream<int>(sourcePipe, 5, "TestPipe");
         List<object> enumeratedItems = [];
 
         // Act
@@ -278,8 +278,8 @@ public sealed class PipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        IDataPipe<int> sourcePipe = new Common.InMemoryDataPipe<int>(items);
-        IAsyncEnumerable<int> pipe = new CappedReplayableDataPipe<int>(sourcePipe, 5, "TestPipe");
+        IDataStream<int> sourcePipe = new Common.InMemoryDataStream<int>(items);
+        IAsyncEnumerable<int> pipe = new CappedReplayableDataStream<int>(sourcePipe, 5, "TestPipe");
         List<int> enumeratedItems = [];
 
         // Act
@@ -297,8 +297,8 @@ public sealed class PipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        IDataPipe<int> sourcePipe = new Common.InMemoryDataPipe<int>(items);
-        IAsyncDisposable pipe = new CappedReplayableDataPipe<int>(sourcePipe, 5, "TestPipe");
+        IDataStream<int> sourcePipe = new Common.InMemoryDataStream<int>(items);
+        IAsyncDisposable pipe = new CappedReplayableDataStream<int>(sourcePipe, 5, "TestPipe");
 
         // Act & Assert
         var act = async () => await pipe.DisposeAsync();
@@ -310,8 +310,8 @@ public sealed class PipeTests
     {
         // Arrange
         List<int> items = [1, 2, 3];
-        IDataPipe<int> sourcePipe = new Common.InMemoryDataPipe<int>(items);
-        CappedReplayableDataPipe<int> pipe = new(sourcePipe, 5, "TestPipe");
+        IDataStream<int> sourcePipe = new Common.InMemoryDataStream<int>(items);
+        CappedReplayableDataStream<int> pipe = new(sourcePipe, 5, "TestPipe");
 
         // Act & Assert
         _ = pipe.StreamName.Should().Be("TestPipe");

@@ -59,11 +59,11 @@ public class CustomerDataSource : SourceNode<CustomerRecord>
         },
     };
 
-    public override IDataPipe<CustomerRecord> Initialize(
+    public override IDataStream<CustomerRecord> OpenStream(
         PipelineContext context,
         CancellationToken cancellationToken)
     {
-        return new InMemoryDataPipe<CustomerRecord>(SampleData, "CustomerDataSource");
+        return new InMemoryDataStream<CustomerRecord>(SampleData, "CustomerDataSource");
     }
 }
 
@@ -110,8 +110,8 @@ public class CustomerValidator : ValidationNode<CustomerRecord>
 /// </summary>
 public class CustomerConsoleSink : SinkNode<CustomerRecord>
 {
-    public override async Task ExecuteAsync(
-        IDataPipe<CustomerRecord> input,
+    public override async Task ConsumeAsync(
+        IDataStream<CustomerRecord> input,
         PipelineContext context,
         CancellationToken cancellationToken)
     {

@@ -19,7 +19,7 @@ public sealed class LambdaNodesTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(5, context, CancellationToken.None);
+        var result = await node.TransformAsync(5, context, CancellationToken.None);
 
         // Assert
         _ = result.Should().Be(10);
@@ -39,7 +39,7 @@ public sealed class LambdaNodesTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(5, context, CancellationToken.None);
+        var result = await node.TransformAsync(5, context, CancellationToken.None);
 
         // Assert
         _ = result.Should().Be(10);
@@ -62,7 +62,7 @@ public sealed class LambdaNodesTests
 
         // Act & Assert
         cts.CancelAfter(50);
-        _ = await Assert.ThrowsAsync<TaskCanceledException>(() => node.ExecuteAsync(5, context, cts.Token));
+        _ = await Assert.ThrowsAsync<TaskCanceledException>(() => node.TransformAsync(5, context, cts.Token));
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public sealed class LambdaNodesTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync("hello", context, CancellationToken.None);
+        var result = await node.TransformAsync("hello", context, CancellationToken.None);
 
         // Assert
         _ = result.Should().Be("HELLO");

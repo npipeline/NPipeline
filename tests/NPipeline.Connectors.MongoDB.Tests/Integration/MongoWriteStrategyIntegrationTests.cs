@@ -53,11 +53,11 @@ public class MongoWriteStrategyIntegrationTests(MongoTestContainerFixture fixtur
 
         await using var sink = new MongoSinkNode<Widget>(client, config);
 
-        await using var pipe = new StreamingDataPipe<Widget>(
+        await using var pipe = new DataStream<Widget>(
             Enumerable.Range(1, 5).Select(i => new Widget { Id = i, Label = $"w{i}" })
                 .ToAsyncEnumerable(), "test");
 
-        await sink.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        await sink.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         (await CountAsync(db, colName)).Should().Be(5);
     }
@@ -84,13 +84,13 @@ public class MongoWriteStrategyIntegrationTests(MongoTestContainerFixture fixtur
         await using var sink = new MongoSinkNode<Widget>(client, config);
 
         // doc with id=1 already exists — will cause a duplicate key error for that doc
-        await using var pipe = new StreamingDataPipe<Widget>(
+        await using var pipe = new DataStream<Widget>(
             new[] { new Widget { Id = 1, Label = "dup" }, new Widget { Id = 2, Label = "new" } }
                 .ToAsyncEnumerable(), "test");
 
         // Unordered bulk insert silently skips duplicate-key errors in MongoDB;
         // the connector may surface a write exception — either is acceptable.
-        var act = async () => await sink.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        var act = async () => await sink.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
         await act.Should().NotThrowAsync<OperationCanceledException>();
 
         // The non-duplicate document should have been written
@@ -116,11 +116,11 @@ public class MongoWriteStrategyIntegrationTests(MongoTestContainerFixture fixtur
 
         await using var sink = new MongoSinkNode<Widget>(client, config);
 
-        await using var pipe = new StreamingDataPipe<Widget>(
+        await using var pipe = new DataStream<Widget>(
             Enumerable.Range(1, 10).Select(i => new Widget { Id = i, Label = $"w{i}" })
                 .ToAsyncEnumerable(), "test");
 
-        await sink.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        await sink.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         (await CountAsync(db, colName)).Should().Be(10);
     }
@@ -144,10 +144,10 @@ public class MongoWriteStrategyIntegrationTests(MongoTestContainerFixture fixtur
 
         await using var sink = new MongoSinkNode<Widget>(client, config);
 
-        await using var pipe = new StreamingDataPipe<Widget>(
+        await using var pipe = new DataStream<Widget>(
             new[] { new Widget { Id = 100, Label = "new" } }.ToAsyncEnumerable(), "test");
 
-        await sink.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        await sink.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         (await CountAsync(db, colName)).Should().Be(1);
     }
@@ -172,10 +172,10 @@ public class MongoWriteStrategyIntegrationTests(MongoTestContainerFixture fixtur
 
         await using var sink = new MongoSinkNode<Widget>(client, config);
 
-        await using var pipe = new StreamingDataPipe<Widget>(
+        await using var pipe = new DataStream<Widget>(
             new[] { new Widget { Id = 42, Label = "updated" } }.ToAsyncEnumerable(), "test");
 
-        await sink.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        await sink.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         (await CountAsync(db, colName)).Should().Be(1);
         var docs = await FindAllAsync(db, colName);
@@ -202,14 +202,14 @@ public class MongoWriteStrategyIntegrationTests(MongoTestContainerFixture fixtur
 
         await using var sink = new MongoSinkNode<Widget>(client, config);
 
-        await using var pipe = new StreamingDataPipe<Widget>(
+        await using var pipe = new DataStream<Widget>(
             new[]
             {
                 new Widget { Id = 1, Label = "updated" }, // existing → update
                 new Widget { Id = 2, Label = "inserted" }, // new → insert
             }.ToAsyncEnumerable(), "test");
 
-        await sink.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        await sink.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         (await CountAsync(db, colName)).Should().Be(2);
     }

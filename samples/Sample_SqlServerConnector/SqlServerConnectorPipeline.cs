@@ -74,7 +74,7 @@ public sealed class SqlServerConnectorPipeline
     /// <summary>
     ///     Executes the pipeline with the given context and cancellation token.
     /// </summary>
-    public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
+    public async Task ConsumeAsync(PipelineContext context, CancellationToken cancellationToken = default)
     {
         Console.WriteLine("Starting SQL Server Connector Pipeline...");
         Console.WriteLine();
@@ -291,8 +291,8 @@ public sealed class SqlServerConnectorPipeline
 
         // Write customers
         var startTime = DateTime.Now;
-        var dataPipe = new InMemoryDataPipe<Customer>(customers);
-        await sinkNode.ExecuteAsync(dataPipe, null!, cancellationToken);
+        var dataPipe = new InMemoryDataStream<Customer>(customers);
+        await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
         var elapsed = DateTime.Now - startTime;
 
         Console.WriteLine($"✓ PerRow write completed in {elapsed.TotalMilliseconds:F2}ms");
@@ -348,8 +348,8 @@ public sealed class SqlServerConnectorPipeline
 
         // Write orders
         var startTime = DateTime.Now;
-        var dataPipe = new InMemoryDataPipe<Order>(orders);
-        await sinkNode.ExecuteAsync(dataPipe, null!, cancellationToken);
+        var dataPipe = new InMemoryDataStream<Order>(orders);
+        await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
         var elapsed = DateTime.Now - startTime;
 
         Console.WriteLine($"✓ Batch write completed in {elapsed.TotalMilliseconds:F2}ms");
@@ -391,7 +391,7 @@ public sealed class SqlServerConnectorPipeline
 
         var customers = new List<Customer>();
 
-        await foreach (var customer in sourceNode.Initialize(null!, cancellationToken))
+        await foreach (var customer in sourceNode.OpenStream(null!, cancellationToken))
         {
             customers.Add(customer);
             Console.WriteLine($"  - Read: {customer.FullName} (ID: {customer.CustomerId}, Email: {customer.Email})");
@@ -441,8 +441,8 @@ public sealed class SqlServerConnectorPipeline
         Console.WriteLine("  - IgnoreColumn attribute excludes computed properties");
 
         // Write products
-        var dataPipe = new InMemoryDataPipe<Product>(products);
-        await sinkNode.ExecuteAsync(dataPipe, null!, cancellationToken);
+        var dataPipe = new InMemoryDataStream<Product>(products);
+        await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
 
         // Read products to verify convention-based mapping
         var sourceNode = new SqlServerSourceNode<Product>(
@@ -452,7 +452,7 @@ public sealed class SqlServerConnectorPipeline
 
         var readProducts = new List<Product>();
 
-        await foreach (var product in sourceNode.Initialize(null!, cancellationToken))
+        await foreach (var product in sourceNode.OpenStream(null!, cancellationToken))
         {
             readProducts.Add(product);
             Console.WriteLine($"  - Read: {product.ProductName} (Category: {product.Category}, Price: ${product.Price:F2}, Stock: {product.StockQuantity})");
@@ -528,8 +528,8 @@ public sealed class SqlServerConnectorPipeline
         Console.WriteLine("  - Default shipping address set to 'N/A' if null");
 
         // Write orders with custom mapper
-        var dataPipe = new InMemoryDataPipe<Order>(orders);
-        await sinkNode.ExecuteAsync(dataPipe, null!, cancellationToken);
+        var dataPipe = new InMemoryDataStream<Order>(orders);
+        await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
 
         // Read orders to verify custom mapper
         var sourceNode = new SqlServerSourceNode<Order>(
@@ -537,7 +537,7 @@ public sealed class SqlServerConnectorPipeline
             "SELECT TOP 2 * FROM Sales.Orders ORDER BY OrderID DESC",
             new SqlServerConfiguration());
 
-        await foreach (var order in sourceNode.Initialize(null!, cancellationToken))
+        await foreach (var order in sourceNode.OpenStream(null!, cancellationToken))
         {
             Console.WriteLine($"  - Read: Order {order.OrderId} (Status: {order.Status}, Notes: {order.Notes})");
         }
@@ -562,7 +562,7 @@ public sealed class SqlServerConnectorPipeline
 
         var customers = new List<Customer>();
 
-        await foreach (var customer in sourceNode.Initialize(null!, cancellationToken))
+        await foreach (var customer in sourceNode.OpenStream(null!, cancellationToken))
         {
             customers.Add(customer);
         }
@@ -575,7 +575,7 @@ public sealed class SqlServerConnectorPipeline
 
         var orders = new List<Order>();
 
-        await foreach (var order in ordersSourceNode.Initialize(null!, cancellationToken))
+        await foreach (var order in ordersSourceNode.OpenStream(null!, cancellationToken))
         {
             orders.Add(order);
         }
@@ -645,8 +645,8 @@ public sealed class SqlServerConnectorPipeline
             "EnrichedCustomers",
             configuration);
 
-        var dataPipe = new InMemoryDataPipe<EnrichedCustomer>(enrichedCustomers);
-        await sinkNode.ExecuteAsync(dataPipe, null!, cancellationToken);
+        var dataPipe = new InMemoryDataStream<EnrichedCustomer>(enrichedCustomers);
+        await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
 
         // Display enriched customers
         foreach (var enriched in enrichedCustomers)
@@ -699,8 +699,8 @@ public sealed class SqlServerConnectorPipeline
 
         try
         {
-            var dataPipe = new InMemoryDataPipe<Order>(orders);
-            await sinkNode.ExecuteAsync(dataPipe, null!, cancellationToken);
+            var dataPipe = new InMemoryDataStream<Order>(orders);
+            await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
             Console.WriteLine("✓ All orders written successfully (unexpected)");
         }
         catch (Exception ex)
@@ -723,8 +723,8 @@ public sealed class SqlServerConnectorPipeline
 
         try
         {
-            var dataPipe = new InMemoryDataPipe<Order>(orders);
-            await sinkNode.ExecuteAsync(dataPipe, null!, cancellationToken);
+            var dataPipe = new InMemoryDataStream<Order>(orders);
+            await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
             Console.WriteLine("✓ Error handling with ContinueOnError completed");
             Console.WriteLine("  - Valid orders were written despite the invalid order");
         }

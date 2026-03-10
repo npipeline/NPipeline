@@ -13,7 +13,7 @@ public class StringCleansingNodeTests
         node.TrimStart(x => x.StringValue);
 
         var item = new TestObject { StringValue = "  test  " };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("test  ", result.StringValue);
     }
 
@@ -28,7 +28,7 @@ public class StringCleansingNodeTests
         node.TrimEnd(x => x.StringValue);
 
         var item = new TestObject { StringValue = "  test  " };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("  test", result.StringValue);
     }
 
@@ -43,7 +43,7 @@ public class StringCleansingNodeTests
         node.CollapseWhitespace(x => x.StringValue);
 
         var item = new TestObject { StringValue = "test  with   multiple    spaces" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("test with multiple spaces", result.StringValue);
     }
 
@@ -58,7 +58,7 @@ public class StringCleansingNodeTests
         node.RemoveWhitespace(x => x.StringValue);
 
         var item = new TestObject { StringValue = "test with spaces" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("testwithspaces", result.StringValue);
     }
 
@@ -73,7 +73,7 @@ public class StringCleansingNodeTests
         node.ToLower(x => x.StringValue);
 
         var item = new TestObject { StringValue = "TeSt" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("test", result.StringValue);
     }
 
@@ -88,7 +88,7 @@ public class StringCleansingNodeTests
         node.ToUpper(x => x.StringValue);
 
         var item = new TestObject { StringValue = "TeSt" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("TEST", result.StringValue);
     }
 
@@ -103,7 +103,7 @@ public class StringCleansingNodeTests
         node.ToTitleCase(x => x.StringValue);
 
         var item = new TestObject { StringValue = "hello world" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("Hello World", result.StringValue);
     }
 
@@ -118,7 +118,7 @@ public class StringCleansingNodeTests
         node.RemoveSpecialCharacters(x => x.StringValue);
 
         var item = new TestObject { StringValue = "test@#$%123" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("test123", result.StringValue);
     }
 
@@ -133,7 +133,7 @@ public class StringCleansingNodeTests
         node.RemoveDigits(x => x.StringValue);
 
         var item = new TestObject { StringValue = "test123abc456" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("testabc", result.StringValue);
     }
 
@@ -148,7 +148,7 @@ public class StringCleansingNodeTests
         node.RemoveNonAscii(x => x.StringValue);
 
         var item = new TestObject { StringValue = "test™café" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.DoesNotContain("™", result.StringValue);
     }
 
@@ -163,7 +163,7 @@ public class StringCleansingNodeTests
         node.Replace(x => x.StringValue, "test", "demo");
 
         var item = new TestObject { StringValue = "test string" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("demo string", result.StringValue);
     }
 
@@ -183,7 +183,7 @@ public class StringCleansingNodeTests
         node.Trim(x => x.StringValue);
 
         var item = new TestObject { StringValue = "  test  " };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("test", result.StringValue);
     }
 
@@ -194,7 +194,7 @@ public class StringCleansingNodeTests
         node.Trim(x => x.StringValue);
 
         var item = new TestObject { StringValue = null };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Null(result.StringValue);
     }
 
@@ -209,7 +209,7 @@ public class StringCleansingNodeTests
         node.Truncate(x => x.StringValue, 4);
 
         var item = new TestObject { StringValue = "testing" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("test", result.StringValue);
     }
 
@@ -220,7 +220,7 @@ public class StringCleansingNodeTests
         node.Truncate(x => x.StringValue, 10);
 
         var item = new TestObject { StringValue = "test" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("test", result.StringValue);
     }
 
@@ -235,7 +235,7 @@ public class StringCleansingNodeTests
         node.EnsurePrefix(x => x.StringValue, "pre_");
 
         var item = new TestObject { StringValue = "test" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("pre_test", result.StringValue);
     }
 
@@ -246,7 +246,7 @@ public class StringCleansingNodeTests
         node.EnsurePrefix(x => x.StringValue, "pre_");
 
         var item = new TestObject { StringValue = "pre_test" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("pre_test", result.StringValue);
     }
 
@@ -261,7 +261,7 @@ public class StringCleansingNodeTests
         node.EnsureSuffix(x => x.StringValue, "_suf");
 
         var item = new TestObject { StringValue = "test" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("test_suf", result.StringValue);
     }
 
@@ -272,7 +272,7 @@ public class StringCleansingNodeTests
         node.EnsureSuffix(x => x.StringValue, "_suf");
 
         var item = new TestObject { StringValue = "test_suf" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("test_suf", result.StringValue);
     }
 
@@ -287,7 +287,7 @@ public class StringCleansingNodeTests
         node.DefaultIfNullOrWhitespace(x => x.StringValue, "default");
 
         var item = new TestObject { StringValue = null };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("default", result.StringValue);
     }
 
@@ -298,7 +298,7 @@ public class StringCleansingNodeTests
         node.DefaultIfNullOrWhitespace(x => x.StringValue, "default");
 
         var item = new TestObject { StringValue = "   " };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("default", result.StringValue);
     }
 
@@ -309,7 +309,7 @@ public class StringCleansingNodeTests
         node.DefaultIfNullOrWhitespace(x => x.StringValue, "default");
 
         var item = new TestObject { StringValue = "test" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("test", result.StringValue);
     }
 
@@ -324,7 +324,7 @@ public class StringCleansingNodeTests
         node.DefaultIfNullOrEmpty(x => x.StringValue, "default");
 
         var item = new TestObject { StringValue = null };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("default", result.StringValue);
     }
 
@@ -335,7 +335,7 @@ public class StringCleansingNodeTests
         node.DefaultIfNullOrEmpty(x => x.StringValue, "default");
 
         var item = new TestObject { StringValue = "" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("default", result.StringValue);
     }
 
@@ -346,7 +346,7 @@ public class StringCleansingNodeTests
         node.DefaultIfNullOrEmpty(x => x.StringValue, "default");
 
         var item = new TestObject { StringValue = "test" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("test", result.StringValue);
     }
 
@@ -361,7 +361,7 @@ public class StringCleansingNodeTests
         node.NullIfWhitespace(x => x.StringValue);
 
         var item = new TestObject { StringValue = "   " };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Null(result.StringValue);
     }
 
@@ -372,7 +372,7 @@ public class StringCleansingNodeTests
         node.NullIfWhitespace(x => x.StringValue);
 
         var item = new TestObject { StringValue = "test" };
-        var result = await node.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+        var result = await node.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
         Assert.Equal("test", result.StringValue);
     }
 

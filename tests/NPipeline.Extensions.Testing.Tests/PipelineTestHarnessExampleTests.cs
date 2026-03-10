@@ -129,7 +129,7 @@ public class PipelineTestHarnessExampleTests
 
     private sealed class DoubleTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item * 2);
         }
@@ -137,7 +137,7 @@ public class PipelineTestHarnessExampleTests
 
     private sealed class AlwaysFailsTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             throw new InvalidOperationException("This transform always fails for testing");
         }

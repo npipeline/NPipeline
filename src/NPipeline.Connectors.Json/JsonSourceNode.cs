@@ -162,7 +162,7 @@ public sealed class JsonSourceNode<T> : SourceNode<T>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var provider = _provider ?? StorageProviderFactory.GetProviderOrThrow(
             _resolver ?? DefaultResolver.Value,
@@ -177,7 +177,7 @@ public sealed class JsonSourceNode<T> : SourceNode<T>
         }
 
         var stream = Read(provider, _uri, _configuration, cancellationToken);
-        return new StreamingDataPipe<T>(stream, $"JsonSourceNode<{typeof(T).Name}>");
+        return new DataStream<T>(stream, $"JsonSourceNode<{typeof(T).Name}>");
     }
 
     private async IAsyncEnumerable<T> Read(

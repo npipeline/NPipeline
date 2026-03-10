@@ -68,7 +68,7 @@ public sealed class WatermarkIntegrationTests
 
     private sealed class SensorSource : SourceNode<SensorReading>
     {
-        public override IDataPipe<SensorReading> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<SensorReading> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var readings = new[]
             {
@@ -78,13 +78,13 @@ public sealed class WatermarkIntegrationTests
                 new SensorReading("sensor1", 30.0, new DateTime(2023, 1, 1, 10, 6, 0)), // Window 2: average 25
             };
 
-            return new StreamingDataPipe<SensorReading>(readings.ToAsyncEnumerable(), "SensorStream");
+            return new DataStream<SensorReading>(readings.ToAsyncEnumerable(), "SensorStream");
         }
     }
 
     private sealed class AverageSink(ConcurrentQueue<double> store) : SinkNode<double>
     {
-        public override async Task ExecuteAsync(IDataPipe<double> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<double> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))

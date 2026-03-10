@@ -32,8 +32,8 @@ public sealed class ParallelExecutionStrategy : BlockingParallelStrategy
     ///     Executes the input items through the transform node with parallelism, selecting the appropriate
     ///     queue policy implementation based on ParallelOptions in the context.
     /// </summary>
-    public override async Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(
-        IDataPipe<TIn> input,
+    public override async Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(
+        IDataStream<TIn> input,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
         CancellationToken cancellationToken = default)

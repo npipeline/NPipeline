@@ -16,7 +16,7 @@ public class PipelineInputSourceTests
         context.Parameters[CompositeContextKeys.InputItem] = expectedValue;
 
         // Act
-        var result = source.Initialize(context, CancellationToken.None);
+        var result = source.OpenStream(context, CancellationToken.None);
 
         // Assert
         result.Should().NotBeNull();
@@ -34,7 +34,7 @@ public class PipelineInputSourceTests
 
         // Act & Assert
         Assert.Throws<InvalidOperationException>(() =>
-            source.Initialize(context, CancellationToken.None));
+            source.OpenStream(context, CancellationToken.None));
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public class PipelineInputSourceTests
 
         // Act & Assert
         Assert.Throws<InvalidCastException>(() =>
-            source.Initialize(context, CancellationToken.None));
+            source.OpenStream(context, CancellationToken.None));
     }
 
     [Fact]
@@ -60,7 +60,7 @@ public class PipelineInputSourceTests
 
         // Act & Assert
         Assert.Throws<InvalidCastException>(() =>
-            source.Initialize(context, CancellationToken.None));
+            source.OpenStream(context, CancellationToken.None));
     }
 
     [Fact]
@@ -72,7 +72,7 @@ public class PipelineInputSourceTests
         context.Parameters[CompositeContextKeys.InputItem] = null!;
 
         // Act
-        var result = source.Initialize(context, CancellationToken.None);
+        var result = source.OpenStream(context, CancellationToken.None);
 
         // Assert
         result.Should().NotBeNull();
@@ -90,7 +90,7 @@ public class PipelineInputSourceTests
         context.Parameters[CompositeContextKeys.InputItem] = null!;
 
         // Act
-        var result = source.Initialize(context, CancellationToken.None);
+        var result = source.OpenStream(context, CancellationToken.None);
 
         // Assert
         result.Should().NotBeNull();
@@ -109,7 +109,7 @@ public class PipelineInputSourceTests
         context.Parameters[CompositeContextKeys.InputItem] = expectedValue;
 
         // Act
-        var result = source.Initialize(context, CancellationToken.None);
+        var result = source.OpenStream(context, CancellationToken.None);
 
         // Assert
         result.Should().NotBeNull();
@@ -128,7 +128,7 @@ public class PipelineInputSourceTests
         context.Parameters[CompositeContextKeys.InputItem] = expectedValue;
 
         // Act
-        var result = source.Initialize(context, CancellationToken.None);
+        var result = source.OpenStream(context, CancellationToken.None);
 
         // Assert
         result.Should().NotBeNull();

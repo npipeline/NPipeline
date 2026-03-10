@@ -202,10 +202,10 @@ public class MongoSourceNode<T> : SourceNode<T>, IAsyncDisposable
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A streaming data pipe backed by the MongoDB cursor.</returns>
-    public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var stream = StreamDataAsync(cancellationToken);
-        return new StreamingDataPipe<T>(stream, $"{GetType().Name}");
+        return new DataStream<T>(stream, $"{GetType().Name}");
     }
 
     private IMongoClient GetClient()

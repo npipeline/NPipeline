@@ -41,7 +41,7 @@ public class LifecycleMonitorNode : TransformNode<SensorData, SensorData>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task containing the processed sensor data (unchanged).</returns>
-    public override async Task<SensorData> ExecuteAsync(SensorData item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<SensorData> TransformAsync(SensorData item, PipelineContext context, CancellationToken cancellationToken)
     {
         if (_processedCount == 0)
             RecordLifecycleEvent(LifecycleEventType.NodeExecutionStarted, "Started processing sensor data");

@@ -19,7 +19,7 @@ public class LineageTrackingNode : TransformNode<object, LineageTrackedItem<obje
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A LineageTrackedItem containing the original item and lineage information.</returns>
-    public override Task<LineageTrackedItem<object>> ExecuteAsync(object item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<LineageTrackedItem<object>> TransformAsync(object item, PipelineContext context, CancellationToken cancellationToken)
     {
         _processedCount++;
 

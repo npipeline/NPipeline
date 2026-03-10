@@ -33,7 +33,7 @@ public class InventoryProcessor : TransformNode<OrderEvent, InventoryUpdate>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>An inventory update event.</returns>
-    public override async Task<InventoryUpdate> ExecuteAsync(
+    public override async Task<InventoryUpdate> TransformAsync(
         OrderEvent orderEvent,
         PipelineContext context,
         CancellationToken cancellationToken)

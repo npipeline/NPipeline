@@ -287,7 +287,7 @@ public class ParallelOptionsTests
 
     public sealed class TestTransform : TransformNode<int, int>
     {
-        public override async Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             lock (SharedTestState.Gate)
             {

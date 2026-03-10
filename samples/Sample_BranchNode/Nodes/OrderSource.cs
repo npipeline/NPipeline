@@ -58,7 +58,7 @@ public class OrderSource : SourceNode<OrderEvent>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token to stop order generation.</param>
     /// <returns>A data pipe containing order events.</returns>
-    public override IDataPipe<OrderEvent> Initialize(
+    public override IDataStream<OrderEvent> OpenStream(
         PipelineContext context,
         CancellationToken cancellationToken)
     {
@@ -94,7 +94,7 @@ public class OrderSource : SourceNode<OrderEvent>
             Console.WriteLine($"OrderSource: Completed generating {orderCount} orders");
         }
 
-        return new StreamingDataPipe<OrderEvent>(GenerateOrders(cancellationToken), "OrderSource");
+        return new DataStream<OrderEvent>(GenerateOrders(cancellationToken), "OrderSource");
     }
 
     /// <summary>

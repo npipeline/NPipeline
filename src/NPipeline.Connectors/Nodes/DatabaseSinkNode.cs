@@ -67,7 +67,7 @@ public abstract class DatabaseSinkNode<T> : SinkNode<T>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
         await using var connection = await GetConnectionAsync(cancellationToken);
 
@@ -85,7 +85,7 @@ public abstract class DatabaseSinkNode<T> : SinkNode<T>
     /// <param name="input">The input data pipe.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    private async Task ExecuteWithTransactionAsync(IDatabaseConnection connection, IDataPipe<T> input, CancellationToken cancellationToken)
+    private async Task ExecuteWithTransactionAsync(IDatabaseConnection connection, IDataStream<T> input, CancellationToken cancellationToken)
     {
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
@@ -129,7 +129,7 @@ public abstract class DatabaseSinkNode<T> : SinkNode<T>
     /// <param name="input">The input data pipe.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    private async Task ExecuteWithoutTransactionAsync(IDatabaseConnection connection, IDataPipe<T> input, CancellationToken cancellationToken)
+    private async Task ExecuteWithoutTransactionAsync(IDatabaseConnection connection, IDataStream<T> input, CancellationToken cancellationToken)
     {
         await using var writer = await CreateWriterAsync(connection, cancellationToken);
 

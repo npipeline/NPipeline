@@ -11,7 +11,7 @@ public sealed class NodeExecutorNullHandlingTests
     {
         var adapter = NodeInstantiationService.BuildOutputAdapter(typeof(string))!;
         var input = new List<object?> { "value1", null, "value3" }.ToAsyncEnumerable();
-        var inputPipe = new StreamingDataPipe<object?>(input);
+        var inputPipe = new DataStream<object?>(input);
 
         var resultPipe = adapter(inputPipe, "test-stream");
         var results = new List<string?>();
@@ -33,7 +33,7 @@ public sealed class NodeExecutorNullHandlingTests
     {
         var adapter = NodeInstantiationService.BuildOutputAdapter(typeof(int))!;
         var input = new List<object?> { 1, null, 3 }.ToAsyncEnumerable();
-        var inputPipe = new StreamingDataPipe<object?>(input);
+        var inputPipe = new DataStream<object?>(input);
 
         var resultPipe = adapter(inputPipe, "test-stream");
         var results = new List<int>();
@@ -55,7 +55,7 @@ public sealed class NodeExecutorNullHandlingTests
     {
         var adapter = NodeInstantiationService.BuildOutputAdapter(typeof(int))!;
         var input = new List<object?> { 1, null, 3 }.ToAsyncEnumerable();
-        var inputPipe = new StreamingDataPipe<object?>(input);
+        var inputPipe = new DataStream<object?>(input);
 
         var resultPipe = adapter(inputPipe, "test-stream");
         var results = new List<int>();
@@ -77,7 +77,7 @@ public sealed class NodeExecutorNullHandlingTests
     {
         var adapter = NodeInstantiationService.BuildOutputAdapter(typeof(string))!;
         var input = new List<string?> { "value1", null, "value3" }.ToAsyncEnumerable();
-        var inputPipe = new StreamingDataPipe<string?>(input);
+        var inputPipe = new DataStream<string?>(input);
 
         var resultPipe = adapter(inputPipe, "test-stream");
         var results = new List<string?>();
@@ -99,7 +99,7 @@ public sealed class NodeExecutorNullHandlingTests
     {
         var adapter = NodeInstantiationService.BuildOutputAdapter(typeof(int))!;
         var input = new List<int?> { 1, null, 3 }.ToAsyncEnumerable();
-        var inputPipe = new StreamingDataPipe<int?>(input);
+        var inputPipe = new DataStream<int?>(input);
 
         var resultPipe = adapter(inputPipe, "test-stream");
         var results = new List<int>();
@@ -121,7 +121,7 @@ public sealed class NodeExecutorNullHandlingTests
     {
         var adapter = NodeInstantiationService.BuildOutputAdapter(typeof(int))!;
         var input = new List<int?> { 1, null, 3 }.ToAsyncEnumerable();
-        var inputPipe = new StreamingDataPipe<int?>(input);
+        var inputPipe = new DataStream<int?>(input);
 
         var resultPipe = adapter(inputPipe, "test-stream");
         var results = new List<int>();
@@ -143,7 +143,7 @@ public sealed class NodeExecutorNullHandlingTests
     {
         var adapter = NodeInstantiationService.BuildOutputAdapter(typeof(bool))!;
         var input = new List<object?> { true, null, false }.ToAsyncEnumerable();
-        var inputPipe = new StreamingDataPipe<object?>(input);
+        var inputPipe = new DataStream<object?>(input);
 
         var resultPipe = adapter(inputPipe, "test-stream");
         var results = new List<bool>();
@@ -165,7 +165,7 @@ public sealed class NodeExecutorNullHandlingTests
     {
         var adapter = NodeInstantiationService.BuildOutputAdapter(typeof(bool))!;
         var input = new List<bool?> { true, null, false }.ToAsyncEnumerable();
-        var inputPipe = new StreamingDataPipe<bool?>(input);
+        var inputPipe = new DataStream<bool?>(input);
 
         var resultPipe = adapter(inputPipe, "test-stream");
         var results = new List<bool>();

@@ -44,9 +44,9 @@ public class DatabaseSinkNodeTests
     public async Task ExecuteAsync_BatchesDataAndFlushesOnce()
     {
         var node = new InspectableDatabaseSinkNode<int>(batchSize: 2);
-        var pipe = new InMemoryDataPipe<int>(new[] { 1, 2, 3, 4, 5 });
+        var pipe = new InMemoryDataStream<int>(new[] { 1, 2, 3, 4, 5 });
 
-        await node.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        await node.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         node.Writer.Batches.Should().HaveCount(3);
         node.Writer.Batches.SelectMany(batch => batch).Should().Equal(1, 2, 3, 4, 5);
@@ -58,9 +58,9 @@ public class DatabaseSinkNodeTests
     {
         var writer = new FailingDatabaseWriter<int>();
         var node = new DelegatingDatabaseSinkNode<int>(writer, false, 1);
-        var pipe = new InMemoryDataPipe<int>(new[] { 1 });
+        var pipe = new InMemoryDataStream<int>(new[] { 1 });
 
-        var act = () => node.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        var act = () => node.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         writer.CallCount.Should().Be(1);
@@ -71,9 +71,9 @@ public class DatabaseSinkNodeTests
     {
         var writer = new FailingDatabaseWriter<int>();
         var node = new DelegatingDatabaseSinkNode<int>(writer, true, 1);
-        var pipe = new InMemoryDataPipe<int>(new[] { 1, 2 });
+        var pipe = new InMemoryDataStream<int>(new[] { 1, 2 });
 
-        await node.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        await node.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         writer.CallCount.Should().Be(2);
     }
@@ -85,9 +85,9 @@ public class DatabaseSinkNodeTests
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var pipe = new InMemoryDataPipe<int>(new[] { 1, 2, 3 });
+        var pipe = new InMemoryDataStream<int>(new[] { 1, 2, 3 });
 
-        var act = () => node.ExecuteAsync(pipe, new PipelineContext(), cts.Token);
+        var act = () => node.ConsumeAsync(pipe, new PipelineContext(), cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }

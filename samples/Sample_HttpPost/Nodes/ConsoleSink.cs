@@ -32,8 +32,8 @@ public class ConsoleSink : SinkNode<ProcessedData>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A task representing the sink execution.</returns>
-    public override async Task ExecuteAsync(
-        IDataPipe<ProcessedData> input,
+    public override async Task ConsumeAsync(
+        IDataStream<ProcessedData> input,
         PipelineContext context,
         CancellationToken cancellationToken)
     {

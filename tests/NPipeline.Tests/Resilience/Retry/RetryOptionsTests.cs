@@ -81,7 +81,7 @@ public sealed class RetryOptionsTests
     {
         private int _attempts;
 
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             _attempts++;
             throw new InvalidOperationException($"fail-{_attempts}");
@@ -114,7 +114,7 @@ public sealed class RetryOptionsTests
     {
         private int _attempt;
 
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             _attempt++;
 

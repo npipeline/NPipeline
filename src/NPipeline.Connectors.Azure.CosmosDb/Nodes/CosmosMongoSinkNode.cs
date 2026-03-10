@@ -61,7 +61,7 @@ public sealed class CosmosMongoSinkNode<T> : SinkNode<T>
     }
 
     /// <inheritdoc />
-    public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
         var adapter = new CosmosMongoApiAdapter();
         var client = await adapter.CreateClientAsync(_configuration, cancellationToken);

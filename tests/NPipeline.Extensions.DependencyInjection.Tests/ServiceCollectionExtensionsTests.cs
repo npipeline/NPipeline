@@ -234,7 +234,7 @@ public sealed class ServiceCollectionExtensionsTests
     {
         public bool WasCalled { get; private set; }
 
-        public override Task ExecuteAsync(IDataPipe<string> input, PipelineContext context,
+        public override Task ConsumeAsync(IDataStream<string> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             WasCalled = true;
@@ -267,7 +267,7 @@ public sealed class ServiceCollectionExtensionsTests
             InstanceIds.Clear();
         }
 
-        public override Task ExecuteAsync(IDataPipe<string> input, PipelineContext context,
+        public override Task ConsumeAsync(IDataStream<string> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             InstanceIds.Add(svc.Id);
@@ -299,7 +299,7 @@ public sealed class ServiceCollectionExtensionsTests
     {
         public static int DisposeCount;
 
-        public override Task ExecuteAsync(IDataPipe<string> input, PipelineContext context,
+        public override Task ConsumeAsync(IDataStream<string> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             return Task.CompletedTask;

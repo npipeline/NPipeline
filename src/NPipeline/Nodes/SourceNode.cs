@@ -11,10 +11,10 @@ namespace NPipeline.Nodes;
 ///     <para>
 ///         Inherit from this class to create custom source nodes that produce data into the pipeline.
 ///         Source nodes are the entry points of a pipeline—they read from external sources and emit
-///         the data as an <see cref="IDataPipe{T}" /> for downstream processing.
+///         the data as an <see cref="IDataStream{T}" /> for downstream processing.
 ///     </para>
 ///     <para>
-///         You only need to implement <see cref="Initialize" />, which should return an <see cref="IDataPipe{TOut}" />
+///         You only need to implement <see cref="OpenStream" />, which should return an <see cref="IDataStream{TOut}" />
 ///         containing all the items to process. The framework handles stream lifecycle and cleanup.
 ///     </para>
 /// </remarks>
@@ -32,13 +32,13 @@ namespace NPipeline.Nodes;
 ///         _end = end;
 ///     }
 /// 
-///     public override IDataPipe&lt;int&gt; Initialize(
+///     public override IDataStream&lt;int&gt; OpenStream(
 ///         PipelineContext context,
 ///         CancellationToken cancellationToken)
 ///     {
 ///         // Generate range
 ///         var numbers = Enumerable.Range(_start, _end - _start + 1).ToList();
-///         return new InMemoryDataPipe&lt;int&gt;(numbers, "RangeSource");
+///         return new InMemoryDataStream&lt;int&gt;(numbers, "RangeSource");
 ///     }
 /// }
 /// 
@@ -49,12 +49,12 @@ namespace NPipeline.Nodes;
 /// 
 ///     public TextFileSource(string filePath) => _filePath = filePath;
 /// 
-///     public override IDataPipe&lt;string&gt; Initialize(
+///     public override IDataStream&lt;string&gt; OpenStream(
 ///         PipelineContext context,
 ///         CancellationToken cancellationToken)
 ///     {
 ///         var lines = File.ReadAllLines(_filePath);
-///         return new InMemoryDataPipe&lt;string&gt;(lines, "TextFileSource");
+///         return new InMemoryDataStream&lt;string&gt;(lines, "TextFileSource");
 ///     }
 /// }
 /// </code>
@@ -72,7 +72,7 @@ public abstract class SourceNode<TOut> : ISourceNode<TOut>, INodeTypeMetadata
     public Type OutputType => typeof(TOut);
 
     /// <inheritdoc />
-    public abstract IDataPipe<TOut> Initialize(PipelineContext context, CancellationToken cancellationToken);
+    public abstract IDataStream<TOut> OpenStream(PipelineContext context, CancellationToken cancellationToken);
 
     /// <summary>
     ///     Asynchronously disposes of the node. This can be overridden by derived classes to release resources.

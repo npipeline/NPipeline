@@ -52,8 +52,8 @@ public sealed class DuckDBFileQueryTests : IDisposable
 
         var sink = DuckDBSinkNode<TestRecord>.ToFile(csvPath, config);
 
-        await sink.ExecuteAsync(
-            new StreamingDataPipe<TestRecord>(records.ToAsyncEnumerable()),
+        await sink.ConsumeAsync(
+            new DataStream<TestRecord>(records.ToAsyncEnumerable()),
             PipelineContext.Default, CancellationToken.None);
 
         File.Exists(csvPath).Should().BeTrue();
@@ -73,8 +73,8 @@ public sealed class DuckDBFileQueryTests : IDisposable
 
         var sink = DuckDBSinkNode<TestRecord>.ToFile(parquetPath);
 
-        await sink.ExecuteAsync(
-            new StreamingDataPipe<TestRecord>(records.ToAsyncEnumerable()),
+        await sink.ConsumeAsync(
+            new DataStream<TestRecord>(records.ToAsyncEnumerable()),
             PipelineContext.Default, CancellationToken.None);
 
         File.Exists(parquetPath).Should().BeTrue();
@@ -91,7 +91,7 @@ public sealed class DuckDBFileQueryTests : IDisposable
             "Id,Name,Value\n1,Alice,10.5\n2,Bob,20.3\n3,Charlie,30.1\n");
 
         var source = DuckDBSourceNode<TestRecord>.FromFile(csvPath);
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         result.Should().HaveCount(3);
         result[0].Name.Should().Be("Alice");
@@ -117,13 +117,13 @@ public sealed class DuckDBFileQueryTests : IDisposable
 
         var sink = DuckDBSinkNode<TestRecord>.ToFile(csvPath, sinkConfig);
 
-        await sink.ExecuteAsync(
-            new StreamingDataPipe<TestRecord>(original.ToAsyncEnumerable()),
+        await sink.ConsumeAsync(
+            new DataStream<TestRecord>(original.ToAsyncEnumerable()),
             PipelineContext.Default, CancellationToken.None);
 
         // Read back
         var source = DuckDBSourceNode<TestRecord>.FromFile(csvPath);
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         result.Should().HaveCount(2);
         result[0].Id.Should().Be(1);

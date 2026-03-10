@@ -15,10 +15,10 @@ public sealed record NodeExecutionPlan(
     NodeKind Kind,
     Type? InputType,
     Type? OutputType,
-    Func<PipelineContext, CancellationToken, Task<IDataPipe>>? ExecuteSource = null,
-    Func<IDataPipe, PipelineContext, CancellationToken, Task<IDataPipe>>? ExecuteTransform = null,
-    Func<IEnumerable<IDataPipe>, PipelineContext, CancellationToken, Task<IDataPipe>>? ExecuteJoin = null,
-    Func<IDataPipe, PipelineContext, CancellationToken, Task>? ExecuteSink = null,
-    Func<IDataPipe, PipelineContext, CancellationToken, Task<IDataPipe>>? ExecuteAggregate = null,
-    Func<IDataPipe, string, IDataPipe>? AdaptOutput = null
+    Func<PipelineContext, CancellationToken, Task<IDataStream>>? ExecuteSource = null,
+    Func<IDataStream, PipelineContext, CancellationToken, Task<IDataStream>>? ExecuteTransform = null,
+    Func<IEnumerable<IDataStream>, PipelineContext, CancellationToken, Task<IDataStream>>? ExecuteJoin = null,
+    Func<IDataStream, PipelineContext, CancellationToken, Task>? ExecuteSink = null,
+    Func<IDataStream, PipelineContext, CancellationToken, Task<IDataStream>>? ExecuteAggregate = null,
+    Func<IDataStream, string, IDataStream>? AdaptOutput = null
 );

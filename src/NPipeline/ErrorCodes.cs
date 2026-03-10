@@ -138,7 +138,7 @@ public static class ErrorCodes
     public const string TypeMismatchInConnection = "NP0201";
 
     /// <summary>Input data pipe is not of the expected type.</summary>
-    public const string InputDataPipeWrongType = "NP0202";
+    public const string InputDataStreamWrongType = "NP0202";
 
     /// <summary>Cannot register mappings after execution has begun.</summary>
     public const string CannotRegisterMappingsAfterExecution = "NP0203";
@@ -186,8 +186,8 @@ public static class ErrorCodes
     /// <summary>Lineage cardinality mismatch (inputs/outputs count mismatch).</summary>
     public const string LineageCardinalityMismatch = "NP0307";
 
-    /// <summary>Failed to extract items from InMemoryDataPipe.</summary>
-    public const string FailedToExtractItemsFromInMemoryDataPipe = "NP0308";
+    /// <summary>Failed to extract items from InMemoryDataStream.</summary>
+    public const string FailedToExtractItemsFromInMemoryDataStream = "NP0308";
 
     /// <summary>Circuit breaker tripped after threshold of consecutive failures.</summary>
     public const string CircuitBreakerTripped = "NP0310";

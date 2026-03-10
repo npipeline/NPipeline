@@ -19,8 +19,8 @@ public interface IStreamExecutionStrategy
     /// <param name="context">The pipeline context. Use context.Tracer to access tracing functionality.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>An output data pipe with the transformed items.</returns>
-    Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(
-        IDataPipe<TIn> input,
+    Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(
+        IDataStream<TIn> input,
         IStreamTransformNode<TIn, TOut> node,
         PipelineContext context,
         CancellationToken cancellationToken);

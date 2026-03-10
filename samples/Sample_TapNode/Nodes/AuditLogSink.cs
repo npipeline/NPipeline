@@ -36,7 +36,7 @@ public sealed class AuditLogSink : SinkNode<Transaction>, ISinkNode<ValidatedTra
     /// <param name="input">The input data pipe.</param>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    async Task ISinkNode<ProcessedTransaction>.ExecuteAsync(IDataPipe<ProcessedTransaction> input, PipelineContext context, CancellationToken cancellationToken)
+    async Task ISinkNode<ProcessedTransaction>.ConsumeAsync(IDataStream<ProcessedTransaction> input, PipelineContext context, CancellationToken cancellationToken)
     {
         _logger.LogInformation("AuditLogSink: Starting to audit processed transactions at stage {Stage}", _pipelineStage);
 
@@ -76,7 +76,7 @@ public sealed class AuditLogSink : SinkNode<Transaction>, ISinkNode<ValidatedTra
     /// <param name="input">The input data pipe.</param>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    async Task ISinkNode<ValidatedTransaction>.ExecuteAsync(IDataPipe<ValidatedTransaction> input, PipelineContext context, CancellationToken cancellationToken)
+    async Task ISinkNode<ValidatedTransaction>.ConsumeAsync(IDataStream<ValidatedTransaction> input, PipelineContext context, CancellationToken cancellationToken)
     {
         _logger.LogInformation("AuditLogSink: Starting to audit validated transactions at stage {Stage}", _pipelineStage);
 
@@ -106,7 +106,7 @@ public sealed class AuditLogSink : SinkNode<Transaction>, ISinkNode<ValidatedTra
     }
 
     /// <inheritdoc />
-    public override async Task ExecuteAsync(IDataPipe<Transaction> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<Transaction> input, PipelineContext context, CancellationToken cancellationToken)
     {
         _logger.LogInformation("AuditLogSink: Starting to audit transactions at stage {Stage}", _pipelineStage);
 

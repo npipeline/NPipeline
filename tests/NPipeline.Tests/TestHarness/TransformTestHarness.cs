@@ -50,7 +50,7 @@ public static class TransformTestHarness
     }
 }
 
-file sealed class HarnessListPipe<T>(IReadOnlyList<T> items, string name) : IDataPipe<T>
+file sealed class HarnessListPipe<T>(IReadOnlyList<T> items, string name) : IDataStream<T>
 {
     public string StreamName { get; } = name;
 

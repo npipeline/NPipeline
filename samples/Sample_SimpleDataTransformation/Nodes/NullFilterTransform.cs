@@ -18,7 +18,7 @@ public class NullFilterTransform : TransformNode<Person, Person>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task representing the filter operation with a Person result.</returns>
-    public override Task<Person> ExecuteAsync(Person item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<Person> TransformAsync(Person item, PipelineContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

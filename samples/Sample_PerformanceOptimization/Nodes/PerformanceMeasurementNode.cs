@@ -31,7 +31,7 @@ public class PerformanceMeasurementNode : SinkNode<ProcessedPerformanceItem>
     /// <summary>
     ///     Processes the input items and collects performance metrics.
     /// </summary>
-    public override async Task ExecuteAsync(IDataPipe<ProcessedPerformanceItem> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<ProcessedPerformanceItem> input, PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("Starting performance measurement...");
         _totalMemoryBefore = GC.GetTotalMemory(false);

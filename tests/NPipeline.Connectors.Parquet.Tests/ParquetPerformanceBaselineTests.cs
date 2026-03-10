@@ -35,15 +35,15 @@ public sealed class ParquetPerformanceBaselineTests
             var sink = new ParquetSinkNode<WideRecord>(uri, resolver,
                 new ParquetConfiguration { RowGroupSize = 10_000 });
 
-            await sink.ExecuteAsync(
-                new StreamingDataPipe<WideRecord>(GenerateWideRecords(SmallRecordCount).ToAsyncEnumerable()),
+            await sink.ConsumeAsync(
+                new DataStream<WideRecord>(GenerateWideRecords(SmallRecordCount).ToAsyncEnumerable()),
                 PipelineContext.Default,
                 CancellationToken.None);
 
             // Read all columns
             var swAll = Stopwatch.StartNew();
             var sourceAll = new ParquetSourceNode<WideRecord>(uri, resolver);
-            var countAll = (await sourceAll.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync()).Count;
+            var countAll = (await sourceAll.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync()).Count;
             swAll.Stop();
 
             countAll.Should().Be(SmallRecordCount);
@@ -79,8 +79,8 @@ public sealed class ParquetPerformanceBaselineTests
             var swWrite = Stopwatch.StartNew();
             var sink = new ParquetSinkNode<NarrowRecord>(uri, resolver, config);
 
-            await sink.ExecuteAsync(
-                new StreamingDataPipe<NarrowRecord>(GenerateNarrowRecords(LargeRecordCount).ToAsyncEnumerable()),
+            await sink.ConsumeAsync(
+                new DataStream<NarrowRecord>(GenerateNarrowRecords(LargeRecordCount).ToAsyncEnumerable()),
                 PipelineContext.Default,
                 CancellationToken.None);
 
@@ -89,7 +89,7 @@ public sealed class ParquetPerformanceBaselineTests
             // Measure read
             var swRead = Stopwatch.StartNew();
             var source = new ParquetSourceNode<NarrowRecord>(uri, resolver);
-            var count = (await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync()).Count;
+            var count = (await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync()).Count;
             swRead.Stop();
 
             count.Should().Be(LargeRecordCount);
@@ -132,8 +132,8 @@ public sealed class ParquetPerformanceBaselineTests
             var swWrite = Stopwatch.StartNew();
             var sink = new ParquetSinkNode<WideRecord>(uri, resolver, config);
 
-            await sink.ExecuteAsync(
-                new StreamingDataPipe<WideRecord>(GenerateWideRecords(count).ToAsyncEnumerable()),
+            await sink.ConsumeAsync(
+                new DataStream<WideRecord>(GenerateWideRecords(count).ToAsyncEnumerable()),
                 PipelineContext.Default,
                 CancellationToken.None);
 
@@ -142,7 +142,7 @@ public sealed class ParquetPerformanceBaselineTests
             // Measure read
             var swRead = Stopwatch.StartNew();
             var source = new ParquetSourceNode<WideRecord>(uri, resolver);
-            var result = (await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync()).Count;
+            var result = (await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync()).Count;
             swRead.Stop();
 
             result.Should().Be(count);
@@ -183,11 +183,11 @@ public sealed class ParquetPerformanceBaselineTests
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ParquetSinkNode<NarrowRecord>(uri, resolver, config);
 
-            var data = new StreamingDataPipe<NarrowRecord>(
+            var data = new DataStream<NarrowRecord>(
                 GenerateNarrowRecords(SmallRecordCount).ToAsyncEnumerable());
 
             var sw = Stopwatch.StartNew();
-            await sink.ExecuteAsync(data, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(data, PipelineContext.Default, CancellationToken.None);
             sw.Stop();
 
             // Baseline: 50k narrow records should not take more than 10 seconds on any CI agent
@@ -196,7 +196,7 @@ public sealed class ParquetPerformanceBaselineTests
 
             // Verify all records were written
             var source = new ParquetSourceNode<NarrowRecord>(uri, resolver);
-            var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
             result.Count.Should().Be(SmallRecordCount);
         }
         finally
@@ -222,15 +222,15 @@ public sealed class ParquetPerformanceBaselineTests
             // Write first
             var sink = new ParquetSinkNode<NarrowRecord>(uri, resolver, config);
 
-            await sink.ExecuteAsync(
-                new StreamingDataPipe<NarrowRecord>(GenerateNarrowRecords(SmallRecordCount).ToAsyncEnumerable()),
+            await sink.ConsumeAsync(
+                new DataStream<NarrowRecord>(GenerateNarrowRecords(SmallRecordCount).ToAsyncEnumerable()),
                 PipelineContext.Default,
                 CancellationToken.None);
 
             // Now measure read
             var sw = Stopwatch.StartNew();
             var source = new ParquetSourceNode<NarrowRecord>(uri, resolver);
-            var readResult = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var readResult = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
             sw.Stop();
 
             readResult.Count.Should().Be(SmallRecordCount);
@@ -270,8 +270,8 @@ public sealed class ParquetPerformanceBaselineTests
 
             var sw = Stopwatch.StartNew();
 
-            await sink.ExecuteAsync(
-                new StreamingDataPipe<NarrowRecord>(GenerateNarrowRecords(SmallRecordCount).ToAsyncEnumerable()),
+            await sink.ConsumeAsync(
+                new DataStream<NarrowRecord>(GenerateNarrowRecords(SmallRecordCount).ToAsyncEnumerable()),
                 PipelineContext.Default,
                 CancellationToken.None);
 
@@ -346,8 +346,8 @@ public sealed class ParquetPerformanceBaselineTests
 
             var sw = Stopwatch.StartNew();
 
-            await sink.ExecuteAsync(
-                new StreamingDataPipe<NarrowRecord>(GenerateNarrowRecords(LargeRecordCount).ToAsyncEnumerable()),
+            await sink.ConsumeAsync(
+                new DataStream<NarrowRecord>(GenerateNarrowRecords(LargeRecordCount).ToAsyncEnumerable()),
                 PipelineContext.Default,
                 CancellationToken.None);
 
@@ -386,8 +386,8 @@ public sealed class ParquetPerformanceBaselineTests
                 var config = new ParquetConfiguration { RowGroupSize = 500 };
                 var sink = new ParquetSinkNode<NarrowRecord>(uri, resolver, config);
 
-                await sink.ExecuteAsync(
-                    new StreamingDataPipe<NarrowRecord>(
+                await sink.ConsumeAsync(
+                    new DataStream<NarrowRecord>(
                         GenerateNarrowRecords(recordsPerFile, i * recordsPerFile).ToAsyncEnumerable()),
                     PipelineContext.Default,
                     CancellationToken.None);
@@ -401,7 +401,7 @@ public sealed class ParquetPerformanceBaselineTests
             // Read from directory
             var dirUri = StorageUri.FromFilePath(tempDir + "/");
             var source = new ParquetSourceNode<NarrowRecord>(dirUri, resolver);
-            var count = (await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync()).Count;
+            var count = (await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync()).Count;
             count.Should().Be(fileCount * recordsPerFile);
         }
         finally
@@ -429,8 +429,8 @@ public sealed class ParquetPerformanceBaselineTests
 
         var sink = new ParquetSinkNode<NarrowRecord>(uri, resolver, config);
 
-        await sink.ExecuteAsync(
-            new StreamingDataPipe<NarrowRecord>(GenerateNarrowRecords(count).ToAsyncEnumerable()),
+        await sink.ConsumeAsync(
+            new DataStream<NarrowRecord>(GenerateNarrowRecords(count).ToAsyncEnumerable()),
             PipelineContext.Default,
             CancellationToken.None);
     }

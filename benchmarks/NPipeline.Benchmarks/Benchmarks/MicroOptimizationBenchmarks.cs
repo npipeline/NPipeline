@@ -90,23 +90,23 @@ public class MicroOptimizationBenchmarks
     public async Task Simulated_Task_FromResult_Execution()
     {
         // Simulate the execution context with Task.FromResult
-        await SimulateExecutionContext(Task.FromResult<IDataPipe<int>>(
-            new StreamingDataPipe<int>(SimulatedStream(), "simulated")));
+        await SimulateExecutionContext(Task.FromResult<IDataStream<int>>(
+            new DataStream<int>(SimulatedStream(), "simulated")));
     }
 
     [Benchmark(Description = "Simulated: ValueTask.AsTask in execution context")]
     public async Task Simulated_ValueTask_AsTask_Execution()
     {
         // Simulate the execution context with ValueTask.AsTask
-        await SimulateExecutionContext(new ValueTask<IDataPipe<int>>(
-            new StreamingDataPipe<int>(SimulatedStream(), "simulated")).AsTask());
+        await SimulateExecutionContext(new ValueTask<IDataStream<int>>(
+            new DataStream<int>(SimulatedStream(), "simulated")).AsTask());
     }
 
     // ------------------------------------------------------------------------
     // Helper methods
     // ------------------------------------------------------------------------
 
-    private static async Task SimulateExecutionContext(Task<IDataPipe<int>> pipeTask)
+    private static async Task SimulateExecutionContext(Task<IDataStream<int>> pipeTask)
     {
         var pipe = await pipeTask;
 
@@ -165,13 +165,13 @@ public class MicroOptimizationBenchmarks
 
     private sealed class GenSource : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)
                 : 0;
 
-            return new StreamingDataPipe<int>(Stream(cancellationToken), "gen");
+            return new DataStream<int>(Stream(cancellationToken), "gen");
 
             async IAsyncEnumerable<int> Stream([EnumeratorCancellation] CancellationToken ct)
             {
@@ -189,7 +189,7 @@ public class MicroOptimizationBenchmarks
 
     private sealed class BlackHoleSink : SinkNode<int>
     {
-        public override async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))

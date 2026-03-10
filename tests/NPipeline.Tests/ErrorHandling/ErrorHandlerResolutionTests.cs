@@ -277,7 +277,7 @@ public sealed class ErrorHandlerResolutionTests
     // Test nodes
     private sealed class FailingTransform : TransformNode<string, string>
     {
-        public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
         {
             if (item.StartsWith("fail", StringComparison.Ordinal) || item == "no-handler" || item == "missing-global" ||
                 item == "fail-item" || item == "fail-pipeline-item")

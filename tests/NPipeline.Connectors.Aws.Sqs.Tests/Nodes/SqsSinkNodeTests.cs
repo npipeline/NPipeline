@@ -13,7 +13,7 @@ namespace NPipeline.Connectors.Aws.Sqs.Tests.Nodes;
 
 public class SqsSinkNodeTests
 {
-    private static IDataPipe<T> CreateDataPipe<T>(T[] items)
+    private static IDataStream<T> CreateDataPipe<T>(T[] items)
     {
         return new TestDataPipe<T>(items);
     }
@@ -126,7 +126,7 @@ public class SqsSinkNodeTests
             var message = CreateSqsMessage();
 
             // Act
-            await node.ExecuteAsync(CreateDataPipe([message]), context, cts.Token);
+            await node.ConsumeAsync(CreateDataPipe([message]), context, cts.Token);
 
             // Assert
             message.IsAcknowledged.Should().BeTrue();
@@ -164,7 +164,7 @@ public class SqsSinkNodeTests
             var message2 = CreateSqsMessage("msg-2", "handle-2");
 
             // Act
-            await node.ExecuteAsync(CreateDataPipe([message1, message2]), context, cts.Token);
+            await node.ConsumeAsync(CreateDataPipe([message1, message2]), context, cts.Token);
 
             // Assert
             message1.IsAcknowledged.Should().BeTrue();
@@ -196,7 +196,7 @@ public class SqsSinkNodeTests
             var message = CreateSqsMessage();
 
             // Act
-            await node.ExecuteAsync(CreateDataPipe([message]), context, cts.Token);
+            await node.ConsumeAsync(CreateDataPipe([message]), context, cts.Token);
 
             // Assert
             message.IsAcknowledged.Should().BeFalse();
@@ -224,7 +224,7 @@ public class SqsSinkNodeTests
             var message = CreateSqsMessage();
 
             // Act
-            await node.ExecuteAsync(CreateDataPipe([message]), context, cts.Token);
+            await node.ConsumeAsync(CreateDataPipe([message]), context, cts.Token);
             await message.AcknowledgeAsync();
 
             // Assert
@@ -262,7 +262,7 @@ public class SqsSinkNodeTests
             var message = CreateSqsMessage();
 
             // Act
-            await node.ExecuteAsync(CreateDataPipe([message]), context, cts.Token);
+            await node.ConsumeAsync(CreateDataPipe([message]), context, cts.Token);
 
             // Assert - Not acknowledged immediately
             message.IsAcknowledged.Should().BeFalse();
@@ -294,7 +294,7 @@ public class SqsSinkNodeTests
             var message = CreateSqsMessage();
 
             // Act
-            var executeTask = node.ExecuteAsync(CreateDataPipe([message]), context, cts.Token);
+            var executeTask = node.ConsumeAsync(CreateDataPipe([message]), context, cts.Token);
             await executeTask;
 
             // Cancel immediately
@@ -329,7 +329,7 @@ public class SqsSinkNodeTests
             var message = CreateSqsMessage();
 
             // Act
-            await node.ExecuteAsync(CreateDataPipe([message]), context, cts.Token);
+            await node.ConsumeAsync(CreateDataPipe([message]), context, cts.Token);
 
             // Assert
             message.IsAcknowledged.Should().BeFalse();
@@ -354,7 +354,7 @@ public class SqsSinkNodeTests
             var message = CreateSqsMessage();
 
             // Act
-            await node.ExecuteAsync(CreateDataPipe([message]), context, cts.Token);
+            await node.ConsumeAsync(CreateDataPipe([message]), context, cts.Token);
 
             // Assert
             A.CallTo(() => sqsClientFake.DeleteMessageAsync(A<string>._, A<string>._, A<CancellationToken>._))
@@ -404,7 +404,7 @@ public class SqsSinkNodeTests
             };
 
             // Act
-            await node.ExecuteAsync(CreateDataPipe(messages), context, cts.Token);
+            await node.ConsumeAsync(CreateDataPipe(messages), context, cts.Token);
 
             // Assert
             messages.All(m => m.IsAcknowledged).Should().BeTrue();
@@ -444,7 +444,7 @@ public class SqsSinkNodeTests
             };
 
             // Act
-            await node.ExecuteAsync(CreateDataPipe(messages), context, cts.Token);
+            await node.ConsumeAsync(CreateDataPipe(messages), context, cts.Token);
 
             // Assert
             messages.All(m => m.IsAcknowledged).Should().BeTrue();
@@ -482,7 +482,7 @@ public class SqsSinkNodeTests
             var message = CreateSqsMessage();
 
             // Act
-            await node.ExecuteAsync(CreateDataPipe([message]), context, cts.Token);
+            await node.ConsumeAsync(CreateDataPipe([message]), context, cts.Token);
 
             // Wait for flush timeout
             await Task.Delay(150);
@@ -525,7 +525,7 @@ public class SqsSinkNodeTests
             };
 
             // Act
-            await node.ExecuteAsync(CreateDataPipe(messages), context, cts.Token);
+            await node.ConsumeAsync(CreateDataPipe(messages), context, cts.Token);
 
             // Assert
             messages.All(m => m.IsAcknowledged).Should().BeTrue();
@@ -562,7 +562,7 @@ public class SqsSinkNodeTests
             };
 
             // Act
-            await node.ExecuteAsync(CreateDataPipe(messages), context, cts.Token);
+            await node.ConsumeAsync(CreateDataPipe(messages), context, cts.Token);
 
             // Assert
             messages.All(m => m.IsAcknowledged).Should().BeTrue();
@@ -600,7 +600,7 @@ public class SqsSinkNodeTests
             };
 
             // Act
-            await node.ExecuteAsync(CreateDataPipe(messages), context, cts.Token);
+            await node.ConsumeAsync(CreateDataPipe(messages), context, cts.Token);
 
             // Assert
             messages.All(m => m.IsAcknowledged).Should().BeTrue();
@@ -629,7 +629,7 @@ public class SqsSinkNodeTests
             var testModel = new TestModel { Id = 42, Name = "Test" };
 
             // Act
-            await node.ExecuteAsync(CreateDataPipe([CreateSqsMessage(body: testModel)]), context, cts.Token);
+            await node.ConsumeAsync(CreateDataPipe([CreateSqsMessage(body: testModel)]), context, cts.Token);
 
             // Assert
             capturedRequest.Should().NotBeNull();
@@ -684,7 +684,7 @@ public class SqsSinkNodeTests
             // Act
             try
             {
-                await node.ExecuteAsync(CreateDataPipe([CreateSqsMessage(body: testModel)]), context, cts.Token);
+                await node.ConsumeAsync(CreateDataPipe([CreateSqsMessage(body: testModel)]), context, cts.Token);
             }
             catch (Exception ex)
             {
@@ -725,7 +725,7 @@ public class SqsSinkNodeTests
             var testModel = new TestModel { Id = 42, Name = "Test" };
 
             // Act
-            await node.ExecuteAsync(CreateDataPipe([CreateSqsMessage(body: testModel)]), context, cts.Token);
+            await node.ConsumeAsync(CreateDataPipe([CreateSqsMessage(body: testModel)]), context, cts.Token);
 
             // Assert
             capturedRequest.Should().NotBeNull();
@@ -760,7 +760,7 @@ public class SqsSinkNodeTests
             };
 
             // Act
-            await node.ExecuteAsync(CreateDataPipe(testModels), context, cts.Token);
+            await node.ConsumeAsync(CreateDataPipe(testModels), context, cts.Token);
 
             // Assert - Should have attempted to send all messages
             callCount.Should().Be(3);
@@ -795,7 +795,7 @@ public class SqsSinkNodeTests
 
             // Act & Assert
             await Assert.ThrowsAsync<Exception>(async () =>
-                await node.ExecuteAsync(CreateDataPipe(testModels), context, cts.Token));
+                await node.ConsumeAsync(CreateDataPipe(testModels), context, cts.Token));
 
             // Assert - Should have stopped after first error
             callCount.Should().Be(1);
@@ -808,7 +808,7 @@ public class SqsSinkNodeTests
         public string Name { get; set; } = string.Empty;
     }
 
-    private class TestDataPipe<T> : IDataPipe<T>
+    private class TestDataPipe<T> : IDataStream<T>
     {
         private readonly T[] _items;
 

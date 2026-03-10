@@ -244,7 +244,7 @@ public sealed class PipelineBuilderCharacterizationTests
 
     private sealed class PassthroughTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item);
         }
@@ -253,7 +253,7 @@ public sealed class PipelineBuilderCharacterizationTests
     [TransformCardinality(TransformCardinality.OneToMany)]
     private sealed class OneToManyTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item);
         }

@@ -18,7 +18,7 @@ public class HelloWorldSource : SourceNode<string>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the generated messages.</returns>
-    public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("Generating Hello World messages");
 
@@ -40,8 +40,8 @@ public class HelloWorldSource : SourceNode<string>
 
         Console.WriteLine($"Generated {messages.Count} Hello World messages");
 
-        // Return a InMemoryDataPipe containing our messages
-        // Normally a source should generate data asynchronously, but for simplicity we return all at once here using InMemoryDataPipe
-        return new InMemoryDataPipe<string>(messages, "HelloWorldSource");
+        // Return a InMemoryDataStream containing our messages
+        // Normally a source should generate data asynchronously, but for simplicity we return all at once here using InMemoryDataStream
+        return new InMemoryDataStream<string>(messages, "HelloWorldSource");
     }
 }

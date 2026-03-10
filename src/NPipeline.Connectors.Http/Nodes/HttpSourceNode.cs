@@ -79,10 +79,10 @@ public sealed partial class HttpSourceNode<T> : SourceNode<T>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var stream = FetchAllPagesAsync(cancellationToken);
-        return new StreamingDataPipe<T>(stream, $"HttpSourceNode<{typeof(T).Name}>");
+        return new DataStream<T>(stream, $"HttpSourceNode<{typeof(T).Name}>");
     }
 
     private async IAsyncEnumerable<T> FetchAllPagesAsync(

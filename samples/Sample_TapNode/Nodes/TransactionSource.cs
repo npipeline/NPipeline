@@ -58,7 +58,7 @@ public sealed class TransactionSource : SourceNode<Transaction>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<Transaction> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<Transaction> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         _logger.LogInformation("TransactionSource: Starting to generate transaction stream");
 
@@ -85,7 +85,7 @@ public sealed class TransactionSource : SourceNode<Transaction>
             }
 
             _logger.LogInformation("TransactionSource: Completed generating {Count} transactions", transactionCount);
-            return new InMemoryDataPipe<Transaction>(transactions, "TransactionSource");
+            return new InMemoryDataStream<Transaction>(transactions, "TransactionSource");
         }
         catch (Exception ex)
         {

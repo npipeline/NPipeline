@@ -30,7 +30,7 @@ public class BatchEventExtractor : TransformNode<BatchAnalyticsWrapper, IReadOnl
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A collection of market data events to be unbatched.</returns>
-    public override Task<IReadOnlyCollection<MarketDataEvent>> ExecuteAsync(
+    public override Task<IReadOnlyCollection<MarketDataEvent>> TransformAsync(
         BatchAnalyticsWrapper wrapper,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -90,7 +90,7 @@ public class AlertGeneratorTransform : TransformNode<MarketDataEvent, AlertEvent
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>An alert event generated from the market data event.</returns>
-    public override Task<AlertEvent> ExecuteAsync(
+    public override Task<AlertEvent> TransformAsync(
         MarketDataEvent marketEvent,
         PipelineContext context,
         CancellationToken cancellationToken)

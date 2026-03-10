@@ -275,13 +275,13 @@ public class GCPressureBenchmarks
 
     private sealed class DataGeneratorSource : SourceNode<GCPressureTestItem>
     {
-        public override IDataPipe<GCPressureTestItem> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<GCPressureTestItem> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)
                 : 0;
 
-            return new StreamingDataPipe<GCPressureTestItem>(
+            return new DataStream<GCPressureTestItem>(
                 GenerateTestItems(count, cancellationToken),
                 "dataGenerator");
         }
@@ -306,7 +306,7 @@ public class GCPressureBenchmarks
 
     private sealed class SustainedLoadTransform : TransformNode<GCPressureTestItem, ProcessedGCItem>
     {
-        public override async Task<ProcessedGCItem> ExecuteAsync(GCPressureTestItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<ProcessedGCItem> TransformAsync(GCPressureTestItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             var allocationFactor = context.Parameters.TryGetValue("allocationFactor", out var af)
                 ? Convert.ToInt32(af)
@@ -332,7 +332,7 @@ public class GCPressureBenchmarks
 
     private sealed class ShortLivedTransform : TransformNode<GCPressureTestItem, ProcessedGCItem>
     {
-        public override async Task<ProcessedGCItem> ExecuteAsync(GCPressureTestItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<ProcessedGCItem> TransformAsync(GCPressureTestItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Create many short-lived objects
             var objects = new List<object>();
@@ -360,7 +360,7 @@ public class GCPressureBenchmarks
     {
         private readonly List<object> _mediumLivedObjects = [];
 
-        public override async Task<ProcessedGCItem> ExecuteAsync(GCPressureTestItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<ProcessedGCItem> TransformAsync(GCPressureTestItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Create medium-lived objects that persist between calls
             if (_mediumLivedObjects.Count < 100)
@@ -384,7 +384,7 @@ public class GCPressureBenchmarks
     {
         private static readonly object[] _longLivedObjects = new object[1000]; // Static to keep alive
 
-        public override async Task<ProcessedGCItem> ExecuteAsync(GCPressureTestItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<ProcessedGCItem> TransformAsync(GCPressureTestItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Use long-lived objects (minimal new allocations)
             var index = item.Id % _longLivedObjects.Length;
@@ -409,7 +409,7 @@ public class GCPressureBenchmarks
 
     private sealed class GCTestTransform : TransformNode<GCPressureTestItem, ProcessedGCItem>
     {
-        public override async Task<ProcessedGCItem> ExecuteAsync(GCPressureTestItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<ProcessedGCItem> TransformAsync(GCPressureTestItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Force some GC pressure
             var objects = new List<byte[]>();
@@ -435,7 +435,7 @@ public class GCPressureBenchmarks
 
     private sealed class LargeObjectTransform : TransformNode<GCPressureTestItem, ProcessedGCItem>
     {
-        public override async Task<ProcessedGCItem> ExecuteAsync(GCPressureTestItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<ProcessedGCItem> TransformAsync(GCPressureTestItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Allocate a very large object
             var largeObject = new LargeDataObject(1024 * 1024); // 1MB object
@@ -456,7 +456,7 @@ public class GCPressureBenchmarks
 
     private sealed class ManySmallObjectsTransform : TransformNode<GCPressureTestItem, ProcessedGCItem>
     {
-        public override async Task<ProcessedGCItem> ExecuteAsync(GCPressureTestItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<ProcessedGCItem> TransformAsync(GCPressureTestItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Allocate many small objects
             var objects = new List<byte[]>();
@@ -482,7 +482,7 @@ public class GCPressureBenchmarks
 
     private sealed class BatchGCTransform : TransformNode<IReadOnlyCollection<GCPressureTestItem>, ProcessedGCItem>
     {
-        public override async Task<ProcessedGCItem> ExecuteAsync(IReadOnlyCollection<GCPressureTestItem> batch, PipelineContext context,
+        public override async Task<ProcessedGCItem> TransformAsync(IReadOnlyCollection<GCPressureTestItem> batch, PipelineContext context,
             CancellationToken cancellationToken)
         {
             // Process batch with minimal allocations
@@ -504,7 +504,7 @@ public class GCPressureBenchmarks
 
     private sealed class StreamingGCTransform : TransformNode<GCPressureTestItem, ProcessedGCItem>
     {
-        public override async Task<ProcessedGCItem> ExecuteAsync(GCPressureTestItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<ProcessedGCItem> TransformAsync(GCPressureTestItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Stream processing with minimal new allocations
             var processedBytes = item.Data.Length;
@@ -527,7 +527,7 @@ public class GCPressureBenchmarks
     {
         private readonly List<ProcessedGCItem> _processedItems = [];
 
-        public override async Task ExecuteAsync(IDataPipe<ProcessedGCItem> input, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task ConsumeAsync(IDataStream<ProcessedGCItem> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))
             {

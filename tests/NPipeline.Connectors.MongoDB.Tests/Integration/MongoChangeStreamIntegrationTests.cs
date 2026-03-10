@@ -61,7 +61,7 @@ public class MongoChangeStreamIntegrationTests(MongoTestContainerFixture fixture
         // Start consuming in background
         var consumeTask = Task.Run(async () =>
         {
-            await foreach (var item in source.Initialize(DefaultContext(), cts.Token).WithCancellation(cts.Token))
+            await foreach (var item in source.OpenStream(DefaultContext(), cts.Token).WithCancellation(cts.Token))
             {
                 received.Add(item);
 
@@ -116,7 +116,7 @@ public class MongoChangeStreamIntegrationTests(MongoTestContainerFixture fixture
 
         var consumeTask = Task.Run(async () =>
         {
-            await foreach (var _ in source.Initialize(DefaultContext(), cts.Token).WithCancellation(cts.Token))
+            await foreach (var _ in source.OpenStream(DefaultContext(), cts.Token).WithCancellation(cts.Token))
             {
                 break;
             }

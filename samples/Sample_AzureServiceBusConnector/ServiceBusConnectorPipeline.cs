@@ -146,7 +146,7 @@ public sealed class OrderProcessor
     : TransformNode<ServiceBusMessage<Order>, IAcknowledgableMessage<ProcessedOrder>>
 {
     /// <inheritdoc />
-    public override async Task<IAcknowledgableMessage<ProcessedOrder>> ExecuteAsync(
+    public override async Task<IAcknowledgableMessage<ProcessedOrder>> TransformAsync(
         ServiceBusMessage<Order> input,
         PipelineContext context,
         CancellationToken cancellationToken)

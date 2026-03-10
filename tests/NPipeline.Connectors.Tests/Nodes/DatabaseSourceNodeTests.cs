@@ -17,9 +17,9 @@ public class DatabaseSourceNodeTests
     {
         var node = new TestDatabaseSourceNode(new[] { 1, 2, 3 }, true);
 
-        var result = node.Initialize(new PipelineContext(), CancellationToken.None);
+        var result = node.OpenStream(new PipelineContext(), CancellationToken.None);
 
-        result.Should().BeOfType<StreamingDataPipe<int>>();
+        result.Should().BeOfType<DataStream<int>>();
     }
 
     [Fact]
@@ -27,9 +27,9 @@ public class DatabaseSourceNodeTests
     {
         var node = new TestDatabaseSourceNode(new[] { 1, 2, 3 }, false);
 
-        var result = node.Initialize(new PipelineContext(), CancellationToken.None);
+        var result = node.OpenStream(new PipelineContext(), CancellationToken.None);
 
-        var dataPipe = result.Should().BeOfType<InMemoryDataPipe<int>>().Subject;
+        var dataPipe = result.Should().BeOfType<InMemoryDataStream<int>>().Subject;
         dataPipe.Items.Should().Equal(1, 2, 3);
     }
 
@@ -41,9 +41,9 @@ public class DatabaseSourceNodeTests
             false,
             shouldEmit: value => value % 2 == 0);
 
-        var result = node.Initialize(new PipelineContext(), CancellationToken.None);
+        var result = node.OpenStream(new PipelineContext(), CancellationToken.None);
 
-        var dataPipe = result.Should().BeOfType<InMemoryDataPipe<int>>().Subject;
+        var dataPipe = result.Should().BeOfType<InMemoryDataStream<int>>().Subject;
         dataPipe.Items.Should().Equal(2, 4);
     }
 
@@ -66,10 +66,10 @@ public class DatabaseSourceNodeTests
             checkpointStorage: storage);
 
         // Act
-        var result = node.Initialize(new PipelineContext(), CancellationToken.None);
+        var result = node.OpenStream(new PipelineContext(), CancellationToken.None);
 
         // Assert — only rows 3 and 4 should be emitted
-        var dataPipe = result.Should().BeOfType<InMemoryDataPipe<int>>().Subject;
+        var dataPipe = result.Should().BeOfType<InMemoryDataStream<int>>().Subject;
         dataPipe.Items.Should().Equal(3, 4);
 
         // Checkpoint should now reflect all rows processed (position 4)

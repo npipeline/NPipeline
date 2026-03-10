@@ -16,7 +16,7 @@ public sealed class FilteringNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Should().BeSameAs(data);
@@ -34,7 +34,7 @@ public sealed class FilteringNodeTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<FilteringException>(async () =>
-            await node.ExecuteAsync(data, context, CancellationToken.None));
+            await node.TransformAsync(data, context, CancellationToken.None));
 
         ex.Reason.Should().Contain("Age 15 is below minimum");
     }
@@ -53,7 +53,7 @@ public sealed class FilteringNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Should().BeSameAs(data);
@@ -73,7 +73,7 @@ public sealed class FilteringNodeTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<FilteringException>(async () =>
-            await node.ExecuteAsync(data, context, CancellationToken.None));
+            await node.TransformAsync(data, context, CancellationToken.None));
 
         ex.Reason.Should().Be("Age check failed");
     }
@@ -87,7 +87,7 @@ public sealed class FilteringNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Should().BeSameAs(data);
@@ -105,7 +105,7 @@ public sealed class FilteringNodeTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<FilteringException>(async () =>
-            await node.ExecuteAsync(data, context, CancellationToken.None));
+            await node.TransformAsync(data, context, CancellationToken.None));
 
         ex.Reason.Should().Contain("did not meet filter criteria");
     }
@@ -124,7 +124,7 @@ public sealed class FilteringNodeTests
 
         // Act & Assert
         await Assert.ThrowsAsync<OperationCanceledException>(async () =>
-            await node.ExecuteAsync(data, context, cts.Token));
+            await node.TransformAsync(data, context, cts.Token));
     }
 
     [Fact]
@@ -151,7 +151,7 @@ public sealed class FilteringNodeTests
         var context = PipelineContext.Default;
 
         // Assert - Should not throw
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
         result.Should().BeSameAs(data);
     }
 
@@ -170,14 +170,14 @@ public sealed class FilteringNodeTests
         var context = PipelineContext.Default;
 
         // Act & Assert
-        var validResult = await node.ExecuteAsync(validData, context, CancellationToken.None);
+        var validResult = await node.TransformAsync(validData, context, CancellationToken.None);
         validResult.Should().BeSameAs(validData);
 
         await Assert.ThrowsAsync<FilteringException>(async () =>
-            await node.ExecuteAsync(youngData, context, CancellationToken.None));
+            await node.TransformAsync(youngData, context, CancellationToken.None));
 
         await Assert.ThrowsAsync<FilteringException>(async () =>
-            await node.ExecuteAsync(oldData, context, CancellationToken.None));
+            await node.TransformAsync(oldData, context, CancellationToken.None));
     }
 
     private sealed class TestData

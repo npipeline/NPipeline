@@ -36,7 +36,7 @@ public sealed class AlertGenerationSink : SinkNode<Transaction>, ISinkNode<Valid
     /// <param name="input">The input data pipe.</param>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    async Task ISinkNode<ProcessedTransaction>.ExecuteAsync(IDataPipe<ProcessedTransaction> input, PipelineContext context, CancellationToken cancellationToken)
+    async Task ISinkNode<ProcessedTransaction>.ConsumeAsync(IDataStream<ProcessedTransaction> input, PipelineContext context, CancellationToken cancellationToken)
     {
         _logger.LogInformation("AlertGenerationSink: Starting to generate alerts for processed transactions at stage {Stage}", _pipelineStage);
 
@@ -68,7 +68,7 @@ public sealed class AlertGenerationSink : SinkNode<Transaction>, ISinkNode<Valid
     /// <param name="input">The input data pipe.</param>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    async Task ISinkNode<ValidatedTransaction>.ExecuteAsync(IDataPipe<ValidatedTransaction> input, PipelineContext context, CancellationToken cancellationToken)
+    async Task ISinkNode<ValidatedTransaction>.ConsumeAsync(IDataStream<ValidatedTransaction> input, PipelineContext context, CancellationToken cancellationToken)
     {
         _logger.LogInformation("AlertGenerationSink: Starting to generate alerts for validated transactions at stage {Stage}", _pipelineStage);
 
@@ -95,7 +95,7 @@ public sealed class AlertGenerationSink : SinkNode<Transaction>, ISinkNode<Valid
     }
 
     /// <inheritdoc />
-    public override async Task ExecuteAsync(IDataPipe<Transaction> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<Transaction> input, PipelineContext context, CancellationToken cancellationToken)
     {
         _logger.LogInformation("AlertGenerationSink: Starting to generate alerts at stage {Stage}", _pipelineStage);
 

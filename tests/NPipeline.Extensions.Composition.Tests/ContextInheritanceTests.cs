@@ -132,9 +132,9 @@ public class ContextInheritanceTests
 
     private sealed class SimpleIntSource : ISourceNode<int>
     {
-        public IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new InMemoryDataPipe<int>([1], "SimpleIntSource");
+            return new InMemoryDataStream<int>([1], "SimpleIntSource");
         }
 
         public ValueTask DisposeAsync()
@@ -149,7 +149,7 @@ public class ContextInheritanceTests
         public static bool FoundParameter { get; private set; }
         public static string? ParameterValue { get; private set; }
 
-        public override Task<int> ExecuteAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             FoundParameter = context.Parameters.TryGetValue("TestParam", out var value);
             ParameterValue = value?.ToString();
@@ -162,7 +162,7 @@ public class ContextInheritanceTests
         public static bool FoundItem { get; private set; }
         public static string? ItemValue { get; private set; }
 
-        public override Task<int> ExecuteAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             FoundItem = context.Items.TryGetValue("TestItem", out var value);
             ItemValue = value?.ToString();
@@ -175,7 +175,7 @@ public class ContextInheritanceTests
         public static bool FoundProperty { get; private set; }
         public static string? PropertyValue { get; private set; }
 
-        public override Task<int> ExecuteAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             FoundProperty = context.Properties.TryGetValue("TestProperty", out var value);
             PropertyValue = value?.ToString();
@@ -189,7 +189,7 @@ public class ContextInheritanceTests
         public static bool HasItem { get; private set; }
         public static bool HasProperty { get; private set; }
 
-        public override Task<int> ExecuteAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             HasParameter = context.Parameters.ContainsKey("Param");
             HasItem = context.Items.ContainsKey("Item");
@@ -203,7 +203,7 @@ public class ContextInheritanceTests
         public static bool HasParameter { get; private set; }
         public static bool HasItem { get; private set; }
 
-        public override Task<int> ExecuteAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             HasParameter = context.Parameters.ContainsKey("OnlyParam");
             HasItem = context.Items.ContainsKey("OnlyItem");
@@ -213,7 +213,7 @@ public class ContextInheritanceTests
 
     private sealed class ModifyingTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             // Modify the context within sub-pipeline
             if (context.Parameters.ContainsKey("SharedKey"))
@@ -303,7 +303,7 @@ public class ContextInheritanceTests
 
     private sealed class DummySink : ISinkNode<int>
     {
-        public async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context, CancellationToken cancellationToken)
+        public async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
             {
@@ -322,7 +322,7 @@ public class ContextInheritanceTests
     {
         public static string? ValueAfterSubPipeline { get; private set; }
 
-        public async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context, CancellationToken cancellationToken)
+        public async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
             {

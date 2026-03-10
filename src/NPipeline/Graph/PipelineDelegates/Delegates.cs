@@ -13,7 +13,7 @@ namespace NPipeline.Graph.PipelineDelegates;
 /// <param name="dataPipes">The input data pipes to merge.</param>
 /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
 /// <returns>A task that resolves to the merged output data pipe.</returns>
-public delegate Task<IDataPipe> CustomMergeDelegate(INode node, IEnumerable<IDataPipe> dataPipes, CancellationToken cancellationToken);
+public delegate Task<IDataStream> CustomMergeDelegate(INode node, IEnumerable<IDataStream> dataPipes, CancellationToken cancellationToken);
 
 /// <summary>
 ///     Represents a delegate for unwrapping lineage information in sink nodes.
@@ -24,7 +24,7 @@ public delegate Task<IDataPipe> CustomMergeDelegate(INode node, IEnumerable<IDat
 /// <param name="options">Optional lineage configuration options.</param>
 /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
 /// <returns>The output data pipe after unwrapping lineage.</returns>
-public delegate IDataPipe SinkLineageUnwrapDelegate(IDataPipe lineageInput, ILineageSink? lineageSink, string sinkNodeId,
+public delegate IDataStream SinkLineageUnwrapDelegate(IDataStream lineageInput, ILineageSink? lineageSink, string sinkNodeId,
     LineageOptions? options, CancellationToken cancellationToken);
 
 /// <summary>
@@ -46,8 +46,8 @@ public delegate object? JoinKeySelectorDelegate(object item);
 /// <param name="options">Lineage options (strict / warn config).</param>
 /// <param name="cancellationToken">Cancellation token for downstream enumeration.</param>
 /// <returns>Tuple of (unwrappedInput, rewrapOutputFunc).</returns>
-public delegate (IDataPipe unwrappedInput, Func<IDataPipe, IDataPipe> rewrapOutput) LineageAdapterDelegate(
-    IDataPipe transformInput,
+public delegate (IDataStream unwrappedInput, Func<IDataStream, IDataStream> rewrapOutput) LineageAdapterDelegate(
+    IDataStream transformInput,
     string nodeId,
     TransformCardinality declaredCardinality,
     LineageOptions? options,

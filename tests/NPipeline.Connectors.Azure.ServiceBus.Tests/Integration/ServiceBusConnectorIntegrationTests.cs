@@ -39,7 +39,7 @@ public sealed class ServiceBusConnectorIntegrationTests
 
             var sink = new ServiceBusQueueSinkNode<PublishOrder>(config);
 
-            IDataPipe<PublishOrder> input = new StreamingDataPipe<PublishOrder>(
+            IDataStream<PublishOrder> input = new DataStream<PublishOrder>(
                 new[]
                 {
                     new PublishOrder
@@ -50,7 +50,7 @@ public sealed class ServiceBusConnectorIntegrationTests
                     },
                 }.ToAsyncEnumerable());
 
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
             await sink.DisposeAsync();
 
             await using var client = _fixture.CreateClient();
@@ -96,7 +96,7 @@ public sealed class ServiceBusConnectorIntegrationTests
 
             var sink = new ServiceBusQueueSinkNode<PublishOrder>(config);
 
-            IDataPipe<PublishOrder> input = new StreamingDataPipe<PublishOrder>(
+            IDataStream<PublishOrder> input = new DataStream<PublishOrder>(
                 new[]
                 {
                     new PublishOrder
@@ -107,7 +107,7 @@ public sealed class ServiceBusConnectorIntegrationTests
                     },
                 }.ToAsyncEnumerable());
 
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
             await sink.DisposeAsync();
 
             await using var client = _fixture.CreateClient();
@@ -149,7 +149,7 @@ public sealed class ServiceBusConnectorIntegrationTests
 
             var sink = new ServiceBusQueueSinkNode<PublishOrder>(config);
 
-            IDataPipe<PublishOrder> input = new StreamingDataPipe<PublishOrder>(
+            IDataStream<PublishOrder> input = new DataStream<PublishOrder>(
                 new[]
                 {
                     new PublishOrder
@@ -159,7 +159,7 @@ public sealed class ServiceBusConnectorIntegrationTests
                     },
                 }.ToAsyncEnumerable());
 
-            await sink.ExecuteAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
             await sink.DisposeAsync();
 
             await using var client = _fixture.CreateClient();

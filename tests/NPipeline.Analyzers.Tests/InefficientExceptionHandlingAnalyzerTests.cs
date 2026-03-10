@@ -18,7 +18,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
@@ -48,7 +48,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
@@ -78,7 +78,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
@@ -138,7 +138,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
@@ -167,7 +167,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
@@ -257,7 +257,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestSourceNode : ISourceNode<int>
                    {
-                       public async Task<IDataPipe<int>> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+                       public async Task<IDataStream<int>> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
@@ -287,8 +287,8 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestAggregateNode : IAggregateNode<int>
                    {
-                       public async Task<IDataPipe<int>> ExecuteAsync(
-                           IDataPipe<int> input, 
+                       public async Task<IDataStream<int>> ExecuteAsync(
+                           IDataStream<int> input, 
                            PipelineContext context, 
                            CancellationToken cancellationToken)
                        {
@@ -320,7 +320,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
@@ -470,7 +470,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestSourceNode : ISourceNode<int>
                    {
-                       public async Task<IDataPipe<int>> RunAsync(PipelineContext context, CancellationToken cancellationToken)
+                       public async Task<IDataStream<int>> RunAsync(PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
@@ -530,7 +530,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task Initialize(string input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task OpenStream(string input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {
@@ -590,7 +590,7 @@ public sealed class InefficientExceptionHandlingAnalyzerTests
 
                    public class TestTransformNode : ITransformNode<string, string>
                    {
-                       public async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+                       public async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
                        {
                            try
                            {

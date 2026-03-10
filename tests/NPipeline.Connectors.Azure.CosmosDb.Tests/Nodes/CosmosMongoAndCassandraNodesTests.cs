@@ -36,7 +36,7 @@ public sealed class CosmosMongoAndCassandraNodesTests
     {
         var node = new CosmosMongoSourceNode<object>("mongodb://localhost:27017", "db", "container");
 
-        var pipe = node.Initialize(PipelineContext.Default, CancellationToken.None);
+        var pipe = node.OpenStream(PipelineContext.Default, CancellationToken.None);
 
         _ = pipe.Should().NotBeNull();
         _ = pipe.StreamName.Should().Contain("CosmosMongoSourceNode");
@@ -95,7 +95,7 @@ public sealed class CosmosMongoAndCassandraNodesTests
     {
         var node = new CosmosCassandraSourceNode<object>("localhost", "keyspace", "SELECT * FROM c");
 
-        var pipe = node.Initialize(PipelineContext.Default, CancellationToken.None);
+        var pipe = node.OpenStream(PipelineContext.Default, CancellationToken.None);
 
         _ = pipe.Should().NotBeNull();
         _ = pipe.StreamName.Should().Contain("CosmosCassandraSourceNode");
@@ -122,7 +122,7 @@ public sealed class CosmosMongoAndCassandraNodesTests
     {
         var node = new CosmosCassandraChangeFeedSourceNode<object>();
 
-        var act = () => node.Initialize(PipelineContext.Default, CancellationToken.None);
+        var act = () => node.OpenStream(PipelineContext.Default, CancellationToken.None);
 
         var exception = act.Should().Throw<NotSupportedException>();
         _ = exception.Which.Message.Should().Contain("Cassandra change feed is not supported");

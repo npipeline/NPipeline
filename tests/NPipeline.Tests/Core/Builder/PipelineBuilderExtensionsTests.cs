@@ -693,7 +693,7 @@ public sealed class PipelineBuilderExtensionsTests
 
     private sealed class NoOpSink : SinkNode<string>
     {
-        public override async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<string> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
@@ -705,7 +705,7 @@ public sealed class PipelineBuilderExtensionsTests
 
     private sealed class IntSink : SinkNode<int>
     {
-        public override async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
@@ -717,7 +717,7 @@ public sealed class PipelineBuilderExtensionsTests
 
     private sealed class CustomTypeSink : SinkNode<CustomType>
     {
-        public override async Task ExecuteAsync(IDataPipe<CustomType> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<CustomType> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))

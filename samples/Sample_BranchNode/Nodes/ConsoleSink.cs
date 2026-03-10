@@ -32,8 +32,8 @@ public class ConsoleSink : SinkNode<object>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A task representing the display operation.</returns>
-    public override async Task ExecuteAsync(
-        IDataPipe<object> input,
+    public override async Task ConsumeAsync(
+        IDataStream<object> input,
         PipelineContext context,
         CancellationToken cancellationToken)
     {

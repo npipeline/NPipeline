@@ -33,7 +33,7 @@ public class SlidingWindowTransform : TransformNode<TimeSeriesData, WindowedResu
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A task containing the windowed result when a window slides.</returns>
-    public override async Task<WindowedResult> ExecuteAsync(TimeSeriesData item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<WindowedResult> TransformAsync(TimeSeriesData item, PipelineContext context, CancellationToken cancellationToken)
     {
         // Initialize the window on the first data point
         if (!_isInitialized)

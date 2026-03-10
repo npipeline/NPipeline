@@ -43,7 +43,7 @@ public sealed class ResilientRestartLimitTests
         private readonly object _lock = new();
         private int _attempt;
 
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             lock (_lock)
             {

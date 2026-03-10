@@ -12,10 +12,10 @@ public class FluentAssertionsTests
         // Arrange
         var sink = new InMemorySinkNode<int>();
         var context = PipelineContext.Default;
-        var data = new InMemoryDataPipe<int>([1, 2, 3]);
+        var data = new InMemoryDataStream<int>([1, 2, 3]);
 
         // Act
-        await sink.ExecuteAsync(data, context, CancellationToken.None);
+        await sink.ConsumeAsync(data, context, CancellationToken.None);
 
         // Assert
         sink.ShouldHaveReceived(3);
@@ -27,10 +27,10 @@ public class FluentAssertionsTests
         // Arrange
         var sink = new InMemorySinkNode<int>();
         var context = PipelineContext.Default;
-        var data = new InMemoryDataPipe<int>([1, 2, 3]);
+        var data = new InMemoryDataStream<int>([1, 2, 3]);
 
         // Act
-        await sink.ExecuteAsync(data, context, CancellationToken.None);
+        await sink.ConsumeAsync(data, context, CancellationToken.None);
 
         // Assert
         sink.ShouldContain(x => x == 2);

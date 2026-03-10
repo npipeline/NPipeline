@@ -62,7 +62,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
     }
 
     /// <inheritdoc />
-    public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
         var logger = context.LoggerFactory.CreateLogger(nameof(SqsSinkNode<T>));
         _logger = logger;
@@ -74,7 +74,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
             await ExecuteSequentialAsync(input, logger, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task ExecuteSequentialAsync(IDataPipe<T> input, ILogger logger, CancellationToken cancellationToken)
+    private async Task ExecuteSequentialAsync(IDataStream<T> input, ILogger logger, CancellationToken cancellationToken)
     {
         if (_configuration.BatchSize <= 1)
         {
@@ -108,7 +108,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
         await _batcher.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task ExecuteParallelAsync(IDataPipe<T> input, ILogger logger, CancellationToken cancellationToken)
+    private async Task ExecuteParallelAsync(IDataStream<T> input, ILogger logger, CancellationToken cancellationToken)
     {
         var options = new ParallelOptions
         {

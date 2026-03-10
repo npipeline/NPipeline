@@ -73,7 +73,7 @@ public sealed class PostgresConnectorPipeline
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
+    public async Task ConsumeAsync(PipelineContext context, CancellationToken cancellationToken = default)
     {
         Console.WriteLine("=== PostgreSQL Connector Pipeline ===");
         Console.WriteLine();
@@ -395,12 +395,12 @@ public sealed class PostgresConnectorPipeline
 
         var count = 0;
 
-        await foreach (var customer in sourceNode.Initialize(context, cancellationToken))
+        await foreach (var customer in sourceNode.OpenStream(context, cancellationToken))
         {
             count++;
         }
 
-        await sinkNode.ExecuteAsync(sourceNode.Initialize(context, cancellationToken), context, cancellationToken);
+        await sinkNode.ConsumeAsync(sourceNode.OpenStream(context, cancellationToken), context, cancellationToken);
         return count;
     }
 
@@ -431,12 +431,12 @@ public sealed class PostgresConnectorPipeline
 
         var count = 0;
 
-        await foreach (var product in sourceNode.Initialize(context, cancellationToken))
+        await foreach (var product in sourceNode.OpenStream(context, cancellationToken))
         {
             count++;
         }
 
-        await sinkNode.ExecuteAsync(sourceNode.Initialize(context, cancellationToken), context, cancellationToken);
+        await sinkNode.ConsumeAsync(sourceNode.OpenStream(context, cancellationToken), context, cancellationToken);
         return count;
     }
 
@@ -508,9 +508,9 @@ public sealed class PostgresConnectorPipeline
         var context = new PipelineContext();
 
         // Create a data pipe from the list
-        var dataPipe = new InMemoryDataPipe<OrderSummary>(summaries);
+        var dataPipe = new InMemoryDataStream<OrderSummary>(summaries);
 
-        await sinkNode.ExecuteAsync(dataPipe, context, cancellationToken);
+        await sinkNode.ConsumeAsync(dataPipe, context, cancellationToken);
 
         return summaries.Count;
     }
@@ -570,7 +570,7 @@ public sealed class PostgresConnectorPipeline
 
         var interruptedCount = 0;
 
-        await foreach (var _ in interruptedSource.Initialize(interruptedContext, cancellationToken))
+        await foreach (var _ in interruptedSource.OpenStream(interruptedContext, cancellationToken))
         {
             interruptedCount++;
 
@@ -586,7 +586,7 @@ public sealed class PostgresConnectorPipeline
 
         var resumedCount = 0;
 
-        await foreach (var _ in resumeSource.Initialize(resumeContext, cancellationToken))
+        await foreach (var _ in resumeSource.OpenStream(resumeContext, cancellationToken))
         {
             resumedCount++;
         }
@@ -620,7 +620,7 @@ public sealed class PostgresConnectorPipeline
         var context = new PipelineContext();
 
         var stopwatch = Stopwatch.StartNew();
-        await sinkNode.ExecuteAsync(sourceNode.Initialize(context, cancellationToken), context, cancellationToken);
+        await sinkNode.ConsumeAsync(sourceNode.OpenStream(context, cancellationToken), context, cancellationToken);
         stopwatch.Stop();
 
         return stopwatch.ElapsedMilliseconds;

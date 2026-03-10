@@ -159,7 +159,7 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A data pipe containing the data.</returns>
-    public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         // Initialize checkpoint manager
         InitializeCheckpointManager(context);
@@ -168,7 +168,7 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
         {
             // Create a streaming data pipe with an async enumerable
             var stream = StreamDataAsync(cancellationToken);
-            return new StreamingDataPipe<T>(stream, $"{GetType().Name}");
+            return new DataStream<T>(stream, $"{GetType().Name}");
         }
 
         // Buffer all data in memory
@@ -178,7 +178,7 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
             () => BufferDataAsync(cancellationToken).ConfigureAwait(false).GetAwaiter().GetResult(),
             cancellationToken).GetAwaiter().GetResult();
 
-        return new InMemoryDataPipe<T>(items, $"{GetType().Name}");
+        return new InMemoryDataStream<T>(items, $"{GetType().Name}");
     }
 
     /// <summary>

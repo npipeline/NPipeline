@@ -48,7 +48,7 @@ public class BatchingSink : SinkNode<ProcessedSensorData>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task representing the sink execution.</returns>
-    public override async Task ExecuteAsync(IDataPipe<ProcessedSensorData> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<ProcessedSensorData> input, PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("Starting to process data in BatchingSink...");
 

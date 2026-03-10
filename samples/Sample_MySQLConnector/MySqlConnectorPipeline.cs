@@ -76,7 +76,7 @@ public sealed class MySqlConnectorPipeline
     /// <summary>
     ///     Executes all pipeline demonstrations.
     /// </summary>
-    public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
+    public async Task ConsumeAsync(PipelineContext context, CancellationToken cancellationToken = default)
     {
         Console.WriteLine("Starting MySQL Connector Pipeline...");
         Console.WriteLine();

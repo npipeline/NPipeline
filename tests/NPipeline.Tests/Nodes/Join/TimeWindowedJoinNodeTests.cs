@@ -55,7 +55,7 @@ public sealed class TimeWindowedJoinNodeTests
 
     private sealed class EventSource : SourceNode<Event>
     {
-        public override IDataPipe<Event> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<Event> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var events = new[]
             {
@@ -64,13 +64,13 @@ public sealed class TimeWindowedJoinNodeTests
                 new Event(3, "Event3", new DateTime(2023, 1, 1, 10, 2, 45)), // Outside window
             };
 
-            return new StreamingDataPipe<Event>(events.ToAsyncEnumerable(), "EventStream");
+            return new DataStream<Event>(events.ToAsyncEnumerable(), "EventStream");
         }
     }
 
     private sealed class EventMetadataSource : SourceNode<EventMetadata>
     {
-        public override IDataPipe<EventMetadata> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<EventMetadata> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var metadata = new[]
             {
@@ -79,7 +79,7 @@ public sealed class TimeWindowedJoinNodeTests
                 new EventMetadata(4, "Metadata4", new DateTime(2023, 1, 1, 10, 3, 0)), // Outside window and no matching event
             };
 
-            return new StreamingDataPipe<EventMetadata>(metadata.ToAsyncEnumerable(), "MetadataStream");
+            return new DataStream<EventMetadata>(metadata.ToAsyncEnumerable(), "MetadataStream");
         }
     }
 
@@ -106,7 +106,7 @@ public sealed class TimeWindowedJoinNodeTests
 
     private sealed class EnrichedEventSink(ConcurrentQueue<EnrichedEvent> store) : SinkNode<EnrichedEvent>
     {
-        public override async Task ExecuteAsync(IDataPipe<EnrichedEvent> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<EnrichedEvent> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))

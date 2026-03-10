@@ -33,7 +33,7 @@ public class TradeValidationTransform : TransformNode<FinancialTrade, ValidatedT
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token for async operation.</param>
     /// <returns>A validated and enriched trade.</returns>
-    public override Task<ValidatedTrade> ExecuteAsync(
+    public override Task<ValidatedTrade> TransformAsync(
         FinancialTrade item,
         PipelineContext context,
         CancellationToken cancellationToken)

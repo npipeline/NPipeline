@@ -21,7 +21,7 @@ public class ConsoleSinkWithMetrics : SinkNode<ProcessedWorkItem>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task representing the sink execution.</returns>
-    public override async Task ExecuteAsync(IDataPipe<ProcessedWorkItem> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<ProcessedWorkItem> input, PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("Starting to process work items in ConsoleSinkWithMetrics");
         Console.WriteLine();

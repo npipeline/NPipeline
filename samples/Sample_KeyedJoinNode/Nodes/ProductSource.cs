@@ -30,7 +30,7 @@ public class ProductSource : SourceNode<Product>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<Product> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<Product> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         _logger?.LogInformation("ProductSource: Starting to generate products");
 
@@ -55,6 +55,6 @@ public class ProductSource : SourceNode<Product>
 
         _logger?.LogInformation("ProductSource: Finished generating {Count} products", products.Count);
 
-        return new InMemoryDataPipe<Product>(products, "ProductSource");
+        return new InMemoryDataStream<Product>(products, "ProductSource");
     }
 }

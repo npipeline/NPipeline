@@ -73,7 +73,7 @@ public sealed class RabbitMqSourceNodeIntegrationTests : IAsyncDisposable
             sourceOptions, _connectionManager, serializer,
             logger: NullLogger<RabbitMqSourceNode<TestMessage>>.Instance);
 
-        var pipe = sourceNode.Initialize(new PipelineContext(), cts.Token);
+        var pipe = sourceNode.OpenStream(new PipelineContext(), cts.Token);
 
         var consumed = new List<RabbitMqMessage<TestMessage>>();
 
@@ -127,7 +127,7 @@ public sealed class RabbitMqSourceNodeIntegrationTests : IAsyncDisposable
             sourceOptions, _connectionManager, serializer,
             logger: NullLogger<RabbitMqSourceNode<TestMessage>>.Instance);
 
-        var pipe = sourceNode.Initialize(new PipelineContext(), cts.Token);
+        var pipe = sourceNode.OpenStream(new PipelineContext(), cts.Token);
 
         await foreach (var msg in pipe.WithCancellation(cts.Token))
         {

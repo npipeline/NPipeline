@@ -67,7 +67,7 @@ public abstract class TransformNode<TIn, TOut>
     }
 
     /// <inheritdoc />
-    public abstract Task<TOut> ExecuteAsync(TIn item, PipelineContext context, CancellationToken cancellationToken);
+    public abstract Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken);
 
     /// <summary>
     ///     Asynchronously disposes of the node. This can be overridden by derived classes to release resources.
@@ -87,7 +87,7 @@ public abstract class TransformNode<TIn, TOut>
     /// <summary>
     ///     Provides a ValueTask-based execution hook for execution strategies that can take advantage of synchronous completions.
     ///     <para>
-    ///         By default this wraps <see cref="ExecuteAsync" /> so existing Task-based implementations continue working.
+    ///         By default this wraps <see cref="TransformAsync" /> so existing Task-based implementations continue working.
     ///         Derived nodes can override to return a naturally produced <see cref="ValueTask{TOut}" /> to avoid per-item allocations.
     ///     </para>
     /// </summary>
@@ -97,11 +97,11 @@ public abstract class TransformNode<TIn, TOut>
     /// <returns>A <see cref="ValueTask{TOut}" /> representing the transformation.</returns>
     protected internal virtual ValueTask<TOut> ExecuteValueTaskAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
     {
-        return new ValueTask<TOut>(ExecuteAsync(item, context, cancellationToken));
+        return new ValueTask<TOut>(TransformAsync(item, context, cancellationToken));
     }
 
     /// <summary>
-    ///     Helper for converting a <see cref="ValueTask{TOut}" /> to a <see cref="Task{TOut}" /> for the <see cref="ExecuteAsync" /> method.
+    ///     Helper for converting a <see cref="ValueTask{TOut}" /> to a <see cref="Task{TOut}" /> for the <see cref="TransformAsync" /> method.
     /// </summary>
     /// <param name="work">The ValueTask to convert.</param>
     /// <returns>A <see cref="Task{TOut}" /> representing the same asynchronous operation.</returns>

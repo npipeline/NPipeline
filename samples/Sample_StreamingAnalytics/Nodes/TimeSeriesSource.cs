@@ -21,11 +21,11 @@ public class TimeSeriesSource : SourceNode<TimeSeriesData>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the generated time-series data.</returns>
-    public override IDataPipe<TimeSeriesData> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<TimeSeriesData> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("Starting TimeSeriesSource - generating time-series data stream");
 
-        return new StreamingDataPipe<TimeSeriesData>(GenerateTimeSeriesDataAsync(cancellationToken), "TimeSeriesSource");
+        return new DataStream<TimeSeriesData>(GenerateTimeSeriesDataAsync(cancellationToken), "TimeSeriesSource");
     }
 
     /// <summary>

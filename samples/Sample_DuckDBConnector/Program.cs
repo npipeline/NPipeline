@@ -47,7 +47,7 @@ public static class Program
         Console.WriteLine($"  {"Region",-10} {"Count",8} {"Avg Temp",10} {"Avg Humidity",14}");
         Console.WriteLine($"  {new string('-', 44)}");
 
-        await foreach (var stat in statsSource.Initialize(PipelineContext.Default, CancellationToken.None))
+        await foreach (var stat in statsSource.OpenStream(PipelineContext.Default, CancellationToken.None))
         {
             Console.WriteLine($"  {stat.Region,-10} {stat.ReadingCount,8} {stat.AvgTemp,10:F2} {stat.AvgHumidity,14:F2}");
         }
@@ -68,8 +68,8 @@ public static class Program
             FileExportOptions = new DuckDBFileExportOptions { CsvHeader = true },
         });
 
-        await exportSink.ExecuteAsync(
-            exportSource.Initialize(PipelineContext.Default, CancellationToken.None),
+        await exportSink.ConsumeAsync(
+            exportSource.OpenStream(PipelineContext.Default, CancellationToken.None),
             PipelineContext.Default,
             CancellationToken.None);
 

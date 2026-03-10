@@ -28,7 +28,7 @@ public partial class ValidationTransform(bool filterInvalidRecords = false) : Tr
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">A cancellation token to observe.</param>
     /// <returns>A task containing validated customer record or throws an exception if invalid and filtering is enabled.</returns>
-    public override Task<Customer> ExecuteAsync(
+    public override Task<Customer> TransformAsync(
         Customer input,
         PipelineContext context,
         CancellationToken cancellationToken = default)

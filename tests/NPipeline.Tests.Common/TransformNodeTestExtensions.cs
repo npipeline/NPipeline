@@ -21,9 +21,9 @@ public static class TransformNodeTestExtensions
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The output data pipe.</returns>
-    public static Task<IDataPipe<TOut>> ExecuteWithStrategyAsync<TIn, TOut>(
+    public static Task<IDataStream<TOut>> ExecuteWithStrategyAsync<TIn, TOut>(
         this ITransformNode<TIn, TOut> node,
-        IDataPipe<TIn> input,
+        IDataStream<TIn> input,
         PipelineContext context,
         CancellationToken cancellationToken = default)
     {
@@ -46,6 +46,6 @@ public static class TransformNodeTestExtensions
         PipelineContext context,
         CancellationToken cancellationToken = default)
     {
-        return node.ExecuteAsync(item, context, cancellationToken);
+        return node.TransformAsync(item, context, cancellationToken);
     }
 }

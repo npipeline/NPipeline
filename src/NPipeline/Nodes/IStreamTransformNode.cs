@@ -34,5 +34,5 @@ public interface IStreamTransformNode<in TIn, TOut> : IStreamTransformNode
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The transformed output stream of items.</returns>
-    IAsyncEnumerable<TOut> ExecuteAsync(IAsyncEnumerable<TIn> items, PipelineContext context, CancellationToken cancellationToken);
+    IAsyncEnumerable<TOut> TransformAsync(IAsyncEnumerable<TIn> items, PipelineContext context, CancellationToken cancellationToken);
 }

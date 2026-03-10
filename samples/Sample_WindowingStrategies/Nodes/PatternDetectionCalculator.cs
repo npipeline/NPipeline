@@ -50,7 +50,7 @@ public class PatternDetectionCalculator : TransformNode<IReadOnlyCollection<User
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>The most significant pattern detected in the sessions.</returns>
-    public override Task<PatternMatch> ExecuteAsync(
+    public override Task<PatternMatch> TransformAsync(
         IReadOnlyCollection<UserSession> sessions,
         PipelineContext context,
         CancellationToken cancellationToken)

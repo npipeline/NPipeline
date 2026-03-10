@@ -78,7 +78,7 @@ public sealed class DuckDBSinkNode<T> : SinkNode<T>
     }
 
     /// <inheritdoc />
-    public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context,
+    public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context,
         CancellationToken cancellationToken)
     {
         _configuration.Validate();
@@ -105,7 +105,7 @@ public sealed class DuckDBSinkNode<T> : SinkNode<T>
             await ExportToFileAsync(connection, cancellationToken);
     }
 
-    private async Task WriteWithTransactionAsync(DuckDBConnection connection, IDataPipe<T> input,
+    private async Task WriteWithTransactionAsync(DuckDBConnection connection, IDataStream<T> input,
         CancellationToken ct)
     {
         await using var transaction = await connection.BeginTransactionAsync(ct);
@@ -122,13 +122,13 @@ public sealed class DuckDBSinkNode<T> : SinkNode<T>
         }
     }
 
-    private async Task WriteWithoutTransactionAsync(DuckDBConnection connection, IDataPipe<T> input,
+    private async Task WriteWithoutTransactionAsync(DuckDBConnection connection, IDataStream<T> input,
         CancellationToken ct)
     {
         await WriteDataAsync(connection, input, ct);
     }
 
-    private async Task WriteDataAsync(DuckDBConnection connection, IDataPipe<T> input, CancellationToken ct)
+    private async Task WriteDataAsync(DuckDBConnection connection, IDataStream<T> input, CancellationToken ct)
     {
         await using var writer = CreateWriter(connection);
 

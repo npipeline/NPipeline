@@ -10,7 +10,7 @@ namespace Sample_ParallelExecution_Simplified;
 // Manual Configuration API - Fully explicit control
 public class ManualConfigTransform : TransformNode<TaskData, ProcessedResult>
 {
-    public override async Task<ProcessedResult> ExecuteAsync(TaskData input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<ProcessedResult> TransformAsync(TaskData input, PipelineContext context, CancellationToken cancellationToken)
     {
         var start = DateTime.UtcNow;
 
@@ -32,7 +32,7 @@ public class ManualConfigTransform : TransformNode<TaskData, ProcessedResult>
 // Preset API - Simplified configuration with workload types
 public class PresetConfigTransform : TransformNode<TaskData, ProcessedResult>
 {
-    public override async Task<ProcessedResult> ExecuteAsync(TaskData input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<ProcessedResult> TransformAsync(TaskData input, PipelineContext context, CancellationToken cancellationToken)
     {
         var start = DateTime.UtcNow;
 
@@ -54,7 +54,7 @@ public class PresetConfigTransform : TransformNode<TaskData, ProcessedResult>
 // Builder API - Fine-grained control with fluent configuration
 public class BuilderConfigTransform : TransformNode<TaskData, ProcessedResult>
 {
-    public override async Task<ProcessedResult> ExecuteAsync(TaskData input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<ProcessedResult> TransformAsync(TaskData input, PipelineContext context, CancellationToken cancellationToken)
     {
         var start = DateTime.UtcNow;
 

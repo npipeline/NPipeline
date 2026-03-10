@@ -31,14 +31,14 @@ public static class PipelineRunnerTestHelpers
     {
         private int _currentAttempt;
 
-        public IDataPipe<object> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public IDataStream<object> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             _currentAttempt++;
 
             if (_currentAttempt <= failCount)
                 throw new InvalidOperationException($"Simulated failure on attempt {_currentAttempt}");
 
-            return new InMemoryDataPipe<object>(new List<object> { new() }, "failing-output");
+            return new InMemoryDataStream<object>(new List<object> { new() }, "failing-output");
         }
 
         public ValueTask DisposeAsync()

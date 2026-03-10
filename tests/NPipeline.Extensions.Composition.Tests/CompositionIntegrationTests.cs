@@ -42,9 +42,9 @@ public class CompositionIntegrationTests
 
     private sealed class TestSource : ISourceNode<int>
     {
-        public IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new InMemoryDataPipe<int>([1, 2, 3], "TestSource");
+            return new InMemoryDataStream<int>([1, 2, 3], "TestSource");
         }
 
         public ValueTask DisposeAsync()
@@ -58,7 +58,7 @@ public class CompositionIntegrationTests
     {
         public static readonly List<int> ReceivedItems = [];
 
-        public async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context, CancellationToken cancellationToken)
+        public async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
         {
             ReceivedItems.Clear();
 
@@ -77,7 +77,7 @@ public class CompositionIntegrationTests
 
     private sealed class SimpleTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(input * 2);
         }
@@ -117,7 +117,7 @@ public class CompositionIntegrationTests
     {
         public static string? ReceivedParameter;
 
-        public override Task<int> ExecuteAsync(int input, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
             ReceivedParameter = context.Parameters.TryGetValue("TestParam", out var value)
                 ? value?.ToString()

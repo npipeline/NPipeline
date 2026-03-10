@@ -5,7 +5,7 @@ using NPipeline.DataFlow.DataPipes;
 namespace NPipeline.Tests.DataFlow.DataPipes;
 
 /// <summary>
-///     Tests for StreamingDataPipe class.
+///     Tests for DataStream class.
 ///     Validates streaming behavior, disposal, and interface implementation.
 /// </summary>
 public sealed class StreamingDataPipeTests
@@ -17,7 +17,7 @@ public sealed class StreamingDataPipeTests
         IAsyncEnumerable<int> nullStream = null!;
 
         // Act
-        Action act = () => _ = new StreamingDataPipe<int>(nullStream);
+        Action act = () => _ = new DataStream<int>(nullStream);
 
         // Assert
         _ = act.Should().Throw<ArgumentNullException>()
@@ -32,7 +32,7 @@ public sealed class StreamingDataPipeTests
         var streamName = "TestStream";
 
         // Act
-        StreamingDataPipe<int> pipe = new(stream, streamName);
+        DataStream<int> pipe = new(stream, streamName);
 
         // Assert
         _ = pipe.StreamName.Should().Be(streamName);
@@ -46,7 +46,7 @@ public sealed class StreamingDataPipeTests
         var stream = GetTestStream();
 
         // Act
-        StreamingDataPipe<int> pipe = new(stream);
+        DataStream<int> pipe = new(stream);
 
         // Assert
         _ = pipe.StreamName.Should().Be("DefaultStream");
@@ -57,7 +57,7 @@ public sealed class StreamingDataPipeTests
     {
         // Arrange
         var stream = GetTestStream();
-        StreamingDataPipe<int> pipe = new(stream);
+        DataStream<int> pipe = new(stream);
         List<int> enumeratedItems = [];
 
         // Act
@@ -75,7 +75,7 @@ public sealed class StreamingDataPipeTests
     {
         // Arrange
         var stream = GetEmptyStream();
-        StreamingDataPipe<int> pipe = new(stream);
+        DataStream<int> pipe = new(stream);
         List<int> enumeratedItems = [];
 
         // Act
@@ -93,7 +93,7 @@ public sealed class StreamingDataPipeTests
     {
         // Arrange
         var stream = GetLongRunningStream();
-        StreamingDataPipe<int> pipe = new(stream);
+        DataStream<int> pipe = new(stream);
         CancellationTokenSource cts = new();
         List<int> enumeratedItems = [];
 
@@ -123,7 +123,7 @@ public sealed class StreamingDataPipeTests
     {
         // Arrange
         var stream = GetTestStream();
-        IDataPipe<int> pipe = new StreamingDataPipe<int>(stream);
+        IDataStream<int> pipe = new DataStream<int>(stream);
         List<object> enumeratedItems = [];
 
         // Act
@@ -141,7 +141,7 @@ public sealed class StreamingDataPipeTests
     {
         // Arrange
         var stream = GetTestStream();
-        StreamingDataPipe<int> pipe = new(stream);
+        DataStream<int> pipe = new(stream);
 
         // Act
         List<int> firstEnumeration = [];
@@ -167,7 +167,7 @@ public sealed class StreamingDataPipeTests
     {
         // Arrange
         DisposableAsyncStream stream = new();
-        StreamingDataPipe<int> pipe = new(stream);
+        DataStream<int> pipe = new(stream);
 
         // Act
         await pipe.DisposeAsync();
@@ -181,7 +181,7 @@ public sealed class StreamingDataPipeTests
     {
         // Arrange
         var stream = GetTestStream();
-        StreamingDataPipe<int> pipe = new(stream);
+        DataStream<int> pipe = new(stream);
 
         // Act & Assert
         var act = async () => await pipe.DisposeAsync();
@@ -193,7 +193,7 @@ public sealed class StreamingDataPipeTests
     {
         // Arrange
         var stream = GetTestStream();
-        StreamingDataPipe<int> pipe = new(stream);
+        DataStream<int> pipe = new(stream);
         await pipe.DisposeAsync();
 
         // Act & Assert
@@ -211,7 +211,7 @@ public sealed class StreamingDataPipeTests
     {
         // Arrange
         var stream = GetStringTestStream();
-        StreamingDataPipe<string> pipe = new(stream);
+        DataStream<string> pipe = new(stream);
 
         // Act & Assert
         _ = pipe.GetDataType().Should().Be<string>();
@@ -222,7 +222,7 @@ public sealed class StreamingDataPipeTests
     {
         // Arrange
         var stream = GetNullTestStream();
-        StreamingDataPipe<string?> pipe = new(stream);
+        DataStream<string?> pipe = new(stream);
         List<string?> enumeratedItems = [];
 
         // Act
@@ -240,7 +240,7 @@ public sealed class StreamingDataPipeTests
     {
         // Arrange
         var stream = GetComplexTestStream();
-        StreamingDataPipe<TestData> pipe = new(stream);
+        DataStream<TestData> pipe = new(stream);
         List<TestData> enumeratedItems = [];
 
         // Act
@@ -262,7 +262,7 @@ public sealed class StreamingDataPipeTests
     {
         // Arrange
         var stream = GetExceptionStream();
-        StreamingDataPipe<int> pipe = new(stream);
+        DataStream<int> pipe = new(stream);
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
@@ -279,10 +279,10 @@ public sealed class StreamingDataPipeTests
     {
         // Arrange
         var stream = GetTestStream();
-        StreamingDataPipe<int> pipe = new(stream);
+        DataStream<int> pipe = new(stream);
 
         // Act & Assert
-        _ = pipe.Should().BeAssignableTo<IStreamingDataPipe>();
+        _ = pipe.Should().BeAssignableTo<IForwardOnlyDataStream>();
     }
 
     #region Test Helper Methods

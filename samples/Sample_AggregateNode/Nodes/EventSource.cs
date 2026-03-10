@@ -53,7 +53,7 @@ public class EventSource : SourceNode<AnalyticsEvent>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token to stop event generation.</param>
     /// <returns>A data pipe containing analytics events.</returns>
-    public override IDataPipe<AnalyticsEvent> Initialize(
+    public override IDataStream<AnalyticsEvent> OpenStream(
         PipelineContext context,
         CancellationToken cancellationToken)
     {
@@ -86,7 +86,7 @@ public class EventSource : SourceNode<AnalyticsEvent>
             Console.WriteLine($"EventSource: Stopped after generating {eventCount} events");
         }
 
-        return new StreamingDataPipe<AnalyticsEvent>(GenerateEvents(cancellationToken), "EventSource");
+        return new DataStream<AnalyticsEvent>(GenerateEvents(cancellationToken), "EventSource");
     }
 
     /// <summary>

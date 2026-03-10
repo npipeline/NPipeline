@@ -50,7 +50,7 @@ public class ProductionLineASource : SourceNode<SensorReading>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A data pipe containing the sensor readings.</returns>
-    public override IDataPipe<SensorReading> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<SensorReading> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Starting Production Line A Source with WiFi sensors and GPS-disciplined clocks");
 

@@ -31,7 +31,7 @@ public class OrderSource : SourceNode<OrderEvent>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the generated order events.</returns>
-    public override IDataPipe<OrderEvent> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<OrderEvent> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine($"[OrderSource] Generating {_orderCount} order events...");
 
@@ -87,7 +87,7 @@ public class OrderSource : SourceNode<OrderEvent>
         }
 
         Console.WriteLine($"[OrderSource] Generated {orders.Count} order events");
-        return new InMemoryDataPipe<OrderEvent>(orders, "OrderSource");
+        return new InMemoryDataStream<OrderEvent>(orders, "OrderSource");
     }
 }
 

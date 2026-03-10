@@ -30,7 +30,7 @@ public sealed class DuckDBSourceNodeTests : IDisposable
             _dbPath, "SELECT * FROM items ORDER BY \"Id\"");
 
         // Act
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         // Assert
         result.Should().HaveCount(5);
@@ -49,7 +49,7 @@ public sealed class DuckDBSourceNodeTests : IDisposable
             "SELECT * FROM items",
             row => $"{row.Get<int>("Id")}:{row.Get<string>("Name")}");
 
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         result.Should().HaveCount(3);
         result.Should().Contain("1:Item1");
@@ -64,7 +64,7 @@ public sealed class DuckDBSourceNodeTests : IDisposable
         var config = new DuckDBConfiguration { Observer = observer };
 
         var source = new DuckDBSourceNode<TestRecord>(_dbPath, "SELECT * FROM items", config);
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         observer.RowsRead.Should().Be(3);
         observer.ReadCompletedCount.Should().Be(3);
@@ -81,7 +81,7 @@ public sealed class DuckDBSourceNodeTests : IDisposable
         cmd.ExecuteNonQuery();
 
         var source = new DuckDBSourceNode<TestRecord>(_dbPath, "SELECT * FROM empty_table");
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
         result.Should().BeEmpty();
     }

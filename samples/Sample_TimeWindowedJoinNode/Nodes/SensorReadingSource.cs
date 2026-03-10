@@ -54,12 +54,12 @@ public class SensorReadingSource : SourceNode<SensorReading>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<SensorReading> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<SensorReading> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         if (_logger != null)
             _startingGeneration(_logger, _deviceIds.Length, null);
 
-        return new StreamingDataPipe<SensorReading>(GenerateReadingsAsync(cancellationToken), "SensorReadingSource");
+        return new DataStream<SensorReading>(GenerateReadingsAsync(cancellationToken), "SensorReadingSource");
     }
 
     private async IAsyncEnumerable<SensorReading> GenerateReadingsAsync([EnumeratorCancellation] CancellationToken cancellationToken)

@@ -48,7 +48,7 @@ public class AdaptiveWatermarkGenerator : TransformNode<SensorReading, SensorRea
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The processed sensor reading with watermark information.</returns>
-    public override async Task<SensorReading> ExecuteAsync(
+    public override async Task<SensorReading> TransformAsync(
         SensorReading reading,
         PipelineContext context,
         CancellationToken cancellationToken)

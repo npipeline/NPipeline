@@ -43,7 +43,7 @@ public class MarketDataSource : SourceNode<MarketDataEvent>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the market data events.</returns>
-    public override IDataPipe<MarketDataEvent> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<MarketDataEvent> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Generating {_eventCount} market data events from {_symbolCount} symbols with {_interval.TotalMilliseconds}ms intervals");
 
@@ -105,7 +105,7 @@ public class MarketDataSource : SourceNode<MarketDataEvent>
             Console.WriteLine($"  {group.Key}: {group.Count()} events");
         }
 
-        return new InMemoryDataPipe<MarketDataEvent>(events, "MarketDataSource");
+        return new InMemoryDataStream<MarketDataEvent>(events, "MarketDataSource");
     }
 
     private static string GetSymbol(int index)

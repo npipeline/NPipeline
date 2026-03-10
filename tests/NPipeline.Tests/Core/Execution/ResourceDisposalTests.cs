@@ -88,10 +88,10 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
             await ValueTask.CompletedTask;
         }
 
-        public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var items = new[] { "test1", "test2" };
-            return new InMemoryDataPipe<string>(items);
+            return new InMemoryDataStream<string>(items);
         }
     }
 
@@ -110,7 +110,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
             await ValueTask.CompletedTask;
         }
 
-        public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item + "_transformed");
         }
@@ -131,7 +131,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
             await ValueTask.CompletedTask;
         }
 
-        public override async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<string> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))
@@ -155,10 +155,10 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
             DisposeCount++;
         }
 
-        public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var items = new[] { "test1", "test2" };
-            return new InMemoryDataPipe<string>(items);
+            return new InMemoryDataStream<string>(items);
         }
     }
 
@@ -177,7 +177,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
             await ValueTask.CompletedTask;
         }
 
-        public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
         {
             throw new InvalidOperationException("Test exception from transform");
         }
@@ -350,7 +350,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
     {
         // Arrange
         var context = PipelineContext.Default;
-        var pipe = A.Fake<IDataPipe<string>>();
+        var pipe = A.Fake<IDataStream<string>>();
         var asyncDisposablePipe = A.Fake<IAsyncDisposable>();
         var wrapper = new TestPipeWrapper(asyncDisposablePipe);
 

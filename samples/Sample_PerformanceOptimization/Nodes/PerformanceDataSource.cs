@@ -30,7 +30,7 @@ public class PerformanceDataSource : SourceNode<PerformanceDataItem>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the generated test items.</returns>
-    public override IDataPipe<PerformanceDataItem> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<PerformanceDataItem> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Generating {_itemCount} performance test data items...");
 
@@ -54,8 +54,8 @@ public class PerformanceDataSource : SourceNode<PerformanceDataItem>
         Console.WriteLine($"  Complex (8-10): {items.Count(x => x.ProcessingComplexity > 7)} items");
         Console.WriteLine();
 
-        // Return a InMemoryDataPipe containing our test items
-        return new InMemoryDataPipe<PerformanceDataItem>(items, "PerformanceDataSource");
+        // Return a InMemoryDataStream containing our test items
+        return new InMemoryDataStream<PerformanceDataItem>(items, "PerformanceDataSource");
     }
 
     /// <summary>

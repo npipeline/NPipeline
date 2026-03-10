@@ -23,7 +23,7 @@ public class SensorSource : SourceNode<SensorReading>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the generated sensor readings.</returns>
-    public override IDataPipe<SensorReading> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<SensorReading> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         // Get all available device IDs from the registry
         _deviceIds.AddRange(DeviceRegistry.GetAllDevices().Select(d => d.DeviceId));
@@ -51,7 +51,7 @@ public class SensorSource : SourceNode<SensorReading>
         Console.WriteLine($"Total sensor readings generated: {readings.Count}");
         Console.WriteLine();
 
-        return new InMemoryDataPipe<SensorReading>(readings);
+        return new InMemoryDataStream<SensorReading>(readings);
     }
 
     /// <summary>

@@ -35,7 +35,7 @@ public static class Program
         var sourceNode = new ParquetSourceNode<SalesRecord>(StorageUri.FromFilePath(outputPath));
         var count = 0;
 
-        await foreach (var record in sourceNode.Initialize(PipelineContext.Default, CancellationToken.None))
+        await foreach (var record in sourceNode.OpenStream(PipelineContext.Default, CancellationToken.None))
         {
             if (count++ >= 5)
                 break;

@@ -27,7 +27,7 @@ public class ValueTaskComparisonTransform : TransformNode<PerformanceDataItem, P
     /// <summary>
     ///     Processes the performance data item using either Task or ValueTask based on configuration.
     /// </summary>
-    public override async Task<ProcessedPerformanceItem> ExecuteAsync(PerformanceDataItem item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<ProcessedPerformanceItem> TransformAsync(PerformanceDataItem item, PipelineContext context, CancellationToken cancellationToken)
     {
         var memoryBefore = GC.GetTotalMemory(false);
         var stopwatch = Stopwatch.StartNew();

@@ -76,19 +76,19 @@ public sealed class KeyedJoinNodeTests
 
     private sealed class UserSource : SourceNode<User>
     {
-        public override IDataPipe<User> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<User> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var users = new[] { new User(1, "Alice"), new User(2, "Bob") };
-            return new StreamingDataPipe<User>(users.ToAsyncEnumerable(), "UserStream");
+            return new DataStream<User>(users.ToAsyncEnumerable(), "UserStream");
         }
     }
 
     private sealed class UserProfileSource : SourceNode<UserProfile>
     {
-        public override IDataPipe<UserProfile> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<UserProfile> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var profiles = new[] { new UserProfile(2, "Bob's Profile"), new UserProfile(1, "Alice's Profile") };
-            return new StreamingDataPipe<UserProfile>(profiles.ToAsyncEnumerable(), "ProfileStream");
+            return new DataStream<UserProfile>(profiles.ToAsyncEnumerable(), "ProfileStream");
         }
     }
 
@@ -104,7 +104,7 @@ public sealed class KeyedJoinNodeTests
 
     private sealed class EnrichedUserSink(ConcurrentQueue<EnrichedUser> store) : SinkNode<EnrichedUser>
     {
-        public override async Task ExecuteAsync(IDataPipe<EnrichedUser> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<EnrichedUser> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))
@@ -141,7 +141,7 @@ public sealed class KeyedJoinNodeTests
     // Test Node Implementations for Composite Key
     private sealed class EmployeeSource : SourceNode<Employee>
     {
-        public override IDataPipe<Employee> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<Employee> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var employees = new[]
             {
@@ -150,13 +150,13 @@ public sealed class KeyedJoinNodeTests
                 new Employee(2, "A", "Bob"),
             };
 
-            return new StreamingDataPipe<Employee>(employees.ToAsyncEnumerable(), "EmployeeStream");
+            return new DataStream<Employee>(employees.ToAsyncEnumerable(), "EmployeeStream");
         }
     }
 
     private sealed class PayStubSource : SourceNode<PayStub>
     {
-        public override IDataPipe<PayStub> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<PayStub> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var payStubs = new[]
             {
@@ -165,7 +165,7 @@ public sealed class KeyedJoinNodeTests
                 new PayStub(1, "A", 100m),
             };
 
-            return new StreamingDataPipe<PayStub>(payStubs.ToAsyncEnumerable(), "PayStubStream");
+            return new DataStream<PayStub>(payStubs.ToAsyncEnumerable(), "PayStubStream");
         }
     }
 
@@ -181,7 +181,7 @@ public sealed class KeyedJoinNodeTests
 
     private sealed class PayrollRecordSink(ConcurrentQueue<PayrollRecord> store) : SinkNode<PayrollRecord>
     {
-        public override async Task ExecuteAsync(IDataPipe<PayrollRecord> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<PayrollRecord> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))

@@ -12,21 +12,21 @@ namespace NPipeline.Execution.Services;
 public sealed class InterleaveMergeStrategy<T> : IMergeStrategy<T>
 {
     /// <inheritdoc />
-    public IDataPipe<T> Merge(IEnumerable<IDataPipe<T>> pipes, CancellationToken cancellationToken)
+    public IDataStream<T> Merge(IEnumerable<IDataStream<T>> pipes, CancellationToken cancellationToken)
     {
         var typedPipes = pipes.ToList();
 
-        // Detect lineage packet wrapping (IDataPipe<LineagePacket<TActual>>) erroneously typed as IDataPipe<T> via covariance misuse downstream.
+        // Detect lineage packet wrapping (IDataStream<LineagePacket<TActual>>) erroneously typed as IDataStream<T> via covariance misuse downstream.
         // If any pipe item type is LineagePacket<Something> and Something == typeof(T), adapt enumeration to yield inner Data.
         var adapted = typedPipes.Select(p => AdaptIfLineage(p));
         var mergedStream = InterleaveBounded(adapted.ToList(), null, cancellationToken);
-        return new StreamingDataPipe<T>(mergedStream, "InterleavedStream");
+        return new DataStream<T>(mergedStream, "InterleavedStream");
     }
 
-    private static IDataPipe<T> AdaptIfLineage(IDataPipe<T> pipe)
+    private static IDataStream<T> AdaptIfLineage(IDataStream<T> pipe)
     {
         var innerType = pipe.GetType().GetInterfaces()
-            .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IDataPipe<>))?
+            .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IDataStream<>))?
             .GetGenericArguments()[0];
 
         if (innerType is { IsGenericType: true } && innerType.GetGenericTypeDefinition() == typeof(LineagePacket<>))
@@ -36,12 +36,12 @@ public sealed class InterleaveMergeStrategy<T> : IMergeStrategy<T>
             if (payloadType == typeof(T))
 
                 // Wrap into a streaming pipe that projects packet.Data
-                return new StreamingDataPipe<T>(Project(pipe), $"Projected_{pipe.StreamName}");
+                return new DataStream<T>(Project(pipe), $"Projected_{pipe.StreamName}");
         }
 
         return pipe;
 
-        static async IAsyncEnumerable<T> Project(IDataPipe<T> original, [EnumeratorCancellation] CancellationToken token = default)
+        static async IAsyncEnumerable<T> Project(IDataStream<T> original, [EnumeratorCancellation] CancellationToken token = default)
         {
             await foreach (var o in original.WithCancellation(token).ConfigureAwait(false))
             {
@@ -68,7 +68,7 @@ public sealed class InterleaveMergeStrategy<T> : IMergeStrategy<T>
     }
 
     private static async IAsyncEnumerable<T> InterleaveBounded(
-        IReadOnlyList<IDataPipe<T>> dataPipes,
+        IReadOnlyList<IDataStream<T>> dataPipes,
         int? capacity = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {

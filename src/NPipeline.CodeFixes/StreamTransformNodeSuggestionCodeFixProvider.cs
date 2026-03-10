@@ -114,10 +114,10 @@ public sealed class StreamTransformNodeSuggestionCodeFixProvider : CodeFixProvid
             }
         }
 
-        // 2. Find and update the ExecuteAsync method
+        // 2. Find and update the TransformAsync method
         var executeAsyncMethod = classDeclaration.Members
             .OfType<MethodDeclarationSyntax>()
-            .FirstOrDefault(m => m.Identifier.Text == "ExecuteAsync");
+            .FirstOrDefault(m => m.Identifier.Text == "TransformAsync");
 
         if (executeAsyncMethod != null)
         {

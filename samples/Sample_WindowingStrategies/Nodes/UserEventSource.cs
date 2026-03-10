@@ -68,7 +68,7 @@ public class UserEventSource : SourceNode<UserEvent>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the user events.</returns>
-    public override IDataPipe<UserEvent> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<UserEvent> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Generating {_eventCount} user events from {_userCount} users with {_interval.TotalMilliseconds}ms intervals");
 
@@ -178,7 +178,7 @@ public class UserEventSource : SourceNode<UserEvent>
         Console.WriteLine($"  Average events per user: {(double)events.Count / userGroups.Count:F1}");
         Console.WriteLine($"  Average events per session: {(double)events.Count / sessionGroups.Count:F1}");
 
-        return new InMemoryDataPipe<UserEvent>(events, "UserEventSource");
+        return new InMemoryDataStream<UserEvent>(events, "UserEventSource");
     }
 
     private static string GenerateIpAddress(Random random, string country)

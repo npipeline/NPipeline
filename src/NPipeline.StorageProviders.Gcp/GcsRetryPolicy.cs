@@ -16,7 +16,7 @@ internal sealed class GcsRetryPolicy
         _settings is { MaxAttempts: > 0 } settings &&
         (settings.RetryOnRateLimit || settings.RetryOnServerErrors);
 
-    public async Task ExecuteAsync(
+    public async Task ConsumeAsync(
         Func<CancellationToken, Task> operation,
         CancellationToken cancellationToken)
     {

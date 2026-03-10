@@ -32,7 +32,7 @@ public class ProductLookupNode : TransformNode<OrderCustomerJoin, EnrichedOrder>
     }
 
     /// <inheritdoc />
-    public override Task<EnrichedOrder> ExecuteAsync(OrderCustomerJoin item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<EnrichedOrder> TransformAsync(OrderCustomerJoin item, PipelineContext context, CancellationToken cancellationToken)
     {
         _logger?.LogDebug("ProductLookupNode: Processing OrderCustomerJoin for Order {OrderId}", item.Order.OrderId);
 

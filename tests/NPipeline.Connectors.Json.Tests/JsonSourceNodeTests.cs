@@ -58,7 +58,7 @@ public class JsonSourceNodeTests : IDisposable
         var node = new JsonSourceNode<Customer>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
+        var dataPipe = node.OpenStream(_context, CancellationToken.None);
         var results = await dataPipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -82,7 +82,7 @@ public class JsonSourceNodeTests : IDisposable
         var node = new JsonSourceNode<Customer>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
+        var dataPipe = node.OpenStream(_context, CancellationToken.None);
         var results = await dataPipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -111,7 +111,7 @@ public class JsonSourceNodeTests : IDisposable
         });
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
+        var dataPipe = node.OpenStream(_context, CancellationToken.None);
         var results = await dataPipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -134,7 +134,7 @@ public class JsonSourceNodeTests : IDisposable
         // Act & Assert
         await Assert.ThrowsAnyAsync<JsonException>(async () =>
         {
-            var dataPipe = node.Initialize(_context, CancellationToken.None);
+            var dataPipe = node.OpenStream(_context, CancellationToken.None);
             await dataPipe.ToListAsync();
         });
     }
@@ -152,7 +152,7 @@ public class JsonSourceNodeTests : IDisposable
         var node = new JsonSourceNode<Customer>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
+        var dataPipe = node.OpenStream(_context, CancellationToken.None);
         var results = await dataPipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -176,7 +176,7 @@ public class JsonSourceNodeTests : IDisposable
         var cts = new CancellationTokenSource();
 
         // Act & Assert
-        var dataPipe = node.Initialize(_context, cts.Token);
+        var dataPipe = node.OpenStream(_context, cts.Token);
         var results = new List<Customer>();
 
         await Assert.ThrowsAsync<OperationCanceledException>(async () =>
@@ -211,7 +211,7 @@ public class JsonSourceNodeTests : IDisposable
         var node = new JsonSourceNode<Customer>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
+        var dataPipe = node.OpenStream(_context, CancellationToken.None);
         var results = await dataPipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -232,7 +232,7 @@ public class JsonSourceNodeTests : IDisposable
         var node = new JsonSourceNode<SnakeCaseCustomer>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
+        var dataPipe = node.OpenStream(_context, CancellationToken.None);
         var items = await dataPipe.ToListAsync();
 
         // Assert
@@ -254,7 +254,7 @@ public class JsonSourceNodeTests : IDisposable
         var node = new JsonSourceNode<Customer>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
+        var dataPipe = node.OpenStream(_context, CancellationToken.None);
         var results = await dataPipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -276,7 +276,7 @@ public class JsonSourceNodeTests : IDisposable
         var node = new JsonSourceNode<Customer>(_provider, uri, configuration);
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
+        var dataPipe = node.OpenStream(_context, CancellationToken.None);
         var results = await dataPipe.ToListAsync(CancellationToken.None);
 
         // Assert
@@ -303,7 +303,7 @@ public class JsonSourceNodeTests : IDisposable
         });
 
         // Act
-        var dataPipe = node.Initialize(_context, CancellationToken.None);
+        var dataPipe = node.OpenStream(_context, CancellationToken.None);
         var results = await dataPipe.ToListAsync(CancellationToken.None);
 
         // Assert

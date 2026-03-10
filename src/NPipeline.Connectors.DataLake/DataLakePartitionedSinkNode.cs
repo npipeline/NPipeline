@@ -73,8 +73,8 @@ public sealed class DataLakePartitionedSinkNode<T> : SinkNode<T>
     }
 
     /// <inheritdoc />
-    public override async Task ExecuteAsync(
-        IDataPipe<T> input,
+    public override async Task ConsumeAsync(
+        IDataStream<T> input,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
@@ -102,7 +102,7 @@ public sealed class DataLakePartitionedSinkNode<T> : SinkNode<T>
 
     private async Task ExecutePartitionedAsync(
         IStorageProvider provider,
-        IDataPipe<T> input,
+        IDataStream<T> input,
         ManifestWriter manifestWriter,
         string snapshotId,
         CancellationToken cancellationToken)
@@ -179,7 +179,7 @@ public sealed class DataLakePartitionedSinkNode<T> : SinkNode<T>
 
     private async Task ExecuteUnpartitionedAsync(
         IStorageProvider provider,
-        IDataPipe<T> input,
+        IDataStream<T> input,
         ManifestWriter manifestWriter,
         string snapshotId,
         CancellationToken cancellationToken)
@@ -245,9 +245,9 @@ public sealed class DataLakePartitionedSinkNode<T> : SinkNode<T>
         var sinkNode = new ParquetSinkNode<T>(provider, fileUri, _configuration);
 
         // Create a data pipe from the buffer
-        var dataPipe = new InMemoryDataPipe<T>(buffer);
+        var dataPipe = new InMemoryDataStream<T>(buffer);
 
-        await sinkNode.ExecuteAsync(dataPipe, PipelineContext.Default, cancellationToken)
+        await sinkNode.ConsumeAsync(dataPipe, PipelineContext.Default, cancellationToken)
             .ConfigureAwait(false);
 
         // Get file size

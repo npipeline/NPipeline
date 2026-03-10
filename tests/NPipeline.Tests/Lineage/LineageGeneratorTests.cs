@@ -188,11 +188,11 @@ public sealed class LineageGeneratorTests
 
     private sealed class DummySource : ISourceNode<int>
     {
-        public IDataPipe<int> Initialize(
+        public IDataStream<int> OpenStream(
             PipelineContext context,
             CancellationToken cancellationToken)
         {
-            return new StreamingDataPipe<int>(Stream());
+            return new DataStream<int>(Stream());
 
             static async IAsyncEnumerable<int> Stream()
             {
@@ -213,7 +213,7 @@ public sealed class LineageGeneratorTests
         public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
         public INodeErrorHandler? ErrorHandler { get; set; }
 
-        public Task<string> ExecuteAsync(
+        public Task<string> TransformAsync(
             int item,
             PipelineContext context,
             CancellationToken cancellationToken)

@@ -15,9 +15,9 @@ public sealed class SensorDataSourceNode : SourceNode<SensorReading>
         _count = count;
     }
 
-    public override IDataPipe<SensorReading> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<SensorReading> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
-        return new InMemoryDataPipe<SensorReading>(GenerateReadings().ToList(), "sensor-data");
+        return new InMemoryDataStream<SensorReading>(GenerateReadings().ToList(), "sensor-data");
     }
 
     private IEnumerable<SensorReading> GenerateReadings()

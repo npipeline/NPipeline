@@ -191,7 +191,7 @@ public sealed class ResilienceConfigurationRuleTests
         public IExecutionStrategy ExecutionStrategy { get; set; } = new ResilientExecutionStrategy(new SequentialExecutionStrategy());
         public INodeErrorHandler? ErrorHandler { get; set; }
 
-        public Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item);
         }
@@ -207,7 +207,7 @@ public sealed class ResilienceConfigurationRuleTests
         public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
         public INodeErrorHandler? ErrorHandler { get; set; }
 
-        public Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item);
         }
@@ -399,7 +399,7 @@ public sealed class ParallelConfigurationRuleTests
         public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
         public INodeErrorHandler? ErrorHandler { get; set; }
 
-        public Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item);
         }

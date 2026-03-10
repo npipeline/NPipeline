@@ -9,7 +9,7 @@ namespace Sample_HttpConnector.Nodes;
 /// </summary>
 public sealed class ReleaseFormatter : TransformNode<GithubRelease, SlackMessage>
 {
-    public override Task<SlackMessage> ExecuteAsync(
+    public override Task<SlackMessage> TransformAsync(
         GithubRelease item,
         PipelineContext context,
         CancellationToken cancellationToken)

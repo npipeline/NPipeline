@@ -33,9 +33,9 @@ public sealed class BranchNodeTests
         var ctx = PipelineContext.Default;
 
         // Act
-        var result1 = await node.ExecuteAsync(1, ctx, CancellationToken.None);
-        var result2 = await node.ExecuteAsync(2, ctx, CancellationToken.None);
-        var result3 = await node.ExecuteAsync(3, ctx, CancellationToken.None);
+        var result1 = await node.TransformAsync(1, ctx, CancellationToken.None);
+        var result2 = await node.TransformAsync(2, ctx, CancellationToken.None);
+        var result3 = await node.TransformAsync(3, ctx, CancellationToken.None);
 
         // Assert
         _ = result1.Should().Be(1);
@@ -93,7 +93,7 @@ public sealed class BranchNodeTests
         var item = 42;
 
         // Act
-        var result = await node.ExecuteAsync(item, ctx, CancellationToken.None);
+        var result = await node.TransformAsync(item, ctx, CancellationToken.None);
 
         // Assert
         _ = result.Should().Be(42);
@@ -115,7 +115,7 @@ public sealed class BranchNodeTests
         var ctx = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(42, ctx, CancellationToken.None);
+        var result = await node.TransformAsync(42, ctx, CancellationToken.None);
 
         // Assert
         _ = result.Should().Be(42);
@@ -150,7 +150,7 @@ public sealed class BranchNodeTests
         var ctx = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync("test", ctx, CancellationToken.None);
+        var result = await node.TransformAsync("test", ctx, CancellationToken.None);
 
         // Assert
         _ = result.Should().Be("test");
@@ -176,7 +176,7 @@ public sealed class BranchNodeTests
         var ctx = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync("HelloWorld", ctx, CancellationToken.None);
+        var result = await node.TransformAsync("HelloWorld", ctx, CancellationToken.None);
 
         // Assert
         _ = result.Should().Be("HelloWorld");
@@ -205,7 +205,7 @@ public sealed class BranchNodeTests
         var ctx = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(10, ctx, CancellationToken.None);
+        var result = await node.TransformAsync(10, ctx, CancellationToken.None);
 
         // Assert
         _ = result.Should().Be(10);
@@ -241,7 +241,7 @@ public sealed class BranchNodeTests
         var ctx = PipelineContext.Default;
 
         // Act - start execution; handlers will block after incrementing 'started'
-        var execTask = node.ExecuteAsync(1, ctx, CancellationToken.None);
+        var execTask = node.TransformAsync(1, ctx, CancellationToken.None);
 
         // wait for all handlers to have started (timeout to avoid hangs)
         var sw = Stopwatch.StartNew();
@@ -283,7 +283,7 @@ public sealed class BranchNodeTests
         var ctx = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(1, ctx, CancellationToken.None);
+        var result = await node.TransformAsync(1, ctx, CancellationToken.None);
 
         // Assert
         _ = result.Should().Be(1);
@@ -327,7 +327,7 @@ public sealed class BranchNodeTests
         var ctx = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(42, ctx, CancellationToken.None);
+        var result = await node.TransformAsync(42, ctx, CancellationToken.None);
 
         // Assert - should not throw and should return the item
         _ = result.Should().Be(42);
@@ -354,7 +354,7 @@ public sealed class BranchNodeTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<BranchHandlerException>(async () =>
-            await node.ExecuteAsync(42, ctx, CancellationToken.None));
+            await node.TransformAsync(42, ctx, CancellationToken.None));
 
         _ = ex.BranchIndex.Should().Be(0);
         _ = ex.InnerException.Should().BeOfType<InvalidOperationException>();
@@ -379,7 +379,7 @@ public sealed class BranchNodeTests
         var ctx = new PipelineContext(config);
 
         // Act
-        var result = await node.ExecuteAsync(42, ctx, CancellationToken.None);
+        var result = await node.TransformAsync(42, ctx, CancellationToken.None);
 
         // Assert
         _ = result.Should().Be(42);
@@ -406,7 +406,7 @@ public sealed class BranchNodeTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<BranchHandlerException>(async () =>
-            await node.ExecuteAsync(42, ctx, CancellationToken.None));
+            await node.TransformAsync(42, ctx, CancellationToken.None));
 
         _ = errorHandlerCalled.Should().BeTrue();
         _ = ex.BranchIndex.Should().Be(0);
@@ -434,7 +434,7 @@ public sealed class BranchNodeTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<AggregateException>(async () =>
-            await node.ExecuteAsync(42, ctx, CancellationToken.None));
+            await node.TransformAsync(42, ctx, CancellationToken.None));
 
         _ = ex.InnerExceptions.Should().HaveCount(2);
         _ = ex.InnerExceptions.Should().AllBeAssignableTo<BranchHandlerException>();
@@ -456,7 +456,7 @@ public sealed class BranchNodeTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<BranchHandlerException>(async () =>
-            await node.ExecuteAsync("test-item", ctx, CancellationToken.None));
+            await node.TransformAsync("test-item", ctx, CancellationToken.None));
 
         _ = ex.FailedItem.Should().Be("test-item");
     }
@@ -492,7 +492,7 @@ public sealed class BranchNodeTests
         Dictionary<string, int> input = new() { { "key", 1 } };
 
         // Act
-        var result = await node.ExecuteAsync(input, ctx, CancellationToken.None);
+        var result = await node.TransformAsync(input, ctx, CancellationToken.None);
 
         // Assert
         _ = result.Should().BeSameAs(input);
@@ -524,7 +524,7 @@ public sealed class BranchNodeTests
         });
 
         // Act
-        var result = await branchNode.ExecuteAsync(originalObject, context, CancellationToken.None);
+        var result = await branchNode.TransformAsync(originalObject, context, CancellationToken.None);
 
         // Assert
         _ = result.Should().Be(originalObject);
@@ -555,7 +555,7 @@ public sealed class BranchNodeTests
         }
 
         // Act
-        _ = await branchNode.ExecuteAsync(item, context, CancellationToken.None);
+        _ = await branchNode.TransformAsync(item, context, CancellationToken.None);
 
         // Assert
         _ = receivedItems.Should().HaveCount(5);
@@ -586,7 +586,7 @@ public sealed class BranchNodeTests
         }
 
         await Task.WhenAll(tasks);
-        _ = await branchNode.ExecuteAsync(item, context, CancellationToken.None);
+        _ = await branchNode.TransformAsync(item, context, CancellationToken.None);
 
         // Assert - No exceptions should occur
         Assert.True(true);
@@ -608,7 +608,7 @@ public sealed class BranchNodeTests
         });
 
         // Act
-        _ = await branchNode.ExecuteAsync(item, context, CancellationToken.None);
+        _ = await branchNode.TransformAsync(item, context, CancellationToken.None);
 
         // Assert
         _ = executionCounts.Should().HaveCount(1);

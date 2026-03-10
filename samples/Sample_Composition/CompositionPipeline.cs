@@ -49,7 +49,7 @@ public sealed class CustomerSource : SourceNode<Customer>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing generated customer data.</returns>
-    public override IDataPipe<Customer> Initialize(
+    public override IDataStream<Customer> OpenStream(
         PipelineContext context,
         CancellationToken cancellationToken)
     {
@@ -62,7 +62,7 @@ public sealed class CustomerSource : SourceNode<Customer>
             new(5, "Charlie Brown", "charlie.brown@example.com", "555-9012"),
         };
 
-        return new InMemoryDataPipe<Customer>(customers, "CustomerSource");
+        return new InMemoryDataStream<Customer>(customers, "CustomerSource");
     }
 }
 
@@ -78,8 +78,8 @@ public sealed class ConsoleSink<T> : SinkNode<T>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task representing the sink execution.</returns>
-    public override async Task ExecuteAsync(
-        IDataPipe<T> input,
+    public override async Task ConsumeAsync(
+        IDataStream<T> input,
         PipelineContext context,
         CancellationToken cancellationToken)
     {

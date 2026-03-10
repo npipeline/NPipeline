@@ -377,13 +377,13 @@ public class PipelineExecutionBenchmarks : IDisposable
 
     private sealed class GeneratorSource : SourceNode<IntItem>
     {
-        public override IDataPipe<IntItem> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<IntItem> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)
                 : 0;
 
-            return new StreamingDataPipe<IntItem>(GenerateItems(count, cancellationToken), "generator");
+            return new DataStream<IntItem>(GenerateItems(count, cancellationToken), "generator");
         }
 
         private static async IAsyncEnumerable<IntItem> GenerateItems(int count, [EnumeratorCancellation] CancellationToken ct)
@@ -400,13 +400,13 @@ public class PipelineExecutionBenchmarks : IDisposable
 
     private sealed class GeneratorSource2 : SourceNode<LongItem>
     {
-        public override IDataPipe<LongItem> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<LongItem> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)
                 : 0;
 
-            return new StreamingDataPipe<LongItem>(GenerateItems(count, cancellationToken), "generator2");
+            return new DataStream<LongItem>(GenerateItems(count, cancellationToken), "generator2");
         }
 
         private static async IAsyncEnumerable<LongItem> GenerateItems(int count, [EnumeratorCancellation] CancellationToken ct)
@@ -423,7 +423,7 @@ public class PipelineExecutionBenchmarks : IDisposable
 
     private sealed class PassThroughTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(item);
         }
@@ -431,7 +431,7 @@ public class PipelineExecutionBenchmarks : IDisposable
 
     private sealed class ComplexTransform : TransformNode<int, string>
     {
-        public override Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate some processing
             var result = $"Processed_{item:D6}";
@@ -443,7 +443,7 @@ public class PipelineExecutionBenchmarks : IDisposable
     {
         private readonly Random _random = new();
 
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             var errorRate = context.Parameters.TryGetValue("errorRate", out var v)
                 ? Convert.ToDouble(v)
@@ -458,7 +458,7 @@ public class PipelineExecutionBenchmarks : IDisposable
 
     private sealed class ValidationTransform : TransformNode<int, int>
     {
-        public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate validation overhead
             if (item < 0)
@@ -475,7 +475,7 @@ public class PipelineExecutionBenchmarks : IDisposable
 
     private sealed class BlackHoleSink : SinkNode<int>
     {
-        public override async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
@@ -487,7 +487,7 @@ public class PipelineExecutionBenchmarks : IDisposable
 
     private sealed class StringBlackHoleSink : SinkNode<string>
     {
-        public override async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<string> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             await foreach (var _ in input.WithCancellation(cancellationToken))
@@ -499,7 +499,7 @@ public class PipelineExecutionBenchmarks : IDisposable
 
     private sealed class ComplexSink : SinkNode<int>
     {
-        public override async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context,
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context,
             CancellationToken cancellationToken)
         {
             var count = 0;
@@ -519,13 +519,13 @@ public class PipelineExecutionBenchmarks : IDisposable
 
     private sealed class IntGeneratorSource : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)
                 : 0;
 
-            return new StreamingDataPipe<int>(GenerateIntItems(count, cancellationToken), "intGenerator");
+            return new DataStream<int>(GenerateIntItems(count, cancellationToken), "intGenerator");
         }
 
         private static async IAsyncEnumerable<int> GenerateIntItems(int count, [EnumeratorCancellation] CancellationToken ct)
@@ -542,7 +542,7 @@ public class PipelineExecutionBenchmarks : IDisposable
 
     private sealed class CancellableIntSource : SourceNode<int>
     {
-        public override IDataPipe<int> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)
@@ -552,7 +552,7 @@ public class PipelineExecutionBenchmarks : IDisposable
                 ? Convert.ToInt32(c)
                 : count;
 
-            return new StreamingDataPipe<int>(GenerateIntItems(count, cancelAt, cancellationToken), "cancellableInt");
+            return new DataStream<int>(GenerateIntItems(count, cancelAt, cancellationToken), "cancellableInt");
         }
 
         private static async IAsyncEnumerable<int> GenerateIntItems(int count, int cancelAt, [EnumeratorCancellation] CancellationToken ct)
@@ -571,7 +571,7 @@ public class PipelineExecutionBenchmarks : IDisposable
 
     private sealed class SlowTransform : TransformNode<int, int>
     {
-        public override async Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Add small delay to make cancellation more noticeable
             await Task.Delay(1, cancellationToken);

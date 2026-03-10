@@ -38,7 +38,7 @@ public class MarketDataSink : SinkNode<MarketDataTick>
     /// <param name="context">The pipeline context</param>
     /// <param name="cancellationToken">The cancellation token</param>
     /// <returns>A task representing the execution</returns>
-    public override async Task ExecuteAsync(IDataPipe<MarketDataTick> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<MarketDataTick> input, PipelineContext context, CancellationToken cancellationToken)
     {
         if (input == null)
         {

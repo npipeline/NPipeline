@@ -14,7 +14,7 @@ public class HttpSinkNodeIntegrationTests(WireMockFixture fixture)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    private static StreamingDataPipe<T> PipeOf<T>(params T[] items)
+    private static DataStream<T> PipeOf<T>(params T[] items)
     {
         async IAsyncEnumerable<T> Generate()
         {
@@ -26,7 +26,7 @@ public class HttpSinkNodeIntegrationTests(WireMockFixture fixture)
             await Task.CompletedTask;
         }
 
-        return new StreamingDataPipe<T>(Generate(), "test");
+        return new DataStream<T>(Generate(), "test");
     }
 
     [Fact]
@@ -43,7 +43,7 @@ public class HttpSinkNodeIntegrationTests(WireMockFixture fixture)
         var node = new HttpSinkNode<Order>(config, httpClient);
 
         await using var pipe = PipeOf(new Order(1, "Widget", 9.99m));
-        await node.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        await node.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         var logEntries = fixture.Server.LogEntries;
         logEntries.Should().HaveCount(1);
@@ -78,7 +78,7 @@ public class HttpSinkNodeIntegrationTests(WireMockFixture fixture)
             new Order(2, "B", 2m),
             new Order(3, "C", 3m)); // → 2 requests: [1,2] and [3]
 
-        await node.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        await node.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         fixture.Server.LogEntries.Should().HaveCount(2);
     }
@@ -103,7 +103,7 @@ public class HttpSinkNodeIntegrationTests(WireMockFixture fixture)
         var node = new HttpSinkNode<Order>(config, httpClient);
 
         await using var pipe = PipeOf(new Order(1, "Widget", 9.99m));
-        await node.ExecuteAsync(pipe, new PipelineContext(), CancellationToken.None);
+        await node.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         fixture.Server.LogEntries.Should().HaveCount(1);
     }

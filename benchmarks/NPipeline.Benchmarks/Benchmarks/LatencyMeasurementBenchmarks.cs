@@ -324,13 +324,13 @@ public class LatencyMeasurementBenchmarks
 
     private sealed class TimestampedDataSource : SourceNode<LatencyMeasuredItem>
     {
-        public override IDataPipe<LatencyMeasuredItem> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<LatencyMeasuredItem> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("count", out var v)
                 ? Convert.ToInt32(v)
                 : 0;
 
-            return new StreamingDataPipe<LatencyMeasuredItem>(
+            return new DataStream<LatencyMeasuredItem>(
                 GenerateTimestampedItems(count, cancellationToken),
                 "timestampedDataSource");
         }
@@ -358,7 +358,7 @@ public class LatencyMeasurementBenchmarks
     {
         private readonly Random _random = new();
 
-        public override async Task<LatencyMeasuredItem> ExecuteAsync(LatencyMeasuredItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<LatencyMeasuredItem> TransformAsync(LatencyMeasuredItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             var delay = context.Parameters.TryGetValue("delay", out var d)
                 ? Convert.ToInt32(d)
@@ -382,7 +382,7 @@ public class LatencyMeasurementBenchmarks
 
     private sealed class BatchLatencyTransform : TransformNode<IReadOnlyCollection<LatencyMeasuredItem>, LatencyMeasuredItem>
     {
-        public override async Task<LatencyMeasuredItem> ExecuteAsync(IReadOnlyCollection<LatencyMeasuredItem> batch, PipelineContext context,
+        public override async Task<LatencyMeasuredItem> TransformAsync(IReadOnlyCollection<LatencyMeasuredItem> batch, PipelineContext context,
             CancellationToken cancellationToken)
         {
             // Process the batch and return the first item with updated timestamp
@@ -406,7 +406,7 @@ public class LatencyMeasurementBenchmarks
 
     private sealed class SynchronousLatencyTransform : TransformNode<LatencyMeasuredItem, LatencyMeasuredItem>
     {
-        public override Task<LatencyMeasuredItem> ExecuteAsync(LatencyMeasuredItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<LatencyMeasuredItem> TransformAsync(LatencyMeasuredItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Synchronous processing without async delay
             Thread.SpinWait(1000); // Small CPU-bound work
@@ -423,7 +423,7 @@ public class LatencyMeasurementBenchmarks
 
     private sealed class AsynchronousLatencyTransform : TransformNode<LatencyMeasuredItem, LatencyMeasuredItem>
     {
-        public override async Task<LatencyMeasuredItem> ExecuteAsync(LatencyMeasuredItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<LatencyMeasuredItem> TransformAsync(LatencyMeasuredItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             var delay = context.Parameters.TryGetValue("delay", out var d)
                 ? Convert.ToInt32(d)
@@ -446,7 +446,7 @@ public class LatencyMeasurementBenchmarks
     {
         private readonly Random _random = new();
 
-        public override async Task<LatencyMeasuredItem> ExecuteAsync(LatencyMeasuredItem item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<LatencyMeasuredItem> TransformAsync(LatencyMeasuredItem item, PipelineContext context, CancellationToken cancellationToken)
         {
             var delay = context.Parameters.TryGetValue("delay", out var d)
                 ? Convert.ToInt32(d)
@@ -478,7 +478,7 @@ public class LatencyMeasurementBenchmarks
     {
         private readonly List<TimeSpan> _firstItemLatencies = [];
 
-        public override async Task ExecuteAsync(IDataPipe<LatencyMeasuredItem> input, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task ConsumeAsync(IDataStream<LatencyMeasuredItem> input, PipelineContext context, CancellationToken cancellationToken)
         {
             var firstItem = true;
 
@@ -512,7 +512,7 @@ public class LatencyMeasurementBenchmarks
     {
         private readonly List<TimeSpan> _latencies = [];
 
-        public override async Task ExecuteAsync(IDataPipe<LatencyMeasuredItem> input, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task ConsumeAsync(IDataStream<LatencyMeasuredItem> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))
             {
@@ -541,7 +541,7 @@ public class LatencyMeasurementBenchmarks
     {
         private readonly List<TimeSpan> _endToEndLatencies = [];
 
-        public override async Task ExecuteAsync(IDataPipe<LatencyMeasuredItem> input, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task ConsumeAsync(IDataStream<LatencyMeasuredItem> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))
             {
@@ -564,7 +564,7 @@ public class LatencyMeasurementBenchmarks
     {
         private readonly List<TimeSpan> _latencies = [];
 
-        public override async Task ExecuteAsync(IDataPipe<LatencyMeasuredItem> input, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task ConsumeAsync(IDataStream<LatencyMeasuredItem> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))
             {

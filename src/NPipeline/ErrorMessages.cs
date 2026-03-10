@@ -83,12 +83,12 @@ internal static class ErrorMessages
                $"See: {DocsBaseUrl}#{ErrorCodes.TypeMismatchInConnection}";
     }
 
-    public static string InputDataPipeWrongType(string expectedType, string actualType, string nodeName)
+    public static string InputDataStreamWrongType(string expectedType, string actualType, string nodeName)
     {
-        return $"[{ErrorCodes.InputDataPipeWrongType}] Input data pipe is not of the expected type for node '{nodeName}'. " +
+        return $"[{ErrorCodes.InputDataStreamWrongType}] Input data pipe is not of the expected type for node '{nodeName}'. " +
                $"Expected '{expectedType}' but found '{actualType}'. " +
                $"This usually indicates a graph construction error. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.InputDataPipeWrongType}";
+               $"See: {DocsBaseUrl}#{ErrorCodes.InputDataStreamWrongType}";
     }
 
     public static string CannotRegisterMappingsAfterExecution(string nodeName)
@@ -208,12 +208,12 @@ internal static class ErrorMessages
                $"See: {DocsBaseUrl}#{ErrorCodes.LineageCardinalityMismatch}";
     }
 
-    public static string FailedToExtractItemsFromInMemoryDataPipe(Exception innerException)
+    public static string FailedToExtractItemsFromInMemoryDataStream(Exception innerException)
     {
-        return $"[{ErrorCodes.FailedToExtractItemsFromInMemoryDataPipe}] Failed to extract items from InMemoryDataPipe. " +
+        return $"[{ErrorCodes.FailedToExtractItemsFromInMemoryDataStream}] Failed to extract items from InMemoryDataStream. " +
                $"Inner error: {innerException.Message}. " +
                $"The pipe may be corrupted or disposed. " +
-               $"See: {DocsBaseUrl}#{ErrorCodes.FailedToExtractItemsFromInMemoryDataPipe}";
+               $"See: {DocsBaseUrl}#{ErrorCodes.FailedToExtractItemsFromInMemoryDataStream}";
     }
 
     public static string CircuitBreakerTripped(int failureThreshold, string nodeId)

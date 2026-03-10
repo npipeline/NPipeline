@@ -120,7 +120,7 @@ public sealed class ValueTaskOptimizationAnalyzer : DiagnosticAnalyzer
     /// </summary>
     private static IMethodSymbol? FindExecuteAsyncOverride(INamedTypeSymbol typeSymbol)
     {
-        return typeSymbol.GetMembers("ExecuteAsync")
+        return typeSymbol.GetMembers("TransformAsync")
             .OfType<IMethodSymbol>()
             .FirstOrDefault(m => m.IsOverride && m.Parameters.Length == 3);
     }

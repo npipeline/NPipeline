@@ -17,9 +17,9 @@ public interface IPipeMergeService
     /// <param name="inputPipes">The input data pipes to be merged.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A task that represents the asynchronous operation, containing the merged data pipe.</returns>
-    Task<IDataPipe> MergeAsync(
+    Task<IDataStream> MergeAsync(
         NodeDefinition nodeDef,
         INode nodeInstance,
-        IEnumerable<IDataPipe> inputPipes,
+        IEnumerable<IDataStream> inputPipes,
         CancellationToken cancellationToken = default);
 }

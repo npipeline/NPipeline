@@ -33,7 +33,7 @@ public class BatchProcessingTransform : TransformNode<IReadOnlyCollection<Sensor
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A batch processing result with aggregated statistics.</returns>
-    public override async Task<BatchProcessingResult> ExecuteAsync(
+    public override async Task<BatchProcessingResult> TransformAsync(
         IReadOnlyCollection<SensorReading> batch,
         PipelineContext context,
         CancellationToken cancellationToken)

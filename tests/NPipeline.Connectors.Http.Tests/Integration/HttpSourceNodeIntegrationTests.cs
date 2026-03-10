@@ -35,7 +35,7 @@ public class HttpSourceNodeIntegrationTests(WireMockFixture fixture)
 
         var items = new List<Item>();
 
-        await foreach (var item in node.Initialize(new PipelineContext(), CancellationToken.None))
+        await foreach (var item in node.OpenStream(new PipelineContext(), CancellationToken.None))
         {
             items.Add(item);
         }
@@ -76,7 +76,7 @@ public class HttpSourceNodeIntegrationTests(WireMockFixture fixture)
 
         var items = new List<Item>();
 
-        await foreach (var item in node.Initialize(new PipelineContext(), CancellationToken.None))
+        await foreach (var item in node.OpenStream(new PipelineContext(), CancellationToken.None))
         {
             items.Add(item);
         }
@@ -116,7 +116,7 @@ public class HttpSourceNodeIntegrationTests(WireMockFixture fixture)
 
         var items = new List<Item>();
 
-        await foreach (var item in node.Initialize(new PipelineContext(), CancellationToken.None))
+        await foreach (var item in node.OpenStream(new PipelineContext(), CancellationToken.None))
         {
             items.Add(item);
         }
@@ -149,7 +149,7 @@ public class HttpSourceNodeIntegrationTests(WireMockFixture fixture)
 
         var items = new List<Item>();
 
-        await foreach (var item in node.Initialize(new PipelineContext(), CancellationToken.None))
+        await foreach (var item in node.OpenStream(new PipelineContext(), CancellationToken.None))
         {
             items.Add(item);
         }

@@ -54,12 +54,12 @@ public class MaintenanceEventSource : SourceNode<MaintenanceEvent>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<MaintenanceEvent> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<MaintenanceEvent> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         if (_logger != null)
             _startingGeneration(_logger, _maxEvents, null);
 
-        return new StreamingDataPipe<MaintenanceEvent>(GenerateEventsAsync(cancellationToken), "MaintenanceEventSource");
+        return new DataStream<MaintenanceEvent>(GenerateEventsAsync(cancellationToken), "MaintenanceEventSource");
     }
 
     private async IAsyncEnumerable<MaintenanceEvent> GenerateEventsAsync([EnumeratorCancellation] CancellationToken cancellationToken)

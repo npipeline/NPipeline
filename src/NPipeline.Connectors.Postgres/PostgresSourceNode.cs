@@ -123,10 +123,10 @@ namespace NPipeline.Connectors.Postgres
         }
 
         /// <inheritdoc />
-        public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var stream = ReadAsync(cancellationToken);
-            return new StreamingDataPipe<T>(stream, $"PostgresSourceNode<{typeof(T).Name}>");
+            return new DataStream<T>(stream, $"PostgresSourceNode<{typeof(T).Name}>");
         }
 
         private async IAsyncEnumerable<T> ReadAsync([EnumeratorCancellation] CancellationToken cancellationToken)

@@ -16,7 +16,7 @@ public sealed class PropertyTransformationNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Name.Should().Be("ALICE");
@@ -35,7 +35,7 @@ public sealed class PropertyTransformationNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Name.Should().Be("BOB");
@@ -56,7 +56,7 @@ public sealed class PropertyTransformationNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Name.Should().Be("ALICE");
@@ -72,7 +72,7 @@ public sealed class PropertyTransformationNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Should().BeSameAs(data);
@@ -94,7 +94,7 @@ public sealed class PropertyTransformationNodeTests
 
         // Act & Assert
         await Assert.ThrowsAsync<OperationCanceledException>(async () =>
-            await node.ExecuteAsync(data, context, cts.Token));
+            await node.TransformAsync(data, context, cts.Token));
     }
 
     [Fact]
@@ -143,7 +143,7 @@ public sealed class PropertyTransformationNodeTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await node.ExecuteAsync(data, context, CancellationToken.None);
+        var result = await node.TransformAsync(data, context, CancellationToken.None);
 
         // Assert
         result.Name.Should().Be("Unknown");

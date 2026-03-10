@@ -30,7 +30,7 @@ public class CustomerSource : SourceNode<Customer>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<Customer> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<Customer> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         _logger?.LogInformation("CustomerSource: Starting to generate customers");
 
@@ -54,6 +54,6 @@ public class CustomerSource : SourceNode<Customer>
 
         _logger?.LogInformation("CustomerSource: Finished generating {Count} customers", customers.Count);
 
-        return new InMemoryDataPipe<Customer>(customers, "CustomerSource");
+        return new InMemoryDataStream<Customer>(customers, "CustomerSource");
     }
 }

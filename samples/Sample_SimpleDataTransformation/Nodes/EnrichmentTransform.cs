@@ -17,7 +17,7 @@ public class EnrichmentTransform : TransformNode<Person, EnrichedPerson>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A Task representing the enrichment operation with an EnrichedPerson result.</returns>
-    public override Task<EnrichedPerson> ExecuteAsync(Person item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<EnrichedPerson> TransformAsync(Person item, PipelineContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

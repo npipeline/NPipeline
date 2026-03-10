@@ -227,7 +227,7 @@ public sealed class InefficientStringOperationsAnalyzer : DiagnosticAnalyzer
 
         var hotPathMethodNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "ExecuteAsync", "ProcessAsync", "RunAsync", "HandleAsync", "Execute", "Process", "Run", "Handle",
+            "ExecuteAsync", "TransformAsync", "ConsumeAsync", "OpenStream", "ProcessAsync", "RunAsync", "HandleAsync", "Execute", "Process", "Run", "Handle",
         };
 
         return hotPathMethodNames.Contains(methodName);

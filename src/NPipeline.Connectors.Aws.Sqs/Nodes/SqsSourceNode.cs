@@ -49,10 +49,10 @@ public sealed class SqsSourceNode<T> : SourceNode<SqsMessage<T>>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<SqsMessage<T>> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<SqsMessage<T>> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var stream = PollMessagesAsync(cancellationToken);
-        return new StreamingDataPipe<SqsMessage<T>>(stream, $"SqsSourceNode<{typeof(T).Name}>");
+        return new DataStream<SqsMessage<T>>(stream, $"SqsSourceNode<{typeof(T).Name}>");
     }
 
     private async IAsyncEnumerable<SqsMessage<T>> PollMessagesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)

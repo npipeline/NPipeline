@@ -39,7 +39,7 @@ public static class PipelineObjectPool
     private static readonly BoundedConcurrentBag<Dictionary<string, int>> StringIntDictionaryPool = new(MaxRetainedPerPool);
     private static readonly BoundedConcurrentBag<Dictionary<string, object>> StringObjectDictionaryPool = new(MaxRetainedPerPool);
     private static readonly BoundedConcurrentBag<Dictionary<string, INode>> NodeDictionaryPool = new(MaxRetainedPerPool);
-    private static readonly BoundedConcurrentBag<Dictionary<string, IDataPipe?>> NodeOutputDictionaryPool = new(MaxRetainedPerPool);
+    private static readonly BoundedConcurrentBag<Dictionary<string, IDataStream?>> NodeOutputDictionaryPool = new(MaxRetainedPerPool);
     private static readonly BoundedConcurrentBag<Queue<string>> StringQueuePool = new(MaxRetainedPerPool);
     private static readonly BoundedConcurrentBag<HashSet<string>> StringHashSetPool = new(MaxRetainedPerPool);
 
@@ -198,9 +198,9 @@ public static class PipelineObjectPool
     }
 
     /// <summary>
-    ///     Rents a Dictionary&lt;string, IDataPipe?&gt; for node output tracking.
+    ///     Rents a Dictionary&lt;string, IDataStream?&gt; for node output tracking.
     /// </summary>
-    public static Dictionary<string, IDataPipe?> RentNodeOutputDictionary(int capacityHint = 10)
+    public static Dictionary<string, IDataStream?> RentNodeOutputDictionary(int capacityHint = 10)
     {
         if (NodeOutputDictionaryPool.TryTake(out var dictionary))
         {
@@ -208,13 +208,13 @@ public static class PipelineObjectPool
             return dictionary;
         }
 
-        return new Dictionary<string, IDataPipe?>(capacityHint);
+        return new Dictionary<string, IDataStream?>(capacityHint);
     }
 
     /// <summary>
-    ///     Returns a Dictionary&lt;string, IDataPipe?&gt; to the pool.
+    ///     Returns a Dictionary&lt;string, IDataStream?&gt; to the pool.
     /// </summary>
-    public static void Return(Dictionary<string, IDataPipe?> dictionary)
+    public static void Return(Dictionary<string, IDataStream?> dictionary)
     {
         if (dictionary.Count > MaxPooledCapacity)
             return;

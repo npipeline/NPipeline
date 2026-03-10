@@ -49,7 +49,7 @@ public sealed class RabbitMqSinkNode<T> : SinkNode<T>
     }
 
     /// <inheritdoc />
-    public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
         // Ensure topology is declared once
         if (!_topologyDeclared && _options.Topology is { AutoDeclare: true })
@@ -75,7 +75,7 @@ public sealed class RabbitMqSinkNode<T> : SinkNode<T>
             await ExecuteSequentialAsync(input, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task ExecuteSequentialAsync(IDataPipe<T> input, CancellationToken cancellationToken)
+    private async Task ExecuteSequentialAsync(IDataStream<T> input, CancellationToken cancellationToken)
     {
         var channel = await _connectionManager.GetPooledChannelAsync(cancellationToken).ConfigureAwait(false);
 
@@ -92,7 +92,7 @@ public sealed class RabbitMqSinkNode<T> : SinkNode<T>
         }
     }
 
-    private async Task ExecuteBatchedAsync(IDataPipe<T> input, CancellationToken cancellationToken)
+    private async Task ExecuteBatchedAsync(IDataStream<T> input, CancellationToken cancellationToken)
     {
         var batchOptions = _options.Batching!;
         var batch = new List<(T Item, ReadOnlyMemory<byte> Body, IAcknowledgableMessage? SourceMsg)>(batchOptions.BatchSize);

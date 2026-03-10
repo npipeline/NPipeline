@@ -18,7 +18,7 @@ public class CustomerSource(int customerCount = 10, int? seed = null) : SourceNo
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the generated customer data.</returns>
-    public override IDataPipe<CustomerData> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<CustomerData> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine($"[CustomerSource] Generating {customerCount} customer profiles...");
 
@@ -82,6 +82,6 @@ public class CustomerSource(int customerCount = 10, int? seed = null) : SourceNo
         }
 
         Console.WriteLine($"[CustomerSource] Generated {customers.Count} customer profiles");
-        return new InMemoryDataPipe<CustomerData>(customers, "CustomerSource");
+        return new InMemoryDataStream<CustomerData>(customers, "CustomerSource");
     }
 }

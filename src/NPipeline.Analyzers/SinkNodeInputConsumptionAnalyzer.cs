@@ -106,7 +106,7 @@ public sealed class SinkNodeInputConsumptionAnalyzer : DiagnosticAnalyzer
     /// </summary>
     private static IMethodSymbol? FindExecuteAsyncOverride(INamedTypeSymbol typeSymbol)
     {
-        return typeSymbol.GetMembers("ExecuteAsync")
+        return typeSymbol.GetMembers("ConsumeAsync")
             .OfType<IMethodSymbol>()
             .FirstOrDefault(m => m.IsOverride || IsInterfaceImplementation(m));
     }

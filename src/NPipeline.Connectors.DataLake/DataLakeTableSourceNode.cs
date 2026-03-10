@@ -139,14 +139,14 @@ public sealed class DataLakeTableSourceNode<T> : SourceNode<T>
     }
 
     /// <inheritdoc />
-    public override IDataPipe<T> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<T> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var provider = _provider ?? StorageProviderFactory.GetProviderOrThrow(
             _resolver ?? DefaultResolver.Value,
             _tableBasePath);
 
         var stream = ReadAllAsync(provider, cancellationToken);
-        return new StreamingDataPipe<T>(stream, $"DataLakeTableSourceNode<{typeof(T).Name}>");
+        return new DataStream<T>(stream, $"DataLakeTableSourceNode<{typeof(T).Name}>");
     }
 
     private async IAsyncEnumerable<T> ReadAllAsync(
@@ -203,7 +203,7 @@ public sealed class DataLakeTableSourceNode<T> : SourceNode<T>
         // Use ParquetSourceNode to read the file
         var sourceNode = new ParquetSourceNode<T>(provider, fileUri, _configuration);
 
-        var dataPipe = sourceNode.Initialize(PipelineContext.Default, cancellationToken);
+        var dataPipe = sourceNode.OpenStream(PipelineContext.Default, cancellationToken);
 
         await foreach (var item in dataPipe.WithCancellation(cancellationToken))
         {

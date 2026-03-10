@@ -22,7 +22,7 @@ public class CsvSource : SourceNode<Person>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token to stop processing.</param>
     /// <returns>A data pipe containing the Person objects.</returns>
-    public override IDataPipe<Person> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<Person> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("Reading CSV data and converting to Person objects");
 
@@ -63,7 +63,7 @@ public class CsvSource : SourceNode<Person>
             throw;
         }
 
-        // Return a InMemoryDataPipe containing our Person objects
-        return new InMemoryDataPipe<Person>(people, "CsvSource");
+        // Return a InMemoryDataStream containing our Person objects
+        return new InMemoryDataStream<Person>(people, "CsvSource");
     }
 }

@@ -19,7 +19,7 @@ public class ResultAggregator : SinkNode<int>
     /// <summary>
     ///     Processes all result items from the input pipe, aggregating statistics.
     /// </summary>
-    public override async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {

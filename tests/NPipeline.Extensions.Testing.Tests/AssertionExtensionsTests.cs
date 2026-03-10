@@ -19,10 +19,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             sink.ShouldHaveReceived(3);
@@ -34,10 +34,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             var act = () => sink.ShouldHaveReceived(5);
@@ -50,10 +50,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             sink.ShouldContain(2);
@@ -65,10 +65,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             var act = () => sink.ShouldContain(5);
@@ -81,10 +81,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             sink.ShouldContain(x => x > 2);
@@ -96,10 +96,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             var act = () => sink.ShouldContain(x => x > 5);
@@ -112,10 +112,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             sink.ShouldNotContain(5);
@@ -127,10 +127,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             var act = () => sink.ShouldNotContain(2);
@@ -143,10 +143,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([2, 4, 6]);
+            var data = new InMemoryDataStream<int>([2, 4, 6]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             sink.ShouldOnlyContain(x => x % 2 == 0);
@@ -158,10 +158,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             var act = () => sink.ShouldOnlyContain(x => x % 2 == 0);
@@ -222,10 +222,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             InMemorySinkExtensions.ShouldHaveReceived(sink, 3);
@@ -237,10 +237,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             var act = () => InMemorySinkExtensions.ShouldHaveReceived(sink, 5);
@@ -253,10 +253,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             InMemorySinkExtensions.ShouldContain(sink, 2);
@@ -268,10 +268,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             var act = () => InMemorySinkExtensions.ShouldContain(sink, 5);
@@ -284,10 +284,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             InMemorySinkExtensions.ShouldContain(sink, x => x > 2);
@@ -299,10 +299,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             var act = () => InMemorySinkExtensions.ShouldContain(sink, x => x > 5);
@@ -315,10 +315,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             InMemorySinkExtensions.ShouldNotContain(sink, 5);
@@ -330,10 +330,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             var act = () => InMemorySinkExtensions.ShouldNotContain(sink, 2);
@@ -346,10 +346,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([2, 4, 6]);
+            var data = new InMemoryDataStream<int>([2, 4, 6]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             InMemorySinkExtensions.ShouldOnlyContain(sink, x => x % 2 == 0);
@@ -361,10 +361,10 @@ public class AssertionExtensionsTests
             // Arrange
             var sink = new InMemorySinkNode<int>();
             var context = PipelineContext.Default;
-            var data = new InMemoryDataPipe<int>([1, 2, 3]);
+            var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             var act = () => InMemorySinkExtensions.ShouldOnlyContain(sink, x => x % 2 == 0);
@@ -422,13 +422,13 @@ public class AssertionExtensionsTests
             var sink = new InMemorySinkNode<TestObject>();
             var context = PipelineContext.Default;
 
-            var data = new InMemoryDataPipe<TestObject>([
+            var data = new InMemoryDataStream<TestObject>([
                 new TestObject { Name = "Test1", Value = 1 },
                 new TestObject { Name = "Test2", Value = 2 },
             ]);
 
             // Act
-            await sink.ExecuteAsync(data, context, CancellationToken.None);
+            await sink.ConsumeAsync(data, context, CancellationToken.None);
 
             // Assert
             InMemorySinkExtensions.ShouldContain(sink, x => x.Name == "Test1");

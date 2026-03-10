@@ -27,7 +27,7 @@ public class ValidationTransform : TransformNode<EnrichedOrder, ValidatedOrder>
     /// <param name="context">The pipeline execution context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A validated order with validation results.</returns>
-    public override Task<ValidatedOrder> ExecuteAsync(EnrichedOrder enrichedOrder, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<ValidatedOrder> TransformAsync(EnrichedOrder enrichedOrder, PipelineContext context, CancellationToken cancellationToken)
     {
         var errors = new List<string>();
 

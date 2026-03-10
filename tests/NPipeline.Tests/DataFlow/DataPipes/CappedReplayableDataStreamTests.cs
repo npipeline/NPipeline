@@ -14,12 +14,12 @@ public class CappedReplayableDataPipeTests
     {
         // Arrange
         var sourceItems = new List<int> { 1, 2, 3 };
-        var sourcePipe = A.Fake<IDataPipe<int>>();
+        var sourcePipe = A.Fake<IDataStream<int>>();
 
         A.CallTo(() => sourcePipe.GetAsyncEnumerator(A<CancellationToken>.Ignored))
             .Returns(sourceItems.ToAsyncEnumerable().GetAsyncEnumerator());
 
-        var pipe = new CappedReplayableDataPipe<int>(sourcePipe, 5, "TestPipe");
+        var pipe = new CappedReplayableDataStream<int>(sourcePipe, 5, "TestPipe");
         var receivedItems = new List<int>();
 
         // Act
@@ -37,12 +37,12 @@ public class CappedReplayableDataPipeTests
     {
         // Arrange
         var sourceItems = new List<int> { 1, 2, 3, 4, 5 };
-        var sourcePipe = A.Fake<IDataPipe<int>>();
+        var sourcePipe = A.Fake<IDataStream<int>>();
 
         A.CallTo(() => sourcePipe.GetAsyncEnumerator(A<CancellationToken>.Ignored))
             .Returns(sourceItems.ToAsyncEnumerable().GetAsyncEnumerator());
 
-        var pipe = new CappedReplayableDataPipe<int>(sourcePipe, 2, "TestPipe");
+        var pipe = new CappedReplayableDataStream<int>(sourcePipe, 2, "TestPipe");
 
         // Act
         var act = async () =>
@@ -63,12 +63,12 @@ public class CappedReplayableDataPipeTests
     {
         // Arrange
         var sourceItems = new List<int> { 1, 2, 3 };
-        var sourcePipe = A.Fake<IDataPipe<int>>();
+        var sourcePipe = A.Fake<IDataStream<int>>();
 
         A.CallTo(() => sourcePipe.GetAsyncEnumerator(A<CancellationToken>.Ignored))
             .Returns(sourceItems.ToAsyncEnumerable().GetAsyncEnumerator());
 
-        var pipe = new CappedReplayableDataPipe<int>(sourcePipe, 0, "TestPipe");
+        var pipe = new CappedReplayableDataStream<int>(sourcePipe, 0, "TestPipe");
 
         // Act
         var act = async () =>
@@ -89,12 +89,12 @@ public class CappedReplayableDataPipeTests
     {
         // Arrange
         var sourceItems = new List<int>();
-        var sourcePipe = A.Fake<IDataPipe<int>>();
+        var sourcePipe = A.Fake<IDataStream<int>>();
 
         A.CallTo(() => sourcePipe.GetAsyncEnumerator(A<CancellationToken>.Ignored))
             .Returns(sourceItems.ToAsyncEnumerable().GetAsyncEnumerator());
 
-        var pipe = new CappedReplayableDataPipe<int>(sourcePipe, 0, "TestPipe");
+        var pipe = new CappedReplayableDataStream<int>(sourcePipe, 0, "TestPipe");
         var receivedItems = new List<int>();
 
         // Act
@@ -112,12 +112,12 @@ public class CappedReplayableDataPipeTests
     {
         // Arrange
         var sourceItems = new List<int> { 1, 2, 3 };
-        var sourcePipe = A.Fake<IDataPipe<int>>();
+        var sourcePipe = A.Fake<IDataStream<int>>();
 
         A.CallTo(() => sourcePipe.GetAsyncEnumerator(A<CancellationToken>.Ignored))
             .Returns(sourceItems.ToAsyncEnumerable().GetAsyncEnumerator());
 
-        var pipe = new CappedReplayableDataPipe<int>(sourcePipe, 5, "TestPipe");
+        var pipe = new CappedReplayableDataStream<int>(sourcePipe, 5, "TestPipe");
         var firstConsumption = new List<int>();
 
         await foreach (var item in pipe.WithCancellation(CancellationToken.None))
@@ -142,8 +142,8 @@ public class CappedReplayableDataPipeTests
     public async Task DisposeAsync_DisposesSourcePipe()
     {
         // Arrange
-        var sourcePipe = A.Fake<IDataPipe<int>>();
-        var pipe = new CappedReplayableDataPipe<int>(sourcePipe, 5, "TestPipe");
+        var sourcePipe = A.Fake<IDataStream<int>>();
+        var pipe = new CappedReplayableDataStream<int>(sourcePipe, 5, "TestPipe");
 
         // Act
         await pipe.DisposeAsync();
@@ -156,10 +156,10 @@ public class CappedReplayableDataPipeTests
     public void Constructor_WithNullSource_ThrowsArgumentNullException()
     {
         // Arrange
-        IDataPipe<int> nullSource = null!;
+        IDataStream<int> nullSource = null!;
 
         // Act
-        Action act = () => _ = new CappedReplayableDataPipe<int>(nullSource, 5, "TestPipe");
+        Action act = () => _ = new CappedReplayableDataStream<int>(nullSource, 5, "TestPipe");
 
         // Assert
         act.Should().Throw<ArgumentNullException>()
@@ -170,13 +170,13 @@ public class CappedReplayableDataPipeTests
     public async Task Constructor_WithNegativeCap_CreatesPipeWithNoCap()
     {
         // Arrange
-        var sourcePipe = A.Fake<IDataPipe<int>>();
+        var sourcePipe = A.Fake<IDataStream<int>>();
 
         A.CallTo(() => sourcePipe.GetAsyncEnumerator(A<CancellationToken>.Ignored))
             .Returns(new List<int> { 1, 2, 3, 4, 5, 6, 7 }.ToAsyncEnumerable().GetAsyncEnumerator());
 
         // Act
-        var pipe = new CappedReplayableDataPipe<int>(sourcePipe, -1, "TestPipe");
+        var pipe = new CappedReplayableDataStream<int>(sourcePipe, -1, "TestPipe");
         var receivedItems = new List<int>();
 
         // Assert

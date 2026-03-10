@@ -311,7 +311,7 @@ public class SqsSourceNodeTests
                 .Returns(new ReceiveMessageResponse { Messages = new List<Message>() });
 
             // Act
-            var dataPipe = node.Initialize(context, cts.Token);
+            var dataPipe = node.OpenStream(context, cts.Token);
 
             // Assert
             dataPipe.Should().NotBeNull();
@@ -330,7 +330,7 @@ public class SqsSourceNodeTests
             cts.Cancel();
 
             // Act
-            var dataPipe = node.Initialize(context, cts.Token);
+            var dataPipe = node.OpenStream(context, cts.Token);
 
             // Assert
             dataPipe.Should().NotBeNull();
@@ -357,7 +357,7 @@ public class SqsSourceNodeTests
                 .Returns(new ReceiveMessageResponse { Messages = new List<Message>() });
 
             // Act
-            var dataPipe = node.Initialize(context, cts.Token);
+            var dataPipe = node.OpenStream(context, cts.Token);
             var enumerator = dataPipe.GetAsyncEnumerator(cts.Token);
 
             // Start polling
@@ -408,7 +408,7 @@ public class SqsSourceNodeTests
                 .Returns(new ReceiveMessageResponse { Messages = new List<Message> { testMessage } });
 
             // Act
-            var dataPipe = node.Initialize(context, cts.Token);
+            var dataPipe = node.OpenStream(context, cts.Token);
             var enumerator = dataPipe.GetAsyncEnumerator(cts.Token);
 
             // Get first message
@@ -454,7 +454,7 @@ public class SqsSourceNodeTests
                 });
 
             // Act
-            var dataPipe = node.Initialize(context, cts.Token);
+            var dataPipe = node.OpenStream(context, cts.Token);
             var enumerator = dataPipe.GetAsyncEnumerator(cts.Token);
 
             // Start polling
@@ -501,7 +501,7 @@ public class SqsSourceNodeTests
                 .Returns(new ReceiveMessageResponse { Messages = new List<Message>() });
 
             // Act
-            var dataPipe = node.Initialize(context, cts.Token);
+            var dataPipe = node.OpenStream(context, cts.Token);
             var enumerator = dataPipe.GetAsyncEnumerator(cts.Token);
 
             // Start polling
@@ -559,7 +559,7 @@ public class SqsSourceNodeTests
                 .Returns(new ReceiveMessageResponse { Messages = new List<Message> { testMessage } });
 
             // Act
-            var dataPipe = node.Initialize(context, cts.Token);
+            var dataPipe = node.OpenStream(context, cts.Token);
             var enumerator = dataPipe.GetAsyncEnumerator(cts.Token);
             await enumerator.MoveNextAsync();
 
@@ -599,7 +599,7 @@ public class SqsSourceNodeTests
                 .Returns(new ReceiveMessageResponse { Messages = new List<Message> { invalidMessage } });
 
             // Act
-            var dataPipe = node.Initialize(context, cts.Token);
+            var dataPipe = node.OpenStream(context, cts.Token);
             var enumerator = dataPipe.GetAsyncEnumerator(cts.Token);
 
             // Should not yield a message; cancellation ends the poll.
@@ -645,7 +645,7 @@ public class SqsSourceNodeTests
                 .Returns(new ReceiveMessageResponse { Messages = new List<Message> { invalidMessage } });
 
             // Act
-            var dataPipe = node.Initialize(context, cts.Token);
+            var dataPipe = node.OpenStream(context, cts.Token);
             var enumerator = dataPipe.GetAsyncEnumerator(cts.Token);
 
             // Assert
@@ -680,7 +680,7 @@ public class SqsSourceNodeTests
                 .Returns(new ReceiveMessageResponse { Messages = new List<Message>() });
 
             // Act
-            var dataPipe = node.Initialize(context, cts.Token);
+            var dataPipe = node.OpenStream(context, cts.Token);
             var enumerator = dataPipe.GetAsyncEnumerator(cts.Token);
             var pollTask = enumerator.MoveNextAsync().AsTask();
 

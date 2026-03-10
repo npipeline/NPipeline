@@ -182,13 +182,13 @@ public class RealWorldWorkloadBenchmarks
     // Pipeline components for CSV processing
     private sealed class CsvDataSource : SourceNode<CsvRecord>
     {
-        public override IDataPipe<CsvRecord> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<CsvRecord> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("recordCount", out var v)
                 ? Convert.ToInt32(v)
                 : 0;
 
-            return new StreamingDataPipe<CsvRecord>(
+            return new DataStream<CsvRecord>(
                 GenerateCsvRecords(count, cancellationToken),
                 "csvSource");
         }
@@ -196,7 +196,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class CsvParser : TransformNode<CsvRecord, CsvRecord>
     {
-        public override async Task<CsvRecord> ExecuteAsync(CsvRecord item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<CsvRecord> TransformAsync(CsvRecord item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate CSV parsing overhead
             await Task.Delay(2, cancellationToken);
@@ -206,7 +206,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class CsvValidator : TransformNode<CsvRecord, CsvRecord>
     {
-        public override async Task<CsvRecord> ExecuteAsync(CsvRecord item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<CsvRecord> TransformAsync(CsvRecord item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate validation logic
             await Task.Delay(1, cancellationToken);
@@ -216,7 +216,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class CsvEnricher : TransformNode<CsvRecord, ProcessedCsvRecord>
     {
-        public override async Task<ProcessedCsvRecord> ExecuteAsync(CsvRecord item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<ProcessedCsvRecord> TransformAsync(CsvRecord item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate data enrichment
             await Task.Delay(3, cancellationToken);
@@ -238,7 +238,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class CsvDataSink : SinkNode<ProcessedCsvRecord>
     {
-        public override async Task ExecuteAsync(IDataPipe<ProcessedCsvRecord> input, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task ConsumeAsync(IDataStream<ProcessedCsvRecord> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))
             {
@@ -251,13 +251,13 @@ public class RealWorldWorkloadBenchmarks
     // Pipeline components for JSON processing
     private sealed class JsonDataSource : SourceNode<JsonRecord>
     {
-        public override IDataPipe<JsonRecord> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<JsonRecord> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("recordCount", out var v)
                 ? Convert.ToInt32(v)
                 : 0;
 
-            return new StreamingDataPipe<JsonRecord>(
+            return new DataStream<JsonRecord>(
                 GenerateJsonRecords(count, cancellationToken),
                 "jsonSource");
         }
@@ -265,7 +265,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class JsonParser : TransformNode<JsonRecord, JsonRecord>
     {
-        public override async Task<JsonRecord> ExecuteAsync(JsonRecord item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<JsonRecord> TransformAsync(JsonRecord item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate JSON parsing overhead
             await Task.Delay(2, cancellationToken);
@@ -275,7 +275,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class JsonValidator : TransformNode<JsonRecord, JsonRecord>
     {
-        public override async Task<JsonRecord> ExecuteAsync(JsonRecord item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<JsonRecord> TransformAsync(JsonRecord item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate validation logic
             await Task.Delay(1, cancellationToken);
@@ -285,7 +285,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class JsonTransformer : TransformNode<JsonRecord, ProcessedJsonRecord>
     {
-        public override async Task<ProcessedJsonRecord> ExecuteAsync(JsonRecord item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<ProcessedJsonRecord> TransformAsync(JsonRecord item, PipelineContext context, CancellationToken cancellationToken)
         {
             // Simulate data transformation
             await Task.Delay(3, cancellationToken);
@@ -314,7 +314,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class JsonDataSink : SinkNode<ProcessedJsonRecord>
     {
-        public override async Task ExecuteAsync(IDataPipe<ProcessedJsonRecord> input, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task ConsumeAsync(IDataStream<ProcessedJsonRecord> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))
             {
@@ -327,13 +327,13 @@ public class RealWorldWorkloadBenchmarks
     // Pipeline components for mixed processing
     private sealed class MixedDataSource : SourceNode<object>
     {
-        public override IDataPipe<object> Initialize(PipelineContext context, CancellationToken cancellationToken)
+        public override IDataStream<object> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             var count = context.Parameters.TryGetValue("recordCount", out var v)
                 ? Convert.ToInt32(v)
                 : 0;
 
-            return new StreamingDataPipe<object>(GenerateItems(count, cancellationToken), "mixedSource");
+            return new DataStream<object>(GenerateItems(count, cancellationToken), "mixedSource");
         }
 
         private static async IAsyncEnumerable<object> GenerateItems(int count, [EnumeratorCancellation] CancellationToken ct)
@@ -362,7 +362,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class MixedDataParser : TransformNode<object, object>
     {
-        public override async Task<object> ExecuteAsync(object item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<object> TransformAsync(object item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(2, cancellationToken);
             return item;
@@ -371,7 +371,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class MixedDataValidator : TransformNode<object, object>
     {
-        public override async Task<object> ExecuteAsync(object item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<object> TransformAsync(object item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(1, cancellationToken);
             return item;
@@ -380,7 +380,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class MixedDataEnricher : TransformNode<object, MixedProcessingResult>
     {
-        public override async Task<MixedProcessingResult> ExecuteAsync(object item, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task<MixedProcessingResult> TransformAsync(object item, PipelineContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(3, cancellationToken);
 
@@ -410,7 +410,7 @@ public class RealWorldWorkloadBenchmarks
 
     private sealed class MixedDataSink : SinkNode<MixedProcessingResult>
     {
-        public override async Task ExecuteAsync(IDataPipe<MixedProcessingResult> input, PipelineContext context, CancellationToken cancellationToken)
+        public override async Task ConsumeAsync(IDataStream<MixedProcessingResult> input, PipelineContext context, CancellationToken cancellationToken)
         {
             await foreach (var item in input.WithCancellation(cancellationToken))
             {

@@ -34,15 +34,15 @@ public sealed class DuckDBPerformanceBaselineTests : IDisposable
             WriteStrategy = DuckDBWriteStrategy.Appender,
         });
 
-        await sink.ExecuteAsync(
-            new StreamingDataPipe<TestRecord>(records.ToAsyncEnumerable()),
+        await sink.ConsumeAsync(
+            new DataStream<TestRecord>(records.ToAsyncEnumerable()),
             PipelineContext.Default,
             CancellationToken.None);
 
         var source = new DuckDBSourceNode<TestRecord>(_dbPath, "SELECT * FROM perf_read ORDER BY \"Id\"");
 
         var sw = Stopwatch.StartNew();
-        var result = await source.Initialize(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
         sw.Stop();
 
         result.Count.Should().Be(RecordCount);
@@ -65,8 +65,8 @@ public sealed class DuckDBPerformanceBaselineTests : IDisposable
 
         var sw = Stopwatch.StartNew();
 
-        await sink.ExecuteAsync(
-            new StreamingDataPipe<TestRecord>(records.ToAsyncEnumerable()),
+        await sink.ConsumeAsync(
+            new DataStream<TestRecord>(records.ToAsyncEnumerable()),
             PipelineContext.Default,
             CancellationToken.None);
 
@@ -95,8 +95,8 @@ public sealed class DuckDBPerformanceBaselineTests : IDisposable
 
         var sw = Stopwatch.StartNew();
 
-        await sink.ExecuteAsync(
-            new StreamingDataPipe<TestRecord>(records.ToAsyncEnumerable()),
+        await sink.ConsumeAsync(
+            new DataStream<TestRecord>(records.ToAsyncEnumerable()),
             PipelineContext.Default,
             CancellationToken.None);
 

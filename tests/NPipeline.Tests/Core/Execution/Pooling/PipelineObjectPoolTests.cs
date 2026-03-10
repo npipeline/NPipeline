@@ -655,7 +655,7 @@ public class PipelineObjectPoolTests
         }
     }
 
-    private sealed class TestDataPipe : IDataPipe
+    private sealed class TestDataPipe : IDataStream
     {
         public string StreamName => "test";
 

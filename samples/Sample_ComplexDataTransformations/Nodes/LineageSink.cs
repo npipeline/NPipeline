@@ -20,7 +20,7 @@ public class LineageSink : SinkNode<LineageTrackedItem<object>>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing asynchronous operation.</returns>
-    public override async Task ExecuteAsync(IDataPipe<LineageTrackedItem<object>> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<LineageTrackedItem<object>> input, PipelineContext context, CancellationToken cancellationToken)
     {
         Console.WriteLine("LineageSink started processing lineage-tracked items...");
 

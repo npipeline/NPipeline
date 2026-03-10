@@ -12,7 +12,7 @@ namespace NPipeline.Benchmarks.Benchmarks;
 [RankColumn]
 public class MergeBenchmarks
 {
-    private List<IDataPipe> _pipes = [];
+    private List<IDataStream> _pipes = [];
 
     [Params(2, 4)]
     public int Producers { get; set; }
@@ -27,12 +27,12 @@ public class MergeBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _pipes = new List<IDataPipe>(Producers);
+        _pipes = new List<IDataStream>(Producers);
 
         for (var p = 0; p < Producers; p++)
         {
             var stream = Produce(ItemsPerProducer, p);
-            _pipes.Add(new StreamingDataPipe<int>(stream, $"P{p}"));
+            _pipes.Add(new DataStream<int>(stream, $"P{p}"));
         }
     }
 

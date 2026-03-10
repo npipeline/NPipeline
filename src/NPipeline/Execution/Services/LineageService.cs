@@ -16,7 +16,7 @@ namespace NPipeline.Execution.Services;
 /// </summary>
 public sealed class LineageService : ILineageService
 {
-    private static readonly ConcurrentDictionary<Type, Func<IDataPipe, string, LineageOptions?, IDataPipe>> WrapSourceDelegates = new();
+    private static readonly ConcurrentDictionary<Type, Func<IDataStream, string, LineageOptions?, IDataStream>> WrapSourceDelegates = new();
 
     private static readonly ConcurrentDictionary<Type, Func<object, string, LineageOptions?, HopDecisionFlags, CancellationToken, object>>
         WrapJoinOutputsDelegates = new();
@@ -24,7 +24,7 @@ public sealed class LineageService : ILineageService
     private static readonly ConcurrentDictionary<Type, Func<IEnumerable, object>> EnumerableToAsyncDelegates = new();
 
     /// <inheritdoc />
-    public IDataPipe WrapSourceStream(IDataPipe sourcePipe, string nodeId, LineageOptions? options)
+    public IDataStream WrapSourceStream(IDataStream sourcePipe, string nodeId, LineageOptions? options)
     {
         var dataType = sourcePipe.GetDataType();
         var del = WrapSourceDelegates.GetOrAdd(dataType, static t => BuildWrapSourceDelegate(t));
@@ -48,11 +48,11 @@ public sealed class LineageService : ILineageService
     }
 
     /// <inheritdoc />
-    public IDataPipe WrapNodeOutput(IDataPipe output, string currentNodeId, LineageOptions? options, HopDecisionFlags outcome, CancellationToken ct = default)
+    public IDataStream WrapNodeOutput(IDataStream output, string currentNodeId, LineageOptions? options, HopDecisionFlags outcome, CancellationToken ct = default)
     {
         var outType = output.GetDataType();
 
-        if (output is IStreamingDataPipe)
+        if (output is IForwardOnlyDataStream)
         {
             var wrapDel = WrapJoinOutputsDelegates.GetOrAdd(outType, static t => BuildWrapJoinOutputsDelegate(t));
 
@@ -64,11 +64,11 @@ public sealed class LineageService : ILineageService
 
             var typedAsync = castMethod.Invoke(null, [rawAsync])!; // IAsyncEnumerable<outType>
             var wrappedStream = wrapDel(typedAsync, currentNodeId, options, outcome, ct);
-            var lineagePipeType = typeof(StreamingDataPipe<>).MakeGenericType(typeof(LineagePacket<>).MakeGenericType(outType));
-            return (IDataPipe)Activator.CreateInstance(lineagePipeType, wrappedStream, $"LineageWrapped_{currentNodeId}")!;
+            var lineagePipeType = typeof(DataStream<>).MakeGenericType(typeof(LineagePacket<>).MakeGenericType(outType));
+            return (IDataStream)Activator.CreateInstance(lineagePipeType, wrappedStream, $"LineageWrapped_{currentNodeId}")!;
         }
 
-        // Handle non-streaming pipes (like InMemoryDataPipe)
+        // Handle non-streaming pipes (like InMemoryDataStream)
         var enumerableData = ExtractDataFromPipe(output);
 
         var toAsyncDel = EnumerableToAsyncDelegates.GetOrAdd(outType, static t => BuildEnumerableToAsyncDelegate(t));
@@ -76,8 +76,8 @@ public sealed class LineageService : ILineageService
 
         var wrapDelegate = WrapJoinOutputsDelegates.GetOrAdd(outType, static t => BuildWrapJoinOutputsDelegate(t));
         var wrappedAsync = wrapDelegate(asyncEnumerable, currentNodeId, options, outcome, ct);
-        var pipeType = typeof(StreamingDataPipe<>).MakeGenericType(typeof(LineagePacket<>).MakeGenericType(outType));
-        return (IDataPipe)Activator.CreateInstance(pipeType, wrappedAsync, $"LineageWrapped_{currentNodeId}")!;
+        var pipeType = typeof(DataStream<>).MakeGenericType(typeof(LineagePacket<>).MakeGenericType(outType));
+        return (IDataStream)Activator.CreateInstance(pipeType, wrappedAsync, $"LineageWrapped_{currentNodeId}")!;
     }
 
     private static IAsyncEnumerable<T> CastAsyncEnumerable<T>(IAsyncEnumerable<object> source)
@@ -103,24 +103,24 @@ public sealed class LineageService : ILineageService
             : item;
     }
 
-    private static Func<IDataPipe, string, LineageOptions?, IDataPipe> BuildWrapSourceDelegate(Type dataType)
+    private static Func<IDataStream, string, LineageOptions?, IDataStream> BuildWrapSourceDelegate(Type dataType)
     {
         var method =
             typeof(LineageService).GetMethod(nameof(WrapSourceStreamGeneric), BindingFlags.NonPublic | BindingFlags.Static)!.MakeGenericMethod(dataType);
 
-        var pipeParam = Expression.Parameter(typeof(IDataPipe), "pipe");
+        var pipeParam = Expression.Parameter(typeof(IDataStream), "pipe");
         var nodeIdParam = Expression.Parameter(typeof(string), "nodeId");
         var optsParam = Expression.Parameter(typeof(LineageOptions), "options");
-        var castPipe = Expression.Convert(pipeParam, typeof(IDataPipe<>).MakeGenericType(dataType));
+        var castPipe = Expression.Convert(pipeParam, typeof(IDataStream<>).MakeGenericType(dataType));
         var call = Expression.Call(method, castPipe, nodeIdParam, optsParam);
-        var castResult = Expression.Convert(call, typeof(IDataPipe));
-        var lambda = Expression.Lambda<Func<IDataPipe, string, LineageOptions?, IDataPipe>>(castResult, pipeParam, nodeIdParam, optsParam);
+        var castResult = Expression.Convert(call, typeof(IDataStream));
+        var lambda = Expression.Lambda<Func<IDataStream, string, LineageOptions?, IDataStream>>(castResult, pipeParam, nodeIdParam, optsParam);
         return lambda.Compile();
     }
 
-    private static StreamingDataPipe<LineagePacket<T>> WrapSourceStreamGeneric<T>(IDataPipe<T> sourcePipe, string nodeId, LineageOptions? options)
+    private static DataStream<LineagePacket<T>> WrapSourceStreamGeneric<T>(IDataStream<T> sourcePipe, string nodeId, LineageOptions? options)
     {
-        return new StreamingDataPipe<LineagePacket<T>>(WrapStream(CancellationToken.None), $"LineageWrapped_{sourcePipe.StreamName}");
+        return new DataStream<LineagePacket<T>>(WrapStream(CancellationToken.None), $"LineageWrapped_{sourcePipe.StreamName}");
 
         async IAsyncEnumerable<LineagePacket<T>> WrapStream([EnumeratorCancellation] CancellationToken cancellationToken)
         {
@@ -211,23 +211,23 @@ public sealed class LineageService : ILineageService
         }
     }
 
-    private static IEnumerable ExtractDataFromPipe(IDataPipe pipe)
+    private static IEnumerable ExtractDataFromPipe(IDataStream pipe)
     {
         // Handle different pipe types by extracting their underlying data
         return pipe switch
         {
-            // InMemoryDataPipe has an Items property that contains the data
+            // InMemoryDataStream has an Items property that contains the data
             var listPipe when listPipe.GetType().IsGenericType &&
-                              listPipe.GetType().GetGenericTypeDefinition() == typeof(InMemoryDataPipe<>) =>
+                              listPipe.GetType().GetGenericTypeDefinition() == typeof(InMemoryDataStream<>) =>
                 listPipe.GetType().GetProperty("Items")?.GetValue(listPipe) as IEnumerable ??
-                throw new InvalidOperationException("Failed to extract Items from InMemoryDataPipe"),
+                throw new InvalidOperationException("Failed to extract Items from InMemoryDataStream"),
 
             // For any other non-streaming pipe, try to materialize its async enumerable
             _ => MaterializePipeData(pipe),
         };
     }
 
-    private static List<object?> MaterializePipeData(IDataPipe pipe)
+    private static List<object?> MaterializePipeData(IDataStream pipe)
     {
         // For pipes that don't have a direct data extraction method,
         // materialize their async enumerable to a list

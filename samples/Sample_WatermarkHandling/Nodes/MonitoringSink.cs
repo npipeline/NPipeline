@@ -38,8 +38,8 @@ public class MonitoringSink : SinkNode<ProcessingStats>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the sink operation.</returns>
-    public override async Task ExecuteAsync(
-        IDataPipe<ProcessingStats> input,
+    public override async Task ConsumeAsync(
+        IDataStream<ProcessingStats> input,
         PipelineContext context,
         CancellationToken cancellationToken)
     {

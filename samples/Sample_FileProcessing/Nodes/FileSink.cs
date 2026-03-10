@@ -39,7 +39,7 @@ public class FileSink : SinkNode<string>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    public override async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
     {
         // Get output file path from context parameters if available, otherwise use the constructor parameter
         var outputFilePath = context.Parameters.TryGetValue("OutputFilePath", out var contextPath)
