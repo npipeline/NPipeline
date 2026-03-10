@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Execution.Lineage.Strategies;

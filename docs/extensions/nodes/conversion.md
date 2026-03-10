@@ -43,14 +43,14 @@ Parse strings to dates:
 ```csharp
 // Parse with default format
 var node = TypeConversions.StringToDateTime();
-var result = await node.ExecuteAsync("2025-01-15 14:30:00", context, cancellationToken);
+var result = await node.TransformAsync("2025-01-15 14:30:00", context, cancellationToken);
 // result = DateTime(2025, 1, 15, 14, 30, 0)
 
 // Parse with specific format
 var node = TypeConversions.StringToDateTime(
     format: "yyyy-MM-dd",
     formatProvider: CultureInfo.InvariantCulture);
-var result = await node.ExecuteAsync("2025-01-15", context, cancellationToken);
+var result = await node.TransformAsync("2025-01-15", context, cancellationToken);
 // result = DateTime(2025, 1, 15)
 ```
 
@@ -62,15 +62,15 @@ Convert strings to boolean values with multiple formats supported:
 var node = TypeConversions.StringToBool();
 
 // Supported true values: "true", "1", "yes", "on"
-var result = await node.ExecuteAsync("true", context, cancellationToken);
+var result = await node.TransformAsync("true", context, cancellationToken);
 // result = true
 
 // Supported false values: "false", "0", "no", "off"
-var result = await node.ExecuteAsync("no", context, cancellationToken);
+var result = await node.TransformAsync("no", context, cancellationToken);
 // result = false
 
 // Case-insensitive
-var result = await node.ExecuteAsync("YES", context, cancellationToken);
+var result = await node.TransformAsync("YES", context, cancellationToken);
 // result = true
 ```
 
@@ -83,16 +83,16 @@ public enum OrderStatus { Pending, Shipped, Delivered }
 
 // Case-insensitive (default)
 var node = TypeConversions.StringToEnum<OrderStatus>();
-var result = await node.ExecuteAsync("pending", context, cancellationToken);
+var result = await node.TransformAsync("pending", context, cancellationToken);
 // result = OrderStatus.Pending
 
 // Case-sensitive
 var node = TypeConversions.StringToEnum<OrderStatus>(ignoreCase: false);
-var result = await node.ExecuteAsync("Pending", context, cancellationToken);
+var result = await node.TransformAsync("Pending", context, cancellationToken);
 // result = OrderStatus.Pending
 
 // Invalid value throws TypeConversionException
-var result = await node.ExecuteAsync("invalid", context, cancellationToken);
+var result = await node.TransformAsync("invalid", context, cancellationToken);
 // throws TypeConversionException
 ```
 
@@ -103,22 +103,22 @@ Format numeric values as strings:
 ```csharp
 // Integer to String
 var node = TypeConversions.IntToString();
-var result = await node.ExecuteAsync(42, context, cancellationToken);
+var result = await node.TransformAsync(42, context, cancellationToken);
 // result = "42"
 
 // With format specifier
 var node = TypeConversions.IntToString("D5");
-var result = await node.ExecuteAsync(42, context, cancellationToken);
+var result = await node.TransformAsync(42, context, cancellationToken);
 // result = "00042"
 
 // Double to String
 var node = TypeConversions.DoubleToString("F2");
-var result = await node.ExecuteAsync(42.567, context, cancellationToken);
+var result = await node.TransformAsync(42.567, context, cancellationToken);
 // result = "42.57"
 
 // Decimal to String
 var node = TypeConversions.DecimalToString("C");
-var result = await node.ExecuteAsync(42.50m, context, cancellationToken);
+var result = await node.TransformAsync(42.50m, context, cancellationToken);
 // result = "$42.50" (culture-dependent)
 ```
 
@@ -131,12 +131,12 @@ var dateTime = new DateTime(2025, 1, 15, 14, 30, 0);
 
 // Default format
 var node = TypeConversions.DateTimeToString();
-var result = await node.ExecuteAsync(dateTime, context, cancellationToken);
+var result = await node.TransformAsync(dateTime, context, cancellationToken);
 // result = "1/15/2025 2:30:00 PM" (culture-dependent)
 
 // Specific format
 var node = TypeConversions.DateTimeToString("yyyy-MM-dd HH:mm:ss");
-var result = await node.ExecuteAsync(dateTime, context, cancellationToken);
+var result = await node.TransformAsync(dateTime, context, cancellationToken);
 // result = "2025-01-15 14:30:00"
 ```
 
@@ -147,17 +147,17 @@ Convert boolean values with custom representations:
 ```csharp
 // Default representations
 var node = TypeConversions.BoolToString();
-var result = await node.ExecuteAsync(true, context, cancellationToken);
+var result = await node.TransformAsync(true, context, cancellationToken);
 // result = "true"
 
 // Custom representations
 var node = TypeConversions.BoolToString("yes", "no");
-var result = await node.ExecuteAsync(true, context, cancellationToken);
+var result = await node.TransformAsync(true, context, cancellationToken);
 // result = "yes"
 
 // Binary representation
 var node = TypeConversions.BoolToString("1", "0");
-var result = await node.ExecuteAsync(false, context, cancellationToken);
+var result = await node.TransformAsync(false, context, cancellationToken);
 // result = "0"
 ```
 
@@ -169,7 +169,7 @@ Convert enum values to their string representation:
 public enum Color { Red, Green, Blue }
 
 var node = TypeConversions.EnumToString<Color>();
-var result = await node.ExecuteAsync(Color.Red, context, cancellationToken);
+var result = await node.TransformAsync(Color.Red, context, cancellationToken);
 // result = "Red"
 ```
 
@@ -181,7 +181,7 @@ Use custom conversion functions:
 // Simple custom converter
 var node = new TypeConversionNode<string, int>()
     .WithConverter(input => input.Length);
-var result = await node.ExecuteAsync("hello", context, cancellationToken);
+var result = await node.TransformAsync("hello", context, cancellationToken);
 // result = 5
 
 // Complex custom converter
@@ -197,7 +197,7 @@ var node = new TypeConversionNode<string, DateTime>()
             int.Parse(parts[0]),  // month
             int.Parse(parts[1])); // day
     });
-var result = await node.ExecuteAsync("01/15/2025", context, cancellationToken);
+var result = await node.TransformAsync("01/15/2025", context, cancellationToken);
 // result = DateTime(2025, 1, 15)
 ```
 
@@ -212,12 +212,12 @@ var germanCulture = new CultureInfo("de-DE");
 var node = TypeConversions.StringToDouble(
     NumberStyles.Float | NumberStyles.AllowThousands,
     germanCulture);
-var result = await node.ExecuteAsync("42,5", context, cancellationToken);
+var result = await node.TransformAsync("42,5", context, cancellationToken);
 // result = 42.5
 
 // Format output with culture
 var node = TypeConversions.DoubleToString("F2", germanCulture);
-var result = await node.ExecuteAsync(42.567, context, cancellationToken);
+var result = await node.TransformAsync(42.567, context, cancellationToken);
 // result = "42,57" (German decimal separator)
 ```
 
@@ -229,7 +229,7 @@ Type conversion exceptions provide detailed error information:
 try
 {
     var node = TypeConversions.StringToInt();
-    var result = await node.ExecuteAsync("not a number", context, cancellationToken);
+    var result = await node.TransformAsync("not a number", context, cancellationToken);
 }
 catch (TypeConversionException ex)
 {
@@ -350,15 +350,15 @@ var node = TypeConversions.StringToInt();
 
 // Infinity and NaN
 var node = TypeConversions.StringToDouble();
-var infinity = await node.ExecuteAsync("Infinity", context, cancellationToken);
+var infinity = await node.TransformAsync("Infinity", context, cancellationToken);
 // result = double.PositiveInfinity
 
-var nan = await node.ExecuteAsync("NaN", context, cancellationToken);
+var nan = await node.TransformAsync("NaN", context, cancellationToken);
 // result = double.NaN
 
 // Min and Max DateTime values
 var node = TypeConversions.DateTimeToString();
-var minValue = await node.ExecuteAsync(DateTime.MinValue, context, cancellationToken);
+var minValue = await node.TransformAsync(DateTime.MinValue, context, cancellationToken);
 // result = formatted DateTime.MinValue string
 ```
 
@@ -377,7 +377,7 @@ var minValue = await node.ExecuteAsync(DateTime.MinValue, context, cancellationT
 public async Task StringToInt_WithValidNumber_Converts()
 {
     var node = TypeConversions.StringToInt();
-    var result = await node.ExecuteAsync("42", PipelineContext.Default, CancellationToken.None);
+    var result = await node.TransformAsync("42", PipelineContext.Default, CancellationToken.None);
     Assert.Equal(42, result);
 }
 
@@ -386,7 +386,7 @@ public async Task StringToInt_WithInvalidInput_ThrowsTypeConversionException()
 {
     var node = TypeConversions.StringToInt();
     var ex = await Assert.ThrowsAsync<TypeConversionException>(() =>
-        node.ExecuteAsync("not a number", PipelineContext.Default, CancellationToken.None));
+        node.TransformAsync("not a number", PipelineContext.Default, CancellationToken.None));
     
     Assert.Equal(typeof(string), ex.SourceType);
     Assert.Equal(typeof(int), ex.TargetType);

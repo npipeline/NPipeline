@@ -26,7 +26,7 @@ The AWS S3 storage provider provides seamless integration with Amazon S3. It off
 Use the AWS S3 storage provider when your application needs to:
 
 - Store and retrieve data in Amazon S3 buckets
-- Integrate cloud storage into NPipeline data pipelines
+- Integrate cloud storage into NPipeline data streamlines
 - Leverage the AWS credential chain (environment variables, credential files, IAM roles)
 - Use different regions and AWS features
 - Handle large files through streaming and multipart uploads

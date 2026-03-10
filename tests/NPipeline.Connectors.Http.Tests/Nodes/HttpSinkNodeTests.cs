@@ -5,7 +5,7 @@ using NPipeline.Connectors.Http.Configuration;
 using NPipeline.Connectors.Http.Nodes;
 using NPipeline.Connectors.Http.Retry;
 using NPipeline.Connectors.Http.Tests.Helpers;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Connectors.Http.Tests.Nodes;

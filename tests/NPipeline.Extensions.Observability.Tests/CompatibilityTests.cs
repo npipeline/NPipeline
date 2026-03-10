@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Extensions.DependencyInjection;

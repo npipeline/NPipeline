@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using NPipeline.Connectors.Parquet.Mapping;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;

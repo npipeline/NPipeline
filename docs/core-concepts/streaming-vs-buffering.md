@@ -6,7 +6,7 @@ sidebar_position: 7
 
 # Streaming vs. Buffering
 
-In NPipeline, understanding the concepts of streaming and buffering is crucial for designing efficient and performant data pipelines. These concepts dictate how data items are handled as they move between nodes, directly impacting memory consumption, latency, and overall throughput.
+In NPipeline, understanding the concepts of streaming and buffering is crucial for designing efficient and performant data streamlines. These concepts dictate how data items are handled as they move between nodes, directly impacting memory consumption, latency, and overall throughput.
 
 ## Visual Comparison: Streaming vs Buffering
 
@@ -89,7 +89,7 @@ public sealed class StreamSource : SourceNode<EventData>
 
 public sealed class StreamTransform : TransformNode<EventData, string>
 {
-    public async IAsyncEnumerable<string> ExecuteAsync(IAsyncEnumerable<EventData> input, CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<string> TransformAsync(IAsyncEnumerable<EventData> input, CancellationToken cancellationToken = default)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {

@@ -217,7 +217,7 @@ The `RabbitMqMessage<T>` class wraps consumed messages with RabbitMQ-specific me
 ```csharp
 public class OrderProcessor : TransformNode<RabbitMqMessage<OrderEvent>, EnrichedOrder>
 {
-    public override async Task<EnrichedOrder> ExecuteAsync(
+    public override async Task<EnrichedOrder> TransformAsync(
         RabbitMqMessage<OrderEvent> input,
         PipelineContext context,
         CancellationToken cancellationToken)

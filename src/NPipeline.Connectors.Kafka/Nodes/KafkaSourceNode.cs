@@ -7,7 +7,7 @@ using NPipeline.Connectors.Kafka.Models;
 using NPipeline.Connectors.Kafka.Retry;
 using NPipeline.Connectors.Kafka.Serialization;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 

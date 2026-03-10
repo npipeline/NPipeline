@@ -70,7 +70,7 @@ public sealed class MySource : SourceNode<MyData>
 
 public sealed class MyTransform : TransformNode<MyData, MyData>
 {
-    public async IAsyncEnumerable<MyData> ExecuteAsync(IAsyncEnumerable<MyData> input, CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<MyData> TransformAsync(IAsyncEnumerable<MyData> input, CancellationToken cancellationToken = default)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {

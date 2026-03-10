@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.Branching;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
 using NPipeline.Pipeline;

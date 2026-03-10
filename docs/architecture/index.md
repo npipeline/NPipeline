@@ -78,7 +78,7 @@ Understand how pipelines execute data:
 
 Deep dive into how data moves through the system:
 
-- How Data Pipes Work
+- How Data Streams Work
 - Lazy Evaluation principles
 - Memory efficiency patterns
 
@@ -164,11 +164,11 @@ graph TD
         PC -->|Propagates| CT[CancellationToken]
 
         subgraph "Data Flow"
-            SN[SourceNode] -->|Produces| DP1[IDataPipe<T>]
+            SN[SourceNode] -->|Produces| DP1[IDataStream<T>]
             DP1 -->|Consumes| TN1[TransformNode]
-            TN1 -->|Transforms| DP2[IDataPipe<TOut>]
+            TN1 -->|Transforms| DP2[IDataStream<TOut>]
             DP2 -->|Consumes| TN2[TransformNode]
-            TN2 -->|Transforms| DP3[IDataPipe<TOut2>]
+            TN2 -->|Transforms| DP3[IDataStream<TOut2>]
             DP3 -->|Consumes| SK[SinkNode]
         end
 

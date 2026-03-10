@@ -3,7 +3,7 @@ using DuckDB.NET.Data;
 using NPipeline.Connectors.DuckDB.Configuration;
 using NPipeline.Connectors.DuckDB.Nodes;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Connectors.DuckDB.Tests;

@@ -47,7 +47,7 @@ public class ProcessOrderTransform : ITransformNode<Order, ProcessedOrder>
         _notificationService = notificationService;
     }
 
-    public async Task<ProcessedOrder> ExecuteAsync(
+    public async Task<ProcessedOrder> TransformAsync(
         Order input,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -123,7 +123,7 @@ public class EnrichedOrderTransform : ITransformNode<Order, EnrichedOrder>
         _cache = cache;
     }
 
-    public async Task<EnrichedOrder> ExecuteAsync(
+    public async Task<EnrichedOrder> TransformAsync(
         Order input,
         PipelineContext context,
         CancellationToken cancellationToken)

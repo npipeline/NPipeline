@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 

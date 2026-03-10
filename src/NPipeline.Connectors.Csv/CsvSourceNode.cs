@@ -4,7 +4,7 @@ using System.Text;
 using CsvHelper;
 using NPipeline.Connectors.Csv.Mapping;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;

@@ -109,7 +109,7 @@ public sealed class SqsReaderPipeline : IPipelineDefinition
 public sealed class ConsoleSinkNode : SinkNode<SqsMessage<OrderMessage>>
 {
     public override async Task ExecuteAsync(
-        IDataPipe<SqsMessage<OrderMessage>> input,
+        IDataStream<SqsMessage<OrderMessage>> input,
         PipelineContext context,
         IPipelineActivity parentActivity,
         CancellationToken cancellationToken)
@@ -227,7 +227,7 @@ var config = new SqsConfiguration
 // In a transform node
 public class ManualAckTransform : ITransformNode<SqsMessage<OrderMessage>, SqsMessage<OrderMessage>>
 {
-    public async Task<SqsMessage<OrderMessage>> ExecuteAsync(
+    public async Task<SqsMessage<OrderMessage>> TransformAsync(
         SqsMessage<OrderMessage> input,
         PipelineContext context,
         CancellationToken cancellationToken)

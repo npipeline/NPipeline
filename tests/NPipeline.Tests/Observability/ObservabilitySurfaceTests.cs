@@ -120,7 +120,7 @@ public sealed class ObservabilitySurfaceTests
     {
         public IDataStream<object> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new NPipeline.DataFlow.DataPipes.InMemoryDataStream<object>(new List<object> { 1, 2, 3 }, "dummy");
+            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<object>(new List<object> { 1, 2, 3 }, "dummy");
         }
 
         public ValueTask DisposeAsync()

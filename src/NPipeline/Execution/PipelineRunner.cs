@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using System.Runtime.ExceptionServices;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution.Annotations;
 using NPipeline.Execution.Caching;

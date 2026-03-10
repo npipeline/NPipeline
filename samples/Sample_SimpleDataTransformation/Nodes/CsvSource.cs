@@ -2,7 +2,7 @@ using System.Globalization;
 using CsvHelper;
 using CsvHelper.Configuration;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using StringReader = System.IO.StringReader;

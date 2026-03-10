@@ -41,7 +41,7 @@ public sealed class RegionEnricher : TransformNode<RawCustomer, EnrichedCustomer
         ["Houston"] = "South"
     };
 
-    public override Task<EnrichedCustomer> ExecuteAsync(
+    public override Task<EnrichedCustomer> TransformAsync(
         RawCustomer item,
         PipelineContext context,
         CancellationToken cancellationToken = default)
@@ -55,7 +55,7 @@ public sealed class RegionEnricher : TransformNode<RawCustomer, EnrichedCustomer
 public sealed class DatabaseSink : SinkNode<EnrichedCustomer>
 {
     public override async Task ExecuteAsync(
-        IDataPipe<EnrichedCustomer> input,
+        IDataStream<EnrichedCustomer> input,
         PipelineContext context,
         IPipelineActivity parentActivity,
         CancellationToken cancellationToken = default)
@@ -116,7 +116,7 @@ public sealed record ValidationError(int ProductId, string Reason);
 
 public sealed class PriceValidator : TransformNode<Product, Product>
 {
-    public override Task<Product> ExecuteAsync(
+    public override Task<Product> TransformAsync(
         Product item,
         PipelineContext context,
         CancellationToken cancellationToken = default)
@@ -170,7 +170,7 @@ public sealed class MetricsAggregator : SinkNode<SalesData>
     private int _count;
 
     public override async Task ExecuteAsync(
-        IDataPipe<SalesData> input,
+        IDataStream<SalesData> input,
         PipelineContext context,
         IPipelineActivity parentActivity,
         CancellationToken cancellationToken = default)
@@ -211,7 +211,7 @@ public sealed class BatchDatabaseSink : SinkNode<Customer>
     private const int BatchSize = 100;
 
     public override async Task ExecuteAsync(
-        IDataPipe<Customer> input,
+        IDataStream<Customer> input,
         PipelineContext context,
         IPipelineActivity parentActivity,
         CancellationToken cancellationToken = default)
@@ -258,7 +258,7 @@ public sealed record Order(int Id, decimal Total);
 
 public sealed class OrderRouter : TransformNode<Order, Order>
 {
-    public override Task<Order> ExecuteAsync(
+    public override Task<Order> TransformAsync(
         Order item,
         PipelineContext context,
         CancellationToken cancellationToken = default)

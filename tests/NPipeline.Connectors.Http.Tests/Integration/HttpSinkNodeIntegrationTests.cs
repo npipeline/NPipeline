@@ -2,7 +2,7 @@ using System.Text.Json;
 using NPipeline.Connectors.Http.Configuration;
 using NPipeline.Connectors.Http.Nodes;
 using NPipeline.Connectors.Http.Tests.Fixtures;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using WireMock.RequestBuilders;
 using WireMock.ResponseBuilders;

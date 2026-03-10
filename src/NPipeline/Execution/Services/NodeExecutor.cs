@@ -1,6 +1,6 @@
 using NPipeline.Attributes.Lineage;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution.Plans;
 using NPipeline.Graph;
 using NPipeline.Lineage;

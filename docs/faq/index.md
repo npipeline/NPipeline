@@ -11,7 +11,7 @@ slug: /faq
 
 ### What is NPipeline?
 
-NPipeline is a robust, composable data orchestration library for .NET. It enables you to build data pipelines that process data through connected nodes (sources, transforms, sinks) with features like parallelism, observability, error handling, and extensibility.
+NPipeline is a robust, composable data orchestration library for .NET. It enables you to build data streamlines that process data through connected nodes (sources, transforms, sinks) with features like parallelism, observability, error handling, and extensibility.
 
 ### Is NPipeline free and open source?
 
@@ -103,7 +103,7 @@ Yes, NPipeline is async throughout. If you're new to async programming in .NET:
 
    ```csharp
    // Standard pattern
-   public override async Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
+   public override async Task<Item> TransformAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
    {
        var result = await SomeAsync(item, cancellationToken);
        return result;
@@ -194,7 +194,7 @@ public class MultiSourcePipeline : IPipelineDefinition
   ```csharp
   public class LowercaseTransform : TransformNode<string, string>
   {
-      public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+      public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
       {
           return Task.FromResult(item.ToLower());
       }
@@ -211,7 +211,7 @@ public class MultiSourcePipeline : IPipelineDefinition
   {
       private int _total = 0;
 
-      public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+      public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
       {
           _total += item;
           return Task.FromResult(_total);
@@ -228,7 +228,7 @@ Create conditional transform nodes:
 ```csharp
 public class SplitByTypeTransform : TransformNode<Item, Item>
 {
-    public override async Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<Item> TransformAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
     {
         item.Category = item.Value > 100 ? "High" : "Low";
         return item;
@@ -238,7 +238,7 @@ public class SplitByTypeTransform : TransformNode<Item, Item>
 // Then filter in downstream transforms:
 public class HighValueTransform : TransformNode<Item, Item>
 {
-    public override async Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<Item> TransformAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
     {
         if (item.Category != "High")
             throw new FilterException(); // Skip non-high items
@@ -408,7 +408,7 @@ public class DatabaseSourceNode : SourceNode<CustomerRecord>
         _connString = config.GetConnectionString("DefaultConnection");
     }
 
-    public override IDataPipe<CustomerRecord> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<CustomerRecord> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         async IAsyncEnumerable<CustomerRecord> ReadAsync()
         {
@@ -428,7 +428,7 @@ public class DatabaseSourceNode : SourceNode<CustomerRecord>
             }
         }
 
-        return new StreamingDataPipe<CustomerRecord>(ReadAsync());
+        return new DataStream<CustomerRecord>(ReadAsync());
     }
 }
 ```
@@ -445,9 +445,9 @@ public class EntityFrameworkSourceNode : SourceNode<Customer>
         _dbContext = dbContext;
     }
 
-    public override IDataPipe<Customer> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<Customer> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
-        return new StreamingDataPipe<Customer>(_dbContext.Customers.AsAsyncEnumerable());
+        return new DataStream<Customer>(_dbContext.Customers.AsAsyncEnumerable());
     }
 }
 ```
@@ -468,7 +468,7 @@ public async Task TransformNode_DoubleValue_ReturnsTwice()
     var context = new PipelineContext();
 
     // Act
-    var result = await node.ExecuteAsync(input, context, CancellationToken.None);
+    var result = await node.TransformAsync(input, context, CancellationToken.None);
 
     // Assert
     Assert.Equal(10, result.Value);
@@ -570,7 +570,7 @@ Yes! Create custom extensions by implementing node interfaces:
 ```csharp
 public class CustomNode : TransformNode<InputType, OutputType>
 {
-    public override Task<OutputType> ExecuteAsync(InputType item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<OutputType> TransformAsync(InputType item, PipelineContext context, CancellationToken cancellationToken)
     {
         // Custom logic
         return Task.FromResult(Transform(item));
@@ -596,7 +596,7 @@ services.AddLogging(builder =>
 // In your nodes:
 private readonly ILogger<MyNode> _logger;
 
-public override Task<Item> ExecuteAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
+public override Task<Item> TransformAsync(Item item, PipelineContext context, CancellationToken cancellationToken)
 {
     _logger.LogInformation("Processing item {@Item}", item);
     var result = Process(item);

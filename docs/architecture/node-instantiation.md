@@ -74,7 +74,7 @@ public class SimpleTransform : TransformNode<string, int>
     // Implicit or explicit parameterless constructor
     // Both are optimized by the compiled factory
     
-    public override Task<int> ExecuteAsync(
+    public override Task<int> TransformAsync(
         string item, 
         PipelineContext context, 
         CancellationToken cancellationToken)
@@ -106,7 +106,7 @@ public class DependencyAwareNode : TransformNode<Order, ProcessedOrder>
         _paymentService = paymentService;
     }
 
-    public override Task<ProcessedOrder> ExecuteAsync(
+    public override Task<ProcessedOrder> TransformAsync(
         Order item, 
         PipelineContext context, 
         CancellationToken cancellationToken)
@@ -154,7 +154,7 @@ public class DIOnlyNode : TransformNode<string, int>
         _logger = logger;
     }
 
-    public override Task<int> ExecuteAsync(
+    public override Task<int> TransformAsync(
         string item, 
         PipelineContext context, 
         CancellationToken cancellationToken)
@@ -294,7 +294,7 @@ public class ProblematicNode : TransformNode<string, int>
    // This is fine - it has an implicit parameterless constructor
    public MyNode : TransformNode<string, int>
    {
-       public override Task<string> ExecuteAsync(...) { ... }
+       public override Task<string> TransformAsync(...) { ... }
    }
    ```
 

@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 

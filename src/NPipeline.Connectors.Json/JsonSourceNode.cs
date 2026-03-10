@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.Json;
 using NPipeline.Connectors.Json.Mapping;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;

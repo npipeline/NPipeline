@@ -411,7 +411,7 @@ NPipeline provides a two-method pattern that gets you all the ValueTask performa
 public sealed class OptimizedTransform : TransformNode<Order, Order>
 {
     // Keep public method returning Task<T> for API stability
-    public override Task<Order> ExecuteAsync(Order item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<Order> TransformAsync(Order item, PipelineContext context, CancellationToken cancellationToken)
     {
         return FromValueTask(ExecuteValueTaskAsync(item, context, cancellationToken));
     }

@@ -56,10 +56,10 @@ using NPipeline.Pipeline;
 /// </summary>
 public sealed class IntSource : SourceNode<int>
 {
-    public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
     {
-        // Create streaming data pipe immediately (synchronous operation)
-        return new StreamingDataPipe<int>(GenerateNumbers());
+        // Create streaming data stream immediately (synchronous operation)
+        return new DataStream<int>(GenerateNumbers());
 
         static async IAsyncEnumerable<int> GenerateNumbers()
         {
@@ -86,7 +86,7 @@ public sealed class BatchConsumerSink : SinkNode<IReadOnlyCollection<int>>
     /// Uses await foreach to efficiently iterate through batch stream.
     /// </summary>
     public async Task ExecuteAsync(
-        IDataPipe<IReadOnlyCollection<int>> input, 
+        IDataStream<IReadOnlyCollection<int>> input, 
         PipelineContext context, 
         CancellationToken cancellationToken)
     {
@@ -192,9 +192,9 @@ public sealed class BatchExtensionPipelineDefinition : IPipelineDefinition
 /// </summary>
 public sealed class MySource : SourceNode<int>
 {
-    public override IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken)
     {
-        return new StreamingDataPipe<int>(GenerateItems());
+        return new DataStream<int>(GenerateItems());
 
         static async IAsyncEnumerable<int> GenerateItems()
         {
@@ -218,7 +218,7 @@ public sealed class MyBatchProcessingSink : SinkNode<IReadOnlyCollection<int>>
     /// Processes each batch as it arrives from batching node.
     /// </summary>
     public async Task ExecuteAsync(
-        IDataPipe<IReadOnlyCollection<int>> input, 
+        IDataStream<IReadOnlyCollection<int>> input, 
         PipelineContext context, 
         CancellationToken cancellationToken)
     {

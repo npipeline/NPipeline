@@ -226,7 +226,7 @@ When inheritance is enabled, sub-pipeline receives **copies** of the dictionarie
 
 ```csharp
 // In sub-pipeline transform
-public override Task<T> ExecuteAsync(T input, PipelineContext context, ...)
+public override Task<T> TransformAsync(T input, PipelineContext context, ...)
 {
     // This modifies the sub-pipeline's copy only
     context.Parameters["SharedValue"] = "Modified";
@@ -438,7 +438,7 @@ Make dependencies explicit through parameters or constructor injection:
 ❌ Bad: Hidden dependency
 public class MyTransform : TransformNode<T, T>
 {
-    public override Task<T> ExecuteAsync(T input, PipelineContext context, ...)
+    public override Task<T> TransformAsync(T input, PipelineContext context, ...)
     {
         // Implicitly requires "Config" in context
         var config = context.Parameters["Config"];
@@ -458,7 +458,7 @@ public class MyTransform : TransformNode<T, T>
         _config = value.ToString() ?? throw new ArgumentException("Config cannot be null");
     }
     
-    public override Task<T> ExecuteAsync(T input, PipelineContext context, ...)
+    public override Task<T> TransformAsync(T input, PipelineContext context, ...)
     {
         // Use _config
     }

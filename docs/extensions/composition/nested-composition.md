@@ -318,7 +318,7 @@ public class TreeProcessingPipeline : IPipelineDefinition
 // ChildrenProcessor creates composite nodes for each child
 public class ChildrenProcessor : TransformNode<TreeNode, TreeNode>
 {
-    public override async Task<TreeNode> ExecuteAsync(TreeNode node, PipelineContext context, CancellationToken ct)
+    public override async Task<TreeNode> TransformAsync(TreeNode node, PipelineContext context, CancellationToken ct)
     {
         if (!node.HasChildren)
             return node;

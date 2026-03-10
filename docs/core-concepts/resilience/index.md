@@ -1,12 +1,12 @@
 ---
 title: Resilience Overview
-description: Understand resilience concepts in NPipeline and how to build fault-tolerant data pipelines that can recover from failures.
+description: Understand resilience concepts in NPipeline and how to build fault-tolerant data streamlines that can recover from failures.
 sidebar_position: 1
 ---
 
 # Resilience Overview
 
-Resilience in NPipeline refers to the ability of your data pipelines to detect, handle, and recover from failures without complete system breakdown.
+Resilience in NPipeline refers to the ability of your data streamlines to detect, handle, and recover from failures without complete system breakdown.
 This section provides a comprehensive guide to building robust, fault-tolerant pipelines.
 
 ---
@@ -45,7 +45,7 @@ Without proper resilience mechanisms, these failures can cascade through your pi
 - **For simple pipelines with basic needs**: Start with Simple Retry
 - **For streaming data processing**: Use Node Restart with materialization
 - **For external service dependencies**: Add Circuit Breaker to prevent cascade failures
-- **For critical data pipelines**: Implement Dead-Letter Queues to preserve failed items
+- **For critical data streamlines**: Implement Dead-Letter Queues to preserve failed items
 - **For production systems**: Combine multiple strategies for comprehensive protection
 
 ## Core Resilience Components

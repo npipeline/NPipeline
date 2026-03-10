@@ -6,7 +6,7 @@ using BenchmarkDotNet.Order;
 using NPipeline.Attributes.Nodes;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow.Windowing;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;

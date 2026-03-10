@@ -2,7 +2,7 @@ using System.Data;
 using AwesomeAssertions;
 using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.Nodes;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders.Abstractions;
 using Xunit;

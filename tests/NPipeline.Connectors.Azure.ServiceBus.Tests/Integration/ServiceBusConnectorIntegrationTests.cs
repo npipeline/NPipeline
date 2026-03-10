@@ -4,7 +4,7 @@ using NPipeline.Connectors.Azure.ServiceBus.Configuration;
 using NPipeline.Connectors.Azure.ServiceBus.Models;
 using NPipeline.Connectors.Azure.ServiceBus.Nodes;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Connectors.Azure.ServiceBus.Tests.Integration;

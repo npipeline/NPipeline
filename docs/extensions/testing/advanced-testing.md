@@ -57,7 +57,7 @@ public sealed class NotificationTransform : TransformNode<string, string>
         _emailService = emailService;
     }
 
-    public override async Task<string> ExecuteAsync(
+    public override async Task<string> TransformAsync(
         string item,
         PipelineContext context,
         CancellationToken cancellationToken)
@@ -156,7 +156,7 @@ using Xunit;
 
 public sealed class ParsingTransform : TransformNode<string, int>
 {
-    public override Task<int> ExecuteAsync(
+    public override Task<int> TransformAsync(
         string item,
         PipelineContext context,
         CancellationToken cancellationToken)

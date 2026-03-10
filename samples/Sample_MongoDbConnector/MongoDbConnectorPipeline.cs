@@ -3,7 +3,7 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using NPipeline.Connectors.MongoDB.Configuration;
 using NPipeline.Connectors.MongoDB.Nodes;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 
 namespace Sample_MongoDbConnector;
 

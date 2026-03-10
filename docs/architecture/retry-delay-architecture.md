@@ -582,7 +582,7 @@ NPipeline's retry delay architecture provides:
 - **Observability**: Clear design makes debugging easier
 - **Extensibility**: Custom strategies can be added as delegates
 
-This architecture enables robust, configurable retry behavior for resilient data pipelines.
+This architecture enables robust, configurable retry behavior for resilient data streamlines.
 
 ## See Also
 

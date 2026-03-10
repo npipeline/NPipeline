@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 
-namespace NPipeline.DataFlow.DataPipes;
+namespace NPipeline.DataFlow.DataStreams;
 
 internal sealed class CappedReplayableDataStream<T> : DataStreamBase<T>
 {

@@ -6,7 +6,7 @@ sidebar_position: 1
 
 # Error Handling
 
-Robust error handling is critical for building reliable data pipelines. NPipeline provides mechanisms to manage errors at two complementary levels.
+Robust error handling is critical for building reliable data streamlines. NPipeline provides mechanisms to manage errors at two complementary levels.
 
 ## The Two Levels
 

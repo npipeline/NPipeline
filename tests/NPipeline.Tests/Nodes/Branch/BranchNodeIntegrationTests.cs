@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.Branching;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
 using NPipeline.Extensions.Testing;
 using NPipeline.Nodes;

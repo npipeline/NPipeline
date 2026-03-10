@@ -5,7 +5,7 @@ using NPipeline.Connectors.MongoDB.ChangeStream;
 using NPipeline.Connectors.MongoDB.Exceptions;
 using NPipeline.Connectors.MongoDB.Mapping;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 

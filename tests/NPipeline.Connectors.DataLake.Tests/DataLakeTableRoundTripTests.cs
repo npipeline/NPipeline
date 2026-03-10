@@ -1,7 +1,7 @@
 using NPipeline.Connectors.DataLake.Partitioning;
 using NPipeline.Connectors.Parquet.Attributes;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Abstractions;

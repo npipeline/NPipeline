@@ -1,4 +1,4 @@
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Nodes;

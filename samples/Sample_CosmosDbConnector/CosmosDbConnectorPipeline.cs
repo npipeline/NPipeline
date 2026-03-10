@@ -2,7 +2,7 @@ using System.Diagnostics;
 using Microsoft.Azure.Cosmos;
 using NPipeline.Connectors.Azure.CosmosDb.Configuration;
 using NPipeline.Connectors.Azure.CosmosDb.Nodes;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 
 namespace Sample_CosmosDbConnector;
 

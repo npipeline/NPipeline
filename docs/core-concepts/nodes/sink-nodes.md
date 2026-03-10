@@ -13,7 +13,7 @@ Sink nodes are the terminal points of a pipeline. They consume the final process
 ```csharp
 public interface ISinkNode<TIn> : INode
 {
-    Task ExecuteAsync(IDataPipe<TIn> input, PipelineContext context, CancellationToken cancellationToken);
+    Task ConsumeAsync(IDataStream<TIn> input, PipelineContext context, CancellationToken cancellationToken);
 }
 ```
 
@@ -30,7 +30,7 @@ using NPipeline.Pipeline;
 
 public sealed class ConsoleSink<T> : ISinkNode<T>
 {
-    public async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
+    public async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {
@@ -42,20 +42,20 @@ public sealed class ConsoleSink<T> : ISinkNode<T>
 
 ## Key Concepts
 
-### Data Pipe Consumption
+### Data Stream Consumption
 
-The `ExecuteAsync` method receives an `IDataPipe<TIn>` which represents the final stream of items produced by the previous node in the pipeline. Sink nodes iterate through this stream and perform appropriate operations.
+The `ExecuteAsync` method receives an `IDataStream<TIn>` which represents the final stream of items produced by the previous node in the pipeline. Sink nodes iterate through this stream and perform appropriate operations.
 
 ### Streaming Iteration
 
-Use `await foreach` to asynchronously iterate through the data pipe. This pattern allows efficient memory usage—items are processed as they arrive rather than being buffered in memory.
+Use `await foreach` to asynchronously iterate through the data stream. This pattern allows efficient memory usage—items are processed as they arrive rather than being buffered in memory.
 
 ### Activity Tracking
 
 To access tracing and observability information, use the `PipelineContext` parameter. The current activity can be accessed through `context.Tracer.CurrentActivity`, which returns the active tracing span if one exists, or `null` if tracing is disabled.
 
 ```csharp
-public async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken)
+public async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
 {
     var activity = context.Tracer.CurrentActivity;
     if (activity != null)
@@ -88,7 +88,7 @@ public sealed class DatabaseWriteSink : ISinkNode<CustomerRecord>
         _connectionString = connectionString;
     }
 
-    public async Task ExecuteAsync(IDataPipe<CustomerRecord> input, PipelineContext context, CancellationToken cancellationToken)
+    public async Task ConsumeAsync(IDataStream<CustomerRecord> input, PipelineContext context, CancellationToken cancellationToken)
     {
         using (var connection = new SqlConnection(_connectionString))
         {
@@ -122,7 +122,7 @@ public sealed class FileWriteSink : ISinkNode<string>
         _filePath = filePath;
     }
 
-    public async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+    public async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
     {
         using (var writer = new StreamWriter(_filePath, append: false))
         {
@@ -149,7 +149,7 @@ public sealed class HttpPostSink : ISinkNode<DataRecord>
         _httpClient = new HttpClient();
     }
 
-    public async Task ExecuteAsync(IDataPipe<DataRecord> input, PipelineContext context, CancellationToken cancellationToken)
+    public async Task ConsumeAsync(IDataStream<DataRecord> input, PipelineContext context, CancellationToken cancellationToken)
     {
         await foreach (var record in input.WithCancellation(cancellationToken))
         {
@@ -170,7 +170,7 @@ public sealed class CollectingSink : ISinkNode<int>
 {
     public List<int> Results { get; } = new();
 
-    public async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context, CancellationToken cancellationToken)
+    public async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {
@@ -191,7 +191,7 @@ public sealed class MetricsSink : ISinkNode<ProcessedEvent>
     public int TotalProcessed => _totalProcessed;
     public int TotalErrors => _totalErrors;
 
-    public async Task ExecuteAsync(IDataPipe<ProcessedEvent> input, PipelineContext context, CancellationToken cancellationToken)
+    public async Task ConsumeAsync(IDataStream<ProcessedEvent> input, PipelineContext context, CancellationToken cancellationToken)
     {
         await foreach (var @event in input.WithCancellation(cancellationToken))
         {
@@ -226,7 +226,7 @@ public class LineageAwareSink : ISinkNode<Output>
     }
     
     public async Task ExecuteAsync(
-        IDataPipe<Output> input, 
+        IDataStream<Output> input, 
         PipelineContext context, 
         CancellationToken cancellationToken)
     {
@@ -250,7 +250,7 @@ public class LineageAwareSink : ISinkNode<Output>
         }
     }
     
-    private async Task ProcessItemsAsync(IDataPipe<Output> items, CancellationToken cancellationToken)
+    private async Task ProcessItemsAsync(IDataStream<Output> items, CancellationToken cancellationToken)
     {
         // Your sink processing logic here
         await foreach (var item in items.WithCancellation(cancellationToken))
@@ -288,7 +288,7 @@ using NPipeline.Graph.PipelineDelegates;
 /// </summary>
 public sealed class ConsoleSink : ISinkNode<string>
 {
-    public async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+    public async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
     {
         // Process each message as it arrives from upstream
         await foreach (var message in input.WithCancellation(cancellationToken))
@@ -311,7 +311,7 @@ public sealed class LineageConsoleSink : ISinkNode<string>
         _lineageUnwrap = lineageUnwrap;
     }
     
-    public async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+    public async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
     {
         // Use lineage unwrap delegate if provided
         if (_lineageUnwrap != null)

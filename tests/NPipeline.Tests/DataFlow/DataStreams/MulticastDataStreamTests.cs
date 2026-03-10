@@ -2,9 +2,9 @@ using System.Reflection;
 using AwesomeAssertions;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.Branching;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 
-namespace NPipeline.Tests.DataFlow.DataPipes;
+namespace NPipeline.Tests.DataFlow.DataStreams;
 
 public sealed class MulticastDataPipeTests
 {

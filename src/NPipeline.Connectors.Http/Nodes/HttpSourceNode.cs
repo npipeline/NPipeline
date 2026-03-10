@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NPipeline.Connectors.Http.Configuration;
 using NPipeline.Connectors.Http.Metrics;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 

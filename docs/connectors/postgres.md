@@ -277,7 +277,7 @@ public sealed class PostgresReaderPipeline : IPipelineDefinition
 public sealed class ConsoleSinkNode : SinkNode<Order>
 {
     public override async Task ExecuteAsync(
-        IDataPipe<Order> input,
+        IDataStream<Order> input,
         PipelineContext context,
         IPipelineActivity parentActivity,
         CancellationToken cancellationToken)
@@ -1115,7 +1115,7 @@ public sealed record OrderSummary(int OrderId, string StatusCategory, decimal To
 
 public sealed class OrderTransformer : TransformNode<Order, OrderSummary>
 {
-    public override Task<OrderSummary> ExecuteAsync(
+    public override Task<OrderSummary> TransformAsync(
         Order item,
         PipelineContext context,
         CancellationToken cancellationToken)

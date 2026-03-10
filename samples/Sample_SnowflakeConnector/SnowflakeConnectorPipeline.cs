@@ -1,6 +1,6 @@
 using NPipeline.Connectors.Snowflake.Configuration;
 using NPipeline.Connectors.Snowflake.Nodes;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using Snowflake.Data.Client;
 

@@ -4,7 +4,7 @@ using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Attributes.Nodes;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;

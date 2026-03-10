@@ -37,7 +37,7 @@ This makes nodes testable, reusable, and easy to understand.
 Data is only processed when explicitly consumed:
 
 ```csharp
-var pipe = source.Initialize(context, cancellationToken);
+var pipe = source.OpenStream(context, cancellationToken);
 // No processing happens here - pipe exists but empty
 
 var wrappedPipe = new TransformPipe(pipe, transform);

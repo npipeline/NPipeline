@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using NPipeline.DataFlow.Branching;
 
-namespace NPipeline.DataFlow.DataPipes;
+namespace NPipeline.DataFlow.DataStreams;
 
 /// <summary>
 ///     Simple adapter that wraps an IAsyncEnumerable&lt;T&gt; to implement IDataStream&lt;T&gt;.

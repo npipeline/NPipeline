@@ -4,13 +4,13 @@ using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Attributes.Nodes;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
-namespace NPipeline.Tests.DataFlow.DataPipes;
+namespace NPipeline.Tests.DataFlow.DataStreams;
 
 public sealed class MergeStrategyTests
 {

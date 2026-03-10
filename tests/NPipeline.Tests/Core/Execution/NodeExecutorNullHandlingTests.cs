@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution.Services;
 
 namespace NPipeline.Tests.Core.Execution;

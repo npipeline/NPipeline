@@ -77,7 +77,7 @@ public sealed class RawDataSink : SinkNode<SensorReading>
 
 public sealed class AnomalyDetector : ITransformNode<SensorReading, string>
 {
-    public async IAsyncEnumerable<string> ExecuteAsync(IAsyncEnumerable<SensorReading> input, CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<string> TransformAsync(IAsyncEnumerable<SensorReading> input, CancellationToken cancellationToken = default)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {

@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using Xunit;
 

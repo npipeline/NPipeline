@@ -178,7 +178,7 @@ LINQ in hot paths causes:
 // PROBLEM: LINQ in ExecuteAsync method
 public class BadTransform : ITransformNode<Input, Output>
 {
-    protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
+    protected override async Task<Output> TransformAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
     {
         // NP9103: LINQ in hot path creates allocations
         var filtered = input.Items.Where(x => x.IsActive).ToList();
@@ -207,7 +207,7 @@ var items = sourceData.Where(x => x.IsValid).Select(x => x.Transform()).ToArray(
 // CORRECT: Use imperative processing
 public class GoodTransform : ITransformNode<Input, Output>
 {
-    protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
+    protected override async Task<Output> TransformAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
     {
         var filtered = new List<Item>();
         foreach (var item in input.Items)
@@ -277,7 +277,7 @@ Inefficient string operations cause:
 // PROBLEM: String concatenation in loop
 public class BadTransform : ITransformNode<Input, Output>
 {
-    protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
+    protected override async Task<Output> TransformAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
     {
         string result = "";
         foreach (var item in input.Items) // NP9104: Concatenation in loop
@@ -304,7 +304,7 @@ var results = items.Select(x => x.Name.ToUpper().Substring(0, 5).Trim()); // NP9
 // CORRECT: Use StringBuilder for concatenation
 public class GoodTransform : ITransformNode<Input, Output>
 {
-    protected override async Task<Output> ExecuteAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
+    protected override async Task<Output> TransformAsync(Input input, PipelineContext context, CancellationToken cancellationToken)
     {
         var sb = new StringBuilder();
         foreach (var item in input.Items)
@@ -399,7 +399,7 @@ Anonymous object allocations cause:
 
 ```csharp
 // PROBLEM: Anonymous objects in ExecuteAsync
-protected override async Task ExecuteAsync(IDataPipe<Output> output, PipelineContext context, CancellationToken cancellationToken)
+protected override async Task ConsumeAsync(IDataStream<Output> output, PipelineContext context, CancellationToken cancellationToken)
 {
     foreach (var item in inputItems)
     {
@@ -430,7 +430,7 @@ foreach (var item in items)
 // CORRECT: Define named type for results
 public record ProcessedItem(int Id, string Name, double Value);
 
-protected override async Task ExecuteAsync(IDataPipe<Output> output, PipelineContext context, CancellationToken cancellationToken)
+protected override async Task ConsumeAsync(IDataStream<Output> output, PipelineContext context, CancellationToken cancellationToken)
 {
     foreach (var item in inputItems)
     {
@@ -484,10 +484,10 @@ This analyzer detects non-streaming patterns in SourceNode implementations that 
 // PROBLEM: Non-streaming implementation
 public class BadSourceNode : ISourceNode<Output>
 {
-    public override IDataPipe<Output> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<Output> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var items = LoadAllItems(); // Loads everything into memory
-        return new StreamingDataPipe<Output>(items.ToAsyncEnumerable());
+        return new DataStream<Output>(items.ToAsyncEnumerable());
     }
 }
 ```
@@ -498,9 +498,9 @@ public class BadSourceNode : ISourceNode<Output>
 // CORRECT: Streaming implementation
 public class GoodSourceNode : ISourceNode<Output>
 {
-    public override IDataPipe<Output> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<Output> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
-        return new StreamingDataPipe<Output>(GetItemsAsync(cancellationToken));
+        return new DataStream<Output>(GetItemsAsync(cancellationToken));
     }
     
     private async IAsyncEnumerable<Output> GetItemsAsync([EnumeratorCancellation] CancellationToken cancellationToken)

@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Pipeline;

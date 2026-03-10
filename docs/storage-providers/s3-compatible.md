@@ -28,7 +28,7 @@ Use the S3-compatible storage provider when your application needs to:
 - Store and retrieve data from MinIO, DigitalOcean Spaces, or other S3-compatible services
 - Avoid AWS credentials and IAM complexity for self-hosted or alternative cloud storage
 - Use a single provider across multiple S3-compatible endpoints
-- Integrate object storage into NPipeline data pipelines without vendor lock-in
+- Integrate object storage into NPipeline data streamlines without vendor lock-in
 - Handle large files through streaming and multipart uploads
 
 ### Supported Platforms

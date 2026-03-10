@@ -3,7 +3,7 @@ using System.Runtime.ExceptionServices;
 using NPipeline.ErrorHandling;
 using NPipeline.Pipeline;
 
-namespace NPipeline.DataFlow.DataPipes;
+namespace NPipeline.DataFlow.DataStreams;
 
 /// <summary>
 ///     Data pipe that combines counting with passthrough (no branching).

@@ -226,7 +226,7 @@ public sealed class ExcelReaderPipeline : IPipelineDefinition
 public sealed class ConsoleSinkNode : SinkNode<Product>
 {
     public override async Task ExecuteAsync(
-        IDataPipe<Product> input,
+        IDataStream<Product> input,
         PipelineContext context,
         IPipelineActivity parentActivity,
         CancellationToken cancellationToken)
@@ -500,7 +500,7 @@ public sealed record ProductSummary(string Name, string Category, string PriceRa
 
 public sealed class ProductSummarizer : TransformNode<Product, ProductSummary>
 {
-    public override Task<ProductSummary> ExecuteAsync(
+    public override Task<ProductSummary> TransformAsync(
         Product item,
         PipelineContext context,
         CancellationToken cancellationToken)

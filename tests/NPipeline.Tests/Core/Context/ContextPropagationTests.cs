@@ -5,7 +5,7 @@ using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;

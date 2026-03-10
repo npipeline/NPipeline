@@ -16,7 +16,7 @@ Think of them as **automated code review** by experts who understand how high-pe
 
 ## The NP9000 Series: Performance and Resilience Hygiene Toolkit
 
-The NP9000 series (NP9XXX) diagnostics represent a curated set of enforcement rules that protect you from most common—and most dangerous—mistakes when building streaming data pipelines:
+The NP9000 series (NP9XXX) diagnostics represent a curated set of enforcement rules that protect you from most common—and most dangerous—mistakes when building streaming data streamlines:
 
 | Code Range | Category | Purpose |
 |-----------|----------|---------|

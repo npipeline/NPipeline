@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 
-namespace NPipeline.DataFlow.DataPipes;
+namespace NPipeline.DataFlow.DataStreams;
 
 /// <summary>
 ///     An implementation of <see cref="IDataStream{T}" /> that wraps an in-memory list of items.

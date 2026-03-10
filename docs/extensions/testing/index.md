@@ -134,7 +134,7 @@ public async Task Transform_ShouldApplyCorrectLogic()
     var context = new PipelineContext();
 
     // Act
-    var result = await transform.ExecuteAsync(input, context, CancellationToken.None);
+    var result = await transform.TransformAsync(input, context, CancellationToken.None);
     
     // Assert
     result.Should().Be("processed_test");

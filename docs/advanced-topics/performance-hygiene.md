@@ -1,6 +1,6 @@
 ---
 title: Performance Hygiene
-description: Best practices for building high-performance, low-allocation data pipelines with NPipeline.
+description: Best practices for building high-performance, low-allocation data streamlines with NPipeline.
 sidebar_position: 2
 ---
 
@@ -12,7 +12,7 @@ By following these best practices, you can ensure your pipelines run as fast and
 
 ## 1. Minimize Memory Allocations
 
-In high-throughput data pipelines, memory allocation can become a major bottleneck. The .NET garbage collector (GC) is highly optimized, but frequent, large allocations can lead to GC pressure, causing pauses that hurt performance.
+In high-throughput data streamlines, memory allocation can become a major bottleneck. The .NET garbage collector (GC) is highly optimized, but frequent, large allocations can lead to GC pressure, causing pauses that hurt performance.
 
 ### Use `struct` for Small, Short-Lived Data
 
@@ -223,7 +223,7 @@ NPipeline is designed around a streaming-first philosophy. Nodes should process 
 **Good (Streaming):**
 
 ```csharp
-public async IAsyncEnumerable<string> ExecuteAsync(IAsyncEnumerable<string> input, CancellationToken cancellationToken)
+public async IAsyncEnumerable<string> TransformAsync(IAsyncEnumerable<string> input, CancellationToken cancellationToken)
 {
     // Process items as they come in.
     await foreach (var item in input.WithCancellation(cancellationToken))
@@ -236,7 +236,7 @@ public async IAsyncEnumerable<string> ExecuteAsync(IAsyncEnumerable<string> inpu
 **Avoid (Buffering):**
 
 ```csharp
-public async IAsyncEnumerable<string> ExecuteAsync(IAsyncEnumerable<string> input, CancellationToken cancellationToken)
+public async IAsyncEnumerable<string> TransformAsync(IAsyncEnumerable<string> input, CancellationToken cancellationToken)
 {
     // This buffers the entire input into memory before processing.
     // It can lead to high memory usage and delays the start of processing.
@@ -275,7 +275,7 @@ public class MyTransformBenchmarks
     [Benchmark]
     public async Task Transform()
     {
-        await foreach(var _ in _transform.ExecuteAsync(_data))
+        await foreach(var _ in _transform.TransformAsync(_data))
         {
             // Consume results
         }
@@ -294,7 +294,7 @@ NPipeline uses `CachedNodeExecutionContext` to optimize per-item context access 
 ❌ **Don't modify retry options during node execution:**
 
 ```csharp
-public async Task<TOut> ExecuteAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
+public async Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
 {
     // ❌ WRONG: Context state is cached at node start; this modification may be ignored
     context.NodeRetryOverrides[context.CurrentNodeId] = newRetryOptions;
@@ -308,7 +308,7 @@ public async Task<TOut> ExecuteAsync(TIn item, PipelineContext context, Cancella
 ❌ **Don't replace tracer or logger factory during node execution:**
 
 ```csharp
-public async Task<TOut> ExecuteAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
+public async Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
 {
     // ❌ WRONG: Tracer is cached at node start
     context.Tracer = new MyCustomTracer();

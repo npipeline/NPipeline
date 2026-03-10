@@ -146,9 +146,9 @@ builder.Connect("converter", "trans"); // Works
 
 ---
 
-### NP0202: Input Data Pipe Wrong Type
+### NP0202: Input Data Stream Wrong Type
 
-**Message:** `[NP0202] Input data pipe is not of the expected type...`**
+**Message:** `[NP0202] Input data stream is not of the expected type...`**
 
 **Cause:** An internal framework error where the input pipe type doesn't match expected type. This usually indicates a graph construction error.
 
@@ -333,13 +333,13 @@ builder.WithRetryOptions(options =>
 
 ### NP9301: SinkNode Input Not Consumed
 
-**Message:** `[NP9301] SinkNode '{0}' overrides ExecuteAsync but doesn't consume input parameter. Sink nodes should process all items from input data pipe.`
+**Message:** `[NP9301] SinkNode '{0}' overrides ExecuteAsync but doesn't consume input parameter. Sink nodes should process all items from input data stream.`
 
 **Category:** Data Integrity - Input Consumption
 
 **Severity:** Error
 
-**Cause:** Your SinkNode implementation overrides ExecuteAsync but doesn't consume the input parameter. Sink nodes are designed to process all items from their input data pipe, but your implementation ignores the input.
+**Cause:** Your SinkNode implementation overrides ExecuteAsync but doesn't consume the input parameter. Sink nodes are designed to process all items from their input data stream, but your implementation ignores the input.
 
 This can cause:
 
@@ -353,7 +353,7 @@ This can cause:
 // PROBLEM: SinkNode ignores input
 public class MySinkNode : SinkNode<string>
 {
-    public override Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+    public override Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
     {
         // Input parameter is never used
         Console.WriteLine("Sink executed but ignoring input");
@@ -370,7 +370,7 @@ Always consume input in SinkNode implementations:
 // SOLUTION: Process all items from input
 public class MySinkNode : SinkNode<string>
 {
-    public override async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
     {
         // Process all items from input
         await foreach (var item in input.WithCancellation(cancellationToken))
@@ -394,7 +394,7 @@ public class MySinkNode : SinkNode<string>
 
 **Best Practices for SinkNode Implementation:**
 
-1. **Always consume input** - Use `await foreach` or other data pipe operations
+1. **Always consume input** - Use `await foreach` or other data stream operations
 2. **Pass cancellation token** - Use `WithCancellation(cancellationToken)` for proper cancellation support
 3. **Handle empty input** - Your code should work correctly even if the input pipe is empty
 4. **Consider performance** - For large datasets, process items in a streaming fashion rather than collecting all items
@@ -582,7 +582,7 @@ These patterns can cause:
 // PROBLEM: Materializing all data in memory
 public class BadSourceNode : SourceNode<string>
 {
-    public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         // NP9107: Allocating List<T> and populating it
         var items = new List<string>();
@@ -601,7 +601,7 @@ public class BadSourceNode : SourceNode<string>
             // This pattern is no longer valid with Initialize method
         }
 
-        return new StreamingDataPipe<string>(items.ToAsyncEnumerable());
+        return new DataStream<string>(items.ToAsyncEnumerable());
     }
 }
 ```
@@ -612,10 +612,10 @@ public class BadSourceNode : SourceNode<string>
 // CORRECT: Using IAsyncEnumerable with yield return
 public class GoodSourceNode : SourceNode<string>
 {
-    public override IDataPipe<string> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         // Stream data line by line without materializing in memory
-        return new StreamingDataPipe<string>(ReadLinesAsync("large-file.txt", cancellationToken));
+        return new DataStream<string>(ReadLinesAsync("large-file.txt", cancellationToken));
     }
 
     // Helper method that yields lines one at a time
@@ -676,7 +676,7 @@ public class GoodSourceNode : SourceNode<string>
 // PROBLEM: Node returns IAsyncEnumerable<T> from ExecuteAsync
 public class BadTransformNode : TransformNode<string, string>
 {
-    public override async Task<IAsyncEnumerable<string>> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<IAsyncEnumerable<string>> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
     {
         // This is a bad pattern
         var result = new List<string>();
@@ -688,7 +688,7 @@ public class BadTransformNode : TransformNode<string, string>
 // SOLUTION: Implement IStreamTransformNode<TInput, TOutput>
 public class GoodTransformNode : TransformNode<string, string>, IStreamTransformNode<string, string>
 {
-    public override async Task<IAsyncEnumerable<string>> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<IAsyncEnumerable<string>> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
     {
         // This is a better pattern
         var result = new List<string>();
@@ -798,7 +798,7 @@ public class GoodTransformNode : TransformNode<string, string>
         _badService = badService;
     }
 
-    public override Task<string> ExecuteAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<string> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
     {
         return Task.FromResult(_badService.Process(item));
     }
@@ -822,7 +822,7 @@ public class GoodSinkNode : SinkNode<string>
         _repository = repository;
     }
 
-    public override async Task ExecuteAsync(IDataPipe<string> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<string> input, PipelineContext context, CancellationToken cancellationToken)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {

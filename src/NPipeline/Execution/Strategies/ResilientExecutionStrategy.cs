@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Nodes;

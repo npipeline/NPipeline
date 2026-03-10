@@ -42,7 +42,7 @@ public class SimplePipeline : IPipelineDefinition
 // Source node that generates numbers
 public sealed class NumberSource : SourceNode<int>
 {
-    public IDataPipe<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
+    public IDataStream<int> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
     {
         static async IAsyncEnumerable<int> Generate()
         {
@@ -52,14 +52,14 @@ public sealed class NumberSource : SourceNode<int>
             }
         }
 
-        return new StreamingDataPipe<int>(Generate());
+        return new DataStream<int>(Generate());
     }
 }
 
 // Transform node that doubles numbers
 public sealed class DoubleTransform : TransformNode<int, int>
 {
-    public override Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken = default)
+    public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken = default)
     {
         return Task.FromResult(item * 2);
     }
@@ -68,7 +68,7 @@ public sealed class DoubleTransform : TransformNode<int, int>
 // Sink node that outputs numbers
 public sealed class NumberSink : SinkNode<int>
 {
-    public override async Task ExecuteAsync(IDataPipe<int> input, PipelineContext context, CancellationToken cancellationToken = default)
+    public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken = default)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {
@@ -378,7 +378,7 @@ public sealed class DatabaseSink<T> : SinkNode<T>
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
     }
 
-    public override async Task ExecuteAsync(IDataPipe<T> input, PipelineContext context, CancellationToken cancellationToken = default)
+    public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken = default)
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {
@@ -909,7 +909,7 @@ public sealed class EtlPipeline : IPipelineDefinition
 // Source: Read from CSV
 public sealed class CsvDataSource : SourceNode<RawData>
 {
-    public IDataPipe<RawData> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
+    public IDataStream<RawData> ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
     {
         static async IAsyncEnumerable<RawData> ReadFromCsv()
         {
@@ -921,14 +921,14 @@ public sealed class CsvDataSource : SourceNode<RawData>
             }
         }
 
-        return new StreamingDataPipe<RawData>(ReadFromCsv());
+        return new DataStream<RawData>(ReadFromCsv());
     }
 }
 
 // Transform: Validate data
 public sealed class DataValidationTransform : TransformNode<RawData, RawData>
 {
-    public override Task<RawData> ExecuteAsync(RawData item, PipelineContext context, CancellationToken cancellationToken = default)
+    public override Task<RawData> TransformAsync(RawData item, PipelineContext context, CancellationToken cancellationToken = default)
     {
         // Simulate validation
         if (item.Id <= 0)
@@ -943,7 +943,7 @@ public sealed class DataValidationTransform : TransformNode<RawData, RawData>
 // Transform: Process data
 public sealed class DataTransform : TransformNode<RawData, ProcessedData>
 {
-    public override Task<ProcessedData> ExecuteAsync(RawData item, PipelineContext context, CancellationToken cancellationToken = default)
+    public override Task<ProcessedData> TransformAsync(RawData item, PipelineContext context, CancellationToken cancellationToken = default)
     {
         var processed = new ProcessedData(
             item.Id,
@@ -964,7 +964,7 @@ public sealed class DatabaseSink : SinkNode<ProcessedData>
         _logger = logger;
     }
 
-    public override async Task ExecuteAsync(IDataPipe<ProcessedData> input, PipelineContext context, CancellationToken cancellationToken = default)
+    public override async Task ConsumeAsync(IDataStream<ProcessedData> input, PipelineContext context, CancellationToken cancellationToken = default)
     {
         int count = 0;
         await foreach (var item in input.WithCancellation(cancellationToken))

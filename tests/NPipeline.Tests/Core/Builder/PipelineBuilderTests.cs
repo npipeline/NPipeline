@@ -251,7 +251,7 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
     {
         public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
-            return new NPipeline.DataFlow.DataPipes.InMemoryDataStream<int>([1]);
+            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1]);
         }
     }
 

@@ -3,7 +3,7 @@ using NPipeline.Connectors.DataLake.Partitioning;
 using NPipeline.Connectors.DataLake.Snapshot;
 using NPipeline.Connectors.Parquet;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.StorageProviders.Models;

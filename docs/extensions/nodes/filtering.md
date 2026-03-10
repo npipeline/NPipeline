@@ -289,7 +289,7 @@ public async Task FilterNode_ShouldFilterInactiveItems()
     {
         try
         {
-            var result = await filter.ExecuteAsync(item, PipelineContext.Default, CancellationToken.None);
+            var result = await filter.TransformAsync(item, PipelineContext.Default, CancellationToken.None);
             activeItems.Add(result);
         }
         catch (FilteringException)

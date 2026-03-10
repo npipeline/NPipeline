@@ -6,7 +6,7 @@ sidebar_position: 10
 
 ## Batching vs Aggregation
 
-When building data pipelines, you often need to group items together. NPipeline provides two fundamentally different approaches—**batching** and **aggregation**—each suited for solving different problems.
+When building data streamlines, you often need to group items together. NPipeline provides two fundamentally different approaches—**batching** and **aggregation**—each suited for solving different problems.
 
 **This decision is critical.** Choosing the wrong approach can lead to:
 

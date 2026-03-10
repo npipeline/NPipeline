@@ -4,7 +4,7 @@ using NPipeline.Connectors.MongoDB.Attributes;
 using NPipeline.Connectors.MongoDB.Configuration;
 using NPipeline.Connectors.MongoDB.Nodes;
 using NPipeline.Connectors.MongoDB.Tests.Fixtures;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Connectors.MongoDB.Tests.Integration;

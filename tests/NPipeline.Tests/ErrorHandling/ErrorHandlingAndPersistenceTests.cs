@@ -95,7 +95,7 @@ public sealed class ErrorHandlingAndPersistenceTests
         public Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(IDataStream<TIn> input, ITransformNode<TIn, TOut> node, PipelineContext context,
             CancellationToken cancellationToken)
         {
-            return Task.FromResult<IDataStream<TOut>>(new NPipeline.DataFlow.DataPipes.InMemoryDataStream<TOut>(new List<TOut>(), "empty"));
+            return Task.FromResult<IDataStream<TOut>>(new NPipeline.DataFlow.DataStreams.InMemoryDataStream<TOut>(new List<TOut>(), "empty"));
         }
     }
 

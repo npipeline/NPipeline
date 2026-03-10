@@ -6,7 +6,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Lineage;
 
 namespace NPipeline.Execution.Services;

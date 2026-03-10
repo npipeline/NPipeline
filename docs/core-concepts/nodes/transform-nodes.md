@@ -13,7 +13,7 @@ Transform nodes take an input stream of `TInput` items, perform some operation o
 ```csharp
 public interface ITransformNode<TIn, TOut> : INode
 {
-    Task<TOut> ExecuteAsync(TIn item, PipelineContext context, CancellationToken cancellationToken);
+    Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken);
 }
 ```
 
@@ -142,7 +142,7 @@ public sealed class SquareTransform : ITransformNode<int, int>
     /// Processes each integer by squaring it.
     /// Uses Task.FromResult for synchronous work to avoid unnecessary Task allocation.
     /// </summary>
-    public Task<int> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+    public Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
     {
         // Synchronous calculation - no async work needed
         return Task.FromResult(item * item);
@@ -172,7 +172,7 @@ public sealed class EnrichmentTransform : ITransformNode<Order, EnrichedOrder>
     /// Enriches each order with customer information from lookup service.
     /// Uses async/await pattern as external service call is inherently asynchronous.
     /// </summary>
-    public async Task<EnrichedOrder> ExecuteAsync(Order order, PipelineContext context, CancellationToken cancellationToken)
+    public async Task<EnrichedOrder> TransformAsync(Order order, PipelineContext context, CancellationToken cancellationToken)
     {
         // Fetch customer data from external service (async operation)
         var customerInfo = await _lookupService.GetCustomerAsync(order.CustomerId, cancellationToken);
@@ -293,7 +293,7 @@ public sealed class EnrichmentTransform : ITransformNode<Order, EnrichedOrder>
         _lookupService = lookupService;
     }
 
-    public async Task<EnrichedOrder> ExecuteAsync(Order order, PipelineContext context, CancellationToken cancellationToken)
+    public async Task<EnrichedOrder> TransformAsync(Order order, PipelineContext context, CancellationToken cancellationToken)
     {
         var customerInfo = await _lookupService.GetCustomerAsync(order.CustomerId, cancellationToken);
         return new EnrichedOrder

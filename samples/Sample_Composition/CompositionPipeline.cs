@@ -1,5 +1,5 @@
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Extensions.Composition;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;

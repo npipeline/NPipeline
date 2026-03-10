@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 
-namespace NPipeline.DataFlow.DataPipes;
+namespace NPipeline.DataFlow.DataStreams;
 
 /// <summary>
 ///     An implementation of <see cref="IDataStream" /> that enables true, non-buffering streaming.

@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using Sample_HttpPost.Models;

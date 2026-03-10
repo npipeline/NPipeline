@@ -1,5 +1,5 @@
 using System.Text.Json;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using NPipeline.StorageProviders;
 using NPipeline.StorageProviders.Abstractions;

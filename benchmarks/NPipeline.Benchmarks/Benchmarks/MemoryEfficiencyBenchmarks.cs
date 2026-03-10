@@ -4,7 +4,7 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow.Windowing;
 using NPipeline.Execution;
 using NPipeline.Nodes;

@@ -6,7 +6,7 @@ using NPipeline.Connectors.DuckDB.Connection;
 using NPipeline.Connectors.DuckDB.Exceptions;
 using NPipeline.Connectors.DuckDB.Mapping;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 

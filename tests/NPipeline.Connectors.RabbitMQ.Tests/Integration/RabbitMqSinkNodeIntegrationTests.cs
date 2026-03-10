@@ -4,7 +4,7 @@ using NPipeline.Connectors.RabbitMQ.Connection;
 using NPipeline.Connectors.RabbitMQ.Nodes;
 using NPipeline.Connectors.RabbitMQ.Serialization;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 using RabbitMQ.Client;
 

@@ -25,15 +25,15 @@ The core interface for all execution strategies is [`IExecutionStrategy`](../../
 ```csharp
 public interface IExecutionStrategy
 {
-    Task<IDataPipe<TOut>> ExecuteAsync<TIn, TOut>(
-        IDataPipe<TIn> input,
+    Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(
+        IDataStream<TIn> input,
         ITransformNode<TIn, TOut> node,
         PipelineContext context,
         CancellationToken cancellationToken);
 }
 ```
 
-This method takes an input data pipe, the transform node itself, the pipeline context, and a cancellation token, returning an output data pipe. Tracing is accessed through `context.Tracer` when needed.
+This method takes an input data stream, the transform node itself, the pipeline context, and a cancellation token, returning an output data stream. Tracing is accessed through `context.Tracer` when needed.
 
 ## Applying an Execution Strategy
 
@@ -168,7 +168,7 @@ public class AsyncTransform : TransformNode<int, string>
         // ExecutionStrategy = new ParallelExecutionStrategy();
     }
 
-    public override async Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
     {
         await Task.Delay(_delayMs, cancellationToken);
         return $"Processed:{item}";
@@ -227,7 +227,7 @@ public class VariableTimeTransform : TransformNode<int, string>
 {
     private readonly Random _random = new();
 
-    public override async Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
     {
         // Simulate variable processing time (50ms to 200ms)
         var delay = _random.Next(50, 200);
@@ -331,7 +331,7 @@ public class FlakyTransform : TransformNode<int, string>
 {
     private int _failCount = 0;
 
-    public override Task<string> ExecuteAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
     {
         if (item % 3 == 0 && _failCount < 2) // Fail for multiples of 3, up to 2 times
         {

@@ -8,7 +8,7 @@ using Amazon.SQS.Model;
 using NPipeline.Connectors.Aws.Sqs.Configuration;
 using NPipeline.Connectors.Aws.Sqs.Models;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 

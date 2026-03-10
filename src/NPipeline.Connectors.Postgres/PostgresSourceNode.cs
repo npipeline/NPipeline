@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 using Npgsql;
 using NPipeline.StorageProviders.Abstractions;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using NPipeline.Connectors.Postgres.Configuration;

@@ -1,6 +1,6 @@
 ---
 title: Data Flow Details
-description: How data pipes work and lazy evaluation in NPipeline.
+description: How data streams work and lazy evaluation in NPipeline.
 sidebar_position: 4
 ---
 
@@ -10,16 +10,16 @@ NPipeline uses lazy evaluation for memory efficiency, ensuring only active items
 
 Data flows through the pipeline as follows:
 
-## How Data Pipes Work
+## How Data Streams Work
 
 Data pipes are the channels through which data flows from nodes to the next stage in the pipeline.
 
-**Data Pipe Interface:**
+**Data Stream Interface:**
 
 ```csharp
-public interface IDataPipe<T> : IAsyncEnumerable<T>
+public interface IDataStream<T> : IAsyncEnumerable<T>
 {
-    // IDataPipe<T> implements IAsyncEnumerable<T> directly
+    // IDataStream<T> implements IAsyncEnumerable<T> directly
     // Iterate using: await foreach (var item in dataPipe)
 }
 ```
@@ -28,7 +28,7 @@ public interface IDataPipe<T> : IAsyncEnumerable<T>
 
 ```csharp
 // 1. Source produces a pipe (synchronous - no await needed)
-var sourcePipe = sourceNode.Initialize(context, cancellationToken);
+var sourcePipe = sourceNode.OpenStream(context, cancellationToken);
 
 // 2. Transform consumes and wraps it
 var transformedPipe = new TransformPipe(sourcePipe, transformNode);
@@ -75,7 +75,7 @@ graph LR
 
 ```csharp
 // Step 1: Source creates pipe (synchronous - no await needed)
-var pipe = source.Initialize(context, cancellationToken);
+var pipe = source.OpenStream(context, cancellationToken);
 
 // Step 2: Transform wraps pipe (but doesn't process yet)
 var wrappedPipe = new TransformPipe(pipe, transform);
@@ -129,15 +129,15 @@ await foreach (var result in pipeline.WithCancellation(cancellationToken))
 }
 ```
 
-## Composability of Data Pipes
+## Composability of Data Streams
 
-Each transform creates a new data pipe, allowing for clean composition:
+Each transform creates a new data stream, allowing for clean composition:
 
 ```csharp
-var source = sourceNode.Initialize(context, ct);      // IDataPipe<Order>
-var validated = new TransformPipe(source, validator);          // IDataPipe<ValidatedOrder>
-var enriched = new TransformPipe(validated, enricher);         // IDataPipe<EnrichedOrder>
-var processed = new TransformPipe(enriched, processor);        // IDataPipe<ProcessedOrder>
+var source = sourceNode.OpenStream(context, ct);      // IDataStream<Order>
+var validated = new TransformPipe(source, validator);          // IDataStream<ValidatedOrder>
+var enriched = new TransformPipe(validated, enricher);         // IDataStream<EnrichedOrder>
+var processed = new TransformPipe(enriched, processor);        // IDataStream<ProcessedOrder>
 
 // Only when iterated does the entire chain execute
 await foreach (var result in processed.WithCancellation(ct))

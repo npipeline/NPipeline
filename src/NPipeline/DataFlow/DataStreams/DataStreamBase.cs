@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 
-namespace NPipeline.DataFlow.DataPipes;
+namespace NPipeline.DataFlow.DataStreams;
 
 /// <summary>
 ///     Base class for decorating data pipes with cross-cutting concerns (counting, tracing, etc).

@@ -32,7 +32,7 @@ Each node should have a single, well-defined responsibility. This makes nodes:
 // Focused transform that only validates prices
 public sealed class PriceValidator : TransformNode<Product, Product>
 {
-    public override Task<Product> ExecuteAsync(Product item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<Product> TransformAsync(Product item, PipelineContext context, CancellationToken cancellationToken)
     {
         if (item.Price < 0)
             throw new InvalidOperationException("Price cannot be negative");
@@ -43,7 +43,7 @@ public sealed class PriceValidator : TransformNode<Product, Product>
 // Separate transform for tax calculations
 public sealed class TaxCalculator : TransformNode<Product, Product>
 {
-    public override Task<Product> ExecuteAsync(Product item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<Product> TransformAsync(Product item, PipelineContext context, CancellationToken cancellationToken)
     {
         item.Tax = item.Price * 0.08m;
         return Task.FromResult(item);
@@ -57,7 +57,7 @@ public sealed class TaxCalculator : TransformNode<Product, Product>
 // BAD: Node doing validation, tax calculation, formatting, and logging
 public sealed class MegaTransform : TransformNode<Product, Product>
 {
-    public override async Task<Product> ExecuteAsync(Product item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<Product> TransformAsync(Product item, PipelineContext context, CancellationToken cancellationToken)
     {
         // Validation logic
         if (item.Price < 0) throw new InvalidOperationException();
@@ -95,7 +95,7 @@ public sealed class EnrichedTransform : TransformNode<Customer, EnrichedCustomer
         _logger = logger;
     }
 
-    public override async Task<EnrichedCustomer> ExecuteAsync(Customer item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<EnrichedCustomer> TransformAsync(Customer item, PipelineContext context, CancellationToken cancellationToken)
     {
         _logger.LogInformation($"Processing customer: {item.Id}");
         var isValid = await _emailService.ValidateEmailAsync(item.Email, cancellationToken);
@@ -119,7 +119,7 @@ Don't let errors propagate silently. Handle them explicitly or route them approp
 ```csharp
 public sealed class ResilientTransform : TransformNode<Order, ProcessedOrder>
 {
-    public override async Task<ProcessedOrder> ExecuteAsync(Order item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<ProcessedOrder> TransformAsync(Order item, PipelineContext context, CancellationToken cancellationToken)
     {
         try
         {
@@ -163,7 +163,7 @@ Process data as it flows; don't load entire datasets into memory.
 ```csharp
 public sealed class StreamingSourceNode : SourceNode<Customer>
 {
-    public override IDataPipe<Customer> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<Customer> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         static IAsyncEnumerable<Customer> GetCustomersAsync(string connectionString, CancellationToken ct)
         {
@@ -188,7 +188,7 @@ public sealed class StreamingSourceNode : SourceNode<Customer>
             }
         }
 
-        return new StreamingDataPipe<Customer>(
+        return new DataStream<Customer>(
             GetCustomersAsync(_connectionString, cancellationToken));
     }
 }
@@ -200,7 +200,7 @@ public sealed class StreamingSourceNode : SourceNode<Customer>
 // BAD: Loading all data before streaming
 public sealed class BadSourceNode : SourceNode<Customer>
 {
-    public override IDataPipe<Customer> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<Customer> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         // This loads ALL customers into memory at once!
         var allCustomers = new List<Customer>();
@@ -210,7 +210,7 @@ public sealed class BadSourceNode : SourceNode<Customer>
 
         // ... read all customers into list ...
 
-        return new StreamingDataPipe<Customer>(
+        return new DataStream<Customer>(
             allCustomers.ToAsyncEnumerable());
     }
 }
@@ -232,7 +232,7 @@ public sealed class DiscountCalculator : TransformNode<Order, Order>
         _discountRate = discountRate;
     }
 
-    public override Task<Order> ExecuteAsync(Order item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<Order> TransformAsync(Order item, PipelineContext context, CancellationToken cancellationToken)
     {
         item.DiscountAmount = item.Total * _discountRate;
         return Task.FromResult(item);
@@ -251,7 +251,7 @@ public class DiscountCalculatorTests
         var context = PipelineContext.Default;
 
         // Act
-        var result = await transform.ExecuteAsync(order, context, CancellationToken.None);
+        var result = await transform.TransformAsync(order, context, CancellationToken.None);
 
         // Assert
         Assert.Equal(10m, result.DiscountAmount);
@@ -269,7 +269,7 @@ Choose the right execution strategy (sequential, parallel, batched) for each nod
 // CPU-bound work - good candidate for parallelism
 public sealed class ExpensiveTransform : TransformNode<Data, Result>
 {
-    public override Task<Result> ExecuteAsync(Data item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<Result> TransformAsync(Data item, PipelineContext context, CancellationToken cancellationToken)
     {
         // Heavy computation
         var result = PerformExpensiveCalculation(item);
@@ -295,7 +295,7 @@ For synchronous transforms in hot paths, override `ExecuteValueTaskAsync` to eli
 // Synchronous transform optimized with ValueTask
 public sealed class FastValidation : TransformNode<Order, Order>
 {
-    public override Task<Order> ExecuteAsync(Order item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<Order> TransformAsync(Order item, PipelineContext context, CancellationToken cancellationToken)
     {
         // Delegate to ValueTask implementation
         return FromValueTask(ExecuteValueTaskAsync(item, context, cancellationToken));
@@ -336,7 +336,7 @@ public sealed class MonitoredTransform : TransformNode<Order, ProcessedOrder>
         _logger = logger;
     }
 
-    public override async Task<ProcessedOrder> ExecuteAsync(Order item, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task<ProcessedOrder> TransformAsync(Order item, PipelineContext context, CancellationToken cancellationToken)
     {
         _logger.LogDebug("Starting processing for order {OrderId}", item.Id);
 
@@ -377,7 +377,7 @@ public sealed class ResilientSink : SinkNode<Data>
         _logger = logger;
     }
 
-    public override async Task ExecuteAsync(IDataPipe<Data> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<Data> input, PipelineContext context, CancellationToken cancellationToken)
     {
         var successCount = 0;
         var failureCount = 0;
@@ -436,7 +436,7 @@ public sealed class OrderProcessingPipeline : IPipelineDefinition
 /// <exception cref="InvalidOperationException">Thrown when price is negative or exceeds limit</exception>
 public sealed class PriceValidator : TransformNode<Order, Order>
 {
-    public override Task<Order> ExecuteAsync(Order item, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<Order> TransformAsync(Order item, PipelineContext context, CancellationToken cancellationToken)
     {
         // Implementation
     }

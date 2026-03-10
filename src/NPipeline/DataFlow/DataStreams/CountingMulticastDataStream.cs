@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using NPipeline.DataFlow.Branching;
 
-namespace NPipeline.DataFlow.DataPipes;
+namespace NPipeline.DataFlow.DataStreams;
 
 /// <summary>
 ///     Multicast data pipe that integrates counting directly into the pump.

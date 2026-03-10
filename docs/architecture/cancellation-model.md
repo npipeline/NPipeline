@@ -56,11 +56,11 @@ Check token before reading each batch:
 ```csharp
 public class FileSourceNode : ISourceNode<string>
 {
-    public IDataPipe<string> Initialize(
+    public IDataStream<string> OpenStream(
         PipelineContext context,
         CancellationToken cancellationToken = default)
     {
-        return new StreamingDataPipe<string>(ReadLines(cancellationToken));
+        return new DataStream<string>(ReadLines(cancellationToken));
     }
     
     private async IAsyncEnumerable<string> ReadLines([EnumeratorCancellation] CancellationToken cancellationToken)

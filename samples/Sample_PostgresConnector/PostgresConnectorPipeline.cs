@@ -6,7 +6,7 @@ using NPipeline.Connectors.Configuration;
 using NPipeline.Connectors.Postgres.Configuration;
 using NPipeline.Connectors.Postgres.Mapping;
 using NPipeline.Connectors.Postgres.Nodes;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Pipeline;
 
 namespace Sample_PostgresConnector;

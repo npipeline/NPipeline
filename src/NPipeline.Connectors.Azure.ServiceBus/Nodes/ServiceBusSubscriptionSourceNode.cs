@@ -9,7 +9,7 @@ using NPipeline.Connectors.Azure.ServiceBus.Configuration;
 using NPipeline.Connectors.Azure.ServiceBus.Connection;
 using NPipeline.Connectors.Azure.ServiceBus.Models;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 

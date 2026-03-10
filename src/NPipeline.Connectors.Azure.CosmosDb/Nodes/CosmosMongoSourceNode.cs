@@ -3,7 +3,7 @@ using NPipeline.Connectors.Azure.CosmosDb.Api.Mongo;
 using NPipeline.Connectors.Azure.CosmosDb.Configuration;
 using NPipeline.Connectors.Azure.CosmosDb.Mapping;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 

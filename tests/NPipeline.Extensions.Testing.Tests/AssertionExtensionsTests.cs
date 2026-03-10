@@ -1,7 +1,7 @@
 // ReSharper disable ClassNeverInstantiated.Global
 
 using AwesomeAssertions;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Extensions.Testing.AwesomeAssertions;
 using NPipeline.Pipeline;
 using InMemorySinkExtensions = NPipeline.Extensions.Testing.FluentAssertions.InMemorySinkExtensions;

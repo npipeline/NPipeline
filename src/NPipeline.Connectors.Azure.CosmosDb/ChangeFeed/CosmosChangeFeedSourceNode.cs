@@ -6,7 +6,7 @@ using Newtonsoft.Json.Linq;
 using NPipeline.Connectors.Azure.CosmosDb.Configuration;
 using NPipeline.Connectors.Azure.CosmosDb.Mapping;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using ChangeFeedStartFrom = Microsoft.Azure.Cosmos.ChangeFeedStartFrom;
