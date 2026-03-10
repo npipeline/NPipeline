@@ -17,7 +17,7 @@ public sealed class InMemoryDataStream<T>(IEnumerable<T> data, string streamName
 
     public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
     {
-        return new InMemoryDataPipeEnumerator(_data, cancellationToken);
+        return new InMemoryDataStreamEnumerator(_data, cancellationToken);
     }
 
     public async IAsyncEnumerable<object?> ToAsyncEnumerable([EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -46,7 +46,7 @@ public sealed class InMemoryDataStream<T>(IEnumerable<T> data, string streamName
         DisposeAsync().AsTask().GetAwaiter().GetResult();
     }
 
-    private sealed class InMemoryDataPipeEnumerator(List<T> data, CancellationToken cancellationToken) : IAsyncEnumerator<T>
+    private sealed class InMemoryDataStreamEnumerator(List<T> data, CancellationToken cancellationToken) : IAsyncEnumerator<T>
     {
         private int _currentIndex = -1;
 

@@ -13,7 +13,7 @@ namespace NPipeline.Connectors.Tests.Nodes;
 public class DatabaseSourceNodeTests
 {
     [Fact]
-    public void Initialize_WithStreamingResults_ReturnsStreamingDataPipe()
+    public void Initialize_WithStreamingResults_ReturnsStreamingDataStream()
     {
         var node = new TestDatabaseSourceNode(new[] { 1, 2, 3 }, true);
 
@@ -29,8 +29,8 @@ public class DatabaseSourceNodeTests
 
         var result = node.OpenStream(new PipelineContext(), CancellationToken.None);
 
-        var dataPipe = result.Should().BeOfType<InMemoryDataStream<int>>().Subject;
-        dataPipe.Items.Should().Equal(1, 2, 3);
+        var dataStream = result.Should().BeOfType<InMemoryDataStream<int>>().Subject;
+        dataStream.Items.Should().Equal(1, 2, 3);
     }
 
     [Fact]
@@ -43,8 +43,8 @@ public class DatabaseSourceNodeTests
 
         var result = node.OpenStream(new PipelineContext(), CancellationToken.None);
 
-        var dataPipe = result.Should().BeOfType<InMemoryDataStream<int>>().Subject;
-        dataPipe.Items.Should().Equal(2, 4);
+        var dataStream = result.Should().BeOfType<InMemoryDataStream<int>>().Subject;
+        dataStream.Items.Should().Equal(2, 4);
     }
 
     [Fact]
@@ -69,8 +69,8 @@ public class DatabaseSourceNodeTests
         var result = node.OpenStream(new PipelineContext(), CancellationToken.None);
 
         // Assert — only rows 3 and 4 should be emitted
-        var dataPipe = result.Should().BeOfType<InMemoryDataStream<int>>().Subject;
-        dataPipe.Items.Should().Equal(3, 4);
+        var dataStream = result.Should().BeOfType<InMemoryDataStream<int>>().Subject;
+        dataStream.Items.Should().Equal(3, 4);
 
         // Checkpoint should now reflect all rows processed (position 4)
         var finalCheckpoint = await storage.LoadAsync(pipelineId, checkpointId);

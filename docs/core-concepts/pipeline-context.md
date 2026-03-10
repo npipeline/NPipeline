@@ -248,7 +248,7 @@ Consider a scenario where you want to log the processing of each item within a t
 ```csharp
 using NPipeline;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -380,7 +380,7 @@ First, define a custom context object or simply use `PipelineContext` directly:
 ```csharp
 using NPipeline;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 
 public sealed class MyConfig

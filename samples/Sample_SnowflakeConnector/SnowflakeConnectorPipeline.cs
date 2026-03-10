@@ -265,8 +265,8 @@ public sealed class SnowflakeConnectorPipeline
         Console.WriteLine($"  Writing {customers.Count} customers using Batch strategy...");
 
         var startTime = DateTime.Now;
-        var dataPipe = new InMemoryDataStream<Customer>(customers);
-        await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<Customer>(customers);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
         var elapsed = DateTime.Now - startTime;
 
         Console.WriteLine($"  ✓ Inserted {customers.Count} customers in {elapsed.TotalSeconds:F2}s");
@@ -329,8 +329,8 @@ public sealed class SnowflakeConnectorPipeline
         Console.WriteLine($"  Writing {orders.Count} orders using PerRow strategy...");
 
         var startTime = DateTime.Now;
-        var dataPipe = new InMemoryDataStream<Order>(orders);
-        await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<Order>(orders);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
         var elapsed = DateTime.Now - startTime;
 
         Console.WriteLine($"  ✓ Inserted {orders.Count} orders in {elapsed.TotalSeconds:F2}s");
@@ -384,8 +384,8 @@ public sealed class SnowflakeConnectorPipeline
         Console.WriteLine($"  Bulk loading {orders.Count} orders using PUT + COPY INTO...");
 
         var startTime = DateTime.Now;
-        var dataPipe = new InMemoryDataStream<Order>(orders);
-        await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<Order>(orders);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
         var elapsed = DateTime.Now - startTime;
 
         Console.WriteLine($"  ✓ Loaded {orders.Count} orders via PUT+COPY in {elapsed.TotalSeconds:F2}s");
@@ -554,8 +554,8 @@ public sealed class SnowflakeConnectorPipeline
         Console.WriteLine($"  Merging {enrichedCustomers.Count} enriched customer records...");
 
         var startTime = DateTime.Now;
-        var dataPipe = new InMemoryDataStream<EnrichedCustomer>(enrichedCustomers);
-        await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<EnrichedCustomer>(enrichedCustomers);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
         var elapsed = DateTime.Now - startTime;
 
         Console.WriteLine($"  ✓ Merged {enrichedCustomers.Count} customer updates in {elapsed.TotalSeconds:F2}s");

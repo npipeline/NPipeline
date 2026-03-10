@@ -508,9 +508,9 @@ public sealed class PostgresConnectorPipeline
         var context = new PipelineContext();
 
         // Create a data pipe from the list
-        var dataPipe = new InMemoryDataStream<OrderSummary>(summaries);
+        var dataStream = new InMemoryDataStream<OrderSummary>(summaries);
 
-        await sinkNode.ConsumeAsync(dataPipe, context, cancellationToken);
+        await sinkNode.ConsumeAsync(dataStream, context, cancellationToken);
 
         return summaries.Count;
     }

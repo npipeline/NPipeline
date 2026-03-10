@@ -14,10 +14,10 @@ public class PipelineOutputSinkTests
         var sink = new PipelineOutputSink<int>();
         var context = new PipelineContext();
         var expectedValue = 42;
-        var dataPipe = new InMemoryDataStream<int>([expectedValue], "TestPipe");
+        var dataStream = new InMemoryDataStream<int>([expectedValue], "TestPipe");
 
         // Act
-        await sink.ConsumeAsync(dataPipe, context, CancellationToken.None);
+        await sink.ConsumeAsync(dataStream, context, CancellationToken.None);
 
         // Assert
         context.Parameters.Should().ContainKey(CompositeContextKeys.OutputItem);
@@ -31,10 +31,10 @@ public class PipelineOutputSinkTests
         var sink = new PipelineOutputSink<int>();
         var context = new PipelineContext();
         var items = new[] { 1, 2, 3, 4, 5 };
-        var dataPipe = new InMemoryDataStream<int>(items, "TestPipe");
+        var dataStream = new InMemoryDataStream<int>(items, "TestPipe");
 
         // Act
-        await sink.ConsumeAsync(dataPipe, context, CancellationToken.None);
+        await sink.ConsumeAsync(dataStream, context, CancellationToken.None);
 
         // Assert
         context.Parameters.Should().ContainKey(CompositeContextKeys.OutputItem);
@@ -48,10 +48,10 @@ public class PipelineOutputSinkTests
         var sink = new PipelineOutputSink<string>();
         var context = new PipelineContext();
         var expectedValue = "test output";
-        var dataPipe = new InMemoryDataStream<string>([expectedValue], "TestPipe");
+        var dataStream = new InMemoryDataStream<string>([expectedValue], "TestPipe");
 
         // Act
-        await sink.ConsumeAsync(dataPipe, context, CancellationToken.None);
+        await sink.ConsumeAsync(dataStream, context, CancellationToken.None);
 
         // Assert
         context.Parameters.Should().ContainKey(CompositeContextKeys.OutputItem);
@@ -65,10 +65,10 @@ public class PipelineOutputSinkTests
         var sink = new PipelineOutputSink<TestData>();
         var context = new PipelineContext();
         var expectedValue = new TestData { Id = 1, Name = "Test" };
-        var dataPipe = new InMemoryDataStream<TestData>([expectedValue], "TestPipe");
+        var dataStream = new InMemoryDataStream<TestData>([expectedValue], "TestPipe");
 
         // Act
-        await sink.ConsumeAsync(dataPipe, context, CancellationToken.None);
+        await sink.ConsumeAsync(dataStream, context, CancellationToken.None);
 
         // Assert
         context.Parameters.Should().ContainKey(CompositeContextKeys.OutputItem);
@@ -84,11 +84,11 @@ public class PipelineOutputSinkTests
         // Arrange
         var sink = new PipelineOutputSink<int>();
         var context = new PipelineContext();
-        var dataPipe = new InMemoryDataStream<int>([], "TestPipe");
+        var dataStream = new InMemoryDataStream<int>([], "TestPipe");
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sink.ConsumeAsync(dataPipe, context, CancellationToken.None));
+            sink.ConsumeAsync(dataStream, context, CancellationToken.None));
     }
 
     private sealed class TestData

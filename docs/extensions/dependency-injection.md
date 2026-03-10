@@ -260,7 +260,7 @@ Let's consider a pipeline where a transform node relies on an external service, 
 ```csharp
 using NPipeline;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
@@ -309,7 +309,7 @@ public sealed class NotificationTransform : TransformNode<string, string>
 ```csharp
 using NPipeline;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;

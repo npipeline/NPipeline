@@ -7,7 +7,7 @@ namespace NPipeline.DataFlow.DataStreams;
 /// <summary>
 ///     Simple adapter that wraps an IAsyncEnumerable&lt;T&gt; to implement IDataStream&lt;T&gt;.
 /// </summary>
-internal sealed class AsyncEnumerableDataPipe<T>(IAsyncEnumerable<T> source, string streamName) : IForwardOnlyDataStream<T>
+internal sealed class AsyncEnumerableDataStream<T>(IAsyncEnumerable<T> source, string streamName) : IForwardOnlyDataStream<T>
 {
     public string StreamName { get; } = streamName;
 
@@ -56,7 +56,7 @@ internal sealed class MulticastDataStream<T> : DataStreamBase<T>, IHasBranchMetr
     private int _nextSubscriber;
 
     private MulticastDataStream(IAsyncEnumerable<T> source, int subscriberCount, int? perSubscriberBuffer, string streamName, BranchMetrics metrics)
-        : base(new AsyncEnumerableDataPipe<T>(source, streamName))
+        : base(new AsyncEnumerableDataStream<T>(source, streamName))
     {
         _channels = new Channel<T>[subscriberCount];
         Metrics = metrics;

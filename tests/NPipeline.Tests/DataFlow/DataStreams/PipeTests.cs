@@ -5,13 +5,13 @@ using NPipeline.DataFlow.DataStreams;
 namespace NPipeline.Tests.DataFlow.DataStreams;
 
 /// <summary>
-///     Tests for common DataPipe interface contracts.
-///     Validates that all DataPipe implementations correctly implement IDataStream and IDataStream&lt;T&gt; interfaces.
+///     Tests for common DataStream interface contracts.
+///     Validates that all DataStream implementations correctly implement IDataStream and IDataStream&lt;T&gt; interfaces.
 /// </summary>
 public sealed class PipeTests
 {
     [Fact]
-    public void InMemoryDataPipe_ImplementsIDataPipe()
+    public void InMemoryDataStream_ImplementsIDataStream()
     {
         // Arrange
         List<int> items = [1, 2, 3];
@@ -22,7 +22,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public void InMemoryDataPipe_ImplementsIDataPipeGeneric()
+    public void InMemoryDataStream_ImplementsIDataStreamGeneric()
     {
         // Arrange
         List<int> items = [1, 2, 3];
@@ -33,7 +33,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public void StreamingDataPipe_ImplementsIDataPipe()
+    public void StreamingDataStream_ImplementsIDataStream()
     {
         // Arrange
         var stream = GetTestStream();
@@ -44,7 +44,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public void StreamingDataPipe_ImplementsIDataPipeGeneric()
+    public void StreamingDataStream_ImplementsIDataStreamGeneric()
     {
         // Arrange
         var stream = GetTestStream();
@@ -55,7 +55,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public async Task InMemoryDataPipe_ToAsyncEnumerable_ReturnsCorrectItems()
+    public async Task InMemoryDataStream_ToAsyncEnumerable_ReturnsCorrectItems()
     {
         // Arrange
         List<int> items = [1, 2, 3];
@@ -73,7 +73,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public async Task StreamingDataPipe_ToAsyncEnumerable_ReturnsCorrectItems()
+    public async Task StreamingDataStream_ToAsyncEnumerable_ReturnsCorrectItems()
     {
         // Arrange
         var stream = GetTestStream();
@@ -91,7 +91,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public void InMemoryDataPipe_GetDataType_ReturnsCorrectType()
+    public void InMemoryDataStream_GetDataType_ReturnsCorrectType()
     {
         // Arrange
         List<int> items = [1, 2, 3];
@@ -102,7 +102,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public void StreamingDataPipe_GetDataType_ReturnsCorrectType()
+    public void StreamingDataStream_GetDataType_ReturnsCorrectType()
     {
         // Arrange
         var stream = GetTestStream();
@@ -113,7 +113,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public async Task InMemoryDataPipe_AsAsyncEnumerable_EnumeratesCorrectly()
+    public async Task InMemoryDataStream_AsAsyncEnumerable_EnumeratesCorrectly()
     {
         // Arrange
         List<int> items = [1, 2, 3];
@@ -131,7 +131,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public async Task StreamingDataPipe_AsAsyncEnumerable_EnumeratesCorrectly()
+    public async Task StreamingDataStream_AsAsyncEnumerable_EnumeratesCorrectly()
     {
         // Arrange
         var stream = GetTestStream();
@@ -149,7 +149,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public async Task InMemoryDataPipe_Dispose_DoesNotThrow()
+    public async Task InMemoryDataStream_Dispose_DoesNotThrow()
     {
         // Arrange
         List<int> items = [1, 2, 3];
@@ -161,7 +161,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public void InMemoryDataPipe_IDisposable_DoesNotThrow()
+    public void InMemoryDataStream_IDisposable_DoesNotThrow()
     {
         // Arrange
         List<int> items = [1, 2, 3];
@@ -173,7 +173,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public void InMemoryDataPipe_ImplementsBothDisposalInterfaces()
+    public void InMemoryDataStream_ImplementsBothDisposalInterfaces()
     {
         // Arrange
         List<int> items = [1, 2, 3];
@@ -185,7 +185,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public async Task StreamingDataPipe_Dispose_DoesNotThrow()
+    public async Task StreamingDataStream_Dispose_DoesNotThrow()
     {
         // Arrange
         var stream = GetTestStream();
@@ -197,7 +197,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public void InMemoryDataPipe_StreamName_PropertyAccessible()
+    public void InMemoryDataStream_StreamName_PropertyAccessible()
     {
         // Arrange
         List<int> items = [1, 2, 3];
@@ -208,7 +208,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public void StreamingDataPipe_StreamName_PropertyAccessible()
+    public void StreamingDataStream_StreamName_PropertyAccessible()
     {
         // Arrange
         var stream = GetTestStream();
@@ -219,7 +219,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public void CappedReplayableDataPipe_ImplementsIDataPipe()
+    public void CappedReplayableDataStream_ImplementsIDataStream()
     {
         // Arrange
         List<int> items = [1, 2, 3];
@@ -231,7 +231,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public void CappedReplayableDataPipe_ImplementsIDataPipeGeneric()
+    public void CappedReplayableDataStream_ImplementsIDataStreamGeneric()
     {
         // Arrange
         List<int> items = [1, 2, 3];
@@ -243,7 +243,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public void CappedReplayableDataPipe_GetDataType_ReturnsCorrectType()
+    public void CappedReplayableDataStream_GetDataType_ReturnsCorrectType()
     {
         // Arrange
         List<int> items = [1, 2, 3];
@@ -255,7 +255,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public async Task CappedReplayableDataPipe_ToAsyncEnumerable_ReturnsCorrectItems()
+    public async Task CappedReplayableDataStream_ToAsyncEnumerable_ReturnsCorrectItems()
     {
         // Arrange
         List<int> items = [1, 2, 3];
@@ -274,7 +274,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public async Task CappedReplayableDataPipe_AsAsyncEnumerable_EnumeratesCorrectly()
+    public async Task CappedReplayableDataStream_AsAsyncEnumerable_EnumeratesCorrectly()
     {
         // Arrange
         List<int> items = [1, 2, 3];
@@ -293,7 +293,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public async Task CappedReplayableDataPipe_Dispose_DoesNotThrow()
+    public async Task CappedReplayableDataStream_Dispose_DoesNotThrow()
     {
         // Arrange
         List<int> items = [1, 2, 3];
@@ -306,7 +306,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public void CappedReplayableDataPipe_StreamName_PropertyAccessible()
+    public void CappedReplayableDataStream_StreamName_PropertyAccessible()
     {
         // Arrange
         List<int> items = [1, 2, 3];

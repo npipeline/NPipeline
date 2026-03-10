@@ -156,11 +156,11 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
         // Act - Consume from source and produce to sink
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var context = new PipelineContext();
-        var dataPipe = sourceNode.OpenStream(context, cts.Token);
+        var dataStream = sourceNode.OpenStream(context, cts.Token);
 
         var processedMessages = new List<TestMessage>();
 
-        await foreach (var kafkaMessage in dataPipe.WithCancellation(cts.Token))
+        await foreach (var kafkaMessage in dataStream.WithCancellation(cts.Token))
         {
             processedMessages.Add(kafkaMessage.Body);
             await kafkaMessage.AcknowledgeAsync(cts.Token);
@@ -272,11 +272,11 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
         // Act - Consume and acknowledge messages
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var context = new PipelineContext();
-        var dataPipe = sourceNode.OpenStream(context, cts.Token);
+        var dataStream = sourceNode.OpenStream(context, cts.Token);
 
         var consumedMessages = new List<KafkaMessage<TestMessage>>();
 
-        await foreach (var kafkaMessage in dataPipe.WithCancellation(cts.Token))
+        await foreach (var kafkaMessage in dataStream.WithCancellation(cts.Token))
         {
             consumedMessages.Add(kafkaMessage);
             await kafkaMessage.AcknowledgeAsync(cts.Token);
@@ -332,11 +332,11 @@ public sealed class KafkaConnectorIntegrationTests : IAsyncLifetime
         // Act - Consume in batches
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var context = new PipelineContext();
-        var dataPipe = sourceNode.OpenStream(context, cts.Token);
+        var dataStream = sourceNode.OpenStream(context, cts.Token);
 
         var consumedCount = 0;
 
-        await foreach (var _ in dataPipe.WithCancellation(cts.Token))
+        await foreach (var _ in dataStream.WithCancellation(cts.Token))
         {
             consumedCount++;
 

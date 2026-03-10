@@ -56,7 +56,7 @@ NPipeline excels in scenarios where you need to process data efficiently and rel
 - **Transforms** process data item by item (`TransformNode<TIn, TOut>`)
 - **Sinks** consume data and perform final operations (`SinkNode<T>`)
 
-**Data Pipes** transport data between nodes as strongly-typed async streams (`IDataPipe<T>`).
+**Data Streams** transport data between nodes as strongly-typed async streams (`IDataStream<T>`).
 
 **Pipeline Context** provides logging, cancellation, error handling, and shared state without carrying data payloads.
 
@@ -95,16 +95,16 @@ public record ProcessedOrder(int Id, string Customer, decimal Amount, decimal Ta
 // 2. Create source, transform and sink nodes
 public class OrderSource : SourceNode<Order>
 {
-    public override IDataPipe<Order> Initialize(PipelineContext context, CancellationToken cancellationToken)
+    public override IDataStream<Order> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var orders = new[] { new Order(1, "Alice", 100m), new Order(2, "Bob", 250m), new Order(3, "Carol", 75m) };
-        return new StreamingDataPipe<Order>(orders.ToAsyncEnumerable());
+        return new StreamingDataStream<Order>(orders.ToAsyncEnumerable());
     }
 }
 
 public class TaxCalculator : TransformNode<Order, ProcessedOrder>
 {
-    public override Task<ProcessedOrder> ExecuteAsync(Order order, PipelineContext context, CancellationToken cancellationToken)
+    public override Task<ProcessedOrder> TransformAsync(Order order, PipelineContext context, CancellationToken cancellationToken)
     {
         var tax = order.Amount * 0.08m;
         var total = order.Amount + tax;
@@ -114,7 +114,7 @@ public class TaxCalculator : TransformNode<Order, ProcessedOrder>
 
 public class OrderSink : SinkNode<ProcessedOrder>
 {
-    public override async Task ExecuteAsync(IDataPipe<ProcessedOrder> input, PipelineContext context, CancellationToken cancellationToken)
+    public override async Task ConsumeAsync(IDataStream<ProcessedOrder> input, PipelineContext context, CancellationToken cancellationToken)
     {
         await foreach (var order in input.WithCancellation(cancellationToken))
         {

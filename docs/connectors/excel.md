@@ -195,7 +195,7 @@ You can read this data into your pipeline as follows:
 using NPipeline;
 using NPipeline.Connectors;
 using NPipeline.Connectors.Excel;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow;
 using NPipeline.Execution;
 using NPipeline.Nodes;

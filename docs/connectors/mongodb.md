@@ -837,8 +837,8 @@ var testData = new List<Order>
     new() { Id = "1", Customer = "Test", Amount = 100m, Status = "pending" }
 };
 
-var dataPipe = new InMemoryDataStream<Order>(testData);
-await sinkNode.ConsumeAsync(dataPipe, context, CancellationToken.None);
+var dataStream = new InMemoryDataStream<Order>(testData);
+await sinkNode.ConsumeAsync(dataStream, context, CancellationToken.None);
 ```
 
 ## Best Practices

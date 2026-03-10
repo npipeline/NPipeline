@@ -216,7 +216,7 @@ public class CurrentYearDataSource : SourceNode<SalesData>
         var allSalesData = salesSource.OpenStream(context, cancellationToken);
 
         // Create filtered pipe that only returns current year data
-        return new YearFilteredDataPipe(allSalesData, _comparisonYear);
+        return new YearFilteredDataStream(allSalesData, _comparisonYear);
     }
 }
 
@@ -249,19 +249,19 @@ public class PreviousYearDataSource : SourceNode<SalesData>
         var allSalesData = salesSource.OpenStream(context, cancellationToken);
 
         // Create filtered pipe that only returns previous year data
-        return new YearFilteredDataPipe(allSalesData, _comparisonYear - 1);
+        return new YearFilteredDataStream(allSalesData, _comparisonYear - 1);
     }
 }
 
 /// <summary>
 ///     Data pipe that filters sales data by year.
 /// </summary>
-public class YearFilteredDataPipe : IDataStream<SalesData>
+public class YearFilteredDataStream : IDataStream<SalesData>
 {
     private readonly IDataStream<SalesData> _source;
     private readonly int _targetYear;
 
-    public YearFilteredDataPipe(IDataStream<SalesData> source, int targetYear)
+    public YearFilteredDataStream(IDataStream<SalesData> source, int targetYear)
     {
         _source = source;
         _targetYear = targetYear;

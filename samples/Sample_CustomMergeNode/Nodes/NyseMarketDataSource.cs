@@ -52,7 +52,7 @@ public class NyseMarketDataSource : SourceNode<MarketDataTick>
         try
         {
             var channel = Channel.CreateUnbounded<MarketDataTick>();
-            var dataPipe = new ChannelDataPipe<MarketDataTick>(channel, "NYSE-Source");
+            var dataStream = new ChannelDataStream<MarketDataTick>(channel, "NYSE-Source");
 
             // Start generating data in the background
             _ = Task.Run(async () =>
@@ -67,7 +67,7 @@ public class NyseMarketDataSource : SourceNode<MarketDataTick>
                             break;
                         }
 
-                        await dataPipe.WriteAsync(tick, cancellationToken);
+                        await dataStream.WriteAsync(tick, cancellationToken);
                     }
                 }
                 catch (OperationCanceledException)
@@ -84,7 +84,7 @@ public class NyseMarketDataSource : SourceNode<MarketDataTick>
                 }
             }, cancellationToken);
 
-            return dataPipe;
+            return dataStream;
         }
         catch (Exception ex)
         {

@@ -19,7 +19,7 @@ Extract customer data from a CSV file, enrich it with regional information, and 
 ```csharp
 using NPipeline;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
 using NPipeline.Connectors;
 using NPipeline.Connectors.Csv;

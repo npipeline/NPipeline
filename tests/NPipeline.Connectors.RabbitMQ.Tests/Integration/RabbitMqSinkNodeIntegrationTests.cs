@@ -66,7 +66,7 @@ public sealed class RabbitMqSinkNodeIntegrationTests : IAsyncDisposable
             logger: NullLogger<RabbitMqSinkNode<TestMessage>>.Instance);
 
         // Act
-        var pipe = CreateDataPipe(items);
+        var pipe = CreateDataStream(items);
         await sinkNode.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
 
         // Assert - consume and verify
@@ -114,7 +114,7 @@ public sealed class RabbitMqSinkNodeIntegrationTests : IAsyncDisposable
             logger: NullLogger<RabbitMqSinkNode<TestMessage>>.Instance);
 
         // Act
-        await sinkNode.ConsumeAsync(CreateDataPipe(items), new PipelineContext(), CancellationToken.None);
+        await sinkNode.ConsumeAsync(CreateDataStream(items), new PipelineContext(), CancellationToken.None);
 
         // Assert
         var consumeChannel = await connection.CreateChannelAsync();
@@ -126,7 +126,7 @@ public sealed class RabbitMqSinkNodeIntegrationTests : IAsyncDisposable
         await consumeChannel.CloseAsync();
     }
 
-    private static IDataStream<T> CreateDataPipe<T>(IEnumerable<T> items)
+    private static IDataStream<T> CreateDataStream<T>(IEnumerable<T> items)
     {
         async IAsyncEnumerable<T> Enumerate()
         {

@@ -77,7 +77,7 @@ public SqsSourceNode(IAmazonSQS sqsClient, SqsConfiguration configuration)
 ```csharp
 using NPipeline.Connectors.Aws.Sqs.Configuration;
 using NPipeline.Connectors.Aws.Sqs.Nodes;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow;
 using NPipeline.Execution;
 using NPipeline.Nodes;

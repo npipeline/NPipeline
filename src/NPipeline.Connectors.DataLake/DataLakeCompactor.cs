@@ -320,9 +320,9 @@ public sealed class DataLakeCompactor
         // since ParquetRow doesn't have a parameterless constructor for attribute mapping
         var sourceNode = new ParquetSourceNode<ParquetRow>(_provider, fileUri, row => row, _configuration);
 
-        var dataPipe = sourceNode.OpenStream(PipelineContext.Default, cancellationToken);
+        var dataStream = sourceNode.OpenStream(PipelineContext.Default, cancellationToken);
 
-        await foreach (var item in dataPipe.WithCancellation(cancellationToken))
+        await foreach (var item in dataStream.WithCancellation(cancellationToken))
         {
             yield return item;
         }

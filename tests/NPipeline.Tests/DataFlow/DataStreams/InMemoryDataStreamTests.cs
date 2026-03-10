@@ -3,7 +3,7 @@ using NPipeline.DataFlow;
 
 namespace NPipeline.Tests.DataFlow.DataStreams;
 
-public sealed class InMemoryDataPipeTests
+public sealed class InMemoryDataStreamTests
 {
     [Fact]
     public void Constructor_WithNullItems_ThrowsArgumentNullException()
@@ -232,7 +232,7 @@ public sealed class InMemoryDataPipeTests
     }
 
     [Fact]
-    public void InMemoryDataPipe_ImplementsIDisposable()
+    public void InMemoryDataStream_ImplementsIDisposable()
     {
         // Arrange
         List<int> items = [1, 2, 3];
@@ -243,7 +243,7 @@ public sealed class InMemoryDataPipeTests
     }
 
     [Fact]
-    public void InMemoryDataPipe_ImplementsIAsyncDisposable()
+    public void InMemoryDataStream_ImplementsIAsyncDisposable()
     {
         // Arrange
         List<int> items = [1, 2, 3];

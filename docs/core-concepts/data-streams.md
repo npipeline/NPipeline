@@ -110,7 +110,7 @@ In a source node, you are responsible for creating the initial data stream. NPip
 ```csharp
 using NPipeline;
 using NPipeline.DataFlow;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 

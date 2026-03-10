@@ -99,7 +99,7 @@ NPipeline uses `IAsyncEnumerable<T>` for **lazy, streaming data flow**:
 public interface IDataStream<T> : IAsyncEnumerable<T>
 {
     // IDataStream<T> implements IAsyncEnumerable<T> directly
-    // Iterate using: await foreach (var item in dataPipe)
+    // Iterate using: await foreach (var item in dataStream)
 }
 ```
 

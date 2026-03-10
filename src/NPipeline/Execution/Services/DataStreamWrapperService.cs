@@ -10,7 +10,7 @@ namespace NPipeline.Execution.Services;
 
 /// <summary>
 ///     Provides wrapping that combines counting and multicasting in a single operation.
-///     This eliminates one layer of DataPipe wrapping compared to wrapping counting and multicasting separately.
+///     This eliminates one layer of DataStream wrapping compared to wrapping counting and multicasting separately.
 /// </summary>
 public sealed class DataStreamWrapperService
 {

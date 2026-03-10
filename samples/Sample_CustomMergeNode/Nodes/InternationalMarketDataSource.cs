@@ -46,7 +46,7 @@ public class InternationalMarketDataSource : SourceNode<MarketDataTick>
         try
         {
             var channel = Channel.CreateUnbounded<MarketDataTick>();
-            var dataPipe = new ChannelDataPipe<MarketDataTick>(channel, "International-Source");
+            var dataStream = new ChannelDataStream<MarketDataTick>(channel, "International-Source");
 
             // Start generating data in the background
             _ = Task.Run(async () =>
@@ -61,7 +61,7 @@ public class InternationalMarketDataSource : SourceNode<MarketDataTick>
                             break;
                         }
 
-                        await dataPipe.WriteAsync(tick, cancellationToken);
+                        await dataStream.WriteAsync(tick, cancellationToken);
                     }
                 }
                 catch (OperationCanceledException)
@@ -78,7 +78,7 @@ public class InternationalMarketDataSource : SourceNode<MarketDataTick>
                 }
             }, cancellationToken);
 
-            return dataPipe;
+            return dataStream;
         }
         catch (Exception ex)
         {

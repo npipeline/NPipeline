@@ -59,7 +59,7 @@ public class InMemorySourceNodeTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithEmbeddedItems_ShouldReturnDataPipeWithItems()
+    public async Task OpenStream_WithEmbeddedItems_ShouldReturnDataStreamWithItems()
     {
         // Arrange
         var items = new[] { 1, 2, 3 };
@@ -82,7 +82,7 @@ public class InMemorySourceNodeTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithNodeScopedContextData_ShouldReturnDataPipeWithItems()
+    public async Task OpenStream_WithNodeScopedContextData_ShouldReturnDataStreamWithItems()
     {
         // Arrange
         var context = PipelineContext.Default;
@@ -109,7 +109,7 @@ public class InMemorySourceNodeTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithTypeScopedContextData_ShouldReturnDataPipeWithItems()
+    public async Task OpenStream_WithTypeScopedContextData_ShouldReturnDataStreamWithItems()
     {
         // Arrange
         var context = PipelineContext.Default;

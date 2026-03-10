@@ -68,7 +68,7 @@ public sealed class InterleaveMergeStrategy<T> : IMergeStrategy<T>
     }
 
     private static async IAsyncEnumerable<T> InterleaveBounded(
-        IReadOnlyList<IDataStream<T>> dataPipes,
+        IReadOnlyList<IDataStream<T>> dataStreams,
         int? capacity = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -81,10 +81,10 @@ public sealed class InterleaveMergeStrategy<T> : IMergeStrategy<T>
             })
             : Channel.CreateUnbounded<T>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
 
-        var producerTasks = dataPipes
-            .Select(dataPipe => Task.Run(async () =>
+        var producerTasks = dataStreams
+            .Select(dataStream => Task.Run(async () =>
             {
-                await foreach (var item in dataPipe.WithCancellation(cancellationToken).ConfigureAwait(false))
+                await foreach (var item in dataStream.WithCancellation(cancellationToken).ConfigureAwait(false))
                 {
                     if (!await channel.Writer.WaitToWriteAsync(cancellationToken).ConfigureAwait(false))
                         break;

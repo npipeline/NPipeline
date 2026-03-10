@@ -15,13 +15,13 @@ public static class MergeStrategies
     ///     It processes all items from the first stream, then all from the second, and so on.
     /// </summary>
     public static async IAsyncEnumerable<T> Concatenate<T>(
-        IEnumerable<IDataStream> dataPipes,
+        IEnumerable<IDataStream> dataStreams,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        foreach (var dataPipe in dataPipes)
+        foreach (var dataStream in dataStreams)
         {
-            if (dataPipe is not IDataStream<T> typedPipe)
-                throw new InvalidCastException($"Cannot concatenate streams. Expected pipe of '{typeof(T).Name}', but found '{dataPipe.GetType().Name}'.");
+            if (dataStream is not IDataStream<T> typedPipe)
+                throw new InvalidCastException($"Cannot concatenate streams. Expected pipe of '{typeof(T).Name}', but found '{dataStream.GetType().Name}'.");
 
             await foreach (var item in typedPipe.WithCancellation(cancellationToken).ConfigureAwait(false))
             {
@@ -36,10 +36,10 @@ public static class MergeStrategies
     ///     This is ideal for responsive, real-time processing.
     /// </summary>
     public static async IAsyncEnumerable<T> Interleave<T>(
-        IEnumerable<IDataStream> dataPipes,
+        IEnumerable<IDataStream> dataStreams,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        await foreach (var item in InterleaveBounded<T>(dataPipes, null, cancellationToken).ConfigureAwait(false))
+        await foreach (var item in InterleaveBounded<T>(dataStreams, null, cancellationToken).ConfigureAwait(false))
         {
             yield return item;
         }
@@ -51,12 +51,12 @@ public static class MergeStrategies
     ///     This is ideal for responsive, real-time processing with memory constraints.
     /// </summary>
     /// <typeparam name="T">The type of data in the streams.</typeparam>
-    /// <param name="dataPipes">The data pipes to merge.</param>
+    /// <param name="dataStreams">The data pipes to merge.</param>
     /// <param name="capacity">Optional capacity limit for the internal channel. If null, uses unbounded channel.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A single merged asynchronous stream.</returns>
     public static async IAsyncEnumerable<T> InterleaveBounded<T>(
-        IEnumerable<IDataStream> dataPipes,
+        IEnumerable<IDataStream> dataStreams,
         int? capacity = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -69,13 +69,13 @@ public static class MergeStrategies
             })
             : Channel.CreateUnbounded<T>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
 
-        var producerTasks = dataPipes
-            .Select(dataPipe => Task.Run(async () =>
+        var producerTasks = dataStreams
+            .Select(dataStream => Task.Run(async () =>
             {
-                if (dataPipe is not IDataStream<T> typedPipe)
+                if (dataStream is not IDataStream<T> typedPipe)
                 {
                     channel.Writer.TryComplete(
-                        new InvalidCastException($"Cannot interleave streams. Expected pipe of '{typeof(T).Name}', but found '{dataPipe.GetType().Name}'."));
+                        new InvalidCastException($"Cannot interleave streams. Expected pipe of '{typeof(T).Name}', but found '{dataStream.GetType().Name}'."));
 
                     return;
                 }

@@ -10,10 +10,10 @@ namespace NPipeline.Graph.PipelineDelegates;
 ///     Represents a delegate for custom merge logic that combines multiple input data pipes into one.
 /// </summary>
 /// <param name="node">The node performing merge.</param>
-/// <param name="dataPipes">The input data pipes to merge.</param>
+/// <param name="dataStreams">The input data pipes to merge.</param>
 /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
 /// <returns>A task that resolves to the merged output data pipe.</returns>
-public delegate Task<IDataStream> CustomMergeDelegate(INode node, IEnumerable<IDataStream> dataPipes, CancellationToken cancellationToken);
+public delegate Task<IDataStream> CustomMergeDelegate(INode node, IEnumerable<IDataStream> dataStreams, CancellationToken cancellationToken);
 
 /// <summary>
 ///     Represents a delegate for unwrapping lineage information in sink nodes.

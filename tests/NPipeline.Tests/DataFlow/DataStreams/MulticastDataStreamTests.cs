@@ -6,7 +6,7 @@ using NPipeline.DataFlow.DataStreams;
 
 namespace NPipeline.Tests.DataFlow.DataStreams;
 
-public sealed class MulticastDataPipeTests
+public sealed class MulticastDataStreamTests
 {
     [Fact]
     public void Create_WithValidParameters_CreatesPipeCorrectly()
@@ -19,7 +19,7 @@ public sealed class MulticastDataPipeTests
         BranchMetrics metrics = new();
 
         // Act
-        var pipe = CreateMulticastDataPipe(source, subscriberCount, perSubscriberBuffer, streamName, metrics);
+        var pipe = CreateMulticastDataStream(source, subscriberCount, perSubscriberBuffer, streamName, metrics);
 
         // Assert
         _ = pipe.Should().NotBeNull();
@@ -33,7 +33,7 @@ public sealed class MulticastDataPipeTests
         // Arrange
         var source = GetTestStream();
         BranchMetrics metrics = new();
-        var pipe = CreateMulticastDataPipe(source, 1, null, "TestStream", metrics);
+        var pipe = CreateMulticastDataStream(source, 1, null, "TestStream", metrics);
         List<int> enumeratedItems = [];
 
         // Act
@@ -52,7 +52,7 @@ public sealed class MulticastDataPipeTests
         // Arrange
         var source = GetTestStream();
         BranchMetrics metrics = new();
-        var pipe = CreateMulticastDataPipe(source, 2, null, "TestStream", metrics);
+        var pipe = CreateMulticastDataStream(source, 2, null, "TestStream", metrics);
 
         // Act
         List<int> firstSubscriber = [];
@@ -87,12 +87,12 @@ public sealed class MulticastDataPipeTests
         // Arrange
         var source = GetTestStream();
         BranchMetrics metrics = new();
-        var pipe = CreateMulticastDataPipe(source, 1, null, "TestStream", metrics);
+        var pipe = CreateMulticastDataStream(source, 1, null, "TestStream", metrics);
 
         // Act - Get first enumerator
         await foreach (var item in pipe)
 
-            // Consume first item
+        // Consume first item
         {
             break;
         }
@@ -113,7 +113,7 @@ public sealed class MulticastDataPipeTests
         // Arrange
         var source = GetLongRunningStream();
         BranchMetrics metrics = new();
-        var pipe = CreateMulticastDataPipe(source, 1, 2, "TestStream", metrics);
+        var pipe = CreateMulticastDataStream(source, 1, 2, "TestStream", metrics);
         List<int> enumeratedItems = [];
 
         // Act
@@ -136,7 +136,7 @@ public sealed class MulticastDataPipeTests
         // Arrange
         var source = GetLongRunningStream();
         BranchMetrics metrics = new();
-        var pipe = CreateMulticastDataPipe(source, 1, null, "TestStream", metrics);
+        var pipe = CreateMulticastDataStream(source, 1, null, "TestStream", metrics);
         CancellationTokenSource cts = new();
         List<int> enumeratedItems = [];
         var itemsToCollect = 2;
@@ -168,7 +168,7 @@ public sealed class MulticastDataPipeTests
         // Arrange
         var source = GetTestStream();
         BranchMetrics metrics = new();
-        IDataStream<int> pipe = CreateMulticastDataPipe(source, 1, null, "TestStream", metrics);
+        IDataStream<int> pipe = CreateMulticastDataStream(source, 1, null, "TestStream", metrics);
         List<object> enumeratedItems = [];
 
         // Act
@@ -187,7 +187,7 @@ public sealed class MulticastDataPipeTests
         // Arrange
         var source = GetLongRunningStream();
         BranchMetrics metrics = new();
-        var pipe = CreateMulticastDataPipe(source, 1, null, "TestStream", metrics);
+        var pipe = CreateMulticastDataStream(source, 1, null, "TestStream", metrics);
 
         // Act
         await pipe.DisposeAsync();
@@ -202,7 +202,7 @@ public sealed class MulticastDataPipeTests
         // Arrange
         var source = GetTestStream();
         BranchMetrics metrics = new();
-        var pipe = CreateMulticastDataPipe(source, 1, null, "TestStream", metrics);
+        var pipe = CreateMulticastDataStream(source, 1, null, "TestStream", metrics);
 
         // Act
         await foreach (var item in pipe)
@@ -221,7 +221,7 @@ public sealed class MulticastDataPipeTests
         // Arrange
         var source = GetStringTestStream();
         BranchMetrics metrics = new();
-        var pipe = CreateMulticastDataPipe(source, 1, null, "TestStream", metrics);
+        var pipe = CreateMulticastDataStream(source, 1, null, "TestStream", metrics);
 
         // Act & Assert
         _ = pipe.GetDataType().Should().Be<string>();
@@ -233,7 +233,7 @@ public sealed class MulticastDataPipeTests
         // Arrange
         var source = GetNullTestStream();
         BranchMetrics metrics = new();
-        var pipe = CreateMulticastDataPipe(source, 1, null, "TestStream", metrics);
+        var pipe = CreateMulticastDataStream(source, 1, null, "TestStream", metrics);
         List<string?> enumeratedItems = [];
 
         // Act
@@ -252,7 +252,7 @@ public sealed class MulticastDataPipeTests
         // Arrange
         var source = GetComplexTestStream();
         BranchMetrics metrics = new();
-        var pipe = CreateMulticastDataPipe(source, 1, null, "TestStream", metrics);
+        var pipe = CreateMulticastDataStream(source, 1, null, "TestStream", metrics);
         List<TestData> enumeratedItems = [];
 
         // Act
@@ -275,7 +275,7 @@ public sealed class MulticastDataPipeTests
         // Arrange
         var source = GetExceptionStream();
         BranchMetrics metrics = new();
-        var pipe = CreateMulticastDataPipe(source, 2, null, "TestStream", metrics);
+        var pipe = CreateMulticastDataStream(source, 2, null, "TestStream", metrics);
 
         // Act & Assert
         Task firstTask = Assert.ThrowsAsync<InvalidOperationException>(async () =>
@@ -303,7 +303,7 @@ public sealed class MulticastDataPipeTests
         // Arrange
         var source = GetTestStream();
         BranchMetrics metrics = new();
-        var pipe = CreateMulticastDataPipe(source, 1, null, "TestStream", metrics);
+        var pipe = CreateMulticastDataStream(source, 1, null, "TestStream", metrics);
 
         // Act & Assert
         _ = pipe.Should().BeAssignableTo<IHasBranchMetrics>();
@@ -316,7 +316,7 @@ public sealed class MulticastDataPipeTests
         // Arrange
         var source = GetTestStream();
         BranchMetrics metrics = new();
-        var pipe = CreateMulticastDataPipe(source, 2, null, "TestStream", metrics);
+        var pipe = CreateMulticastDataStream(source, 2, null, "TestStream", metrics);
 
         // Act
         List<int> firstSubscriber = [];
@@ -356,7 +356,7 @@ public sealed class MulticastDataPipeTests
 
     #region Helper Methods
 
-    private static MulticastDataStream<T> CreateMulticastDataPipe<T>(
+    private static MulticastDataStream<T> CreateMulticastDataStream<T>(
         IAsyncEnumerable<T> source,
         int subscriberCount,
         int? perSubscriberBuffer,

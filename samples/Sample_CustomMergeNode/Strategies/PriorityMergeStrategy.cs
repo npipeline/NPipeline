@@ -58,7 +58,7 @@ public class PriorityMergeStrategy : IMergeStrategy<MarketDataTick>
         if (pipeList.Count == 0)
         {
             _logger?.LogWarning("Priority merge invoked with no input pipes");
-            return new ChannelDataPipe<MarketDataTick>(Channel.CreateBounded<MarketDataTick>(1), "PriorityMergeEmpty");
+            return new ChannelDataStream<MarketDataTick>(Channel.CreateBounded<MarketDataTick>(1), "PriorityMergeEmpty");
         }
 
         Metrics?.UpdateActiveSources(pipeList.Count);
@@ -121,7 +121,7 @@ public class PriorityMergeStrategy : IMergeStrategy<MarketDataTick>
             }
         }, CancellationToken.None);
 
-        return new ChannelDataPipe<MarketDataTick>(outputChannel, "PriorityMergeOutput");
+        return new ChannelDataStream<MarketDataTick>(outputChannel, "PriorityMergeOutput");
     }
 
     private async Task ForwardPipeAsync(

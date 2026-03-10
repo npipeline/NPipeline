@@ -291,8 +291,8 @@ public sealed class SqlServerConnectorPipeline
 
         // Write customers
         var startTime = DateTime.Now;
-        var dataPipe = new InMemoryDataStream<Customer>(customers);
-        await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<Customer>(customers);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
         var elapsed = DateTime.Now - startTime;
 
         Console.WriteLine($"✓ PerRow write completed in {elapsed.TotalMilliseconds:F2}ms");
@@ -348,8 +348,8 @@ public sealed class SqlServerConnectorPipeline
 
         // Write orders
         var startTime = DateTime.Now;
-        var dataPipe = new InMemoryDataStream<Order>(orders);
-        await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<Order>(orders);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
         var elapsed = DateTime.Now - startTime;
 
         Console.WriteLine($"✓ Batch write completed in {elapsed.TotalMilliseconds:F2}ms");
@@ -441,8 +441,8 @@ public sealed class SqlServerConnectorPipeline
         Console.WriteLine("  - IgnoreColumn attribute excludes computed properties");
 
         // Write products
-        var dataPipe = new InMemoryDataStream<Product>(products);
-        await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<Product>(products);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
 
         // Read products to verify convention-based mapping
         var sourceNode = new SqlServerSourceNode<Product>(
@@ -528,8 +528,8 @@ public sealed class SqlServerConnectorPipeline
         Console.WriteLine("  - Default shipping address set to 'N/A' if null");
 
         // Write orders with custom mapper
-        var dataPipe = new InMemoryDataStream<Order>(orders);
-        await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<Order>(orders);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
 
         // Read orders to verify custom mapper
         var sourceNode = new SqlServerSourceNode<Order>(
@@ -645,8 +645,8 @@ public sealed class SqlServerConnectorPipeline
             "EnrichedCustomers",
             configuration);
 
-        var dataPipe = new InMemoryDataStream<EnrichedCustomer>(enrichedCustomers);
-        await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<EnrichedCustomer>(enrichedCustomers);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
 
         // Display enriched customers
         foreach (var enriched in enrichedCustomers)
@@ -699,8 +699,8 @@ public sealed class SqlServerConnectorPipeline
 
         try
         {
-            var dataPipe = new InMemoryDataStream<Order>(orders);
-            await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
+            var dataStream = new InMemoryDataStream<Order>(orders);
+            await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
             Console.WriteLine("✓ All orders written successfully (unexpected)");
         }
         catch (Exception ex)
@@ -723,8 +723,8 @@ public sealed class SqlServerConnectorPipeline
 
         try
         {
-            var dataPipe = new InMemoryDataStream<Order>(orders);
-            await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
+            var dataStream = new InMemoryDataStream<Order>(orders);
+            await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
             Console.WriteLine("✓ Error handling with ContinueOnError completed");
             Console.WriteLine("  - Valid orders were written despite the invalid order");
         }

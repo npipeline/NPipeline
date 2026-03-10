@@ -292,7 +292,7 @@ You can read this data into your pipeline as follows:
 ```csharp
 using NPipeline;
 using NPipeline.Connectors.Snowflake;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow;
 using NPipeline.Execution;
 using NPipeline.Nodes;

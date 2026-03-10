@@ -62,7 +62,7 @@ public class EnvironmentalSource : SourceNode<SensorReading>
         try
         {
             var channel = Channel.CreateUnbounded<SensorReading>();
-            var dataPipe = new ChannelDataPipe<SensorReading>(channel, "Environmental-Source");
+            var dataStream = new ChannelDataStream<SensorReading>(channel, "Environmental-Source");
 
             // Start generating data in the background
             _ = Task.Run(async () =>
@@ -77,7 +77,7 @@ public class EnvironmentalSource : SourceNode<SensorReading>
                             break;
                         }
 
-                        await dataPipe.WriteAsync(reading, cancellationToken);
+                        await dataStream.WriteAsync(reading, cancellationToken);
                     }
                 }
                 catch (OperationCanceledException)
@@ -94,7 +94,7 @@ public class EnvironmentalSource : SourceNode<SensorReading>
                 }
             }, cancellationToken);
 
-            return dataPipe;
+            return dataStream;
         }
         catch (Exception ex)
         {

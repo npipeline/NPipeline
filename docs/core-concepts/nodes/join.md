@@ -799,9 +799,9 @@ When using these delegates, ensure you import the correct namespace:
 using NPipeline.Graph.PipelineDelegates;
 
 // Use the delegates in your join implementation
-CustomMergeDelegate? myCustomMerge = (node, dataPipes, cancellationToken) => {
+CustomMergeDelegate? myCustomMerge = (node, dataStreams, cancellationToken) => {
     // Custom merge implementation
-    return mergedDataPipe;
+    return mergedDataStream;
 };
 ```
 

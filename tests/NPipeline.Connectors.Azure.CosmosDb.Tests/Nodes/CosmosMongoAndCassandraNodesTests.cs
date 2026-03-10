@@ -32,7 +32,7 @@ public sealed class CosmosMongoAndCassandraNodesTests
     }
 
     [Fact]
-    public void CosmosMongoSourceNode_Initialize_ShouldReturnDataPipe()
+    public void CosmosMongoSourceNode_Initialize_ShouldReturnDataStream()
     {
         var node = new CosmosMongoSourceNode<object>("mongodb://localhost:27017", "db", "container");
 
@@ -91,7 +91,7 @@ public sealed class CosmosMongoAndCassandraNodesTests
     }
 
     [Fact]
-    public void CosmosCassandraSourceNode_Initialize_ShouldReturnDataPipe()
+    public void CosmosCassandraSourceNode_Initialize_ShouldReturnDataStream()
     {
         var node = new CosmosCassandraSourceNode<object>("localhost", "keyspace", "SELECT * FROM c");
 

@@ -18,10 +18,10 @@ public sealed class ConcatenateMergeStrategy<T> : IMergeStrategy<T>
     }
 
     private static async IAsyncEnumerable<T> ConcatenateStreams(
-        IReadOnlyList<IDataStream<T>> dataPipes,
+        IReadOnlyList<IDataStream<T>> dataStreams,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        foreach (var pipe in dataPipes)
+        foreach (var pipe in dataStreams)
         await foreach (var item in pipe.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
             yield return item;

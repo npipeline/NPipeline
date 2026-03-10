@@ -77,7 +77,7 @@ public class PriorityBasedMergeNode : CustomMergeNode<MarketDataTick>, ITransfor
             _logger?.LogWarning("No input pipes provided to merge node");
 
             // Return empty pipe for graceful handling
-            return Task.FromResult<IDataStream<MarketDataTick>>(new ChannelDataPipe<MarketDataTick>(Channel.CreateBounded<MarketDataTick>(1), "EmptyMerge"));
+            return Task.FromResult<IDataStream<MarketDataTick>>(new ChannelDataStream<MarketDataTick>(Channel.CreateBounded<MarketDataTick>(1), "EmptyMerge"));
         }
 
         _logger?.LogInformation("Starting merge operation with {Count} input pipes", typedPipes.Count);

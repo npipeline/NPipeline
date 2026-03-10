@@ -514,7 +514,7 @@ public class PipelineObjectPoolTests
     {
         // Arrange
         var dict1 = PipelineObjectPool.RentNodeOutputDictionary();
-        dict1["node"] = new TestDataPipe();
+        dict1["node"] = new TestDataStream();
 
         // Act
         PipelineObjectPool.Return(dict1);
@@ -536,7 +536,7 @@ public class PipelineObjectPoolTests
 
         for (var i = 0; i < 150; i++)
         {
-            dict[$"node{i}"] = new TestDataPipe();
+            dict[$"node{i}"] = new TestDataStream();
         }
 
         // Act
@@ -631,7 +631,7 @@ public class PipelineObjectPoolTests
                 for (var j = 0; j < iterationsPerThread; j++)
                 {
                     var dict = PipelineObjectPool.RentNodeOutputDictionary();
-                    dict[$"node{j}"] = new TestDataPipe();
+                    dict[$"node{j}"] = new TestDataStream();
                     await Task.Delay(1);
                     PipelineObjectPool.Return(dict);
                 }
@@ -655,7 +655,7 @@ public class PipelineObjectPoolTests
         }
     }
 
-    private sealed class TestDataPipe : IDataStream
+    private sealed class TestDataStream : IDataStream
     {
         public string StreamName => "test";
 

@@ -245,9 +245,9 @@ public sealed class DataLakePartitionedSinkNode<T> : SinkNode<T>
         var sinkNode = new ParquetSinkNode<T>(provider, fileUri, _configuration);
 
         // Create a data pipe from the buffer
-        var dataPipe = new InMemoryDataStream<T>(buffer);
+        var dataStream = new InMemoryDataStream<T>(buffer);
 
-        await sinkNode.ConsumeAsync(dataPipe, PipelineContext.Default, cancellationToken)
+        await sinkNode.ConsumeAsync(dataStream, PipelineContext.Default, cancellationToken)
             .ConfigureAwait(false);
 
         // Get file size

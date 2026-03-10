@@ -115,7 +115,7 @@ builder.Connect(source, sink);
 ```csharp
 using NPipeline.Connectors.Kafka.Configuration;
 using NPipeline.Connectors.Kafka.Nodes;
-using NPipeline.DataFlow.DataPipes;
+using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow;
 using NPipeline.Execution;
 using NPipeline.Nodes;

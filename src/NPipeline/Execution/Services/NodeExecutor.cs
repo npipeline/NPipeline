@@ -15,7 +15,7 @@ namespace NPipeline.Execution.Services;
 public sealed class NodeExecutor(
     ILineageService lineageService,
     IPipeMergeService pipeMergeService,
-    DataStreamWrapperService dataPipeWrapperService)
+    DataStreamWrapperService dataStreamWrapperService)
     : INodeExecutor
 {
     /// <summary>
@@ -60,7 +60,7 @@ public sealed class NodeExecutor(
             output = lineageService.WrapSourceStream(output, plan.NodeId, graph.Lineage.LineageOptions);
 
         var counter = GetOrCreateCounter(context);
-        output = dataPipeWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
+        output = dataStreamWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
         context.RegisterForDisposal(output);
         nodeOutputs[plan.NodeId] = output;
     }
@@ -103,7 +103,7 @@ public sealed class NodeExecutor(
         }
 
         var counter = GetOrCreateCounter(context);
-        transformed = dataPipeWrapperService.WrapWithCountingAndBranching(transformed, counter, context, graph, plan.NodeId);
+        transformed = dataStreamWrapperService.WrapWithCountingAndBranching(transformed, counter, context, graph, plan.NodeId);
         var disposable = transformed as IAsyncDisposable;
         context.RegisterForDisposal(disposable);
 
@@ -166,7 +166,7 @@ public sealed class NodeExecutor(
         }
 
         var counter = GetOrCreateCounter(context);
-        output = dataPipeWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
+        output = dataStreamWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
         var disposable = output as IAsyncDisposable;
         context.RegisterForDisposal(disposable);
 
@@ -222,7 +222,7 @@ public sealed class NodeExecutor(
         }
 
         var counter = GetOrCreateCounter(context);
-        output = dataPipeWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
+        output = dataStreamWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
         context.RegisterForDisposal(output as IAsyncDisposable ?? input);
         nodeOutputs[plan.NodeId] = output;
     }

@@ -168,8 +168,8 @@ public sealed class CosmosDbConnectorPipeline
         Console.WriteLine($"  Writing {products.Count} products using Batch strategy (batch size 5)...");
 
         var sw = Stopwatch.StartNew();
-        var dataPipe = new InMemoryDataStream<Product>(products);
-        await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<Product>(products);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
         sw.Stop();
 
         Console.WriteLine($"  ✓ Batch write completed in {sw.ElapsedMilliseconds} ms");
@@ -267,8 +267,8 @@ public sealed class CosmosDbConnectorPipeline
 
         Console.WriteLine($"  Applying 10 % price increase to {updated.Count} product(s) via Upsert...");
 
-        var dataPipe = new InMemoryDataStream<Product>(updated);
-        await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<Product>(updated);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
 
         Console.WriteLine($"  ✓ Upsert completed — {updated.Count} document(s) created-or-replaced");
         Console.WriteLine();
@@ -305,8 +305,8 @@ public sealed class CosmosDbConnectorPipeline
         Console.WriteLine($"  Writing {products.Count} products to '{BulkContainerId}' using Bulk strategy...");
 
         var sw = Stopwatch.StartNew();
-        var dataPipe = new InMemoryDataStream<Product>(products);
-        await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
+        var dataStream = new InMemoryDataStream<Product>(products);
+        await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
         sw.Stop();
 
         Console.WriteLine($"  ✓ Bulk write completed in {sw.ElapsedMilliseconds} ms");
@@ -351,8 +351,8 @@ public sealed class CosmosDbConnectorPipeline
 
         try
         {
-            var dataPipe = new InMemoryDataStream<Product>(products);
-            await sinkNode.ConsumeAsync(dataPipe, null!, cancellationToken);
+            var dataStream = new InMemoryDataStream<Product>(products);
+            await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
         }
         catch (Exception ex)
         {

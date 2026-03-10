@@ -53,7 +53,7 @@ This parameter is critical because it determines:
 
 ## CappedReplayableDataStream Implementation
 
-NPipeline uses the [`CappedReplayableDataStream`](../../../src/NPipeline/DataFlow/DataPipes/CappedReplayableDataStream.cs) to implement materialization:
+NPipeline uses the [`CappedReplayableDataStream`](../../../src/NPipeline/DataFlow/DataStreams/CappedReplayableDataStream.cs) to implement materialization:
 
 ```mermaid
 graph TD

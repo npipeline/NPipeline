@@ -366,7 +366,7 @@ services.AddRabbitMq(o => { /* ... */ });
                     └────────────────────────┬────────┘
                                              │ ReadAllAsync
                     ┌────────────────────────▼────────┐
-                    │  IAsyncEnumerable<T> / DataPipe  │
+                    │  IAsyncEnumerable<T> / DataStream  │
                     │  (NPipeline streaming surface)   │
                     └────────────────────────┬────────┘
                                              │

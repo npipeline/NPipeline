@@ -7,7 +7,7 @@ using NPipeline.DataFlow.DataStreams;
 
 namespace NPipeline.Tests.DataFlow.DataStreams;
 
-public class CappedReplayableDataPipeTests
+public class CappedReplayableDataStreamTests
 {
     [Fact]
     public async Task GetAsyncEnumerator_WhenCapIsNotReached_ReturnsAllItems()
