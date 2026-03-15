@@ -31,7 +31,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="DuckDB.NET.Data.Full" Version="1.4.4"/>
+        <PackageReference Include="DuckDB.NET.Data.Full" Version="1.5.0" />
     </ItemGroup>
 
     <ItemGroup>

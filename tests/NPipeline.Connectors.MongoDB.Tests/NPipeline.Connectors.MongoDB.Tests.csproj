@@ -25,9 +25,9 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="AwesomeAssertions" Version="9.4.0"/>
-        <PackageReference Include="Testcontainers.MongoDb" Version="4.10.0"/>
+        <PackageReference Include="Testcontainers.MongoDb" Version="4.11.0" />
         <PackageReference Include="FakeItEasy" Version="9.0.1"/>
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.3"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.5" />
     </ItemGroup>
 
     <ItemGroup>
