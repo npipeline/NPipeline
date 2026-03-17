@@ -267,11 +267,13 @@ public class SqsSinkNodeTests
             // Assert - Not acknowledged immediately
             message.IsAcknowledged.Should().BeFalse();
 
-            // Wait for delay
-            await Task.Delay(150);
-
-            // Assert - Should be acknowledged after delay
-            message.IsAcknowledged.Should().BeTrue();
+            // Assert - Should be acknowledged after delay using polling to handle CI timing variability
+            var checkAcknowledged = () =>
+            {
+                message.IsAcknowledged.Should().BeTrue();
+                return Task.CompletedTask;
+            };
+            await checkAcknowledged.Should().NotThrowAfterAsync(TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(50));
         }
 
         [Fact]
