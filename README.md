@@ -98,7 +98,7 @@ public class OrderSource : SourceNode<Order>
     public override IDataStream<Order> OpenStream(PipelineContext context, CancellationToken cancellationToken)
     {
         var orders = new[] { new Order(1, "Alice", 100m), new Order(2, "Bob", 250m), new Order(3, "Carol", 75m) };
-        return new StreamingDataStream<Order>(orders.ToAsyncEnumerable());
+        return new DataStream<Order>(orders.ToAsyncEnumerable());
     }
 }
 

@@ -13,7 +13,7 @@ namespace NPipeline.Connectors.Tests.Nodes;
 public class DatabaseSourceNodeTests
 {
     [Fact]
-    public void Initialize_WithStreamingResults_ReturnsStreamingDataStream()
+    public void Initialize_WithStreamingResults_ReturnsDataStream()
     {
         var node = new TestDatabaseSourceNode(new[] { 1, 2, 3 }, true);
 

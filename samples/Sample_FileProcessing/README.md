@@ -100,7 +100,7 @@ public override async Task<IDataStream<string>> OpenStream(PipelineContext conte
     var lineStream = ReadLinesAsync(filePath, cancellationToken);
 
     // Return a streaming data pipe that will process lines as they are requested
-    return new StreamingDataStream<string>(lineStream, "TextFileSource");
+    return new DataStream<string>(lineStream, "TextFileSource");
 }
 ```
 

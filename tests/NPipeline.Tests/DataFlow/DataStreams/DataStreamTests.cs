@@ -8,7 +8,7 @@ namespace NPipeline.Tests.DataFlow.DataStreams;
 ///     Tests for DataStream class.
 ///     Validates streaming behavior, disposal, and interface implementation.
 /// </summary>
-public sealed class StreamingDataStreamTests
+public sealed class DataStreamTests
 {
     [Fact]
     public void Constructor_WithNullStream_ThrowsArgumentNullException()
@@ -275,7 +275,7 @@ public sealed class StreamingDataStreamTests
     }
 
     [Fact]
-    public void ImplementsIStreamingDataStream_Interface()
+    public void ImplementsIForwardOnlyDataStream_Interface()
     {
         // Arrange
         var stream = GetTestStream();

@@ -47,9 +47,9 @@ public class HttpSinkNodeIntegrationTests(WireMockFixture fixture)
 
         var logEntries = fixture.Server.LogEntries;
         logEntries.Should().HaveCount(1);
-        var requestBody = logEntries.Single().RequestMessage.Body!;
+        var requestBody = logEntries.Single().RequestMessage!.Body;
 
-        var order = JsonSerializer.Deserialize<Order>(requestBody, JsonOptions);
+        var order = JsonSerializer.Deserialize<Order>(requestBody!, JsonOptions);
 
         order!.Product.Should().Be("Widget");
     }

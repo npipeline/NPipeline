@@ -33,7 +33,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public void StreamingDataStream_ImplementsIDataStream()
+    public void DataStream_ImplementsIDataStream()
     {
         // Arrange
         var stream = GetTestStream();
@@ -44,7 +44,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public void StreamingDataStream_ImplementsIDataStreamGeneric()
+    public void DataStream_ImplementsIDataStreamGeneric()
     {
         // Arrange
         var stream = GetTestStream();
@@ -73,7 +73,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public async Task StreamingDataStream_ToAsyncEnumerable_ReturnsCorrectItems()
+    public async Task DataStream_ToAsyncEnumerable_ReturnsCorrectItems()
     {
         // Arrange
         var stream = GetTestStream();
@@ -102,7 +102,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public void StreamingDataStream_GetDataType_ReturnsCorrectType()
+    public void DataStream_GetDataType_ReturnsCorrectType()
     {
         // Arrange
         var stream = GetTestStream();
@@ -131,7 +131,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public async Task StreamingDataStream_AsAsyncEnumerable_EnumeratesCorrectly()
+    public async Task DataStream_AsAsyncEnumerable_EnumeratesCorrectly()
     {
         // Arrange
         var stream = GetTestStream();
@@ -185,7 +185,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public async Task StreamingDataStream_Dispose_DoesNotThrow()
+    public async Task DataStream_Dispose_DoesNotThrow()
     {
         // Arrange
         var stream = GetTestStream();
@@ -208,7 +208,7 @@ public sealed class PipeTests
     }
 
     [Fact]
-    public void StreamingDataStream_StreamName_PropertyAccessible()
+    public void DataStream_StreamName_PropertyAccessible()
     {
         // Arrange
         var stream = GetTestStream();
