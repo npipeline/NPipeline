@@ -34,8 +34,8 @@ public sealed class LoggingMetricsSink : IMetricsSink
             new EventId(4, nameof(LoggingMetricsSink)),
             "Node {NodeId} required {RetryCount} retry attempts");
 
-    private static readonly Action<ILogger, string, long, Exception?> s_logPeakMemory =
-        LoggerMessage.Define<string, long>(
+    private static readonly Action<ILogger, string, double, Exception?> s_logPeakMemory =
+        LoggerMessage.Define<string, double>(
             LogLevel.Debug,
             new EventId(5, nameof(LoggingMetricsSink)),
             "Node {NodeId} peak memory usage: {PeakMemoryMb}MB");

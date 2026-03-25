@@ -84,7 +84,9 @@ public sealed record LineageHop(
     int? InputContributorCount,         // Nullable int
     int? OutputEmissionCount,           // Nullable int  
     IReadOnlyList<int>? AncestryInputIndices,  // Renamed from AncestryIndices
-    bool Truncated
+    bool Truncated,
+    object? InputSnapshot = null,       // JsonElement snapshot before node (requires CaptureHopSnapshots)
+    object? OutputSnapshot = null       // JsonElement snapshot after node (requires CaptureHopSnapshots)
 );
 
 // Hop decision flags

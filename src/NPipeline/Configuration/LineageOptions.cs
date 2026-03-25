@@ -40,6 +40,10 @@ namespace NPipeline.Configuration;
 ///     Capture ancestry mapping when an ILineageMapper is declared and materialization allows it.
 ///     Default is false.
 /// </param>
+/// <param name="CaptureHopSnapshots">
+///     Capture per-hop input/output snapshots for Studio lineage diff visualization.
+///     Default is false.
+/// </param>
 /// <param name="SampleEvery">
 ///     Deterministic sampling rate for item-level lineage collection. 1 means all items.
 ///     Default is 100 (1/100).
@@ -66,6 +70,7 @@ public sealed record LineageOptions(
     bool CaptureDecisions = true,
     bool CaptureObservedCardinality = true,
     bool CaptureAncestryMapping = false,
+    bool CaptureHopSnapshots = false,
     int SampleEvery = 100,
     bool DeterministicSampling = true,
     bool RedactData = true,
@@ -89,6 +94,7 @@ public sealed record LineageOptions(
         bool? captureDecisions = null,
         bool? captureObservedCardinality = null,
         bool? captureAncestryMapping = null,
+        bool? captureHopSnapshots = null,
         int? sampleEvery = null,
         bool? deterministicSampling = null,
         bool? redactData = null,
@@ -104,6 +110,7 @@ public sealed record LineageOptions(
             captureDecisions ?? CaptureDecisions,
             captureObservedCardinality ?? CaptureObservedCardinality,
             captureAncestryMapping ?? CaptureAncestryMapping,
+            captureHopSnapshots ?? CaptureHopSnapshots,
             sampleEvery ?? SampleEvery,
             deterministicSampling ?? DeterministicSampling,
             redactData ?? RedactData,

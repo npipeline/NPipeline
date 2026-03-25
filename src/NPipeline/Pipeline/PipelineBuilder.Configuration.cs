@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Threading.Channels;
 using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
@@ -413,22 +414,26 @@ public sealed partial class PipelineBuilder
         return (transformInput, nodeId, declaredCardinality, options, cancellationToken) =>
         {
             var typedInput = (IDataStream<LineagePacket<TIn>>)transformInput;
-            var unwrappedPipe = new DataStream<TIn>(UnwrapIterator(typedInput), $"Unwrapped_{typedInput.StreamName}");
+
+            // Single-enumeration: read typedInput exactly once via a background pump that
+            // fans out into two channels — one carrying unwrapped TIn items for the transform,
+            // one carrying full LineagePacket<TIn> for the rewrap strategy. This prevents
+            // multiple GetAsyncEnumerator() calls on upstream multicast streams and eliminates
+            // the cascading re-enumeration issue through passthrough wrappers.
+            var dataChannel = Channel.CreateUnbounded<TIn>(new UnboundedChannelOptions { SingleWriter = true });
+            var packetChannel = Channel.CreateUnbounded<LineagePacket<TIn>>(new UnboundedChannelOptions { SingleWriter = true });
+
+            _ = PumpInputAsync(typedInput, dataChannel.Writer, packetChannel.Writer, cancellationToken);
+
+            var unwrappedPipe = new DataStream<TIn>(dataChannel.Reader.ReadAllAsync(cancellationToken), $"Unwrapped_{typedInput.StreamName}");
             return (unwrappedPipe, RewrapFunc);
 
             IDataStream RewrapFunc(IDataStream outputPipe)
             {
                 var typedOutputPipe = (IDataStream<TOut>)outputPipe;
-                var rewrappedStream = RewrapStrategy(typedInput, typedOutputPipe, nodeId, declaredCardinality, options, cancellationToken);
+                var rewrappedStream = RewrapStrategy(packetChannel.Reader.ReadAllAsync(cancellationToken),
+                    typedOutputPipe, nodeId, declaredCardinality, options, cancellationToken);
                 return new DataStream<LineagePacket<TOut>>(rewrappedStream, $"Rewrapped_{outputPipe.StreamName}");
-            }
-
-            static async IAsyncEnumerable<TIn> UnwrapIterator(IDataStream<LineagePacket<TIn>> inputStream)
-            {
-                await foreach (var packet in inputStream.WithCancellation(CancellationToken.None).ConfigureAwait(false))
-                {
-                    yield return packet.Data;
-                }
             }
 
             IAsyncEnumerable<LineagePacket<TOut>> RewrapStrategy(
@@ -441,11 +446,40 @@ public sealed partial class PipelineBuilder
             {
                 cachedStrategy ??= SelectLineageMappingStrategy<TIn, TOut>(lineageMapperType, transformCardinality, lineageOptions);
 
-                // If we cached a mapper instance, pass its type (unchanged) – strategies currently create mappers internally when needed.
-                // Future optimization: extend strategy interface to accept a mapper instance directly to avoid Activator calls.
                 return cachedStrategy.MapAsync(inputStream, outputStream, currentId, transformCardinality, lineageOptions, lineageMapperType, cachedMapper, ct);
             }
         };
+
+        static async Task PumpInputAsync(
+            IDataStream<LineagePacket<TIn>> source,
+            ChannelWriter<TIn> dataWriter,
+            ChannelWriter<LineagePacket<TIn>> packetWriter,
+            CancellationToken ct)
+        {
+            try
+            {
+                await foreach (var packet in source.WithCancellation(ct).ConfigureAwait(false))
+                {
+                    // Write packet first so that the strategy's inputStream has data available
+                    // before the transform's outputStream is triggered by consuming dataChannel.
+                    await packetWriter.WriteAsync(packet, ct).ConfigureAwait(false);
+                    await dataWriter.WriteAsync(packet.Data, ct).ConfigureAwait(false);
+                }
+
+                packetWriter.TryComplete();
+                dataWriter.TryComplete();
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                packetWriter.TryComplete();
+                dataWriter.TryComplete();
+            }
+            catch (Exception ex)
+            {
+                packetWriter.TryComplete(ex);
+                dataWriter.TryComplete(ex);
+            }
+        }
     }
 
     /// <summary>

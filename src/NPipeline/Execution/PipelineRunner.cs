@@ -135,6 +135,8 @@ public sealed class PipelineRunner(
         {
             var pipeline = pipelineFactory.Create<TDefinition>(context);
             graph = pipeline.Graph;
+            graph = ApplyRuntimeItemLevelLineageOverride(graph, context);
+            graph = ApplyRuntimeLineageOptionsOverride(graph, context);
             nodeOutputs.EnsureCapacity(graph.Nodes.Length);
 
             await VisualizeIfConfiguredAsync(graph, cancellationToken).ConfigureAwait(false);
@@ -241,14 +243,63 @@ public sealed class PipelineRunner(
         PipelineRunnerLogMessages.CircuitBreakerManagerCreated(managerLogger);
     }
 
+    private static PipelineGraph ApplyRuntimeLineageOptionsOverride(PipelineGraph graph, PipelineContext context)
+    {
+        if (!context.Properties.TryGetValue(PipelineContextKeys.LineageOptionsOverride, out var overrideObj) || overrideObj is null)
+            return graph;
+
+        LineageOptions? resolved = overrideObj switch
+        {
+            LineageOptions direct => direct,
+            Func<LineageOptions?, LineageOptions?> factory => factory(graph.Lineage.LineageOptions),
+            _ => graph.Lineage.LineageOptions,
+        };
+
+        return graph with
+        {
+            Lineage = graph.Lineage with
+            {
+                LineageOptions = resolved,
+            },
+        };
+    }
+
+    private static PipelineGraph ApplyRuntimeItemLevelLineageOverride(PipelineGraph graph, PipelineContext context)
+    {
+        if (!context.Properties.TryGetValue(PipelineContextKeys.ItemLevelLineageEnabledOverride, out var overrideObj) ||
+            overrideObj is not bool enabled)
+        {
+            return graph;
+        }
+
+        var resolvedOptions = graph.Lineage.LineageOptions;
+        if (enabled && resolvedOptions is null)
+        {
+            // Mirror PipelineBuilder.EnableItemLevelLineage() defaults for runtime enablement.
+            resolvedOptions = new LineageOptions(SampleEvery: 1, RedactData: false);
+        }
+
+        return graph with
+        {
+            Lineage = graph.Lineage with
+            {
+                ItemLevelLineageEnabled = enabled,
+                LineageOptions = resolvedOptions,
+            },
+        };
+    }
+
     private static IPipelineLineageSink? ResolveAndApplyExecutionHandlers(PipelineGraph graph, PipelineContext context)
     {
         var errorHandler = ResolvePipelineErrorHandler(graph, context.ErrorHandlerFactory);
         var deadLetterSink = ResolveDeadLetterSink(graph, context.ErrorHandlerFactory);
+        deadLetterSink = ApplyDeadLetterSinkDecorator(context, deadLetterSink);
 
         var lineageSink = graph.Lineage.ItemLevelLineageEnabled
             ? ResolveLineageSink(graph, context.LineageFactory, context)
             : null;
+
+        lineageSink = ApplyLineageSinkDecorator(context, lineageSink);
 
         var pipelineLineageSink = ResolvePipelineLineageSink(graph, context.LineageFactory, context);
 
@@ -262,6 +313,28 @@ public sealed class PipelineRunner(
             context.DeadLetterSink = deadLetterSink;
 
         return pipelineLineageSink;
+    }
+
+    private static IDeadLetterSink? ApplyDeadLetterSinkDecorator(PipelineContext context, IDeadLetterSink? deadLetterSink)
+    {
+        if (context.Properties.TryGetValue(PipelineContextKeys.DeadLetterSinkDecorator, out var decoratorObj) &&
+            decoratorObj is Func<IDeadLetterSink?, IDeadLetterSink?> decorator)
+        {
+            return decorator(deadLetterSink);
+        }
+
+        return deadLetterSink;
+    }
+
+    private static ILineageSink? ApplyLineageSinkDecorator(PipelineContext context, ILineageSink? lineageSink)
+    {
+        if (context.Properties.TryGetValue(PipelineContextKeys.LineageSinkDecorator, out var decoratorObj) &&
+            decoratorObj is Func<ILineageSink?, ILineageSink?> decorator)
+        {
+            return decorator(lineageSink);
+        }
+
+        return lineageSink;
     }
 
     private static void ApplyNodeExecutionStrategies(PipelineGraph graph, IReadOnlyDictionary<string, INode> nodeInstances)

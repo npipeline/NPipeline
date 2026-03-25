@@ -53,7 +53,7 @@ public interface INodeMetrics
     /// <summary>
     ///     The peak memory usage in megabytes during node execution.
     /// </summary>
-    long? PeakMemoryUsageMb { get; }
+    double? PeakMemoryUsageMb { get; }
 
     /// <summary>
     ///     The processor time used in milliseconds.

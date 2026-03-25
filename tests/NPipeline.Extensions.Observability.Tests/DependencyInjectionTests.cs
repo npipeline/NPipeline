@@ -624,7 +624,7 @@ public sealed class DependencyInjectionTests
     {
         private readonly Dictionary<string, NodeMetrics> _nodeMetrics = [];
 
-        public void RecordNodeStart(string nodeId, DateTimeOffset timestamp, int? threadId = null, long? initialMemoryMb = null)
+        public void RecordNodeStart(string nodeId, DateTimeOffset timestamp, int? threadId = null, double? initialMemoryMb = null)
         {
             _nodeMetrics[nodeId] = new NodeMetrics(
                 nodeId,
@@ -643,7 +643,7 @@ public sealed class DependencyInjectionTests
                 threadId);
         }
 
-        public void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Exception? exception = null, long? peakMemoryMb = null,
+        public void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Exception? exception = null, double? peakMemoryMb = null,
             long? processorTimeMs = null)
         {
             if (_nodeMetrics.TryGetValue(nodeId, out var metrics))

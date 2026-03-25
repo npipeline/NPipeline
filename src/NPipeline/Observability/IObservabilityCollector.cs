@@ -14,7 +14,7 @@ public interface IObservabilityCollector
     /// <param name="timestamp">The timestamp when execution started.</param>
     /// <param name="threadId">The thread ID executing the node.</param>
     /// <param name="initialMemoryMb">The initial memory usage in megabytes.</param>
-    void RecordNodeStart(string nodeId, DateTimeOffset timestamp, int? threadId = null, long? initialMemoryMb = null);
+    void RecordNodeStart(string nodeId, DateTimeOffset timestamp, int? threadId = null, double? initialMemoryMb = null);
 
     /// <summary>
     ///     Records the completion of a node execution.
@@ -25,7 +25,7 @@ public interface IObservabilityCollector
     /// <param name="exception">Any exception that occurred during execution.</param>
     /// <param name="peakMemoryMb">The peak memory usage in megabytes during execution.</param>
     /// <param name="processorTimeMs">The processor time used in milliseconds.</param>
-    void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Exception? exception = null, long? peakMemoryMb = null,
+    void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Exception? exception = null, double? peakMemoryMb = null,
         long? processorTimeMs = null);
 
     /// <summary>

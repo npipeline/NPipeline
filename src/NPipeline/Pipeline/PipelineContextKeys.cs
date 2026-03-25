@@ -71,6 +71,27 @@ namespace NPipeline.Pipeline;
 /// </remarks>
 public static class PipelineContextKeys
 {
+    /// <summary>Dead-letter sink decorator hook key (value: Func&lt;IDeadLetterSink?, IDeadLetterSink?&gt;).</summary>
+    /// <remarks>Allows extensions to decorate the resolved dead-letter sink at pipeline execution time.</remarks>
+    public const string DeadLetterSinkDecorator = "NPipeline.DeadLetterSinkDecorator";
+
+    /// <summary>Lineage sink decorator hook key (value: Func&lt;ILineageSink?, ILineageSink?&gt;).</summary>
+    /// <remarks>Allows extensions to decorate the resolved lineage sink at pipeline execution time.</remarks>
+    public const string LineageSinkDecorator = "NPipeline.LineageSinkDecorator";
+
+    /// <summary>
+    /// Runtime lineage options override key.
+    /// Supports either a <c>LineageOptions</c> value or a <c>Func&lt;LineageOptions?, LineageOptions?&gt;</c>
+    /// to derive options from the graph's configured baseline.
+    /// </summary>
+    public const string LineageOptionsOverride = "NPipeline.LineageOptionsOverride";
+
+    /// <summary>
+    /// Runtime item-level lineage enablement override key (value: <c>bool</c>).
+    /// When present, this value overrides the graph's configured <c>ItemLevelLineageEnabled</c> flag for the run.
+    /// </summary>
+    public const string ItemLevelLineageEnabledOverride = "NPipeline.ItemLevelLineageEnabledOverride";
+
     /// <summary>Parent context for testing - format: "testing.parentContext" (value: PipelineContext)</summary>
     /// <remarks>Used by testing extensions to reference the parent pipeline context in nested scenarios.</remarks>
     public const string TestingParentContext = "testing.parentContext";

@@ -268,7 +268,7 @@ public sealed class PipelineBuilderCharacterizationTests
             {
                 await foreach (var item in inputStream.WithCancellation(ct))
 
-                    // Pass through only int items for determinism
+                // Pass through only int items for determinism
                 {
                     if (item is int i)
                         yield return i;

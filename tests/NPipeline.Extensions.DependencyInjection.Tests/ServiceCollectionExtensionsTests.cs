@@ -122,6 +122,41 @@ public sealed class ServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddNPipeline_WhenSameAssemblyAddedTwice_ShouldDeduplicatePipelineDefinitionRegistry()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act
+        services.AddNPipeline(Assembly.GetExecutingAssembly(), Assembly.GetExecutingAssembly());
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Assert
+        var registry = serviceProvider.GetRequiredService<PipelineDefinitionRegistry>();
+        registry.DefinitionTypes.Should().ContainSingle(t => t == typeof(TestPipelineDefinition));
+        registry.DefinitionTypes.Should().ContainSingle(t => t == typeof(ScopedPipelineDefinition));
+        registry.DefinitionTypes.Should().ContainSingle(t => t == typeof(DisposablePipelineDefinition));
+    }
+
+    [Fact]
+    public void AddNPipeline_WithDuplicateAddPipelineCalls_ShouldDeduplicatePipelineDefinitionRegistry()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act
+        services.AddNPipeline(builder => builder
+            .AddPipeline<TestPipelineDefinition>()
+            .AddPipeline<TestPipelineDefinition>());
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Assert
+        var registry = serviceProvider.GetRequiredService<PipelineDefinitionRegistry>();
+        registry.DefinitionTypes.Should().ContainSingle();
+        registry.DefinitionTypes[0].Should().Be<TestPipelineDefinition>();
+    }
+
+    [Fact]
     public async Task RunPipelineAsync_ShouldExecutePipeline()
     {
         // Arrange

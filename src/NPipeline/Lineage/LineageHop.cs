@@ -11,6 +11,8 @@ namespace NPipeline.Lineage;
 /// <param name="OutputEmissionCount">Number of outputs emitted for the contributing input(s).</param>
 /// <param name="AncestryInputIndices">Optional input indices from the materialized mapping when available.</param>
 /// <param name="Truncated">True when per-item hop record count exceeded configured cap and was truncated.</param>
+/// <param name="InputSnapshot">Optional snapshot of the item before this node processed it.</param>
+/// <param name="OutputSnapshot">Optional snapshot of the item emitted by this node.</param>
 public sealed record LineageHop(
     string NodeId,
     HopDecisionFlags Outcome,
@@ -18,4 +20,6 @@ public sealed record LineageHop(
     int? InputContributorCount,
     int? OutputEmissionCount,
     IReadOnlyList<int>? AncestryInputIndices,
-    bool Truncated);
+    bool Truncated,
+    object? InputSnapshot = null,
+    object? OutputSnapshot = null);

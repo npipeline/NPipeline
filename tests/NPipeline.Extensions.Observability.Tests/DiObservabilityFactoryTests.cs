@@ -13,12 +13,12 @@ public sealed class DiObservabilityFactoryTests
 
     private sealed class CustomObservabilityCollector : IObservabilityCollector
     {
-        public void RecordNodeStart(string nodeId, DateTimeOffset timestamp, int? threadId = null, long? initialMemoryMb = null)
+        public void RecordNodeStart(string nodeId, DateTimeOffset timestamp, int? threadId = null, double? initialMemoryMb = null)
         {
             // Custom implementation
         }
 
-        public void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Exception? exception = null, long? peakMemoryMb = null,
+        public void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Exception? exception = null, double? peakMemoryMb = null,
             long? processorTimeMs = null)
         {
             // Custom implementation

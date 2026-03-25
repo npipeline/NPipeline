@@ -32,8 +32,12 @@ public static class ServiceCollectionExtensions
         // Register Core Services (per-run scoped where appropriate)
         RegisterCoreServices(services);
 
+        // Create and register the pipeline definition registry
+        var registry = new PipelineDefinitionRegistry();
+        services.TryAddSingleton(registry);
+
         // Configure using the fluent builder
-        var builder = new NPipelineServiceBuilder(services);
+        var builder = new NPipelineServiceBuilder(services, registry);
         configure(builder);
 
         return services;
@@ -53,6 +57,10 @@ public static class ServiceCollectionExtensions
         // Register Core Services (per-run scoped where appropriate)
         RegisterCoreServices(services);
 
+        // Register the pipeline definition registry
+        var registry = new PipelineDefinitionRegistry();
+        services.TryAddSingleton(registry);
+
         // Register Nodes and Definitions (safe assembly scanning)
         var typesToRegister = assembliesToScan
             .SelectMany(GetLoadableTypes)
@@ -69,6 +77,10 @@ public static class ServiceCollectionExtensions
         foreach (var type in typesToRegister)
         {
             services.TryAddTransient(type);
+
+            // If the discovered type is an IPipelineDefinition, register it in the registry
+            if (typeof(IPipelineDefinition).IsAssignableFrom(type))
+                registry.Register(type);
 
             // If the discovered type implements IPipelineLineageSinkProvider, also register it against the interface
             // so it can be resolved by the runner via the focused factory interfaces without reflection.
@@ -152,6 +164,13 @@ public static class ServiceCollectionExtensions
             CancellationToken: cancellationToken);
 
         var context = new PipelineContext(config);
+
+        // Wire up the execution observer if one has been registered (e.g., MetricsCollectingExecutionObserver
+        // registered by AddNPipelineObservability). Without this, context.ExecutionObserver defaults to
+        // NullExecutionObserver and no metrics are collected.
+        var executionObserver = sp.GetService<IExecutionObserver>();
+        if (executionObserver is not null)
+            context.ExecutionObserver = executionObserver;
 
         // Indicate DI owns node disposal to avoid double-dispose in runner.
         context.DiOwnedNodes = true;

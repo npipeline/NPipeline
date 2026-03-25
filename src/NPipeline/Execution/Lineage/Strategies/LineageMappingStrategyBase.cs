@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
 using NPipeline.Lineage;
@@ -17,8 +18,32 @@ namespace NPipeline.Execution.Lineage.Strategies;
 /// </remarks>
 internal abstract class LineageMappingStrategyBase
 {
+    private static readonly JsonSerializerOptions SnapshotSerializerOptions = new(JsonSerializerDefaults.Web)
+    {
+        ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles,
+    };
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected static ImmutableList<LineageHop> MaybeAppendHop(ImmutableList<LineageHop> existing, string nodeId, LineageOptions? opts)
+    internal static object? SnapshotValue(object? value, LineageOptions? opts)
+    {
+        if (opts?.CaptureHopSnapshots != true || value is null)
+            return null;
+
+        try
+        {
+            // Serialize/deserialize to produce an immutable-by-value snapshot of the object graph.
+            return JsonSerializer.SerializeToElement(value, SnapshotSerializerOptions);
+        }
+        catch
+        {
+            // Best-effort snapshot: keep lineage flow robust even for non-serializable payloads.
+            return value.ToString();
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    protected static ImmutableList<LineageHop> MaybeAppendHop(ImmutableList<LineageHop> existing, string nodeId, LineageOptions? opts, object? inputSnapshot,
+        object? outputSnapshot)
     {
         var cap = opts != null && opts.MaxHopRecordsPerItem > 0
             ? opts.MaxHopRecordsPerItem
@@ -28,13 +53,14 @@ internal abstract class LineageMappingStrategyBase
             return existing;
 
         var truncated = existing.Count + 1 >= cap;
-        var rec = new LineageHop(nodeId, HopDecisionFlags.Emitted, ObservedCardinality.One, null, null, null, truncated);
+        var rec = new LineageHop(nodeId, HopDecisionFlags.Emitted, ObservedCardinality.One, null, null, null, truncated,
+            SnapshotValue(inputSnapshot, opts), SnapshotValue(outputSnapshot, opts));
         return existing.Add(rec);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected static ImmutableList<LineageHop> AppendHop(ImmutableList<LineageHop> existing, string nodeId, LineageOptions? opts, HopDecisionFlags outcome,
-        ObservedCardinality cardinality, IReadOnlyList<int>? ancestry)
+        ObservedCardinality cardinality, IReadOnlyList<int>? ancestry, object? inputSnapshot, object? outputSnapshot)
     {
         var cap = opts != null && opts.MaxHopRecordsPerItem > 0
             ? opts.MaxHopRecordsPerItem
@@ -44,7 +70,8 @@ internal abstract class LineageMappingStrategyBase
             return existing;
 
         var truncated = existing.Count + 1 >= cap;
-        var rec = new LineageHop(nodeId, outcome, cardinality, ancestry?.Count, null, ancestry, truncated);
+        var rec = new LineageHop(nodeId, outcome, cardinality, ancestry?.Count, null, ancestry, truncated,
+            SnapshotValue(inputSnapshot, opts), SnapshotValue(outputSnapshot, opts));
         return existing.Add(rec);
     }
 
@@ -172,10 +199,10 @@ internal abstract class LineageMappingStrategyBase
                 var hopRecords = inputPacket.LineageHops;
 
                 if (inputPacket.Collect)
-                    hopRecords = AppendHop(hopRecords, nodeId, opts, outcome, cardinalityObserved, ancestry);
+                    hopRecords = AppendHop(hopRecords, nodeId, opts, outcome, cardinalityObserved, ancestry, inputPacket.Data, outputData);
 
                 yield return new LineagePacket<TOut>(outputData, inputPacket.LineageId, inputPacket.TraversalPath.Add(nodeId))
-                    { Collect = inputPacket.Collect, LineageHops = hopRecords };
+                { Collect = inputPacket.Collect, LineageHops = hopRecords };
             }
             else
                 yield return new LineagePacket<TOut>(outputData, Guid.NewGuid(), ImmutableList.Create(nodeId));
@@ -202,10 +229,10 @@ internal abstract class LineageMappingStrategyBase
                 var hopRecords = inputPacket.LineageHops;
 
                 if (inputPacket.Collect)
-                    hopRecords = MaybeAppendHop(hopRecords, nodeId, opts);
+                    hopRecords = MaybeAppendHop(hopRecords, nodeId, opts, inputPacket.Data, outputData);
 
                 yield return new LineagePacket<TOut>(outputData, inputPacket.LineageId, inputPacket.TraversalPath.Add(nodeId))
-                    { Collect = inputPacket.Collect, LineageHops = hopRecords };
+                { Collect = inputPacket.Collect, LineageHops = hopRecords };
 
                 matchedInputCount++;
                 matchedOutputCount++;

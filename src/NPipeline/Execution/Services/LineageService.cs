@@ -5,6 +5,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using NPipeline.Configuration;
+using NPipeline.Execution.Lineage.Strategies;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Lineage;
@@ -197,7 +198,9 @@ public sealed class LineageService : ILineageService
                         null,
                         null,
                         null,
-                        false);
+                        false,
+                        null,
+                        SnapshotValue(item, options));
 
                     hopRecords = hopRecords.Add(seed);
                 }
@@ -210,6 +213,9 @@ public sealed class LineageService : ILineageService
             };
         }
     }
+
+    private static object? SnapshotValue(object? value, LineageOptions? options)
+        => LineageMappingStrategyBase.SnapshotValue(value, options);
 
     private static IEnumerable ExtractDataFromPipe(IDataStream pipe)
     {
