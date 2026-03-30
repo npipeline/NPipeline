@@ -9,7 +9,7 @@
 
     <ItemGroup>
         <PackageReference Include="AWSSDK.S3" Version="4.0.19.1" />
-        <PackageReference Include="AWSSDK.Core" Version="4.0.3.21" />
+        <PackageReference Include="AWSSDK.Core" Version="4.0.3.24" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.5" />
     </ItemGroup>
 

@@ -22,7 +22,7 @@
         </PackageReference>
         <PackageReference Include="FakeItEasy" Version="9.0.1"/>
         <PackageReference Include="AWSSDK.S3" Version="4.0.19.1" />
-        <PackageReference Include="AWSSDK.Core" Version="4.0.3.21" />
+        <PackageReference Include="AWSSDK.Core" Version="4.0.3.24" />
     </ItemGroup>
 
     <ItemGroup>
