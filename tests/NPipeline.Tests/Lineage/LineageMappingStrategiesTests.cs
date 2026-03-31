@@ -61,6 +61,7 @@ public sealed class LineageMappingStrategiesTests
             true, // CaptureDecisions
             true, // CaptureObservedCardinality
             true, // CaptureAncestryMapping
+            false, // CaptureHopSnapshots
             100, // SampleEvery
             true, // DeterministicSampling
             true, // RedactData
@@ -642,6 +643,7 @@ public sealed class LineageMappingStrategiesTests
             true, // CaptureDecisions
             true, // CaptureObservedCardinality
             false, // CaptureAncestryMapping
+            false, // CaptureHopSnapshots
             100, // SampleEvery
             true, // DeterministicSampling
             true, // RedactData

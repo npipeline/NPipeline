@@ -121,16 +121,9 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         {
             var collector = context.ObservabilityFactory.ResolveObservabilityCollector();
 
-            if (collector != null && optionsValue != null)
+            if (collector != null && optionsValue is Observability.Configuration.ObservabilityOptions obsOptions)
             {
-                // Create AutoObservabilityScope using reflection to avoid circular dependency
-                var scopeType = Type.GetType("NPipeline.Extensions.Observability.AutoObservabilityScope, NPipeline.Extensions.Observability");
-
-                if (scopeType != null)
-                {
-                    autoObservabilityScope = (IAutoObservabilityScope?)Activator.CreateInstance(
-                        scopeType, collector, nodeDef.Id, optionsValue);
-                }
+                autoObservabilityScope = new Observability.AutoObservabilityScope(collector, nodeDef.Id, obsOptions);
             }
         }
 

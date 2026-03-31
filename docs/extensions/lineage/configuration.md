@@ -41,6 +41,9 @@ public sealed record LineageOptions
     /// Capture ancestry mapping when mapper is declared (default: false)
     bool CaptureAncestryMapping { get; init; } = false;
     
+    /// Capture per-hop input/output snapshots for Studio lineage diff visualization (default: false)
+    bool CaptureHopSnapshots { get; init; } = false;
+    
     /// Sample every Nth item - 1 means all items (default: 100)
     int SampleEvery { get; init; } = 100;
     
@@ -154,11 +157,30 @@ Console.WriteLine(lineageInfo.LineageId);  // Still available
 Console.WriteLine(lineageInfo.TraversalPath);  // Still available
 ```
 
+## Hop Snapshots
+
+When `CaptureHopSnapshots` is enabled each `LineageHop` record includes a before/after snapshot of the item at that node, serialized as a `JsonElement`. This powers NPipeline Studio's lineage diff view.
+
+```csharp
+builder.EnableItemLevelLineage(options =>
+{
+    options.CaptureHopSnapshots = true;  // Default: false
+});
+```
+
+Snapshots are produced by JSON-serializing the raw item value. Circular references in the object graph are silently omitted rather than causing a serialization failure. If serialization fails entirely (e.g., the type is not serializable), the snapshot falls back to `value.ToString()`.
+
+**When to Enable:**
+
+- Debugging: See exactly how each node transforms each item
+- NPipeline Studio lineage inspector and diff view
+- Compliance workflows requiring full value-level audit trails
+
+**Performance Impact:**
+
+Enabling hop snapshots adds a JSON serialize+deserialize round-trip per hop per sampled item. Keep `SampleEvery` at a conservative rate (≥ 100) when using this option in high-throughput pipelines.
+
 ## Overflow Policies
-
-Overflow policies control behavior when the materialization cap is reached:
-
-### Materialization Cap
 
 The cap limits memory usage by materializing only a subset of items:
 

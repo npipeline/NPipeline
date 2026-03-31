@@ -201,6 +201,68 @@ var withCustomMerge = nodeDefinition with {
 };
 ```
 
+## Node Documentation Attributes
+
+Three optional attributes in the `NPipeline.Attributes.Documentation` namespace let you annotate your node classes with human-readable metadata. NPipeline Studio displays this information in its node inspector panel.
+
+### `[NodeDescription]`
+
+Provides a plain-text description of what the node does:
+
+```csharp
+using NPipeline.Attributes.Documentation;
+
+[NodeDescription("Enriches orders with customer data from the CRM. " +
+    "Performs a lookup by CustomerId and attaches the customer's tier and region.")]
+public sealed class EnrichOrderTransform : ITransformNode<PipelineOrder, PipelineOrder>
+{
+    // ...
+}
+```
+
+### `[NodeOwner]`
+
+Documents the team or individual responsible for the node:
+
+```csharp
+[NodeOwner("Order Processing Team")]
+public sealed class EnrichOrderTransform : ITransformNode<PipelineOrder, PipelineOrder>
+{
+    // ...
+}
+```
+
+### `[NodeRemark]`
+
+Documents a specific aspect of the node's behaviour. Multiple remarks can be applied to a single node. Use the optional `Category` property to group or colour-code remarks in Studio. Suggested categories are `"warning"`, `"performance"`, `"business-rule"`, and `"edge-case"`.
+
+```csharp
+[NodeRemark("Falls back to 'Unknown' tier if CRM lookup fails", Category = "edge-case")]
+[NodeRemark("CRM API has a 100 req/s rate limit", Category = "performance")]
+public sealed class EnrichOrderTransform : ITransformNode<PipelineOrder, PipelineOrder>
+{
+    // ...
+}
+```
+
+### Full Example
+
+```csharp
+[NodeDescription("Enriches orders with customer data from the CRM.")]
+[NodeOwner("Order Processing Team")]
+[NodeRemark("Falls back to 'Unknown' tier if CRM lookup fails", Category = "edge-case")]
+[NodeRemark("CRM API has a 100 req/s rate limit", Category = "performance")]
+public sealed class EnrichOrderTransform : ITransformNode<PipelineOrder, PipelineOrder>
+{
+    public Task<PipelineOrder> TransformAsync(PipelineOrder input, PipelineContext context, CancellationToken cancellationToken)
+    {
+        // ...
+    }
+}
+```
+
+These attributes have no effect on pipeline execution — they exist purely for documentation and tooling.
+
 ## See Also
 
 - [Defining Pipelines](defining-pipelines.md) - Learn how to define pipelines with both fluent and class-based approaches

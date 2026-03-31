@@ -403,47 +403,43 @@ public sealed class ErrorScenarioTests
     }
 
     [Fact]
-    public void Collector_RecordNodeEnd_WithNullNodeId_ShouldNotThrow()
+    public void Collector_RecordNodeEnd_WithNullNodeId_ShouldThrow()
     {
         // Arrange
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
 
-        // Act & Assert - Should not throw, just no-op
-        var exception = Record.Exception(() => collector.RecordNodeEnd(null!, DateTimeOffset.UtcNow, true));
-        Assert.Null(exception);
+        // Act & Assert
+        _ = Assert.Throws<ArgumentNullException>(() => collector.RecordNodeEnd(null!, DateTimeOffset.UtcNow, true));
     }
 
     [Fact]
-    public void Collector_RecordItemMetrics_WithNullNodeId_ShouldNotThrow()
+    public void Collector_RecordItemMetrics_WithNullNodeId_ShouldThrow()
     {
         // Arrange
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
 
-        // Act & Assert - Should not throw, just no-op
-        var exception = Record.Exception(() => collector.RecordItemMetrics(null!, 10, 10));
-        Assert.Null(exception);
+        // Act & Assert
+        _ = Assert.Throws<ArgumentNullException>(() => collector.RecordItemMetrics(null!, 10, 10));
     }
 
     [Fact]
-    public void Collector_RecordRetry_WithNullNodeId_ShouldNotThrow()
+    public void Collector_RecordRetry_WithNullNodeId_ShouldThrow()
     {
         // Arrange
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
 
-        // Act & Assert - Should not throw, just no-op
-        var exception = Record.Exception(() => collector.RecordRetry(null!, 1));
-        Assert.Null(exception);
+        // Act & Assert
+        _ = Assert.Throws<ArgumentNullException>(() => collector.RecordRetry(null!, 1));
     }
 
     [Fact]
-    public void Collector_RecordPerformanceMetrics_WithNullNodeId_ShouldNotThrow()
+    public void Collector_RecordPerformanceMetrics_WithNullNodeId_ShouldThrow()
     {
         // Arrange
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
 
-        // Act & Assert - Should not throw, just no-op
-        var exception = Record.Exception(() => collector.RecordPerformanceMetrics(null!, 1000.0, 1.0));
-        Assert.Null(exception);
+        // Act & Assert
+        _ = Assert.Throws<ArgumentNullException>(() => collector.RecordPerformanceMetrics(null!, 1000.0, 1.0));
     }
 
     [Fact]

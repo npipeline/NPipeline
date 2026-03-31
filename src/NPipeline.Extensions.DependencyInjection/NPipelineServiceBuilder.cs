@@ -14,6 +14,7 @@ namespace NPipeline.Extensions.DependencyInjection;
 public sealed class NPipelineServiceBuilder
 {
     private readonly IServiceCollection _services;
+    private readonly PipelineDefinitionRegistry _registry;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="NPipelineServiceBuilder" /> class.
@@ -23,6 +24,22 @@ public sealed class NPipelineServiceBuilder
     {
         ArgumentNullException.ThrowIfNull(services);
         _services = services;
+        _registry = new PipelineDefinitionRegistry();
+        // Ensure the registry is available in DI so NPipeline.Studio can resolve it
+        services.TryAddSingleton(_registry);
+    }
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="NPipelineServiceBuilder" /> class.
+    /// </summary>
+    /// <param name="services">The service collection to register NPipeline services into.</param>
+    /// <param name="registry">The pipeline definition registry to populate.</param>
+    internal NPipelineServiceBuilder(IServiceCollection services, PipelineDefinitionRegistry registry)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(registry);
+        _services = services;
+        _registry = registry;
     }
 
     /// <summary>
@@ -57,6 +74,7 @@ public sealed class NPipelineServiceBuilder
     public NPipelineServiceBuilder AddPipeline<TPipeline>() where TPipeline : class, IPipelineDefinition
     {
         _services.TryAddTransient<TPipeline>();
+        _registry.Register(typeof(TPipeline));
         return this;
     }
 
@@ -71,6 +89,7 @@ public sealed class NPipelineServiceBuilder
     {
         var descriptor = new ServiceDescriptor(typeof(TPipeline), typeof(TPipeline), lifetime);
         _services.TryAdd(descriptor);
+        _registry.Register(typeof(TPipeline));
         return this;
     }
 
@@ -257,6 +276,10 @@ public sealed class NPipelineServiceBuilder
         foreach (var type in typesToRegister)
         {
             _services.TryAddTransient(type);
+
+            // Register IPipelineDefinition types in the registry so Studio can discover them
+            if (typeof(IPipelineDefinition).IsAssignableFrom(type))
+                _registry.Register(type);
 
             // If the discovered type implements IPipelineLineageSinkProvider, also register it against the interface
             // so it can be resolved by the runner via the focused factory interfaces without reflection.

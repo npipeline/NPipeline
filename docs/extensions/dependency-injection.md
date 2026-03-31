@@ -460,6 +460,28 @@ When using dependency injection, the `DiContainerNodeFactory` is registered inst
 - **Configuration**: You can easily inject configuration objects (`IOptions<T>`) into your nodes to change their behavior without modifying code.
 - **Service Discovery**: The DI container automatically discovers and registers your pipeline components.
 
+## Pipeline Definition Registry
+
+When `AddNPipeline` is called (either overload), a `PipelineDefinitionRegistry` singleton is registered with the service container. It records every `IPipelineDefinition` type that was discovered during scanning or registered via the fluent builder.
+
+```csharp
+var registry = serviceProvider.GetRequiredService<PipelineDefinitionRegistry>();
+
+foreach (var definitionType in registry.DefinitionTypes)
+{
+    Console.WriteLine(definitionType.FullName);
+}
+```
+
+`PipelineDefinitionRegistry` is primarily used by **NPipeline Studio** to enumerate the application's pipeline definitions and extract their graphs for the visual UI. Application code does not typically need to interact with it directly.
+
+**Key characteristics:**
+
+- Thread-safe — reads and writes are lock-protected.
+- Deduplicates — registering the same type more than once has no effect.
+- Order-preserving — types appear in the order they were registered / discovered.
+- Read-only for consumers — the `Register` method is `internal`; only `AddNPipeline` calls it.
+
 ## Related Topics
 
 - **[Parallelism](parallelism/index.md)**: Learn how to execute parts of your pipeline in parallel to improve performance.

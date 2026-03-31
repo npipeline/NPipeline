@@ -485,6 +485,55 @@ public static class Program
 
 In this example, `MyConfig` is stored in `PipelineContext` using a key ("MyConfig"). Each `IContextAwareNode` can then retrieve this shared configuration. The `GetOrAdd` method ensures that the object is created only once per pipeline run if it doesn't already exist for that key.
 
+## Runtime Behaviour Overrides via `PipelineContextKeys`
+
+The `PipelineContextKeys` class defines string constants for well-known entries in the `Properties` dictionary. Several of these constants let you override lineage and error-handling behaviour at run time without changing the pipeline definition — useful for testing, Studio integration, or per-run customisation.
+
+### Lineage Overrides
+
+Set these on `context.Properties` before calling `RunAsync`:
+
+```csharp
+// Enable or disable item-level lineage for a single run, regardless of what the
+// builder configured (builder.EnableItemLevelLineage()).
+context.Properties[PipelineContextKeys.ItemLevelLineageEnabledOverride] = true;
+
+// Replace the LineageOptions for this run entirely:
+context.Properties[PipelineContextKeys.LineageOptionsOverride] = new LineageOptions(
+    SampleEvery: 1,
+    CaptureHopSnapshots: true);
+
+// Or derive new options from the graph's baseline:
+context.Properties[PipelineContextKeys.LineageOptionsOverride] =
+    (Func<LineageOptions?, LineageOptions?>)(baseline => baseline with { SampleEvery = 1 });
+```
+
+| Key constant | Value type | Description |
+|---|---|---|
+| `PipelineContextKeys.ItemLevelLineageEnabledOverride` | `bool` | Overrides the graph's `ItemLevelLineageEnabled` flag for the run |
+| `PipelineContextKeys.LineageOptionsOverride` | `LineageOptions` or `Func<LineageOptions?, LineageOptions?>` | Replaces or transforms the graph's `LineageOptions` for the run |
+
+### Sink Decorator Hooks
+
+Extensions can wrap the dead-letter and lineage sinks at execution time by storing a decorator function in `Properties`:
+
+```csharp
+// Decorate the dead-letter sink (e.g., Studio wraps it to capture dead letters for the UI)
+context.Properties[PipelineContextKeys.DeadLetterSinkDecorator] =
+    (Func<IDeadLetterSink?, IDeadLetterSink?>)(inner => new MyDeadLetterSinkWrapper(inner));
+
+// Decorate the lineage sink
+context.Properties[PipelineContextKeys.LineageSinkDecorator] =
+    (Func<ILineageSink?, ILineageSink?>)(inner => new MyLineageSinkWrapper(inner));
+```
+
+| Key constant | Value type | Description |
+|---|---|---|
+| `PipelineContextKeys.DeadLetterSinkDecorator` | `Func<IDeadLetterSink?, IDeadLetterSink?>` | Wraps the resolved dead-letter sink at execution time |
+| `PipelineContextKeys.LineageSinkDecorator` | `Func<ILineageSink?, ILineageSink?>` | Wraps the resolved lineage sink at execution time |
+
+These hooks are intended for framework extensions (such as NPipeline Studio) and not for typical application code.
+
 ## Best Practices
 
 * **Keep it Lightweight**: Avoid adding large or frequently changing data structures to the context. For complex state management, consider dedicated state management nodes or services.

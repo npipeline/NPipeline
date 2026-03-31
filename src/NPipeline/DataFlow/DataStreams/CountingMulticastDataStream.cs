@@ -76,9 +76,14 @@ internal sealed class CountingMulticastDataStream<T> : IForwardOnlyDataStream<T>
 
         var idx = Interlocked.Increment(ref _nextSubscriber) - 1;
 
-        return idx >= _channels.Length
-            ? throw new InvalidOperationException($"Too many subscribers requested (max {_channels.Length}).")
-            : ReadChannel(_channels[idx], idx, cancellationToken);
+        if (idx >= _channels.Length)
+        {
+            throw new InvalidOperationException(
+                $"Too many subscribers requested (max {_channels.Length}). " +
+                $"Stream: {StreamName}. Subscriber #{idx + 1}.");
+        }
+
+        return ReadChannel(_channels[idx], idx, cancellationToken);
     }
 
     public async IAsyncEnumerable<object?> ToAsyncEnumerable([EnumeratorCancellation] CancellationToken cancellationToken = default)
