@@ -12,8 +12,23 @@ public enum NodeKind
     /// <summary>A source node that produces data.</summary>
     Source,
 
-    /// <summary>A transform node that processes data.</summary>
+    /// <summary>A transform node that processes data item-by-item.</summary>
     Transform,
+
+    /// <summary>A stream transform node that operates on the full data stream.</summary>
+    StreamTransform,
+
+    /// <summary>A tap node that sends copies of data to a side-channel sink without affecting the main flow.</summary>
+    Tap,
+
+    /// <summary>A branch node that fans out data to multiple downstream pathways.</summary>
+    Branch,
+
+    /// <summary>A lookup node that enriches data using an in-memory dictionary.</summary>
+    Lookup,
+
+    /// <summary>A batching or unbatching node that groups or ungroups data items.</summary>
+    Batch,
 
     /// <summary>A sink node that consumes data.</summary>
     Sink,

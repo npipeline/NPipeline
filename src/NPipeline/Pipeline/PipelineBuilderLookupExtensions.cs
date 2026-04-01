@@ -32,7 +32,7 @@ public static class PipelineBuilderLookupExtensions
         builder.RegisterBuilderDisposable(nodeInstance);
 
         // Register the generic node type with the builder.
-        var handle = builder.AddTransform<InMemoryLookupNode<TIn, TKey, TValue, TOut>, TIn, TOut>(name);
+        var handle = builder.AddTransformWithKind<InMemoryLookupNode<TIn, TKey, TValue, TOut>, TIn, TOut>(NodeKind.Lookup, name);
 
         // Add the pre-configured instance to the builder.
         builder.AddPreconfiguredNodeInstance(handle.Id, nodeInstance);
