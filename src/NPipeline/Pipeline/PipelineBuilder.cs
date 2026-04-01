@@ -144,7 +144,27 @@ public sealed partial class PipelineBuilder
     public TransformNodeHandle<TIn, TOut> AddStreamTransform<TNode, TIn, TOut>(string? name = null) where TNode : IStreamTransformNode<TIn, TOut>
     {
         name ??= GenerateUniqueNodeName(typeof(TNode).Name);
-        return RegisterNode(name, NodeKind.Transform, typeof(TNode), typeof(TIn), typeof(TOut), static (id, def) => new TransformNodeHandle<TIn, TOut>(id));
+        return RegisterNode(name, NodeKind.StreamTransform, typeof(TNode), typeof(TIn), typeof(TOut), static (id, def) => new TransformNodeHandle<TIn, TOut>(id));
+    }
+
+    /// <summary>
+    ///     Adds a transform node with a specific <see cref="NodeKind" /> override.
+    ///     Used by extension methods (Tap, Branch, Lookup) that are semantically distinct from generic transforms.
+    /// </summary>
+    internal TransformNodeHandle<TIn, TOut> AddTransformWithKind<TNode, TIn, TOut>(NodeKind kind, string? name = null) where TNode : ITransformNode<TIn, TOut>
+    {
+        name ??= GenerateUniqueNodeName(typeof(TNode).Name);
+        return RegisterNode(name, kind, typeof(TNode), typeof(TIn), typeof(TOut), static (id, def) => new TransformNodeHandle<TIn, TOut>(id));
+    }
+
+    /// <summary>
+    ///     Adds a stream transform node with a specific <see cref="NodeKind" /> override.
+    ///     Used by extension methods (Batcher, Unbatcher) that are semantically distinct from generic stream transforms.
+    /// </summary>
+    internal TransformNodeHandle<TIn, TOut> AddStreamTransformWithKind<TNode, TIn, TOut>(NodeKind kind, string? name = null) where TNode : IStreamTransformNode<TIn, TOut>
+    {
+        name ??= GenerateUniqueNodeName(typeof(TNode).Name);
+        return RegisterNode(name, kind, typeof(TNode), typeof(TIn), typeof(TOut), static (id, def) => new TransformNodeHandle<TIn, TOut>(id));
     }
 
     /// <summary>
@@ -250,6 +270,11 @@ public sealed partial class PipelineBuilder
         switch (kind)
         {
             case NodeKind.Transform:
+            case NodeKind.StreamTransform:
+            case NodeKind.Tap:
+            case NodeKind.Branch:
+            case NodeKind.Lookup:
+            case NodeKind.Batch:
                 lineageAdapter = (LineageAdapterDelegate)typeof(PipelineBuilder).GetMethod("BuildLineageAdapter", BindingFlags.NonPublic | BindingFlags.Static)!
                     .MakeGenericMethod(inType!, outType!).Invoke(null, [meta.LineageMapperType])!;
 

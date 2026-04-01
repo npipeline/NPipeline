@@ -25,7 +25,7 @@ public static class PipelineBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(sink);
 
-        var handle = builder.AddTransform<TapNode<T>, T, T>(name ?? "Tap");
+        var handle = builder.AddTransformWithKind<TapNode<T>, T, T>(NodeKind.Tap, name ?? "Tap");
         var node = new TapNode<T>(sink);
         builder.RegisterBuilderDisposable(node);
         _ = builder.AddPreconfiguredNodeInstance(handle.Id, node);
@@ -46,7 +46,7 @@ public static class PipelineBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(sinkFactory);
 
-        var handle = builder.AddTransform<TapNode<T>, T, T>(name ?? "Tap");
+        var handle = builder.AddTransformWithKind<TapNode<T>, T, T>(NodeKind.Tap, name ?? "Tap");
         var node = new TapNode<T>(sinkFactory());
         builder.RegisterBuilderDisposable(node);
         _ = builder.AddPreconfiguredNodeInstance(handle.Id, node);
@@ -67,7 +67,7 @@ public static class PipelineBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(outputHandler);
 
-        var handle = builder.AddTransform<BranchNode<T>, T, T>(name ?? "Tee");
+        var handle = builder.AddTransformWithKind<BranchNode<T>, T, T>(NodeKind.Branch, name ?? "Tee");
         var node = new BranchNode<T>();
         builder.RegisterBuilderDisposable(node);
         node.AddOutput(outputHandler);
@@ -89,7 +89,7 @@ public static class PipelineBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(outputHandlers);
 
-        var handle = builder.AddTransform<BranchNode<T>, T, T>(name ?? "Tee");
+        var handle = builder.AddTransformWithKind<BranchNode<T>, T, T>(NodeKind.Branch, name ?? "Tee");
         var node = new BranchNode<T>();
         builder.RegisterBuilderDisposable(node);
 

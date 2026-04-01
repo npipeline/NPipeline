@@ -7,6 +7,8 @@ using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
 using NPipeline.Execution;
 using NPipeline.Execution.Annotations;
+using NPipeline.Execution.Strategies;
+using NPipeline.ErrorHandling;
 using NPipeline.Extensions.Testing;
 using NPipeline.Graph;
 using NPipeline.Graph.Validation;
@@ -81,6 +83,88 @@ public sealed class PipelineBuilderCharacterizationTests
         p.Graph.Nodes.Should().Contain(n => n.Id == j.Id && n.Kind == NodeKind.Join);
         p.Graph.Nodes.Should().Contain(n => n.Id == a.Id && n.Kind == NodeKind.Aggregate);
         p.Graph.Nodes.Should().Contain(n => n.Id == k.Id && n.Kind == NodeKind.Sink);
+    }
+
+    [Fact]
+    public void AddTap_RegistersNodeWithTapKind()
+    {
+        var b = new PipelineBuilder().WithoutExtendedValidation();
+        var s = b.AddSource<InMemorySourceNode<int>, int>("s");
+        var tap = b.AddTap(new InMemorySinkNode<int>(), "myTap");
+        var k = b.AddSink<InMemorySinkNode<int>, int>("k");
+        b.Connect(s, tap).Connect(tap, k);
+
+        var p = b.Build();
+        p.Graph.Nodes.Should().Contain(n => n.Id == tap.Id && n.Kind == NodeKind.Tap);
+    }
+
+    [Fact]
+    public void AddBranch_RegistersNodeWithBranchKind()
+    {
+        var b = new PipelineBuilder().WithoutExtendedValidation();
+        var s = b.AddSource<InMemorySourceNode<int>, int>("s");
+        var branch = b.AddBranch<int>(_ => Task.CompletedTask, "myBranch");
+        var k = b.AddSink<InMemorySinkNode<int>, int>("k");
+        b.Connect(s, branch).Connect(branch, k);
+
+        var p = b.Build();
+        p.Graph.Nodes.Should().Contain(n => n.Id == branch.Id && n.Kind == NodeKind.Branch);
+    }
+
+    [Fact]
+    public void AddStreamTransform_RegistersNodeWithStreamTransformKind()
+    {
+        var b = new PipelineBuilder().WithoutExtendedValidation();
+        var s = b.AddSource<InMemorySourceNode<int>, int>("s");
+        var st = b.AddStreamTransform<PassthroughStreamTransform, int, int>("st");
+        var k = b.AddSink<InMemorySinkNode<int>, int>("k");
+        b.Connect(s, st).Connect(st, k);
+
+        var p = b.Build();
+        p.Graph.Nodes.Should().Contain(n => n.Id == st.Id && n.Kind == NodeKind.StreamTransform);
+    }
+
+    [Fact]
+    public void AddBatcher_RegistersNodeWithBatchKind()
+    {
+        var b = new PipelineBuilder().WithoutExtendedValidation();
+        var s = b.AddSource<InMemorySourceNode<int>, int>("s");
+        var batcher = b.AddBatcher<int>("myBatcher", 5, TimeSpan.FromSeconds(1));
+        var k = b.AddSink<InMemorySinkNode<IReadOnlyCollection<int>>, IReadOnlyCollection<int>>("k");
+        b.Connect(s, batcher).Connect(batcher, k);
+
+        var p = b.Build();
+        p.Graph.Nodes.Should().Contain(n => n.Id == batcher.Id && n.Kind == NodeKind.Batch);
+    }
+
+    [Fact]
+    public void AddUnbatcher_RegistersNodeWithBatchKind()
+    {
+        var b = new PipelineBuilder().WithoutExtendedValidation();
+        var s = b.AddSource<InMemorySourceNode<IEnumerable<int>>, IEnumerable<int>>("s");
+        var unbatcher = b.AddUnbatcher<int>("myUnbatcher");
+        var k = b.AddSink<InMemorySinkNode<int>, int>("k");
+        b.Connect(s, unbatcher).Connect(unbatcher, k);
+
+        var p = b.Build();
+        p.Graph.Nodes.Should().Contain(n => n.Id == unbatcher.Id && n.Kind == NodeKind.Batch);
+    }
+
+    [Fact]
+    public void AddInMemoryLookup_RegistersNodeWithLookupKind()
+    {
+        var b = new PipelineBuilder().WithoutExtendedValidation();
+        var s = b.AddSource<InMemorySourceNode<int>, int>("s");
+        var lookup = b.AddInMemoryLookup<int, int, string, string>(
+            "myLookup",
+            new Dictionary<int, string> { { 1, "one" } },
+            i => i,
+            (_, v) => v ?? "unknown");
+        var k = b.AddSink<InMemorySinkNode<string>, string>("k");
+        b.Connect(s, lookup).Connect(lookup, k);
+
+        var p = b.Build();
+        p.Graph.Nodes.Should().Contain(n => n.Id == lookup.Id && n.Kind == NodeKind.Lookup);
     }
 
     [Fact]
@@ -331,5 +415,20 @@ public sealed class PipelineBuilderCharacterizationTests
         public void OnQueueMetrics(QueueMetricsEvent e)
         {
         }
+    }
+
+    private sealed class PassthroughStreamTransform : IStreamTransformNode<int, int>
+    {
+        public IExecutionStrategy ExecutionStrategy { get; set; } = SequentialExecutionStrategy.Instance;
+        public INodeErrorHandler? ErrorHandler { get; set; }
+
+        public async IAsyncEnumerable<int> TransformAsync(IAsyncEnumerable<int> items, PipelineContext context,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            await foreach (var item in items.WithCancellation(cancellationToken))
+                yield return item;
+        }
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

@@ -39,6 +39,16 @@ public sealed class NodeExecutor(
                 ExecuteSourcePlanAsync(plan, graph, context, nodeOutputs),
             NodeKind.Transform when plan.ExecuteTransform is not null =>
                 ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
+            NodeKind.StreamTransform when plan.ExecuteTransform is not null =>
+                ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
+            NodeKind.Tap when plan.ExecuteTransform is not null =>
+                ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
+            NodeKind.Branch when plan.ExecuteTransform is not null =>
+                ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
+            NodeKind.Lookup when plan.ExecuteTransform is not null =>
+                ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
+            NodeKind.Batch when plan.ExecuteTransform is not null =>
+                ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
             NodeKind.Join when plan.ExecuteJoin is not null =>
                 ExecuteJoinPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
             NodeKind.Aggregate when plan.ExecuteAggregate is not null =>

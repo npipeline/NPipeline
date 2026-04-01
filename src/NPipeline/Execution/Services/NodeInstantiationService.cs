@@ -106,6 +106,41 @@ public sealed class NodeInstantiationService : INodeInstantiationService
                     def.OutputType,
                     ExecuteTransform: BuildStreamTransformDelegate(def, streamTransformNode)),
 
+                NodeKind.Tap when instance is ITransformNode tapNode => new NodeExecutionPlan(
+                    def.Id,
+                    def.Kind,
+                    def.InputType,
+                    def.OutputType,
+                    ExecuteTransform: BuildTransformDelegate(def, tapNode)),
+
+                NodeKind.Branch when instance is ITransformNode branchNode => new NodeExecutionPlan(
+                    def.Id,
+                    def.Kind,
+                    def.InputType,
+                    def.OutputType,
+                    ExecuteTransform: BuildTransformDelegate(def, branchNode)),
+
+                NodeKind.Lookup when instance is ITransformNode lookupNode => new NodeExecutionPlan(
+                    def.Id,
+                    def.Kind,
+                    def.InputType,
+                    def.OutputType,
+                    ExecuteTransform: BuildTransformDelegate(def, lookupNode)),
+
+                NodeKind.StreamTransform when instance is IStreamTransformNode streamTransformNode => new NodeExecutionPlan(
+                    def.Id,
+                    def.Kind,
+                    def.InputType,
+                    def.OutputType,
+                    ExecuteTransform: BuildStreamTransformDelegate(def, streamTransformNode)),
+
+                NodeKind.Batch when instance is IStreamTransformNode batchNode => new NodeExecutionPlan(
+                    def.Id,
+                    def.Kind,
+                    def.InputType,
+                    def.OutputType,
+                    ExecuteTransform: BuildStreamTransformDelegate(def, batchNode)),
+
                 NodeKind.Join when instance is IJoinNode joinNode => new NodeExecutionPlan(
                     def.Id,
                     def.Kind,
