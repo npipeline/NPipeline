@@ -19,7 +19,7 @@ public class DetailedObservabilityCollector : IObservabilityCollector
         _logger = logger;
     }
     
-    public void RecordNodeStart(string nodeId, DateTimeOffset timestamp, int? threadId = null, long? initialMemoryMb = null)
+    public void RecordNodeStart(string nodeId, DateTimeOffset timestamp, int? threadId = null, long? initialMemoryMb = null, string? pipelineName = null)
     {
         var detailed = new DetailedNodeMetrics
         {

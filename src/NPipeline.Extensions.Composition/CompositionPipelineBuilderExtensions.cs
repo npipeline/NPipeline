@@ -9,8 +9,8 @@ namespace NPipeline.Extensions.Composition;
 /// </summary>
 public static class CompositionPipelineBuilderExtensions
 {
-    // Shared runner instance for all composite nodes (thread-safe)
-    private static readonly Lazy<IPipelineRunner> SharedRunner = new(() => PipelineRunner.Create());
+    // Fallback runner instance used when no service provider or runner is available
+    private static readonly Lazy<IPipelineRunner> FallbackRunner = new(() => PipelineRunner.Create());
 
     /// <summary>
     ///     Adds a composite node that executes the specified sub-pipeline.
@@ -46,9 +46,12 @@ public static class CompositionPipelineBuilderExtensions
         // Record the child definition type on the node
         builder.SetNodeChildDefinitionType(handle.Id, typeof(TDefinition));
 
-        // Configure the node with shared pipeline runner and context configuration
+        // Resolve runner from DI when available; fall back to static runner
+        var runner = ResolveRunner(serviceProvider);
+
+        // Configure the node with resolved pipeline runner and context configuration
         var node = new CompositeTransformNode<TIn, TOut, TDefinition>(
-            SharedRunner.Value,
+            runner,
             contextConfiguration ?? CompositeContextConfiguration.Default,
             serviceProvider,
             fallbackToParameterlessWhenServiceMissing);
@@ -120,5 +123,22 @@ public static class CompositionPipelineBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
         return builder.AddSinkWithKind<PipelineOutputSink<T>, T>(NodeKind.CompositeOutput, name ?? "output");
+    }
+
+    /// <summary>
+    ///     Resolves an <see cref="IPipelineRunner" /> from the service provider if available,
+    ///     falling back to the static runner as a secondary path.
+    /// </summary>
+    private static IPipelineRunner ResolveRunner(IServiceProvider? serviceProvider)
+    {
+        if (serviceProvider is not null)
+        {
+            var runner = serviceProvider.GetService(typeof(IPipelineRunner)) as IPipelineRunner;
+
+            if (runner is not null)
+                return runner;
+        }
+
+        return FallbackRunner.Value;
     }
 }

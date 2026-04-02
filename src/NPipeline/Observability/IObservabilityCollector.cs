@@ -14,7 +14,8 @@ public interface IObservabilityCollector
     /// <param name="timestamp">The timestamp when execution started.</param>
     /// <param name="threadId">The thread ID executing the node.</param>
     /// <param name="initialMemoryMb">The initial memory usage in megabytes.</param>
-    void RecordNodeStart(string nodeId, DateTimeOffset timestamp, int? threadId = null, double? initialMemoryMb = null);
+    /// <param name="pipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
+    void RecordNodeStart(string nodeId, DateTimeOffset timestamp, int? threadId = null, double? initialMemoryMb = null, string? pipelineName = null);
 
     /// <summary>
     ///     Records the completion of a node execution.
@@ -25,8 +26,9 @@ public interface IObservabilityCollector
     /// <param name="exception">Any exception that occurred during execution.</param>
     /// <param name="peakMemoryMb">The peak memory usage in megabytes during execution.</param>
     /// <param name="processorTimeMs">The processor time used in milliseconds.</param>
+    /// <param name="pipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
     void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Exception? exception = null, double? peakMemoryMb = null,
-        long? processorTimeMs = null);
+        long? processorTimeMs = null, string? pipelineName = null);
 
     /// <summary>
     ///     Records item processing metrics for a node.
@@ -34,7 +36,8 @@ public interface IObservabilityCollector
     /// <param name="nodeId">The unique identifier of the node.</param>
     /// <param name="itemsProcessed">The number of items processed.</param>
     /// <param name="itemsEmitted">The number of items emitted.</param>
-    void RecordItemMetrics(string nodeId, long itemsProcessed, long itemsEmitted);
+    /// <param name="pipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
+    void RecordItemMetrics(string nodeId, long itemsProcessed, long itemsEmitted, string? pipelineName = null);
 
     /// <summary>
     ///     Records a retry attempt for a node.
@@ -42,7 +45,8 @@ public interface IObservabilityCollector
     /// <param name="nodeId">The unique identifier of the node.</param>
     /// <param name="retryCount">The current retry attempt number.</param>
     /// <param name="reason">The reason for the retry.</param>
-    void RecordRetry(string nodeId, int retryCount, string? reason = null);
+    /// <param name="pipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
+    void RecordRetry(string nodeId, int retryCount, string? reason = null, string? pipelineName = null);
 
     /// <summary>
     ///     Records performance metrics for a completed node execution.
@@ -50,7 +54,8 @@ public interface IObservabilityCollector
     /// <param name="nodeId">The unique identifier of the node.</param>
     /// <param name="throughputItemsPerSec">The throughput in items per second.</param>
     /// <param name="averageItemProcessingMs">The average time per item in milliseconds.</param>
-    void RecordPerformanceMetrics(string nodeId, double throughputItemsPerSec, double averageItemProcessingMs);
+    /// <param name="pipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
+    void RecordPerformanceMetrics(string nodeId, double throughputItemsPerSec, double averageItemProcessingMs, string? pipelineName = null);
 
     /// <summary>
     ///     Gets the collected metrics for all nodes.
@@ -62,8 +67,9 @@ public interface IObservabilityCollector
     ///     Gets the collected metrics for a specific node.
     /// </summary>
     /// <param name="nodeId">The unique identifier of the node.</param>
+    /// <param name="pipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
     /// <returns>The node metrics, or null if not found.</returns>
-    INodeMetrics? GetNodeMetrics(string nodeId);
+    INodeMetrics? GetNodeMetrics(string nodeId, string? pipelineName = null);
 
     /// <summary>
     ///     Creates pipeline-level metrics from the collected data.

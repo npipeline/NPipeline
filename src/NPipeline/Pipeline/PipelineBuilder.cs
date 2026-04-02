@@ -273,6 +273,41 @@ public sealed partial class PipelineBuilder
     }
 
     /// <summary>
+    ///     Sets or replaces a pre-configured node instance for the specified node.
+    ///     Unlike <see cref="AddPreconfiguredNodeInstance" />, this method allows replacing
+    ///     an existing instance, which is useful for runtime orchestration scenarios
+    ///     (e.g., injecting run-scoped composite node instances).
+    /// </summary>
+    /// <param name="nodeId">The ID of the node to set the instance for.</param>
+    /// <param name="instance">The node instance to use at execution time.</param>
+    /// <param name="replaceExisting">
+    ///     If true (default), replaces any existing preconfigured instance.
+    ///     If false, behaves like <see cref="AddPreconfiguredNodeInstance" /> and throws on duplicate.
+    /// </param>
+    /// <returns>The builder instance for method chaining.</returns>
+    /// <exception cref="InvalidOperationException">
+    ///     Thrown if the node has not been added to the builder, or if <paramref name="replaceExisting" />
+    ///     is false and a different instance is already registered.
+    /// </exception>
+    public PipelineBuilder SetPreconfiguredNodeInstance(string nodeId, INode instance, bool replaceExisting = true)
+    {
+        ArgumentNullException.ThrowIfNull(nodeId);
+        ArgumentNullException.ThrowIfNull(instance);
+
+        if (!NodeState.Nodes.ContainsKey(nodeId))
+            throw new InvalidOperationException(ErrorMessages.PreConfiguredInstanceNodeNotFound(nodeId));
+
+        if (!replaceExisting && NodeState.PreconfiguredNodeInstances.TryGetValue(nodeId, out var existing) &&
+            !ReferenceEquals(existing, instance))
+        {
+            throw new InvalidOperationException(ErrorMessages.PreConfiguredInstanceAlreadyAdded(nodeId));
+        }
+
+        NodeState.PreconfiguredNodeInstances[nodeId] = instance;
+        return this;
+    }
+
+    /// <summary>
     ///     Sets the child pipeline definition type on a composite node.
     /// </summary>
     /// <param name="nodeId">The ID of the composite node.</param>

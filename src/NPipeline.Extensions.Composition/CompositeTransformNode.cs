@@ -51,6 +51,7 @@ public sealed class CompositeTransformNode<TIn, TOut, TDefinition>
     {
         // Create isolated sub-pipeline context
         var subContext = CreateSubPipelineContext(context);
+        subContext.PipelineName = typeof(TDefinition).Name;
 
         // Store input item in sub-context
         subContext.Parameters[CompositeContextKeys.InputItem] = item is null ? DBNull.Value : item;
@@ -125,7 +126,30 @@ public sealed class CompositeTransformNode<TIn, TOut, TDefinition>
             ObservabilityFactory: parentContext.ObservabilityFactory,
             RetryOptions: parentContext.RetryOptions);
 
-        return new PipelineContext(config);
+        var subContext = new PipelineContext(config);
+
+        if (_contextConfiguration.InheritRunIdentity)
+            subContext.RunId = parentContext.RunId;
+
+        // Inherit observability and lineage concerns based on configuration
+        if (_contextConfiguration.InheritExecutionObserver)
+            subContext.ExecutionObserver = parentContext.ExecutionObserver;
+
+        if (_contextConfiguration.InheritLineageSink)
+        {
+            subContext.LineageSink = parentContext.LineageSink;
+            subContext.PipelineLineageSink = parentContext.PipelineLineageSink;
+        }
+
+        if (_contextConfiguration.InheritDeadLetterDecorator)
+        {
+            subContext.DeadLetterSink = parentContext.DeadLetterSink;
+
+            if (parentContext.Properties.TryGetValue(PipelineContextKeys.DeadLetterSinkDecorator, out var decorator))
+                subContext.Properties[PipelineContextKeys.DeadLetterSinkDecorator] = decorator;
+        }
+
+        return subContext;
     }
 
     private TOut RetrieveOutputItem(PipelineContext subContext)

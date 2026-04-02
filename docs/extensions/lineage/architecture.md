@@ -86,7 +86,8 @@ public sealed record LineageHop(
     IReadOnlyList<int>? AncestryInputIndices,  // Renamed from AncestryIndices
     bool Truncated,
     object? InputSnapshot = null,       // JsonElement snapshot before node (requires CaptureHopSnapshots)
-    object? OutputSnapshot = null       // JsonElement snapshot after node (requires CaptureHopSnapshots)
+    object? OutputSnapshot = null,      // JsonElement snapshot after node (requires CaptureHopSnapshots)
+    string? PipelineName = null         // Pipeline identity for nested/composite pipelines
 );
 
 // Hop decision flags

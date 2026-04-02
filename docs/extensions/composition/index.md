@@ -18,7 +18,9 @@ The NPipeline.Extensions.Composition extension enables creating hierarchical, mo
 - **Context Control**: Fine-grained control over what data flows between parent and sub-pipelines
 - **Isolation**: Sub-pipelines execute in isolated contexts, preventing unintended side effects
 - **Nested Composition**: Unlimited nesting depth for hierarchical pipeline structures
-- **High Performance**: Minimal overhead with shared runner and optimized context creation
+- **High Performance**: Minimal overhead with scoped runner resolution and optimized context creation
+- **Observability Inheritance**: Control whether child pipelines inherit observers, lineage sinks, and dead letter handlers
+- **Pipeline Identity**: Lineage and metrics carry pipeline names for unambiguous nested node identification
 
 ## Installation
 
@@ -142,6 +144,30 @@ builder.AddComposite<TIn, TOut, SubPipeline>(
     });
 ```
 
+### Observability and Lineage Inheritance
+
+Control whether child pipelines inherit instrumentation from the parent:
+
+```csharp
+builder.AddComposite<TIn, TOut, SubPipeline>(
+    contextConfiguration: new CompositeContextConfiguration
+    {
+        InheritExecutionObserver = true,     // Child node events flow through parent observer
+        InheritLineageSink = true,           // Child lineage uses parent sink
+        InheritDeadLetterDecorator = true,   // Child dead letters use parent handler
+        InheritRunIdentity = true,           // Shared run identity
+    });
+```
+
+### Preconfigured Node Override
+
+Runtime systems can replace preconfigured node instances (e.g., to inject run-scoped composite nodes):
+
+```csharp
+// Replace an existing preconfigured instance
+builder.SetPreconfiguredNodeInstance(nodeId, newInstance, replaceExisting: true);
+```
+
 ## Architecture
 
 ### Data Flow
@@ -166,7 +192,7 @@ Sub-pipelines execute in isolated contexts:
 ### Performance Characteristics
 
 - **Single-Item Processing**: Each item is processed independently
-- **Minimal Overhead**: Shared pipeline runner for all composite nodes
+- **Minimal Overhead**: Runner resolved from DI when available, with a fallback static runner
 - **Memory Efficient**: Only input/output items in memory at once
 - **No Buffering**: Items flow directly through the pipeline hierarchy
 

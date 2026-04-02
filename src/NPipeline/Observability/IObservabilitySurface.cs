@@ -67,6 +67,7 @@ public readonly struct NodeObservationScope(
     string nodeType,
     DateTimeOffset startTime,
     IPipelineActivity activity,
+    string? pipelineName = null,
     IAutoObservabilityScope? autoObservabilityScope = null)
     : IEquatable<NodeObservationScope>
 {
@@ -79,6 +80,11 @@ public readonly struct NodeObservationScope(
     ///     Gets the auto observability scope for automatic metrics collection.
     /// </summary>
     public IAutoObservabilityScope? AutoObservabilityScope { get; } = autoObservabilityScope;
+
+    /// <summary>
+    ///     Gets the logical pipeline name for this node execution context.
+    /// </summary>
+    public string? PipelineName { get; } = pipelineName;
 
     /// <summary>
     ///     Gets type name of node being observed.
@@ -125,6 +131,7 @@ public readonly struct NodeObservationScope(
     {
         return NodeId == other.NodeId &&
                NodeType == other.NodeType &&
+               PipelineName == other.PipelineName &&
                StartTime.Equals(other.StartTime) &&
                Equals(Activity, other.Activity) &&
                Equals(AutoObservabilityScope, other.AutoObservabilityScope);
@@ -136,7 +143,7 @@ public readonly struct NodeObservationScope(
     /// <returns>A hash code for current <see cref="NodeObservationScope" />.</returns>
     public override int GetHashCode()
     {
-        return HashCode.Combine(NodeId, NodeType, StartTime, Activity, AutoObservabilityScope);
+        return HashCode.Combine(NodeId, NodeType, PipelineName, StartTime, Activity, AutoObservabilityScope);
     }
 
     /// <summary>

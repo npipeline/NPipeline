@@ -13,28 +13,29 @@ public sealed class DiObservabilityFactoryTests
 
     private sealed class CustomObservabilityCollector : IObservabilityCollector
     {
-        public void RecordNodeStart(string nodeId, DateTimeOffset timestamp, int? threadId = null, double? initialMemoryMb = null)
+        public void RecordNodeStart(string nodeId, DateTimeOffset timestamp, int? threadId = null, double? initialMemoryMb = null, string? pipelineName = null)
         {
             // Custom implementation
         }
 
         public void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Exception? exception = null, double? peakMemoryMb = null,
-            long? processorTimeMs = null)
+            long? processorTimeMs = null, string? pipelineName = null)
         {
             // Custom implementation
         }
 
-        public void RecordItemMetrics(string nodeId, long itemsProcessed, long itemsEmitted)
+        public void RecordItemMetrics(string nodeId, long itemsProcessed, long itemsEmitted, string? pipelineName = null)
         {
             // Custom implementation
         }
 
-        public void RecordRetry(string nodeId, int retryCount, string? reason = null)
+        public void RecordRetry(string nodeId, int retryCount, string? reason = null, string? pipelineName = null)
         {
             // Custom implementation
         }
 
-        public void RecordPerformanceMetrics(string nodeId, double throughputItemsPerSec, double averageItemProcessingMs)
+        public void RecordPerformanceMetrics(string nodeId, double throughputItemsPerSec, double averageItemProcessingMs,
+            string? pipelineName = null)
         {
             // Custom implementation
         }
@@ -44,7 +45,7 @@ public sealed class DiObservabilityFactoryTests
             return [];
         }
 
-        public INodeMetrics? GetNodeMetrics(string _)
+        public INodeMetrics? GetNodeMetrics(string _, string? pipelineName = null)
         {
             return null;
         }

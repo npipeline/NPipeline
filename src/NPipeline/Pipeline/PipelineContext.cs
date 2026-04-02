@@ -240,6 +240,18 @@ public sealed class PipelineContext
     public DateTime PipelineStartTimeUtc { get; internal set; }
 
     /// <summary>
+    ///     Unique run identifier for this pipeline execution.
+    ///     This can be inherited by child pipelines when composite run identity inheritance is enabled.
+    /// </summary>
+    public Guid RunId { get; internal set; }
+
+    /// <summary>
+    ///     Logical pipeline name for this execution context.
+    ///     Used by observability and lineage to disambiguate nested node identities.
+    /// </summary>
+    public string? PipelineName { get; internal set; }
+
+    /// <summary>
     ///     Circuit-breaker options for the current run.
     /// </summary>
     public PipelineCircuitBreakerOptions? CircuitBreakerOptions { get; internal set; }

@@ -584,7 +584,7 @@ public sealed class EnrichedObservabilityCollector : IObservabilityCollector
         _logger = logger;
     }
 
-    public void RecordNodeStart(string nodeId, DateTimeOffset timestamp, int? threadId = null, long? initialMemoryMb = null)
+    public void RecordNodeStart(string nodeId, DateTimeOffset timestamp, int? threadId = null, long? initialMemoryMb = null, string? pipelineName = null)
     {
         var correlationId = _httpContextAccessor.HttpContext?.TraceIdentifier;
         _logger.LogInformation("Node {NodeId} started. CorrelationId: {CorrelationId}", nodeId, correlationId);

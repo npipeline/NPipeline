@@ -108,7 +108,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         var observer = context.ExecutionObserver;
 
         var startTs = DateTimeOffset.UtcNow;
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeDef.Id, nodeInstance.GetType().Name, startTs));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeDef.Id, nodeInstance.GetType().Name, startTs, context.PipelineName));
 
         // Check for per-node observability configuration
         IAutoObservabilityScope? autoObservabilityScope = null;
@@ -123,7 +123,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
 
             if (collector != null && optionsValue is Observability.Configuration.ObservabilityOptions obsOptions)
             {
-                autoObservabilityScope = new Observability.AutoObservabilityScope(collector, nodeDef.Id, obsOptions);
+                autoObservabilityScope = new Observability.AutoObservabilityScope(collector, nodeDef.Id, obsOptions, context.PipelineName);
             }
         }
 
@@ -134,7 +134,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
             context.NodeObservabilityScopes[nodeDef.Id] = autoObservabilityScope;
         }
 
-        return new NodeObservationScope(nodeDef.Id, nodeInstance.GetType().Name, startTs, activity, autoObservabilityScope);
+        return new NodeObservationScope(nodeDef.Id, nodeInstance.GetType().Name, startTs, activity, context.PipelineName, autoObservabilityScope);
     }
 
     /// <summary>
@@ -153,7 +153,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         var failureException = scope.AutoObservabilityScope?.GetFailureException();
         var success = failureException == null;
 
-        var completed = new NodeExecutionCompleted(scope.NodeId, scope.NodeType, duration, success, failureException);
+        var completed = new NodeExecutionCompleted(scope.NodeId, scope.NodeType, duration, success, failureException, scope.PipelineName);
 
         context.ExecutionObserver.OnNodeCompleted(completed);
 
@@ -175,7 +175,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
         ObservabilitySurfaceLogMessages.NodeFailed(logger, ex, scope.NodeId);
         var duration = DateTimeOffset.UtcNow - scope.StartTime;
-        var completed = new NodeExecutionCompleted(scope.NodeId, scope.NodeType, duration, false, ex);
+        var completed = new NodeExecutionCompleted(scope.NodeId, scope.NodeType, duration, false, ex, scope.PipelineName);
 
         context.ExecutionObserver.OnNodeCompleted(completed);
 
@@ -206,9 +206,11 @@ public sealed class ObservabilitySurface : IObservabilitySurface
 
         var startTime = context.PipelineStartTimeUtc;
 
-        var pipelineRunId = Guid.NewGuid();
+        var pipelineRunId = context.RunId == Guid.Empty ? Guid.NewGuid() : context.RunId;
         var endTime = DateTime.UtcNow;
-        var pipelineName = typeof(TDefinition).Name;
+        var pipelineName = string.IsNullOrWhiteSpace(context.PipelineName)
+            ? typeof(TDefinition).Name
+            : context.PipelineName!;
 
         await collector.EmitMetricsAsync(pipelineName, pipelineRunId, startTime, endTime, success, exception, context.CancellationToken).ConfigureAwait(false);
     }
@@ -275,9 +277,16 @@ public sealed class ObservabilitySurface : IObservabilitySurface
             return;
 
         var startTime = context.PipelineStartTimeUtc;
-        var pipelineRunId = Guid.NewGuid();
+        var pipelineRunId = context.RunId == Guid.Empty ? Guid.NewGuid() : context.RunId;
         var endTime = DateTime.UtcNow;
 
-        await collector.EmitMetricsAsync(definitionType.Name, pipelineRunId, startTime, endTime, success, exception, context.CancellationToken).ConfigureAwait(false);
+        await collector.EmitMetricsAsync(
+            string.IsNullOrWhiteSpace(context.PipelineName) ? definitionType.Name : context.PipelineName!,
+            pipelineRunId,
+            startTime,
+            endTime,
+            success,
+            exception,
+            context.CancellationToken).ConfigureAwait(false);
     }
 }

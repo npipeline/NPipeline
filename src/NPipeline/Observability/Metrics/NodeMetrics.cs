@@ -17,6 +17,7 @@ namespace NPipeline.Observability.Metrics;
 /// <param name="ThroughputItemsPerSec">The throughput in items per second.</param>
 /// <param name="AverageItemProcessingMs">The average time spent per processed item in milliseconds.</param>
 /// <param name="ThreadId">The thread ID that primarily processed this node.</param>
+/// <param name="PipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
 public sealed record NodeMetrics(
     string NodeId,
     DateTimeOffset? StartTime,
@@ -31,4 +32,5 @@ public sealed record NodeMetrics(
     long? ProcessorTimeMs,
     double? ThroughputItemsPerSec,
     double? AverageItemProcessingMs,
-    int? ThreadId) : INodeMetrics;
+    int? ThreadId,
+    string? PipelineName = null) : INodeMetrics;

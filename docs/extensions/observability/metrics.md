@@ -29,6 +29,7 @@ public interface INodeMetrics
     long? ProcessorTimeMs { get; }
     double? ThroughputItemsPerSec { get; }
     int? ThreadId { get; }
+    string? PipelineName { get; }
 }
 ```
 
