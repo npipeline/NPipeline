@@ -52,4 +52,14 @@ public interface IPipelineRunner
     ///     cancellation token in the context.
     /// </remarks>
     Task RunAsync<TDefinition>(PipelineContext context) where TDefinition : IPipelineDefinition, new();
+
+    /// <summary>
+    ///     Runs a pre-instantiated pipeline definition. This enables executing pipeline definitions
+    ///     that require constructor injection or other non-default construction.
+    /// </summary>
+    /// <param name="definition">An already-constructed pipeline definition instance.</param>
+    /// <param name="context">The pipeline context containing execution configuration, cancellation token, and services.</param>
+    /// <param name="cancellationToken">Cancellation token for the pipeline execution.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    Task RunAsync(IPipelineDefinition definition, PipelineContext context, CancellationToken cancellationToken = default);
 }

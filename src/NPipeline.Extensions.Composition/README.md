@@ -36,9 +36,9 @@ public class DataEnrichmentPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        var input = builder.AddSource<PipelineInputSource<Customer>, Customer>("input");
+        var input = builder.AddCompositeInput<Customer>("input");
         var enrich = builder.AddTransform<CustomerEnricher, Customer, EnrichedCustomer>("enrich");
-        var output = builder.AddSink<PipelineOutputSink<EnrichedCustomer>, EnrichedCustomer>("output");
+        var output = builder.AddCompositeOutput<EnrichedCustomer>("output");
 
         builder.Connect(input, enrich);
         builder.Connect(enrich, output);
@@ -118,10 +118,22 @@ The main transform node that executes a sub-pipeline for each input item.
 ### PipelineInputSource\<T\>
 
 A source node that retrieves input from the parent pipeline context via `CompositeContextKeys.InputItem`.
+Use `builder.AddCompositeInput<T>()` to register it with `NodeKind.CompositeInput`.
 
 ### PipelineOutputSink\<T\>
 
 A sink node that captures output to the parent pipeline context via `CompositeContextKeys.OutputItem`.
+Use `builder.AddCompositeOutput<T>()` to register it with `NodeKind.CompositeOutput`.
+
+### CompositeNaming
+
+Utility class for creating globally unique node IDs when multiple composite nodes share child node names:
+
+```csharp
+var id = CompositeNaming.PrefixNodeId("enrichment", "input"); // "enrichment::input"
+CompositeNaming.GetParentNodeId("enrichment::input");          // "enrichment"
+CompositeNaming.GetChildNodeId("enrichment::input");           // "input"
+```
 
 ### CompositeContextConfiguration
 

@@ -55,6 +55,9 @@ public sealed partial class PipelineBuilder
             .WithExecutionOptionsConfiguration(executionConfig)
             .Build();
 
+        // Compute and attach child graphs for composite nodes
+        graph = BuildChildGraphs(graph);
+
         if (_config.GraphValidationMode != GraphValidationMode.Off)
         {
             var allRules = _config.ExtendedValidation
@@ -128,6 +131,9 @@ public sealed partial class PipelineBuilder
             .WithLineageConfiguration(lineageConfig)
             .WithExecutionOptionsConfiguration(executionConfig)
             .Build();
+
+        // Compute and attach child graphs for composite nodes
+        graph = BuildChildGraphs(graph);
 
         var allRules = _config.ExtendedValidation
             ? _customValidationRules.Concat(PipelineGraphValidator.ExtendedRules)
@@ -213,5 +219,47 @@ public sealed partial class PipelineBuilder
                 : null,
             Visualizer = ConfigurationState.Visualizer,
         };
+    }
+
+    /// <summary>
+    ///     Scans for composite nodes with <see cref="NodeDefinition.ChildDefinitionType" /> set,
+    ///     builds their child pipeline graphs, and attaches them to the parent graph.
+    /// </summary>
+    private static PipelineGraph BuildChildGraphs(PipelineGraph graph)
+    {
+        Dictionary<string, PipelineGraph>? childGraphs = null;
+
+        foreach (var node in graph.Nodes)
+        {
+            if (node.Kind != NodeKind.Composite || node.ChildDefinitionType is null)
+                continue;
+
+            try
+            {
+                var childDef = (IPipelineDefinition)Activator.CreateInstance(node.ChildDefinitionType)!;
+                var childBuilder = new PipelineBuilder();
+
+                // Child graph extraction is a build-time operation and uses an isolated default context.
+                // Child Define() implementations should remain side-effect free and fast.
+                childDef.Define(childBuilder, new PipelineContext());
+
+                if (childBuilder.TryBuild(out var childPipeline, out _) && childPipeline is not null)
+                {
+                    childGraphs ??= new Dictionary<string, PipelineGraph>();
+                    childGraphs[node.Id] = childPipeline.Graph;
+                }
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException and not OperationCanceledException)
+            {
+                // Best-effort: if child graph building fails (e.g., missing DI dependencies in Define()),
+                // skip it. Consumers can still extract the graph manually.
+                Trace.TraceWarning($"[NPipeline] Failed to build child graph for composite node '{node.Id}': {ex}");
+            }
+        }
+
+        if (childGraphs is not null)
+            return graph with { ChildGraphs = childGraphs.ToFrozenDictionary() };
+
+        return graph;
     }
 }

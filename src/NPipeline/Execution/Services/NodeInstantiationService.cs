@@ -127,6 +127,13 @@ public sealed class NodeInstantiationService : INodeInstantiationService
                     def.OutputType,
                     ExecuteTransform: BuildTransformDelegate(def, lookupNode)),
 
+                NodeKind.Composite when instance is ITransformNode compositeNode => new NodeExecutionPlan(
+                    def.Id,
+                    def.Kind,
+                    def.InputType,
+                    def.OutputType,
+                    ExecuteTransform: BuildTransformDelegate(def, compositeNode)),
+
                 NodeKind.StreamTransform when instance is IStreamTransformNode streamTransformNode => new NodeExecutionPlan(
                     def.Id,
                     def.Kind,
@@ -158,6 +165,20 @@ public sealed class NodeInstantiationService : INodeInstantiationService
                     AdaptOutput: BuildOutputAdapter(def.OutputType)),
 
                 NodeKind.Sink => new NodeExecutionPlan(
+                    def.Id,
+                    def.Kind,
+                    def.InputType,
+                    def.OutputType,
+                    ExecuteSink: BuildSinkDelegate(def, instance)),
+
+                NodeKind.CompositeInput => new NodeExecutionPlan(
+                    def.Id,
+                    def.Kind,
+                    def.InputType,
+                    def.OutputType,
+                    BuildSourceDelegate(def, instance)),
+
+                NodeKind.CompositeOutput => new NodeExecutionPlan(
                     def.Id,
                     def.Kind,
                     def.InputType,

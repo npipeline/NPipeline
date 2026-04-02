@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using NPipeline.Attributes.Lineage;
 using NPipeline.Execution;
 using NPipeline.Graph.PipelineDelegates;
@@ -38,6 +39,15 @@ public enum NodeKind
 
     /// <summary>An aggregate node that combines multiple data items.</summary>
     Aggregate,
+
+    /// <summary>A composite node that executes a complete sub-pipeline for each input item.</summary>
+    Composite,
+
+    /// <summary>A bridge source node that reads input from a parent composite node's context.</summary>
+    CompositeInput,
+
+    /// <summary>A bridge sink node that writes output back to a parent composite node's context.</summary>
+    CompositeOutput,
 }
 
 /// <summary>
@@ -105,7 +115,9 @@ public sealed record NodeDefinition(
     CustomMergeDelegate? CustomMerge = null,
     LineageAdapterDelegate? LineageAdapter = null,
     Type? LineageMapperType = null,
-    SinkLineageUnwrapDelegate? SinkLineageUnwrap = null)
+    SinkLineageUnwrapDelegate? SinkLineageUnwrap = null,
+    Type? ChildDefinitionType = null,
+    ImmutableDictionary<string, object>? Metadata = null)
 {
     /// <summary>
     ///     Compatibility constructor for older nested record callers.

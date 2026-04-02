@@ -327,6 +327,11 @@ public sealed class ServiceCollectionExtensionsTests
         {
             return Task.CompletedTask;
         }
+
+        public Task RunAsync(IPipelineDefinition definition, PipelineContext context, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
     }
 
     // DI-owned disposal detection

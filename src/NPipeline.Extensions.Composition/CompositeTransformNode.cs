@@ -12,22 +12,33 @@ namespace NPipeline.Extensions.Composition;
 /// <typeparam name="TDefinition">The sub-pipeline definition type.</typeparam>
 public sealed class CompositeTransformNode<TIn, TOut, TDefinition>
     : TransformNode<TIn, TOut>
-    where TDefinition : IPipelineDefinition, new()
+    where TDefinition : IPipelineDefinition
 {
     private readonly CompositeContextConfiguration _contextConfiguration;
+    private readonly bool _fallbackToParameterlessWhenServiceMissing;
     private readonly IPipelineRunner _pipelineRunner;
+    private readonly IServiceProvider? _serviceProvider;
 
     /// <summary>
     ///     Creates a new composite transform node.
     /// </summary>
     /// <param name="pipelineRunner">Runner for executing sub-pipelines.</param>
     /// <param name="contextConfiguration">Configuration for sub-pipeline context.</param>
+    /// <param name="serviceProvider">Optional service provider for resolving DI-managed child definitions.</param>
+    /// <param name="fallbackToParameterlessWhenServiceMissing">
+    ///     If true and <paramref name="serviceProvider" /> cannot resolve <typeparamref name="TDefinition" />,
+    ///     attempts to create the definition using a parameterless constructor.
+    /// </param>
     public CompositeTransformNode(
         IPipelineRunner pipelineRunner,
-        CompositeContextConfiguration contextConfiguration)
+        CompositeContextConfiguration contextConfiguration,
+        IServiceProvider? serviceProvider = null,
+        bool fallbackToParameterlessWhenServiceMissing = false)
     {
         _pipelineRunner = pipelineRunner ?? throw new ArgumentNullException(nameof(pipelineRunner));
         _contextConfiguration = contextConfiguration ?? CompositeContextConfiguration.Default;
+        _fallbackToParameterlessWhenServiceMissing = fallbackToParameterlessWhenServiceMissing;
+        _serviceProvider = serviceProvider;
     }
 
     /// <summary>
@@ -42,13 +53,48 @@ public sealed class CompositeTransformNode<TIn, TOut, TDefinition>
         var subContext = CreateSubPipelineContext(context);
 
         // Store input item in sub-context
-        subContext.Parameters[CompositeContextKeys.InputItem] = item!;
+        subContext.Parameters[CompositeContextKeys.InputItem] = item is null ? DBNull.Value : item;
 
-        // Execute sub-pipeline
-        await _pipelineRunner.RunAsync<TDefinition>(subContext).ConfigureAwait(false);
+        var definition = ResolveDefinition();
+        await _pipelineRunner.RunAsync(definition, subContext, cancellationToken).ConfigureAwait(false);
 
         // Retrieve and return output item
         return RetrieveOutputItem(subContext);
+    }
+
+    private IPipelineDefinition ResolveDefinition()
+    {
+        if (_serviceProvider is not null)
+        {
+            var resolved = _serviceProvider.GetService(typeof(TDefinition));
+
+            if (resolved is IPipelineDefinition definition)
+                return definition;
+
+            if (!_fallbackToParameterlessWhenServiceMissing)
+            {
+                throw new InvalidOperationException(
+                    $"Unable to resolve child pipeline definition '{typeof(TDefinition).FullName}' from IServiceProvider. " +
+                    "Register the definition type or enable fallbackToParameterlessWhenServiceMissing.");
+            }
+        }
+
+        return CreateDefinitionUsingParameterlessConstructor();
+    }
+
+    private static IPipelineDefinition CreateDefinitionUsingParameterlessConstructor()
+    {
+        try
+        {
+            return Activator.CreateInstance<TDefinition>();
+        }
+        catch (Exception ex) when (ex is MissingMethodException or MemberAccessException)
+        {
+            throw new InvalidOperationException(
+                $"Unable to create child pipeline definition '{typeof(TDefinition).FullName}'. " +
+                "Ensure it has a public parameterless constructor or provide it via IServiceProvider.",
+                ex);
+        }
     }
 
     private PipelineContext CreateSubPipelineContext(PipelineContext parentContext)

@@ -83,23 +83,27 @@ A composite node is a special transform node that executes an entire sub-pipelin
 
 Sub-pipelines must follow a specific structure:
 
-- **Input**: Use `PipelineInputSource<T>` to receive data from the parent
+- **Input**: Use `AddCompositeInput<T>()` (preferred) or `AddSource<PipelineInputSource<T>, T>()` to receive data from the parent
 - **Processing**: Use any standard NPipeline nodes (transforms, filters, etc.)
-- **Output**: Use `PipelineOutputSink<T>` to return data to the parent
+- **Output**: Use `AddCompositeOutput<T>()` (preferred) or `AddSink<PipelineOutputSink<T>, T>()` to return data to the parent
+
+Using the dedicated `AddCompositeInput` / `AddCompositeOutput` helpers registers bridge nodes with
+`NodeKind.CompositeInput` and `NodeKind.CompositeOutput` so tools like NPipeline Studio can distinguish
+them from regular source/sink nodes.
 
 ```csharp
 public class MySubPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        // Input node - receives from parent
-        var input = builder.AddSource<PipelineInputSource<TInput>, TInput>("input");
+        // Input node — receives from parent (CompositeInput kind)
+        var input = builder.AddCompositeInput<TInput>("input");
         
         // Processing nodes
         var transform = builder.AddTransform<MyTransform, TInput, TOutput>("process");
         
-        // Output node - returns to parent
-        var output = builder.AddSink<PipelineOutputSink<TOutput>, TOutput>("output");
+        // Output node — returns to parent (CompositeOutput kind)
+        var output = builder.AddCompositeOutput<TOutput>("output");
         
         builder.Connect(input, transform);
         builder.Connect(transform, output);
@@ -165,6 +169,89 @@ Sub-pipelines execute in isolated contexts:
 - **Minimal Overhead**: Shared pipeline runner for all composite nodes
 - **Memory Efficient**: Only input/output items in memory at once
 - **No Buffering**: Items flow directly through the pipeline hierarchy
+
+## Node Kinds
+
+Composite pipelines introduce three dedicated `NodeKind` values:
+
+| Kind | Description |
+|------|-------------|
+| `Composite` | A transform node that executes a sub-pipeline. Registered via `AddComposite<>()`. |
+| `CompositeInput` | A bridge source inside a sub-pipeline that reads from the parent context. Registered via `AddCompositeInput<T>()`. |
+| `CompositeOutput` | A bridge sink inside a sub-pipeline that writes back to the parent context. Registered via `AddCompositeOutput<T>()`. |
+
+These kinds allow tools like NPipeline Studio to distinguish composite nodes from regular transforms/sources/sinks without fragile type-hierarchy scanning.
+
+## Child Definition Type & Metadata
+
+Each composite node stores the child `IPipelineDefinition` type directly on `NodeDefinition.ChildDefinitionType`. This eliminates the need for reflection-based type detection:
+
+```csharp
+var compositeNode = graph.Nodes.First(n => n.Kind == NodeKind.Composite);
+var childType = compositeNode.ChildDefinitionType; // e.g., typeof(ValidationPipeline)
+```
+
+You can also attach arbitrary metadata to any node using `SetNodeMetadata`:
+
+```csharp
+builder.SetNodeMetadata(handle.Id, "Description", "Validates customer records");
+builder.SetNodeMetadata(handle.Id, "Version", 2);
+```
+
+## Child Graphs
+
+When a pipeline is built, the builder automatically extracts and attaches child sub-pipeline graphs for all composite nodes. Access them via `PipelineGraph.ChildGraphs`:
+
+```csharp
+var pipeline = builder.Build();
+
+// Child graphs keyed by composite node ID
+if (pipeline.Graph.ChildGraphs is not null)
+{
+    foreach (var (compositeNodeId, childGraph) in pipeline.Graph.ChildGraphs)
+    {
+        Console.WriteLine($"Composite '{compositeNodeId}' has {childGraph.Nodes.Length} child nodes");
+    }
+}
+```
+
+This eliminates the need for consumers to separately instantiate child definitions and build their graphs.
+
+## Node ID Namespacing
+
+When multiple composite nodes contain sub-pipelines with the same node names (e.g., "input", "output"), use `CompositeNaming` to create globally unique IDs:
+
+```csharp
+// Create namespaced node IDs
+var id = CompositeNaming.PrefixNodeId("validate", "input"); // "validate::input"
+
+// Parse namespaced IDs
+CompositeNaming.IsNamespaced("validate::input");        // true
+CompositeNaming.GetParentNodeId("validate::input");     // "validate"
+CompositeNaming.GetChildNodeId("validate::input");      // "input"
+```
+
+## Dependency Injection Support
+
+Composite nodes can use DI-resolved child pipeline definitions by passing an `IServiceProvider`:
+
+```csharp
+// Register child definition in DI container
+services.AddTransient<ValidationPipeline>();
+
+// Pass service provider when adding composite node
+builder.AddComposite<Customer, ValidatedCustomer, ValidationPipeline>(
+    name: "validate",
+    serviceProvider: serviceProvider);
+```
+
+You can also run pre-instantiated definitions directly:
+
+```csharp
+var runner = PipelineRunner.Create();
+var definition = new MyPipelineDefinition(injectedService);
+await runner.RunAsync(definition, context);
+```
 
 ## Advanced Topics
 

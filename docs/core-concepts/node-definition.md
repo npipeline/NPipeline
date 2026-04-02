@@ -58,7 +58,7 @@ public sealed record NodeIdentity(
 /// Represents the type system information of a node.
 /// </summary>
 /// <param name="NodeType">The type of the pipeline node, which must implement INode.</param>
-/// <param name="Kind">The kind of node (Source, Transform, StreamTransform, Tap, Branch, Lookup, Batch, Sink, Join, or Aggregate).</param>
+/// <param name="Kind">The kind of node (Source, Transform, StreamTransform, Tap, Branch, Lookup, Batch, Sink, Join, Aggregate, Composite, CompositeInput, or CompositeOutput).</param>
 /// <param name="InputType">The type of input data for the node.</param>
 /// <param name="OutputType">The type of output data for the node.</param>
 public sealed record NodeTypeSystem(

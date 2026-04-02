@@ -9,8 +9,22 @@ public sealed class PipelineFactory : IPipelineFactory
     public Pipeline Create<TDefinition>(PipelineContext context) where TDefinition : IPipelineDefinition, new()
     {
         ArgumentNullException.ThrowIfNull(context);
+        return BuildPipeline(new TDefinition(), context);
+    }
 
-        var definition = new TDefinition();
+    /// <inheritdoc />
+    public Pipeline Create(IPipelineDefinition definition, PipelineContext context)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+        ArgumentNullException.ThrowIfNull(context);
+
+        return BuildPipeline(definition, context);
+    }
+
+    private static Pipeline BuildPipeline(IPipelineDefinition definition, PipelineContext context)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+        ArgumentNullException.ThrowIfNull(context);
 
         var builder = new PipelineBuilder();
 
@@ -20,9 +34,8 @@ public sealed class PipelineFactory : IPipelineFactory
         if (context.PreconfiguredNodeInstances.Count > 0)
         {
             foreach (var kvp in context.PreconfiguredNodeInstances)
-
-                // Best-effort: ignore duplicates (will throw) so wrap in try/catch.
             {
+                // Best-effort: ignore duplicates (will throw) so wrap in try/catch.
                 try
                 {
                     builder.AddPreconfiguredNodeInstance(kvp.Key, kvp.Value);

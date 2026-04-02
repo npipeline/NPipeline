@@ -26,12 +26,21 @@ The primary method for executing a pipeline is `RunAsync`, which takes a [`Pipel
 public interface IPipelineRunner
 {
     Task RunAsync<TDefinition>(PipelineContext context) where TDefinition : IPipelineDefinition, new();
+
+    Task RunAsync(IPipelineDefinition definition, PipelineContext context, CancellationToken cancellationToken = default);
 }
 ```
 
 * **`TDefinition`**: The type of pipeline definition to run. Must implement [`IPipelineDefinition`](../../../src/NPipeline/Abstractions/Pipeline/IPipelineDefinition.cs) and have a parameterless constructor (indicated by the `new()` constraint).
 * **`context`**: The [`PipelineContext`](../../../src/NPipeline/Pipeline/PipelineContext.cs) containing runtime configuration, shared state, and cancellation tokens.
 * **`new()` constraint**: This ensures the pipeline definition can be instantiated without parameters, allowing the runner to create an instance of the definition.
+
+The second overload accepts a **pre-instantiated** `IPipelineDefinition`, enabling execution of pipeline definitions that require constructor injection or other non-default construction:
+
+```csharp
+var definition = new MyPipeline(injectedService);
+await runner.RunAsync(definition, context);
+```
 
 ### Example: Basic Pipeline Execution
 

@@ -84,6 +84,12 @@ public sealed record PipelineGraph
     public string GraphHash { get; init; } = string.Empty;
 
     /// <summary>
+    ///     Child sub-pipeline graphs for composite nodes, keyed by the composite node's ID.
+    ///     Null for pipelines without composite nodes.
+    /// </summary>
+    public FrozenDictionary<string, PipelineGraph>? ChildGraphs { get; init; }
+
+    /// <summary>
     ///     Called after the record is initialized to ensure NodeDefinitionMap is populated from Nodes if needed.
     ///     This method should be called after object initialization, or use the factory method CreateAndInitialize.
     /// </summary>
