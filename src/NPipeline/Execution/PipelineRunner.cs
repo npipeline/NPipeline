@@ -122,7 +122,39 @@ public sealed class PipelineRunner(
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        using var pipelineActivity = observabilitySurface.BeginPipeline<TDefinition>(context);
+        await RunAsyncCoreAsync(
+                typeof(TDefinition),
+                context,
+            static (pipelineFactory, runtimeContext) => pipelineFactory.Create<TDefinition>(runtimeContext),
+            cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task RunAsync(IPipelineDefinition definition, PipelineContext context, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+        ArgumentNullException.ThrowIfNull(context);
+
+        await RunAsyncCoreAsync(
+                definition.GetType(),
+                context,
+            (factory, runtimeContext) => factory.Create(definition, runtimeContext),
+            cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task RunAsyncCoreAsync(
+        Type definitionType,
+        PipelineContext context,
+        Func<IPipelineFactory, PipelineContext, NPipeline.Pipeline.Pipeline> createPipeline,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(definitionType);
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(createPipeline);
+
+        using var pipelineActivity = observabilitySurface.BeginPipeline(definitionType, context);
         PipelineGraph? graph = null;
         InitializeExecutionContext(context);
 
@@ -133,7 +165,7 @@ public sealed class PipelineRunner(
 
         try
         {
-            var pipeline = pipelineFactory.Create<TDefinition>(context);
+            var pipeline = createPipeline(pipelineFactory, context);
             graph = pipeline.Graph;
             graph = ApplyRuntimeItemLevelLineageOverride(graph, context);
             graph = ApplyRuntimeLineageOptionsOverride(graph, context);
@@ -153,22 +185,22 @@ public sealed class PipelineRunner(
             graph = graph.EnsureNodeDefinitionMapInitialized();
             var nodeDefinitionMap = graph.NodeDefinitionMap;
 
-            var executionPlans = BuildExecutionPlans<TDefinition>(graph, nodeInstances);
+            var executionPlans = BuildExecutionPlans(definitionType, graph, nodeInstances);
             ApplyStatefulRegistryFromProperties(context);
             executionCoordinator.RegisterStatefulNodes(nodeInstances, context);
 
             await ExecuteNodesInOrderAsync(graph, context, nodeInstances, nodeDefinitionMap, executionPlans, nodeOutputs).ConfigureAwait(false);
-            await RecordPipelineLineageAsync<TDefinition>(graph, context, pipelineLineageSink).ConfigureAwait(false);
+            await RecordPipelineLineageAsync(definitionType, graph, context, pipelineLineageSink).ConfigureAwait(false);
 
             pipelineCompleted = true;
         }
         catch (Exception ex)
         {
-            await HandlePipelineFailureAsync<TDefinition>(context, ex, pipelineActivity).ConfigureAwait(false);
+            await HandlePipelineFailureAsync(definitionType, context, ex, pipelineActivity).ConfigureAwait(false);
         }
         finally
         {
-            await CleanupResourcesAsync<TDefinition>(context, graph, pipelineActivity, nodeOutputs, nodeInstances, pipelineCompleted)
+            await CleanupResourcesAsync(definitionType, context, graph, pipelineActivity, nodeOutputs, nodeInstances, pipelineCompleted)
                 .ConfigureAwait(false);
         }
     }
@@ -368,11 +400,13 @@ public sealed class PipelineRunner(
             context.ExecutionObserver = execObs;
     }
 
-    private Dictionary<string, NodeExecutionPlan> BuildExecutionPlans<TDefinition>(PipelineGraph graph, Dictionary<string, INode> nodeInstances)
-        where TDefinition : IPipelineDefinition, new()
+    private Dictionary<string, NodeExecutionPlan> BuildExecutionPlans(
+        Type definitionType,
+        PipelineGraph graph,
+        Dictionary<string, INode> nodeInstances)
     {
         return ShouldUseCache(graph)
-            ? executionCoordinator.BuildPlansWithCache(typeof(TDefinition), graph, nodeInstances, _executionPlanCache)
+            ? executionCoordinator.BuildPlansWithCache(definitionType, graph, nodeInstances, _executionPlanCache)
             : executionCoordinator.BuildPlans(graph, nodeInstances);
     }
 
@@ -510,26 +544,26 @@ public sealed class PipelineRunner(
         ExceptionDispatchInfo.Capture(ex).Throw();
     }
 
-    private static async Task RecordPipelineLineageAsync<TDefinition>(
+    private static async Task RecordPipelineLineageAsync(
+        Type definitionType,
         PipelineGraph graph,
         PipelineContext context,
         IPipelineLineageSink? pipelineLineageSink)
-        where TDefinition : IPipelineDefinition, new()
     {
         if (!graph.Lineage.ItemLevelLineageEnabled || pipelineLineageSink is null)
             return;
 
-        var report = LineageGenerator.Generate(typeof(TDefinition).Name, graph, Guid.NewGuid());
+        var report = LineageGenerator.Generate(definitionType.Name, graph, Guid.NewGuid());
         await pipelineLineageSink.RecordAsync(report, context.CancellationToken).ConfigureAwait(false);
     }
 
-    private async Task HandlePipelineFailureAsync<TDefinition>(
+    private async Task HandlePipelineFailureAsync(
+        Type definitionType,
         PipelineContext context,
         Exception ex,
         IPipelineActivity pipelineActivity)
-        where TDefinition : IPipelineDefinition, new()
     {
-        await observabilitySurface.FailPipeline<TDefinition>(context, ex, pipelineActivity).ConfigureAwait(false);
+        await observabilitySurface.FailPipeline(definitionType, context, ex, pipelineActivity).ConfigureAwait(false);
 
         if (context.IsParallelExecution)
             ExceptionDispatchInfo.Capture(ex).Throw();
@@ -538,22 +572,22 @@ public sealed class PipelineRunner(
             ExceptionDispatchInfo.Capture(ex).Throw();
 
         if (ex is not PipelineException)
-            throw new PipelineExecutionException(ErrorMessages.PipelineExecutionFailed(typeof(TDefinition).Name, ex), ex);
+            throw new PipelineExecutionException(ErrorMessages.PipelineExecutionFailed(definitionType.Name, ex), ex);
 
         ExceptionDispatchInfo.Capture(ex).Throw();
     }
 
-    private async Task CleanupResourcesAsync<TDefinition>(
+    private async Task CleanupResourcesAsync(
+        Type definitionType,
         PipelineContext context,
         PipelineGraph? graph,
         IPipelineActivity pipelineActivity,
         Dictionary<string, IDataStream?> nodeOutputs,
         Dictionary<string, INode>? nodeInstances,
         bool pipelineCompleted)
-        where TDefinition : IPipelineDefinition, new()
     {
         if (pipelineCompleted && graph is not null)
-            await observabilitySurface.CompletePipeline<TDefinition>(context, graph, pipelineActivity).ConfigureAwait(false);
+            await observabilitySurface.CompletePipeline(definitionType, context, graph, pipelineActivity).ConfigureAwait(false);
 
         foreach (var kvp in nodeOutputs)
         {

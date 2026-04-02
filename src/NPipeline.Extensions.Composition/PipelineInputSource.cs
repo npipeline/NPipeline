@@ -24,6 +24,10 @@ public sealed class PipelineInputSource<T> : ISourceNode<T>
                 "CompositeTransformNode should have stored the input item.");
         }
 
+        // CompositeTransformNode stores null input values as DBNull to avoid nullability suppression.
+        if (item is DBNull)
+            item = null;
+
         if (item is T typedItem)
         {
             // Return single item as a data pipe

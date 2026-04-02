@@ -44,4 +44,12 @@ public interface IPipelineFactory
     ///     and configurations for execution.
     /// </remarks>
     Pipeline Create<TDefinition>(PipelineContext context) where TDefinition : IPipelineDefinition, new();
+
+    /// <summary>
+    ///     Creates a pipeline from a pre-instantiated definition.
+    /// </summary>
+    /// <param name="definition">An already-constructed pipeline definition instance.</param>
+    /// <param name="context">The <see cref="PipelineContext" /> for this pipeline execution.</param>
+    /// <returns>The created executable pipeline.</returns>
+    Pipeline Create(IPipelineDefinition definition, PipelineContext context);
 }

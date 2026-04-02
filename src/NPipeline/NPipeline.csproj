@@ -54,6 +54,7 @@
         <InternalsVisibleTo Include="NPipeline.Extensions.Nodes.Tests"/>
         <InternalsVisibleTo Include="NPipeline.Extensions.Parallelism.Tests"/>
         <InternalsVisibleTo Include="NPipeline.Extensions.Parallelism"/>
+        <InternalsVisibleTo Include="NPipeline.Extensions.Composition"/>
     </ItemGroup>
 
 </Project>

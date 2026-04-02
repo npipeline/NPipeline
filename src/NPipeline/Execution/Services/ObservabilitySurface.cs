@@ -212,4 +212,72 @@ public sealed class ObservabilitySurface : IObservabilitySurface
 
         await collector.EmitMetricsAsync(pipelineName, pipelineRunId, startTime, endTime, success, exception, context.CancellationToken).ConfigureAwait(false);
     }
+
+    /// <inheritdoc />
+    public IPipelineActivity BeginPipeline(Type definitionType, PipelineContext context)
+    {
+        var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
+        var activity = context.Tracer.StartActivity($"Pipeline.Run: {definitionType.Name}");
+        ObservabilitySurfaceLogMessages.PipelineStarting(logger, definitionType.Name);
+        return activity;
+    }
+
+    /// <inheritdoc />
+    public async Task CompletePipeline(Type definitionType, PipelineContext context, PipelineGraph graph, IPipelineActivity pipelineActivity)
+    {
+        foreach (var kv in context.RuntimeAnnotations.Where(kv => kv.Key.StartsWith(ExecutionAnnotationKeys.BranchMetricsPrefix, StringComparison.Ordinal)))
+        {
+            if (kv.Value is BranchMetrics fm)
+            {
+                pipelineActivity.SetTag($"{kv.Key}.subscribers", fm.SubscriberCount);
+                pipelineActivity.SetTag($"{kv.Key}.capacity", fm.PerSubscriberCapacity ?? -1);
+                pipelineActivity.SetTag($"{kv.Key}.maxAggregateBacklog", fm.MaxAggregateBacklog);
+                pipelineActivity.SetTag($"{kv.Key}.completed", fm.SubscribersCompleted);
+                pipelineActivity.SetTag($"{kv.Key}.faulted", fm.Faulted);
+            }
+        }
+
+        var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
+        ObservabilitySurfaceLogMessages.PipelineFinished(logger, definitionType.Name);
+
+        try
+        {
+            await EmitMetricsAsync(definitionType, context, true, null).ConfigureAwait(false);
+        }
+        catch (Exception emitEx)
+        {
+            ObservabilitySurfaceLogMessages.MetricsEmissionFailed(logger, emitEx, definitionType.Name);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task FailPipeline(Type definitionType, PipelineContext context, Exception ex, IPipelineActivity pipelineActivity)
+    {
+        var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
+        ObservabilitySurfaceLogMessages.PipelineFailed(logger, ex, definitionType.Name);
+        pipelineActivity.RecordException(ex);
+
+        try
+        {
+            await EmitMetricsAsync(definitionType, context, false, ex).ConfigureAwait(false);
+        }
+        catch (Exception emitEx)
+        {
+            ObservabilitySurfaceLogMessages.MetricsEmissionFailedAfterPipelineFailure(logger, emitEx, definitionType.Name);
+        }
+    }
+
+    private async Task EmitMetricsAsync(Type definitionType, PipelineContext context, bool success, Exception? exception)
+    {
+        var collector = context.ObservabilityFactory.ResolveObservabilityCollector();
+
+        if (collector is null)
+            return;
+
+        var startTime = context.PipelineStartTimeUtc;
+        var pipelineRunId = Guid.NewGuid();
+        var endTime = DateTime.UtcNow;
+
+        await collector.EmitMetricsAsync(definitionType.Name, pipelineRunId, startTime, endTime, success, exception, context.CancellationToken).ConfigureAwait(false);
+    }
 }

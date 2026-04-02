@@ -29,6 +29,21 @@ public interface IObservabilitySurface
     Task FailPipeline<TDefinition>(PipelineContext context, Exception ex, IPipelineActivity pipelineActivity) where TDefinition : IPipelineDefinition, new();
 
     /// <summary>
+    ///     Begins a pipeline run using a runtime definition type.
+    /// </summary>
+    IPipelineActivity BeginPipeline(Type definitionType, PipelineContext context);
+
+    /// <summary>
+    ///     Records successful pipeline completion using a runtime definition type.
+    /// </summary>
+    Task CompletePipeline(Type definitionType, PipelineContext context, PipelineGraph graph, IPipelineActivity pipelineActivity);
+
+    /// <summary>
+    ///     Records a pipeline failure using a runtime definition type.
+    /// </summary>
+    Task FailPipeline(Type definitionType, PipelineContext context, Exception ex, IPipelineActivity pipelineActivity);
+
+    /// <summary>
     ///     Starts node execution, returning a scope with timing and activity.
     /// </summary>
     NodeObservationScope BeginNode(PipelineContext context, PipelineGraph graph, NodeDefinition nodeDef, INode nodeInstance);

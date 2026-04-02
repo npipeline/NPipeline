@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Reflection;
 using NPipeline.Configuration;
 using NPipeline.Graph;
@@ -149,12 +150,32 @@ public sealed partial class PipelineBuilder
 
     /// <summary>
     ///     Adds a transform node with a specific <see cref="NodeKind" /> override.
-    ///     Used by extension methods (Tap, Branch, Lookup) that are semantically distinct from generic transforms.
+    ///     Used by extension methods (Tap, Branch, Lookup, Composite) that are semantically distinct from generic transforms.
     /// </summary>
     internal TransformNodeHandle<TIn, TOut> AddTransformWithKind<TNode, TIn, TOut>(NodeKind kind, string? name = null) where TNode : ITransformNode<TIn, TOut>
     {
         name ??= GenerateUniqueNodeName(typeof(TNode).Name);
         return RegisterNode(name, kind, typeof(TNode), typeof(TIn), typeof(TOut), static (id, def) => new TransformNodeHandle<TIn, TOut>(id));
+    }
+
+    /// <summary>
+    ///     Adds a source node with a specific <see cref="NodeKind" /> override.
+    ///     Used by extension methods (CompositeInput) that are semantically distinct from generic sources.
+    /// </summary>
+    internal SourceNodeHandle<TOut> AddSourceWithKind<TNode, TOut>(NodeKind kind, string? name = null) where TNode : ISourceNode<TOut>
+    {
+        name ??= GenerateUniqueNodeName(typeof(TNode).Name);
+        return RegisterNode(name, kind, typeof(TNode), null, typeof(TOut), static (id, def) => new SourceNodeHandle<TOut>(id));
+    }
+
+    /// <summary>
+    ///     Adds a sink node with a specific <see cref="NodeKind" /> override.
+    ///     Used by extension methods (CompositeOutput) that are semantically distinct from generic sinks.
+    /// </summary>
+    internal SinkNodeHandle<TIn> AddSinkWithKind<TNode, TIn>(NodeKind kind, string? name = null) where TNode : ISinkNode<TIn>
+    {
+        name ??= GenerateUniqueNodeName(typeof(TNode).Name);
+        return RegisterNode(name, kind, typeof(TNode), typeof(TIn), null, static (id, def) => new SinkNodeHandle<TIn>(id));
     }
 
     /// <summary>
@@ -252,6 +273,53 @@ public sealed partial class PipelineBuilder
     }
 
     /// <summary>
+    ///     Sets the child pipeline definition type on a composite node.
+    /// </summary>
+    /// <param name="nodeId">The ID of the composite node.</param>
+    /// <param name="childDefinitionType">The <see cref="IPipelineDefinition" /> type of the child sub-pipeline.</param>
+    /// <returns>The builder instance for method chaining.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the node does not exist.</exception>
+    public PipelineBuilder SetNodeChildDefinitionType(string nodeId, Type childDefinitionType)
+    {
+        ArgumentNullException.ThrowIfNull(childDefinitionType);
+
+        if (!typeof(IPipelineDefinition).IsAssignableFrom(childDefinitionType))
+        {
+            throw new ArgumentException(
+                $"Type '{childDefinitionType.FullName}' must implement {nameof(IPipelineDefinition)}.",
+                nameof(childDefinitionType));
+        }
+
+        if (!NodeState.Nodes.TryGetValue(nodeId, out var existing))
+            throw new InvalidOperationException($"Node '{nodeId}' not found. SetNodeChildDefinitionType must be called after adding the node.");
+
+        NodeState.Nodes[nodeId] = existing with { ChildDefinitionType = childDefinitionType };
+        return this;
+    }
+
+    /// <summary>
+    ///     Sets a metadata value on a node definition.
+    /// </summary>
+    /// <param name="nodeId">The ID of the node.</param>
+    /// <param name="key">The metadata key.</param>
+    /// <param name="value">The metadata value.</param>
+    /// <returns>The builder instance for method chaining.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the node does not exist.</exception>
+    public PipelineBuilder SetNodeMetadata(string nodeId, string key, object value)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        ArgumentNullException.ThrowIfNull(value);
+
+        if (!NodeState.Nodes.TryGetValue(nodeId, out var existing))
+            throw new InvalidOperationException($"Node '{nodeId}' not found. SetNodeMetadata must be called after adding the node.");
+
+        var metadata = existing.Metadata ?? ImmutableDictionary<string, object>.Empty;
+        metadata = metadata.SetItem(key, value);
+        NodeState.Nodes[nodeId] = existing with { Metadata = metadata };
+        return this;
+    }
+
+    /// <summary>
     ///     Core node registration logic that handles all node types.
     /// </summary>
     private THandle RegisterNode<THandle>(string name, NodeKind kind, Type nodeType, Type? inType, Type? outType,
@@ -275,25 +343,21 @@ public sealed partial class PipelineBuilder
             case NodeKind.Branch:
             case NodeKind.Lookup:
             case NodeKind.Batch:
-                lineageAdapter = (LineageAdapterDelegate)typeof(PipelineBuilder).GetMethod("BuildLineageAdapter", BindingFlags.NonPublic | BindingFlags.Static)!
-                    .MakeGenericMethod(inType!, outType!).Invoke(null, [meta.LineageMapperType])!;
+                lineageAdapter = BuildLineageAdapterReflection(inType, outType, meta.LineageMapperType);
 
                 if (meta.HasCustomMerge)
                     customMerge = BuildCustomMergeDelegate(nodeType);
 
                 break;
             case NodeKind.Sink:
-                sinkUnwrap = (SinkLineageUnwrapDelegate)typeof(PipelineBuilder).GetMethod("BuildSinkLineageUnwrapDelegate",
-                        BindingFlags.NonPublic | BindingFlags.Static)!
-                    .MakeGenericMethod(inType!).Invoke(null, null)!;
+                sinkUnwrap = BuildSinkLineageUnwrapReflection(inType);
 
                 if (meta.HasCustomMerge)
                     customMerge = BuildCustomMergeDelegate(nodeType);
 
                 break;
             case NodeKind.Join:
-                lineageAdapter = (LineageAdapterDelegate)typeof(PipelineBuilder).GetMethod("BuildLineageAdapter", BindingFlags.NonPublic | BindingFlags.Static)!
-                    .MakeGenericMethod(inType!, outType!).Invoke(null, [meta.LineageMapperType])!;
+                lineageAdapter = BuildLineageAdapterReflection(inType, outType, meta.LineageMapperType);
 
                 // Pre-compile join key selectors during builder phase for zero-overhead runtime access
                 // Extract join key type and input types from the join node's generic hierarchy
@@ -321,7 +385,22 @@ public sealed partial class PipelineBuilder
                 break;
             case NodeKind.Aggregate:
             case NodeKind.Source:
+            case NodeKind.CompositeInput:
                 // nothing extra
+                if (meta.HasCustomMerge)
+                    customMerge = BuildCustomMergeDelegate(nodeType);
+
+                break;
+            case NodeKind.Composite:
+                lineageAdapter = BuildLineageAdapterReflection(inType, outType, meta.LineageMapperType);
+
+                if (meta.HasCustomMerge)
+                    customMerge = BuildCustomMergeDelegate(nodeType);
+
+                break;
+            case NodeKind.CompositeOutput:
+                sinkUnwrap = BuildSinkLineageUnwrapReflection(inType);
+
                 if (meta.HasCustomMerge)
                     customMerge = BuildCustomMergeDelegate(nodeType);
 
@@ -348,6 +427,52 @@ public sealed partial class PipelineBuilder
             throw new ArgumentException(ErrorMessages.NodeAlreadyAdded(id), id);
 
         return handleFactory(id, def);
+    }
+
+    private static LineageAdapterDelegate BuildLineageAdapterReflection(Type? inType, Type? outType, Type? lineageMapperType)
+    {
+        if (inType is null || outType is null)
+            throw new InvalidOperationException("Lineage adapter creation requires non-null input and output types.");
+
+        var method = typeof(PipelineBuilder).GetMethod("BuildLineageAdapter", BindingFlags.NonPublic | BindingFlags.Static)
+                     ?? throw new InvalidOperationException("Internal method 'BuildLineageAdapter' was not found on PipelineBuilder.");
+
+        try
+        {
+            var result = method.MakeGenericMethod(inType, outType).Invoke(null, [lineageMapperType]);
+
+            return result as LineageAdapterDelegate
+                   ?? throw new InvalidOperationException("Internal method 'BuildLineageAdapter' returned an unexpected delegate type.");
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException is not null)
+        {
+            throw new InvalidOperationException(
+                $"Failed to create lineage adapter for input '{inType}' and output '{outType}'.",
+                ex.InnerException);
+        }
+    }
+
+    private static SinkLineageUnwrapDelegate BuildSinkLineageUnwrapReflection(Type? inType)
+    {
+        if (inType is null)
+            throw new InvalidOperationException("Sink lineage unwrap creation requires a non-null input type.");
+
+        var method = typeof(PipelineBuilder).GetMethod("BuildSinkLineageUnwrapDelegate", BindingFlags.NonPublic | BindingFlags.Static)
+                     ?? throw new InvalidOperationException("Internal method 'BuildSinkLineageUnwrapDelegate' was not found on PipelineBuilder.");
+
+        try
+        {
+            var result = method.MakeGenericMethod(inType).Invoke(null, null);
+
+            return result as SinkLineageUnwrapDelegate
+                   ?? throw new InvalidOperationException("Internal method 'BuildSinkLineageUnwrapDelegate' returned an unexpected delegate type.");
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException is not null)
+        {
+            throw new InvalidOperationException(
+                $"Failed to create sink lineage unwrap delegate for input '{inType}'.",
+                ex.InnerException);
+        }
     }
 
     /// <summary>

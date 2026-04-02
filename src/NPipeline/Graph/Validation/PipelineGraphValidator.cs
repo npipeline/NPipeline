@@ -293,8 +293,8 @@ public static class PipelineGraphValidator
             if (context.Graph.Nodes.Length == 0)
                 yield break;
 
-            // A sink is a node with no outgoing edges and kind Sink.
-            var hasSink = context.Graph.Nodes.Any(n => n.Kind == NodeKind.Sink);
+            // A sink is a node with no outgoing edges and kind Sink or CompositeOutput.
+            var hasSink = context.Graph.Nodes.Any(n => n.Kind is NodeKind.Sink or NodeKind.CompositeOutput);
 
             if (!hasSink)
             {

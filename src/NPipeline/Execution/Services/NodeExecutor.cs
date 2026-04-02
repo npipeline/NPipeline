@@ -47,6 +47,8 @@ public sealed class NodeExecutor(
                 ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
             NodeKind.Lookup when plan.ExecuteTransform is not null =>
                 ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
+            NodeKind.Composite when plan.ExecuteTransform is not null =>
+                ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
             NodeKind.Batch when plan.ExecuteTransform is not null =>
                 ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
             NodeKind.Join when plan.ExecuteJoin is not null =>
@@ -54,6 +56,10 @@ public sealed class NodeExecutor(
             NodeKind.Aggregate when plan.ExecuteAggregate is not null =>
                 ExecuteAggregatePlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef),
             NodeKind.Sink when plan.ExecuteSink is not null =>
+                ExecuteSinkPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef),
+            NodeKind.CompositeInput when plan.ExecuteSource is not null =>
+                ExecuteSourcePlanAsync(plan, graph, context, nodeOutputs),
+            NodeKind.CompositeOutput when plan.ExecuteSink is not null =>
                 ExecuteSinkPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef),
             _ => throw new NotSupportedException(ErrorMessages.NodeKindNotSupported(plan.Kind.ToString())),
         };
