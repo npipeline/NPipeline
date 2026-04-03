@@ -51,6 +51,29 @@ The Lineage extension follows a layered architecture for separation of concerns:
 
 ## Core Components
 
+### Aggregate/Join Continuity
+
+Core lineage preserves input lineage context across `Join` and `Aggregate` execution paths.
+
+At a high level:
+
+1. Input is prepared as two coordinated streams:
+
+- unwrapped values for node execution
+- original lineage context for output mapping
+
+1. Output packets are mapped from contributing input lineage when available.
+2. Traversal path remains additive by appending the current qualified segment (`{pipelineId:N}::{nodeId}`) to inherited ancestry.
+3. New lineage IDs are minted only when no contributing lineage input exists.
+
+For multi-input join/aggregate outputs, we use deterministic fallback semantics:
+
+- Mapper-driven ancestry when a `LineageMapperAttribute` mapper is declared.
+- Positional mapping when observed input/output counts are 1:1.
+- Representative-chain mapping with contributor metadata for many-to-one or unknown mappings.
+
+This allows downstream lineage queries to retain upstream ancestry context.
+
 ### LineageCollector
 
 The [`LineageCollector`](../../../src/NPipeline.Extensions.Lineage/LineageCollector.cs) is the central component for collecting and storing lineage data:
@@ -138,6 +161,8 @@ public sealed record LineagePacket<T>(
     public bool Collect { get; init; } = true;
 }
 ```
+
+`ILineageEnvelope` also exposes `TraversalPath` and `LineageHops` so aggregate/join rewrap paths can map output lineage without reflection-heavy packet inspection.
 
 **Flow:**
 

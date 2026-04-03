@@ -88,6 +88,26 @@ TotalMemory = PipelineOverhead + (SampledItems × PerItemMemory)
 
 ## CPU Impact
 
+## Aggregate/Join Mapping Performance
+
+Aggregate and join nodes are special because output cardinality is often not 1:1 with input cardinality.
+
+Current behavior balances continuity and throughput:
+
+- Preserves upstream lineage context for aggregate/join outputs.
+- Uses mapper-driven ancestry when a `LineageMapperAttribute` mapper is present.
+- Uses deterministic fallback mapping when mapper data is unavailable.
+
+To avoid forcing full-stream materialization on hot paths, core only materializes when useful for accurate mapping (for example, mapper-driven mapping or small/capped input sets). For larger streams, it degrades to representative-chain lineage with contributor metadata instead of buffering unbounded output.
+
+This keeps lineage continuous while avoiding a fundamental shift away from streaming execution.
+
+### Practical Guidance
+
+- For high-throughput pipelines: keep sampling enabled (`SampleEvery > 1`) and avoid expensive custom mappers unless necessary.
+- For precise aggregate/join ancestry: provide a dedicated mapper and set a practical `MaterializationCap`.
+- For memory-sensitive workloads: prefer `OverflowPolicy = Degrade` and keep `CaptureHopSnapshots = false`.
+
 ### Per-Operation Costs
 
 | Operation | Cost | Frequency | Notes |

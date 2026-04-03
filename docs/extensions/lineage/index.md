@@ -35,6 +35,7 @@ Track individual data items as they flow through the pipeline, recording:
   - Output emission count
   - Ancestry input indices (for join operations)
   - Truncation status
+- **Continuous aggregate/join lineage**: Upstream ancestry remains visible across aggregate/join boundaries instead of resetting lineage roots.
 
 ### Pipeline-Level Reports
 
