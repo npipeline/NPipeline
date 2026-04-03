@@ -14,8 +14,10 @@ public interface IObservabilityCollector
     /// <param name="timestamp">The timestamp when execution started.</param>
     /// <param name="threadId">The thread ID executing the node.</param>
     /// <param name="initialMemoryMb">The initial memory usage in megabytes.</param>
+    /// <param name="pipelineId">The unique pipeline identity this node belongs to.</param>
     /// <param name="pipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
-    void RecordNodeStart(string nodeId, DateTimeOffset timestamp, int? threadId = null, double? initialMemoryMb = null, string? pipelineName = null);
+    void RecordNodeStart(string nodeId, DateTimeOffset timestamp, Guid pipelineId, int? threadId = null, double? initialMemoryMb = null,
+        string? pipelineName = null);
 
     /// <summary>
     ///     Records the completion of a node execution.
@@ -23,11 +25,12 @@ public interface IObservabilityCollector
     /// <param name="nodeId">The unique identifier of the node.</param>
     /// <param name="timestamp">The timestamp when execution completed.</param>
     /// <param name="success">Whether the execution was successful.</param>
+    /// <param name="pipelineId">The unique pipeline identity this node belongs to.</param>
     /// <param name="exception">Any exception that occurred during execution.</param>
     /// <param name="peakMemoryMb">The peak memory usage in megabytes during execution.</param>
     /// <param name="processorTimeMs">The processor time used in milliseconds.</param>
     /// <param name="pipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
-    void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Exception? exception = null, double? peakMemoryMb = null,
+    void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Guid pipelineId, Exception? exception = null, double? peakMemoryMb = null,
         long? processorTimeMs = null, string? pipelineName = null);
 
     /// <summary>
@@ -36,17 +39,19 @@ public interface IObservabilityCollector
     /// <param name="nodeId">The unique identifier of the node.</param>
     /// <param name="itemsProcessed">The number of items processed.</param>
     /// <param name="itemsEmitted">The number of items emitted.</param>
+    /// <param name="pipelineId">The unique pipeline identity this node belongs to.</param>
     /// <param name="pipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
-    void RecordItemMetrics(string nodeId, long itemsProcessed, long itemsEmitted, string? pipelineName = null);
+    void RecordItemMetrics(string nodeId, long itemsProcessed, long itemsEmitted, Guid pipelineId, string? pipelineName = null);
 
     /// <summary>
     ///     Records a retry attempt for a node.
     /// </summary>
     /// <param name="nodeId">The unique identifier of the node.</param>
     /// <param name="retryCount">The current retry attempt number.</param>
+    /// <param name="pipelineId">The unique pipeline identity this node belongs to.</param>
     /// <param name="reason">The reason for the retry.</param>
     /// <param name="pipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
-    void RecordRetry(string nodeId, int retryCount, string? reason = null, string? pipelineName = null);
+    void RecordRetry(string nodeId, int retryCount, Guid pipelineId, string? reason = null, string? pipelineName = null);
 
     /// <summary>
     ///     Records performance metrics for a completed node execution.
@@ -54,8 +59,10 @@ public interface IObservabilityCollector
     /// <param name="nodeId">The unique identifier of the node.</param>
     /// <param name="throughputItemsPerSec">The throughput in items per second.</param>
     /// <param name="averageItemProcessingMs">The average time per item in milliseconds.</param>
+    /// <param name="pipelineId">The unique pipeline identity this node belongs to.</param>
     /// <param name="pipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
-    void RecordPerformanceMetrics(string nodeId, double throughputItemsPerSec, double averageItemProcessingMs, string? pipelineName = null);
+    void RecordPerformanceMetrics(string nodeId, double throughputItemsPerSec, double averageItemProcessingMs, Guid pipelineId,
+        string? pipelineName = null);
 
     /// <summary>
     ///     Gets the collected metrics for all nodes.
@@ -67,27 +74,29 @@ public interface IObservabilityCollector
     ///     Gets the collected metrics for a specific node.
     /// </summary>
     /// <param name="nodeId">The unique identifier of the node.</param>
-    /// <param name="pipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
+    /// <param name="pipelineId">The unique pipeline identity this node belongs to.</param>
     /// <returns>The node metrics, or null if not found.</returns>
-    INodeMetrics? GetNodeMetrics(string nodeId, string? pipelineName = null);
+    INodeMetrics? GetNodeMetrics(string nodeId, Guid pipelineId);
 
     /// <summary>
     ///     Creates pipeline-level metrics from the collected data.
     /// </summary>
     /// <param name="pipelineName">The name of the pipeline.</param>
+    /// <param name="pipelineId">The unique pipeline identity for this pipeline execution context.</param>
     /// <param name="runId">The unique identifier for this pipeline run.</param>
     /// <param name="startTime">When the pipeline started.</param>
     /// <param name="endTime">When the pipeline ended.</param>
     /// <param name="success">Whether the pipeline execution was successful.</param>
     /// <param name="exception">Any exception that occurred during pipeline execution.</param>
     /// <returns>The pipeline metrics.</returns>
-    IPipelineMetrics CreatePipelineMetrics(string pipelineName, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, bool success,
+    IPipelineMetrics CreatePipelineMetrics(string pipelineName, Guid pipelineId, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, bool success,
         Exception? exception = null);
 
     /// <summary>
     ///     Emits all collected metrics to the registered sinks.
     /// </summary>
     /// <param name="pipelineName">The name of the pipeline.</param>
+    /// <param name="pipelineId">The unique pipeline identity for this pipeline execution context.</param>
     /// <param name="runId">The unique identifier for this pipeline run.</param>
     /// <param name="startTime">When the pipeline started.</param>
     /// <param name="endTime">When the pipeline ended.</param>
@@ -95,6 +104,6 @@ public interface IObservabilityCollector
     /// <param name="exception">Any exception that occurred during pipeline execution.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A <see cref="Task" /> representing the asynchronous operation.</returns>
-    Task EmitMetricsAsync(string pipelineName, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, bool success,
+    Task EmitMetricsAsync(string pipelineName, Guid pipelineId, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, bool success,
         Exception? exception = null, CancellationToken cancellationToken = default);
 }

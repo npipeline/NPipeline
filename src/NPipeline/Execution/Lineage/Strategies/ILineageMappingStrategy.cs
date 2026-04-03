@@ -20,6 +20,8 @@ internal interface ILineageMappingStrategy<TIn, TOut>
         IAsyncEnumerable<LineagePacket<TIn>> inputStream,
         IAsyncEnumerable<TOut> outputStream,
         string nodeId,
+        Guid pipelineId,
+        string? pipelineName,
         TransformCardinality cardinality,
         LineageOptions? options,
         Type? lineageMapperType,

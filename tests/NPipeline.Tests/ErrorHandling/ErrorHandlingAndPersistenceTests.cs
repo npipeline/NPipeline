@@ -67,7 +67,7 @@ public sealed class ErrorHandlingAndPersistenceTests
 
         var sm = new SnapshotStateManager();
         ctx.StateManager = sm;
-        var completed = new NodeExecutionCompleted("n1", "Dummy", TimeSpan.FromMilliseconds(5), true, null);
+        var completed = new NodeExecutionCompleted("n1", "Dummy", TimeSpan.FromMilliseconds(5), true, null, Guid.Empty);
         persistence.TryPersistAfterNode(ctx, completed);
 
         // can't await continuation, but ensure at least snapshot task started

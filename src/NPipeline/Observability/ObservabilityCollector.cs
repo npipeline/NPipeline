@@ -21,52 +21,54 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     }
 
     /// <inheritdoc />
-    public void RecordNodeStart(string nodeId, DateTimeOffset timestamp, int? threadId = null, double? initialMemoryMb = null, string? pipelineName = null)
+    public void RecordNodeStart(string nodeId, DateTimeOffset timestamp, Guid pipelineId, int? threadId = null, double? initialMemoryMb = null,
+        string? pipelineName = null)
     {
         ArgumentNullException.ThrowIfNull(nodeId);
 
-        var builder = GetOrCreateBuilder(nodeId, pipelineName);
+        var builder = GetOrCreateBuilder(nodeId, pipelineId, pipelineName);
         builder.TrySetPipelineName(pipelineName);
         builder.RecordStart(timestamp, threadId, initialMemoryMb);
     }
 
     /// <inheritdoc />
-    public void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Exception? exception = null, double? peakMemoryMb = null,
-        long? processorTimeMs = null, string? pipelineName = null)
+    public void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Guid pipelineId, Exception? exception = null,
+        double? peakMemoryMb = null, long? processorTimeMs = null, string? pipelineName = null)
     {
         ArgumentNullException.ThrowIfNull(nodeId);
 
-        var builder = GetOrCreateBuilder(nodeId, pipelineName);
+        var builder = GetOrCreateBuilder(nodeId, pipelineId, pipelineName);
         builder.TrySetPipelineName(pipelineName);
         builder.RecordEnd(timestamp, success, exception, peakMemoryMb, processorTimeMs);
     }
 
     /// <inheritdoc />
-    public void RecordItemMetrics(string nodeId, long itemsProcessed, long itemsEmitted, string? pipelineName = null)
+    public void RecordItemMetrics(string nodeId, long itemsProcessed, long itemsEmitted, Guid pipelineId, string? pipelineName = null)
     {
         ArgumentNullException.ThrowIfNull(nodeId);
 
-        var builder = GetOrCreateBuilder(nodeId, pipelineName);
+        var builder = GetOrCreateBuilder(nodeId, pipelineId, pipelineName);
         builder.TrySetPipelineName(pipelineName);
         builder.RecordItemMetrics(itemsProcessed, itemsEmitted);
     }
 
     /// <inheritdoc />
-    public void RecordRetry(string nodeId, int retryCount, string? reason = null, string? pipelineName = null)
+    public void RecordRetry(string nodeId, int retryCount, Guid pipelineId, string? reason = null, string? pipelineName = null)
     {
         ArgumentNullException.ThrowIfNull(nodeId);
 
-        var builder = GetOrCreateBuilder(nodeId, pipelineName);
+        var builder = GetOrCreateBuilder(nodeId, pipelineId, pipelineName);
         builder.TrySetPipelineName(pipelineName);
         builder.RecordRetry(retryCount);
     }
 
     /// <inheritdoc />
-    public void RecordPerformanceMetrics(string nodeId, double throughputItemsPerSec, double averageItemProcessingMs, string? pipelineName = null)
+    public void RecordPerformanceMetrics(string nodeId, double throughputItemsPerSec, double averageItemProcessingMs, Guid pipelineId,
+        string? pipelineName = null)
     {
         ArgumentNullException.ThrowIfNull(nodeId);
 
-        var builder = GetOrCreateBuilder(nodeId, pipelineName);
+        var builder = GetOrCreateBuilder(nodeId, pipelineId, pipelineName);
         builder.TrySetPipelineName(pipelineName);
         builder.RecordPerformanceMetrics(throughputItemsPerSec, averageItemProcessingMs);
     }
@@ -78,34 +80,19 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     }
 
     /// <inheritdoc />
-    public INodeMetrics? GetNodeMetrics(string nodeId, string? pipelineName = null)
+    public INodeMetrics? GetNodeMetrics(string nodeId, Guid pipelineId)
     {
         if (nodeId is null)
             return null;
 
-        if (!string.IsNullOrWhiteSpace(pipelineName) &&
-            _nodeMetrics.TryGetValue(BuildMetricKey(nodeId, pipelineName), out var qualified))
-        {
-            return qualified.Build();
-        }
-
-        // Backward-compatible fast path for top-level (non-qualified) entries
-        if (_nodeMetrics.TryGetValue(nodeId, out var direct))
-            return direct.Build();
-
-        // Fallback: locate by logical node id across pipeline-qualified entries.
-        // If multiple entries exist, prefer top-level (null pipeline), then lexical order.
-        var matches = _nodeMetrics.Values
-            .Where(b => string.Equals(b.NodeId, nodeId, StringComparison.Ordinal))
-            .OrderBy(b => b.PipelineName is null ? 0 : 1)
-            .ThenBy(b => b.PipelineName, StringComparer.Ordinal)
-            .ToArray();
-
-        return matches.Length == 0 ? null : matches[0].Build();
+        return _nodeMetrics.TryGetValue(BuildMetricKey(nodeId, pipelineId), out var qualified)
+            ? qualified.Build()
+            : null;
     }
 
     /// <inheritdoc />
-    public IPipelineMetrics CreatePipelineMetrics(string pipelineName, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, bool success,
+    public IPipelineMetrics CreatePipelineMetrics(string pipelineName, Guid pipelineId, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime,
+        bool success,
         Exception? exception = null)
     {
         ArgumentNullException.ThrowIfNull(pipelineName);
@@ -119,6 +106,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
 
         return new PipelineMetrics(
             pipelineName,
+            pipelineId,
             runId,
             startTime,
             endTime,
@@ -130,11 +118,11 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     }
 
     /// <inheritdoc />
-    public async Task EmitMetricsAsync(string pipelineName, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, bool success,
+    public async Task EmitMetricsAsync(string pipelineName, Guid pipelineId, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, bool success,
         Exception? exception = null, CancellationToken cancellationToken = default)
     {
         // Create pipeline metrics
-        var pipelineMetrics = CreatePipelineMetrics(pipelineName, runId, startTime, endTime, success, exception);
+        var pipelineMetrics = CreatePipelineMetrics(pipelineName, pipelineId, runId, startTime, endTime, success, exception);
 
         // Resolve and invoke node metrics sinks
         var nodeMetricsSink = _factory.ResolveMetricsSink();
@@ -158,40 +146,34 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     ///     Initializes a node entry without recording timing information.
     /// </summary>
     /// <param name="nodeId">The unique identifier of the node.</param>
+    /// <param name="pipelineId">The unique pipeline identity this node belongs to.</param>
     /// <param name="threadId">The thread ID executing the node.</param>
     /// <param name="initialMemoryMb">The initial memory usage in megabytes.</param>
-    public void InitializeNode(string nodeId, int? threadId = null, double? initialMemoryMb = null)
+    public void InitializeNode(string nodeId, Guid pipelineId, int? threadId = null, double? initialMemoryMb = null)
     {
         if (nodeId == null)
             return;
 
-        var builder = GetOrCreateBuilder(nodeId, null);
+        var builder = GetOrCreateBuilder(nodeId, pipelineId, null);
         builder.Initialize(threadId, initialMemoryMb);
     }
 
-    private NodeMetricsBuilder GetOrCreateBuilder(string nodeId, string? pipelineName)
+    private NodeMetricsBuilder GetOrCreateBuilder(string nodeId, Guid pipelineId, string? pipelineName)
     {
-        if (!string.IsNullOrWhiteSpace(pipelineName))
-        {
-            var qualifiedKey = BuildMetricKey(nodeId, pipelineName);
-            return _nodeMetrics.GetOrAdd(qualifiedKey, _ => new NodeMetricsBuilder(nodeId, pipelineName));
-        }
-
-        // Backward-compatible behavior for top-level pipelines and callers that do not provide pipeline identity
-        return _nodeMetrics.GetOrAdd(nodeId, _ => new NodeMetricsBuilder(nodeId));
+        var qualifiedKey = BuildMetricKey(nodeId, pipelineId);
+        return _nodeMetrics.GetOrAdd(qualifiedKey, _ => new NodeMetricsBuilder(nodeId, pipelineId, pipelineName));
     }
 
-    private static string BuildMetricKey(string nodeId, string? pipelineName)
+    private static string BuildMetricKey(string nodeId, Guid pipelineId)
     {
-        return string.IsNullOrWhiteSpace(pipelineName)
-            ? nodeId
-            : string.Concat(pipelineName, "::", nodeId);
+        return string.Concat(pipelineId.ToString("N"), "::", nodeId);
     }
 
-    private sealed class NodeMetricsBuilder(string nodeId, string? pipelineName = null)
+    private sealed class NodeMetricsBuilder(string nodeId, Guid pipelineId, string? pipelineName = null)
     {
         private readonly object _identityLock = new();
         private readonly string _nodeId = nodeId;
+        private readonly Guid _pipelineId = pipelineId;
         private string? _pipelineName = pipelineName;
         private readonly object _performanceMetricsLock = new();
         private double? _averageItemProcessingMs;
@@ -209,6 +191,8 @@ public sealed class ObservabilityCollector : IObservabilityCollector
         private double? _throughputItemsPerSec;
 
         public string NodeId => _nodeId;
+
+        public Guid PipelineId => _pipelineId;
 
         public string? PipelineName => _pipelineName;
 
@@ -295,6 +279,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
                 _throughputItemsPerSec,
                 _averageItemProcessingMs,
                 _threadId,
+                _pipelineId,
                 _pipelineName);
         }
     }

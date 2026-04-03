@@ -211,6 +211,9 @@ public sealed class PipelineRunner(
     private static void InitializeExecutionContext(PipelineContext context)
     {
         context.PipelineStartTimeUtc = DateTime.UtcNow;
+        if (context.PipelineId == Guid.Empty)
+            context.PipelineId = Guid.NewGuid();
+
         if (context.RunId == Guid.Empty)
             context.RunId = Guid.NewGuid();
 
@@ -559,7 +562,8 @@ public sealed class PipelineRunner(
         if (!graph.Lineage.ItemLevelLineageEnabled || pipelineLineageSink is null)
             return;
 
-        var report = LineageGenerator.Generate(definitionType.Name, graph, context.RunId == Guid.Empty ? Guid.NewGuid() : context.RunId);
+        var report = LineageGenerator.Generate(definitionType.Name, context.PipelineId, graph,
+            context.RunId == Guid.Empty ? Guid.NewGuid() : context.RunId);
         await pipelineLineageSink.RecordAsync(report, context.CancellationToken).ConfigureAwait(false);
     }
 

@@ -73,7 +73,7 @@ public sealed class NodeExecutor(
         var output = await plan.ExecuteSource!(context, context.CancellationToken);
 
         if (graph.Lineage.ItemLevelLineageEnabled)
-            output = lineageService.WrapSourceStream(output, plan.NodeId, graph.Lineage.LineageOptions);
+            output = lineageService.WrapSourceStream(output, plan.NodeId, context.PipelineId, context.PipelineName, graph.Lineage.LineageOptions);
 
         var counter = GetOrCreateCounter(context);
         output = dataStreamWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
@@ -98,8 +98,8 @@ public sealed class NodeExecutor(
         {
             var adapter = nodeDef.LineageAdapter ?? throw new InvalidOperationException(ErrorMessages.LineageAdapterMissing(plan.NodeId));
 
-            var (unwrapped, rewrap) = adapter(input, plan.NodeId, nodeDef.DeclaredCardinality ?? TransformCardinality.OneToOne, graph.Lineage.LineageOptions,
-                context.CancellationToken);
+            var (unwrapped, rewrap) = adapter(input, plan.NodeId, context.PipelineId, context.PipelineName,
+                nodeDef.DeclaredCardinality ?? TransformCardinality.OneToOne, graph.Lineage.LineageOptions, context.CancellationToken);
 
             var transformTask = plan.ExecuteTransform!(unwrapped, context, context.CancellationToken);
 
@@ -158,7 +158,8 @@ public sealed class NodeExecutor(
             if (rawOutput.GetDataType() != expectedOut)
                 rawOutput = AdaptOutput(plan, rawOutput, expectedOut, $"JoinResult_{plan.NodeId}");
 
-            output = lineageService.WrapNodeOutput(rawOutput, plan.NodeId, graph.Lineage.LineageOptions, HopDecisionFlags.Joined, context.CancellationToken);
+            output = lineageService.WrapNodeOutput(rawOutput, plan.NodeId, context.PipelineId, context.PipelineName, graph.Lineage.LineageOptions,
+                HopDecisionFlags.Joined, context.CancellationToken);
         }
         else
         {
@@ -214,7 +215,8 @@ public sealed class NodeExecutor(
             if (nodeDef.OutputType is not null && output.GetDataType() != nodeDef.OutputType)
                 output = AdaptOutput(plan, output, nodeDef.OutputType, $"AggregateResult_{plan.NodeId}");
 
-            output = lineageService.WrapNodeOutput(output, plan.NodeId, graph.Lineage.LineageOptions, HopDecisionFlags.Aggregated, context.CancellationToken);
+            output = lineageService.WrapNodeOutput(output, plan.NodeId, context.PipelineId, context.PipelineName, graph.Lineage.LineageOptions,
+                HopDecisionFlags.Aggregated, context.CancellationToken);
         }
         else
         {
@@ -260,7 +262,8 @@ public sealed class NodeExecutor(
             var lineageUnwrap = nodeDef.SinkLineageUnwrap ??
                                 throw new InvalidOperationException(ErrorMessages.SinkNodeLineageUnwrapMissing(plan.NodeId));
 
-            effectiveInput = lineageUnwrap(input, context.LineageSink, plan.NodeId, graph.Lineage.LineageOptions, context.CancellationToken);
+            effectiveInput = lineageUnwrap(input, context.LineageSink, plan.NodeId, context.PipelineId, context.PipelineName,
+                graph.Lineage.LineageOptions, context.CancellationToken);
         }
 
         await plan.ExecuteSink!(effectiveInput, context, context.CancellationToken).ConfigureAwait(false);

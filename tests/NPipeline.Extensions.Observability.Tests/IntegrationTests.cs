@@ -19,6 +19,11 @@ namespace NPipeline.Extensions.Observability.Tests;
 /// </summary>
 public sealed class IntegrationTests
 {
+    private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    private static INodeMetrics? GetNodeMetricsById(IObservabilityCollector collector, string nodeId)
+        => TestHelpers.GetNodeMetricsById(collector, nodeId);
+
     #region Multiple Observers Tests
 
     [Fact]
@@ -37,25 +42,25 @@ public sealed class IntegrationTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act - Both observers record events
-        observer1.OnNodeStarted(new NodeExecutionStarted("node1", "TestNode", startTime));
+        observer1.OnNodeStarted(new NodeExecutionStarted("node1", "TestNode", startTime, s_pipelineId));
         await Task.Delay(10);
-        collector.RecordItemMetrics("node1", 100, 90);
-        observer1.OnNodeCompleted(new NodeExecutionCompleted("node1", "TestNode", TimeSpan.FromMilliseconds(10), true, null));
+        collector.RecordItemMetrics("node1", 100, 90, s_pipelineId);
+        observer1.OnNodeCompleted(new NodeExecutionCompleted("node1", "TestNode", TimeSpan.FromMilliseconds(10), true, null, s_pipelineId));
 
-        observer2.OnNodeStarted(new NodeExecutionStarted("node2", "TestNode", startTime));
+        observer2.OnNodeStarted(new NodeExecutionStarted("node2", "TestNode", startTime, s_pipelineId));
         await Task.Delay(15);
-        collector.RecordItemMetrics("node2", 50, 50);
-        observer2.OnNodeCompleted(new NodeExecutionCompleted("node2", "TestNode", TimeSpan.FromMilliseconds(15), true, null));
+        collector.RecordItemMetrics("node2", 50, 50, s_pipelineId);
+        observer2.OnNodeCompleted(new NodeExecutionCompleted("node2", "TestNode", TimeSpan.FromMilliseconds(15), true, null, s_pipelineId));
 
         // Assert - Both nodes should be recorded
         var allMetrics = collector.GetNodeMetrics();
         Assert.Equal(2, allMetrics.Count);
 
-        var node1Metrics = collector.GetNodeMetrics("node1");
+        var node1Metrics = GetNodeMetricsById(collector, "node1");
         Assert.NotNull(node1Metrics);
         Assert.Equal(100, node1Metrics.ItemsProcessed);
 
-        var node2Metrics = collector.GetNodeMetrics("node2");
+        var node2Metrics = GetNodeMetricsById(collector, "node2");
         Assert.NotNull(node2Metrics);
         Assert.Equal(50, node2Metrics.ItemsProcessed);
     }
@@ -131,7 +136,7 @@ public sealed class IntegrationTests
 
         Assert.Equal(3, allMetrics.Count); // source, transform, sink
 
-        var sourceMetrics = collector.GetNodeMetrics("source");
+        var sourceMetrics = GetNodeMetricsById(collector, "source");
         Assert.NotNull(sourceMetrics);
         Assert.True(sourceMetrics.Success);
 
@@ -140,7 +145,7 @@ public sealed class IntegrationTests
         Assert.Equal(0, sourceMetrics.ItemsProcessed);
         Assert.Equal(0, sourceMetrics.ItemsEmitted);
 
-        var transformMetrics = collector.GetNodeMetrics("transform");
+        var transformMetrics = GetNodeMetricsById(collector, "transform");
         Assert.NotNull(transformMetrics);
         Assert.True(transformMetrics.Success);
 
@@ -148,7 +153,7 @@ public sealed class IntegrationTests
         Assert.Equal(10, transformMetrics.ItemsProcessed);
         Assert.Equal(10, transformMetrics.ItemsEmitted);
 
-        var sinkMetrics = collector.GetNodeMetrics("sink");
+        var sinkMetrics = GetNodeMetricsById(collector, "sink");
         Assert.NotNull(sinkMetrics);
         Assert.True(sinkMetrics.Success);
 
@@ -181,7 +186,7 @@ public sealed class IntegrationTests
 
         Assert.Equal(3, allMetrics.Count); // source, failingTransform, sink
 
-        var sourceMetrics = collector.GetNodeMetrics("source");
+        var sourceMetrics = GetNodeMetricsById(collector, "source");
         Assert.NotNull(sourceMetrics);
         Assert.True(sourceMetrics.Success);
 
@@ -194,7 +199,7 @@ public sealed class IntegrationTests
         // because AutoObservabilityScope tracks items via IncrementProcessed()/IncrementEmitted()
         // which are only called during item iteration. If exception occurs before iteration,
         // no metrics are recorded to IObservabilityCollector.
-        var failingTransformMetrics = collector.GetNodeMetrics("failingTransform");
+        var failingTransformMetrics = GetNodeMetricsById(collector, "failingTransform");
 
         // The node may or may not have metrics depending on when the exception occurs
         // This is current behavior - AutoObservabilityScope requires item iteration to record counts
@@ -224,7 +229,7 @@ public sealed class IntegrationTests
 
         Assert.Equal(3, allMetrics.Count); // source, transform, sink
 
-        var transformMetrics = collector.GetNodeMetrics("transform");
+        var transformMetrics = GetNodeMetricsById(collector, "transform");
         Assert.NotNull(transformMetrics);
         Assert.True(transformMetrics.Success);
 
@@ -254,19 +259,19 @@ public sealed class IntegrationTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act - Simulate pipeline execution
-        collector.RecordNodeStart("node1", startTime);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId);
         await Task.Delay(10);
-        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true);
-        collector.RecordItemMetrics("node1", 100, 95);
+        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true, s_pipelineId);
+        collector.RecordItemMetrics("node1", 100, 95, s_pipelineId);
 
-        collector.RecordNodeStart("node2", DateTimeOffset.UtcNow);
+        collector.RecordNodeStart("node2", DateTimeOffset.UtcNow, s_pipelineId);
         await Task.Delay(15);
-        collector.RecordNodeEnd("node2", DateTimeOffset.UtcNow, true);
-        collector.RecordItemMetrics("node2", 95, 90);
-        collector.RecordPerformanceMetrics("node2", 6333.33, 0.158);
+        collector.RecordNodeEnd("node2", DateTimeOffset.UtcNow, true, s_pipelineId);
+        collector.RecordItemMetrics("node2", 95, 90, s_pipelineId);
+        collector.RecordPerformanceMetrics("node2", 6333.33, 0.158, s_pipelineId);
 
         var endTime = DateTimeOffset.UtcNow;
-        var pipelineMetrics = collector.CreatePipelineMetrics(pipelineName, runId, startTime, endTime, true);
+        var pipelineMetrics = collector.CreatePipelineMetrics(pipelineName, s_pipelineId, runId, startTime, endTime, true);
 
         // Assert
         Assert.NotNull(pipelineMetrics);
@@ -276,14 +281,14 @@ public sealed class IntegrationTests
         Assert.Equal(2, pipelineMetrics.NodeMetrics.Count);
         Assert.Equal(195, pipelineMetrics.TotalItemsProcessed);
 
-        var node1Metrics = collector.GetNodeMetrics("node1");
+        var node1Metrics = GetNodeMetricsById(collector, "node1");
         Assert.NotNull(node1Metrics);
         Assert.Equal("node1", node1Metrics.NodeId);
         Assert.True(node1Metrics.Success);
         Assert.Equal(100, node1Metrics.ItemsProcessed);
         Assert.Equal(95, node1Metrics.ItemsEmitted);
 
-        var node2Metrics = collector.GetNodeMetrics("node2");
+        var node2Metrics = GetNodeMetricsById(collector, "node2");
         Assert.NotNull(node2Metrics);
         Assert.Equal("node2", node2Metrics.NodeId);
         Assert.True(node2Metrics.Success);
@@ -307,25 +312,25 @@ public sealed class IntegrationTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act - Simulate node execution with observer
-        observer.OnNodeStarted(new NodeExecutionStarted("node1", "TestNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted("node1", "TestNode", startTime, s_pipelineId));
         await Task.Delay(10);
-        collector.RecordItemMetrics("node1", 100, 90);
-        observer.OnNodeCompleted(new NodeExecutionCompleted("node1", "TestNode", TimeSpan.FromMilliseconds(10), true, null));
+        collector.RecordItemMetrics("node1", 100, 90, s_pipelineId);
+        observer.OnNodeCompleted(new NodeExecutionCompleted("node1", "TestNode", TimeSpan.FromMilliseconds(10), true, null, s_pipelineId));
 
-        observer.OnNodeStarted(new NodeExecutionStarted("node2", "TestNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted("node2", "TestNode", startTime, s_pipelineId));
         await Task.Delay(10);
-        collector.RecordItemMetrics("node2", 50, 50);
-        observer.OnNodeCompleted(new NodeExecutionCompleted("node2", "TestNode", TimeSpan.FromMilliseconds(10), true, null));
+        collector.RecordItemMetrics("node2", 50, 50, s_pipelineId);
+        observer.OnNodeCompleted(new NodeExecutionCompleted("node2", "TestNode", TimeSpan.FromMilliseconds(10), true, null, s_pipelineId));
 
         // Assert
-        var node1Metrics = collector.GetNodeMetrics("node1");
+        var node1Metrics = GetNodeMetricsById(collector, "node1");
         Assert.NotNull(node1Metrics);
         Assert.Equal("node1", node1Metrics.NodeId);
         Assert.True(node1Metrics.Success);
         Assert.Equal(100, node1Metrics.ItemsProcessed);
         Assert.Equal(90, node1Metrics.ItemsEmitted);
 
-        var node2Metrics = collector.GetNodeMetrics("node2");
+        var node2Metrics = GetNodeMetricsById(collector, "node2");
         Assert.NotNull(node2Metrics);
         Assert.Equal("node2", node2Metrics.NodeId);
         Assert.True(node2Metrics.Success);
@@ -350,13 +355,13 @@ public sealed class IntegrationTests
         var expectedException = new InvalidOperationException("Node failed");
 
         // Act
-        collector.RecordNodeStart("failingNode", DateTimeOffset.UtcNow);
+        collector.RecordNodeStart("failingNode", DateTimeOffset.UtcNow, s_pipelineId);
         await Task.Delay(10);
-        collector.RecordNodeEnd("failingNode", DateTimeOffset.UtcNow, false, expectedException);
-        collector.RecordItemMetrics("failingNode", 50, 0);
+        collector.RecordNodeEnd("failingNode", DateTimeOffset.UtcNow, false, s_pipelineId, expectedException);
+        collector.RecordItemMetrics("failingNode", 50, 0, s_pipelineId);
 
         // Assert
-        var metrics = collector.GetNodeMetrics("failingNode");
+        var metrics = GetNodeMetricsById(collector, "failingNode");
         Assert.NotNull(metrics);
         Assert.False(metrics.Success);
         Assert.NotNull(metrics.Exception);
@@ -381,17 +386,17 @@ public sealed class IntegrationTests
         var expectedException = new Exception("Pipeline failed");
 
         // Act
-        collector.RecordNodeStart("node1", startTime);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId);
         await Task.Delay(10);
-        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true);
-        collector.RecordItemMetrics("node1", 100, 100);
+        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true, s_pipelineId);
+        collector.RecordItemMetrics("node1", 100, 100, s_pipelineId);
 
-        collector.RecordNodeStart("node2", DateTimeOffset.UtcNow);
+        collector.RecordNodeStart("node2", DateTimeOffset.UtcNow, s_pipelineId);
         await Task.Delay(10);
-        collector.RecordNodeEnd("node2", DateTimeOffset.UtcNow, false, expectedException);
+        collector.RecordNodeEnd("node2", DateTimeOffset.UtcNow, false, s_pipelineId, expectedException);
 
         var endTime = DateTimeOffset.UtcNow;
-        var pipelineMetrics = collector.CreatePipelineMetrics(pipelineName, runId, startTime, endTime, false, expectedException);
+        var pipelineMetrics = collector.CreatePipelineMetrics(pipelineName, s_pipelineId, runId, startTime, endTime, false, expectedException);
 
         // Assert
         Assert.NotNull(pipelineMetrics);
@@ -413,16 +418,16 @@ public sealed class IntegrationTests
         var collector = scope.ServiceProvider.GetRequiredService<IObservabilityCollector>();
 
         // Act - Simulate retries
-        collector.RecordNodeStart("retryNode", DateTimeOffset.UtcNow);
-        collector.RecordRetry("retryNode", 1, "Temporary failure");
+        collector.RecordNodeStart("retryNode", DateTimeOffset.UtcNow, s_pipelineId);
+        collector.RecordRetry("retryNode", 1, s_pipelineId, "Temporary failure");
         await Task.Delay(10);
-        collector.RecordRetry("retryNode", 2, "Another temporary failure");
+        collector.RecordRetry("retryNode", 2, s_pipelineId, "Another temporary failure");
         await Task.Delay(10);
-        collector.RecordNodeEnd("retryNode", DateTimeOffset.UtcNow, true);
-        collector.RecordItemMetrics("retryNode", 100, 100);
+        collector.RecordNodeEnd("retryNode", DateTimeOffset.UtcNow, true, s_pipelineId);
+        collector.RecordItemMetrics("retryNode", 100, 100, s_pipelineId);
 
         // Assert
-        var metrics = collector.GetNodeMetrics("retryNode");
+        var metrics = GetNodeMetricsById(collector, "retryNode");
         Assert.NotNull(metrics);
         Assert.True(metrics.Success);
         Assert.Equal(2, metrics.RetryCount);
@@ -443,13 +448,13 @@ public sealed class IntegrationTests
         var collector = new ObservabilityCollector(factory);
 
         // Act
-        collector.RecordNodeStart("node1", DateTimeOffset.UtcNow);
+        collector.RecordNodeStart("node1", DateTimeOffset.UtcNow, s_pipelineId);
         await Task.Delay(10);
-        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true);
-        collector.RecordItemMetrics("node1", 100, 95);
+        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true, s_pipelineId);
+        collector.RecordItemMetrics("node1", 100, 95, s_pipelineId);
 
         // Manually call to custom sink
-        var metrics = collector.GetNodeMetrics("node1");
+        var metrics = GetNodeMetricsById(collector, "node1");
 
         if (metrics != null)
             await customSink.RecordAsync(metrics);
@@ -473,13 +478,13 @@ public sealed class IntegrationTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act
-        collector.RecordNodeStart("node1", startTime);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId);
         await Task.Delay(10);
-        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true);
-        collector.RecordItemMetrics("node1", 100, 95);
+        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true, s_pipelineId);
+        collector.RecordItemMetrics("node1", 100, 95, s_pipelineId);
 
         var endTime = DateTimeOffset.UtcNow;
-        var pipelineMetrics = collector.CreatePipelineMetrics(pipelineName, runId, startTime, endTime, true);
+        var pipelineMetrics = collector.CreatePipelineMetrics(pipelineName, s_pipelineId, runId, startTime, endTime, true);
         await customSink.RecordAsync(pipelineMetrics);
 
         // Assert
@@ -511,10 +516,10 @@ public sealed class IntegrationTests
 
             tasks.Add(Task.Run(async () =>
             {
-                collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow);
+                collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId);
                 await Task.Delay(1);
-                collector.RecordNodeEnd(nodeId, DateTimeOffset.UtcNow, true);
-                collector.RecordItemMetrics(nodeId, 10, 10);
+                collector.RecordNodeEnd(nodeId, DateTimeOffset.UtcNow, true, s_pipelineId);
+                collector.RecordItemMetrics(nodeId, 10, 10, s_pipelineId);
             }));
         }
 
@@ -527,7 +532,7 @@ public sealed class IntegrationTests
         // Verify all nodes were recorded correctly
         for (var i = 0; i < nodeCount; i++)
         {
-            var metrics = collector.GetNodeMetrics($"node{i}");
+            var metrics = GetNodeMetricsById(collector, $"node{i}");
             Assert.NotNull(metrics);
             Assert.True(metrics.Success);
             Assert.Equal(10, metrics.ItemsProcessed);
@@ -555,9 +560,9 @@ public sealed class IntegrationTests
 
             tasks.Add(Task.Run(async () =>
             {
-                observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TestNode", DateTimeOffset.UtcNow));
+                observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TestNode", DateTimeOffset.UtcNow, s_pipelineId));
                 await Task.Delay(1);
-                observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TestNode", TimeSpan.FromMilliseconds(1), true, null));
+                observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TestNode", TimeSpan.FromMilliseconds(1), true, null, s_pipelineId));
             }));
         }
 
@@ -585,11 +590,11 @@ public sealed class IntegrationTests
         for (var i = 0; i < iterations; i++)
         {
             var nodeId = $"node{i}";
-            collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow);
+            collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId);
             await Task.Delay(5);
-            collector.RecordNodeEnd(nodeId, DateTimeOffset.UtcNow, true);
-            collector.RecordItemMetrics(nodeId, itemsPerNode, itemsPerNode);
-            collector.RecordPerformanceMetrics(nodeId, 200000, 0.005);
+            collector.RecordNodeEnd(nodeId, DateTimeOffset.UtcNow, true, s_pipelineId);
+            collector.RecordItemMetrics(nodeId, itemsPerNode, itemsPerNode, s_pipelineId);
+            collector.RecordPerformanceMetrics(nodeId, 200000, 0.005, s_pipelineId);
         }
 
         // Assert
@@ -624,23 +629,23 @@ public sealed class IntegrationTests
         using var scope1 = provider.CreateScope();
         var collector1 = scope1.ServiceProvider.GetRequiredService<IObservabilityCollector>();
 
-        collector1.RecordNodeStart("node1", DateTimeOffset.UtcNow);
+        collector1.RecordNodeStart("node1", DateTimeOffset.UtcNow, s_pipelineId);
         await Task.Delay(10);
-        collector1.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true);
+        collector1.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true, s_pipelineId);
 
         using var scope2 = provider.CreateScope();
         var collector2 = scope2.ServiceProvider.GetRequiredService<IObservabilityCollector>();
 
-        collector2.RecordNodeStart("node2", DateTimeOffset.UtcNow);
+        collector2.RecordNodeStart("node2", DateTimeOffset.UtcNow, s_pipelineId);
         await Task.Delay(10);
-        collector2.RecordNodeEnd("node2", DateTimeOffset.UtcNow, true);
+        collector2.RecordNodeEnd("node2", DateTimeOffset.UtcNow, true, s_pipelineId);
 
         // Assert
         Assert.NotSame(collector1, collector2); // Different scopes, different instances
-        Assert.NotNull(collector1.GetNodeMetrics("node1"));
-        Assert.Null(collector1.GetNodeMetrics("node2")); // node2 not in scope1
-        Assert.Null(collector2.GetNodeMetrics("node1")); // node1 not in scope2
-        Assert.NotNull(collector2.GetNodeMetrics("node2"));
+        Assert.NotNull(GetNodeMetricsById(collector1, "node1"));
+        Assert.Null(GetNodeMetricsById(collector1, "node2")); // node2 not in scope1
+        Assert.Null(GetNodeMetricsById(collector2, "node1")); // node1 not in scope2
+        Assert.NotNull(GetNodeMetricsById(collector2, "node2"));
     }
 
     [Fact]
@@ -657,12 +662,12 @@ public sealed class IntegrationTests
         var collector = factory.ResolveObservabilityCollector();
         Assert.NotNull(collector);
 
-        collector.RecordNodeStart("node1", DateTimeOffset.UtcNow);
+        collector.RecordNodeStart("node1", DateTimeOffset.UtcNow, s_pipelineId);
         await Task.Delay(10);
-        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true);
+        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true, s_pipelineId);
 
         // Assert
-        var metrics = collector.GetNodeMetrics("node1");
+        var metrics = GetNodeMetricsById(collector, "node1");
         Assert.NotNull(metrics);
     }
 
@@ -685,20 +690,20 @@ public sealed class IntegrationTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act - Simulate pipeline execution
-        collector.RecordNodeStart("node1", startTime);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId);
         await Task.Delay(10);
-        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true);
-        collector.RecordItemMetrics("node1", 100, 95);
+        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true, s_pipelineId);
+        collector.RecordItemMetrics("node1", 100, 95, s_pipelineId);
 
-        collector.RecordNodeStart("node2", DateTimeOffset.UtcNow);
+        collector.RecordNodeStart("node2", DateTimeOffset.UtcNow, s_pipelineId);
         await Task.Delay(15);
-        collector.RecordNodeEnd("node2", DateTimeOffset.UtcNow, true);
-        collector.RecordItemMetrics("node2", 95, 90);
+        collector.RecordNodeEnd("node2", DateTimeOffset.UtcNow, true, s_pipelineId);
+        collector.RecordItemMetrics("node2", 95, 90, s_pipelineId);
 
         var endTime = DateTimeOffset.UtcNow;
 
         // Emit metrics - this should call all registered sinks
-        await collector.EmitMetricsAsync(pipelineName, runId, startTime, endTime, true);
+        await collector.EmitMetricsAsync(pipelineName, s_pipelineId, runId, startTime, endTime, true);
 
         // Assert - Verify sinks received metrics
         // Verify metrics were collected
@@ -707,12 +712,12 @@ public sealed class IntegrationTests
         Assert.Equal(195, allMetrics.Sum(m => m.ItemsProcessed));
 
         // Verify each node has correct metrics
-        var node1Metrics = collector.GetNodeMetrics("node1");
+        var node1Metrics = GetNodeMetricsById(collector, "node1");
         Assert.NotNull(node1Metrics);
         Assert.Equal(100, node1Metrics.ItemsProcessed);
         Assert.Equal(95, node1Metrics.ItemsEmitted);
 
-        var node2Metrics = collector.GetNodeMetrics("node2");
+        var node2Metrics = GetNodeMetricsById(collector, "node2");
         Assert.NotNull(node2Metrics);
         Assert.Equal(95, node2Metrics.ItemsProcessed);
         Assert.Equal(90, node2Metrics.ItemsEmitted);
@@ -741,20 +746,20 @@ public sealed class IntegrationTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act - Simulate pipeline execution
-        collector.RecordNodeStart("transform1", startTime);
+        collector.RecordNodeStart("transform1", startTime, s_pipelineId);
         await Task.Delay(10);
-        collector.RecordNodeEnd("transform1", DateTimeOffset.UtcNow, true);
-        collector.RecordItemMetrics("transform1", 50, 45);
+        collector.RecordNodeEnd("transform1", DateTimeOffset.UtcNow, true, s_pipelineId);
+        collector.RecordItemMetrics("transform1", 50, 45, s_pipelineId);
 
-        collector.RecordNodeStart("transform2", DateTimeOffset.UtcNow);
+        collector.RecordNodeStart("transform2", DateTimeOffset.UtcNow, s_pipelineId);
         await Task.Delay(15);
-        collector.RecordNodeEnd("transform2", DateTimeOffset.UtcNow, true);
-        collector.RecordItemMetrics("transform2", 45, 40);
+        collector.RecordNodeEnd("transform2", DateTimeOffset.UtcNow, true, s_pipelineId);
+        collector.RecordItemMetrics("transform2", 45, 40, s_pipelineId);
 
         var endTime = DateTimeOffset.UtcNow;
 
         // Emit metrics
-        await collector.EmitMetricsAsync(pipelineName, runId, startTime, endTime, true);
+        await collector.EmitMetricsAsync(pipelineName, s_pipelineId, runId, startTime, endTime, true);
 
         // Assert - Verify sinks received metrics
         Assert.Equal(2, nodeSink.ReceivedMetrics.Count);
@@ -801,20 +806,20 @@ public sealed class IntegrationTests
         var expectedException = new InvalidOperationException("Pipeline failed");
 
         // Act - Simulate pipeline execution with failure
-        collector.RecordNodeStart("node1", startTime);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId);
         await Task.Delay(10);
-        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true);
-        collector.RecordItemMetrics("node1", 100, 100);
+        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true, s_pipelineId);
+        collector.RecordItemMetrics("node1", 100, 100, s_pipelineId);
 
-        collector.RecordNodeStart("node2", DateTimeOffset.UtcNow);
+        collector.RecordNodeStart("node2", DateTimeOffset.UtcNow, s_pipelineId);
         await Task.Delay(10);
-        collector.RecordNodeEnd("node2", DateTimeOffset.UtcNow, false, expectedException);
-        collector.RecordItemMetrics("node2", 50, 0);
+        collector.RecordNodeEnd("node2", DateTimeOffset.UtcNow, false, s_pipelineId, expectedException);
+        collector.RecordItemMetrics("node2", 50, 0, s_pipelineId);
 
         var endTime = DateTimeOffset.UtcNow;
 
         // Emit metrics with failure
-        await collector.EmitMetricsAsync(pipelineName, runId, startTime, endTime, false, expectedException);
+        await collector.EmitMetricsAsync(pipelineName, s_pipelineId, runId, startTime, endTime, false, expectedException);
 
         // Assert - Verify sinks received failure metrics
         Assert.Equal(2, nodeSink.ReceivedMetrics.Count);
@@ -856,18 +861,18 @@ public sealed class IntegrationTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act - Simulate pipeline execution with retries
-        collector.RecordNodeStart("retryNode", startTime);
-        collector.RecordRetry("retryNode", 1, "Temporary failure");
+        collector.RecordNodeStart("retryNode", startTime, s_pipelineId);
+        collector.RecordRetry("retryNode", 1, s_pipelineId, "Temporary failure");
         await Task.Delay(10);
-        collector.RecordRetry("retryNode", 2, "Another temporary failure");
+        collector.RecordRetry("retryNode", 2, s_pipelineId, "Another temporary failure");
         await Task.Delay(10);
-        collector.RecordNodeEnd("retryNode", DateTimeOffset.UtcNow, true);
-        collector.RecordItemMetrics("retryNode", 100, 100);
+        collector.RecordNodeEnd("retryNode", DateTimeOffset.UtcNow, true, s_pipelineId);
+        collector.RecordItemMetrics("retryNode", 100, 100, s_pipelineId);
 
         var endTime = DateTimeOffset.UtcNow;
 
         // Emit metrics
-        await collector.EmitMetricsAsync(pipelineName, runId, startTime, endTime, true);
+        await collector.EmitMetricsAsync(pipelineName, s_pipelineId, runId, startTime, endTime, true);
 
         // Assert - Verify retry count was recorded and sent to sink
         var nodeMetrics = Assert.Single(nodeSink.ReceivedMetrics);
@@ -896,23 +901,23 @@ public sealed class IntegrationTests
         using var scope1 = provider.CreateScope();
         var collector1 = scope1.ServiceProvider.GetRequiredService<IObservabilityCollector>();
 
-        collector1.RecordNodeStart("node1", DateTimeOffset.UtcNow);
+        collector1.RecordNodeStart("node1", DateTimeOffset.UtcNow, s_pipelineId);
         await Task.Delay(10);
-        collector1.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true);
-        collector1.RecordItemMetrics("node1", 100, 95);
+        collector1.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true, s_pipelineId);
+        collector1.RecordItemMetrics("node1", 100, 95, s_pipelineId);
 
-        await collector1.EmitMetricsAsync("Pipeline1", Guid.NewGuid(), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, true);
+        await collector1.EmitMetricsAsync("Pipeline1", s_pipelineId, Guid.NewGuid(), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, true);
 
         // Run second pipeline
         using var scope2 = provider.CreateScope();
         var collector2 = scope2.ServiceProvider.GetRequiredService<IObservabilityCollector>();
 
-        collector2.RecordNodeStart("node1", DateTimeOffset.UtcNow);
+        collector2.RecordNodeStart("node1", DateTimeOffset.UtcNow, s_pipelineId);
         await Task.Delay(10);
-        collector2.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true);
-        collector2.RecordItemMetrics("node1", 50, 45);
+        collector2.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true, s_pipelineId);
+        collector2.RecordItemMetrics("node1", 50, 45, s_pipelineId);
 
-        await collector2.EmitMetricsAsync("Pipeline2", Guid.NewGuid(), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, true);
+        await collector2.EmitMetricsAsync("Pipeline2", s_pipelineId, Guid.NewGuid(), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, true);
 
         // Assert - Verify each pipeline run is isolated
         Assert.Equal(2, nodeSink.ReceivedMetrics.Count);
@@ -957,7 +962,7 @@ public sealed class IntegrationTests
 
         Assert.Equal(4, allMetrics.Count); // source, batching, transform, sink
 
-        var batchingMetrics = collector.GetNodeMetrics("batching");
+        var batchingMetrics = GetNodeMetricsById(collector, "batching");
         Assert.NotNull(batchingMetrics);
         Assert.True(batchingMetrics.Success);
 
@@ -991,7 +996,7 @@ public sealed class IntegrationTests
 
         Assert.Equal(5, allMetrics.Count); // source, batching, unbatching, transform, sink
 
-        var unbatchingMetrics = collector.GetNodeMetrics("unbatching");
+        var unbatchingMetrics = GetNodeMetricsById(collector, "unbatching");
         Assert.NotNull(unbatchingMetrics);
         Assert.True(unbatchingMetrics.Success);
 
@@ -1025,13 +1030,13 @@ public sealed class IntegrationTests
 
         Assert.Equal(5, allMetrics.Count); // source, batching, unbatching, transform, sink
 
-        var batchingMetrics = collector.GetNodeMetrics("batching");
+        var batchingMetrics = GetNodeMetricsById(collector, "batching");
         Assert.NotNull(batchingMetrics);
         Assert.True(batchingMetrics.Success);
         Assert.Equal(10, batchingMetrics.ItemsProcessed);
         Assert.Equal(10, batchingMetrics.ItemsEmitted); // Items emitted (grouped into batches)
 
-        var unbatchingMetrics = collector.GetNodeMetrics("unbatching");
+        var unbatchingMetrics = GetNodeMetricsById(collector, "unbatching");
         Assert.NotNull(unbatchingMetrics);
         Assert.True(unbatchingMetrics.Success);
         Assert.Equal(10, unbatchingMetrics.ItemsProcessed); // Items from batches
@@ -1066,7 +1071,7 @@ public sealed class IntegrationTests
 
         Assert.Equal(3, allMetrics.Count); // source, failingTransform, sink
 
-        var failingTransformMetrics = collector.GetNodeMetrics("failingtransform");
+        var failingTransformMetrics = GetNodeMetricsById(collector, "failingtransform");
         Assert.NotNull(failingTransformMetrics);
 
         // Mid-stream failures may be surfaced through downstream sinks, so we
@@ -1099,7 +1104,7 @@ public sealed class IntegrationTests
 
         Assert.Equal(3, allMetrics.Count); // source, batching, failingSink
 
-        var batchingMetrics = collector.GetNodeMetrics("batching");
+        var batchingMetrics = GetNodeMetricsById(collector, "batching");
         Assert.NotNull(batchingMetrics);
         Assert.True(batchingMetrics.Success);
 
@@ -1142,7 +1147,7 @@ public sealed class IntegrationTests
 
         Assert.Equal(3, allMetrics.Count); // source, transform, sink
 
-        var transformMetrics = collector.GetNodeMetrics("transform");
+        var transformMetrics = GetNodeMetricsById(collector, "transform");
         Assert.NotNull(transformMetrics);
 
         // Transform should have processed some items; success may be true

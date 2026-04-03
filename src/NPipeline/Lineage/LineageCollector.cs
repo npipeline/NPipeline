@@ -132,8 +132,8 @@ public sealed class LineageCollector : ILineageCollector
                 _hops.Add(hop);
 
                 // Build a qualified path segment that includes pipeline context for child nodes
-                var pathSegment = hop.PipelineName is not null
-                    ? $"{hop.PipelineName}::{hop.NodeId}"
+                var pathSegment = hop.PipelineId != Guid.Empty
+                    ? $"{hop.PipelineId:N}::{hop.NodeId}"
                     : hop.NodeId;
 
                 // Add the path segment to the traversal path if not already present
@@ -146,6 +146,17 @@ public sealed class LineageCollector : ILineageCollector
         {
             lock (_lock)
             {
+                var pipelineIds = _hops
+                    .Select(static h => h.PipelineId)
+                    .Where(static id => id != Guid.Empty)
+                    .Distinct()
+                    .Take(2)
+                    .ToArray();
+
+                var pipelineId = pipelineIds.Length == 1
+                    ? pipelineIds[0]
+                    : Guid.Empty;
+
                 var pipelineNames = _hops
                     .Select(static h => h.PipelineName)
                     .Where(static name => !string.IsNullOrWhiteSpace(name))
@@ -162,6 +173,7 @@ public sealed class LineageCollector : ILineageCollector
                     _lineageId,
                     _traversalPathBuilder.ToImmutable(),
                     [.. _hops],
+                    pipelineId,
                     pipelineName);
             }
         }

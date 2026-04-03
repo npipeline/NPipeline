@@ -11,6 +11,8 @@ namespace NPipeline.Extensions.Observability.Tests;
 /// </summary>
 public sealed class ErrorScenarioTests
 {
+    private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
     #region Helper Methods
 
     private static ILogger<LoggingMetricsSink> CreateNodeLogger()
@@ -83,12 +85,12 @@ public sealed class ErrorScenarioTests
         var runId = Guid.NewGuid();
         var startTime = DateTimeOffset.UtcNow;
 
-        collector.RecordNodeStart("node1", startTime, 1, 100);
-        collector.RecordNodeEnd("node1", startTime.AddMilliseconds(100), true);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId, 1, 100);
+        collector.RecordNodeEnd("node1", startTime.AddMilliseconds(100), true, s_pipelineId);
 
         // Act & Assert
         _ = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            collector.EmitMetricsAsync(pipelineName, runId, startTime, startTime.AddSeconds(1), true));
+            collector.EmitMetricsAsync(pipelineName, s_pipelineId, runId, startTime, startTime.AddSeconds(1), true));
     }
 
     [Fact]
@@ -101,12 +103,12 @@ public sealed class ErrorScenarioTests
         var runId = Guid.NewGuid();
         var startTime = DateTimeOffset.UtcNow;
 
-        collector.RecordNodeStart("node1", startTime, 1, 100);
-        collector.RecordNodeEnd("node1", startTime.AddMilliseconds(100), true);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId, 1, 100);
+        collector.RecordNodeEnd("node1", startTime.AddMilliseconds(100), true, s_pipelineId);
 
         // Act & Assert
         _ = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            collector.EmitMetricsAsync(pipelineName, runId, startTime, startTime.AddSeconds(1), true));
+            collector.EmitMetricsAsync(pipelineName, s_pipelineId, runId, startTime, startTime.AddSeconds(1), true));
     }
 
     [Fact]
@@ -119,12 +121,12 @@ public sealed class ErrorScenarioTests
         var runId = Guid.NewGuid();
         var startTime = DateTimeOffset.UtcNow;
 
-        collector.RecordNodeStart("node1", startTime, 1, 100);
-        collector.RecordNodeEnd("node1", startTime.AddMilliseconds(100), true);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId, 1, 100);
+        collector.RecordNodeEnd("node1", startTime.AddMilliseconds(100), true, s_pipelineId);
 
         // Act & Assert - Should throw from node sink first
         _ = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            collector.EmitMetricsAsync(pipelineName, runId, startTime, startTime.AddSeconds(1), true));
+            collector.EmitMetricsAsync(pipelineName, s_pipelineId, runId, startTime, startTime.AddSeconds(1), true));
     }
 
     #endregion
@@ -142,11 +144,11 @@ public sealed class ErrorScenarioTests
         var startTime = DateTimeOffset.UtcNow;
         var cts = new CancellationTokenSource();
 
-        collector.RecordNodeStart("node1", startTime, 1, 100);
-        collector.RecordNodeEnd("node1", startTime.AddMilliseconds(100), true);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId, 1, 100);
+        collector.RecordNodeEnd("node1", startTime.AddMilliseconds(100), true, s_pipelineId);
 
         // Act
-        await collector.EmitMetricsAsync(pipelineName, runId, startTime, startTime.AddSeconds(1), true, null, cts.Token);
+        await collector.EmitMetricsAsync(pipelineName, s_pipelineId, runId, startTime, startTime.AddSeconds(1), true, null, cts.Token);
 
         // Assert - Should complete successfully
         Assert.Equal(1, factory.NodeMetricsSink.RecordAsyncCallCount);
@@ -165,11 +167,11 @@ public sealed class ErrorScenarioTests
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        collector.RecordNodeStart("node1", startTime, 1, 100);
-        collector.RecordNodeEnd("node1", startTime.AddMilliseconds(100), true);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId, 1, 100);
+        collector.RecordNodeEnd("node1", startTime.AddMilliseconds(100), true, s_pipelineId);
 
         // Act - Should complete even with cancelled token
-        await collector.EmitMetricsAsync(pipelineName, runId, startTime, startTime.AddSeconds(1), true, null, cts.Token);
+        await collector.EmitMetricsAsync(pipelineName, s_pipelineId, runId, startTime, startTime.AddSeconds(1), true, null, cts.Token);
 
         // Assert
         Assert.Equal(1, factory.NodeMetricsSink.RecordAsyncCallCount);
@@ -183,7 +185,7 @@ public sealed class ErrorScenarioTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = ObservabilityOptions.Default;
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
         var cts = new CancellationTokenSource();
 
         // Act - Simulate cancellation
@@ -191,7 +193,7 @@ public sealed class ErrorScenarioTests
         scope.Dispose();
 
         // Assert - Should dispose without throwing
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
     }
 
@@ -209,11 +211,11 @@ public sealed class ErrorScenarioTests
         var runId = Guid.NewGuid();
         var startTime = DateTimeOffset.UtcNow;
 
-        collector.RecordNodeStart("node1", startTime, 1, 100);
-        collector.RecordNodeEnd("node1", startTime.AddMilliseconds(100), true);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId, 1, 100);
+        collector.RecordNodeEnd("node1", startTime.AddMilliseconds(100), true, s_pipelineId);
 
         // Act & Assert - Should complete without throwing
-        await collector.EmitMetricsAsync(pipelineName, runId, startTime, startTime.AddSeconds(1), true);
+        await collector.EmitMetricsAsync(pipelineName, s_pipelineId, runId, startTime, startTime.AddSeconds(1), true);
 
         // Assert - Only pipeline sink should be called
         Assert.Equal(0, factory.NodeMetricsSink.RecordAsyncCallCount);
@@ -230,11 +232,11 @@ public sealed class ErrorScenarioTests
         var runId = Guid.NewGuid();
         var startTime = DateTimeOffset.UtcNow;
 
-        collector.RecordNodeStart("node1", startTime, 1, 100);
-        collector.RecordNodeEnd("node1", startTime.AddMilliseconds(100), true);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId, 1, 100);
+        collector.RecordNodeEnd("node1", startTime.AddMilliseconds(100), true, s_pipelineId);
 
         // Act & Assert - Should complete without throwing
-        await collector.EmitMetricsAsync(pipelineName, runId, startTime, startTime.AddSeconds(1), true);
+        await collector.EmitMetricsAsync(pipelineName, s_pipelineId, runId, startTime, startTime.AddSeconds(1), true);
 
         // Assert - Only node sink should be called
         Assert.Equal(1, factory.NodeMetricsSink.RecordAsyncCallCount);
@@ -251,11 +253,11 @@ public sealed class ErrorScenarioTests
         var runId = Guid.NewGuid();
         var startTime = DateTimeOffset.UtcNow;
 
-        collector.RecordNodeStart("node1", startTime, 1, 100);
-        collector.RecordNodeEnd("node1", startTime.AddMilliseconds(100), true);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId, 1, 100);
+        collector.RecordNodeEnd("node1", startTime.AddMilliseconds(100), true, s_pipelineId);
 
         // Act & Assert - Should complete without throwing
-        await collector.EmitMetricsAsync(pipelineName, runId, startTime, startTime.AddSeconds(1), true);
+        await collector.EmitMetricsAsync(pipelineName, s_pipelineId, runId, startTime, startTime.AddSeconds(1), true);
 
         // Assert - No sinks should be called
         Assert.Equal(0, factory.NodeMetricsSink.RecordAsyncCallCount);
@@ -337,7 +339,7 @@ public sealed class ErrorScenarioTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = ObservabilityOptions.Default;
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act & Assert - Should not throw on multiple disposes
         var exception = Record.Exception(() =>
@@ -357,7 +359,7 @@ public sealed class ErrorScenarioTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = ObservabilityOptions.Default;
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
         var exception = new InvalidOperationException("Test exception");
 
         scope.Dispose();
@@ -374,7 +376,7 @@ public sealed class ErrorScenarioTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = new ObservabilityOptions { RecordItemCounts = true };
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         scope.Dispose();
 
@@ -399,7 +401,7 @@ public sealed class ErrorScenarioTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => collector.RecordNodeStart(null!, DateTimeOffset.UtcNow));
+        _ = Assert.Throws<ArgumentNullException>(() => collector.RecordNodeStart(null!, DateTimeOffset.UtcNow, s_pipelineId));
     }
 
     [Fact]
@@ -409,7 +411,7 @@ public sealed class ErrorScenarioTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => collector.RecordNodeEnd(null!, DateTimeOffset.UtcNow, true));
+        _ = Assert.Throws<ArgumentNullException>(() => collector.RecordNodeEnd(null!, DateTimeOffset.UtcNow, true, s_pipelineId));
     }
 
     [Fact]
@@ -419,7 +421,7 @@ public sealed class ErrorScenarioTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => collector.RecordItemMetrics(null!, 10, 10));
+        _ = Assert.Throws<ArgumentNullException>(() => collector.RecordItemMetrics(null!, 10, 10, s_pipelineId));
     }
 
     [Fact]
@@ -429,7 +431,7 @@ public sealed class ErrorScenarioTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => collector.RecordRetry(null!, 1));
+        _ = Assert.Throws<ArgumentNullException>(() => collector.RecordRetry(null!, 1, s_pipelineId));
     }
 
     [Fact]
@@ -439,7 +441,7 @@ public sealed class ErrorScenarioTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => collector.RecordPerformanceMetrics(null!, 1000.0, 1.0));
+        _ = Assert.Throws<ArgumentNullException>(() => collector.RecordPerformanceMetrics(null!, 1000.0, 1.0, s_pipelineId));
     }
 
     [Fact]
@@ -450,7 +452,7 @@ public sealed class ErrorScenarioTests
 
         // Act & Assert
         _ = Assert.Throws<ArgumentNullException>(() =>
-            collector.CreatePipelineMetrics(null!, Guid.NewGuid(), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, true));
+            collector.CreatePipelineMetrics(null!, s_pipelineId, Guid.NewGuid(), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, true));
     }
 
     [Fact]
@@ -460,7 +462,7 @@ public sealed class ErrorScenarioTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
 
         // Act
-        var metrics = collector.GetNodeMetrics(null!);
+        var metrics = collector.GetNodeMetrics(null!, s_pipelineId);
 
         // Assert
         Assert.Null(metrics);
@@ -499,10 +501,10 @@ public sealed class ErrorScenarioTests
         observer.Dispose();
 
         // Act - Try to record after disposal
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", DateTimeOffset.UtcNow));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", DateTimeOffset.UtcNow, s_pipelineId));
 
         // Assert - Should not have recorded
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.Null(metrics);
     }
 
@@ -535,26 +537,13 @@ public sealed class ErrorScenarioTests
             processorTimeMs,
             throughputItemsPerSec,
             averageItemProcessingMs,
-            1);
+            1,
+            s_pipelineId);
     }
 
-    private static IPipelineMetrics CreatePipelineMetrics(
-        bool success,
-        Exception? exception = null,
-        IReadOnlyList<INodeMetrics>? nodeMetrics = null,
-        long totalItemsProcessed = 285,
-        long? durationMs = 5000)
+    private static IPipelineMetrics CreatePipelineMetrics(bool success, Exception? exception = null, IReadOnlyList<INodeMetrics>? nodeMetrics = null, long totalItemsProcessed = 285, long? durationMs = 5000)
     {
-        return new PipelineMetrics(
-            "TestPipeline",
-            Guid.NewGuid(),
-            DateTimeOffset.UtcNow.AddSeconds(-5),
-            DateTimeOffset.UtcNow,
-            durationMs,
-            success,
-            totalItemsProcessed,
-            nodeMetrics ?? [],
-            exception);
+        return new PipelineMetrics("TestPipeline", s_pipelineId, Guid.NewGuid(), DateTimeOffset.UtcNow.AddSeconds(-5), DateTimeOffset.UtcNow, durationMs, success, totalItemsProcessed, nodeMetrics ?? [], exception);
     }
 
     private sealed class TestObservabilityFactory : IObservabilityFactory

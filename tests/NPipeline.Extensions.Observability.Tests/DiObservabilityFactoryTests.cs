@@ -13,28 +13,29 @@ public sealed class DiObservabilityFactoryTests
 
     private sealed class CustomObservabilityCollector : IObservabilityCollector
     {
-        public void RecordNodeStart(string nodeId, DateTimeOffset timestamp, int? threadId = null, double? initialMemoryMb = null, string? pipelineName = null)
+        public void RecordNodeStart(string nodeId, DateTimeOffset timestamp, Guid pipelineId, int? threadId = null, double? initialMemoryMb = null,
+            string? pipelineName = null)
         {
             // Custom implementation
         }
 
-        public void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Exception? exception = null, double? peakMemoryMb = null,
-            long? processorTimeMs = null, string? pipelineName = null)
+        public void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Guid pipelineId, Exception? exception = null,
+            double? peakMemoryMb = null, long? processorTimeMs = null, string? pipelineName = null)
         {
             // Custom implementation
         }
 
-        public void RecordItemMetrics(string nodeId, long itemsProcessed, long itemsEmitted, string? pipelineName = null)
+        public void RecordItemMetrics(string nodeId, long itemsProcessed, long itemsEmitted, Guid pipelineId, string? pipelineName = null)
         {
             // Custom implementation
         }
 
-        public void RecordRetry(string nodeId, int retryCount, string? reason = null, string? pipelineName = null)
+        public void RecordRetry(string nodeId, int retryCount, Guid pipelineId, string? reason = null, string? pipelineName = null)
         {
             // Custom implementation
         }
 
-        public void RecordPerformanceMetrics(string nodeId, double throughputItemsPerSec, double averageItemProcessingMs,
+        public void RecordPerformanceMetrics(string nodeId, double throughputItemsPerSec, double averageItemProcessingMs, Guid pipelineId,
             string? pipelineName = null)
         {
             // Custom implementation
@@ -45,19 +46,19 @@ public sealed class DiObservabilityFactoryTests
             return [];
         }
 
-        public INodeMetrics? GetNodeMetrics(string _, string? pipelineName = null)
+        public INodeMetrics? GetNodeMetrics(string _, Guid pipelineId)
         {
             return null;
         }
 
-        public IPipelineMetrics CreatePipelineMetrics(string pipelineName, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, bool success,
-            Exception? exception = null)
+        public IPipelineMetrics CreatePipelineMetrics(string pipelineName, Guid pipelineId, Guid runId, DateTimeOffset startTime,
+            DateTimeOffset? endTime, bool success, Exception? exception = null)
         {
             throw new NotImplementedException();
         }
 
-        public Task EmitMetricsAsync(string pipelineName, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, bool success,
-            Exception? exception = null, CancellationToken cancellationToken = default)
+        public Task EmitMetricsAsync(string pipelineName, Guid pipelineId, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime,
+            bool success, Exception? exception = null, CancellationToken cancellationToken = default)
         {
             // Custom implementation - no-op for test
             return Task.CompletedTask;

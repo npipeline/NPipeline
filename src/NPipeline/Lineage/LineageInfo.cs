@@ -8,10 +8,12 @@ namespace NPipeline.Lineage;
 /// <param name="LineageId">The unique ID assigned to the item at its source.</param>
 /// <param name="TraversalPath">The complete, ordered list of node IDs the item passed through.</param>
 /// <param name="LineageHops">Optional per-hop lineage records collected along the path.</param>
+/// <param name="PipelineId">The unique pipeline identity this lineage record belongs to.</param>
 /// <param name="PipelineName">The name of the pipeline this lineage record belongs to. Null for top-level pipelines.</param>
 public sealed record LineageInfo(
     object? Data,
     Guid LineageId,
     IReadOnlyList<string> TraversalPath,
     IReadOnlyList<LineageHop> LineageHops,
+    Guid PipelineId,
     string? PipelineName = null);

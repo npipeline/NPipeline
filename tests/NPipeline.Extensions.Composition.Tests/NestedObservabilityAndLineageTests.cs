@@ -56,6 +56,7 @@ public class NestedObservabilityAndLineageTests
             null,
             null,
             null,
+            Guid.Empty,
             PipelineName: "ParentPipeline");
 
         var childMetric = new NodeMetrics(
@@ -73,6 +74,7 @@ public class NestedObservabilityAndLineageTests
             null,
             null,
             null,
+            Guid.Empty,
             PipelineName: "ChildSubPipeline");
 
         // Assert
@@ -90,17 +92,21 @@ public class NestedObservabilityAndLineageTests
         // Arrange
         var collector = new LineageCollector();
         var packet = collector.CreateLineagePacket("test-data", "source");
+        var childPipelineId = Guid.NewGuid();
 
         // Act — record hops with pipeline name context
         collector.RecordHop(packet.LineageId, new LineageHop(
-            "source", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false));
+            "source", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false,
+            PipelineId: Guid.Empty));
 
         collector.RecordHop(packet.LineageId, new LineageHop(
             "transform", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false,
+            PipelineId: childPipelineId,
             PipelineName: "ChildSubPipeline"));
 
         collector.RecordHop(packet.LineageId, new LineageHop(
             "output", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false,
+            PipelineId: childPipelineId,
             PipelineName: "ChildSubPipeline"));
 
         // Assert
@@ -109,8 +115,8 @@ public class NestedObservabilityAndLineageTests
 
         // Traversal path should include pipeline-qualified segments for child nodes
         lineageInfo!.TraversalPath.Should().Contain("source");
-        lineageInfo.TraversalPath.Should().Contain("ChildSubPipeline::transform");
-        lineageInfo.TraversalPath.Should().Contain("ChildSubPipeline::output");
+        lineageInfo.TraversalPath.Should().Contain($"{childPipelineId:N}::transform");
+        lineageInfo.TraversalPath.Should().Contain($"{childPipelineId:N}::output");
 
         // Hops should carry pipeline name
         lineageInfo.LineageHops.Should().HaveCount(3);
@@ -292,6 +298,7 @@ public class NestedObservabilityAndLineageTests
             null,
             null,
             null,
+            Guid.Empty,
             PipelineName: "TestPipeline");
 
         // Assert
@@ -308,6 +315,7 @@ public class NestedObservabilityAndLineageTests
             HopDecisionFlags.Emitted,
             ObservedCardinality.One,
             1, 1, null, false,
+            PipelineId: Guid.Empty,
             PipelineName: "TestPipeline");
 
         // Assert

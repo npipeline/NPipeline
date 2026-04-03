@@ -14,9 +14,11 @@ public interface ILineageService
     /// </summary>
     /// <param name="sourcePipe">The original data pipe from the source.</param>
     /// <param name="nodeId">The ID of the source node.</param>
+    /// <param name="pipelineId">The unique pipeline identity for this execution context.</param>
+    /// <param name="pipelineName">The logical pipeline name for this execution context.</param>
     /// <param name="options">The lineage options for the pipeline.</param>
     /// <returns>A new data pipe containing items wrapped in <see cref="LineagePacket{T}" />.</returns>
-    IDataStream WrapSourceStream(IDataStream sourcePipe, string nodeId, LineageOptions? options);
+    IDataStream WrapSourceStream(IDataStream sourcePipe, string nodeId, Guid pipelineId, string? pipelineName, LineageOptions? options);
 
     /// <summary>
     ///     Unwraps a stream of lineage packets to extract the raw data.
@@ -31,9 +33,12 @@ public interface ILineageService
     /// </summary>
     /// <param name="output">The output stream from the node.</param>
     /// <param name="currentNodeId">The ID of the current (join or aggregate) node.</param>
+    /// <param name="pipelineId">The unique pipeline identity for this execution context.</param>
+    /// <param name="pipelineName">The logical pipeline name for this execution context.</param>
     /// <param name="options">The lineage options for the pipeline.</param>
     /// <param name="outcome">The outcome of the operation (e.g., Joined, Aggregated).</param>
     /// <param name="ct">A cancellation token.</param>
     /// <returns>A new data pipe containing the wrapped output items.</returns>
-    IDataStream WrapNodeOutput(IDataStream output, string currentNodeId, LineageOptions? options, HopDecisionFlags outcome, CancellationToken ct = default);
+    IDataStream WrapNodeOutput(IDataStream output, string currentNodeId, Guid pipelineId, string? pipelineName, LineageOptions? options,
+        HopDecisionFlags outcome, CancellationToken ct = default);
 }

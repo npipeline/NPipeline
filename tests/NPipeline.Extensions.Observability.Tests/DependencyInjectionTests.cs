@@ -11,6 +11,8 @@ namespace NPipeline.Extensions.Observability.Tests;
 /// </summary>
 public sealed class DependencyInjectionTests
 {
+    private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
     #region AddNPipelineObservability Default Tests
 
     [Fact]
@@ -556,9 +558,9 @@ public sealed class DependencyInjectionTests
         var factory = scope.ServiceProvider.GetRequiredService<IObservabilityFactory>();
 
         // Use the collector
-        collector.RecordNodeStart("node1", DateTimeOffset.UtcNow);
-        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true);
-        var metrics = collector.GetNodeMetrics("node1");
+        collector.RecordNodeStart("node1", DateTimeOffset.UtcNow, s_pipelineId);
+        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true, s_pipelineId);
+        var metrics = collector.GetNodeMetrics("node1", s_pipelineId);
 
         // Use the factory
         var resolvedCollector = factory.ResolveObservabilityCollector();
@@ -581,8 +583,8 @@ public sealed class DependencyInjectionTests
         var collector = scope.ServiceProvider.GetRequiredService<IObservabilityCollector>();
 
         // Use the custom collector
-        collector.RecordNodeStart("node1", DateTimeOffset.UtcNow);
-        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true);
+        collector.RecordNodeStart("node1", DateTimeOffset.UtcNow, s_pipelineId);
+        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true, s_pipelineId);
 
         // Assert
         _ = Assert.IsType<CustomObservabilityCollector>(collector);
@@ -624,9 +626,15 @@ public sealed class DependencyInjectionTests
     {
         private readonly Dictionary<string, NodeMetrics> _nodeMetrics = [];
 
-        public void RecordNodeStart(string nodeId, DateTimeOffset timestamp, int? threadId = null, double? initialMemoryMb = null, string? pipelineName = null)
+        private static string BuildKey(string nodeId, Guid pipelineId)
         {
-            _nodeMetrics[nodeId] = new NodeMetrics(
+            return string.Concat(pipelineId.ToString("N"), "::", nodeId);
+        }
+
+        public void RecordNodeStart(string nodeId, DateTimeOffset timestamp, Guid pipelineId, int? threadId = null, double? initialMemoryMb = null,
+            string? pipelineName = null)
+        {
+            _nodeMetrics[BuildKey(nodeId, pipelineId)] = new NodeMetrics(
                 nodeId,
                 timestamp,
                 null,
@@ -640,17 +648,21 @@ public sealed class DependencyInjectionTests
                 null,
                 null,
                 null,
-                threadId);
+                threadId,
+                pipelineId,
+                pipelineName);
         }
 
-        public void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Exception? exception = null, double? peakMemoryMb = null,
-            long? processorTimeMs = null, string? pipelineName = null)
+        public void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Guid pipelineId, Exception? exception = null,
+            double? peakMemoryMb = null, long? processorTimeMs = null, string? pipelineName = null)
         {
-            if (_nodeMetrics.TryGetValue(nodeId, out var metrics))
+            var key = BuildKey(nodeId, pipelineId);
+
+            if (_nodeMetrics.TryGetValue(key, out var metrics))
             {
                 var duration = (long)(timestamp - metrics.StartTime)!.Value.TotalMilliseconds;
 
-                _nodeMetrics[nodeId] = metrics with
+                _nodeMetrics[key] = metrics with
                 {
                     EndTime = timestamp,
                     DurationMs = duration,
@@ -662,11 +674,13 @@ public sealed class DependencyInjectionTests
             }
         }
 
-        public void RecordItemMetrics(string nodeId, long itemsProcessed, long itemsEmitted, string? pipelineName = null)
+        public void RecordItemMetrics(string nodeId, long itemsProcessed, long itemsEmitted, Guid pipelineId, string? pipelineName = null)
         {
-            if (_nodeMetrics.TryGetValue(nodeId, out var metrics))
+            var key = BuildKey(nodeId, pipelineId);
+
+            if (_nodeMetrics.TryGetValue(key, out var metrics))
             {
-                _nodeMetrics[nodeId] = metrics with
+                _nodeMetrics[key] = metrics with
                 {
                     ItemsProcessed = itemsProcessed,
                     ItemsEmitted = itemsEmitted,
@@ -674,18 +688,22 @@ public sealed class DependencyInjectionTests
             }
         }
 
-        public void RecordRetry(string nodeId, int retryCount, string? reason = null, string? pipelineName = null)
+        public void RecordRetry(string nodeId, int retryCount, Guid pipelineId, string? reason = null, string? pipelineName = null)
         {
-            if (_nodeMetrics.TryGetValue(nodeId, out var metrics))
-                _nodeMetrics[nodeId] = metrics with { RetryCount = retryCount };
+            var key = BuildKey(nodeId, pipelineId);
+
+            if (_nodeMetrics.TryGetValue(key, out var metrics))
+                _nodeMetrics[key] = metrics with { RetryCount = retryCount };
         }
 
-        public void RecordPerformanceMetrics(string nodeId, double throughputItemsPerSec, double averageItemProcessingMs,
+        public void RecordPerformanceMetrics(string nodeId, double throughputItemsPerSec, double averageItemProcessingMs, Guid pipelineId,
             string? pipelineName = null)
         {
-            if (_nodeMetrics.TryGetValue(nodeId, out var metrics))
+            var key = BuildKey(nodeId, pipelineId);
+
+            if (_nodeMetrics.TryGetValue(key, out var metrics))
             {
-                _nodeMetrics[nodeId] = metrics with
+                _nodeMetrics[key] = metrics with
                 {
                     ThroughputItemsPerSec = throughputItemsPerSec,
                     AverageItemProcessingMs = averageItemProcessingMs,
@@ -698,15 +716,15 @@ public sealed class DependencyInjectionTests
             return [.. _nodeMetrics.Values];
         }
 
-        public INodeMetrics? GetNodeMetrics(string nodeId, string? pipelineName = null)
+        public INodeMetrics? GetNodeMetrics(string nodeId, Guid pipelineId)
         {
-            return _nodeMetrics.TryGetValue(nodeId, out var metrics)
+            return _nodeMetrics.TryGetValue(BuildKey(nodeId, pipelineId), out var metrics)
                 ? metrics
                 : null;
         }
 
-        public IPipelineMetrics CreatePipelineMetrics(string pipelineName, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, bool success,
-            Exception? exception = null)
+        public IPipelineMetrics CreatePipelineMetrics(string pipelineName, Guid pipelineId, Guid runId, DateTimeOffset startTime,
+            DateTimeOffset? endTime, bool success, Exception? exception = null)
         {
             long? duration = null;
 
@@ -717,6 +735,7 @@ public sealed class DependencyInjectionTests
 
             return new PipelineMetrics(
                 pipelineName,
+                pipelineId,
                 runId,
                 startTime,
                 endTime,
@@ -727,8 +746,8 @@ public sealed class DependencyInjectionTests
                 exception);
         }
 
-        public Task EmitMetricsAsync(string pipelineName, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime, bool success,
-            Exception? exception = null, CancellationToken cancellationToken = default)
+        public Task EmitMetricsAsync(string pipelineName, Guid pipelineId, Guid runId, DateTimeOffset startTime, DateTimeOffset? endTime,
+            bool success, Exception? exception = null, CancellationToken cancellationToken = default)
         {
             // Custom implementation - no-op for test
             return Task.CompletedTask;

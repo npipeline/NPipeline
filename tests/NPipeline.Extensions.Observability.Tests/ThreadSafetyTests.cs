@@ -10,6 +10,8 @@ namespace NPipeline.Extensions.Observability.Tests;
 /// </summary>
 public sealed class ThreadSafetyTests
 {
+    private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
     #region Concurrent Performance Metrics Tests
 
     [Fact]
@@ -20,18 +22,18 @@ public sealed class ThreadSafetyTests
         var nodeId = "testNode";
         var threadCount = 20;
 
-        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
+        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
 
         // Act - Multiple threads record performance metrics
         _ = Parallel.For(0, threadCount, i =>
         {
             var throughput = 1000.0 + i * 100;
             var avgTime = 1.0 + i * 0.1;
-            collector.RecordPerformanceMetrics(nodeId, throughput, avgTime);
+            collector.RecordPerformanceMetrics(nodeId, throughput, avgTime, s_pipelineId);
         });
 
         // Assert - Should have recorded the last value (or one of them)
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         _ = Assert.NotNull(metrics.ThroughputItemsPerSec);
         _ = Assert.NotNull(metrics.AverageItemProcessingMs);
@@ -49,8 +51,8 @@ public sealed class ThreadSafetyTests
         _ = Parallel.For(0, nodeCount * threadCount, i =>
         {
             var nodeId = $"node_{i % nodeCount}";
-            collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
-            collector.RecordPerformanceMetrics(nodeId, 1000.0, 1.0);
+            collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
+            collector.RecordPerformanceMetrics(nodeId, 1000.0, 1.0, s_pipelineId);
         });
 
         // Assert - All nodes should have metrics
@@ -82,7 +84,7 @@ public sealed class ThreadSafetyTests
             for (var j = 0; j < nodeCount / threadCount; j++)
             {
                 var nodeId = $"node_{i * (nodeCount / threadCount) + j}";
-                collector.InitializeNode(nodeId, i, 100);
+                collector.InitializeNode(nodeId, s_pipelineId, i, 100);
             }
         });
 
@@ -108,13 +110,13 @@ public sealed class ThreadSafetyTests
         _ = Parallel.For(0, threadCount, i =>
         {
             if (i % 2 == 0)
-                collector.InitializeNode(nodeId, i, 100);
+                collector.InitializeNode(nodeId, s_pipelineId, i, 100);
             else
-                collector.RecordItemMetrics(nodeId, 10, 10);
+                collector.RecordItemMetrics(nodeId, 10, 10, s_pipelineId);
         });
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
 
         // Item metrics should be accumulated correctly
@@ -134,7 +136,7 @@ public sealed class ThreadSafetyTests
         var threadCount = 100;
         var operationsPerThread = 50;
 
-        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
+        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
 
         // Act - High contention with mixed operations
         _ = Parallel.For(0, threadCount, i =>
@@ -146,17 +148,17 @@ public sealed class ThreadSafetyTests
                 switch (operation)
                 {
                     case 0:
-                        collector.RecordItemMetrics(nodeId, 1, 1);
+                        collector.RecordItemMetrics(nodeId, 1, 1, s_pipelineId);
                         break;
                     case 1:
-                        collector.RecordRetry(nodeId, j % 10);
+                        collector.RecordRetry(nodeId, j % 10, s_pipelineId);
                         break;
                     case 2:
-                        collector.RecordPerformanceMetrics(nodeId, 1000.0, 1.0);
+                        collector.RecordPerformanceMetrics(nodeId, 1000.0, 1.0, s_pipelineId);
                         break;
                     case 3:
                         // Read operation
-                        _ = collector.GetNodeMetrics(nodeId);
+                        _ = collector.GetNodeMetrics(nodeId, s_pipelineId);
                         break;
                     case 4:
                         // No-op to simulate gaps
@@ -166,7 +168,7 @@ public sealed class ThreadSafetyTests
         });
 
         // Assert - Metrics should be consistent
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
 
         // Item metrics: 1/5 of operations are RecordItemMetrics
@@ -193,10 +195,10 @@ public sealed class ThreadSafetyTests
         _ = Parallel.For(0, threadCount, i =>
         {
             var nodeId = $"node_{i % nodeCount}";
-            collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, i, 100);
-            collector.RecordItemMetrics(nodeId, 10, 10);
-            collector.RecordRetry(nodeId, i % 5);
-            collector.RecordPerformanceMetrics(nodeId, 1000.0, 1.0);
+            collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, i, 100);
+            collector.RecordItemMetrics(nodeId, 10, 10, s_pipelineId);
+            collector.RecordRetry(nodeId, i % 5, s_pipelineId);
+            collector.RecordPerformanceMetrics(nodeId, 1000.0, 1.0, s_pipelineId);
         });
 
         // Assert - All nodes should have consistent metrics
@@ -234,12 +236,12 @@ public sealed class ThreadSafetyTests
             for (var j = 0; j < nodeCount; j++)
             {
                 var nodeId = $"{pipelineName}_node_{j}";
-                collector.RecordNodeStart(nodeId, startTime, i, 100);
-                collector.RecordItemMetrics(nodeId, 10, 10);
-                collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(100), true);
+                collector.RecordNodeStart(nodeId, startTime, s_pipelineId, i, 100);
+                collector.RecordItemMetrics(nodeId, 10, 10, s_pipelineId);
+                collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(100), true, s_pipelineId);
             }
 
-            await collector.EmitMetricsAsync(pipelineName, runId, startTime, startTime.AddSeconds(1), true);
+            await collector.EmitMetricsAsync(pipelineName, s_pipelineId, runId, startTime, startTime.AddSeconds(1), true);
         }).ToArray();
 
         await Task.WhenAll(tasks);
@@ -265,15 +267,15 @@ public sealed class ThreadSafetyTests
             var startTime = DateTimeOffset.UtcNow;
             var nodeId = $"node_{i}";
 
-            collector.RecordNodeStart(nodeId, startTime, i, 100);
-            collector.RecordItemMetrics(nodeId, 10, 10);
-            collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(100), true);
+            collector.RecordNodeStart(nodeId, startTime, s_pipelineId, i, 100);
+            collector.RecordItemMetrics(nodeId, 10, 10, s_pipelineId);
+            collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(100), true, s_pipelineId);
         }).ToArray();
 
         await Task.WhenAll(recordTasks);
 
         // Single emission after all recording is complete
-        await collector.EmitMetricsAsync(pipelineName, Guid.NewGuid(), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, true);
+        await collector.EmitMetricsAsync(pipelineName, s_pipelineId, Guid.NewGuid(), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, true);
 
         // Assert - Single emission should have recorded all nodes
         Assert.Equal(1, factory.PipelineMetricsSink.RecordAsyncCallCount);
@@ -291,7 +293,7 @@ public sealed class ThreadSafetyTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = new ObservabilityOptions { RecordItemCounts = true };
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
         var threadCount = 20;
         var incrementsPerThread = 100;
 
@@ -308,7 +310,7 @@ public sealed class ThreadSafetyTests
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(threadCount * incrementsPerThread, metrics.ItemsProcessed);
         Assert.Equal(threadCount * incrementsPerThread, metrics.ItemsEmitted);
@@ -321,7 +323,7 @@ public sealed class ThreadSafetyTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = new ObservabilityOptions { RecordItemCounts = true };
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
         var threadCount = 10;
 
         // Act - Concurrent RecordItemCount calls
@@ -330,7 +332,7 @@ public sealed class ThreadSafetyTests
         scope.Dispose();
 
         // Assert - Should have recorded the last value (or one of them)
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
 
         // Since RecordItemCount sets the value (not increments), we expect one of the values
@@ -345,7 +347,7 @@ public sealed class ThreadSafetyTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = ObservabilityOptions.Default;
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
         var threadCount = 10;
 
         // Act - Concurrent failure recordings
@@ -354,7 +356,7 @@ public sealed class ThreadSafetyTests
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.False(metrics.Success);
         Assert.NotNull(metrics.Exception);
@@ -377,8 +379,8 @@ public sealed class ThreadSafetyTests
         _ = Parallel.For(0, nodeCount, i =>
         {
             var nodeId = $"node_{i}";
-            observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
-            observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null));
+            observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
+            observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null, s_pipelineId));
         });
 
         // Assert - All nodes should have metrics
@@ -402,15 +404,15 @@ public sealed class ThreadSafetyTests
         var retryCount = 50;
         var startTime = DateTimeOffset.UtcNow;
 
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
 
         // Act - Concurrent retry events
-        _ = Parallel.For(0, retryCount, i => { observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, i, null)); });
+        _ = Parallel.For(0, retryCount, i => { observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, i, null, s_pipelineId)); });
 
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null));
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null, s_pipelineId));
 
         // Assert - Should track maximum retry count
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(retryCount - 1, metrics.RetryCount);
     }

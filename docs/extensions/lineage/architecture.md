@@ -87,6 +87,7 @@ public sealed record LineageHop(
     bool Truncated,
     object? InputSnapshot = null,       // JsonElement snapshot before node (requires CaptureHopSnapshots)
     object? OutputSnapshot = null,      // JsonElement snapshot after node (requires CaptureHopSnapshots)
+    Guid PipelineId = default,          // Stable pipeline identity (canonical key)
     string? PipelineName = null         // Pipeline identity for nested/composite pipelines
 );
 
@@ -154,7 +155,9 @@ public sealed record LineageInfo(
     object? Data,                           // Final data (nullable when redacted)
     Guid LineageId,                         // Unique identifier
     IReadOnlyList<string> TraversalPath,    // Node IDs passed through
-    IReadOnlyList<LineageHop> LineageHops   // Per-hop details
+    IReadOnlyList<LineageHop> LineageHops,  // Per-hop details
+    Guid PipelineId,                        // Stable pipeline identity for this lineage record
+    string? PipelineName = null             // Optional human-readable pipeline name
 );
 ```
 
@@ -174,9 +177,12 @@ public sealed record PipelineLineageReport(
     string Pipeline,                            // Pipeline name
     Guid RunId,                                 // Unique run identifier
     IReadOnlyList<NodeLineageInfo> Nodes,       // Node information
-    IReadOnlyList<EdgeLineageInfo> Edges        // Edge information
+    IReadOnlyList<EdgeLineageInfo> Edges,       // Edge information
+    Guid PipelineId = default                   // Stable pipeline identity
 );
 ```
+
+Traversal path qualification for nested lineage now uses `pipelineId::nodeId` segments when a hop has pipeline identity.
 
 **Components:**
 

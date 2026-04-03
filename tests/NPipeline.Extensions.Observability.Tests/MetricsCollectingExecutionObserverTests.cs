@@ -9,6 +9,8 @@ namespace NPipeline.Extensions.Observability.Tests;
 /// </summary>
 public sealed class MetricsCollectingExecutionObserverTests
 {
+    private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
     #region Test Helpers
 
     private sealed class TestObservabilityFactory : IObservabilityFactory
@@ -71,10 +73,10 @@ public sealed class MetricsCollectingExecutionObserverTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, nodeType, startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, nodeType, startTime, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(nodeId, metrics.NodeId);
         Assert.Equal(startTime, metrics.StartTime);
@@ -91,10 +93,10 @@ public sealed class MetricsCollectingExecutionObserverTests
         var nodeId = "testNode";
 
         // Act
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", DateTimeOffset.UtcNow));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", DateTimeOffset.UtcNow, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
 
         // Memory is recorded in MB, should be positive
@@ -113,13 +115,13 @@ public sealed class MetricsCollectingExecutionObserverTests
         // Act
         foreach (var nodeId in nodeIds)
         {
-            observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", DateTimeOffset.UtcNow));
+            observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", DateTimeOffset.UtcNow, s_pipelineId));
         }
 
         // Assert
         foreach (var nodeId in nodeIds)
         {
-            var metrics = collector.GetNodeMetrics(nodeId);
+            var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
             Assert.NotNull(metrics);
             Assert.Equal(nodeId, metrics.NodeId);
         }
@@ -139,13 +141,13 @@ public sealed class MetricsCollectingExecutionObserverTests
         var startTime = DateTimeOffset.UtcNow;
         var duration = TimeSpan.FromMilliseconds(100);
 
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
 
         // Act
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", duration, true, null));
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", duration, true, null, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.True(metrics.Success);
         Assert.Null(metrics.Exception);
@@ -167,13 +169,13 @@ public sealed class MetricsCollectingExecutionObserverTests
         var duration = TimeSpan.FromMilliseconds(100);
         var exception = new InvalidOperationException("Test failure");
 
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
 
         // Act
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", duration, false, exception));
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", duration, false, exception, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.False(metrics.Success);
         Assert.Equal(exception, metrics.Exception);
@@ -192,14 +194,14 @@ public sealed class MetricsCollectingExecutionObserverTests
         var duration = TimeSpan.FromSeconds(1);
         var itemsProcessed = 100L;
 
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
-        collector.RecordItemMetrics(nodeId, itemsProcessed, itemsProcessed);
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
+        collector.RecordItemMetrics(nodeId, itemsProcessed, itemsProcessed, s_pipelineId);
 
         // Act
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", duration, true, null));
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", duration, true, null, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         _ = metrics.ThroughputItemsPerSec;
         Assert.InRange(metrics.ThroughputItemsPerSec!.Value, 90, 110); // Approximately 100 items/sec
@@ -216,13 +218,13 @@ public sealed class MetricsCollectingExecutionObserverTests
         var startTime = DateTimeOffset.UtcNow;
         var duration = TimeSpan.FromSeconds(1);
 
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
 
         // Act
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", duration, true, null));
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", duration, true, null, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Null(metrics.ThroughputItemsPerSec);
     }
@@ -237,14 +239,14 @@ public sealed class MetricsCollectingExecutionObserverTests
         var startTime = DateTimeOffset.UtcNow;
         var duration = TimeSpan.Zero;
 
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
-        collector.RecordItemMetrics(nodeId, 100, 100);
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
+        collector.RecordItemMetrics(nodeId, 100, 100, s_pipelineId);
 
         // Act
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", duration, true, null));
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", duration, true, null, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Null(metrics.ThroughputItemsPerSec);
     }
@@ -259,7 +261,7 @@ public sealed class MetricsCollectingExecutionObserverTests
 
         // Act & Assert
         var exception = Record.Exception(() =>
-            observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null)));
+            observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null, s_pipelineId)));
 
         Assert.Null(exception);
     }
@@ -278,13 +280,13 @@ public sealed class MetricsCollectingExecutionObserverTests
         var startTime = DateTimeOffset.UtcNow;
         var exception = new InvalidOperationException("Retry reason");
 
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
 
         // Act
-        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, 1, exception));
+        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, 1, exception, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(1, metrics.RetryCount);
     }
@@ -298,15 +300,15 @@ public sealed class MetricsCollectingExecutionObserverTests
         var nodeId = "testNode";
         var startTime = DateTimeOffset.UtcNow;
 
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
 
         // Act
-        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, 1, null));
-        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, 3, null));
-        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.NodeRestart, 2, null));
+        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, 1, null, s_pipelineId));
+        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, 3, null, s_pipelineId));
+        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.NodeRestart, 2, null, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(3, metrics.RetryCount); // Should track maximum
     }
@@ -321,13 +323,13 @@ public sealed class MetricsCollectingExecutionObserverTests
         var startTime = DateTimeOffset.UtcNow;
         var exception = new InvalidOperationException("Temporary failure");
 
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
 
         // Act
-        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, 1, exception));
+        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, 1, exception, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(1, metrics.RetryCount);
     }
@@ -342,7 +344,7 @@ public sealed class MetricsCollectingExecutionObserverTests
 
         // Act & Assert
         var exception = Record.Exception(() =>
-            observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, 1, null)));
+            observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, 1, null, s_pipelineId)));
 
         Assert.Null(exception);
     }
@@ -356,14 +358,14 @@ public sealed class MetricsCollectingExecutionObserverTests
         var nodeId = "testNode";
         var startTime = DateTimeOffset.UtcNow;
 
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
 
         // Act
-        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, 1, null));
-        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.NodeRestart, 2, null));
+        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, 1, null, s_pipelineId));
+        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.NodeRestart, 2, null, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(2, metrics.RetryCount);
     }
@@ -415,7 +417,7 @@ public sealed class MetricsCollectingExecutionObserverTests
         observer.OnDrop(dropEvent);
 
         // Assert
-        var metrics = collector.GetNodeMetrics("testNode");
+        var metrics = collector.GetNodeMetrics("testNode", s_pipelineId);
         Assert.Null(metrics); // Queue drops are not tracked in node metrics
     }
 
@@ -466,7 +468,7 @@ public sealed class MetricsCollectingExecutionObserverTests
         observer.OnQueueMetrics(metricsEvent);
 
         // Assert
-        var metrics = collector.GetNodeMetrics("testNode");
+        var metrics = collector.GetNodeMetrics("testNode", s_pipelineId);
         Assert.Null(metrics); // Queue metrics are not tracked in node metrics
     }
 
@@ -487,12 +489,12 @@ public sealed class MetricsCollectingExecutionObserverTests
         var itemsProcessed = 50L;
 
         // Act
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, nodeType, startTime));
-        collector.RecordItemMetrics(nodeId, itemsProcessed, itemsProcessed);
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, nodeType, duration, true, null));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, nodeType, startTime, s_pipelineId));
+        collector.RecordItemMetrics(nodeId, itemsProcessed, itemsProcessed, s_pipelineId);
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, nodeType, duration, true, null, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(nodeId, metrics.NodeId);
         Assert.Equal(startTime, metrics.StartTime);
@@ -520,14 +522,14 @@ public sealed class MetricsCollectingExecutionObserverTests
         var exception = new InvalidOperationException("Temporary failure");
 
         // Act
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, nodeType, startTime));
-        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, 1, exception));
-        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, 2, exception));
-        collector.RecordItemMetrics(nodeId, itemsProcessed, itemsProcessed);
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, nodeType, duration, true, null));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, nodeType, startTime, s_pipelineId));
+        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, 1, exception, s_pipelineId));
+        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, 2, exception, s_pipelineId));
+        collector.RecordItemMetrics(nodeId, itemsProcessed, itemsProcessed, s_pipelineId);
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, nodeType, duration, true, null, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(nodeId, metrics.NodeId);
         Assert.True(metrics.Success);
@@ -549,13 +551,13 @@ public sealed class MetricsCollectingExecutionObserverTests
         var exception = new InvalidOperationException("Permanent failure");
 
         // Act
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, nodeType, startTime));
-        collector.RecordItemMetrics(nodeId, itemsProcessed, 20);
-        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, 1, exception));
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, nodeType, duration, false, exception));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, nodeType, startTime, s_pipelineId));
+        collector.RecordItemMetrics(nodeId, itemsProcessed, 20, s_pipelineId);
+        observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, 1, exception, s_pipelineId));
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, nodeType, duration, false, exception, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.False(metrics.Success);
         Assert.Equal(exception, metrics.Exception);
@@ -582,15 +584,15 @@ public sealed class MetricsCollectingExecutionObserverTests
         // Act
         foreach (var (nodeId, _, items) in nodes)
         {
-            observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
-            collector.RecordItemMetrics(nodeId, items, items);
-            observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null));
+            observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
+            collector.RecordItemMetrics(nodeId, items, items, s_pipelineId);
+            observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null, s_pipelineId));
         }
 
         // Assert
         foreach (var (nodeId, _, items) in nodes)
         {
-            var metrics = collector.GetNodeMetrics(nodeId);
+            var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
             Assert.NotNull(metrics);
             Assert.Equal(nodeId, metrics.NodeId);
             Assert.Equal(items, metrics.ItemsProcessed);
@@ -611,20 +613,20 @@ public sealed class MetricsCollectingExecutionObserverTests
         var startTime = DateTimeOffset.UtcNow;
         var exception = new InvalidOperationException("Test exception");
 
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
 
         // Act
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), false, exception));
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), false, exception, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.False(metrics.Success);
         Assert.Equal(exception, metrics.Exception);
 
         // Observer should still be functional
-        observer.OnNodeStarted(new NodeExecutionStarted("node2", "TransformNode", DateTimeOffset.UtcNow));
-        Assert.NotNull(collector.GetNodeMetrics("node2"));
+        observer.OnNodeStarted(new NodeExecutionStarted("node2", "TransformNode", DateTimeOffset.UtcNow, s_pipelineId));
+        Assert.NotNull(collector.GetNodeMetrics("node2", s_pipelineId));
     }
 
     #endregion
@@ -640,10 +642,10 @@ public sealed class MetricsCollectingExecutionObserverTests
         var nodeId = "testNode";
 
         // Act
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null));
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.Null(metrics); // No metrics recorded without start
     }
 
@@ -658,11 +660,11 @@ public sealed class MetricsCollectingExecutionObserverTests
         var secondStart = firstStart.AddSeconds(1);
 
         // Act
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", firstStart));
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", secondStart));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", firstStart, s_pipelineId));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", secondStart, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(secondStart, metrics.StartTime); // Should use latest start time
     }
@@ -676,13 +678,13 @@ public sealed class MetricsCollectingExecutionObserverTests
         var nodeId = "testNode";
         var startTime = DateTimeOffset.UtcNow;
 
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
 
         // Act
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null));
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.True(metrics.Success);
         Assert.Null(metrics.Exception);
@@ -698,13 +700,13 @@ public sealed class MetricsCollectingExecutionObserverTests
         var startTime = DateTimeOffset.UtcNow;
         var duration = TimeSpan.FromMinutes(5); // 5 minutes
 
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
 
         // Act
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", duration, true, null));
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", duration, true, null, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(300000, metrics.DurationMs); // 5 minutes in milliseconds
     }
@@ -719,13 +721,13 @@ public sealed class MetricsCollectingExecutionObserverTests
         var startTime = DateTimeOffset.UtcNow;
         var duration = TimeSpan.FromMicroseconds(100); // 100 microseconds
 
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
 
         // Act
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", duration, true, null));
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", duration, true, null, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         _ = metrics.DurationMs;
         Assert.InRange(metrics.DurationMs!.Value, 0, 1); // Should be 0 or 1 ms
@@ -748,9 +750,9 @@ public sealed class MetricsCollectingExecutionObserverTests
         _ = Parallel.For(0, nodeCount, i =>
         {
             var nodeId = $"node_{i}";
-            observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
-            collector.RecordItemMetrics(nodeId, 10, 10);
-            observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null));
+            observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
+            collector.RecordItemMetrics(nodeId, 10, 10, s_pipelineId);
+            observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null, s_pipelineId));
         });
 
         // Assert
@@ -775,13 +777,13 @@ public sealed class MetricsCollectingExecutionObserverTests
         var retryCount = 20;
         var startTime = DateTimeOffset.UtcNow;
 
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
 
         // Act
-        _ = Parallel.For(0, retryCount, i => { observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, i, null)); });
+        _ = Parallel.For(0, retryCount, i => { observer.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, i, null, s_pipelineId)); });
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(retryCount - 1, metrics.RetryCount); // Should track maximum
     }
@@ -799,10 +801,10 @@ public sealed class MetricsCollectingExecutionObserverTests
         var nodeId = "testNode";
 
         // Act
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", DateTimeOffset.UtcNow));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", DateTimeOffset.UtcNow, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
 
         // Memory should be recorded in MB (bytes / 1024 / 1024)
@@ -823,15 +825,15 @@ public sealed class MetricsCollectingExecutionObserverTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
 
         // Force some memory allocation
         _ = new byte[1024 * 1024]; // 1 MB allocation
 
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null));
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
 
         // Peak memory should be >= initial memory
@@ -852,20 +854,20 @@ public sealed class MetricsCollectingExecutionObserverTests
         for (var i = 0; i < nodeCount; i++)
         {
             var nodeId = $"node_{i}";
-            observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
+            observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
 
             // Each node allocates different amounts of memory
             var size = (i + 1) * 1024 * 1024; // 1 MB, 2 MB, 3 MB, etc.
             _ = new byte[size];
 
-            observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null));
+            observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null, s_pipelineId));
         }
 
         // Assert
         for (var i = 0; i < nodeCount; i++)
         {
             var nodeId = $"node_{i}";
-            var metrics = collector.GetNodeMetrics(nodeId);
+            var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
             Assert.NotNull(metrics);
 
             // Each node should have its own memory measurement
@@ -886,18 +888,18 @@ public sealed class MetricsCollectingExecutionObserverTests
 
         // Act
         // Start first node
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId1, "TransformNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId1, "TransformNode", startTime, s_pipelineId));
         _ = new byte[1024 * 1024]; // 1 MB
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId1, "TransformNode", TimeSpan.FromMilliseconds(100), true, null));
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId1, "TransformNode", TimeSpan.FromMilliseconds(100), true, null, s_pipelineId));
 
         // Start second node with different memory allocation
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId2, "TransformNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId2, "TransformNode", startTime, s_pipelineId));
         _ = new byte[2 * 1024 * 1024]; // 2 MB
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId2, "TransformNode", TimeSpan.FromMilliseconds(100), true, null));
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId2, "TransformNode", TimeSpan.FromMilliseconds(100), true, null, s_pipelineId));
 
         // Assert
-        var metrics1 = collector.GetNodeMetrics(nodeId1);
-        var metrics2 = collector.GetNodeMetrics(nodeId2);
+        var metrics1 = collector.GetNodeMetrics(nodeId1, s_pipelineId);
+        var metrics2 = collector.GetNodeMetrics(nodeId2, s_pipelineId);
 
         Assert.NotNull(metrics1);
         Assert.NotNull(metrics2);
@@ -922,13 +924,13 @@ public sealed class MetricsCollectingExecutionObserverTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
 
         // No explicit memory allocation
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null));
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
 
         // Memory should still be recorded even with no explicit allocation
@@ -946,7 +948,7 @@ public sealed class MetricsCollectingExecutionObserverTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
 
         // Allocate memory
         _ = new byte[10 * 1024 * 1024]; // 10 MB
@@ -955,10 +957,10 @@ public sealed class MetricsCollectingExecutionObserverTests
         GC.Collect();
         GC.WaitForPendingFinalizers();
 
-        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null));
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null, s_pipelineId));
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
 
         // After GC, memory should be lower than allocation
@@ -980,13 +982,13 @@ public sealed class MetricsCollectingExecutionObserverTests
         _ = Parallel.For(0, nodeCount, i =>
         {
             var nodeId = $"node_{i}";
-            observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime));
+            observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
 
             // Each thread allocates memory
             var size = (i + 1) * 1024 * 1024;
             _ = new byte[size];
 
-            observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null));
+            observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null, s_pipelineId));
         });
 
         // Assert

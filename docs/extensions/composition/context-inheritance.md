@@ -6,6 +6,12 @@ Context inheritance controls what data from the parent pipeline's context is ava
 
 ## Context Components
 
+`RunId` and `PipelineId` behavior in composites:
+
+- `RunId` may be inherited by child pipelines when `InheritRunIdentity = true`.
+- `PipelineId` is always assigned per pipeline context and is not inherited, so nested telemetry remains unambiguous.
+- `PipelineName` remains useful for readability, but `PipelineId` is the canonical identity key.
+
 The PipelineContext has three main dictionaries:
 
 ### Parameters

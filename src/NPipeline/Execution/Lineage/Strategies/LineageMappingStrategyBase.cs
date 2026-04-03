@@ -42,8 +42,8 @@ internal abstract class LineageMappingStrategyBase
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected static ImmutableList<LineageHop> MaybeAppendHop(ImmutableList<LineageHop> existing, string nodeId, LineageOptions? opts, object? inputSnapshot,
-        object? outputSnapshot)
+    protected static ImmutableList<LineageHop> MaybeAppendHop(ImmutableList<LineageHop> existing, string nodeId, Guid pipelineId,
+        string? pipelineName, LineageOptions? opts, object? inputSnapshot, object? outputSnapshot)
     {
         var cap = opts != null && opts.MaxHopRecordsPerItem > 0
             ? opts.MaxHopRecordsPerItem
@@ -53,14 +53,23 @@ internal abstract class LineageMappingStrategyBase
             return existing;
 
         var truncated = existing.Count + 1 >= cap;
-        var rec = new LineageHop(nodeId, HopDecisionFlags.Emitted, ObservedCardinality.One, null, null, null, truncated,
-            SnapshotValue(inputSnapshot, opts), SnapshotValue(outputSnapshot, opts));
+        var rec = new LineageHop(nodeId, HopDecisionFlags.Emitted, ObservedCardinality.One, null, null, null, truncated, pipelineId,
+            SnapshotValue(inputSnapshot, opts), SnapshotValue(outputSnapshot, opts), pipelineName);
         return existing.Add(rec);
     }
 
+    /// <summary>
+    ///     Returns a traversal-path segment qualified with the pipeline identity.
+    ///     This matches the scheme used by <see cref="NPipeline.Lineage.LineageCollector" /> when recording hops with a non-empty pipeline id.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected static ImmutableList<LineageHop> AppendHop(ImmutableList<LineageHop> existing, string nodeId, LineageOptions? opts, HopDecisionFlags outcome,
-        ObservedCardinality cardinality, IReadOnlyList<int>? ancestry, object? inputSnapshot, object? outputSnapshot)
+    protected static string QualifyNodeId(string nodeId, Guid pipelineId)
+        => $"{pipelineId:N}::{nodeId}";
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    protected static ImmutableList<LineageHop> AppendHop(ImmutableList<LineageHop> existing, string nodeId, Guid pipelineId,
+        string? pipelineName, LineageOptions? opts, HopDecisionFlags outcome, ObservedCardinality cardinality, IReadOnlyList<int>? ancestry,
+        object? inputSnapshot, object? outputSnapshot)
     {
         var cap = opts != null && opts.MaxHopRecordsPerItem > 0
             ? opts.MaxHopRecordsPerItem
@@ -70,13 +79,13 @@ internal abstract class LineageMappingStrategyBase
             return existing;
 
         var truncated = existing.Count + 1 >= cap;
-        var rec = new LineageHop(nodeId, outcome, cardinality, ancestry?.Count, null, ancestry, truncated,
-            SnapshotValue(inputSnapshot, opts), SnapshotValue(outputSnapshot, opts));
+        var rec = new LineageHop(nodeId, outcome, cardinality, ancestry?.Count, null, ancestry, truncated, pipelineId,
+            SnapshotValue(inputSnapshot, opts), SnapshotValue(outputSnapshot, opts), pipelineName);
         return existing.Add(rec);
     }
 
     protected static IEnumerable<LineagePacket<TOut>> MapMaterialized<TIn, TOut>(List<LineagePacket<TIn>> inputs, List<TOut> outputs, string nodeId,
-        TransformCardinality card, LineageOptions? opts, Type? mapperType, ILineageMapper? mapperInstance)
+        Guid pipelineId, string? pipelineName, TransformCardinality card, LineageOptions? opts, Type? mapperType, ILineageMapper? mapperInstance)
     {
         Dictionary<int, IReadOnlyList<int>>? recordsByOutput = null;
 
@@ -199,18 +208,24 @@ internal abstract class LineageMappingStrategyBase
                 var hopRecords = inputPacket.LineageHops;
 
                 if (inputPacket.Collect)
-                    hopRecords = AppendHop(hopRecords, nodeId, opts, outcome, cardinalityObserved, ancestry, inputPacket.Data, outputData);
+                    hopRecords = AppendHop(hopRecords, nodeId, pipelineId, pipelineName, opts, outcome, cardinalityObserved, ancestry, inputPacket.Data,
+                        outputData);
 
-                yield return new LineagePacket<TOut>(outputData, inputPacket.LineageId, inputPacket.TraversalPath.Add(nodeId))
+                yield return new LineagePacket<TOut>(outputData, inputPacket.LineageId, inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId)))
                 { Collect = inputPacket.Collect, LineageHops = hopRecords };
             }
             else
-                yield return new LineagePacket<TOut>(outputData, Guid.NewGuid(), ImmutableList.Create(nodeId));
+                yield return new LineagePacket<TOut>(outputData, Guid.NewGuid(), ImmutableList.Create(QualifyNodeId(nodeId, pipelineId)))
+                {
+                    Collect = true,
+                    LineageHops = ImmutableList<LineageHop>.Empty,
+                };
         }
     }
 
     protected static async IAsyncEnumerable<LineagePacket<TOut>> PositionalStreamingMap<TIn, TOut>(IAsyncEnumerable<LineagePacket<TIn>> inAll,
-        IAsyncEnumerable<TOut> outAll, string nodeId, TransformCardinality card, LineageOptions? opts, [EnumeratorCancellation] CancellationToken token)
+        IAsyncEnumerable<TOut> outAll, string nodeId, Guid pipelineId, string? pipelineName, TransformCardinality card, LineageOptions? opts,
+        [EnumeratorCancellation] CancellationToken token)
     {
         await using var inputEnumerator = inAll.GetAsyncEnumerator(token);
         await using var outputEnumerator = outAll.GetAsyncEnumerator(token);
@@ -229,9 +244,9 @@ internal abstract class LineageMappingStrategyBase
                 var hopRecords = inputPacket.LineageHops;
 
                 if (inputPacket.Collect)
-                    hopRecords = MaybeAppendHop(hopRecords, nodeId, opts, inputPacket.Data, outputData);
+                    hopRecords = MaybeAppendHop(hopRecords, nodeId, pipelineId, pipelineName, opts, inputPacket.Data, outputData);
 
-                yield return new LineagePacket<TOut>(outputData, inputPacket.LineageId, inputPacket.TraversalPath.Add(nodeId))
+                yield return new LineagePacket<TOut>(outputData, inputPacket.LineageId, inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId)))
                 { Collect = inputPacket.Collect, LineageHops = hopRecords };
 
                 matchedInputCount++;

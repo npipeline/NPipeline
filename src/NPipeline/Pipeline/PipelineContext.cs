@@ -240,6 +240,12 @@ public sealed class PipelineContext
     public DateTime PipelineStartTimeUtc { get; internal set; }
 
     /// <summary>
+    ///     Unique pipeline identity for this execution context.
+    ///     This is stable for the lifetime of the context and is used for unambiguous lineage/metrics keying.
+    /// </summary>
+    public Guid PipelineId { get; internal set; }
+
+    /// <summary>
     ///     Unique run identifier for this pipeline execution.
     ///     This can be inherited by child pipelines when composite run identity inheritance is enabled.
     /// </summary>

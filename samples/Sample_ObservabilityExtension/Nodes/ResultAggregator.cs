@@ -54,11 +54,11 @@ public class ResultAggregator : SinkNode<int>
         if (collector != null)
         {
             // For sink, items processed equals items received, nothing is emitted
-            collector.RecordItemMetrics(context.CurrentNodeId, _itemsReceived, 0);
+            collector.RecordItemMetrics(context.CurrentNodeId, _itemsReceived, 0, context.PipelineId, context.PipelineName);
 
             // Record performance metrics
             // Aggregation is fast: assume ~0.05ms per item
-            collector.RecordPerformanceMetrics(context.CurrentNodeId, 20000.0, 0.05);
+            collector.RecordPerformanceMetrics(context.CurrentNodeId, 20000.0, 0.05, context.PipelineId, context.PipelineName);
         }
     }
 }

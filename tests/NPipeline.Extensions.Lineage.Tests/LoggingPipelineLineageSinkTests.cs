@@ -7,6 +7,8 @@ namespace NPipeline.Extensions.Lineage.Tests;
 
 public class LoggingPipelineLineageSinkTests
 {
+    private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
     [Fact]
     public async Task RecordAsync_WithValidReport_ShouldLogReport()
     {
@@ -142,12 +144,7 @@ public class LoggingPipelineLineageSinkTests
         var logger = new TestLogger();
         var sink = new LoggingPipelineLineageSink(logger);
 
-        var report = new PipelineLineageReport(
-            "EmptyPipeline",
-            Guid.NewGuid(),
-            [],
-            []
-        );
+        var report = new PipelineLineageReport("EmptyPipeline", Guid.NewGuid(), [], [], s_pipelineId);
 
         // Act
         await sink.RecordAsync(report, CancellationToken.None);
@@ -174,12 +171,7 @@ public class LoggingPipelineLineageSinkTests
             .Select(i => new EdgeLineageInfo($"node{i}", $"node{i + 1}"))
             .ToList();
 
-        var report = new PipelineLineageReport(
-            "LargePipeline",
-            Guid.NewGuid(),
-            nodes,
-            edges
-        );
+        var report = new PipelineLineageReport("LargePipeline", Guid.NewGuid(), nodes, edges, s_pipelineId);
 
         // Act
         await sink.RecordAsync(report, CancellationToken.None);
@@ -198,12 +190,7 @@ public class LoggingPipelineLineageSinkTests
         var logger = new TestLogger();
         var sink = new LoggingPipelineLineageSink(logger);
 
-        var report = new PipelineLineageReport(
-            "Pipeline with <special> & \"characters\"",
-            Guid.NewGuid(),
-            [new NodeLineageInfo("node1", "Transform", "int", "int")],
-            []
-        );
+        var report = new PipelineLineageReport("Pipeline with <special> & \"characters\"", Guid.NewGuid(), [new NodeLineageInfo("node1", "Transform", "int", "int")], [], s_pipelineId);
 
         // Act
         await sink.RecordAsync(report, CancellationToken.None);
@@ -284,36 +271,26 @@ public class LoggingPipelineLineageSinkTests
 
     private static PipelineLineageReport CreateTestReport(string pipelineName = "TestPipeline")
     {
-        return new PipelineLineageReport(
-            pipelineName,
-            Guid.NewGuid(),
-            [
+        return new PipelineLineageReport(pipelineName, Guid.NewGuid(), [
                 new NodeLineageInfo("node1", "Transform", "int", "int"),
                 new NodeLineageInfo("node2", "Transform", "int", "int"),
-            ],
-            [
+            ], [
                 new EdgeLineageInfo("node1", "node2"),
-            ]
-        );
+            ], s_pipelineId);
     }
 
     private static PipelineLineageReport CreateComplexReport()
     {
-        return new PipelineLineageReport(
-            "ComplexPipeline",
-            Guid.NewGuid(),
-            [
+        return new PipelineLineageReport("ComplexPipeline", Guid.NewGuid(), [
                 new NodeLineageInfo("source1", "Source", null, "int"),
                 new NodeLineageInfo("node1", "Transform", "int", "int"),
                 new NodeLineageInfo("node2", "Transform", "int", "int"),
                 new NodeLineageInfo("sink1", "Sink", "int", null),
-            ],
-            [
+            ], [
                 new EdgeLineageInfo("source1", "node1"),
                 new EdgeLineageInfo("node1", "node2"),
                 new EdgeLineageInfo("node2", "sink1"),
-            ]
-        );
+            ], s_pipelineId);
     }
 
     private sealed class TestLogger : ILogger<LoggingPipelineLineageSink>

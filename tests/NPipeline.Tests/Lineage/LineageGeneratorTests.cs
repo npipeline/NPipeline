@@ -28,7 +28,7 @@ public sealed class LineageGeneratorTests
         var runId = Guid.NewGuid();
 
         // Act
-        var report = LineageGenerator.Generate(pipelineName, graph, runId);
+        var report = LineageGenerator.Generate(pipelineName, Guid.Empty, graph, runId);
 
         // Assert
         _ = report.Should().NotBeNull();
@@ -46,7 +46,7 @@ public sealed class LineageGeneratorTests
         var runId = Guid.NewGuid();
 
         // Act
-        var report = LineageGenerator.Generate("Pipeline", graph, runId);
+        var report = LineageGenerator.Generate("Pipeline", Guid.Empty, graph, runId);
 
         // Assert
         _ = report.Nodes.Should().NotBeEmpty();
@@ -66,7 +66,7 @@ public sealed class LineageGeneratorTests
         // Act & Assert
         foreach (var name in pipelineNames)
         {
-            var report = LineageGenerator.Generate(name, graph, Guid.NewGuid());
+            var report = LineageGenerator.Generate(name, Guid.Empty, graph, Guid.NewGuid());
             _ = report.Pipeline.Should().Be(name);
         }
     }
@@ -82,8 +82,8 @@ public sealed class LineageGeneratorTests
         var runId2 = Guid.NewGuid();
 
         // Act
-        var report1 = LineageGenerator.Generate("Pipeline", graph, runId1);
-        var report2 = LineageGenerator.Generate("Pipeline", graph, runId2);
+        var report1 = LineageGenerator.Generate("Pipeline", Guid.Empty, graph, runId1);
+        var report2 = LineageGenerator.Generate("Pipeline", Guid.Empty, graph, runId2);
 
         // Assert
         _ = report1.RunId.Should().Be(runId1);
@@ -100,7 +100,7 @@ public sealed class LineageGeneratorTests
         var graph = builder.Build().Graph;
 
         // Act
-        var report = LineageGenerator.Generate("Pipeline", graph, Guid.NewGuid());
+        var report = LineageGenerator.Generate("Pipeline", Guid.Empty, graph, Guid.NewGuid());
 
         // Assert
         _ = report.Nodes.Should().HaveCount(1);
@@ -121,7 +121,7 @@ public sealed class LineageGeneratorTests
         var graph = builder.Build().Graph;
 
         // Act
-        var report = LineageGenerator.Generate("Pipeline", graph, Guid.NewGuid());
+        var report = LineageGenerator.Generate("Pipeline", Guid.Empty, graph, Guid.NewGuid());
 
         // Assert
         _ = report.Nodes.Should().HaveCountGreaterThanOrEqualTo(2);
@@ -140,7 +140,7 @@ public sealed class LineageGeneratorTests
         var expectedNodeId = graph.Nodes.First().Id;
 
         // Act
-        var report = LineageGenerator.Generate("Pipeline", graph, Guid.NewGuid());
+        var report = LineageGenerator.Generate("Pipeline", Guid.Empty, graph, Guid.NewGuid());
 
         // Assert
         _ = report.Nodes.Should().HaveCount(1);
@@ -158,7 +158,7 @@ public sealed class LineageGeneratorTests
         var graph = builder.Build().Graph;
 
         // Act
-        var report = LineageGenerator.Generate("Pipeline", graph, Guid.NewGuid());
+        var report = LineageGenerator.Generate("Pipeline", Guid.Empty, graph, Guid.NewGuid());
 
         // Assert
         _ = report.Edges.Should().NotBeEmpty();
@@ -175,7 +175,7 @@ public sealed class LineageGeneratorTests
         var graph = builder.Build().Graph;
 
         // Act
-        var report = LineageGenerator.Generate("Pipeline", graph, Guid.NewGuid());
+        var report = LineageGenerator.Generate("Pipeline", Guid.Empty, graph, Guid.NewGuid());
 
         // Assert
         _ = report.Edges.Should().NotBeEmpty();

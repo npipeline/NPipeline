@@ -135,7 +135,7 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
 
                         attempt++;
                         itemActivity?.SetTag("retry.attempt", attempt.ToString());
-                        PublishRetryInstrumentation(metrics, observer, cached.NodeId, attempt, ex);
+                        PublishRetryInstrumentation(metrics, observer, context, cached.NodeId, attempt, ex);
                         continue;
                     case NodeErrorDecision.Fail:
                     default:
@@ -164,11 +164,11 @@ public abstract class ParallelExecutionStrategyBase : IExecutionStrategy
         return decision;
     }
 
-    private static void PublishRetryInstrumentation(ParallelExecutionMetrics? metrics, IExecutionObserver? observer, string nodeId, int attempt,
-        Exception exception)
+    private static void PublishRetryInstrumentation(ParallelExecutionMetrics? metrics, IExecutionObserver? observer, PipelineContext context,
+        string nodeId, int attempt, Exception exception)
     {
         metrics?.RecordRetry(attempt);
-        observer?.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, attempt, exception));
+        observer?.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, attempt, exception, context.PipelineId, context.PipelineName));
     }
 
     /// <summary>

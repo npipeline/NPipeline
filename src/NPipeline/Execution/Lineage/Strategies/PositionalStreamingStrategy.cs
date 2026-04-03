@@ -12,9 +12,10 @@ internal sealed class PositionalStreamingStrategy<TIn, TOut> : LineageMappingStr
     {
     }
 
-    public IAsyncEnumerable<LineagePacket<TOut>> MapAsync(IAsyncEnumerable<LineagePacket<TIn>> inputStream, IAsyncEnumerable<TOut> outputStream, string nodeId,
-        TransformCardinality cardinality, LineageOptions? options, Type? lineageMapperType, ILineageMapper? mapperInstance, CancellationToken ct)
+    public IAsyncEnumerable<LineagePacket<TOut>> MapAsync(IAsyncEnumerable<LineagePacket<TIn>> inputStream, IAsyncEnumerable<TOut> outputStream,
+        string nodeId, Guid pipelineId, string? pipelineName, TransformCardinality cardinality, LineageOptions? options, Type? lineageMapperType,
+        ILineageMapper? mapperInstance, CancellationToken ct)
     {
-        return PositionalStreamingMap(inputStream, outputStream, nodeId, cardinality, options, ct);
+        return PositionalStreamingMap(inputStream, outputStream, nodeId, pipelineId, pipelineName, cardinality, options, ct);
     }
 }

@@ -127,6 +127,7 @@ public sealed class CompositeTransformNode<TIn, TOut, TDefinition>
             RetryOptions: parentContext.RetryOptions);
 
         var subContext = new PipelineContext(config);
+        subContext.PipelineId = Guid.NewGuid();
 
         if (_contextConfiguration.InheritRunIdentity)
             subContext.RunId = parentContext.RunId;

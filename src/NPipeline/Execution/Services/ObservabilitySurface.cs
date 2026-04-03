@@ -108,7 +108,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         var observer = context.ExecutionObserver;
 
         var startTs = DateTimeOffset.UtcNow;
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeDef.Id, nodeInstance.GetType().Name, startTs, context.PipelineName));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeDef.Id, nodeInstance.GetType().Name, startTs, context.PipelineId, context.PipelineName));
 
         // Check for per-node observability configuration
         IAutoObservabilityScope? autoObservabilityScope = null;
@@ -123,7 +123,8 @@ public sealed class ObservabilitySurface : IObservabilitySurface
 
             if (collector != null && optionsValue is Observability.Configuration.ObservabilityOptions obsOptions)
             {
-                autoObservabilityScope = new Observability.AutoObservabilityScope(collector, nodeDef.Id, obsOptions, context.PipelineName);
+                autoObservabilityScope = new Observability.AutoObservabilityScope(collector, nodeDef.Id, obsOptions, context.PipelineId,
+                    context.PipelineName);
             }
         }
 
@@ -134,7 +135,8 @@ public sealed class ObservabilitySurface : IObservabilitySurface
             context.NodeObservabilityScopes[nodeDef.Id] = autoObservabilityScope;
         }
 
-        return new NodeObservationScope(nodeDef.Id, nodeInstance.GetType().Name, startTs, activity, context.PipelineName, autoObservabilityScope);
+        return new NodeObservationScope(nodeDef.Id, nodeInstance.GetType().Name, startTs, activity, context.PipelineId, context.PipelineName,
+            autoObservabilityScope);
     }
 
     /// <summary>
@@ -153,7 +155,8 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         var failureException = scope.AutoObservabilityScope?.GetFailureException();
         var success = failureException == null;
 
-        var completed = new NodeExecutionCompleted(scope.NodeId, scope.NodeType, duration, success, failureException, scope.PipelineName);
+        var completed = new NodeExecutionCompleted(scope.NodeId, scope.NodeType, duration, success, failureException, scope.PipelineId,
+            scope.PipelineName);
 
         context.ExecutionObserver.OnNodeCompleted(completed);
 
@@ -175,7 +178,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
         ObservabilitySurfaceLogMessages.NodeFailed(logger, ex, scope.NodeId);
         var duration = DateTimeOffset.UtcNow - scope.StartTime;
-        var completed = new NodeExecutionCompleted(scope.NodeId, scope.NodeType, duration, false, ex, scope.PipelineName);
+        var completed = new NodeExecutionCompleted(scope.NodeId, scope.NodeType, duration, false, ex, scope.PipelineId, scope.PipelineName);
 
         context.ExecutionObserver.OnNodeCompleted(completed);
 
@@ -212,7 +215,8 @@ public sealed class ObservabilitySurface : IObservabilitySurface
             ? typeof(TDefinition).Name
             : context.PipelineName!;
 
-        await collector.EmitMetricsAsync(pipelineName, pipelineRunId, startTime, endTime, success, exception, context.CancellationToken).ConfigureAwait(false);
+        await collector.EmitMetricsAsync(pipelineName, context.PipelineId, pipelineRunId, startTime, endTime, success, exception,
+            context.CancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -282,6 +286,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
 
         await collector.EmitMetricsAsync(
             string.IsNullOrWhiteSpace(context.PipelineName) ? definitionType.Name : context.PipelineName!,
+            context.PipelineId,
             pipelineRunId,
             startTime,
             endTime,

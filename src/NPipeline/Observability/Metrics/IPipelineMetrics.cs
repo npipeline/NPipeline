@@ -44,6 +44,11 @@ public interface IPipelineMetrics
     string PipelineName { get; }
 
     /// <summary>
+    ///     The unique pipeline identity for this pipeline execution context.
+    /// </summary>
+    Guid PipelineId { get; }
+
+    /// <summary>
     ///     The unique identifier for this pipeline run.
     /// </summary>
     Guid RunId { get; }

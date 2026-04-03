@@ -11,6 +11,10 @@ namespace NPipeline.Extensions.Lineage.Tests.Integration;
 /// </summary>
 public class LineageIntegrationTests
 {
+    private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    private static string QualifiedPathNode(string nodeId) => $"{s_pipelineId:N}::{nodeId}";
+
     [Fact]
     public void AddNPipelineLineage_ShouldRegisterAllRequiredServices()
     {
@@ -42,15 +46,15 @@ public class LineageIntegrationTests
         var packet2 = collector.CreateLineagePacket("item2", "source-node");
         var packet3 = collector.CreateLineagePacket("item3", "source-node");
 
-        collector.RecordHop(packet1.LineageId, new LineageHop("transform-node", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false));
-        collector.RecordHop(packet2.LineageId, new LineageHop("transform-node", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false));
-        collector.RecordHop(packet3.LineageId, new LineageHop("transform-node", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false));
+        collector.RecordHop(packet1.LineageId, new LineageHop("transform-node", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId));
+        collector.RecordHop(packet2.LineageId, new LineageHop("transform-node", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId));
+        collector.RecordHop(packet3.LineageId, new LineageHop("transform-node", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId));
 
         // Assert
         var allLineage = collector.GetAllLineageInfo();
         allLineage.Should().HaveCount(3);
         allLineage.Should().OnlyContain(l => l.TraversalPath.Contains("source-node"));
-        allLineage.Should().OnlyContain(l => l.TraversalPath.Contains("transform-node"));
+        allLineage.Should().OnlyContain(l => l.TraversalPath.Contains(QualifiedPathNode("transform-node")));
     }
 
     [Fact]
@@ -90,7 +94,7 @@ public class LineageIntegrationTests
 
         // Add some data
         var packet = collector.CreateLineagePacket("test", "source");
-        collector.RecordHop(packet.LineageId, new LineageHop("node1", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false));
+        collector.RecordHop(packet.LineageId, new LineageHop("node1", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId));
 
         // Act
         collector.Clear();
@@ -113,7 +117,7 @@ public class LineageIntegrationTests
         var packet1 = collector.CreateLineagePacket("item1", "source");
         var packet2 = collector.CreateLineagePacket("item2", "source");
 
-        collector.RecordHop(packet1.LineageId, new LineageHop("node1", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false));
+        collector.RecordHop(packet1.LineageId, new LineageHop("node1", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId));
 
         // Assert
         var lineage1 = collector.GetLineageInfo(packet1.LineageId);
@@ -176,14 +180,18 @@ public class LineageIntegrationTests
         var packet = collector.CreateLineagePacket("test", "source");
 
         // Act
-        collector.RecordHop(packet.LineageId, new LineageHop("node1", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false));
-        collector.RecordHop(packet.LineageId, new LineageHop("node2", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false));
-        collector.RecordHop(packet.LineageId, new LineageHop("node3", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false));
+        collector.RecordHop(packet.LineageId, new LineageHop("node1", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId));
+        collector.RecordHop(packet.LineageId, new LineageHop("node2", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId));
+        collector.RecordHop(packet.LineageId, new LineageHop("node3", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId));
 
         // Assert
         var lineage = collector.GetLineageInfo(packet.LineageId);
         lineage.Should().NotBeNull();
-        lineage!.TraversalPath.Should().ContainInOrder("source", "node1", "node2", "node3");
+        lineage!.TraversalPath.Should().ContainInOrder(
+            "source",
+            QualifiedPathNode("node1"),
+            QualifiedPathNode("node2"),
+            QualifiedPathNode("node3"));
         lineage.LineageHops.Should().HaveCount(3);
         lineage.LineageHops[0].NodeId.Should().Be("node1");
         lineage.LineageHops[1].NodeId.Should().Be("node2");
@@ -199,12 +207,7 @@ public class LineageIntegrationTests
         var serviceProvider = services.BuildServiceProvider();
         var sink = serviceProvider.GetRequiredService<IPipelineLineageSink>();
 
-        var report = new PipelineLineageReport(
-            "TestPipeline",
-            Guid.NewGuid(),
-            [new NodeLineageInfo("source", "SourceNode", null, "string")],
-            []
-        );
+        var report = new PipelineLineageReport("TestPipeline", Guid.NewGuid(), [new NodeLineageInfo("source", "SourceNode", null, "string")], [], s_pipelineId);
 
         // Act
         var exception = await Record.ExceptionAsync(() => sink.RecordAsync(report, CancellationToken.None));
