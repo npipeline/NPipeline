@@ -9,6 +9,8 @@ namespace NPipeline.Extensions.Observability.Tests;
 /// </summary>
 public sealed class ObservabilityCollectorTests
 {
+    private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
     private static readonly TestObservabilityFactory s_defaultFactory = new();
 
     #region Basic Node Recording Tests
@@ -24,10 +26,10 @@ public sealed class ObservabilityCollectorTests
         var initialMemoryMb = 100L;
 
         // Act
-        collector.RecordNodeStart(nodeId, timestamp, threadId, initialMemoryMb);
+        collector.RecordNodeStart(nodeId, timestamp, s_pipelineId, threadId, initialMemoryMb);
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(nodeId, metrics.NodeId);
         Assert.Equal(timestamp, metrics.StartTime);
@@ -50,13 +52,13 @@ public sealed class ObservabilityCollectorTests
         var peakMemoryMb = 200L;
         var processorTimeMs = 150L;
 
-        collector.RecordNodeStart(nodeId, startTime, 1, 100);
+        collector.RecordNodeStart(nodeId, startTime, s_pipelineId, 1, 100);
 
         // Act
-        collector.RecordNodeEnd(nodeId, endTime, false, exception, peakMemoryMb, processorTimeMs);
+        collector.RecordNodeEnd(nodeId, endTime, false, s_pipelineId, exception, peakMemoryMb, processorTimeMs);
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(endTime, metrics.EndTime);
         Assert.False(metrics.Success);
@@ -74,7 +76,7 @@ public sealed class ObservabilityCollectorTests
         var nodeId = "nonExistentNode";
 
         // Act & Assert
-        var exception = Record.Exception(() => collector.RecordNodeEnd(nodeId, DateTimeOffset.UtcNow, true));
+        var exception = Record.Exception(() => collector.RecordNodeEnd(nodeId, DateTimeOffset.UtcNow, true, s_pipelineId));
         Assert.Null(exception);
     }
 
@@ -84,14 +86,14 @@ public sealed class ObservabilityCollectorTests
         // Arrange
         var collector = new ObservabilityCollector(s_defaultFactory);
         var nodeId = "testNode";
-        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
+        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
 
         // Act
-        collector.RecordItemMetrics(nodeId, 50, 45);
-        collector.RecordItemMetrics(nodeId, 30, 28);
+        collector.RecordItemMetrics(nodeId, 50, 45, s_pipelineId);
+        collector.RecordItemMetrics(nodeId, 30, 28, s_pipelineId);
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(80, metrics.ItemsProcessed);
         Assert.Equal(73, metrics.ItemsEmitted);
@@ -103,15 +105,15 @@ public sealed class ObservabilityCollectorTests
         // Arrange
         var collector = new ObservabilityCollector(s_defaultFactory);
         var nodeId = "testNode";
-        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
+        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
 
         // Act
-        collector.RecordRetry(nodeId, 1, "First retry");
-        collector.RecordRetry(nodeId, 3, "Third retry");
-        collector.RecordRetry(nodeId, 2, "Second retry");
+        collector.RecordRetry(nodeId, 1, s_pipelineId, "First retry");
+        collector.RecordRetry(nodeId, 3, s_pipelineId, "Third retry");
+        collector.RecordRetry(nodeId, 2, s_pipelineId, "Second retry");
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(3, metrics.RetryCount); // Should track maximum
     }
@@ -122,13 +124,13 @@ public sealed class ObservabilityCollectorTests
         // Arrange
         var collector = new ObservabilityCollector(s_defaultFactory);
         var nodeId = "testNode";
-        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
+        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
 
         // Act
-        collector.RecordPerformanceMetrics(nodeId, 1000.5, 1.0);
+        collector.RecordPerformanceMetrics(nodeId, 1000.5, 1.0, s_pipelineId);
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(1000.5, metrics.ThroughputItemsPerSec);
         Assert.Equal(1.0, metrics.AverageItemProcessingMs);
@@ -146,13 +148,13 @@ public sealed class ObservabilityCollectorTests
         var nodeId = "testNode";
         var retryCount = 50;
 
-        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
+        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
 
         // Act
-        _ = Parallel.For(0, retryCount, i => { collector.RecordRetry(nodeId, i, $"Retry {i}"); });
+        _ = Parallel.For(0, retryCount, i => { collector.RecordRetry(nodeId, i, s_pipelineId, $"Retry {i}"); });
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
 
         // Should track maximum retry count
@@ -168,14 +170,14 @@ public sealed class ObservabilityCollectorTests
         var threadCount = 20;
         var retryCount = 5;
 
-        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
+        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
 
         // Act
         // All threads try to set the same retry count
-        _ = Parallel.For(0, threadCount, i => { collector.RecordRetry(nodeId, retryCount, $"Thread {i}"); });
+        _ = Parallel.For(0, threadCount, i => { collector.RecordRetry(nodeId, retryCount, s_pipelineId, $"Thread {i}"); });
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
 
         // Should have recorded the retry count (not lost due to race condition)
@@ -190,18 +192,18 @@ public sealed class ObservabilityCollectorTests
         var nodeId = "testNode";
         var threadCount = 10;
 
-        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
+        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
 
         // Act
         // Each thread tries to set a different retry count
         _ = Parallel.For(0, threadCount, i =>
         {
             var currentRetryCount = i + 1; // 1, 2, 3, ..., 10
-            collector.RecordRetry(nodeId, currentRetryCount, $"Retry {currentRetryCount}");
+            collector.RecordRetry(nodeId, currentRetryCount, s_pipelineId, $"Retry {currentRetryCount}");
         });
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
 
         // Should track the maximum retry count (10)
@@ -215,16 +217,16 @@ public sealed class ObservabilityCollectorTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
 
-        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
+        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
 
         // Act
-        collector.RecordRetry(nodeId, 1, "First retry");
-        collector.RecordRetry(nodeId, 3, "Third retry");
-        collector.RecordRetry(nodeId, 2, "Second retry");
-        collector.RecordRetry(nodeId, 5, "Fifth retry");
+        collector.RecordRetry(nodeId, 1, s_pipelineId, "First retry");
+        collector.RecordRetry(nodeId, 3, s_pipelineId, "Third retry");
+        collector.RecordRetry(nodeId, 2, s_pipelineId, "Second retry");
+        collector.RecordRetry(nodeId, 5, s_pipelineId, "Fifth retry");
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
 
         // Should track maximum (5)
@@ -238,18 +240,18 @@ public sealed class ObservabilityCollectorTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
 
-        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
+        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
 
         // Act
         // Record retries in decreasing order
-        collector.RecordRetry(nodeId, 10, "Retry 10");
-        collector.RecordRetry(nodeId, 8, "Retry 8");
-        collector.RecordRetry(nodeId, 6, "Retry 6");
-        collector.RecordRetry(nodeId, 4, "Retry 4");
-        collector.RecordRetry(nodeId, 2, "Retry 2");
+        collector.RecordRetry(nodeId, 10, s_pipelineId, "Retry 10");
+        collector.RecordRetry(nodeId, 8, s_pipelineId, "Retry 8");
+        collector.RecordRetry(nodeId, 6, s_pipelineId, "Retry 6");
+        collector.RecordRetry(nodeId, 4, s_pipelineId, "Retry 4");
+        collector.RecordRetry(nodeId, 2, s_pipelineId, "Retry 2");
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
 
         // Should track maximum (10)
@@ -268,15 +270,15 @@ public sealed class ObservabilityCollectorTests
         _ = Parallel.For(0, nodeCount, i =>
         {
             var nodeId = $"node_{i}";
-            collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
-            _ = Parallel.For(0, retryCount, j => { collector.RecordRetry(nodeId, j, $"Retry {j}"); });
+            collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
+            _ = Parallel.For(0, retryCount, j => { collector.RecordRetry(nodeId, j, s_pipelineId, $"Retry {j}"); });
         });
 
         // Assert
         for (var i = 0; i < nodeCount; i++)
         {
             var nodeId = $"node_{i}";
-            var metrics = collector.GetNodeMetrics(nodeId);
+            var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
             Assert.NotNull(metrics);
 
             // Each node should have tracked the maximum retry count
@@ -292,14 +294,14 @@ public sealed class ObservabilityCollectorTests
         var nodeId = "testNode";
         var threadCount = 100;
 
-        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
+        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
 
         // Act
         // High contention scenario with many threads
-        _ = Parallel.For(0, threadCount, i => { collector.RecordRetry(nodeId, i, $"Retry {i}"); });
+        _ = Parallel.For(0, threadCount, i => { collector.RecordRetry(nodeId, i, s_pipelineId, $"Retry {i}"); });
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
 
         // Should track the maximum retry count even under high contention
@@ -323,18 +325,18 @@ public sealed class ObservabilityCollectorTests
                 var nodeId = $"node_{i}";
                 var startTime = DateTimeOffset.UtcNow;
 
-                collector.RecordNodeStart(nodeId, startTime, i, 100);
+                collector.RecordNodeStart(nodeId, startTime, s_pipelineId, i, 100);
 
                 for (var j = 0; j < operationsPerNode; j++)
                 {
-                    collector.RecordItemMetrics(nodeId, 10, 10);
+                    collector.RecordItemMetrics(nodeId, 10, 10, s_pipelineId);
                 }
 
-                collector.RecordRetry(nodeId, i % 5, $"Retry {i}");
-                collector.RecordPerformanceMetrics(nodeId, 1000.0 + i, 1.0);
+                collector.RecordRetry(nodeId, i % 5, s_pipelineId, $"Retry {i}");
+                collector.RecordPerformanceMetrics(nodeId, 1000.0 + i, 1.0, s_pipelineId);
 
                 var endTime = startTime.AddMilliseconds(100);
-                collector.RecordNodeEnd(nodeId, endTime, true, null, 200, 150);
+                collector.RecordNodeEnd(nodeId, endTime, true, s_pipelineId, null, 200, 150);
             }
             catch (Exception ex)
             {
@@ -364,13 +366,13 @@ public sealed class ObservabilityCollectorTests
         var threadCount = 20;
         var itemsPerThread = 100;
 
-        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
+        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
 
         // Act
-        _ = Parallel.For(0, threadCount, i => { collector.RecordItemMetrics(nodeId, itemsPerThread, itemsPerThread); });
+        _ = Parallel.For(0, threadCount, i => { collector.RecordItemMetrics(nodeId, itemsPerThread, itemsPerThread, s_pipelineId); });
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(threadCount * itemsPerThread, metrics.ItemsProcessed);
         Assert.Equal(threadCount * itemsPerThread, metrics.ItemsEmitted);
@@ -384,13 +386,13 @@ public sealed class ObservabilityCollectorTests
         var nodeId = "retryNode";
         var threadCount = 10;
 
-        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
+        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
 
         // Act
-        _ = Parallel.For(0, threadCount, i => { collector.RecordRetry(nodeId, i, $"Thread {i}"); });
+        _ = Parallel.For(0, threadCount, i => { collector.RecordRetry(nodeId, i, s_pipelineId, $"Thread {i}"); });
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(threadCount - 1, metrics.RetryCount); // Maximum retry count
     }
@@ -406,13 +408,13 @@ public sealed class ObservabilityCollectorTests
         var collector = new ObservabilityCollector(s_defaultFactory);
         var nodeId = "TestNode";
 
-        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
+        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
 
         // Act - Simulate concurrent retries with different counts
-        _ = Parallel.For(0, 100, i => { collector.RecordRetry(nodeId, i + 1, $"Retry {i + 1}"); });
+        _ = Parallel.For(0, 100, i => { collector.RecordRetry(nodeId, i + 1, s_pipelineId, $"Retry {i + 1}"); });
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(100, metrics.RetryCount); // Should be the maximum retry count
     }
@@ -425,13 +427,13 @@ public sealed class ObservabilityCollectorTests
         var nodeId = "TestNode";
         var retryCount = 5;
 
-        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
+        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
 
         // Act - Multiple threads recording the same retry count
-        _ = Parallel.For(0, 50, i => { collector.RecordRetry(nodeId, retryCount, $"Thread {i}"); });
+        _ = Parallel.For(0, 50, i => { collector.RecordRetry(nodeId, retryCount, s_pipelineId, $"Thread {i}"); });
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(retryCount, metrics.RetryCount);
     }
@@ -443,14 +445,14 @@ public sealed class ObservabilityCollectorTests
         var collector = new ObservabilityCollector(s_defaultFactory);
         var nodeId = "TestNode";
 
-        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
+        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
 
         // Act - Simulate retries with varying counts in random order
         var retryCounts = new[] { 1, 3, 2, 5, 4, 10, 8, 6, 4, 2 };
-        _ = Parallel.ForEach(retryCounts, retryCount => { collector.RecordRetry(nodeId, retryCount, $"Retry attempt {retryCount}"); });
+        _ = Parallel.ForEach(retryCounts, retryCount => { collector.RecordRetry(nodeId, retryCount, s_pipelineId, $"Retry attempt {retryCount}"); });
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(10, metrics.RetryCount); // Should be the maximum value
     }
@@ -462,15 +464,15 @@ public sealed class ObservabilityCollectorTests
         var collector = new ObservabilityCollector(s_defaultFactory);
         var nodeId = "TestNode";
 
-        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
+        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
 
         // Act - Record high retry count first, then lower ones
-        collector.RecordRetry(nodeId, 10, "Initial high count");
+        collector.RecordRetry(nodeId, 10, s_pipelineId, "Initial high count");
 
-        _ = Parallel.For(0, 50, i => { collector.RecordRetry(nodeId, i + 1, $"Retry {i + 1}"); });
+        _ = Parallel.For(0, 50, i => { collector.RecordRetry(nodeId, i + 1, s_pipelineId, $"Retry {i + 1}"); });
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(50, metrics.RetryCount); // The parallel loop records 1-50, so max is 50
     }
@@ -482,17 +484,17 @@ public sealed class ObservabilityCollectorTests
         var collector = new ObservabilityCollector(s_defaultFactory);
         var nodeId = "TestNode";
 
-        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
+        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
 
         // Act - Simulate high contention with many concurrent updates
         var tasks = Enumerable.Range(0, 200).Select(i =>
-            Task.Run(() => collector.RecordRetry(nodeId, i + 1, $"Retry {i + 1}"))
+            Task.Run(() => collector.RecordRetry(nodeId, i + 1, s_pipelineId, $"Retry {i + 1}"))
         ).ToArray();
 
         await Task.WhenAll(tasks);
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(200, metrics.RetryCount); // Should capture the maximum without lost updates
     }
@@ -507,14 +509,14 @@ public sealed class ObservabilityCollectorTests
         // Act - Record retries for multiple nodes concurrently
         _ = Parallel.ForEach(nodeIds, nodeId =>
         {
-            collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
-            _ = Parallel.For(0, 50, i => { collector.RecordRetry(nodeId, i + 1, $"Retry {i + 1}"); });
+            collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
+            _ = Parallel.For(0, 50, i => { collector.RecordRetry(nodeId, i + 1, s_pipelineId, $"Retry {i + 1}"); });
         });
 
         // Assert - Each node should have its own maximum
         foreach (var nodeId in nodeIds)
         {
-            var metrics = collector.GetNodeMetrics(nodeId);
+            var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
             Assert.NotNull(metrics);
             Assert.Equal(50, metrics.RetryCount);
         }
@@ -530,11 +532,11 @@ public sealed class ObservabilityCollectorTests
         // Arrange
         var collector = new ObservabilityCollector(s_defaultFactory);
         var nodeId = "testNode";
-        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
-        collector.RecordNodeEnd(nodeId, DateTimeOffset.UtcNow.AddMilliseconds(100), true);
+        collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
+        collector.RecordNodeEnd(nodeId, DateTimeOffset.UtcNow.AddMilliseconds(100), true, s_pipelineId);
 
         // Act
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
 
         // Assert
         Assert.NotNull(metrics);
@@ -548,7 +550,7 @@ public sealed class ObservabilityCollectorTests
         var collector = new ObservabilityCollector(s_defaultFactory);
 
         // Act
-        var metrics = collector.GetNodeMetrics("nonExistentNode");
+        var metrics = collector.GetNodeMetrics("nonExistentNode", s_pipelineId);
 
         // Assert
         Assert.Null(metrics);
@@ -563,8 +565,8 @@ public sealed class ObservabilityCollectorTests
 
         foreach (var nodeId in nodeIds)
         {
-            collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, 1, 100);
-            collector.RecordNodeEnd(nodeId, DateTimeOffset.UtcNow.AddMilliseconds(100), true);
+            collector.RecordNodeStart(nodeId, DateTimeOffset.UtcNow, s_pipelineId, 1, 100);
+            collector.RecordNodeEnd(nodeId, DateTimeOffset.UtcNow.AddMilliseconds(100), true, s_pipelineId);
         }
 
         // Act
@@ -602,16 +604,16 @@ public sealed class ObservabilityCollectorTests
         var startTime = DateTimeOffset.UtcNow;
         var endTime = startTime.AddSeconds(5);
 
-        collector.RecordNodeStart("node1", startTime, 1, 100);
-        collector.RecordItemMetrics("node1", 100, 95);
-        collector.RecordNodeEnd("node1", startTime.AddSeconds(2), true);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId, 1, 100);
+        collector.RecordItemMetrics("node1", 100, 95, s_pipelineId);
+        collector.RecordNodeEnd("node1", startTime.AddSeconds(2), true, s_pipelineId);
 
-        collector.RecordNodeStart("node2", startTime.AddSeconds(2), 2, 100);
-        collector.RecordItemMetrics("node2", 95, 90);
-        collector.RecordNodeEnd("node2", endTime, true);
+        collector.RecordNodeStart("node2", startTime.AddSeconds(2), s_pipelineId, 2, 100);
+        collector.RecordItemMetrics("node2", 95, 90, s_pipelineId);
+        collector.RecordNodeEnd("node2", endTime, true, s_pipelineId);
 
         // Act
-        var pipelineMetrics = collector.CreatePipelineMetrics(pipelineName, runId, startTime, endTime, true);
+        var pipelineMetrics = collector.CreatePipelineMetrics(pipelineName, s_pipelineId, runId, startTime, endTime, true);
 
         // Assert
         Assert.Equal(pipelineName, pipelineMetrics.PipelineName);
@@ -635,11 +637,11 @@ public sealed class ObservabilityCollectorTests
         var endTime = startTime.AddSeconds(1);
         var exception = new InvalidOperationException("Pipeline failed");
 
-        collector.RecordNodeStart("node1", startTime, 1, 100);
-        collector.RecordNodeEnd("node1", endTime, false, exception);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId, 1, 100);
+        collector.RecordNodeEnd("node1", endTime, false, s_pipelineId, exception);
 
         // Act
-        var pipelineMetrics = collector.CreatePipelineMetrics(pipelineName, runId, startTime, endTime, false, exception);
+        var pipelineMetrics = collector.CreatePipelineMetrics(pipelineName, s_pipelineId, runId, startTime, endTime, false, exception);
 
         // Assert
         Assert.False(pipelineMetrics.Success);
@@ -656,7 +658,7 @@ public sealed class ObservabilityCollectorTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act
-        var pipelineMetrics = collector.CreatePipelineMetrics(pipelineName, runId, startTime, null, true);
+        var pipelineMetrics = collector.CreatePipelineMetrics(pipelineName, s_pipelineId, runId, startTime, null, true);
 
         // Assert
         Assert.Null(pipelineMetrics.EndTime);
@@ -674,7 +676,7 @@ public sealed class ObservabilityCollectorTests
         var endTime = startTime.AddSeconds(1);
 
         // Act
-        var pipelineMetrics = collector.CreatePipelineMetrics(pipelineName, runId, startTime, endTime, true);
+        var pipelineMetrics = collector.CreatePipelineMetrics(pipelineName, s_pipelineId, runId, startTime, endTime, true);
 
         // Assert
         Assert.Equal(pipelineName, pipelineMetrics.PipelineName);
@@ -698,12 +700,12 @@ public sealed class ObservabilityCollectorTests
         var startTime = DateTimeOffset.UtcNow;
         var endTime = startTime.AddSeconds(5);
 
-        collector.RecordNodeStart("node1", startTime, 1, 100);
-        collector.RecordItemMetrics("node1", 100, 95);
-        collector.RecordNodeEnd("node1", startTime.AddSeconds(2), true);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId, 1, 100);
+        collector.RecordItemMetrics("node1", 100, 95, s_pipelineId);
+        collector.RecordNodeEnd("node1", startTime.AddSeconds(2), true, s_pipelineId);
 
         // Act
-        await collector.EmitMetricsAsync(pipelineName, runId, startTime, endTime, true);
+        await collector.EmitMetricsAsync(pipelineName, s_pipelineId, runId, startTime, endTime, true);
 
         // Assert
         Assert.Equal(1, factory.NodeMetricsSink.RecordAsyncCallCount);
@@ -722,11 +724,11 @@ public sealed class ObservabilityCollectorTests
         var endTime = startTime.AddSeconds(1);
         var exception = new InvalidOperationException("Pipeline failed");
 
-        collector.RecordNodeStart("node1", startTime, 1, 100);
-        collector.RecordNodeEnd("node1", endTime, false, exception);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId, 1, 100);
+        collector.RecordNodeEnd("node1", endTime, false, s_pipelineId, exception);
 
         // Act
-        await collector.EmitMetricsAsync(pipelineName, runId, startTime, endTime, false, exception);
+        await collector.EmitMetricsAsync(pipelineName, s_pipelineId, runId, startTime, endTime, false, exception);
 
         // Assert
         Assert.Equal(1, factory.NodeMetricsSink.RecordAsyncCallCount);
@@ -745,16 +747,16 @@ public sealed class ObservabilityCollectorTests
         var startTime = DateTimeOffset.UtcNow;
         var endTime = startTime.AddSeconds(5);
 
-        collector.RecordNodeStart("node1", startTime, 1, 100);
-        collector.RecordItemMetrics("node1", 100, 95);
-        collector.RecordNodeEnd("node1", startTime.AddSeconds(2), true);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId, 1, 100);
+        collector.RecordItemMetrics("node1", 100, 95, s_pipelineId);
+        collector.RecordNodeEnd("node1", startTime.AddSeconds(2), true, s_pipelineId);
 
-        collector.RecordNodeStart("node2", startTime.AddSeconds(2), 2, 100);
-        collector.RecordItemMetrics("node2", 95, 90);
-        collector.RecordNodeEnd("node2", endTime, true);
+        collector.RecordNodeStart("node2", startTime.AddSeconds(2), s_pipelineId, 2, 100);
+        collector.RecordItemMetrics("node2", 95, 90, s_pipelineId);
+        collector.RecordNodeEnd("node2", endTime, true, s_pipelineId);
 
         // Act
-        await collector.EmitMetricsAsync(pipelineName, runId, startTime, endTime, true);
+        await collector.EmitMetricsAsync(pipelineName, s_pipelineId, runId, startTime, endTime, true);
 
         // Assert
         Assert.Equal(2, factory.NodeMetricsSink.RecordAsyncCallCount);
@@ -772,12 +774,12 @@ public sealed class ObservabilityCollectorTests
         var startTime = DateTimeOffset.UtcNow;
         var endTime = startTime.AddSeconds(1);
 
-        collector.RecordNodeStart("node1", startTime, 1, 100);
-        collector.RecordNodeEnd("node1", endTime, true);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId, 1, 100);
+        collector.RecordNodeEnd("node1", endTime, true, s_pipelineId);
 
         // Act & Assert
         var exception = await Record.ExceptionAsync(() =>
-            collector.EmitMetricsAsync(pipelineName, runId, startTime, endTime, true));
+            collector.EmitMetricsAsync(pipelineName, s_pipelineId, runId, startTime, endTime, true));
 
         Assert.Null(exception);
     }
@@ -796,11 +798,11 @@ public sealed class ObservabilityCollectorTests
         var secondStart = firstStart.AddSeconds(1);
 
         // Act
-        collector.RecordNodeStart(nodeId, firstStart, 1, 100);
-        collector.RecordNodeStart(nodeId, secondStart, 2, 150);
+        collector.RecordNodeStart(nodeId, firstStart, s_pipelineId, 1, 100);
+        collector.RecordNodeStart(nodeId, secondStart, s_pipelineId, 2, 150);
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(secondStart, metrics.StartTime); // Should use latest start time
         Assert.Equal(2, metrics.ThreadId);
@@ -815,10 +817,10 @@ public sealed class ObservabilityCollectorTests
         var endTime = DateTimeOffset.UtcNow;
 
         // Act
-        collector.RecordNodeEnd(nodeId, endTime, true);
+        collector.RecordNodeEnd(nodeId, endTime, true, s_pipelineId);
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics); // RecordNodeEnd now creates metrics via GetOrAdd pattern
         Assert.Null(metrics.DurationMs); // But DurationMs should be null since there's no start time
         Assert.True(metrics.Success); // Success status was recorded
@@ -832,7 +834,7 @@ public sealed class ObservabilityCollectorTests
         var nodeId = "testNode";
 
         // Act & Assert
-        var exception = Record.Exception(() => collector.RecordItemMetrics(nodeId, 10, 10));
+        var exception = Record.Exception(() => collector.RecordItemMetrics(nodeId, 10, 10, s_pipelineId));
         Assert.Null(exception);
     }
 
@@ -844,7 +846,7 @@ public sealed class ObservabilityCollectorTests
         var nodeId = "testNode";
 
         // Act & Assert
-        var exception = Record.Exception(() => collector.RecordRetry(nodeId, 1, "Retry"));
+        var exception = Record.Exception(() => collector.RecordRetry(nodeId, 1, s_pipelineId, "Retry"));
         Assert.Null(exception);
     }
 
@@ -856,7 +858,7 @@ public sealed class ObservabilityCollectorTests
         var nodeId = "testNode";
 
         // Act & Assert
-        var exception = Record.Exception(() => collector.RecordPerformanceMetrics(nodeId, 1000.0, 1.0));
+        var exception = Record.Exception(() => collector.RecordPerformanceMetrics(nodeId, 1000.0, 1.0, s_pipelineId));
         Assert.Null(exception);
     }
 
@@ -869,11 +871,11 @@ public sealed class ObservabilityCollectorTests
         var timestamp = DateTimeOffset.UtcNow;
 
         // Act & Assert
-        collector.RecordNodeStart(nodeId, timestamp);
-        collector.RecordNodeEnd(nodeId, timestamp.AddMilliseconds(100), true);
-        collector.RecordRetry(nodeId, 1);
+        collector.RecordNodeStart(nodeId, timestamp, s_pipelineId);
+        collector.RecordNodeEnd(nodeId, timestamp.AddMilliseconds(100), true, s_pipelineId);
+        collector.RecordRetry(nodeId, 1, s_pipelineId);
 
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Null(metrics.ThreadId);
         Assert.Null(metrics.PeakMemoryUsageMb);
@@ -892,9 +894,9 @@ public sealed class ObservabilityCollectorTests
         for (var i = 0; i < nodeCount; i++)
         {
             var nodeId = $"node_{i}";
-            collector.RecordNodeStart(nodeId, startTime.AddMilliseconds(i), 1, 100);
-            collector.RecordItemMetrics(nodeId, 10, 10);
-            collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(i + 100), true);
+            collector.RecordNodeStart(nodeId, startTime.AddMilliseconds(i), s_pipelineId, 1, 100);
+            collector.RecordItemMetrics(nodeId, 10, 10, s_pipelineId);
+            collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(i + 100), true, s_pipelineId);
         }
 
         // Assert
@@ -911,15 +913,15 @@ public sealed class ObservabilityCollectorTests
         var startTime = DateTimeOffset.UtcNow;
         var endTime = startTime.AddSeconds(1);
 
-        collector.RecordNodeStart(nodeId, startTime, 1, 100);
-        collector.RecordItemMetrics(nodeId, 0, 0);
-        collector.RecordNodeEnd(nodeId, endTime, true);
+        collector.RecordNodeStart(nodeId, startTime, s_pipelineId, 1, 100);
+        collector.RecordItemMetrics(nodeId, 0, 0, s_pipelineId);
+        collector.RecordNodeEnd(nodeId, endTime, true, s_pipelineId);
 
         // Act
-        collector.RecordPerformanceMetrics(nodeId, 0.0, 0.0);
+        collector.RecordPerformanceMetrics(nodeId, 0.0, 0.0, s_pipelineId);
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(0, metrics.ItemsProcessed);
         Assert.Equal(0.0, metrics.ThroughputItemsPerSec);
@@ -941,11 +943,11 @@ public sealed class ObservabilityCollectorTests
         var endTime = startTime.AddMilliseconds(expectedDuration);
 
         // Act
-        collector.RecordNodeStart(nodeId, startTime, 1, 100);
-        collector.RecordNodeEnd(nodeId, endTime, true);
+        collector.RecordNodeStart(nodeId, startTime, s_pipelineId, 1, 100);
+        collector.RecordNodeEnd(nodeId, endTime, true, s_pipelineId);
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(expectedDuration, metrics.DurationMs);
     }
@@ -961,15 +963,15 @@ public sealed class ObservabilityCollectorTests
         var itemsProcessed = 1000L;
         var expectedThroughput = 1000.0; // 1000 items per second
 
-        collector.RecordNodeStart(nodeId, startTime, 1, 100);
-        collector.RecordItemMetrics(nodeId, itemsProcessed, itemsProcessed);
-        collector.RecordNodeEnd(nodeId, endTime, true);
+        collector.RecordNodeStart(nodeId, startTime, s_pipelineId, 1, 100);
+        collector.RecordItemMetrics(nodeId, itemsProcessed, itemsProcessed, s_pipelineId);
+        collector.RecordNodeEnd(nodeId, endTime, true, s_pipelineId);
 
         // Act
-        collector.RecordPerformanceMetrics(nodeId, expectedThroughput, 1.0);
+        collector.RecordPerformanceMetrics(nodeId, expectedThroughput, 1.0, s_pipelineId);
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(expectedThroughput, metrics.ThroughputItemsPerSec);
         Assert.Equal(1.0, metrics.AverageItemProcessingMs);

@@ -74,4 +74,15 @@ public interface INodeMetrics
     ///     The thread ID that primarily processed this node.
     /// </summary>
     int? ThreadId { get; }
+
+    /// <summary>
+    ///     The unique pipeline identity this node belongs to.
+    /// </summary>
+    Guid PipelineId { get; }
+
+    /// <summary>
+    ///     The name of the pipeline this node belongs to.
+    ///     Null for top-level pipelines; set for child/nested pipeline nodes.
+    /// </summary>
+    string? PipelineName { get; }
 }

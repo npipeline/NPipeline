@@ -154,6 +154,9 @@ public sealed class PipelineRunner(
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(createPipeline);
 
+        if (string.IsNullOrWhiteSpace(context.PipelineName))
+            context.PipelineName = definitionType.Name;
+
         using var pipelineActivity = observabilitySurface.BeginPipeline(definitionType, context);
         PipelineGraph? graph = null;
         InitializeExecutionContext(context);
@@ -208,6 +211,12 @@ public sealed class PipelineRunner(
     private static void InitializeExecutionContext(PipelineContext context)
     {
         context.PipelineStartTimeUtc = DateTime.UtcNow;
+        if (context.PipelineId == Guid.Empty)
+            context.PipelineId = Guid.NewGuid();
+
+        if (context.RunId == Guid.Empty)
+            context.RunId = Guid.NewGuid();
+
         context.ProcessedItemsCounter = new StatsCounter();
         context.GlobalRetryOptions = context.RetryOptions;
         context.NodeRetryOverrides.Clear();
@@ -553,7 +562,8 @@ public sealed class PipelineRunner(
         if (!graph.Lineage.ItemLevelLineageEnabled || pipelineLineageSink is null)
             return;
 
-        var report = LineageGenerator.Generate(definitionType.Name, graph, Guid.NewGuid());
+        var report = LineageGenerator.Generate(definitionType.Name, context.PipelineId, graph,
+            context.RunId == Guid.Empty ? Guid.NewGuid() : context.RunId);
         await pipelineLineageSink.RecordAsync(report, context.CancellationToken).ConfigureAwait(false);
     }
 

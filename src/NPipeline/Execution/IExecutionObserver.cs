@@ -43,7 +43,10 @@ public interface IExecutionObserver
 /// <param name="NodeId">The unique identifier of the node.</param>
 /// <param name="NodeType">The type name of the node.</param>
 /// <param name="StartTime">The timestamp when execution started.</param>
-public sealed record NodeExecutionStarted(string NodeId, string NodeType, DateTimeOffset StartTime);
+/// <param name="PipelineId">The unique pipeline identity for the current execution context.</param>
+/// <param name="PipelineName">The logical pipeline name for the current execution context.</param>
+public sealed record NodeExecutionStarted(string NodeId, string NodeType, DateTimeOffset StartTime, Guid PipelineId,
+    string? PipelineName = null);
 
 /// <summary>
 ///     Event data for node execution completion.
@@ -53,7 +56,11 @@ public sealed record NodeExecutionStarted(string NodeId, string NodeType, DateTi
 /// <param name="Duration">The duration of the execution.</param>
 /// <param name="Success">Whether the execution completed successfully.</param>
 /// <param name="Error">The exception if execution failed, otherwise null.</param>
-public sealed record NodeExecutionCompleted(string NodeId, string NodeType, TimeSpan Duration, bool Success, Exception? Error);
+/// <param name="PipelineId">The unique pipeline identity for the current execution context.</param>
+/// <param name="PipelineName">The logical pipeline name for the current execution context.</param>
+public sealed record NodeExecutionCompleted(string NodeId, string NodeType, TimeSpan Duration, bool Success, Exception? Error,
+    Guid PipelineId,
+    string? PipelineName = null);
 
 /// <summary>
 ///     Specifies the kind of retry operation.
@@ -78,7 +85,10 @@ public enum RetryKind
 /// <param name="Kind">The kind of retry operation.</param>
 /// <param name="Attempt">The current attempt number.</param>
 /// <param name="LastException">The exception from the previous attempt, if any.</param>
-public sealed record NodeRetryEvent(string NodeId, RetryKind Kind, int Attempt, Exception? LastException);
+/// <param name="PipelineId">The unique pipeline identity for the current execution context.</param>
+/// <param name="PipelineName">The logical pipeline name for the current execution context.</param>
+public sealed record NodeRetryEvent(string NodeId, RetryKind Kind, int Attempt, Exception? LastException, Guid PipelineId,
+    string? PipelineName = null);
 
 /// <summary>
 ///     Specifies how items are dropped from a queue.

@@ -19,6 +19,11 @@ namespace NPipeline.Extensions.Observability.Tests;
 /// </summary>
 public sealed class CompatibilityTests
 {
+    private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+    private static INodeMetrics? GetNodeMetricsById(IObservabilityCollector collector, string nodeId)
+        => TestHelpers.GetNodeMetricsById(collector, nodeId);
+
     #region Parallel Execution Strategy Compatibility Tests
 
     [Fact]
@@ -45,7 +50,7 @@ public sealed class CompatibilityTests
 
         Assert.Equal(3, allMetrics.Count); // source, paralleltransform, sink
 
-        var parallelMetrics = collector.GetNodeMetrics("paralleltransform");
+        var parallelMetrics = GetNodeMetricsById(collector, "paralleltransform");
         Assert.NotNull(parallelMetrics);
         Assert.True(parallelMetrics.Success);
         Assert.Equal(10, parallelMetrics.ItemsProcessed);
@@ -76,7 +81,7 @@ public sealed class CompatibilityTests
 
         Assert.Equal(3, allMetrics.Count); // source, paralleltransform, sink
 
-        var parallelMetrics = collector.GetNodeMetrics("paralleltransform");
+        var parallelMetrics = GetNodeMetricsById(collector, "paralleltransform");
         Assert.NotNull(parallelMetrics);
         Assert.True(parallelMetrics.Success);
 
@@ -109,7 +114,7 @@ public sealed class CompatibilityTests
 
         Assert.Equal(3, allMetrics.Count); // source, paralleltransform, sink
 
-        var parallelMetrics = collector.GetNodeMetrics("paralleltransform");
+        var parallelMetrics = GetNodeMetricsById(collector, "paralleltransform");
         Assert.NotNull(parallelMetrics);
         Assert.True(parallelMetrics.Success);
 
@@ -142,7 +147,7 @@ public sealed class CompatibilityTests
 
         Assert.Equal(3, allMetrics.Count); // source, paralleltransform, sink
 
-        var parallelMetrics = collector.GetNodeMetrics("paralleltransform");
+        var parallelMetrics = GetNodeMetricsById(collector, "paralleltransform");
         Assert.NotNull(parallelMetrics);
 
         // Even when some items fail after retry exhaustion, retry metrics
@@ -174,7 +179,7 @@ public sealed class CompatibilityTests
 
         Assert.Equal(3, allMetrics.Count); // source, paralleltransform, sink
 
-        var parallelMetrics = collector.GetNodeMetrics("paralleltransform");
+        var parallelMetrics = GetNodeMetricsById(collector, "paralleltransform");
         Assert.NotNull(parallelMetrics);
         Assert.True(parallelMetrics.Success);
         Assert.Equal(1000, parallelMetrics.ItemsProcessed); // Source produces 1000 items
@@ -209,7 +214,7 @@ public sealed class CompatibilityTests
 
         Assert.Equal(3, allMetrics.Count); // source, transform, sink
 
-        var transformMetrics = collector.GetNodeMetrics("transform");
+        var transformMetrics = GetNodeMetricsById(collector, "transform");
         Assert.NotNull(transformMetrics);
         Assert.True(transformMetrics.Success);
         Assert.Equal(10, transformMetrics.ItemsProcessed);
@@ -237,21 +242,21 @@ public sealed class CompatibilityTests
         {
             Task.Run(() =>
             {
-                observer1.OnNodeStarted(new NodeExecutionStarted("node1", "TestNode", startTime));
+                observer1.OnNodeStarted(new NodeExecutionStarted("node1", "TestNode", startTime, s_pipelineId));
                 Thread.Sleep(10);
-                observer1.OnNodeCompleted(new NodeExecutionCompleted("node1", "TestNode", TimeSpan.FromMilliseconds(10), true, null));
+                observer1.OnNodeCompleted(new NodeExecutionCompleted("node1", "TestNode", TimeSpan.FromMilliseconds(10), true, null, s_pipelineId));
             }),
             Task.Run(() =>
             {
-                observer2.OnNodeStarted(new NodeExecutionStarted("node2", "TestNode", startTime));
+                observer2.OnNodeStarted(new NodeExecutionStarted("node2", "TestNode", startTime, s_pipelineId));
                 Thread.Sleep(10);
-                observer2.OnNodeCompleted(new NodeExecutionCompleted("node2", "TestNode", TimeSpan.FromMilliseconds(10), true, null));
+                observer2.OnNodeCompleted(new NodeExecutionCompleted("node2", "TestNode", TimeSpan.FromMilliseconds(10), true, null, s_pipelineId));
             }),
             Task.Run(() =>
             {
-                observer3.OnNodeStarted(new NodeExecutionStarted("node3", "TestNode", startTime));
+                observer3.OnNodeStarted(new NodeExecutionStarted("node3", "TestNode", startTime, s_pipelineId));
                 Thread.Sleep(10);
-                observer3.OnNodeCompleted(new NodeExecutionCompleted("node3", "TestNode", TimeSpan.FromMilliseconds(10), true, null));
+                observer3.OnNodeCompleted(new NodeExecutionCompleted("node3", "TestNode", TimeSpan.FromMilliseconds(10), true, null, s_pipelineId));
             }),
         };
 
@@ -261,13 +266,13 @@ public sealed class CompatibilityTests
         var allMetrics = collector.GetNodeMetrics();
         Assert.Equal(3, allMetrics.Count);
 
-        var node1Metrics = collector.GetNodeMetrics("node1");
+        var node1Metrics = GetNodeMetricsById(collector, "node1");
         Assert.NotNull(node1Metrics);
 
-        var node2Metrics = collector.GetNodeMetrics("node2");
+        var node2Metrics = GetNodeMetricsById(collector, "node2");
         Assert.NotNull(node2Metrics);
 
-        var node3Metrics = collector.GetNodeMetrics("node3");
+        var node3Metrics = GetNodeMetricsById(collector, "node3");
         Assert.NotNull(node3Metrics);
     }
 
@@ -293,14 +298,14 @@ public sealed class CompatibilityTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act - Record metrics
-        collector.RecordNodeStart("node1", startTime);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId);
         await Task.Delay(10);
         var endTime = DateTimeOffset.UtcNow;
-        collector.RecordNodeEnd("node1", endTime, true);
-        collector.RecordItemMetrics("node1", 100, 95);
+        collector.RecordNodeEnd("node1", endTime, true, s_pipelineId);
+        collector.RecordItemMetrics("node1", 100, 95, s_pipelineId);
 
         // Emit metrics to trigger sink calls
-        await collector.EmitMetricsAsync("TestPipeline", Guid.NewGuid(), startTime, endTime, true);
+        await collector.EmitMetricsAsync("TestPipeline", s_pipelineId, Guid.NewGuid(), startTime, endTime, true);
 
         // Assert - Custom sink should have received metrics
         Assert.True(customSink.WasCalled);
@@ -326,17 +331,17 @@ public sealed class CompatibilityTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act - Record metrics and emit
-        collector.RecordNodeStart("node1", startTime);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId);
         await Task.Delay(10);
         var endTime = DateTimeOffset.UtcNow;
-        collector.RecordNodeEnd("node1", endTime, true);
-        collector.RecordItemMetrics("node1", 100, 95);
+        collector.RecordNodeEnd("node1", endTime, true, s_pipelineId);
+        collector.RecordItemMetrics("node1", 100, 95, s_pipelineId);
 
         // Emit metrics to trigger sink calls
-        await collector.EmitMetricsAsync("TestPipeline", Guid.NewGuid(), startTime, endTime, true);
+        await collector.EmitMetricsAsync("TestPipeline", s_pipelineId, Guid.NewGuid(), startTime, endTime, true);
 
         // Assert both sinks received the metrics
-        var metrics = collector.GetNodeMetrics("node1");
+        var metrics = GetNodeMetricsById(collector, "node1");
         Assert.NotNull(metrics);
         Assert.True(sink1.WasCalled);
         Assert.Equal(1, sink1.CallCount);
@@ -364,12 +369,12 @@ public sealed class CompatibilityTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act - Create and emit pipeline metrics
-        collector.RecordNodeStart("node1", startTime);
+        collector.RecordNodeStart("node1", startTime, s_pipelineId);
         await Task.Delay(10);
-        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true);
-        collector.RecordItemMetrics("node1", 100, 95);
+        collector.RecordNodeEnd("node1", DateTimeOffset.UtcNow, true, s_pipelineId);
+        collector.RecordItemMetrics("node1", 100, 95, s_pipelineId);
 
-        await collector.EmitMetricsAsync(pipelineName, runId, startTime, DateTimeOffset.UtcNow, true);
+        await collector.EmitMetricsAsync(pipelineName, s_pipelineId, runId, startTime, DateTimeOffset.UtcNow, true);
 
         // Assert - Custom pipeline sink should have received metrics
         Assert.True(customPipelineSink.WasCalled);
@@ -404,7 +409,7 @@ public sealed class CompatibilityTests
 
         Assert.Equal(3, allMetrics.Count); // source, parallelTransform, sink
 
-        var parallelMetrics = collector.GetNodeMetrics("paralleltransform");
+        var parallelMetrics = GetNodeMetricsById(collector, "paralleltransform");
         Assert.NotNull(parallelMetrics);
 
         // Failures are surfaced through the sink node; parallel transform
@@ -444,7 +449,7 @@ public sealed class CompatibilityTests
 
         Assert.Equal(3, allMetrics.Count); // source, parallelTransform, sink
 
-        var parallelMetrics = collector.GetNodeMetrics("paralleltransform");
+        var parallelMetrics = GetNodeMetricsById(collector, "paralleltransform");
         Assert.NotNull(parallelMetrics);
 
         // Should have processed some items; success may be true when
@@ -509,7 +514,7 @@ public sealed class CompatibilityTests
 
         Assert.Equal(3, allMetrics.Count); // source, transform, sink
 
-        var transformMetrics = collector.GetNodeMetrics("transform");
+        var transformMetrics = GetNodeMetricsById(collector, "transform");
         Assert.NotNull(transformMetrics);
         Assert.True(transformMetrics.Success);
         Assert.Equal(1000, transformMetrics.ItemsProcessed);

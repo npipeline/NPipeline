@@ -21,11 +21,13 @@ public delegate Task<IDataStream> CustomMergeDelegate(INode node, IEnumerable<ID
 /// <param name="lineageInput">The input data pipe containing lineage information.</param>
 /// <param name="lineageSink">The optional lineage sink for recording lineage data.</param>
 /// <param name="sinkNodeId">The ID of the sink node.</param>
+/// <param name="pipelineId">The unique pipeline identity for this execution context.</param>
+/// <param name="pipelineName">The logical pipeline name for this execution context.</param>
 /// <param name="options">Optional lineage configuration options.</param>
 /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
 /// <returns>The output data pipe after unwrapping lineage.</returns>
 public delegate IDataStream SinkLineageUnwrapDelegate(IDataStream lineageInput, ILineageSink? lineageSink, string sinkNodeId,
-    LineageOptions? options, CancellationToken cancellationToken);
+    Guid pipelineId, string? pipelineName, LineageOptions? options, CancellationToken cancellationToken);
 
 /// <summary>
 ///     Represents a pre-compiled delegate for extracting join keys from an item.
@@ -42,6 +44,8 @@ public delegate object? JoinKeySelectorDelegate(object item);
 /// </summary>
 /// <param name="transformInput">Original (lineage-wrapped) transform input pipe.</param>
 /// <param name="nodeId">Node id for traversal path extension.</param>
+/// <param name="pipelineId">The unique pipeline identity for this execution context.</param>
+/// <param name="pipelineName">The logical pipeline name for this execution context.</param>
 /// <param name="declaredCardinality">Declared transform cardinality.</param>
 /// <param name="options">Lineage options (strict / warn config).</param>
 /// <param name="cancellationToken">Cancellation token for downstream enumeration.</param>
@@ -49,6 +53,8 @@ public delegate object? JoinKeySelectorDelegate(object item);
 public delegate (IDataStream unwrappedInput, Func<IDataStream, IDataStream> rewrapOutput) LineageAdapterDelegate(
     IDataStream transformInput,
     string nodeId,
+    Guid pipelineId,
+    string? pipelineName,
     TransformCardinality declaredCardinality,
     LineageOptions? options,
     CancellationToken cancellationToken);

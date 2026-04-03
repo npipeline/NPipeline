@@ -10,6 +10,8 @@ namespace NPipeline.Extensions.Observability.Tests;
 /// </summary>
 public sealed class EdgeCaseTests
 {
+    private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
     #region GC Pressure Tests
 
     [Fact]
@@ -25,9 +27,9 @@ public sealed class EdgeCaseTests
             var nodeId = $"node{i}";
             var startTime = DateTimeOffset.UtcNow;
 
-            collector.RecordNodeStart(nodeId, startTime);
-            collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(100), true);
-            collector.RecordItemMetrics(nodeId, 100, 95);
+            collector.RecordNodeStart(nodeId, startTime, s_pipelineId);
+            collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(100), true, s_pipelineId);
+            collector.RecordItemMetrics(nodeId, 100, 95, s_pipelineId);
 
             // Force GC periodically
             if (i % 100 == 0)
@@ -41,7 +43,7 @@ public sealed class EdgeCaseTests
         for (var i = 0; i < nodeCount; i++)
         {
             var nodeId = $"node{i}";
-            var metrics = collector.GetNodeMetrics(nodeId);
+            var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
 
             Assert.NotNull(metrics);
             Assert.Equal(100, metrics.ItemsProcessed);
@@ -60,7 +62,7 @@ public sealed class EdgeCaseTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = new ObservabilityOptions { RecordItemCounts = true };
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
         const long largeCount = long.MaxValue / 2;
 
         // Act
@@ -70,7 +72,7 @@ public sealed class EdgeCaseTests
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(largeCount, metrics.ItemsProcessed);
         Assert.Equal(largeCount, metrics.ItemsEmitted);
@@ -83,7 +85,7 @@ public sealed class EdgeCaseTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = new ObservabilityOptions { RecordItemCounts = true };
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act - Increment to overflow
         scope.IncrementProcessed();
@@ -91,7 +93,7 @@ public sealed class EdgeCaseTests
         scope.Dispose();
 
         // Assert - Should handle overflow gracefully
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(2, metrics.ItemsProcessed);
     }
@@ -107,11 +109,11 @@ public sealed class EdgeCaseTests
         // Act - RecordRetry tracks the maximum retry attempt, not a count
         for (var i = 1; i <= largeRetryCount; i++)
         {
-            collector.RecordRetry(nodeId, i);
+            collector.RecordRetry(nodeId, i, s_pipelineId);
         }
 
         // Assert - Should track the maximum retry attempt
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(largeRetryCount, metrics.RetryCount);
     }
@@ -129,11 +131,11 @@ public sealed class EdgeCaseTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act
-        collector.RecordNodeStart(nodeId, startTime);
-        collector.RecordNodeEnd(nodeId, startTime, true); // Same time = zero duration
+        collector.RecordNodeStart(nodeId, startTime, s_pipelineId);
+        collector.RecordNodeEnd(nodeId, startTime, true, s_pipelineId); // Same time = zero duration
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(0, metrics.DurationMs);
     }
@@ -148,11 +150,11 @@ public sealed class EdgeCaseTests
         var endTime = startTime.AddMilliseconds(-100); // End before start
 
         // Act
-        collector.RecordNodeStart(nodeId, startTime);
-        collector.RecordNodeEnd(nodeId, endTime, true);
+        collector.RecordNodeStart(nodeId, startTime, s_pipelineId);
+        collector.RecordNodeEnd(nodeId, endTime, true, s_pipelineId);
 
         // Assert - Should handle negative duration
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.True(metrics.DurationMs < 0);
     }
@@ -167,11 +169,11 @@ public sealed class EdgeCaseTests
         var endTime = DateTimeOffset.UtcNow;
 
         // Act
-        collector.RecordNodeStart(nodeId, startTime);
-        collector.RecordNodeEnd(nodeId, endTime, true);
+        collector.RecordNodeStart(nodeId, startTime, s_pipelineId);
+        collector.RecordNodeEnd(nodeId, endTime, true, s_pipelineId);
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.True(metrics.DurationMs > 0);
         Assert.True(metrics.DurationMs > TimeSpan.FromDays(3650).TotalMilliseconds);
@@ -190,11 +192,11 @@ public sealed class EdgeCaseTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act
-        collector.RecordNodeStart(emptyNodeId, startTime);
-        collector.RecordNodeEnd(emptyNodeId, startTime.AddMilliseconds(100), true);
+        collector.RecordNodeStart(emptyNodeId, startTime, s_pipelineId);
+        collector.RecordNodeEnd(emptyNodeId, startTime.AddMilliseconds(100), true, s_pipelineId);
 
         // Assert
-        var metrics = collector.GetNodeMetrics(emptyNodeId);
+        var metrics = collector.GetNodeMetrics(emptyNodeId, s_pipelineId);
         Assert.NotNull(metrics);
     }
 
@@ -207,11 +209,11 @@ public sealed class EdgeCaseTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act
-        collector.RecordNodeStart(whitespaceNodeId, startTime);
-        collector.RecordNodeEnd(whitespaceNodeId, startTime.AddMilliseconds(100), true);
+        collector.RecordNodeStart(whitespaceNodeId, startTime, s_pipelineId);
+        collector.RecordNodeEnd(whitespaceNodeId, startTime.AddMilliseconds(100), true, s_pipelineId);
 
         // Assert
-        var metrics = collector.GetNodeMetrics(whitespaceNodeId);
+        var metrics = collector.GetNodeMetrics(whitespaceNodeId, s_pipelineId);
         Assert.NotNull(metrics);
     }
 
@@ -224,11 +226,11 @@ public sealed class EdgeCaseTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act
-        collector.RecordNodeStart(specialNodeId, startTime);
-        collector.RecordNodeEnd(specialNodeId, startTime.AddMilliseconds(100), true);
+        collector.RecordNodeStart(specialNodeId, startTime, s_pipelineId);
+        collector.RecordNodeEnd(specialNodeId, startTime.AddMilliseconds(100), true, s_pipelineId);
 
         // Assert
-        var metrics = collector.GetNodeMetrics(specialNodeId);
+        var metrics = collector.GetNodeMetrics(specialNodeId, s_pipelineId);
         Assert.NotNull(metrics);
     }
 
@@ -241,11 +243,11 @@ public sealed class EdgeCaseTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act
-        collector.RecordNodeStart(longNodeId, startTime);
-        collector.RecordNodeEnd(longNodeId, startTime.AddMilliseconds(100), true);
+        collector.RecordNodeStart(longNodeId, startTime, s_pipelineId);
+        collector.RecordNodeEnd(longNodeId, startTime.AddMilliseconds(100), true, s_pipelineId);
 
         // Assert
-        var metrics = collector.GetNodeMetrics(longNodeId);
+        var metrics = collector.GetNodeMetrics(longNodeId, s_pipelineId);
         Assert.NotNull(metrics);
     }
 
@@ -262,11 +264,11 @@ public sealed class EdgeCaseTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act
-        collector.RecordNodeStart(nodeId, startTime, 1, 1000);
-        collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(100), true, null, 500); // Lower memory
+        collector.RecordNodeStart(nodeId, startTime, s_pipelineId, 1, 1000);
+        collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(100), true, s_pipelineId, null, 500); // Lower memory
 
         // Assert - Should handle negative delta
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.True(metrics.PeakMemoryUsageMb.HasValue);
     }
@@ -280,11 +282,11 @@ public sealed class EdgeCaseTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act
-        collector.RecordNodeStart(nodeId, startTime, 1, 0);
-        collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(100), true, null, 0);
+        collector.RecordNodeStart(nodeId, startTime, s_pipelineId, 1, 0);
+        collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(100), true, s_pipelineId, null, 0);
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(0, metrics.PeakMemoryUsageMb);
     }
@@ -299,11 +301,11 @@ public sealed class EdgeCaseTests
         const long largeMemory = 1_000_000; // 1 TB
 
         // Act
-        collector.RecordNodeStart(nodeId, startTime, 1, largeMemory);
-        collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(100), true, null, largeMemory);
+        collector.RecordNodeStart(nodeId, startTime, s_pipelineId, 1, largeMemory);
+        collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(100), true, s_pipelineId, null, largeMemory);
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(largeMemory, metrics.PeakMemoryUsageMb);
     }
@@ -328,9 +330,9 @@ public sealed class EdgeCaseTests
                 var nodeName = $"pipeline{pipelineId}_node{nodeId}";
                 var startTime = DateTimeOffset.UtcNow;
 
-                collector.RecordNodeStart(nodeName, startTime);
-                collector.RecordNodeEnd(nodeName, startTime.AddMilliseconds(100), true);
-                collector.RecordItemMetrics(nodeName, 100, 95);
+                collector.RecordNodeStart(nodeName, startTime, s_pipelineId);
+                collector.RecordNodeEnd(nodeName, startTime.AddMilliseconds(100), true, s_pipelineId);
+                collector.RecordItemMetrics(nodeName, 100, 95, s_pipelineId);
             }
         });
 
@@ -340,7 +342,7 @@ public sealed class EdgeCaseTests
             for (var nodeId = 0; nodeId < nodesPerPipeline; nodeId++)
             {
                 var nodeName = $"pipeline{pipelineId}_node{nodeId}";
-                var metrics = collector.GetNodeMetrics(nodeName);
+                var metrics = collector.GetNodeMetrics(nodeName, s_pipelineId);
 
                 Assert.NotNull(metrics);
                 Assert.Equal(100, metrics.ItemsProcessed);
@@ -361,13 +363,13 @@ public sealed class EdgeCaseTests
         _ = Parallel.For(0, pipelineCount, pipelineId =>
         {
             var startTime = DateTimeOffset.UtcNow;
-            collector.RecordNodeStart(nodeName, startTime);
-            collector.RecordNodeEnd(nodeName, startTime.AddMilliseconds(100), true);
-            collector.RecordItemMetrics(nodeName, pipelineId * 10, pipelineId * 10);
+            collector.RecordNodeStart(nodeName, startTime, s_pipelineId);
+            collector.RecordNodeEnd(nodeName, startTime.AddMilliseconds(100), true, s_pipelineId);
+            collector.RecordItemMetrics(nodeName, pipelineId * 10, pipelineId * 10, s_pipelineId);
         });
 
         // Assert - Should have aggregated metrics
-        var metrics = collector.GetNodeMetrics(nodeName);
+        var metrics = collector.GetNodeMetrics(nodeName, s_pipelineId);
         Assert.NotNull(metrics);
 
         // Note: Behavior depends on implementation - may aggregate or overwrite
@@ -387,12 +389,12 @@ public sealed class EdgeCaseTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act
-        collector.RecordNodeStart(nodeId, startTime);
-        collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(100), true);
-        collector.RecordPerformanceMetrics(nodeId, 0, 0); // Zero throughput
+        collector.RecordNodeStart(nodeId, startTime, s_pipelineId);
+        collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(100), true, s_pipelineId);
+        collector.RecordPerformanceMetrics(nodeId, 0, 0, s_pipelineId); // Zero throughput
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(0, metrics.ThroughputItemsPerSec);
     }
@@ -406,12 +408,12 @@ public sealed class EdgeCaseTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act
-        collector.RecordNodeStart(nodeId, startTime);
-        collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(1), true); // 1ms duration
-        collector.RecordPerformanceMetrics(nodeId, 1000000.0, 0.000001); // 1M items/sec
+        collector.RecordNodeStart(nodeId, startTime, s_pipelineId);
+        collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(1), true, s_pipelineId); // 1ms duration
+        collector.RecordPerformanceMetrics(nodeId, 1000000.0, 0.000001, s_pipelineId); // 1M items/sec
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(1000000.0, metrics.ThroughputItemsPerSec);
     }
@@ -425,12 +427,12 @@ public sealed class EdgeCaseTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act
-        collector.RecordNodeStart(nodeId, startTime);
-        collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(100), true);
-        collector.RecordPerformanceMetrics(nodeId, -100.0, -1.0); // Negative values
+        collector.RecordNodeStart(nodeId, startTime, s_pipelineId);
+        collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(100), true, s_pipelineId);
+        collector.RecordPerformanceMetrics(nodeId, -100.0, -1.0, s_pipelineId); // Negative values
 
         // Assert - Should handle negative values
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(-100.0, metrics.ThroughputItemsPerSec);
     }
@@ -444,12 +446,12 @@ public sealed class EdgeCaseTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act
-        collector.RecordNodeStart(nodeId, startTime);
-        collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(0), true); // Zero duration
-        collector.RecordPerformanceMetrics(nodeId, double.PositiveInfinity, 0);
+        collector.RecordNodeStart(nodeId, startTime, s_pipelineId);
+        collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(0), true, s_pipelineId); // Zero duration
+        collector.RecordPerformanceMetrics(nodeId, double.PositiveInfinity, 0, s_pipelineId);
 
         // Assert - Should handle infinity
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(double.PositiveInfinity, metrics.ThroughputItemsPerSec);
     }
@@ -465,13 +467,13 @@ public sealed class EdgeCaseTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = new ObservabilityOptions { RecordItemCounts = true };
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act - Don't increment any items
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(0, metrics.ItemsProcessed);
         Assert.Equal(0, metrics.ItemsEmitted);
@@ -484,7 +486,7 @@ public sealed class EdgeCaseTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = new ObservabilityOptions { RecordItemCounts = true };
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act
         scope.IncrementEmitted();
@@ -492,7 +494,7 @@ public sealed class EdgeCaseTests
         scope.Dispose();
 
         // Assert - Should record even though emitted > processed
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(0, metrics.ItemsProcessed);
         Assert.Equal(2, metrics.ItemsEmitted);
@@ -513,13 +515,13 @@ public sealed class EdgeCaseTests
             RecordPerformanceMetrics = false,
         };
 
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act
         scope.Dispose();
 
         // Assert - Should still record basic timing
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.True(metrics.DurationMs >= 0);
     }
@@ -537,10 +539,10 @@ public sealed class EdgeCaseTests
         var nodeId = "testNode";
 
         // Act - Start without end
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", DateTimeOffset.UtcNow));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", DateTimeOffset.UtcNow, s_pipelineId));
 
         // Assert - Should have recorded start
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
     }
 
@@ -553,15 +555,10 @@ public sealed class EdgeCaseTests
         var nodeId = "testNode";
 
         // Act - Complete without start
-        observer.OnNodeCompleted(new NodeExecutionCompleted(
-            nodeId,
-            "TransformNode",
-            TimeSpan.FromMilliseconds(100),
-            true,
-            null));
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null, s_pipelineId));
 
         // Assert - Should not record if node was never started
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.Null(metrics); // Changed behavior: only record if node was started
     }
 
@@ -574,12 +571,12 @@ public sealed class EdgeCaseTests
         var nodeId = "testNode";
 
         // Act - Multiple starts
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", DateTimeOffset.UtcNow));
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", DateTimeOffset.UtcNow));
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", DateTimeOffset.UtcNow));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", DateTimeOffset.UtcNow, s_pipelineId));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", DateTimeOffset.UtcNow, s_pipelineId));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", DateTimeOffset.UtcNow, s_pipelineId));
 
         // Assert - Should handle multiple starts
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
     }
 
@@ -597,7 +594,7 @@ public sealed class EdgeCaseTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act - Create pipeline metrics without any nodes
-        var metrics = collector.CreatePipelineMetrics(pipelineName, runId, startTime, startTime.AddSeconds(1), true);
+        var metrics = collector.CreatePipelineMetrics(pipelineName, s_pipelineId, runId, startTime, startTime.AddSeconds(1), true);
 
         // Assert
         Assert.NotNull(metrics);
@@ -616,7 +613,7 @@ public sealed class EdgeCaseTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act
-        var metrics = collector.CreatePipelineMetrics(longPipelineName, runId, startTime, startTime.AddSeconds(1), true);
+        var metrics = collector.CreatePipelineMetrics(longPipelineName, s_pipelineId, runId, startTime, startTime.AddSeconds(1), true);
 
         // Assert
         Assert.NotNull(metrics);
@@ -633,7 +630,7 @@ public sealed class EdgeCaseTests
         var startTime = DateTimeOffset.UtcNow;
 
         // Act
-        var metrics = collector.CreatePipelineMetrics(pipelineName, runId, startTime, startTime, true);
+        var metrics = collector.CreatePipelineMetrics(pipelineName, s_pipelineId, runId, startTime, startTime, true);
 
         // Assert
         Assert.NotNull(metrics);

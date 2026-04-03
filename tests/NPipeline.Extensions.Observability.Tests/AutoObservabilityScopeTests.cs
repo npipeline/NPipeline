@@ -9,6 +9,8 @@ namespace NPipeline.Extensions.Observability.Tests;
 /// </summary>
 public sealed class AutoObservabilityScopeTests
 {
+    private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
     #region Test Helpers
 
     private sealed class TestObservabilityFactory : IObservabilityFactory
@@ -42,7 +44,7 @@ public sealed class AutoObservabilityScopeTests
         var options = ObservabilityOptions.Default;
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => new AutoObservabilityScope(collector, nodeId, options));
+        _ = Assert.Throws<ArgumentNullException>(() => new AutoObservabilityScope(collector, nodeId, options, s_pipelineId));
     }
 
     [Fact]
@@ -54,7 +56,7 @@ public sealed class AutoObservabilityScopeTests
         var options = ObservabilityOptions.Default;
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => new AutoObservabilityScope(collector, nodeId, options));
+        _ = Assert.Throws<ArgumentNullException>(() => new AutoObservabilityScope(collector, nodeId, options, s_pipelineId));
     }
 
     [Fact]
@@ -66,7 +68,7 @@ public sealed class AutoObservabilityScopeTests
         ObservabilityOptions options = null!;
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => new AutoObservabilityScope(collector, nodeId, options));
+        _ = Assert.Throws<ArgumentNullException>(() => new AutoObservabilityScope(collector, nodeId, options, s_pipelineId));
     }
 
     [Fact]
@@ -78,7 +80,7 @@ public sealed class AutoObservabilityScopeTests
         var options = ObservabilityOptions.Default;
 
         // Act
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Assert
         // AutoObservabilityScope is a struct, so it's always instantiated
@@ -96,14 +98,14 @@ public sealed class AutoObservabilityScopeTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = new ObservabilityOptions { RecordItemCounts = true };
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act
         scope.RecordItemCount(100, 95);
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(100, metrics.ItemsProcessed);
         Assert.Equal(95, metrics.ItemsEmitted);
@@ -116,7 +118,7 @@ public sealed class AutoObservabilityScopeTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = new ObservabilityOptions { RecordItemCounts = true };
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act
         scope.RecordItemCount(50, 45);
@@ -124,7 +126,7 @@ public sealed class AutoObservabilityScopeTests
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
 
         // RecordItemCount sets the value, not increments
@@ -139,14 +141,14 @@ public sealed class AutoObservabilityScopeTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = new ObservabilityOptions { RecordItemCounts = false };
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act
         scope.RecordItemCount(100, 95);
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(0, metrics.ItemsProcessed);
         Assert.Equal(0, metrics.ItemsEmitted);
@@ -163,7 +165,7 @@ public sealed class AutoObservabilityScopeTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = new ObservabilityOptions { RecordItemCounts = true };
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act
         for (var i = 0; i < 50; i++)
@@ -174,7 +176,7 @@ public sealed class AutoObservabilityScopeTests
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(50, metrics.ItemsProcessed);
     }
@@ -186,7 +188,7 @@ public sealed class AutoObservabilityScopeTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = new ObservabilityOptions { RecordItemCounts = true };
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act
         for (var i = 0; i < 30; i++)
@@ -202,7 +204,7 @@ public sealed class AutoObservabilityScopeTests
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(50, metrics.ItemsProcessed);
     }
@@ -214,7 +216,7 @@ public sealed class AutoObservabilityScopeTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = new ObservabilityOptions { RecordItemCounts = false };
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act
         for (var i = 0; i < 50; i++)
@@ -225,7 +227,7 @@ public sealed class AutoObservabilityScopeTests
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(0, metrics.ItemsProcessed);
     }
@@ -241,7 +243,7 @@ public sealed class AutoObservabilityScopeTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = new ObservabilityOptions { RecordItemCounts = true };
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act
         for (var i = 0; i < 45; i++)
@@ -252,7 +254,7 @@ public sealed class AutoObservabilityScopeTests
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(45, metrics.ItemsEmitted);
     }
@@ -264,7 +266,7 @@ public sealed class AutoObservabilityScopeTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = new ObservabilityOptions { RecordItemCounts = true };
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act
         for (var i = 0; i < 28; i++)
@@ -280,7 +282,7 @@ public sealed class AutoObservabilityScopeTests
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(45, metrics.ItemsEmitted);
     }
@@ -292,7 +294,7 @@ public sealed class AutoObservabilityScopeTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = new ObservabilityOptions { RecordItemCounts = false };
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act
         for (var i = 0; i < 45; i++)
@@ -303,7 +305,7 @@ public sealed class AutoObservabilityScopeTests
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(0, metrics.ItemsEmitted);
     }
@@ -319,7 +321,7 @@ public sealed class AutoObservabilityScopeTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = ObservabilityOptions.Default;
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
         var exception = new InvalidOperationException("Test exception");
 
         // Act
@@ -327,7 +329,7 @@ public sealed class AutoObservabilityScopeTests
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.False(metrics.Success);
     }
@@ -339,7 +341,7 @@ public sealed class AutoObservabilityScopeTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = ObservabilityOptions.Default;
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
         var exception1 = new InvalidOperationException("Exception 1");
         var exception2 = new InvalidOperationException("Exception 2");
 
@@ -349,7 +351,7 @@ public sealed class AutoObservabilityScopeTests
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.False(metrics.Success);
         Assert.NotNull(metrics.Exception);
@@ -367,7 +369,7 @@ public sealed class AutoObservabilityScopeTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = new ObservabilityOptions { RecordItemCounts = true, RecordTiming = true };
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         scope.RecordItemCount(100, 95);
 
@@ -388,7 +390,7 @@ public sealed class AutoObservabilityScopeTests
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
 
         // RecordItemCount sets the value, then IncrementProcessed adds to it
@@ -410,7 +412,7 @@ public sealed class AutoObservabilityScopeTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = ObservabilityOptions.Default;
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act & Assert
         var exception = Record.Exception(() =>
@@ -429,13 +431,13 @@ public sealed class AutoObservabilityScopeTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = new ObservabilityOptions { RecordTiming = false };
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Null(metrics.DurationMs);
     }
@@ -451,7 +453,7 @@ public sealed class AutoObservabilityScopeTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = new ObservabilityOptions { RecordItemCounts = true };
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
         var threadCount = 20;
         var itemsPerThread = 100;
 
@@ -468,7 +470,7 @@ public sealed class AutoObservabilityScopeTests
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(threadCount * itemsPerThread, metrics.ItemsProcessed);
         Assert.Equal(threadCount * itemsPerThread, metrics.ItemsEmitted);
@@ -481,7 +483,7 @@ public sealed class AutoObservabilityScopeTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = ObservabilityOptions.Default;
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
         var failureCount = 50;
 
         // Act
@@ -489,7 +491,7 @@ public sealed class AutoObservabilityScopeTests
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.False(metrics.Success);
 
@@ -508,7 +510,7 @@ public sealed class AutoObservabilityScopeTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = ObservabilityOptions.Full;
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act
         scope.RecordItemCount(100, 95);
@@ -529,7 +531,7 @@ public sealed class AutoObservabilityScopeTests
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(110, metrics.ItemsProcessed);
         Assert.Equal(100, metrics.ItemsEmitted);
@@ -544,7 +546,7 @@ public sealed class AutoObservabilityScopeTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = ObservabilityOptions.Minimal;
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act
         scope.RecordItemCount(100, 95);
@@ -555,7 +557,7 @@ public sealed class AutoObservabilityScopeTests
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(0, metrics.ItemsProcessed); // RecordItemCounts is false
         Assert.Equal(0, metrics.ItemsEmitted);
@@ -569,7 +571,7 @@ public sealed class AutoObservabilityScopeTests
         var collector = new ObservabilityCollector(new TestObservabilityFactory());
         var nodeId = "testNode";
         var options = ObservabilityOptions.Disabled;
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act
         scope.RecordItemCount(100, 95);
@@ -587,7 +589,7 @@ public sealed class AutoObservabilityScopeTests
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(0, metrics.ItemsProcessed);
         Assert.Equal(0, metrics.ItemsEmitted);
@@ -608,7 +610,7 @@ public sealed class AutoObservabilityScopeTests
             RecordTiming = true,
         };
 
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act
         for (var i = 0; i < 100; i++)
@@ -622,7 +624,7 @@ public sealed class AutoObservabilityScopeTests
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal(100, metrics.ItemsProcessed);
         Assert.NotNull(metrics.ThroughputItemsPerSec);
@@ -644,13 +646,13 @@ public sealed class AutoObservabilityScopeTests
             RecordMemoryUsage = true,
         };
 
-        var scope = new AutoObservabilityScope(collector, nodeId, options);
+        var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
 
         // Act
         scope.Dispose();
 
         // Assert
-        var metrics = collector.GetNodeMetrics(nodeId);
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
         Assert.NotNull(metrics.PeakMemoryUsageMb);
         Assert.True(metrics.PeakMemoryUsageMb.Value >= 0);

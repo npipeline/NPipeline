@@ -10,6 +10,8 @@ namespace NPipeline.Observability.Tests;
 /// </summary>
 public sealed class ObservablePipelineContextFactoryTests
 {
+    private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
     [Fact]
     public async Task Create_ReturnsContextWithExecutionObserverSet()
     {
@@ -65,10 +67,10 @@ public sealed class ObservablePipelineContextFactoryTests
         Assert.IsType<MetricsCollectingExecutionObserver>(observer);
 
         // Verify the observer is connected to the collector by recording an event
-        var startEvent = new NodeExecutionStarted("test-node", "TestNode", DateTimeOffset.UtcNow);
+        var startEvent = new NodeExecutionStarted("test-node", "TestNode", DateTimeOffset.UtcNow, s_pipelineId);
         observer.OnNodeStarted(startEvent);
 
-        var metrics = collector.GetNodeMetrics("test-node");
+        var metrics = collector.GetNodeMetrics("test-node", s_pipelineId);
         Assert.NotNull(metrics);
         Assert.Equal("test-node", metrics.NodeId);
     }

@@ -17,6 +17,7 @@ Node metrics capture performance and execution data for individual nodes within 
 public interface INodeMetrics
 {
     string NodeId { get; }
+    Guid PipelineId { get; }
     DateTimeOffset? StartTime { get; }
     DateTimeOffset? EndTime { get; }
     long? DurationMs { get; }
@@ -29,8 +30,15 @@ public interface INodeMetrics
     long? ProcessorTimeMs { get; }
     double? ThroughputItemsPerSec { get; }
     int? ThreadId { get; }
+    string? PipelineName { get; }
 }
 ```
+
+### Pipeline Identity
+
+- `PipelineId` is a non-nullable `Guid` used as the canonical identity for node metrics.
+- `PipelineName` is still available for readability/logging, but `PipelineId` is the stable key for nested and renamed pipelines.
+- Metrics keying uses `PipelineId + NodeId`, which avoids collisions when different pipelines reuse the same node IDs.
 
 ### Node Metrics Properties
 

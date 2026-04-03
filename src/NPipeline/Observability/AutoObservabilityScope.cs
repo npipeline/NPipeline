@@ -12,6 +12,8 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
     private readonly long _initialMemoryBytes;
     private readonly string _nodeId;
     private readonly ObservabilityOptions _options;
+    private readonly Guid _pipelineId;
+    private readonly string? _pipelineName;
     private readonly Stopwatch _stopwatch;
     private readonly int? _threadId;
     private bool _disposed;
@@ -26,14 +28,20 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
     /// <param name="collector">The observability collector to record metrics to.</param>
     /// <param name="nodeId">The unique identifier of node being observed.</param>
     /// <param name="options">The observability options controlling what metrics to record.</param>
+    /// <param name="pipelineId">The unique pipeline identity for this node execution context.</param>
+    /// <param name="pipelineName">The logical pipeline name for this node execution context.</param>
     public AutoObservabilityScope(
         IObservabilityCollector collector,
         string nodeId,
-        ObservabilityOptions options)
+        ObservabilityOptions options,
+        Guid pipelineId,
+        string? pipelineName = null)
     {
         _collector = collector ?? throw new ArgumentNullException(nameof(collector));
         _nodeId = nodeId ?? throw new ArgumentNullException(nameof(nodeId));
         _options = options ?? throw new ArgumentNullException(nameof(options));
+        _pipelineId = pipelineId;
+        _pipelineName = pipelineName;
         _stopwatch = Stopwatch.StartNew();
 
         _initialMemoryBytes = options.RecordMemoryUsage
@@ -51,10 +59,12 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
         collector.RecordNodeStart(
             nodeId,
             DateTimeOffset.UtcNow,
+            _pipelineId,
             _threadId,
             options.RecordMemoryUsage
                 ? _initialMemoryBytes / (1024.0 * 1024.0)
-                : null);
+                : null,
+            _pipelineName);
     }
 
     /// <inheritdoc />
@@ -116,18 +126,20 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
                 _nodeId,
                 endTime,
                 _success,
+                _pipelineId,
                 _exception,
-                memoryDeltaMb);
+                memoryDeltaMb,
+                pipelineName: _pipelineName);
         }
 
         if (_options.RecordItemCounts)
-            _collector.RecordItemMetrics(_nodeId, _itemsProcessed, _itemsEmitted);
+            _collector.RecordItemMetrics(_nodeId, _itemsProcessed, _itemsEmitted, _pipelineId, _pipelineName);
 
         if (_options.RecordPerformanceMetrics && _itemsProcessed > 0 && _stopwatch.ElapsedMilliseconds > 0)
         {
             var throughput = _itemsProcessed / _stopwatch.Elapsed.TotalSeconds;
             var avgTimeMs = _stopwatch.ElapsedMilliseconds / (double)_itemsProcessed;
-            _collector.RecordPerformanceMetrics(_nodeId, throughput, avgTimeMs);
+            _collector.RecordPerformanceMetrics(_nodeId, throughput, avgTimeMs, _pipelineId, _pipelineName);
         }
     }
 }

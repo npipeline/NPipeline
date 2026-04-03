@@ -36,11 +36,11 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
         {
             var initialMemoryBytes = GC.GetTotalMemory(false);
             initialMemoryMb = initialMemoryBytes / (1024.0 * 1024.0);
-            _nodeInitialMemory[e.NodeId] = initialMemoryBytes;
+            _nodeInitialMemory[BuildNodeExecutionKey(e.NodeId, e.PipelineId)] = initialMemoryBytes;
         }
 
-        _collector.RecordNodeStart(e.NodeId, e.StartTime, threadId, initialMemoryMb);
-        _nodeStartTimes[e.NodeId] = e.StartTime;
+        _collector.RecordNodeStart(e.NodeId, e.StartTime, e.PipelineId, threadId, initialMemoryMb, e.PipelineName);
+        _nodeStartTimes[BuildNodeExecutionKey(e.NodeId, e.PipelineId)] = e.StartTime;
     }
 
     /// <inheritdoc />
@@ -52,7 +52,9 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
             return;
 
         // Only record completion if node was started
-        if (!_nodeStartTimes.TryRemove(e.NodeId, out var startTime))
+        var executionKey = BuildNodeExecutionKey(e.NodeId, e.PipelineId);
+
+        if (!_nodeStartTimes.TryRemove(executionKey, out var startTime))
             return;
 
         var endTime = startTime + e.Duration;
@@ -63,7 +65,7 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
         {
             var finalMemoryBytes = GC.GetTotalMemory(false);
 
-            if (_nodeInitialMemory.TryRemove(e.NodeId, out var initialMemoryBytes))
+            if (_nodeInitialMemory.TryRemove(executionKey, out var initialMemoryBytes))
             {
                 var deltaBytes = finalMemoryBytes - initialMemoryBytes;
                 memoryDeltaMb = deltaBytes / (1024.0 * 1024.0);
@@ -76,11 +78,13 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
             e.NodeId,
             endTime,
             e.Success,
+            e.PipelineId,
             e.Error,
             memoryDeltaMb,
-            processorTimeMs);
+            processorTimeMs,
+            e.PipelineName);
 
-        var nodeMetrics = _collector.GetNodeMetrics(e.NodeId);
+        var nodeMetrics = _collector.GetNodeMetrics(e.NodeId, e.PipelineId);
 
         if (nodeMetrics != null && nodeMetrics.ItemsProcessed > 0 && nodeMetrics.DurationMs.HasValue)
         {
@@ -90,7 +94,7 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
             {
                 var throughput = nodeMetrics.ItemsProcessed / durationSec;
                 var averageItemProcessingMs = nodeMetrics.DurationMs.Value / (double)nodeMetrics.ItemsProcessed;
-                _collector.RecordPerformanceMetrics(e.NodeId, throughput, averageItemProcessingMs);
+                _collector.RecordPerformanceMetrics(e.NodeId, throughput, averageItemProcessingMs, e.PipelineId, e.PipelineName);
             }
         }
     }
@@ -104,7 +108,7 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
             return;
 
         var reason = e.LastException?.Message;
-        _collector.RecordRetry(e.NodeId, e.Attempt, reason);
+        _collector.RecordRetry(e.NodeId, e.Attempt, e.PipelineId, reason, e.PipelineName);
     }
 
     /// <inheritdoc />
@@ -131,5 +135,10 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
         }
 
         _disposed = true;
+    }
+
+    private static string BuildNodeExecutionKey(string nodeId, Guid pipelineId)
+    {
+        return string.Concat(pipelineId.ToString("N"), "::", nodeId);
     }
 }

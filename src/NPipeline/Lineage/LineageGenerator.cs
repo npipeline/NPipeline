@@ -11,10 +11,11 @@ public static class LineageGenerator
     ///     Creates a lineage report from the given pipeline graph.
     /// </summary>
     /// <param name="pipelineName">The name of the pipeline definition.</param>
+    /// <param name="pipelineId">The unique pipeline identity for this pipeline execution context.</param>
     /// <param name="graph">The pipeline graph to analyze.</param>
     /// <param name="runId">The unique ID for the current pipeline run.</param>
     /// <returns>A new <see cref="PipelineLineageReport" />.</returns>
-    public static PipelineLineageReport Generate(string pipelineName, PipelineGraph graph, Guid runId)
+    public static PipelineLineageReport Generate(string pipelineName, Guid pipelineId, PipelineGraph graph, Guid runId)
     {
         var nodes = graph.Nodes.Select(n =>
         {
@@ -26,7 +27,7 @@ public static class LineageGenerator
 
         var edges = graph.Edges.Select(e => new EdgeLineageInfo(e.SourceNodeId, e.TargetNodeId)).ToList();
 
-        return new PipelineLineageReport(pipelineName, runId, nodes, edges);
+        return new PipelineLineageReport(pipelineName, runId, nodes, edges, PipelineId: pipelineId);
     }
 
     // Reflection-based GetNodeTypes removed (metadata now provided by builder at NodeDefinition time).

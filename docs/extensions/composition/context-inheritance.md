@@ -6,6 +6,12 @@ Context inheritance controls what data from the parent pipeline's context is ava
 
 ## Context Components
 
+`RunId` and `PipelineId` behavior in composites:
+
+- `RunId` may be inherited by child pipelines when `InheritRunIdentity = true`.
+- `PipelineId` is always assigned per pipeline context and is not inherited, so nested telemetry remains unambiguous.
+- `PipelineName` remains useful for readability, but `PipelineId` is the canonical identity key.
+
 The PipelineContext has three main dictionaries:
 
 ### Parameters
@@ -18,6 +24,7 @@ context.Parameters["BatchSize"] = 100;
 ```
 
 **Typical Use Cases:**
+
 - Configuration values
 - Connection strings
 - Processing parameters
@@ -33,6 +40,7 @@ context.Items["RequestId"] = Guid.NewGuid();
 ```
 
 **Typical Use Cases:**
+
 - Request-scoped services
 - Temporary state
 - Request identifiers
@@ -48,6 +56,7 @@ context.Properties["Version"] = "1.0.0";
 ```
 
 **Typical Use Cases:**
+
 - Pipeline metadata
 - Environment settings
 - Feature flags
@@ -58,24 +67,28 @@ context.Properties["Version"] = "1.0.0";
 ### No Inheritance (Default)
 
 **Configuration:**
+
 ```csharp
 builder.AddComposite<TIn, TOut, SubPipeline>(
     contextConfiguration: CompositeContextConfiguration.Default);
 ```
 
 **When to Use:**
+
 - Sub-pipeline should be completely isolated
 - Testing sub-pipelines independently
 - Avoiding unintended dependencies
 - Maximum modularity
 
 **Characteristics:**
+
 - Sub-pipeline has empty context dictionaries
 - No parent data accessible
 - Complete isolation
 - Easiest to test
 
 **Example:**
+
 ```csharp
 public class StandaloneValidationPipeline : IPipelineDefinition
 {
@@ -95,24 +108,28 @@ public class StandaloneValidationPipeline : IPipelineDefinition
 ### Full Inheritance
 
 **Configuration:**
+
 ```csharp
 builder.AddComposite<TIn, TOut, SubPipeline>(
     contextConfiguration: CompositeContextConfiguration.InheritAll);
 ```
 
 **When to Use:**
+
 - Sub-pipeline needs access to parent configuration
 - Sharing services across pipeline hierarchy
 - Consistent environment settings
 - Logging and tracing integration
 
 **Characteristics:**
+
 - All parent context data copied to sub-context
 - Parent context remains isolated from changes
 - Sub-pipeline can read parent values
 - More complex testing requirements
 
 **Example:**
+
 ```csharp
 public class ConfigAwareEnrichmentPipeline : IPipelineDefinition
 {
@@ -143,6 +160,7 @@ builder.AddComposite<Customer, EnrichedCustomer, ConfigAwareEnrichmentPipeline>(
 ### Selective Inheritance
 
 **Configuration:**
+
 ```csharp
 builder.AddComposite<TIn, TOut, SubPipeline>(
     contextConfiguration: new CompositeContextConfiguration
@@ -154,12 +172,14 @@ builder.AddComposite<TIn, TOut, SubPipeline>(
 ```
 
 **When to Use:**
+
 - Need specific parent data only
 - Balance between isolation and access
 - Fine-grained control over dependencies
 - Performance optimization
 
 **Example:**
+
 ```csharp
 // Sub-pipeline needs config but not services
 builder.AddComposite<Order, ProcessedOrder, OrderProcessingPipeline>(
@@ -174,6 +194,7 @@ builder.AddComposite<Order, ProcessedOrder, OrderProcessingPipeline>(
 ### Custom Configuration with Action
 
 **Configuration:**
+
 ```csharp
 builder.AddComposite<TIn, TOut, SubPipeline>(
     configureContext: config =>
@@ -185,11 +206,13 @@ builder.AddComposite<TIn, TOut, SubPipeline>(
 ```
 
 **When to Use:**
+
 - Dynamic configuration based on conditions
 - Configuration from external sources
 - Complex inheritance logic
 
 **Example:**
+
 ```csharp
 var isDevelopment = Environment.GetEnvironmentVariable("ENVIRONMENT") == "Development";
 
@@ -467,13 +490,70 @@ public class MyTransform : TransformNode<T, T>
 
 ## Summary
 
-| Strategy | Parameters | Items | Properties | Use Case |
-|----------|-----------|-------|------------|----------|
-| **Default** | ❌ | ❌ | ❌ | Isolated, testable sub-pipelines |
-| **InheritAll** | ✅ | ✅ | ✅ | Full integration with parent |
-| **Parameters Only** | ✅ | ❌ | ❌ | Configuration inheritance |
-| **Items Only** | ❌ | ✅ | ❌ | Service sharing |
-| **Properties Only** | ❌ | ❌ | ✅ | Metadata/environment |
-| **Custom** | 🔧 | 🔧 | 🔧 | Fine-grained control |
+| Strategy | Parameters | Items | Properties | Observer | Lineage | Dead Letter | Use Case |
+|----------|-----------|-------|------------|----------|---------|-------------|----------|
+| **Default** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | Isolated, testable sub-pipelines |
+| **InheritAll** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Full integration with parent |
+| **Parameters Only** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | Configuration inheritance |
+| **Observability** | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | Unified telemetry |
+| **Custom** | 🔧 | 🔧 | 🔧 | 🔧 | 🔧 | 🔧 | Fine-grained control |
 
 Choose the strategy that best balances isolation, functionality, and testability for your specific use case.
+
+## Observability and Lineage Inheritance
+
+In addition to data dictionaries, `CompositeContextConfiguration` provides fine-grained control over how observability and lineage concerns propagate to child pipelines.
+
+### Available Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `InheritRunIdentity` | `false` | Child pipelines share the same run identity as the parent |
+| `InheritLineageSink` | `false` | Child pipelines report lineage through the parent's sink |
+| `InheritExecutionObserver` | `false` | Child pipeline node events emit through the parent's observer |
+| `InheritDeadLetterDecorator` | `false` | Child pipelines use the parent's dead letter sink |
+
+### Example: Unified Observability
+
+To have child pipeline nodes appear in the same telemetry stream as the parent:
+
+```csharp
+builder.AddComposite<Order, ProcessedOrder, OrderSubPipeline>(
+    contextConfiguration: new CompositeContextConfiguration
+    {
+        InheritExecutionObserver = true,
+        InheritLineageSink = true,
+        InheritDeadLetterDecorator = true,
+    });
+```
+
+### Example: Isolated Child Telemetry
+
+Keep child pipelines completely independent (default):
+
+```csharp
+builder.AddComposite<Order, ProcessedOrder, OrderSubPipeline>();
+// Child pipeline uses its own observer, lineage sink, and dead letter handling
+```
+
+### Pipeline Identity in Lineage and Metrics
+
+Lineage hops and node metrics now carry an optional `PipelineName` property. When set, this enables:
+
+- **Unambiguous node identification** across nested pipelines (canonical key: `pipelineName + nodeId`)
+- **Child-level filtering** in lineage queries and dashboards
+- **Pipeline-qualified traversal paths** (e.g., `"ChildPipeline::transform"` in the traversal path)
+
+```csharp
+// LineageHop now includes PipelineName
+var hop = new LineageHop(
+    "transform-node",
+    HopDecisionFlags.Emitted,
+    ObservedCardinality.One,
+    1, 1, null, false,
+    PipelineName: "OrderValidationSubPipeline");
+
+// INodeMetrics now includes PipelineName
+INodeMetrics metrics = collector.GetNodeMetrics("transform-node");
+string? pipeline = metrics?.PipelineName; // "OrderValidationSubPipeline"
+```

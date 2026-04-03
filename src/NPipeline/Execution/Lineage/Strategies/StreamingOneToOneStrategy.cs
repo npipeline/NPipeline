@@ -15,7 +15,8 @@ internal sealed class StreamingOneToOneStrategy<TIn, TOut> : LineageMappingStrat
     }
 
     public async IAsyncEnumerable<LineagePacket<TOut>> MapAsync(IAsyncEnumerable<LineagePacket<TIn>> inputStream, IAsyncEnumerable<TOut> outputStream,
-        string nodeId, TransformCardinality cardinality, LineageOptions? options, Type? lineageMapperType, ILineageMapper? mapperInstance,
+        string nodeId, Guid pipelineId, string? pipelineName, TransformCardinality cardinality, LineageOptions? options, Type? lineageMapperType,
+        ILineageMapper? mapperInstance,
         [EnumeratorCancellation] CancellationToken ct)
     {
         // Fast streaming 1:1 path (original second half of BuildLineageAdapter)
@@ -36,9 +37,9 @@ internal sealed class StreamingOneToOneStrategy<TIn, TOut> : LineageMappingStrat
                 var hopRecords = inputPacket.LineageHops;
 
                 if (inputPacket.Collect)
-                    hopRecords = MaybeAppendHop(hopRecords, nodeId, options, inputPacket.Data, outputData);
+                    hopRecords = MaybeAppendHop(hopRecords, nodeId, pipelineId, pipelineName, options, inputPacket.Data, outputData);
 
-                yield return new LineagePacket<TOut>(outputData, inputPacket.LineageId, inputPacket.TraversalPath.Add(nodeId))
+                yield return new LineagePacket<TOut>(outputData, inputPacket.LineageId, inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId)))
                 { Collect = inputPacket.Collect, LineageHops = hopRecords };
 
                 matchedInputCount2++;

@@ -17,19 +17,19 @@ namespace NPipeline.Execution.Services;
 /// </summary>
 public sealed class LineageService : ILineageService
 {
-    private static readonly ConcurrentDictionary<Type, Func<IDataStream, string, LineageOptions?, IDataStream>> WrapSourceDelegates = new();
+    private static readonly ConcurrentDictionary<Type, Func<IDataStream, string, Guid, string?, LineageOptions?, IDataStream>> WrapSourceDelegates = new();
 
-    private static readonly ConcurrentDictionary<Type, Func<object, string, LineageOptions?, HopDecisionFlags, CancellationToken, object>>
+    private static readonly ConcurrentDictionary<Type, Func<object, string, Guid, string?, LineageOptions?, HopDecisionFlags, CancellationToken, object>>
         WrapJoinOutputsDelegates = new();
 
     private static readonly ConcurrentDictionary<Type, Func<IEnumerable, object>> EnumerableToAsyncDelegates = new();
 
     /// <inheritdoc />
-    public IDataStream WrapSourceStream(IDataStream sourcePipe, string nodeId, LineageOptions? options)
+    public IDataStream WrapSourceStream(IDataStream sourcePipe, string nodeId, Guid pipelineId, string? pipelineName, LineageOptions? options)
     {
         var dataType = sourcePipe.GetDataType();
         var del = WrapSourceDelegates.GetOrAdd(dataType, static t => BuildWrapSourceDelegate(t));
-        return del(sourcePipe, nodeId, options);
+        return del(sourcePipe, nodeId, pipelineId, pipelineName, options);
     }
 
     /// <inheritdoc />
@@ -49,7 +49,8 @@ public sealed class LineageService : ILineageService
     }
 
     /// <inheritdoc />
-    public IDataStream WrapNodeOutput(IDataStream output, string currentNodeId, LineageOptions? options, HopDecisionFlags outcome, CancellationToken ct = default)
+    public IDataStream WrapNodeOutput(IDataStream output, string currentNodeId, Guid pipelineId, string? pipelineName, LineageOptions? options,
+        HopDecisionFlags outcome, CancellationToken ct = default)
     {
         var outType = output.GetDataType();
 
@@ -64,7 +65,7 @@ public sealed class LineageService : ILineageService
                 typeof(LineageService).GetMethod(nameof(CastAsyncEnumerable), BindingFlags.NonPublic | BindingFlags.Static)!.MakeGenericMethod(outType);
 
             var typedAsync = castMethod.Invoke(null, [rawAsync])!; // IAsyncEnumerable<outType>
-            var wrappedStream = wrapDel(typedAsync, currentNodeId, options, outcome, ct);
+            var wrappedStream = wrapDel(typedAsync, currentNodeId, pipelineId, pipelineName, options, outcome, ct);
             var lineagePipeType = typeof(DataStream<>).MakeGenericType(typeof(LineagePacket<>).MakeGenericType(outType));
             return (IDataStream)Activator.CreateInstance(lineagePipeType, wrappedStream, $"LineageWrapped_{currentNodeId}")!;
         }
@@ -76,7 +77,7 @@ public sealed class LineageService : ILineageService
         var asyncEnumerable = toAsyncDel(enumerableData);
 
         var wrapDelegate = WrapJoinOutputsDelegates.GetOrAdd(outType, static t => BuildWrapJoinOutputsDelegate(t));
-        var wrappedAsync = wrapDelegate(asyncEnumerable, currentNodeId, options, outcome, ct);
+        var wrappedAsync = wrapDelegate(asyncEnumerable, currentNodeId, pipelineId, pipelineName, options, outcome, ct);
         var pipeType = typeof(DataStream<>).MakeGenericType(typeof(LineagePacket<>).MakeGenericType(outType));
         return (IDataStream)Activator.CreateInstance(pipeType, wrappedAsync, $"LineageWrapped_{currentNodeId}")!;
     }
@@ -104,22 +105,26 @@ public sealed class LineageService : ILineageService
             : item;
     }
 
-    private static Func<IDataStream, string, LineageOptions?, IDataStream> BuildWrapSourceDelegate(Type dataType)
+    private static Func<IDataStream, string, Guid, string?, LineageOptions?, IDataStream> BuildWrapSourceDelegate(Type dataType)
     {
         var method =
             typeof(LineageService).GetMethod(nameof(WrapSourceStreamGeneric), BindingFlags.NonPublic | BindingFlags.Static)!.MakeGenericMethod(dataType);
 
         var pipeParam = Expression.Parameter(typeof(IDataStream), "pipe");
         var nodeIdParam = Expression.Parameter(typeof(string), "nodeId");
+        var pipelineIdParam = Expression.Parameter(typeof(Guid), "pipelineId");
+        var pipelineNameParam = Expression.Parameter(typeof(string), "pipelineName");
         var optsParam = Expression.Parameter(typeof(LineageOptions), "options");
         var castPipe = Expression.Convert(pipeParam, typeof(IDataStream<>).MakeGenericType(dataType));
-        var call = Expression.Call(method, castPipe, nodeIdParam, optsParam);
+        var call = Expression.Call(method, castPipe, nodeIdParam, pipelineIdParam, pipelineNameParam, optsParam);
         var castResult = Expression.Convert(call, typeof(IDataStream));
-        var lambda = Expression.Lambda<Func<IDataStream, string, LineageOptions?, IDataStream>>(castResult, pipeParam, nodeIdParam, optsParam);
+        var lambda = Expression.Lambda<Func<IDataStream, string, Guid, string?, LineageOptions?, IDataStream>>(castResult, pipeParam, nodeIdParam,
+            pipelineIdParam, pipelineNameParam, optsParam);
         return lambda.Compile();
     }
 
-    private static DataStream<LineagePacket<T>> WrapSourceStreamGeneric<T>(IDataStream<T> sourcePipe, string nodeId, LineageOptions? options)
+    private static DataStream<LineagePacket<T>> WrapSourceStreamGeneric<T>(IDataStream<T> sourcePipe, string nodeId, Guid pipelineId,
+        string? pipelineName, LineageOptions? options)
     {
         return new DataStream<LineagePacket<T>>(WrapStream(CancellationToken.None), $"LineageWrapped_{sourcePipe.StreamName}");
 
@@ -130,7 +135,7 @@ public sealed class LineageService : ILineageService
                 var lineageId = Guid.NewGuid();
                 var collect = ShouldCollect(lineageId, options);
 
-                yield return new LineagePacket<T>(item, lineageId, ImmutableList.Create(nodeId))
+                yield return new LineagePacket<T>(item, lineageId, ImmutableList.Create($"{pipelineId:N}::{nodeId}"))
                 {
                     Collect = collect,
                 };
@@ -152,20 +157,23 @@ public sealed class LineageService : ILineageService
         return hash % mod == 0;
     }
 
-    private static Func<object, string, LineageOptions?, HopDecisionFlags, CancellationToken, object> BuildWrapJoinOutputsDelegate(Type outType)
+    private static Func<object, string, Guid, string?, LineageOptions?, HopDecisionFlags, CancellationToken, object> BuildWrapJoinOutputsDelegate(
+        Type outType)
     {
         var method = typeof(LineageService).GetMethod(nameof(WrapJoinOutputsGeneric), BindingFlags.NonPublic | BindingFlags.Static)!.MakeGenericMethod(outType);
         var outputParam = Expression.Parameter(typeof(object), "output");
         var nodeParam = Expression.Parameter(typeof(string), "nodeId");
+        var pipelineIdParam = Expression.Parameter(typeof(Guid), "pipelineId");
+        var pipelineNameParam = Expression.Parameter(typeof(string), "pipelineName");
         var optsParam = Expression.Parameter(typeof(LineageOptions), "options");
         var outcomeParam = Expression.Parameter(typeof(HopDecisionFlags), "outcome");
         var ctParam = Expression.Parameter(typeof(CancellationToken), "ct");
         var castOutput = Expression.Convert(outputParam, typeof(IAsyncEnumerable<>).MakeGenericType(outType));
-        var call = Expression.Call(method, castOutput, nodeParam, optsParam, outcomeParam, ctParam);
+        var call = Expression.Call(method, castOutput, nodeParam, pipelineIdParam, pipelineNameParam, optsParam, outcomeParam, ctParam);
         var castResult = Expression.Convert(call, typeof(object));
 
-        var lambda = Expression.Lambda<Func<object, string, LineageOptions?, HopDecisionFlags, CancellationToken, object>>(castResult, outputParam, nodeParam,
-            optsParam, outcomeParam, ctParam);
+        var lambda = Expression.Lambda<Func<object, string, Guid, string?, LineageOptions?, HopDecisionFlags, CancellationToken, object>>(castResult,
+            outputParam, nodeParam, pipelineIdParam, pipelineNameParam, optsParam, outcomeParam, ctParam);
 
         return lambda.Compile();
     }
@@ -173,6 +181,8 @@ public sealed class LineageService : ILineageService
     private static async IAsyncEnumerable<LineagePacket<T>> WrapJoinOutputsGeneric<T>(
         IAsyncEnumerable<T> output,
         string currentNodeId,
+        Guid pipelineId,
+        string? pipelineName,
         LineageOptions? options,
         HopDecisionFlags outcome,
         [EnumeratorCancellation] CancellationToken ct = default)
@@ -199,14 +209,16 @@ public sealed class LineageService : ILineageService
                         null,
                         null,
                         false,
+                        pipelineId,
                         null,
-                        SnapshotValue(item, options));
+                        SnapshotValue(item, options),
+                        pipelineName);
 
                     hopRecords = hopRecords.Add(seed);
                 }
             }
 
-            yield return new LineagePacket<T>(item!, lineageId, ImmutableList.Create(currentNodeId))
+            yield return new LineagePacket<T>(item!, lineageId, ImmutableList.Create($"{pipelineId:N}::{currentNodeId}"))
             {
                 Collect = collect,
                 LineageHops = hopRecords,

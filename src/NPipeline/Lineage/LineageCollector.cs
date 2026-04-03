@@ -131,9 +131,14 @@ public sealed class LineageCollector : ILineageCollector
             {
                 _hops.Add(hop);
 
-                // Add the node ID to the traversal path if not already present
-                if (!_traversalPathBuilder.Contains(hop.NodeId))
-                    _traversalPathBuilder.Add(hop.NodeId);
+                // Build a qualified path segment that includes pipeline context for child nodes
+                var pathSegment = hop.PipelineId != Guid.Empty
+                    ? $"{hop.PipelineId:N}::{hop.NodeId}"
+                    : hop.NodeId;
+
+                // Add the path segment to the traversal path if not already present
+                if (!_traversalPathBuilder.Contains(pathSegment))
+                    _traversalPathBuilder.Add(pathSegment);
             }
         }
 
@@ -141,11 +146,35 @@ public sealed class LineageCollector : ILineageCollector
         {
             lock (_lock)
             {
+                var pipelineIds = _hops
+                    .Select(static h => h.PipelineId)
+                    .Where(static id => id != Guid.Empty)
+                    .Distinct()
+                    .Take(2)
+                    .ToArray();
+
+                var pipelineId = pipelineIds.Length == 1
+                    ? pipelineIds[0]
+                    : Guid.Empty;
+
+                var pipelineNames = _hops
+                    .Select(static h => h.PipelineName)
+                    .Where(static name => !string.IsNullOrWhiteSpace(name))
+                    .Distinct(StringComparer.Ordinal)
+                    .Take(2)
+                    .ToArray();
+
+                var pipelineName = pipelineNames.Length == 1
+                    ? pipelineNames[0]
+                    : null;
+
                 return new LineageInfo(
                     _data,
                     _lineageId,
                     _traversalPathBuilder.ToImmutable(),
-                    [.. _hops]);
+                    [.. _hops],
+                    pipelineId,
+                    pipelineName);
             }
         }
     }

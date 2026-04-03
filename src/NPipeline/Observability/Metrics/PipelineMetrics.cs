@@ -4,6 +4,7 @@ namespace NPipeline.Observability.Metrics;
 ///     Represents performance and throughput metrics for an entire pipeline execution.
 /// </summary>
 /// <param name="PipelineName">The name of the pipeline.</param>
+/// <param name="PipelineId">The unique pipeline identity for this pipeline execution context.</param>
 /// <param name="RunId">The unique identifier for this pipeline run.</param>
 /// <param name="StartTime">The timestamp when the pipeline execution started.</param>
 /// <param name="EndTime">The timestamp when the pipeline execution completed.</param>
@@ -14,6 +15,7 @@ namespace NPipeline.Observability.Metrics;
 /// <param name="Exception">Any exception that occurred during execution.</param>
 public sealed record PipelineMetrics(
     string PipelineName,
+    Guid PipelineId,
     Guid RunId,
     DateTimeOffset StartTime,
     DateTimeOffset? EndTime,

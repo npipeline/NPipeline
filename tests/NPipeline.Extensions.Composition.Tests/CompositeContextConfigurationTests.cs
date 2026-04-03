@@ -15,6 +15,10 @@ public class CompositeContextConfigurationTests
         config.InheritParentParameters.Should().BeFalse();
         config.InheritParentItems.Should().BeFalse();
         config.InheritParentProperties.Should().BeFalse();
+        config.InheritRunIdentity.Should().BeFalse();
+        config.InheritLineageSink.Should().BeFalse();
+        config.InheritExecutionObserver.Should().BeFalse();
+        config.InheritDeadLetterDecorator.Should().BeFalse();
     }
 
     [Fact]
@@ -27,6 +31,10 @@ public class CompositeContextConfigurationTests
         config.InheritParentParameters.Should().BeTrue();
         config.InheritParentItems.Should().BeTrue();
         config.InheritParentProperties.Should().BeTrue();
+        config.InheritRunIdentity.Should().BeTrue();
+        config.InheritLineageSink.Should().BeTrue();
+        config.InheritExecutionObserver.Should().BeTrue();
+        config.InheritDeadLetterDecorator.Should().BeTrue();
     }
 
     [Fact]

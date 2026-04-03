@@ -388,7 +388,9 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                             ResilientExecutionStrategyLogMessages.RetryDelayFailed(logger, delayEx, nodeId);
                         }
 
-                        context.ExecutionObserver.OnRetry(new NodeRetryEvent(nodeId, RetryKind.NodeRestart, failures, ex));
+                            context.ExecutionObserver.OnRetry(new NodeRetryEvent(nodeId, RetryKind.NodeRestart, failures, ex,
+                                context.PipelineId,
+                            context.PipelineName));
                         restartRequested = true;
                         break;
                     }

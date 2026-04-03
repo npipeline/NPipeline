@@ -14,7 +14,8 @@ internal sealed class MaterializingStrategy<TIn, TOut> : LineageMappingStrategyB
     }
 
     public async IAsyncEnumerable<LineagePacket<TOut>> MapAsync(IAsyncEnumerable<LineagePacket<TIn>> inputStream, IAsyncEnumerable<TOut> outputStream,
-        string nodeId, TransformCardinality cardinality, LineageOptions? options, Type? lineageMapperType, ILineageMapper? mapperInstance,
+        string nodeId, Guid pipelineId, string? pipelineName, TransformCardinality cardinality, LineageOptions? options, Type? lineageMapperType,
+        ILineageMapper? mapperInstance,
         [EnumeratorCancellation] CancellationToken ct)
     {
         var inputs = new List<LineagePacket<TIn>>();
@@ -31,7 +32,7 @@ internal sealed class MaterializingStrategy<TIn, TOut> : LineageMappingStrategyB
             outputs.Add(op);
         }
 
-        foreach (var packet in MapMaterialized(inputs, outputs, nodeId, cardinality, options, lineageMapperType,
+        foreach (var packet in MapMaterialized(inputs, outputs, nodeId, pipelineId, pipelineName, cardinality, options, lineageMapperType,
                      mapperInstance))
         {
             yield return packet;

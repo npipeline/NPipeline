@@ -15,7 +15,8 @@ internal sealed class CapAwareMaterializingStrategy<TIn, TOut> : LineageMappingS
     }
 
     public async IAsyncEnumerable<LineagePacket<TOut>> MapAsync(IAsyncEnumerable<LineagePacket<TIn>> inputStream, IAsyncEnumerable<TOut> outputStream,
-        string nodeId, TransformCardinality cardinality, LineageOptions? options, Type? lineageMapperType, ILineageMapper? mapperInstance,
+        string nodeId, Guid pipelineId, string? pipelineName, TransformCardinality cardinality, LineageOptions? options, Type? lineageMapperType,
+        ILineageMapper? mapperInstance,
         [EnumeratorCancellation] CancellationToken ct)
     {
         var cap = options?.MaterializationCap;
@@ -24,7 +25,8 @@ internal sealed class CapAwareMaterializingStrategy<TIn, TOut> : LineageMappingS
         if (cap is null || cap <= 0)
         {
             await foreach (var pkt in MaterializingStrategy<TIn, TOut>.Instance
-                               .MapAsync(inputStream, outputStream, nodeId, cardinality, options, lineageMapperType, mapperInstance, ct))
+                               .MapAsync(inputStream, outputStream, nodeId, pipelineId, pipelineName, cardinality, options, lineageMapperType,
+                                   mapperInstance, ct))
             {
                 yield return pkt;
             }
@@ -45,7 +47,7 @@ internal sealed class CapAwareMaterializingStrategy<TIn, TOut> : LineageMappingS
             await inEnum.DisposeAsync().ConfigureAwait(false);
             await outEnum.DisposeAsync().ConfigureAwait(false);
 
-            foreach (var packet in MapMaterialized(inBuf, outBuf, nodeId, cardinality, options, lineageMapperType,
+            foreach (var packet in MapMaterialized(inBuf, outBuf, nodeId, pipelineId, pipelineName, cardinality, options, lineageMapperType,
                          mapperInstance))
             {
                 yield return packet;
@@ -81,7 +83,7 @@ internal sealed class CapAwareMaterializingStrategy<TIn, TOut> : LineageMappingS
             await inEnum.DisposeAsync().ConfigureAwait(false);
             await outEnum.DisposeAsync().ConfigureAwait(false);
 
-            foreach (var packet in MapMaterialized(inBuf, outBuf, nodeId, cardinality, options, lineageMapperType,
+            foreach (var packet in MapMaterialized(inBuf, outBuf, nodeId, pipelineId, pipelineName, cardinality, options, lineageMapperType,
                          mapperInstance))
             {
                 yield return packet;
@@ -91,7 +93,7 @@ internal sealed class CapAwareMaterializingStrategy<TIn, TOut> : LineageMappingS
         }
 
         // Degrade path: positional streaming, include buffered items + remainder
-        await foreach (var packet in PositionalStreamingMap(InputAll(ct), OutputAll(ct), nodeId, cardinality, options, ct))
+        await foreach (var packet in PositionalStreamingMap(InputAll(ct), OutputAll(ct), nodeId, pipelineId, pipelineName, cardinality, options, ct))
         {
             yield return packet;
         }

@@ -18,6 +18,8 @@ namespace NPipeline.Tests.Observability;
 
 public sealed class ExecutionObserverTests
 {
+    private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
     [Fact]
     public async Task Observer_Should_Receive_NodeLifecycle_And_ItemRetry()
     {
@@ -116,7 +118,7 @@ public sealed class ExecutionObserverTests
 #nullable disable
         CompositeExecutionObserver composite = new(observer1, null, observer2, null);
 #nullable restore
-        NodeExecutionStarted nodeEvent = new("test-node", "TestNode", DateTimeOffset.UtcNow);
+        NodeExecutionStarted nodeEvent = new("test-node", "TestNode", DateTimeOffset.UtcNow, s_pipelineId);
         composite.OnNodeStarted(nodeEvent);
 
         // Assert - only non-null observers receive events
@@ -135,7 +137,7 @@ public sealed class ExecutionObserverTests
         CollectObserver observer2 = new();
 
         CompositeExecutionObserver composite = new(observer1, failingObserver, observer2);
-        NodeExecutionStarted nodeEvent = new("test-node", "TestNode", DateTimeOffset.UtcNow);
+        NodeExecutionStarted nodeEvent = new("test-node", "TestNode", DateTimeOffset.UtcNow, s_pipelineId);
 
         // Act - this should not throw, even though failingObserver throws
         composite.OnNodeStarted(nodeEvent);
@@ -150,13 +152,13 @@ public sealed class ExecutionObserverTests
     {
         // Arrange
         CompositeExecutionObserver composite = new();
-        NodeExecutionStarted nodeEvent = new("test-node", "TestNode", DateTimeOffset.UtcNow);
+        NodeExecutionStarted nodeEvent = new("test-node", "TestNode", DateTimeOffset.UtcNow, s_pipelineId);
 
         // Act - this should not throw with empty observer array
         composite.OnNodeStarted(nodeEvent);
-        NodeExecutionCompleted completedEvent = new("test-node", "TestNode", TimeSpan.Zero, true, null);
+        NodeExecutionCompleted completedEvent = new("test-node", "TestNode", TimeSpan.Zero, true, null, s_pipelineId);
         composite.OnNodeCompleted(completedEvent);
-        NodeRetryEvent retryEvent = new("test-node", RetryKind.ItemRetry, 1, new InvalidOperationException());
+        NodeRetryEvent retryEvent = new("test-node", RetryKind.ItemRetry, 1, new InvalidOperationException(), s_pipelineId);
         composite.OnRetry(retryEvent);
 
         // Assert - should complete without exception

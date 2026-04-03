@@ -13,6 +13,8 @@ namespace NPipeline.Lineage;
 /// <param name="Truncated">True when per-item hop record count exceeded configured cap and was truncated.</param>
 /// <param name="InputSnapshot">Optional snapshot of the item before this node processed it.</param>
 /// <param name="OutputSnapshot">Optional snapshot of the item emitted by this node.</param>
+/// <param name="PipelineId">The unique pipeline identity this hop belongs to.</param>
+/// <param name="PipelineName">The name of the pipeline this hop belongs to. Null for top-level pipelines.</param>
 public sealed record LineageHop(
     string NodeId,
     HopDecisionFlags Outcome,
@@ -21,5 +23,7 @@ public sealed record LineageHop(
     int? OutputEmissionCount,
     IReadOnlyList<int>? AncestryInputIndices,
     bool Truncated,
+    Guid PipelineId,
     object? InputSnapshot = null,
-    object? OutputSnapshot = null);
+    object? OutputSnapshot = null,
+    string? PipelineName = null);

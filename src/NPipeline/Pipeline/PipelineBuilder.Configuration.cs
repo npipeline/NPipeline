@@ -411,7 +411,7 @@ public sealed partial class PipelineBuilder
             cachedMapper = (ILineageMapper)Activator.CreateInstance(lineageMapperType)!;
         }
 
-        return (transformInput, nodeId, declaredCardinality, options, cancellationToken) =>
+        return (transformInput, nodeId, pipelineId, pipelineName, declaredCardinality, options, cancellationToken) =>
         {
             var typedInput = (IDataStream<LineagePacket<TIn>>)transformInput;
 
@@ -432,7 +432,7 @@ public sealed partial class PipelineBuilder
             {
                 var typedOutputPipe = (IDataStream<TOut>)outputPipe;
                 var rewrappedStream = RewrapStrategy(packetChannel.Reader.ReadAllAsync(cancellationToken),
-                    typedOutputPipe, nodeId, declaredCardinality, options, cancellationToken);
+                    typedOutputPipe, nodeId, pipelineId, pipelineName, declaredCardinality, options, cancellationToken);
                 return new DataStream<LineagePacket<TOut>>(rewrappedStream, $"Rewrapped_{outputPipe.StreamName}");
             }
 
@@ -440,13 +440,16 @@ public sealed partial class PipelineBuilder
                 IAsyncEnumerable<LineagePacket<TIn>> inputStream,
                 IAsyncEnumerable<TOut> outputStream,
                 string currentId,
+                Guid currentPipelineId,
+                string? currentPipelineName,
                 TransformCardinality transformCardinality,
                 LineageOptions? lineageOptions,
                 CancellationToken ct)
             {
                 cachedStrategy ??= SelectLineageMappingStrategy<TIn, TOut>(lineageMapperType, transformCardinality, lineageOptions);
 
-                return cachedStrategy.MapAsync(inputStream, outputStream, currentId, transformCardinality, lineageOptions, lineageMapperType, cachedMapper, ct);
+                return cachedStrategy.MapAsync(inputStream, outputStream, currentId, currentPipelineId, currentPipelineName, transformCardinality,
+                    lineageOptions, lineageMapperType, cachedMapper, ct);
             }
         };
 
@@ -488,7 +491,7 @@ public sealed partial class PipelineBuilder
     /// </summary>
     private static SinkLineageUnwrapDelegate BuildSinkLineageUnwrapDelegate<TIn>()
     {
-        return (lineageInput, lineageSink, sinkNodeId, options, ct) =>
+        return (lineageInput, lineageSink, sinkNodeId, pipelineId, pipelineName, options, ct) =>
         {
             var packetType = typeof(LineagePacket<>).MakeGenericType(typeof(TIn));
             var lineageInputType = lineageInput.GetType();
@@ -519,14 +522,14 @@ public sealed partial class PipelineBuilder
                 {
                     if (lineageSink is not null && packet.Collect)
                     {
-                        var finalPath = packet.TraversalPath.Add(sinkNodeId);
+                        var finalPath = packet.TraversalPath.Add($"{pipelineId:N}::{sinkNodeId}");
 
                         var dataToEmit = options?.RedactData == true
                             ? null
                             : (object?)packet.Data;
 
                         var hopRecords = (IReadOnlyList<LineageHop>)packet.LineageHops;
-                        var lineageInfo = new LineageInfo(dataToEmit, packet.LineageId, finalPath, hopRecords);
+                        var lineageInfo = new LineageInfo(dataToEmit, packet.LineageId, finalPath, hopRecords, pipelineId, pipelineName);
                         await lineageSink.RecordAsync(lineageInfo, token).ConfigureAwait(false);
                     }
 
@@ -568,14 +571,15 @@ public sealed partial class PipelineBuilder
                     {
                         if (lineageSink is not null && (bool)collectProp!.GetValue(obj)!)
                         {
-                            var finalPath = ((IImmutableList<string>)pathProp!.GetValue(obj)!).Add(sinkNodeId);
+                            var finalPath = ((IImmutableList<string>)pathProp!.GetValue(obj)!).Add($"{pipelineId:N}::{sinkNodeId}");
                             var hopRecords = (IReadOnlyList<LineageHop>)hopsProp!.GetValue(obj)!;
 
                             var dataToEmit = options?.RedactData == true
                                 ? null
                                 : (object?)typedVal;
 
-                            var lineageInfo = new LineageInfo(dataToEmit, (Guid)lineageIdProp!.GetValue(obj)!, finalPath, hopRecords);
+                            var lineageInfo = new LineageInfo(dataToEmit, (Guid)lineageIdProp!.GetValue(obj)!, finalPath, hopRecords, pipelineId,
+                                pipelineName);
                             await lineageSink.RecordAsync(lineageInfo, token).ConfigureAwait(false);
                         }
 

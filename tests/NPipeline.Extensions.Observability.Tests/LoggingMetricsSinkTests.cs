@@ -9,6 +9,8 @@ namespace NPipeline.Extensions.Observability.Tests;
 /// </summary>
 public sealed class LoggingMetricsSinkTests
 {
+    private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
     #region Helper Methods
 
     private static INodeMetrics CreateNodeMetrics(
@@ -22,21 +24,7 @@ public sealed class LoggingMetricsSinkTests
         long itemsProcessed = 100,
         long itemsEmitted = 95)
     {
-        return new NodeMetrics(
-            "testNode",
-            DateTimeOffset.UtcNow.AddSeconds(-1),
-            DateTimeOffset.UtcNow,
-            1000,
-            success,
-            itemsProcessed,
-            itemsEmitted,
-            exception,
-            retryCount,
-            peakMemoryMb,
-            processorTimeMs,
-            throughputItemsPerSec,
-            averageItemProcessingMs,
-            1);
+        return new NodeMetrics("testNode", DateTimeOffset.UtcNow.AddSeconds(-1), DateTimeOffset.UtcNow, 1000, success, itemsProcessed, itemsEmitted, exception, retryCount, peakMemoryMb, processorTimeMs, throughputItemsPerSec, averageItemProcessingMs, 1, s_pipelineId);
     }
 
     private static ILogger<LoggingMetricsSink> CreateLogger()
