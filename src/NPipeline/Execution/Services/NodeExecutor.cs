@@ -147,19 +147,25 @@ public sealed class NodeExecutor(
 
         if (graph.Lineage.ItemLevelLineageEnabled)
         {
-            var unwrapped = lineageService.UnwrapLineageStream(merged.ToAsyncEnumerable(context.CancellationToken), context.CancellationToken);
-#pragma warning disable CA2000 // Temp pipe registered for disposal immediately
-            var tempPipe = new DataStream<object>(unwrapped, $"JoinInput_{plan.NodeId}");
-#pragma warning restore CA2000
-            context.RegisterForDisposal(tempPipe);
-            var rawOutput = await plan.ExecuteJoin!([tempPipe], context, context.CancellationToken);
+            var (unwrappedInput, inputLineageContext) = lineageService.PrepareInputWithLineageContext(merged, context.CancellationToken);
+            context.RegisterForDisposal(unwrappedInput as IAsyncDisposable ?? merged);
+
+            var rawOutput = await plan.ExecuteJoin!([unwrappedInput], context, context.CancellationToken);
             var expectedOut = nodeDef.OutputType ?? rawOutput.GetDataType();
 
             if (rawOutput.GetDataType() != expectedOut)
                 rawOutput = AdaptOutput(plan, rawOutput, expectedOut, $"JoinResult_{plan.NodeId}");
 
-            output = lineageService.WrapNodeOutput(rawOutput, plan.NodeId, context.PipelineId, context.PipelineName, graph.Lineage.LineageOptions,
-                HopDecisionFlags.Joined, context.CancellationToken);
+            output = lineageService.WrapNodeOutputFromInputLineage(
+                rawOutput,
+                inputLineageContext,
+                plan.NodeId,
+                context.PipelineId,
+                context.PipelineName,
+                graph.Lineage.LineageOptions,
+                HopDecisionFlags.Joined,
+                nodeDef.LineageMapperType,
+                context.CancellationToken);
         }
         else
         {
@@ -204,19 +210,25 @@ public sealed class NodeExecutor(
 
         if (graph.Lineage.ItemLevelLineageEnabled)
         {
-            var unwrapped = lineageService.UnwrapLineageStream(input.ToAsyncEnumerable(), context.CancellationToken);
-#pragma warning disable CA2000 // Temp pipe registered for disposal immediately
-            var tempPipe = new DataStream<object?>(unwrapped, $"AggInput_{plan.NodeId}");
-#pragma warning restore CA2000
-            context.RegisterForDisposal(tempPipe);
-            output = await plan.ExecuteAggregate!(tempPipe, context, context.CancellationToken);
+            var (unwrappedInput, inputLineageContext) = lineageService.PrepareInputWithLineageContext(input, context.CancellationToken);
+            context.RegisterForDisposal(unwrappedInput as IAsyncDisposable ?? input);
+
+            output = await plan.ExecuteAggregate!(unwrappedInput, context, context.CancellationToken);
 
             // Adapt aggregate output to declared OutputType prior to lineage wrapping so sinks get strongly typed pipes.
             if (nodeDef.OutputType is not null && output.GetDataType() != nodeDef.OutputType)
                 output = AdaptOutput(plan, output, nodeDef.OutputType, $"AggregateResult_{plan.NodeId}");
 
-            output = lineageService.WrapNodeOutput(output, plan.NodeId, context.PipelineId, context.PipelineName, graph.Lineage.LineageOptions,
-                HopDecisionFlags.Aggregated, context.CancellationToken);
+            output = lineageService.WrapNodeOutputFromInputLineage(
+                output,
+                inputLineageContext,
+                plan.NodeId,
+                context.PipelineId,
+                context.PipelineName,
+                graph.Lineage.LineageOptions,
+                HopDecisionFlags.Aggregated,
+                nodeDef.LineageMapperType,
+                context.CancellationToken);
         }
         else
         {

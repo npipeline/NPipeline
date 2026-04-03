@@ -37,7 +37,7 @@ public sealed record LineageMappingRecord(int OutputIndex, IReadOnlyList<int> In
 public sealed record LineageMappingResult(IReadOnlyList<LineageMappingRecord> Records);
 
 /// <summary>
-///     Attribute used to associate a lineage mapper type with a transform node.
+///     Attribute used to associate a lineage mapper type with a node.
 /// </summary>
 /// <param name="mapperType">The type of the lineage mapper implementation.</param>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]

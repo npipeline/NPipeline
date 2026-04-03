@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace NPipeline.Lineage;
 
 /// <summary>
@@ -13,4 +15,10 @@ public interface ILineageEnvelope
 
     /// <summary>Indicates whether this item was selected for lineage collection (sampling).</summary>
     bool Collect { get; }
+
+    /// <summary>Traversal path accumulated for this item.</summary>
+    ImmutableList<string> TraversalPath { get; }
+
+    /// <summary>Recorded lineage hops accumulated for this item.</summary>
+    ImmutableList<LineageHop> LineageHops { get; }
 }
