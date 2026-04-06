@@ -28,7 +28,7 @@
 
     <ItemGroup>
         <PackageReference Include="AWSSDK.SQS" Version="4.0.2.23" />
-        <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.3.28" />
+        <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.3.31" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.5" />
     </ItemGroup>
 
