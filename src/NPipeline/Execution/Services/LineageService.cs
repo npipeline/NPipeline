@@ -352,7 +352,7 @@ namespace NPipeline.Execution.Services
             await foreach (var outputItem in output.WithCancellation(ct).ConfigureAwait(false))
             {
                 var packet = BuildPacketFromContributors(outputItem, inputEntries, representativeIndices, contributorCount, currentNodeId, pipelineId,
-                    pipelineName, options, outcome);
+                    pipelineName, options, outcome, null);
                 yield return packet;
             }
         }
@@ -399,6 +399,7 @@ namespace NPipeline.Execution.Services
                 var normalized = record.InputIndices
                     .Where(i => i >= 0 && i < inputs.Count)
                     .Distinct()
+                    .OrderBy(i => i)
                     .ToArray();
 
                 records[record.OutputIndex] = normalized;
@@ -422,6 +423,8 @@ namespace NPipeline.Execution.Services
             var allInputIndices = inputCount > 0
                 ? Enumerable.Range(0, inputCount).ToArray()
                 : [];
+            var contributorByOutput = new (int[] ContributorIndices, int ContributorCount)[outputCount];
+            var outputCountByInput = new Dictionary<int, int>();
 
             for (var outputIndex = 0; outputIndex < outputCount; outputIndex++)
             {
@@ -449,9 +452,61 @@ namespace NPipeline.Execution.Services
                     contributorCount = 0;
                 }
 
-                yield return BuildPacketFromContributors(outputs[outputIndex], inputs, contributorIndices, contributorCount, currentNodeId, pipelineId,
-                    pipelineName, options, outcome);
+                contributorByOutput[outputIndex] = (contributorIndices, contributorCount);
+
+                foreach (var contributorIndex in contributorIndices)
+                {
+                    if (contributorIndex < 0 || contributorIndex >= inputCount)
+                        continue;
+
+                    outputCountByInput[contributorIndex] = outputCountByInput.TryGetValue(contributorIndex, out var count)
+                        ? count + 1
+                        : 1;
+                }
             }
+
+            for (var outputIndex = 0; outputIndex < outputCount; outputIndex++)
+            {
+                var (contributorIndices, contributorCount) = contributorByOutput[outputIndex];
+                var outputEmissionCount = ResolveOutputEmissionCount(contributorIndices, outputCountByInput, inputCount);
+
+                yield return BuildPacketFromContributors(outputs[outputIndex], inputs, contributorIndices, contributorCount, currentNodeId, pipelineId,
+                    pipelineName, options, outcome, outputEmissionCount);
+            }
+        }
+
+        private static int? ResolveOutputEmissionCount(
+            IReadOnlyList<int> contributorIndices,
+            IReadOnlyDictionary<int, int> outputCountByInput,
+            int inputCount)
+        {
+            if (contributorIndices.Count == 0)
+                return null;
+
+            int? resolved = null;
+
+            foreach (var contributorIndex in contributorIndices)
+            {
+                if (contributorIndex < 0 || contributorIndex >= inputCount)
+                    continue;
+
+                if (!outputCountByInput.TryGetValue(contributorIndex, out var contributorOutputCount))
+                    continue;
+
+                if (resolved is null)
+                {
+                    resolved = contributorOutputCount;
+                    continue;
+                }
+
+                if (resolved.Value != contributorOutputCount)
+                {
+                    // A single scalar cannot represent conflicting fan-out counts across contributors.
+                    return null;
+                }
+            }
+
+            return resolved;
         }
 
         private static LineagePacket<TOut> BuildPacketFromContributors<TOut>(
@@ -463,11 +518,12 @@ namespace NPipeline.Execution.Services
             Guid pipelineId,
             string? pipelineName,
             LineageOptions? options,
-            HopDecisionFlags outcome)
+            HopDecisionFlags outcome,
+            int? outputEmissionCount)
         {
             if (contributorIndices.Count == 0 || contributorCount <= 0)
             {
-                return CreateFreshPacket(outputData, currentNodeId, pipelineId, pipelineName, options, outcome, 0, null);
+                return CreateFreshPacket(outputData, currentNodeId, pipelineId, pipelineName, options, outcome, 0, null, outputEmissionCount);
             }
 
             List<InputLineageEntry> lineageContributors = [];
@@ -489,7 +545,8 @@ namespace NPipeline.Execution.Services
 
             if (lineageContributors.Count == 0)
             {
-                return CreateFreshPacket(outputData, currentNodeId, pipelineId, pipelineName, options, outcome, contributorCount, contributorIndices);
+                return CreateFreshPacket(outputData, currentNodeId, pipelineId, pipelineName, options, outcome, contributorCount, contributorIndices,
+                    outputEmissionCount);
             }
 
             var representative = lineageContributors[0];
@@ -500,7 +557,7 @@ namespace NPipeline.Execution.Services
             if (representative.Collect)
             {
                 hopRecords = AppendOutcomeHop(hopRecords, currentNodeId, pipelineId, pipelineName, options, outcome, contributorCount,
-                    contributorIndices, representative.Data, outputData);
+                    contributorIndices, outputEmissionCount, representative.Data, outputData);
             }
 
             return new LineagePacket<TOut>(outputData!, representative.LineageId, traversalPath)
@@ -518,7 +575,8 @@ namespace NPipeline.Execution.Services
             LineageOptions? options,
             HopDecisionFlags outcome,
             int contributorCount,
-            IReadOnlyList<int>? contributorIndices)
+            IReadOnlyList<int>? contributorIndices,
+            int? outputEmissionCount)
         {
             var lineageId = Guid.NewGuid();
             var collect = ShouldCollect(lineageId, options);
@@ -528,7 +586,7 @@ namespace NPipeline.Execution.Services
             if (collect)
             {
                 hopRecords = AppendOutcomeHop(hopRecords, currentNodeId, pipelineId, pipelineName, options, outcome, contributorCount,
-                    contributorIndices, null, outputData);
+                    contributorIndices, outputEmissionCount, null, outputData);
             }
 
             return new LineagePacket<TOut>(outputData!, lineageId, [QualifyNodeId(currentNodeId, pipelineId)])
@@ -547,6 +605,7 @@ namespace NPipeline.Execution.Services
             HopDecisionFlags outcome,
             int contributorCount,
             IReadOnlyList<int>? contributorIndices,
+            int? outputEmissionCount,
             object? inputSnapshot,
             object? outputSnapshot)
         {
@@ -572,6 +631,10 @@ namespace NPipeline.Execution.Services
                 ? null
                 : contributorCount;
 
+            int? outputEmissionField = options?.CaptureObservedCardinality == false
+                ? null
+                : outputEmissionCount;
+
             var ancestryField = options?.CaptureAncestryMapping == true
                 ? contributorIndices
                 : null;
@@ -581,7 +644,7 @@ namespace NPipeline.Execution.Services
                 outcome,
                 cardinality,
                 contributorField,
-                null,
+                outputEmissionField,
                 ancestryField,
                 truncated,
                 pipelineId,

@@ -134,7 +134,7 @@ public sealed class LineageDebugger
             _logger.LogInformation("  Outcome: {Outcome}", hop.Outcome);
             _logger.LogInformation("  Cardinality: {Cardinality}", hop.Cardinality);
             _logger.LogInformation("  Input Count: {InputCount}", hop.InputContributorCount);
-            _logger.LogInformation("  Output Count: {OutputCount}", hop.OutputEmissionCount);
+            _logger.LogInformation("  Output Count: {OutputCount}", hop.OutputEmissionCount?.ToString() ?? "unknown");
             
             if (hop.Outcome.HasFlag(HopDecisionFlags.Error))
             {
@@ -230,7 +230,7 @@ if (lineageInfo != null)
         Console.WriteLine($"  → {hop.NodeId}");
         Console.WriteLine($"    Outcome: {hop.Outcome}");
         Console.WriteLine($"    Cardinality: {hop.Cardinality}");
-        Console.WriteLine($"    Input: {hop.InputContributorCount}, Output: {hop.OutputEmissionCount}");
+        Console.WriteLine($"    Input: {hop.InputContributorCount}, Output: {hop.OutputEmissionCount?.ToString() ?? "unknown"}");
     }
 }
 ```
@@ -478,13 +478,15 @@ public sealed class ThroughputAnalyzer
                     {
                         NodeId = hop.NodeId,
                         TotalInputCount = 0,
-                        TotalOutputCount = 0
+                        TotalOutputHopCount = 0,
+                        MaxOutputEmissionCount = 0
                     };
                 }
                 
                 var throughput = nodeThroughput[hop.NodeId];
                 throughput.TotalInputCount += hop.InputContributorCount ?? 0;
-                throughput.TotalOutputCount += hop.OutputEmissionCount ?? 0;
+                throughput.TotalOutputHopCount++;
+                throughput.MaxOutputEmissionCount = Math.Max(throughput.MaxOutputEmissionCount, hop.OutputEmissionCount ?? 0);
             }
         }
         
@@ -492,13 +494,17 @@ public sealed class ThroughputAnalyzer
     }
 }
 
-public sealed record NodeThroughput(
-    string NodeId,
-    long TotalInputCount,
-    long TotalOutputCount,
-    double FilterRatio => TotalInputCount > 0 ? (double)TotalOutputCount / TotalInputCount : 0
-);
+public sealed class NodeThroughput
+{
+    public string NodeId { get; set; } = string.Empty;
+    public long TotalInputCount { get; set; }
+    public long TotalOutputHopCount { get; set; }
+    public int MaxOutputEmissionCount { get; set; }
+    public double FilterRatio => TotalInputCount > 0 ? (double)TotalOutputHopCount / TotalInputCount : 0;
+}
 ```
+
+`OutputEmissionCount` is contextual per hop. In fan-out scenarios, sibling outputs can each carry the same total (for example, three sibling outputs each showing `3`), so summing `OutputEmissionCount` across hops overstates total emitted records.
 
 ### Cardinality Analysis
 

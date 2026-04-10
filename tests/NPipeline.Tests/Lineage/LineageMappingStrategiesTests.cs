@@ -70,6 +70,33 @@ public sealed class LineageMappingStrategiesTests
             maxHopRecords ?? 100); // MaxHopRecordsPerItem
     }
 
+    private sealed class OneToThreeMapper : ILineageMapper
+    {
+        public LineageMappingResult MapInputToOutputs(IReadOnlyList<object> inputPackets, IReadOnlyList<object> outputs, LineageMappingContext context)
+        {
+            return new LineageMappingResult(
+            [
+                new LineageMappingRecord(0, [0]),
+                new LineageMappingRecord(1, [0]),
+                new LineageMappingRecord(2, [0]),
+            ]);
+        }
+    }
+
+    private sealed class ConflictingFanOutMapper : ILineageMapper
+    {
+        public LineageMappingResult MapInputToOutputs(IReadOnlyList<object> inputPackets, IReadOnlyList<object> outputs, LineageMappingContext context)
+        {
+            return new LineageMappingResult(
+            [
+                new LineageMappingRecord(0, [0]),
+                new LineageMappingRecord(1, [0, 1]),
+                new LineageMappingRecord(2, [1]),
+                new LineageMappingRecord(3, [1]),
+            ]);
+        }
+    }
+
     #endregion
 
     #region StreamingOneToOneStrategy Tests
@@ -249,6 +276,34 @@ public sealed class LineageMappingStrategiesTests
         _ = results[0].LineageHops.Should().HaveCount(1);
     }
 
+    [Fact]
+    public async Task StreamingOneToOneStrategy_HopsSetOutputEmissionCountToOne()
+    {
+        // Arrange
+        var inputPackets = CreatePacketStream(1, 2, 3);
+        var outputData = CreateDataStream("a", "b", "c");
+        ILineageMappingStrategy<int, string> strategy = StreamingOneToOneStrategy<int, string>.Instance;
+        var options = CreateOptions();
+
+        // Act
+        List<LineagePacket<string>> results = [];
+
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options, null, null,
+                           CancellationToken.None))
+        {
+            results.Add(packet);
+        }
+
+        // Assert
+        _ = results.Should().HaveCount(3);
+
+        foreach (var packet in results)
+        {
+            _ = packet.LineageHops.Should().HaveCount(1);
+            _ = packet.LineageHops[0].OutputEmissionCount.Should().Be(1);
+        }
+    }
+
     #endregion
 
     #region PositionalStreamingStrategy Tests
@@ -415,6 +470,64 @@ public sealed class LineageMappingStrategiesTests
         };
 
         _ = await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task MaterializingStrategy_MapperFanOut_SetsOutputEmissionCountOnEachSiblingOutput()
+    {
+        // Arrange
+        var inputPackets = CreatePacketStream("input-0");
+        var outputData = CreateDataStream("out-0", "out-1", "out-2");
+        ILineageMappingStrategy<string, string> strategy = MaterializingStrategy<string, string>.Instance;
+        var options = CreateOptions();
+
+        // Act
+        List<LineagePacket<string>> results = [];
+
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "fanout_node", s_pipelineId, null, TransformCardinality.OneToMany, options,
+                           typeof(OneToThreeMapper), new OneToThreeMapper(), CancellationToken.None))
+        {
+            results.Add(packet);
+        }
+
+        // Assert
+        _ = results.Should().HaveCount(3);
+
+        foreach (var packet in results)
+        {
+            _ = packet.LineageHops.Should().HaveCount(1);
+            _ = packet.LineageHops[0].AncestryInputIndices.Should().BeEquivalentTo([0]);
+            _ = packet.LineageHops[0].InputContributorCount.Should().Be(1);
+            _ = packet.LineageHops[0].OutputEmissionCount.Should().Be(3);
+        }
+    }
+
+    [Fact]
+    public async Task MaterializingStrategy_ConflictingContributorFanOut_UsesNullOutputEmissionCountForAmbiguousOutputs()
+    {
+        // Arrange
+        var inputPackets = CreatePacketStream("left", "right");
+        var outputData = CreateDataStream("out-0", "out-1", "out-2", "out-3");
+        ILineageMappingStrategy<string, string> strategy = MaterializingStrategy<string, string>.Instance;
+        var options = CreateOptions();
+
+        // Act
+        List<LineagePacket<string>> results = [];
+
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "conflict_node", s_pipelineId, null, TransformCardinality.OneToMany, options,
+                           typeof(ConflictingFanOutMapper), new ConflictingFanOutMapper(), CancellationToken.None))
+        {
+            results.Add(packet);
+        }
+
+        // Assert
+        _ = results.Should().HaveCount(4);
+        var outputEmissionByOutputData = results.ToDictionary(r => r.Data, r => r.LineageHops[0].OutputEmissionCount);
+
+        _ = outputEmissionByOutputData["out-0"].Should().Be(2);
+        _ = outputEmissionByOutputData["out-1"].Should().BeNull();
+        _ = outputEmissionByOutputData["out-2"].Should().Be(3);
+        _ = outputEmissionByOutputData["out-3"].Should().Be(3);
     }
 
     #endregion

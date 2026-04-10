@@ -105,7 +105,7 @@ public sealed record LineageHop(
     HopDecisionFlags Outcome,           // Flags enum, not string
     ObservedCardinality Cardinality,    // ObservedCardinality enum
     int? InputContributorCount,         // Nullable int
-    int? OutputEmissionCount,           // Nullable int  
+    int? OutputEmissionCount,           // Total outputs for the same contributing input(s); null when unknown/ambiguous
     IReadOnlyList<int>? AncestryInputIndices,  // Renamed from AncestryIndices
     bool Truncated,
     object? InputSnapshot = null,       // JsonElement snapshot before node (requires CaptureHopSnapshots)
