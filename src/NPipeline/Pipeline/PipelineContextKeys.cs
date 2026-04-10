@@ -80,6 +80,11 @@ public static class PipelineContextKeys
     public const string LineageSinkDecorator = "NPipeline.LineageSinkDecorator";
 
     /// <summary>
+    /// Pipeline sample recorder key (value: <c>IPipelineSampleRecorder</c>).
+    /// </summary>
+    public const string SampleRecorder = "NPipeline.SampleRecorder";
+
+    /// <summary>
     /// Runtime lineage options override key.
     /// Supports either a <c>LineageOptions</c> value or a <c>Func&lt;LineageOptions?, LineageOptions?&gt;</c>
     /// to derive options from the graph's configured baseline.

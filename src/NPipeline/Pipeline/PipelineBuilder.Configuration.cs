@@ -422,7 +422,8 @@ public sealed partial class PipelineBuilder
             // one carrying full LineagePacket<TIn> for the rewrap strategy. This prevents
             // multiple GetAsyncEnumerator() calls on upstream multicast streams and eliminates
             // the cascading re-enumeration issue through passthrough wrappers.
-            var dataChannel = Channel.CreateUnbounded<(long Index, TIn Data)>(new UnboundedChannelOptions { SingleWriter = true });
+            var dataChannel = Channel.CreateUnbounded<(long Index, Guid CorrelationId, int[]? AncestryInputIndices, TIn Data)>(
+                new UnboundedChannelOptions { SingleWriter = true });
             var packetChannel = Channel.CreateUnbounded<LineagePacket<TIn>>(new UnboundedChannelOptions { SingleWriter = true });
 
             _ = PumpInputAsync(typedInput, dataChannel.Writer, packetChannel.Writer, cancellationToken);
@@ -458,14 +459,14 @@ public sealed partial class PipelineBuilder
             }
 
             static async IAsyncEnumerable<TIn> ProjectWithInputIndex(
-                IAsyncEnumerable<(long Index, TIn Data)> source,
+                IAsyncEnumerable<(long Index, Guid CorrelationId, int[]? AncestryInputIndices, TIn Data)> source,
                 [EnumeratorCancellation] CancellationToken ct)
             {
                 try
                 {
-                    await foreach (var (index, data) in source.WithCancellation(ct).ConfigureAwait(false))
+                    await foreach (var (index, correlationId, ancestryInputIndices, data) in source.WithCancellation(ct).ConfigureAwait(false))
                     {
-                        LineageExecutionItemContext.SetCurrentInputIndex(index);
+                        LineageExecutionItemContext.SetCurrentInputContext(index, correlationId, ancestryInputIndices);
                         yield return data;
                     }
                 }
@@ -497,7 +498,7 @@ public sealed partial class PipelineBuilder
 
         static async Task PumpInputAsync(
             IDataStream<LineagePacket<TIn>> source,
-            ChannelWriter<(long Index, TIn Data)> dataWriter,
+            ChannelWriter<(long Index, Guid CorrelationId, int[]? AncestryInputIndices, TIn Data)> dataWriter,
             ChannelWriter<LineagePacket<TIn>> packetWriter,
             CancellationToken ct)
         {
@@ -507,10 +508,22 @@ public sealed partial class PipelineBuilder
 
                 await foreach (var packet in source.WithCancellation(ct).ConfigureAwait(false))
                 {
+                    int[]? ancestryInputIndices = null;
+
+                    if (packet.LineageHops.Count > 0)
+                    {
+                        var latestHop = packet.LineageHops[^1];
+
+                        if (latestHop.AncestryInputIndices is { Count: > 0 })
+                        {
+                            ancestryInputIndices = [.. latestHop.AncestryInputIndices];
+                        }
+                    }
+
                     // Write packet first so that the strategy's inputStream has data available
                     // before the transform's outputStream is triggered by consuming dataChannel.
                     await packetWriter.WriteAsync(packet, ct).ConfigureAwait(false);
-                    await dataWriter.WriteAsync((inputIndex, packet.Data), ct).ConfigureAwait(false);
+                    await dataWriter.WriteAsync((inputIndex, packet.CorrelationId, ancestryInputIndices, packet.Data), ct).ConfigureAwait(false);
                     inputIndex++;
                 }
 

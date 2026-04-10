@@ -127,6 +127,12 @@ public sealed class SamplingDataStreamTests
             Calls.Add(new SampleCall(nodeId, direction, correlationId, ancestryInputIndices, serializedRecord, timestamp, pipelineName, runId, outcome,
                 retryCount));
         }
+
+        public void RecordError(string nodeId, Guid correlationId, int[]? ancestryInputIndices, object? serializedRecord, string errorMessage,
+            string? exceptionType, string? stackTrace, int retryCount = 0, string? pipelineName = null, Guid? runId = null,
+            DateTimeOffset timestamp = default)
+        {
+        }
     }
 
     private sealed record SampleCall(

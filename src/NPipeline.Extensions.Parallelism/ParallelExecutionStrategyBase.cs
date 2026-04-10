@@ -10,6 +10,7 @@ using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
+using NPipeline.Sampling;
 
 namespace NPipeline.Extensions.Parallelism
 {
@@ -25,7 +26,10 @@ namespace NPipeline.Extensions.Parallelism
         /// <typeparam name="T">The input item type.</typeparam>
         /// <param name="Item">The actual item payload.</param>
         /// <param name="LineageInputIndex">Optional lineage input index associated with the item.</param>
-        protected readonly record struct IndexedWorkItem<T>(T Item, long? LineageInputIndex);
+        /// <param name="CorrelationId">Optional correlation identifier associated with the item.</param>
+        /// <param name="AncestryInputIndices">Optional contributor indices associated with the item.</param>
+        protected readonly record struct IndexedWorkItem<T>(T Item, long? LineageInputIndex, Guid? CorrelationId = null,
+            int[]? AncestryInputIndices = null);
 
         /// <summary>
         ///     Gets the configured maximum degree of parallelism for the strategy.
@@ -80,6 +84,8 @@ namespace NPipeline.Extensions.Parallelism
         /// <param name="metrics">Optional metrics for tracking execution.</param>
         /// <param name="observer">Optional observer for execution events.</param>
         /// <param name="lineageInputIndex">Optional lineage input index used to correlate per-item outcomes.</param>
+        /// <param name="correlationId">Optional correlation identifier used to correlate per-item errors.</param>
+        /// <param name="ancestryInputIndices">Optional contributor indices associated with the current item.</param>
         /// <returns>A task representing the asynchronous operation with the processed item, or null if skipped.</returns>
         /// <remarks>
         ///     This overload accepts a pre-created <see cref="CachedNodeExecutionContext" /> to avoid
@@ -92,7 +98,9 @@ namespace NPipeline.Extensions.Parallelism
             CachedNodeExecutionContext cached,
             ParallelExecutionMetrics? metrics = null,
             IExecutionObserver? observer = null,
-            long? lineageInputIndex = null)
+            long? lineageInputIndex = null,
+            Guid? correlationId = null,
+            int[]? ancestryInputIndices = null)
         {
             var logger = cached.LoggingEnabled
                 ? context.LoggerFactory.CreateLogger(nameof(ParallelExecutionStrategyBase))
@@ -125,12 +133,14 @@ namespace NPipeline.Extensions.Parallelism
 
                     if (node.ErrorHandler is null)
                     {
+                        PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, ex, attempt, correlationId, ancestryInputIndices);
                         RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, HopDecisionFlags.Error, attempt);
                         throw;
                     }
 
                     if (node.ErrorHandler is not INodeErrorHandler<ITransformNode<TIn, TOut>, TIn> typedHandler)
                     {
+                        PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, ex, attempt, correlationId, ancestryInputIndices);
                         RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, HopDecisionFlags.Error, attempt);
                         throw;
                     }
@@ -149,6 +159,8 @@ namespace NPipeline.Extensions.Parallelism
                         case NodeErrorDecision.Retry:
                             if (attempt >= cached.RetryOptions.MaxItemRetries)
                             {
+                                PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, ex, cached.RetryOptions.MaxItemRetries,
+                                    correlationId, ancestryInputIndices);
                                 RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, HopDecisionFlags.Error,
                                     cached.RetryOptions.MaxItemRetries);
                                 throw;
@@ -159,9 +171,11 @@ namespace NPipeline.Extensions.Parallelism
                             PublishRetryInstrumentation(metrics, observer, context, cached.NodeId, attempt, ex);
                             continue;
                         case NodeErrorDecision.Fail:
+                            PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, ex, attempt, correlationId, ancestryInputIndices);
                             RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, HopDecisionFlags.Error, attempt);
                             throw;
                         default:
+                            PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, ex, attempt, correlationId, ancestryInputIndices);
                             RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, HopDecisionFlags.Error, attempt);
                             throw;
                     }
@@ -246,7 +260,8 @@ namespace NPipeline.Extensions.Parallelism
                 {
                     await foreach (var next in reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
                     {
-                        var result = await ExecuteWithRetryAsync(next.Item, node, context, cachedContext, metrics, observer, next.LineageInputIndex);
+                        var result = await ExecuteWithRetryAsync(next.Item, node, context, cachedContext, metrics, observer, next.LineageInputIndex,
+                            next.CorrelationId, next.AncestryInputIndices);
 
                         if (result is not null)
                         {

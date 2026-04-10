@@ -118,8 +118,17 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
                         ? currentInputIndex
                         : (long?)null;
 
+                    var hasMetadata = LineageExecutionItemContext.TryGetCurrentItemMetadata(out var currentMetadata);
+                    var correlationId = hasMetadata
+                        ? currentMetadata.CorrelationId
+                        : (Guid?)null;
+                    var ancestryInputIndices = hasMetadata
+                        ? currentMetadata.AncestryInputIndices
+                        : null;
+
                     // SendAsync applies backpressure based on transformBlock input capacity
-                    await transformBlock.SendAsync(new IndexedWorkItem<TIn>(item, lineageInputIndex), cancellationToken);
+                    await transformBlock.SendAsync(new IndexedWorkItem<TIn>(item, lineageInputIndex, correlationId, ancestryInputIndices),
+                        cancellationToken);
                     var count = transformBlock.InputCount;
 
                     if (count > inputHighWater)

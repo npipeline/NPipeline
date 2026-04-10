@@ -8,6 +8,7 @@ using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
+using NPipeline.Sampling;
 
 namespace NPipeline.Execution.Strategies;
 
@@ -106,6 +107,7 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                             if (node.ErrorHandler is not INodeErrorHandler<ITransformNode<TIn, TOut>, TIn> typedHandler)
                             {
                                 // No handler or wrong type, rethrow original exception
+                                PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, ex, attempt);
                                 RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, HopDecisionFlags.Error, attempt);
                                 throw;
                             }
@@ -161,6 +163,7 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
 
                             Exception RecordAndReturn(Exception exception, HopDecisionFlags outcome, int retryCount)
                             {
+                                PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, exception, retryCount);
                                 RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, outcome, retryCount);
                                 return exception;
                             }

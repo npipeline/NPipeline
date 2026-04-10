@@ -90,7 +90,15 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
                         ? currentInputIndex
                         : (long?)null;
 
-                    var indexedItem = new IndexedWorkItem<TIn>(item, lineageInputIndex);
+                    var hasMetadata = LineageExecutionItemContext.TryGetCurrentItemMetadata(out var currentMetadata);
+                    var correlationId = hasMetadata
+                        ? currentMetadata.CorrelationId
+                        : (Guid?)null;
+                    var ancestryInputIndices = hasMetadata
+                        ? currentMetadata.AncestryInputIndices
+                        : null;
+
+                    var indexedItem = new IndexedWorkItem<TIn>(item, lineageInputIndex, correlationId, ancestryInputIndices);
 
                     if (queue.Writer.TryWrite(indexedItem))
                     {
