@@ -2,6 +2,7 @@ using System.Threading.Channels;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
+using NPipeline.Execution.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -53,7 +54,7 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
         // Custom bounded queue with drop-newest policy
         var fullMode = BoundedChannelFullMode.DropWrite;
 
-        var queue = Channel.CreateBounded<TIn>(new BoundedChannelOptions(boundedCapacity)
+        var queue = Channel.CreateBounded<IndexedWorkItem<TIn>>(new BoundedChannelOptions(boundedCapacity)
         {
             FullMode = fullMode,
             SingleReader = false,
@@ -85,7 +86,13 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
                 {
                     itemsSeen++;
 
-                    if (queue.Writer.TryWrite(item))
+                    var lineageInputIndex = LineageExecutionItemContext.TryGetCurrentInputIndex(out var currentInputIndex)
+                        ? currentInputIndex
+                        : (long?)null;
+
+                    var indexedItem = new IndexedWorkItem<TIn>(item, lineageInputIndex);
+
+                    if (queue.Writer.TryWrite(indexedItem))
                     {
                         observabilityScope?.IncrementProcessed();
                         metrics.IncrementEnqueued();

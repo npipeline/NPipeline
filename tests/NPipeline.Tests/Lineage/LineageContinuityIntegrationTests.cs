@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
+using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Parallelism;
 using NPipeline.Lineage;
@@ -107,6 +108,25 @@ public sealed class LineageContinuityIntegrationTests
             r.TraversalPath.Contains(sourceSegment) &&
             r.TraversalPath.Contains(transformSegment) &&
             r.TraversalPath.Contains(aggregateSegment));
+    }
+
+    [Fact]
+    public async Task RetryOutcome_ShouldPropagateRetriedHopMetadata()
+    {
+        var sink = new CollectingLineageSink();
+        var context = new PipelineContext(new PipelineContextConfiguration(
+            RetryOptions: new PipelineRetryOptions(MaxItemRetries: 3)));
+        context.Items[LineageSinkContextKey] = sink;
+
+        await RunPipelineAsync<RetryMetadataPipeline>(context);
+
+        var retryHops = sink.Records
+            .SelectMany(static r => r.LineageHops)
+            .Where(static h => h.Outcome.HasFlag(HopDecisionFlags.Retried))
+            .ToList();
+
+        retryHops.Should().NotBeEmpty();
+        retryHops.Should().OnlyContain(static h => h.RetryCount == 2);
     }
 
     [Fact]
@@ -252,6 +272,44 @@ public sealed class LineageContinuityIntegrationTests
         {
             await Task.Delay(1, cancellationToken);
             return item * 3;
+        }
+    }
+
+    private sealed class SingleValueSourceNode : SourceNode<int>
+    {
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
+        {
+            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([5], "single");
+        }
+    }
+
+    private sealed class RetryMetadataTransformNode : TransformNode<int, int>
+    {
+        private int _attempt;
+
+        public RetryMetadataTransformNode()
+        {
+            ErrorHandler = new AlwaysRetryHandler();
+        }
+
+        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        {
+            if (_attempt < 2)
+            {
+                _attempt++;
+                throw new InvalidOperationException("transient");
+            }
+
+            return Task.FromResult(item + 1);
+        }
+    }
+
+    private sealed class AlwaysRetryHandler : INodeErrorHandler<ITransformNode<int, int>, int>
+    {
+        public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int item, Exception exception, PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(NodeErrorDecision.Retry);
         }
     }
 
@@ -448,6 +506,25 @@ public sealed class LineageContinuityIntegrationTests
             var sink = builder.AddSink<DrainSinkNode<int>, int>("sink");
 
             builder.Connect(source, aggregate)
+                .Connect(aggregate, sink);
+        }
+    }
+
+    private sealed class RetryMetadataPipeline : BaseLineagePipeline
+    {
+        public override void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            EnableLineage(builder, context);
+
+            var source = builder.AddSource<SingleValueSourceNode, int>("source");
+            var transform = builder
+                .AddTransform<RetryMetadataTransformNode, int, int>("retry_transform")
+                .WithRetries(builder, 3);
+            var aggregate = builder.AddAggregate<PassThroughAggregateNode, int, int, int>("aggregate");
+            var sink = builder.AddSink<DrainSinkNode<int>, int>("sink");
+
+            builder.Connect(source, transform)
+                .Connect(transform, aggregate)
                 .Connect(aggregate, sink);
         }
     }

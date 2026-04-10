@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
+using NPipeline.Execution.Lineage;
 using NPipeline.Lineage;
 
 namespace NPipeline.Execution.Lineage.Strategies;
@@ -43,7 +44,8 @@ internal abstract class LineageMappingStrategyBase
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected static ImmutableList<LineageHop> MaybeAppendHop(ImmutableList<LineageHop> existing, string nodeId, Guid pipelineId,
-        string? pipelineName, LineageOptions? opts, int? outputEmissionCount, object? inputSnapshot, object? outputSnapshot)
+        string? pipelineName, LineageOptions? opts, int? outputEmissionCount, object? inputSnapshot, object? outputSnapshot,
+        HopDecisionFlags outcome = HopDecisionFlags.Emitted, int? retryCount = null)
     {
         var cap = opts != null && opts.MaxHopRecordsPerItem > 0
             ? opts.MaxHopRecordsPerItem
@@ -53,8 +55,8 @@ internal abstract class LineageMappingStrategyBase
             return existing;
 
         var truncated = existing.Count + 1 >= cap;
-        var rec = new LineageHop(nodeId, HopDecisionFlags.Emitted, ObservedCardinality.One, null, outputEmissionCount, null, truncated, pipelineId,
-            SnapshotValue(inputSnapshot, opts), SnapshotValue(outputSnapshot, opts), pipelineName);
+        var rec = new LineageHop(nodeId, outcome, ObservedCardinality.One, null, outputEmissionCount, null, truncated, pipelineId,
+            SnapshotValue(inputSnapshot, opts), SnapshotValue(outputSnapshot, opts), pipelineName, retryCount);
         return existing.Add(rec);
     }
 
@@ -69,7 +71,7 @@ internal abstract class LineageMappingStrategyBase
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected static ImmutableList<LineageHop> AppendHop(ImmutableList<LineageHop> existing, string nodeId, Guid pipelineId,
         string? pipelineName, LineageOptions? opts, HopDecisionFlags outcome, ObservedCardinality cardinality, IReadOnlyList<int>? ancestry,
-        int? outputEmissionCount, object? inputSnapshot, object? outputSnapshot)
+        int? outputEmissionCount, object? inputSnapshot, object? outputSnapshot, int? retryCount = null)
     {
         var cap = opts != null && opts.MaxHopRecordsPerItem > 0
             ? opts.MaxHopRecordsPerItem
@@ -80,8 +82,54 @@ internal abstract class LineageMappingStrategyBase
 
         var truncated = existing.Count + 1 >= cap;
         var rec = new LineageHop(nodeId, outcome, cardinality, ancestry?.Count, outputEmissionCount, ancestry, truncated, pipelineId,
-            SnapshotValue(inputSnapshot, opts), SnapshotValue(outputSnapshot, opts), pipelineName);
+            SnapshotValue(inputSnapshot, opts), SnapshotValue(outputSnapshot, opts), pipelineName, retryCount);
         return existing.Add(rec);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    protected static (HopDecisionFlags Outcome, int? RetryCount) ResolveRecordedOutcome(Guid pipelineId, string nodeId, int inputIndex,
+        HopDecisionFlags baseOutcome)
+    {
+        if (!LineageNodeOutcomeRegistry.TryGet(pipelineId, nodeId, inputIndex, out var recorded))
+            return (baseOutcome, null);
+
+        var retryCount = recorded.RetryCount > 0
+            ? recorded.RetryCount
+            : (int?)null;
+
+        if ((recorded.OutcomeFlags & HopDecisionFlags.Retried) != 0 || recorded.RetryCount > 0)
+            return (baseOutcome | HopDecisionFlags.Retried, retryCount);
+
+        return (baseOutcome, retryCount);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static (HopDecisionFlags Outcome, int? RetryCount) ResolveRecordedOutcome(Guid pipelineId, string nodeId,
+        IReadOnlyList<int>? contributorIndices, HopDecisionFlags baseOutcome)
+    {
+        if (contributorIndices is null || contributorIndices.Count == 0)
+            return (baseOutcome, null);
+
+        var hasRetry = false;
+        var maxRetryCount = 0;
+
+        foreach (var contributorIndex in contributorIndices)
+        {
+            if (!LineageNodeOutcomeRegistry.TryGet(pipelineId, nodeId, contributorIndex, out var recorded))
+                continue;
+
+            if ((recorded.OutcomeFlags & HopDecisionFlags.Retried) != 0 || recorded.RetryCount > 0)
+            {
+                hasRetry = true;
+                maxRetryCount = Math.Max(maxRetryCount, recorded.RetryCount);
+            }
+        }
+
+        var outcome = hasRetry
+            ? baseOutcome | HopDecisionFlags.Retried
+            : baseOutcome;
+
+        return (outcome, maxRetryCount > 0 ? maxRetryCount : null);
     }
 
     private static int? ResolveOutputEmissionCount(IReadOnlyList<int>? contributors, IReadOnlyDictionary<int, int>? outputCountByInput, int inputCount)
@@ -248,6 +296,8 @@ internal abstract class LineageMappingStrategyBase
                 ? HopDecisionFlags.Aggregated
                 : HopDecisionFlags.Emitted;
 
+            var (effectiveOutcome, retryCount) = ResolveRecordedOutcome(pipelineId, nodeId, contributorsForEmission, outcome);
+
             var cardinalityObserved = ancestry is null
                 ? ObservedCardinality.Unknown
                 : ancestry.Count == 0
@@ -267,8 +317,8 @@ internal abstract class LineageMappingStrategyBase
                 var hopRecords = inputPacket.LineageHops;
 
                 if (inputPacket.Collect)
-                    hopRecords = AppendHop(hopRecords, nodeId, pipelineId, pipelineName, opts, outcome, cardinalityObserved, ancestry,
-                        outputEmissionCount, inputPacket.Data, outputData);
+                    hopRecords = AppendHop(hopRecords, nodeId, pipelineId, pipelineName, opts, effectiveOutcome, cardinalityObserved, ancestry,
+                        outputEmissionCount, inputPacket.Data, outputData, retryCount);
 
                 yield return new LineagePacket<TOut>(outputData, inputPacket.CorrelationId,
                     inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId)))
@@ -302,9 +352,11 @@ internal abstract class LineageMappingStrategyBase
                 var inputPacket = inputEnumerator.Current;
                 var outputData = outputEnumerator.Current;
                 var hopRecords = inputPacket.LineageHops;
+                var (effectiveOutcome, retryCount) = ResolveRecordedOutcome(pipelineId, nodeId, matchedInputCount, HopDecisionFlags.Emitted);
 
                 if (inputPacket.Collect)
-                    hopRecords = MaybeAppendHop(hopRecords, nodeId, pipelineId, pipelineName, opts, 1, inputPacket.Data, outputData);
+                    hopRecords = MaybeAppendHop(hopRecords, nodeId, pipelineId, pipelineName, opts, 1, inputPacket.Data, outputData,
+                        effectiveOutcome, retryCount);
 
                 yield return new LineagePacket<TOut>(outputData, inputPacket.CorrelationId,
                     inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId)))

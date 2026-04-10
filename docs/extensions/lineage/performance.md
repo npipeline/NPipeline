@@ -98,6 +98,18 @@ Current behavior balances continuity and throughput:
 - Uses mapper-driven ancestry when a `LineageMapperAttribute` mapper is present.
 - Uses deterministic fallback mapping when mapper data is unavailable.
 
+## Per-Item Outcome Registry Overhead
+
+When lineage is enabled, execution strategies record per-item outcomes (retry count, error/skip/dead-letter flags) into a concurrent in-memory registry. This registry is scoped per `(PipelineId, NodeId)` and is cleared after each node's output stream is fully consumed.
+
+| Operation | Cost | Notes |
+|-----------|------|-------|
+| Registry write | `ConcurrentDictionary` add/update per item | Only when lineage is active for the node |
+| Registry read | Dictionary lookup per item during hop construction | Inline with existing lineage mapping |
+| Registry clear | Single `TryRemove` per node completion | Frees all per-item entries at once |
+
+The overhead is proportional to the number of items processed per node and is bounded by node lifetime. For pipelines without lineage enabled, no registry operations occur.
+
 To avoid forcing full-stream materialization on hot paths, core only materializes when useful for accurate mapping (for example, mapper-driven mapping or small/capped input sets). For larger streams, it degrades to representative-chain lineage with contributor metadata instead of buffering unbounded output.
 
 This keeps lineage continuous while avoiding a fundamental shift away from streaming execution.

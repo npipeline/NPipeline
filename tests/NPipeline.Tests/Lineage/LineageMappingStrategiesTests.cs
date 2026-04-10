@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using AwesomeAssertions;
 using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
+using NPipeline.Execution.Lineage;
 using NPipeline.Execution.Lineage.Strategies;
 using NPipeline.Lineage;
 
@@ -302,6 +303,37 @@ public sealed class LineageMappingStrategiesTests
             _ = packet.LineageHops.Should().HaveCount(1);
             _ = packet.LineageHops[0].OutputEmissionCount.Should().Be(1);
         }
+    }
+
+    [Fact]
+    public async Task StreamingOneToOneStrategy_ShouldPropagateRecordedRetryOutcome()
+    {
+        // Arrange
+        LineageNodeOutcomeRegistry.BeginNode(s_pipelineId, "test_node");
+        LineageNodeOutcomeRegistry.Record(s_pipelineId, "test_node", 0, HopDecisionFlags.Emitted | HopDecisionFlags.Retried, 3);
+
+        var inputPackets = CreatePacketStream(1);
+        var outputData = CreateDataStream("a");
+        ILineageMappingStrategy<int, string> strategy = StreamingOneToOneStrategy<int, string>.Instance;
+        var options = CreateOptions();
+
+        // Act
+        List<LineagePacket<string>> results = [];
+
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, "test_node", s_pipelineId, null, TransformCardinality.OneToOne, options,
+                           null, null, CancellationToken.None))
+        {
+            results.Add(packet);
+        }
+
+        // Assert
+        _ = results.Should().HaveCount(1);
+        _ = results[0].LineageHops.Should().HaveCount(1);
+        _ = results[0].LineageHops[0].Outcome.HasFlag(HopDecisionFlags.Retried).Should().BeTrue();
+        _ = results[0].LineageHops[0].RetryCount.Should().Be(3);
+
+        // Cleanup for isolation
+        LineageNodeOutcomeRegistry.ClearNode(s_pipelineId, "test_node");
     }
 
     #endregion

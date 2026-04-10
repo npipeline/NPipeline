@@ -2,6 +2,7 @@ using System.Threading.Channels;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
+using NPipeline.Execution.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -53,7 +54,7 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
         // Custom bounded queue with drop-oldest policy
         var fullMode = BoundedChannelFullMode.Wait; // Wait then allow explicit read-and-drop
 
-        var queue = Channel.CreateBounded<TIn>(new BoundedChannelOptions(boundedCapacity)
+        var queue = Channel.CreateBounded<IndexedWorkItem<TIn>>(new BoundedChannelOptions(boundedCapacity)
         {
             FullMode = fullMode,
             SingleReader = false,
@@ -82,7 +83,13 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
             {
                 await foreach (var item in input.WithCancellation(cancellationToken).ConfigureAwait(false))
                 {
-                    if (queue.Writer.TryWrite(item))
+                    var lineageInputIndex = LineageExecutionItemContext.TryGetCurrentInputIndex(out var currentInputIndex)
+                        ? currentInputIndex
+                        : (long?)null;
+
+                    var indexedItem = new IndexedWorkItem<TIn>(item, lineageInputIndex);
+
+                    if (queue.Writer.TryWrite(indexedItem))
                     {
                         observabilityScope?.IncrementProcessed();
                         metrics.IncrementEnqueued();
@@ -112,7 +119,7 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
                                 break;
                             }
 
-                            if (queue.Writer.TryWrite(item))
+                            if (queue.Writer.TryWrite(indexedItem))
                             {
                                 observabilityScope?.IncrementProcessed();
                                 metrics.IncrementEnqueued();

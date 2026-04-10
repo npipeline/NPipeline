@@ -4,6 +4,7 @@ using System.Threading.Tasks.Dataflow;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
+using NPipeline.Execution.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -72,9 +73,9 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         // Create cached execution context once for all items (performance optimization)
         var cachedContext = CachedNodeExecutionContext.CreateWithRetryOptions(context, nodeId, effectiveRetries);
 
-        var transformBlock = new TransformBlock<TIn, (bool hasValue, TOut value)>(async item =>
+        var transformBlock = new TransformBlock<IndexedWorkItem<TIn>, (bool hasValue, TOut value)>(async item =>
             {
-                var result = await ExecuteWithRetryAsync(item, node, context, cachedContext, blockMetrics, observer);
+                var result = await ExecuteWithRetryAsync(item.Item, node, context, cachedContext, blockMetrics, observer, item.LineageInputIndex);
 
                 return result is null
                     ? (false, default!)
@@ -101,7 +102,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         else
         {
             channel = Channel.CreateBounded<TOut>(new BoundedChannelOptions(outputCap.Value)
-                { SingleReader = false, SingleWriter = true, FullMode = BoundedChannelFullMode.Wait });
+            { SingleReader = false, SingleWriter = true, FullMode = BoundedChannelFullMode.Wait });
         }
 
         // Producer: feed block
@@ -113,8 +114,12 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
                 {
                     observabilityScope?.IncrementProcessed();
 
+                    var lineageInputIndex = LineageExecutionItemContext.TryGetCurrentInputIndex(out var currentInputIndex)
+                        ? currentInputIndex
+                        : (long?)null;
+
                     // SendAsync applies backpressure based on transformBlock input capacity
-                    await transformBlock.SendAsync(item, cancellationToken);
+                    await transformBlock.SendAsync(new IndexedWorkItem<TIn>(item, lineageInputIndex), cancellationToken);
                     var count = transformBlock.InputCount;
 
                     if (count > inputHighWater)

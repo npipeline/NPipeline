@@ -105,6 +105,8 @@ namespace NPipeline.DataFlow
                     if (item is ILineageEnvelope envelope)
                     {
                         int[]? ancestryInputIndices = null;
+                        var outcome = SampleOutcome.Success;
+                        var retryCount = 0;
 
                         if (envelope.LineageHops.Count > 0)
                         {
@@ -114,6 +116,9 @@ namespace NPipeline.DataFlow
                             {
                                 ancestryInputIndices = [.. latestHop.AncestryInputIndices];
                             }
+
+                            outcome = DetermineOutcome(latestHop.Outcome);
+                            retryCount = DetermineRetryCount(envelope.LineageHops);
                         }
 
                         var serialized = SafeSerialize(envelope.Data);
@@ -126,12 +131,70 @@ namespace NPipeline.DataFlow
                             serialized,
                             DateTimeOffset.UtcNow,
                             pipelineName,
-                            runId);
+                            runId,
+                            outcome,
+                            retryCount);
                     }
                 }
 
                 yield return item;
             }
+        }
+
+        private static SampleOutcome DetermineOutcome(HopDecisionFlags flags)
+        {
+            if ((flags & HopDecisionFlags.DeadLettered) != 0)
+            {
+                return SampleOutcome.DeadLetter;
+            }
+
+            if ((flags & HopDecisionFlags.Error) != 0)
+            {
+                return SampleOutcome.Error;
+            }
+
+            return (flags & HopDecisionFlags.FilteredOut) != 0
+                ? SampleOutcome.Skipped
+                : SampleOutcome.Success;
+        }
+
+        private static int DetermineRetryCount(IReadOnlyList<LineageHop> lineageHops)
+        {
+            if (lineageHops.Count == 0)
+            {
+                return 0;
+            }
+
+            var latestHop = lineageHops[^1];
+
+            if (latestHop.RetryCount is > 0)
+            {
+                return latestHop.RetryCount.Value;
+            }
+
+            if ((latestHop.Outcome & HopDecisionFlags.Retried) == 0)
+            {
+                return 0;
+            }
+
+            var retryCount = 0;
+
+            for (var index = lineageHops.Count - 1; index >= 0; index--)
+            {
+                var hop = lineageHops[index];
+
+                if (!string.Equals(hop.NodeId, latestHop.NodeId, StringComparison.Ordinal))
+                {
+                    break;
+                }
+
+                if ((hop.Outcome & HopDecisionFlags.Retried) != 0)
+                {
+                    retryCount++;
+                }
+            }
+
+            return Math.Max(1, retryCount);
         }
 
         private static object? SafeSerialize(object? item)

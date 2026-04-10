@@ -15,6 +15,7 @@ namespace NPipeline.Lineage;
 /// <param name="OutputSnapshot">Optional snapshot of the item emitted by this node.</param>
 /// <param name="PipelineId">The unique pipeline identity this hop belongs to.</param>
 /// <param name="PipelineName">The name of the pipeline this hop belongs to. Null for top-level pipelines.</param>
+/// <param name="RetryCount">Optional retry count observed for this hop.</param>
 public sealed record LineageHop(
     string NodeId,
     HopDecisionFlags Outcome,
@@ -26,4 +27,5 @@ public sealed record LineageHop(
     Guid PipelineId,
     object? InputSnapshot = null,
     object? OutputSnapshot = null,
-    string? PipelineName = null);
+    string? PipelineName = null,
+    int? RetryCount = null);
