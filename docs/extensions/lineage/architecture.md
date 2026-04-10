@@ -108,10 +108,11 @@ public sealed record LineageHop(
     int? OutputEmissionCount,           // Total outputs for the same contributing input(s); null when unknown/ambiguous
     IReadOnlyList<int>? AncestryInputIndices,  // Renamed from AncestryIndices
     bool Truncated,
+    Guid PipelineId,                    // Stable pipeline identity (canonical key)
     object? InputSnapshot = null,       // JsonElement snapshot before node (requires CaptureHopSnapshots)
     object? OutputSnapshot = null,      // JsonElement snapshot after node (requires CaptureHopSnapshots)
-    Guid PipelineId = default,          // Stable pipeline identity (canonical key)
-    string? PipelineName = null         // Pipeline identity for nested/composite pipelines
+    string? PipelineName = null,        // Pipeline identity for nested/composite pipelines
+    int? RetryCount = null              // Retry count when item was retried before succeeding
 );
 
 // Hop decision flags
@@ -119,14 +120,31 @@ public sealed record LineageHop(
 public enum HopDecisionFlags
 {
     None = 0,
-    Emitted = 1 << 0,
-    FilteredOut = 1 << 1,
-    Joined = 1 << 2,
-    Aggregated = 1 << 3,
-    Retried = 1 << 4,
-    Error = 1 << 5,
-    DeadLettered = 1 << 6,
+    Emitted = 1 << 0,       // Item was emitted as output
+    FilteredOut = 1 << 1,    // Item was skipped by error handler
+    Joined = 1 << 2,         // Item was produced by a join node
+    Aggregated = 1 << 3,     // Item was produced by an aggregate node
+    Retried = 1 << 4,        // Item was retried at least once before succeeding
+    Error = 1 << 5,          // Item ended in an error state
+    DeadLettered = 1 << 6,   // Item was routed to a dead-letter queue
 }
+```
+
+**Flag Combinations:**
+
+Flags are combinable. Common real-world combinations:
+
+| Flags | Meaning |
+|-------|---------|
+| `Emitted` | Successful first-try processing |
+| `Emitted \| Retried` | Succeeded after one or more retries |
+| `Error` | Failed with no error handler |
+| `DeadLettered \| Error` | Failed and routed to dead-letter queue |
+| `FilteredOut` | Skipped by error handler |
+
+When `Retried` is set, the `RetryCount` field on the `LineageHop` contains the number of retry attempts before the item succeeded.
+
+```csharp
 
 // Observed cardinality
 public enum ObservedCardinality
@@ -364,6 +382,41 @@ Sink Node
    - Generate PipelineLineageReport
    - Send to IPipelineLineageSink
 ```
+
+## Per-Item Outcome Propagation
+
+Execution strategies (`SequentialExecutionStrategy`, `ParallelExecutionStrategyBase` and subclasses) record per-item processing outcomes that get merged into emitted `LineageHop` records. This bridges the gap between execution-time error/retry decisions and lineage metadata.
+
+### How It Works
+
+1. **Index assignment** — When lineage is enabled for a transform node, the lineage adapter assigns a sequential input index to each item flowing through the node. This index is exposed via `AsyncLocal` ambient context during transform execution.
+
+2. **Outcome recording** — As each item is processed, the execution strategy records the outcome (emitted, skipped, error, dead-lettered) and retry count into an internal registry keyed by `(PipelineId, NodeId, InputIndex)`.
+
+3. **Hop enrichment** — When the lineage mapping strategy builds the output `LineageHop` for each item, it consults the registry to overlay retry/error metadata onto the hop. If the item was retried, the hop gains the `Retried` flag and a `RetryCount`.
+
+4. **Cleanup** — The registry for a node is cleared after the rewrapped lineage stream is fully consumed, preventing memory leaks.
+
+### Outcome Flags Set by Execution Strategies
+
+| Decision | Flags Recorded |
+|----------|----------------|
+| Success (first try) | `Emitted` |
+| Success after retries | `Emitted \| Retried` |
+| Skip | `FilteredOut` |
+| Dead-letter | `DeadLettered \| Error` |
+| Fail / unhandled error | `Error` |
+
+### Sampling Integration
+
+The `SamplingDataStream` reads the latest `LineageHop` on each sampled envelope to derive a `SampleOutcome` and retry count:
+
+- `DeadLettered` → `SampleOutcome.DeadLetter`
+- `Error` → `SampleOutcome.Error`
+- `FilteredOut` → `SampleOutcome.Skipped`
+- Everything else → `SampleOutcome.Success`
+
+When `RetryCount` is present on the hop, it is used directly. Otherwise a backward walk of consecutive same-node hops with `Retried` flag provides a fallback count.
 
 ## Sampling Implementation
 

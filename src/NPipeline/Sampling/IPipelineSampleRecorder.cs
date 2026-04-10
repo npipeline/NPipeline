@@ -16,6 +16,8 @@ public interface IPipelineSampleRecorder
     /// <param name="timestamp">UTC timestamp when the sample was captured.</param>
     /// <param name="pipelineName">Optional pipeline name.</param>
     /// <param name="runId">Optional run identifier.</param>
+    /// <param name="outcome">Processing outcome inferred for the sampled item.</param>
+    /// <param name="retryCount">Observed retry count for the sampled item.</param>
     void RecordSample(
         string nodeId,
         string direction,
@@ -24,5 +26,7 @@ public interface IPipelineSampleRecorder
         object? serializedRecord,
         DateTimeOffset timestamp,
         string? pipelineName = null,
-        Guid? runId = null);
+        Guid? runId = null,
+        SampleOutcome outcome = SampleOutcome.Success,
+        int retryCount = 0);
 }

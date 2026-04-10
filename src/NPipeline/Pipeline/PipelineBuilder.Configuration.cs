@@ -9,6 +9,7 @@ using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
+using NPipeline.Execution.Lineage;
 using NPipeline.Execution.Lineage.Strategies;
 using NPipeline.Execution.Strategies;
 using NPipeline.Graph;
@@ -414,18 +415,20 @@ public sealed partial class PipelineBuilder
         return (transformInput, nodeId, pipelineId, pipelineName, declaredCardinality, options, cancellationToken) =>
         {
             var typedInput = (IDataStream<LineagePacket<TIn>>)transformInput;
+            LineageNodeOutcomeRegistry.BeginNode(pipelineId, nodeId);
 
             // Single-enumeration: read typedInput exactly once via a background pump that
             // fans out into two channels — one carrying unwrapped TIn items for the transform,
             // one carrying full LineagePacket<TIn> for the rewrap strategy. This prevents
             // multiple GetAsyncEnumerator() calls on upstream multicast streams and eliminates
             // the cascading re-enumeration issue through passthrough wrappers.
-            var dataChannel = Channel.CreateUnbounded<TIn>(new UnboundedChannelOptions { SingleWriter = true });
+            var dataChannel = Channel.CreateUnbounded<(long Index, TIn Data)>(new UnboundedChannelOptions { SingleWriter = true });
             var packetChannel = Channel.CreateUnbounded<LineagePacket<TIn>>(new UnboundedChannelOptions { SingleWriter = true });
 
             _ = PumpInputAsync(typedInput, dataChannel.Writer, packetChannel.Writer, cancellationToken);
 
-            var unwrappedPipe = new DataStream<TIn>(dataChannel.Reader.ReadAllAsync(cancellationToken), $"Unwrapped_{typedInput.StreamName}");
+            var unwrappedPipe = new DataStream<TIn>(ProjectWithInputIndex(dataChannel.Reader.ReadAllAsync(cancellationToken), cancellationToken),
+                $"Unwrapped_{typedInput.StreamName}");
             return (unwrappedPipe, RewrapFunc);
 
             IDataStream RewrapFunc(IDataStream outputPipe)
@@ -433,7 +436,9 @@ public sealed partial class PipelineBuilder
                 var typedOutputPipe = (IDataStream<TOut>)outputPipe;
                 var rewrappedStream = RewrapStrategy(packetChannel.Reader.ReadAllAsync(cancellationToken),
                     typedOutputPipe, nodeId, pipelineId, pipelineName, declaredCardinality, options, cancellationToken);
-                return new DataStream<LineagePacket<TOut>>(rewrappedStream, $"Rewrapped_{outputPipe.StreamName}");
+
+                var cleanupStream = CleanupOnComplete(rewrappedStream, pipelineId, nodeId, cancellationToken);
+                return new DataStream<LineagePacket<TOut>>(cleanupStream, $"Rewrapped_{outputPipe.StreamName}");
             }
 
             IAsyncEnumerable<LineagePacket<TOut>> RewrapStrategy(
@@ -451,22 +456,62 @@ public sealed partial class PipelineBuilder
                 return cachedStrategy.MapAsync(inputStream, outputStream, currentId, currentPipelineId, currentPipelineName, transformCardinality,
                     lineageOptions, lineageMapperType, cachedMapper, ct);
             }
+
+            static async IAsyncEnumerable<TIn> ProjectWithInputIndex(
+                IAsyncEnumerable<(long Index, TIn Data)> source,
+                [EnumeratorCancellation] CancellationToken ct)
+            {
+                try
+                {
+                    await foreach (var (index, data) in source.WithCancellation(ct).ConfigureAwait(false))
+                    {
+                        LineageExecutionItemContext.SetCurrentInputIndex(index);
+                        yield return data;
+                    }
+                }
+                finally
+                {
+                    LineageExecutionItemContext.ClearCurrentInputIndex();
+                }
+            }
+
+            static async IAsyncEnumerable<LineagePacket<TOut>> CleanupOnComplete(
+                IAsyncEnumerable<LineagePacket<TOut>> source,
+                Guid currentPipelineId,
+                string currentNodeId,
+                [EnumeratorCancellation] CancellationToken ct = default)
+            {
+                try
+                {
+                    await foreach (var packet in source.WithCancellation(ct).ConfigureAwait(false))
+                    {
+                        yield return packet;
+                    }
+                }
+                finally
+                {
+                    LineageNodeOutcomeRegistry.ClearNode(currentPipelineId, currentNodeId);
+                }
+            }
         };
 
         static async Task PumpInputAsync(
             IDataStream<LineagePacket<TIn>> source,
-            ChannelWriter<TIn> dataWriter,
+            ChannelWriter<(long Index, TIn Data)> dataWriter,
             ChannelWriter<LineagePacket<TIn>> packetWriter,
             CancellationToken ct)
         {
             try
             {
+                long inputIndex = 0;
+
                 await foreach (var packet in source.WithCancellation(ct).ConfigureAwait(false))
                 {
                     // Write packet first so that the strategy's inputStream has data available
                     // before the transform's outputStream is triggered by consuming dataChannel.
                     await packetWriter.WriteAsync(packet, ct).ConfigureAwait(false);
-                    await dataWriter.WriteAsync(packet.Data, ct).ConfigureAwait(false);
+                    await dataWriter.WriteAsync((inputIndex, packet.Data), ct).ConfigureAwait(false);
+                    inputIndex++;
                 }
 
                 packetWriter.TryComplete();
