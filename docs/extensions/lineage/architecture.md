@@ -64,7 +64,7 @@ At a high level:
 
 1. Output packets are mapped from contributing input lineage when available.
 2. Traversal path remains additive by appending the current qualified segment (`{pipelineId:N}::{nodeId}`) to inherited ancestry.
-3. New lineage IDs are minted only when no contributing lineage input exists.
+3. New correlation IDs are minted only when no contributing lineage input exists.
 
 For multi-input join/aggregate outputs, we use deterministic fallback semantics:
 
@@ -105,7 +105,7 @@ public sealed record LineageHop(
     HopDecisionFlags Outcome,           // Flags enum, not string
     ObservedCardinality Cardinality,    // ObservedCardinality enum
     int? InputContributorCount,         // Nullable int
-    int? OutputEmissionCount,           // Nullable int  
+    int? OutputEmissionCount,           // Total outputs for the same contributing input(s); null when unknown/ambiguous
     IReadOnlyList<int>? AncestryInputIndices,  // Renamed from AncestryIndices
     bool Truncated,
     object? InputSnapshot = null,       // JsonElement snapshot before node (requires CaptureHopSnapshots)
@@ -153,7 +153,7 @@ The `LineagePacket<T>` is the data structure that flows through the pipeline wit
 ```csharp
 public sealed record LineagePacket<T>(
     T Data,
-    Guid LineageId,
+    Guid CorrelationId,
     ImmutableList<string> TraversalPath
 ) : ILineageEnvelope
 {
@@ -166,7 +166,7 @@ public sealed record LineagePacket<T>(
 
 **Flow:**
 
-1. Created at source node with new `LineageId`
+1. Created at source node with new `CorrelationId`
 2. Updated at each node with hop information
 3. Removed before reaching sink nodes
 4. Final lineage stored in collector
@@ -178,7 +178,7 @@ The public-facing record representing complete lineage for an item:
 ```csharp
 public sealed record LineageInfo(
     object? Data,                           // Final data (nullable when redacted)
-    Guid LineageId,                         // Unique identifier
+    Guid CorrelationId,                         // Unique identifier
     IReadOnlyList<string> TraversalPath,    // Node IDs passed through
     IReadOnlyList<LineageHop> LineageHops,  // Per-hop details
     Guid PipelineId,                        // Stable pipeline identity for this lineage record
@@ -321,7 +321,7 @@ public interface IPipelineLineageSink
 ```text
 Source Node
   ↓
-  Create LineagePacket<T> with new LineageId
+  Create LineagePacket<T> with new CorrelationId
   ↓
 Transform Node 1
   ↓
@@ -345,7 +345,7 @@ Sink Node
 ```text
 1. Item enters pipeline
    ↓
-2. Create LineagePacket with LineageId
+2. Create LineagePacket with CorrelationId
    ↓
 3. ShouldCollectLineage()? (Sampling check)
    ├─ Yes → Continue tracking
@@ -372,7 +372,7 @@ Sink Node
 Uses hash-based approach for consistent item selection:
 
 ```csharp
-private bool ShouldCollectLineage(Guid lineageId)
+private bool ShouldCollectLineage(Guid correlationId)
 {
     if (_options.SampleEvery <= 1)
         return true;  // Collect all
@@ -380,7 +380,7 @@ private bool ShouldCollectLineage(Guid lineageId)
     if (_options.DeterministicSampling)
     {
         // Hash-based: same items always selected
-        var hash = lineageId.GetHashCode();
+        var hash = correlationId.GetHashCode();
         return Math.Abs(hash % _options.SampleEvery) == 0;
     }
     else
@@ -419,7 +419,7 @@ Continues collecting without limits:
 private void RecordLineageInternal(LineageInfo lineageInfo)
 {
     // No cap check
-    _lineageData[lineageInfo.LineageId] = lineageInfo;
+    _lineageData[lineageInfo.CorrelationId] = lineageInfo;
 }
 ```
 
@@ -439,7 +439,7 @@ private void RecordLineageInternal(LineageInfo lineageInfo)
     }
     else
     {
-        _lineageData[lineageInfo.LineageId] = lineageInfo;
+        _lineageData[lineageInfo.CorrelationId] = lineageInfo;
     }
 }
 ```
@@ -456,7 +456,7 @@ private void RecordLineageInternal(LineageInfo lineageInfo)
     if (_lineageData.Count >= _options.MaterializationCap)
         return;  // Drop
     
-    _lineageData[lineageInfo.LineageId] = lineageInfo;
+    _lineageData[lineageInfo.CorrelationId] = lineageInfo;
 }
 ```
 

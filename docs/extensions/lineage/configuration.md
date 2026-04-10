@@ -80,7 +80,7 @@ builder.EnableItemLevelLineage(options =>
 
 **How It Works:**
 
-- Computes hash of item's lineage ID
+- Computes hash of item's correlation ID
 - Items with hash % SampleEvery == 0 are sampled
 - Same items always selected across multiple runs
 - Provides predictable, repeatable behavior
@@ -147,13 +147,13 @@ builder.EnableItemLevelLineage(options =>
 
 ```csharp
 // Without redaction
-var lineageInfo = collector.GetLineageInfo(lineageId);
+var lineageInfo = collector.GetLineageInfo(correlationId);
 Console.WriteLine(lineageInfo.Data);  // Outputs actual data
 
 // With redaction
-var lineageInfo = collector.GetLineageInfo(lineageId);
+var lineageInfo = collector.GetLineageInfo(correlationId);
 Console.WriteLine(lineageInfo.Data);  // Outputs: null
-Console.WriteLine(lineageInfo.LineageId);  // Still available
+Console.WriteLine(lineageInfo.CorrelationId);  // Still available
 Console.WriteLine(lineageInfo.TraversalPath);  // Still available
 ```
 
@@ -296,12 +296,12 @@ public sealed class DatabaseLineageSink : ILineageSink
     public async Task RecordAsync(LineageInfo lineageInfo, CancellationToken cancellationToken)
     {
         const string sql = @"
-            INSERT INTO Lineage (LineageId, Data, TraversalPath, Timestamp)
-            VALUES (@LineageId, @Data, @TraversalPath, @Timestamp)";
+            INSERT INTO Lineage (CorrelationId, Data, TraversalPath, Timestamp)
+            VALUES (@CorrelationId, @Data, @TraversalPath, @Timestamp)";
         
         await _connection.ExecuteAsync(sql, new
         {
-            LineageId = lineageInfo.LineageId,
+            CorrelationId = lineageInfo.CorrelationId,
             Data = lineageInfo.Data?.ToString(),
             TraversalPath = string.Join(",", lineageInfo.TraversalPath),
             Timestamp = DateTime.UtcNow

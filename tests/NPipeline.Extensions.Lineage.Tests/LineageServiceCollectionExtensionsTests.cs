@@ -478,16 +478,16 @@ public class LineageServiceCollectionExtensionsTests
             return new LineagePacket<T>(item, Guid.NewGuid(), ImmutableList.Create(sourceNodeId));
         }
 
-        public void RecordHop(Guid lineageId, LineageHop hop)
+        public void RecordHop(Guid correlationId, LineageHop hop)
         {
         }
 
-        public bool ShouldCollectLineage(Guid lineageId, LineageOptions? options)
+        public bool ShouldCollectLineage(Guid correlationId, LineageOptions? options)
         {
             return true;
         }
 
-        public LineageInfo? GetLineageInfo(Guid lineageId)
+        public LineageInfo? GetLineageInfo(Guid correlationId)
         {
             return null;
         }
@@ -539,16 +539,16 @@ public class LineageServiceCollectionExtensionsTests
             return new LineagePacket<T>(item, Guid.NewGuid(), ImmutableList.Create(sourceNodeId));
         }
 
-        public void RecordHop(Guid lineageId, LineageHop hop)
+        public void RecordHop(Guid correlationId, LineageHop hop)
         {
         }
 
-        public bool ShouldCollectLineage(Guid lineageId, LineageOptions? options)
+        public bool ShouldCollectLineage(Guid correlationId, LineageOptions? options)
         {
             return true;
         }
 
-        public LineageInfo? GetLineageInfo(Guid lineageId)
+        public LineageInfo? GetLineageInfo(Guid correlationId)
         {
             return null;
         }

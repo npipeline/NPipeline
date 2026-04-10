@@ -33,6 +33,12 @@ public sealed class LineageContinuityIntegrationTests
             r.TraversalPath.Contains(sourceSegment) &&
             r.TraversalPath.Contains(transformSegment) &&
             r.TraversalPath.Contains(aggregateSegment));
+
+        records.Should().OnlyContain(r =>
+            r.LineageHops.Any(h =>
+                h.NodeId == "aggregate" &&
+                h.Outcome.HasFlag(HopDecisionFlags.Aggregated) &&
+                h.OutputEmissionCount == 1));
     }
 
     [Fact]
@@ -59,7 +65,8 @@ public sealed class LineageContinuityIntegrationTests
                 h.NodeId == "join" &&
                 h.Outcome.HasFlag(HopDecisionFlags.Joined) &&
                 h.InputContributorCount.HasValue &&
-                h.InputContributorCount.Value > 1));
+                h.InputContributorCount.Value > 1 &&
+                h.OutputEmissionCount == 1));
     }
 
     [Fact]
@@ -115,7 +122,7 @@ public sealed class LineageContinuityIntegrationTests
         var aggregateSegment = Qualified(context, "aggregate");
         var sourceSegment = Qualified(context, "source");
 
-        records[0].LineageId.Should().NotBe(Guid.Empty);
+        records[0].CorrelationId.Should().NotBe(Guid.Empty);
         records[0].TraversalPath.Should().Contain(aggregateSegment);
         records[0].TraversalPath.Should().NotContain(sourceSegment);
     }

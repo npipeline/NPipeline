@@ -5,14 +5,14 @@ namespace NPipeline.Lineage;
 ///     This is the public data transfer object sent to an <see cref="ILineageSink" />.
 /// </summary>
 /// <param name="Data">The final data item at the end of a pipeline path (nullable when redacted).</param>
-/// <param name="LineageId">The unique ID assigned to the item at its source.</param>
+/// <param name="CorrelationId">The unique ID assigned to the item at its source.</param>
 /// <param name="TraversalPath">The complete, ordered list of node IDs the item passed through.</param>
 /// <param name="LineageHops">Optional per-hop lineage records collected along the path.</param>
 /// <param name="PipelineId">The unique pipeline identity this lineage record belongs to.</param>
 /// <param name="PipelineName">The name of the pipeline this lineage record belongs to. Null for top-level pipelines.</param>
 public sealed record LineageInfo(
     object? Data,
-    Guid LineageId,
+    Guid CorrelationId,
     IReadOnlyList<string> TraversalPath,
     IReadOnlyList<LineageHop> LineageHops,
     Guid PipelineId,

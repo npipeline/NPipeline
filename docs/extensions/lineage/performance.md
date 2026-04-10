@@ -46,7 +46,7 @@ Memory usage scales with data size and number of hops:
 ```csharp
 // Approximate memory per item
 var perItemMemory = 
-    sizeof(Guid) +                          // LineageId: 16 bytes
+    sizeof(Guid) +                          // CorrelationId: 16 bytes
     sizeof(List<string>) +                   // TraversalPath: list overhead
     sizeof(List<LineageHop>) +              // LineageHops: list overhead
     (hopCount * perHopOverhead) +           // Per hop: metadata
@@ -462,9 +462,9 @@ public sealed class LineagePerformanceSink : ILineageSink
         if (elapsed > 100)
         {
             _logger.LogWarning(
-                "Slow lineage export: {ElapsedMs}ms for {LineageId}",
+                "Slow lineage export: {ElapsedMs}ms for {CorrelationId}",
                 elapsed,
-                lineageInfo.LineageId);
+                lineageInfo.CorrelationId);
         }
     }
 }

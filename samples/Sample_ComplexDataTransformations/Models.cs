@@ -94,7 +94,7 @@ public record CustomerPurchaseBehavior(
 ///     Represents lineage tracking information for data transformations
 /// </summary>
 public record TransformationLineage(
-    Guid LineageId,
+    Guid CorrelationId,
     string SourceNode,
     string TargetNode,
     DateTime TransformationTime,

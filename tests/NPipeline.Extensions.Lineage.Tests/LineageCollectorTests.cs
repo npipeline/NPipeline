@@ -25,9 +25,9 @@ public class LineageCollectorTests
         // Assert
         packet1.Should().NotBeNull();
         packet2.Should().NotBeNull();
-        packet1.LineageId.Should().NotBeEmpty();
-        packet2.LineageId.Should().NotBeEmpty();
-        packet1.LineageId.Should().NotBe(packet2.LineageId);
+        packet1.CorrelationId.Should().NotBeEmpty();
+        packet2.CorrelationId.Should().NotBeEmpty();
+        packet1.CorrelationId.Should().NotBe(packet2.CorrelationId);
         packet1.Data.Should().Be(item);
         packet2.Data.Should().Be(item);
         packet1.TraversalPath.Should().HaveCount(1);
@@ -64,7 +64,7 @@ public class LineageCollectorTests
     }
 
     [Fact]
-    public void RecordHop_WithValidLineageIdAndHop_ShouldRecordHop()
+    public void RecordHop_WithValidCorrelationIdAndHop_ShouldRecordHop()
     {
         // Arrange
         var collector = new LineageCollector();
@@ -74,8 +74,8 @@ public class LineageCollectorTests
         var hop = new LineageHop("node1", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId);
 
         // Act
-        collector.RecordHop(packet.LineageId, hop);
-        var lineageInfo = collector.GetLineageInfo(packet.LineageId);
+        collector.RecordHop(packet.CorrelationId, hop);
+        var lineageInfo = collector.GetLineageInfo(packet.CorrelationId);
 
         // Assert
         lineageInfo.Should().NotBeNull();
@@ -98,10 +98,10 @@ public class LineageCollectorTests
         var hop3 = new LineageHop("node3", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId);
 
         // Act
-        collector.RecordHop(packet.LineageId, hop1);
-        collector.RecordHop(packet.LineageId, hop2);
-        collector.RecordHop(packet.LineageId, hop3);
-        var lineageInfo = collector.GetLineageInfo(packet.LineageId);
+        collector.RecordHop(packet.CorrelationId, hop1);
+        collector.RecordHop(packet.CorrelationId, hop2);
+        collector.RecordHop(packet.CorrelationId, hop3);
+        var lineageInfo = collector.GetLineageInfo(packet.CorrelationId);
 
         // Assert
         lineageInfo.Should().NotBeNull();
@@ -125,9 +125,9 @@ public class LineageCollectorTests
         var hop2 = new LineageHop("node1", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId);
 
         // Act
-        collector.RecordHop(packet.LineageId, hop1);
-        collector.RecordHop(packet.LineageId, hop2);
-        var lineageInfo = collector.GetLineageInfo(packet.LineageId);
+        collector.RecordHop(packet.CorrelationId, hop1);
+        collector.RecordHop(packet.CorrelationId, hop2);
+        var lineageInfo = collector.GetLineageInfo(packet.CorrelationId);
 
         // Assert
         lineageInfo.Should().NotBeNull();
@@ -137,15 +137,15 @@ public class LineageCollectorTests
     }
 
     [Fact]
-    public void RecordHop_WithUnknownLineageId_ShouldNotThrow()
+    public void RecordHop_WithUnknownCorrelationId_ShouldNotThrow()
     {
         // Arrange
         var collector = new LineageCollector();
-        var unknownLineageId = Guid.NewGuid();
+        var unknownCorrelationId = Guid.NewGuid();
         var hop = new LineageHop("node1", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId);
 
         // Act & Assert
-        var exception = Record.Exception(() => collector.RecordHop(unknownLineageId, hop));
+        var exception = Record.Exception(() => collector.RecordHop(unknownCorrelationId, hop));
         exception.Should().BeNull();
     }
 
@@ -167,8 +167,8 @@ public class LineageCollectorTests
         var hop = new LineageHop("node1", outcome, ObservedCardinality.One, 1, 1, null, false, s_pipelineId);
 
         // Act
-        collector.RecordHop(packet.LineageId, hop);
-        var lineageInfo = collector.GetLineageInfo(packet.LineageId);
+        collector.RecordHop(packet.CorrelationId, hop);
+        var lineageInfo = collector.GetLineageInfo(packet.CorrelationId);
 
         // Assert
         lineageInfo.Should().NotBeNull();
@@ -180,10 +180,10 @@ public class LineageCollectorTests
     {
         // Arrange
         var collector = new LineageCollector();
-        var lineageId = Guid.NewGuid();
+        var correlationId = Guid.NewGuid();
 
         // Act
-        var result = collector.ShouldCollectLineage(lineageId, null);
+        var result = collector.ShouldCollectLineage(correlationId, null);
 
         // Assert
         result.Should().BeTrue();
@@ -194,11 +194,11 @@ public class LineageCollectorTests
     {
         // Arrange
         var collector = new LineageCollector();
-        var lineageId = Guid.NewGuid();
+        var correlationId = Guid.NewGuid();
         var options = new LineageOptions(SampleEvery: 1);
 
         // Act
-        var result = collector.ShouldCollectLineage(lineageId, options);
+        var result = collector.ShouldCollectLineage(correlationId, options);
 
         // Assert
         result.Should().BeTrue();
@@ -209,13 +209,13 @@ public class LineageCollectorTests
     {
         // Arrange
         var collector = new LineageCollector();
-        var lineageId = Guid.NewGuid();
+        var correlationId = Guid.NewGuid();
         var options = new LineageOptions(SampleEvery: 10, DeterministicSampling: true);
 
         // Act
-        var result1 = collector.ShouldCollectLineage(lineageId, options);
-        var result2 = collector.ShouldCollectLineage(lineageId, options);
-        var result3 = collector.ShouldCollectLineage(lineageId, options);
+        var result1 = collector.ShouldCollectLineage(correlationId, options);
+        var result2 = collector.ShouldCollectLineage(correlationId, options);
+        var result3 = collector.ShouldCollectLineage(correlationId, options);
 
         // Assert
         result1.Should().Be(result2);
@@ -243,9 +243,9 @@ public class LineageCollectorTests
         for (var i = 0; i < totalItems; i++)
         {
             random.NextBytes(guidBytes);
-            var lineageId = new Guid(guidBytes);
+            var correlationId = new Guid(guidBytes);
 
-            if (collector.ShouldCollectLineage(lineageId, options))
+            if (collector.ShouldCollectLineage(correlationId, options))
                 sampledCount++;
         }
 
@@ -271,8 +271,8 @@ public class LineageCollectorTests
         // Act
         for (var i = 0; i < 100; i++)
         {
-            var lineageId = Guid.NewGuid();
-            results.Add(collector.ShouldCollectLineage(lineageId, options));
+            var correlationId = Guid.NewGuid();
+            results.Add(collector.ShouldCollectLineage(correlationId, options));
         }
 
         // Assert
@@ -281,35 +281,35 @@ public class LineageCollectorTests
     }
 
     [Fact]
-    public void GetLineageInfo_WithValidLineageId_ShouldReturnLineageInfo()
+    public void GetLineageInfo_WithValidCorrelationId_ShouldReturnLineageInfo()
     {
         // Arrange
         var collector = new LineageCollector();
         var item = "test data";
         var packet = collector.CreateLineagePacket(item, "source1");
         var hop = new LineageHop("node1", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId);
-        collector.RecordHop(packet.LineageId, hop);
+        collector.RecordHop(packet.CorrelationId, hop);
 
         // Act
-        var lineageInfo = collector.GetLineageInfo(packet.LineageId);
+        var lineageInfo = collector.GetLineageInfo(packet.CorrelationId);
 
         // Assert
         lineageInfo.Should().NotBeNull();
-        lineageInfo!.LineageId.Should().Be(packet.LineageId);
+        lineageInfo!.CorrelationId.Should().Be(packet.CorrelationId);
         lineageInfo.Data.Should().Be(item);
         lineageInfo.TraversalPath.Should().HaveCount(2);
         lineageInfo.LineageHops.Should().HaveCount(1);
     }
 
     [Fact]
-    public void GetLineageInfo_WithUnknownLineageId_ShouldReturnNull()
+    public void GetLineageInfo_WithUnknownCorrelationId_ShouldReturnNull()
     {
         // Arrange
         var collector = new LineageCollector();
-        var unknownLineageId = Guid.NewGuid();
+        var unknownCorrelationId = Guid.NewGuid();
 
         // Act
-        var lineageInfo = collector.GetLineageInfo(unknownLineageId);
+        var lineageInfo = collector.GetLineageInfo(unknownCorrelationId);
 
         // Assert
         lineageInfo.Should().BeNull();
@@ -325,18 +325,18 @@ public class LineageCollectorTests
         var packet3 = collector.CreateLineagePacket("item3", "source1");
         var hop = new LineageHop("node1", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId);
 
-        collector.RecordHop(packet1.LineageId, hop);
-        collector.RecordHop(packet2.LineageId, hop);
-        collector.RecordHop(packet3.LineageId, hop);
+        collector.RecordHop(packet1.CorrelationId, hop);
+        collector.RecordHop(packet2.CorrelationId, hop);
+        collector.RecordHop(packet3.CorrelationId, hop);
 
         // Act
         var allLineageInfo = collector.GetAllLineageInfo();
 
         // Assert
         allLineageInfo.Should().HaveCount(3);
-        allLineageInfo.Should().Contain(info => info.LineageId == packet1.LineageId);
-        allLineageInfo.Should().Contain(info => info.LineageId == packet2.LineageId);
-        allLineageInfo.Should().Contain(info => info.LineageId == packet3.LineageId);
+        allLineageInfo.Should().Contain(info => info.CorrelationId == packet1.CorrelationId);
+        allLineageInfo.Should().Contain(info => info.CorrelationId == packet2.CorrelationId);
+        allLineageInfo.Should().Contain(info => info.CorrelationId == packet3.CorrelationId);
     }
 
     [Fact]
@@ -360,8 +360,8 @@ public class LineageCollectorTests
         var packet1 = collector.CreateLineagePacket("item1", "source1");
         var packet2 = collector.CreateLineagePacket("item2", "source1");
         var hop = new LineageHop("node1", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId);
-        collector.RecordHop(packet1.LineageId, hop);
-        collector.RecordHop(packet2.LineageId, hop);
+        collector.RecordHop(packet1.CorrelationId, hop);
+        collector.RecordHop(packet2.CorrelationId, hop);
 
         // Act
         collector.Clear();
@@ -369,8 +369,8 @@ public class LineageCollectorTests
 
         // Assert
         allLineageInfo.Should().BeEmpty();
-        collector.GetLineageInfo(packet1.LineageId).Should().BeNull();
-        collector.GetLineageInfo(packet2.LineageId).Should().BeNull();
+        collector.GetLineageInfo(packet1.CorrelationId).Should().BeNull();
+        collector.GetLineageInfo(packet2.CorrelationId).Should().BeNull();
     }
 
     [Fact]
@@ -396,7 +396,7 @@ public class LineageCollectorTests
 
                     var hop = new LineageHop($"node-{threadId}", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId);
 
-                    collector.RecordHop(packet.LineageId, hop);
+                    collector.RecordHop(packet.CorrelationId, hop);
                 }
             });
 
@@ -427,7 +427,7 @@ public class LineageCollectorTests
                 {
                     var hop = new LineageHop($"node-{threadId}-{i}", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId);
 
-                    collector.RecordHop(packet.LineageId, hop);
+                    collector.RecordHop(packet.CorrelationId, hop);
                 }
             })
         );
@@ -435,7 +435,7 @@ public class LineageCollectorTests
         await Task.WhenAll(tasks);
 
         // Assert
-        var lineageInfo = collector.GetLineageInfo(packet.LineageId);
+        var lineageInfo = collector.GetLineageInfo(packet.CorrelationId);
         lineageInfo.Should().NotBeNull();
         lineageInfo!.LineageHops.Should().HaveCount(threads * hopCount);
     }
@@ -453,7 +453,7 @@ public class LineageCollectorTests
         // Assert
         packet.Should().NotBeNull();
         packet.Data.Should().BeNull();
-        packet.LineageId.Should().NotBeEmpty();
+        packet.CorrelationId.Should().NotBeEmpty();
     }
 
     [Fact]
@@ -467,10 +467,10 @@ public class LineageCollectorTests
         var hop3 = new LineageHop("node3", HopDecisionFlags.Joined, ObservedCardinality.Many, 2, 3, new[] { 0, 1 }, false, s_pipelineId);
 
         // Act
-        collector.RecordHop(packet.LineageId, hop1);
-        collector.RecordHop(packet.LineageId, hop2);
-        collector.RecordHop(packet.LineageId, hop3);
-        var lineageInfo = collector.GetLineageInfo(packet.LineageId);
+        collector.RecordHop(packet.CorrelationId, hop1);
+        collector.RecordHop(packet.CorrelationId, hop2);
+        collector.RecordHop(packet.CorrelationId, hop3);
+        var lineageInfo = collector.GetLineageInfo(packet.CorrelationId);
 
         // Assert
         lineageInfo.Should().NotBeNull();

@@ -95,22 +95,22 @@ public class NestedObservabilityAndLineageTests
         var childPipelineId = Guid.NewGuid();
 
         // Act — record hops with pipeline name context
-        collector.RecordHop(packet.LineageId, new LineageHop(
+        collector.RecordHop(packet.CorrelationId, new LineageHop(
             "source", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false,
             PipelineId: Guid.Empty));
 
-        collector.RecordHop(packet.LineageId, new LineageHop(
+        collector.RecordHop(packet.CorrelationId, new LineageHop(
             "transform", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false,
             PipelineId: childPipelineId,
             PipelineName: "ChildSubPipeline"));
 
-        collector.RecordHop(packet.LineageId, new LineageHop(
+        collector.RecordHop(packet.CorrelationId, new LineageHop(
             "output", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false,
             PipelineId: childPipelineId,
             PipelineName: "ChildSubPipeline"));
 
         // Assert
-        var lineageInfo = collector.GetLineageInfo(packet.LineageId);
+        var lineageInfo = collector.GetLineageInfo(packet.CorrelationId);
         lineageInfo.Should().NotBeNull();
 
         // Traversal path should include pipeline-qualified segments for child nodes

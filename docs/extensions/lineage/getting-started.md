@@ -163,7 +163,7 @@ With default configuration, lineage tracking captures:
 
 **For each item:**
 
-- Unique lineage ID
+- Unique correlation ID
 - Complete traversal path (all node IDs)
 - Per-hop details (node, outcome, cardinality, counts)
 - Original data (unless redacted)
