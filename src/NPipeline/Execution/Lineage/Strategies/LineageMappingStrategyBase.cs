@@ -87,6 +87,10 @@ internal abstract class LineageMappingStrategyBase
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static HopDecisionFlags WithoutRetry(HopDecisionFlags flags)
+        => flags & ~HopDecisionFlags.Retried;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected static (HopDecisionFlags Outcome, int? RetryCount) ResolveRecordedOutcome(Guid pipelineId, string nodeId, int inputIndex,
         HopDecisionFlags baseOutcome)
     {
@@ -97,10 +101,12 @@ internal abstract class LineageMappingStrategyBase
             ? recorded.RetryCount
             : (int?)null;
 
-        if ((recorded.OutcomeFlags & HopDecisionFlags.Retried) != 0 || recorded.RetryCount > 0)
-            return (baseOutcome | HopDecisionFlags.Retried, retryCount);
+        var outcome = baseOutcome | WithoutRetry(recorded.OutcomeFlags);
 
-        return (baseOutcome, retryCount);
+        if ((recorded.OutcomeFlags & HopDecisionFlags.Retried) != 0 || recorded.RetryCount > 0)
+            outcome |= HopDecisionFlags.Retried;
+
+        return (outcome, retryCount);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -110,6 +116,7 @@ internal abstract class LineageMappingStrategyBase
         if (contributorIndices is null || contributorIndices.Count == 0)
             return (baseOutcome, null);
 
+        var outcome = baseOutcome;
         var hasRetry = false;
         var maxRetryCount = 0;
 
@@ -118,6 +125,8 @@ internal abstract class LineageMappingStrategyBase
             if (!LineageNodeOutcomeRegistry.TryGet(pipelineId, nodeId, contributorIndex, out var recorded))
                 continue;
 
+            outcome |= WithoutRetry(recorded.OutcomeFlags);
+
             if ((recorded.OutcomeFlags & HopDecisionFlags.Retried) != 0 || recorded.RetryCount > 0)
             {
                 hasRetry = true;
@@ -125,9 +134,8 @@ internal abstract class LineageMappingStrategyBase
             }
         }
 
-        var outcome = hasRetry
-            ? baseOutcome | HopDecisionFlags.Retried
-            : baseOutcome;
+        if (hasRetry)
+            outcome |= HopDecisionFlags.Retried;
 
         return (outcome, maxRetryCount > 0 ? maxRetryCount : null);
     }

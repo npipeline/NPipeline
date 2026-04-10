@@ -336,6 +336,43 @@ public sealed class LineageMappingStrategiesTests
         LineageNodeOutcomeRegistry.ClearNode(s_pipelineId, "test_node");
     }
 
+    [Fact]
+    public async Task StreamingOneToOneStrategy_ShouldPropagateRecordedNonRetryOutcomeFlags()
+    {
+        // Arrange
+        const string nodeId = "test_node_non_retry";
+        LineageNodeOutcomeRegistry.BeginNode(s_pipelineId, nodeId);
+        LineageNodeOutcomeRegistry.Record(s_pipelineId, nodeId, 0, HopDecisionFlags.DeadLettered | HopDecisionFlags.Error, 0);
+
+        var inputPackets = CreatePacketStream(1);
+        var outputData = CreateDataStream("a");
+        ILineageMappingStrategy<int, string> strategy = StreamingOneToOneStrategy<int, string>.Instance;
+        var options = CreateOptions();
+
+        // Act
+        List<LineagePacket<string>> results = [];
+
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, nodeId, s_pipelineId, null, TransformCardinality.OneToOne, options,
+                           null, null, CancellationToken.None))
+        {
+            results.Add(packet);
+        }
+
+        // Assert
+        _ = results.Should().HaveCount(1);
+        _ = results[0].LineageHops.Should().HaveCount(1);
+
+        var outcome = results[0].LineageHops[0].Outcome;
+
+        _ = outcome.HasFlag(HopDecisionFlags.DeadLettered).Should().BeTrue();
+        _ = outcome.HasFlag(HopDecisionFlags.Error).Should().BeTrue();
+        _ = outcome.HasFlag(HopDecisionFlags.Retried).Should().BeFalse();
+        _ = results[0].LineageHops[0].RetryCount.Should().BeNull();
+
+        // Cleanup for isolation
+        LineageNodeOutcomeRegistry.ClearNode(s_pipelineId, nodeId);
+    }
+
     #endregion
 
     #region PositionalStreamingStrategy Tests
@@ -454,6 +491,43 @@ public sealed class LineageMappingStrategiesTests
 
         // Assert
         _ = results.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task MaterializingStrategy_ShouldPropagateRecordedNonRetryOutcomeFlags()
+    {
+        // Arrange
+        const string nodeId = "test_node_materialized_non_retry";
+        LineageNodeOutcomeRegistry.BeginNode(s_pipelineId, nodeId);
+        LineageNodeOutcomeRegistry.Record(s_pipelineId, nodeId, 0, HopDecisionFlags.DeadLettered | HopDecisionFlags.Error, 0);
+
+        var inputPackets = CreatePacketStream(1);
+        var outputData = CreateDataStream("a");
+        ILineageMappingStrategy<int, string> strategy = MaterializingStrategy<int, string>.Instance;
+        var options = CreateOptions();
+
+        // Act
+        List<LineagePacket<string>> results = [];
+
+        await foreach (var packet in strategy.MapAsync(inputPackets, outputData, nodeId, s_pipelineId, null, TransformCardinality.OneToOne, options,
+                           null, null, CancellationToken.None))
+        {
+            results.Add(packet);
+        }
+
+        // Assert
+        _ = results.Should().HaveCount(1);
+        _ = results[0].LineageHops.Should().HaveCount(1);
+
+        var outcome = results[0].LineageHops[0].Outcome;
+
+        _ = outcome.HasFlag(HopDecisionFlags.DeadLettered).Should().BeTrue();
+        _ = outcome.HasFlag(HopDecisionFlags.Error).Should().BeTrue();
+        _ = outcome.HasFlag(HopDecisionFlags.Retried).Should().BeFalse();
+        _ = results[0].LineageHops[0].RetryCount.Should().BeNull();
+
+        // Cleanup for isolation
+        LineageNodeOutcomeRegistry.ClearNode(s_pipelineId, nodeId);
     }
 
     [Fact]
