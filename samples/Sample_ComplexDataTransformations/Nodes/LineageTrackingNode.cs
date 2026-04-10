@@ -34,7 +34,7 @@ public class LineageTrackingNode : TransformNode<object, LineageTrackedItem<obje
         );
 
         Console.WriteLine($"Tracked lineage for item #{_processedCount}: {item?.GetType().Name}");
-        Console.WriteLine($"  Lineage ID: {enrichedLineageItem.Lineage.Last().LineageId}");
+        Console.WriteLine($"  Correlation ID: {enrichedLineageItem.Lineage.Last().CorrelationId}");
         Console.WriteLine($"  Operation: {enrichedLineageItem.Lineage.Last().Operation}");
         Console.WriteLine($"  Timestamp: {enrichedLineageItem.Lineage.Last().TransformationTime:O}");
 

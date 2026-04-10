@@ -19,24 +19,24 @@ public interface ILineageCollector
     /// <summary>
     ///     Records a hop in the lineage trail for an item.
     /// </summary>
-    /// <param name="lineageId">The unique ID of the item being tracked.</param>
+    /// <param name="correlationId">The unique ID of the item being tracked.</param>
     /// <param name="hop">The lineage hop to record.</param>
-    void RecordHop(Guid lineageId, LineageHop hop);
+    void RecordHop(Guid correlationId, LineageHop hop);
 
     /// <summary>
     ///     Determines if lineage should be collected for a given item based on sampling settings.
     /// </summary>
-    /// <param name="lineageId">The unique ID of the item.</param>
+    /// <param name="correlationId">The unique ID of the item.</param>
     /// <param name="options">The lineage options containing sampling configuration.</param>
     /// <returns>True if lineage should be collected for this item.</returns>
-    bool ShouldCollectLineage(Guid lineageId, LineageOptions? options);
+    bool ShouldCollectLineage(Guid correlationId, LineageOptions? options);
 
     /// <summary>
     ///     Gets the lineage information for a specific item.
     /// </summary>
-    /// <param name="lineageId">The unique ID of the item.</param>
+    /// <param name="correlationId">The unique ID of the item.</param>
     /// <returns>The lineage information, or null if not found.</returns>
-    LineageInfo? GetLineageInfo(Guid lineageId);
+    LineageInfo? GetLineageInfo(Guid correlationId);
 
     /// <summary>
     ///     Gets all collected lineage information.

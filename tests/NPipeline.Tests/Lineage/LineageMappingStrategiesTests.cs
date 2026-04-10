@@ -124,7 +124,7 @@ public sealed class LineageMappingStrategiesTests
         _ = results[0].Data.Should().Be("a");
         _ = results[1].Data.Should().Be("b");
         _ = results[2].Data.Should().Be("c");
-        _ = results[0].LineageId.Should().NotBe(Guid.Empty);
+        _ = results[0].CorrelationId.Should().NotBe(Guid.Empty);
         _ = results[0].TraversalPath.Should().Contain($"{s_pipelineId:N}::test_node");
     }
 
@@ -222,11 +222,11 @@ public sealed class LineageMappingStrategiesTests
     public async Task StreamingOneToOneStrategy_PreservesLineageMetadata()
     {
         // Arrange
-        var lineageId = Guid.NewGuid();
+        var correlationId = Guid.NewGuid();
 
         LineagePacket<int>[] packets =
         [
-            new(42, lineageId, ImmutableList.Create("input_node"))
+            new(42, correlationId, ImmutableList.Create("input_node"))
             {
                 Collect = true,
                 LineageHops = ImmutableList<LineageHop>.Empty,
@@ -249,7 +249,7 @@ public sealed class LineageMappingStrategiesTests
 
         // Assert
         _ = results.Should().HaveCount(1);
-        _ = results[0].LineageId.Should().Be(lineageId);
+        _ = results[0].CorrelationId.Should().Be(correlationId);
         _ = results[0].Collect.Should().BeTrue();
     }
 

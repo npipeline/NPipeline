@@ -10,8 +10,8 @@ public interface ILineageEnvelope
     /// <summary>The underlying data object carried by the envelope.</summary>
     object? Data { get; }
 
-    /// <summary>Stable lineage identifier assigned at the source.</summary>
-    Guid LineageId { get; }
+    /// <summary>Stable correlation identifier assigned at the source.</summary>
+    Guid CorrelationId { get; }
 
     /// <summary>Indicates whether this item was selected for lineage collection (sampling).</summary>
     bool Collect { get; }

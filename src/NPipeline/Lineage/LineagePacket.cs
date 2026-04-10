@@ -8,11 +8,11 @@ namespace NPipeline.Lineage;
 /// </summary>
 /// <typeparam name="T">The type of the data being carried.</typeparam>
 /// <param name="Data">The actual data item.</param>
-/// <param name="LineageId">A unique ID assigned at the source for this item.</param>
+/// <param name="CorrelationId">A unique correlation ID assigned at the source for this item.</param>
 /// <param name="TraversalPath">List of node IDs it has passed through.</param>
 public sealed record LineagePacket<T>(
     T Data,
-    Guid LineageId,
+    Guid CorrelationId,
     ImmutableList<string> TraversalPath)
     : ILineageEnvelope
 {

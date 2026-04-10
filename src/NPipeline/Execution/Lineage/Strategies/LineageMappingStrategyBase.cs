@@ -270,7 +270,8 @@ internal abstract class LineageMappingStrategyBase
                     hopRecords = AppendHop(hopRecords, nodeId, pipelineId, pipelineName, opts, outcome, cardinalityObserved, ancestry,
                         outputEmissionCount, inputPacket.Data, outputData);
 
-                yield return new LineagePacket<TOut>(outputData, inputPacket.LineageId, inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId)))
+                yield return new LineagePacket<TOut>(outputData, inputPacket.CorrelationId,
+                    inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId)))
                 { Collect = inputPacket.Collect, LineageHops = hopRecords };
             }
             else
@@ -305,7 +306,8 @@ internal abstract class LineageMappingStrategyBase
                 if (inputPacket.Collect)
                     hopRecords = MaybeAppendHop(hopRecords, nodeId, pipelineId, pipelineName, opts, 1, inputPacket.Data, outputData);
 
-                yield return new LineagePacket<TOut>(outputData, inputPacket.LineageId, inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId)))
+                yield return new LineagePacket<TOut>(outputData, inputPacket.CorrelationId,
+                    inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId)))
                 { Collect = inputPacket.Collect, LineageHops = hopRecords };
 
                 matchedInputCount++;

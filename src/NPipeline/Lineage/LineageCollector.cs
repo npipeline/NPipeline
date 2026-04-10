@@ -29,33 +29,33 @@ public sealed class LineageCollector : ILineageCollector
     {
         ArgumentNullException.ThrowIfNull(sourceNodeId);
 
-        var lineageId = Guid.NewGuid();
+        var correlationId = Guid.NewGuid();
         var traversalPath = ImmutableList.Create(sourceNodeId);
 
         // Initialize the lineage trail
-        _ = _lineageTrails.TryAdd(lineageId, new LineageTrail(lineageId, item, traversalPath));
+        _ = _lineageTrails.TryAdd(correlationId, new LineageTrail(correlationId, item, traversalPath));
 
-        return new LineagePacket<T>(item, lineageId, traversalPath);
+        return new LineagePacket<T>(item, correlationId, traversalPath);
     }
 
     /// <summary>
     ///     Records a hop in the lineage trail for an item.
     /// </summary>
-    /// <param name="lineageId">The unique ID of the item being tracked.</param>
+    /// <param name="correlationId">The unique ID of the item being tracked.</param>
     /// <param name="hop">The lineage hop to record.</param>
-    public void RecordHop(Guid lineageId, LineageHop hop)
+    public void RecordHop(Guid correlationId, LineageHop hop)
     {
-        if (_lineageTrails.TryGetValue(lineageId, out var trail))
+        if (_lineageTrails.TryGetValue(correlationId, out var trail))
             trail.AddHop(hop);
     }
 
     /// <summary>
     ///     Determines if lineage should be collected for a given item based on sampling settings.
     /// </summary>
-    /// <param name="lineageId">The unique ID of the item.</param>
+    /// <param name="correlationId">The unique ID of the item.</param>
     /// <param name="options">The lineage options containing sampling configuration.</param>
     /// <returns>True if lineage should be collected for this item.</returns>
-    public bool ShouldCollectLineage(Guid lineageId, LineageOptions? options)
+    public bool ShouldCollectLineage(Guid correlationId, LineageOptions? options)
     {
         // If no options provided, default to collecting all lineage
         if (options == null)
@@ -68,8 +68,8 @@ public sealed class LineageCollector : ILineageCollector
         // Use deterministic sampling if enabled
         if (options.DeterministicSampling)
         {
-            // Hash the lineage ID and use modulo to determine if this item should be sampled
-            var hash = lineageId.GetHashCode();
+            // Hash the correlation ID and use modulo to determine if this item should be sampled
+            var hash = correlationId.GetHashCode();
             return Math.Abs(hash) % options.SampleEvery == 0;
         }
 
@@ -80,11 +80,11 @@ public sealed class LineageCollector : ILineageCollector
     /// <summary>
     ///     Gets the lineage information for a specific item.
     /// </summary>
-    /// <param name="lineageId">The unique ID of the item.</param>
+    /// <param name="correlationId">The unique ID of the item.</param>
     /// <returns>The lineage information, or null if not found.</returns>
-    public LineageInfo? GetLineageInfo(Guid lineageId)
+    public LineageInfo? GetLineageInfo(Guid correlationId)
     {
-        return _lineageTrails.TryGetValue(lineageId, out var trail)
+        return _lineageTrails.TryGetValue(correlationId, out var trail)
             ? trail.ToLineageInfo()
             : null;
     }
@@ -113,13 +113,13 @@ public sealed class LineageCollector : ILineageCollector
     {
         private readonly object? _data;
         private readonly List<LineageHop> _hops = [];
-        private readonly Guid _lineageId;
+        private readonly Guid _correlationId;
         private readonly object _lock = new();
         private readonly ImmutableList<string>.Builder _traversalPathBuilder;
 
-        public LineageTrail(Guid lineageId, object? data, ImmutableList<string> initialPath)
+        public LineageTrail(Guid correlationId, object? data, ImmutableList<string> initialPath)
         {
-            _lineageId = lineageId;
+            _correlationId = correlationId;
             _data = data;
             _traversalPathBuilder = ImmutableList.CreateBuilder<string>();
             _traversalPathBuilder.AddRange(initialPath);
@@ -170,7 +170,7 @@ public sealed class LineageCollector : ILineageCollector
 
                 return new LineageInfo(
                     _data,
-                    _lineageId,
+                    _correlationId,
                     _traversalPathBuilder.ToImmutable(),
                     [.. _hops],
                     pipelineId,

@@ -529,7 +529,7 @@ public sealed partial class PipelineBuilder
                             : (object?)packet.Data;
 
                         var hopRecords = (IReadOnlyList<LineageHop>)packet.LineageHops;
-                        var lineageInfo = new LineageInfo(dataToEmit, packet.LineageId, finalPath, hopRecords, pipelineId, pipelineName);
+                        var lineageInfo = new LineageInfo(dataToEmit, packet.CorrelationId, finalPath, hopRecords, pipelineId, pipelineName);
                         await lineageSink.RecordAsync(lineageInfo, token).ConfigureAwait(false);
                     }
 
@@ -539,7 +539,7 @@ public sealed partial class PipelineBuilder
 
             async IAsyncEnumerable<TIn> ProjectDynamic(IDataStream dynamicPipe, [EnumeratorCancellation] CancellationToken token)
             {
-                PropertyInfo? dataProp = null, collectProp = null, lineageIdProp = null, pathProp = null, hopsProp = null;
+                PropertyInfo? dataProp = null, collectProp = null, correlationIdProp = null, pathProp = null, hopsProp = null;
                 Type? lastObservedType = null;
 
                 await foreach (var obj in dynamicPipe.ToAsyncEnumerable(token).WithCancellation(token).ConfigureAwait(false))
@@ -556,12 +556,12 @@ public sealed partial class PipelineBuilder
                     {
                         dataProp = objType.GetProperty("Data");
                         collectProp = objType.GetProperty("Collect");
-                        lineageIdProp = objType.GetProperty("LineageId");
+                        correlationIdProp = objType.GetProperty("CorrelationId");
                         pathProp = objType.GetProperty("TraversalPath");
                         hopsProp = objType.GetProperty("LineageHops");
                         lastObservedType = objType;
 
-                        if (dataProp is null || collectProp is null || lineageIdProp is null || pathProp is null || hopsProp is null)
+                        if (dataProp is null || collectProp is null || correlationIdProp is null || pathProp is null || hopsProp is null)
                             continue; // malformed lineage packet type
                     }
 
@@ -578,7 +578,7 @@ public sealed partial class PipelineBuilder
                                 ? null
                                 : (object?)typedVal;
 
-                            var lineageInfo = new LineageInfo(dataToEmit, (Guid)lineageIdProp!.GetValue(obj)!, finalPath, hopRecords, pipelineId,
+                            var lineageInfo = new LineageInfo(dataToEmit, (Guid)correlationIdProp!.GetValue(obj)!, finalPath, hopRecords, pipelineId,
                                 pipelineName);
                             await lineageSink.RecordAsync(lineageInfo, token).ConfigureAwait(false);
                         }

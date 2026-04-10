@@ -38,7 +38,7 @@ public class LineageSink : SinkNode<LineageTrackedItem<object>>
             {
                 var lineage = item.Lineage[i];
                 Console.WriteLine($"  Step {i + 1}:");
-                Console.WriteLine($"    Lineage ID: {lineage.LineageId}");
+                Console.WriteLine($"    Correlation ID: {lineage.CorrelationId}");
                 Console.WriteLine($"    Source: {lineage.SourceNode}");
                 Console.WriteLine($"    Target: {lineage.TargetNode}");
                 Console.WriteLine($"    Operation: {lineage.Operation}");

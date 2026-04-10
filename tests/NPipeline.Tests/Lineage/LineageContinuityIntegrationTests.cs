@@ -122,7 +122,7 @@ public sealed class LineageContinuityIntegrationTests
         var aggregateSegment = Qualified(context, "aggregate");
         var sourceSegment = Qualified(context, "source");
 
-        records[0].LineageId.Should().NotBe(Guid.Empty);
+        records[0].CorrelationId.Should().NotBe(Guid.Empty);
         records[0].TraversalPath.Should().Contain(aggregateSegment);
         records[0].TraversalPath.Should().NotContain(sourceSegment);
     }

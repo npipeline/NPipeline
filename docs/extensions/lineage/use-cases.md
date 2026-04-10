@@ -112,18 +112,18 @@ public sealed class LineageDebugger
         _logger = logger;
     }
 
-    public void DebugItem(Guid lineageId)
+    public void DebugItem(Guid correlationId)
     {
-        var lineageInfo = _collector.GetLineageInfo(lineageId);
+        var lineageInfo = _collector.GetLineageInfo(correlationId);
         
         if (lineageInfo == null)
         {
-            _logger.LogWarning("Lineage {LineageId} not found", lineageId);
+            _logger.LogWarning("Lineage {CorrelationId} not found", correlationId);
             return;
         }
 
         _logger.LogInformation("=== Lineage Debug Report ===");
-        _logger.LogInformation("Lineage ID: {LineageId}", lineageInfo.LineageId);
+        _logger.LogInformation("Correlation ID: {CorrelationId}", lineageInfo.CorrelationId);
         _logger.LogInformation("Traversal Path: {Path}", 
             string.Join(" → ", lineageInfo.TraversalPath));
         
@@ -265,7 +265,7 @@ public sealed class ImpactAnalyzer
         {
             NodeId = nodeId,
             AffectedItemCount = affectedItems.Count,
-            AffectedLineageIds = affectedItems.Select(li => li.LineageId).ToList(),
+            AffectedCorrelationIds = affectedItems.Select(li => li.CorrelationId).ToList(),
             DownstreamNodes = GetDownstreamNodes(nodeId, allLineage)
         };
         
@@ -292,7 +292,7 @@ public sealed class ImpactAnalyzer
 public sealed record ImpactReport(
     string NodeId,
     int AffectedItemCount,
-    List<Guid> AffectedLineageIds,
+    List<Guid> AffectedCorrelationIds,
     List<string> DownstreamNodes
 );
 ```
@@ -762,7 +762,7 @@ public sealed class DataCatalogBuilder
         return lineage
             .Select(li => new DataFlow
             {
-                LineageId = li.LineageId,
+                CorrelationId = li.CorrelationId,
                 FlowPath = li.TraversalPath,
                 HopCount = li.LineageHops.Count
             })
@@ -788,7 +788,7 @@ public sealed record DataTransformation(
 );
 
 public sealed record DataFlow(
-    Guid LineageId,
+    Guid CorrelationId,
     IReadOnlyList<string> FlowPath,
     int HopCount
 );

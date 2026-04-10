@@ -49,7 +49,7 @@ namespace NPipeline.Configuration;
 ///     Default is 100 (1/100).
 /// </param>
 /// <param name="DeterministicSampling">
-///     When true, sampling is performed deterministically using LineageId hashing.
+///     When true, sampling is performed deterministically using CorrelationId hashing.
 ///     Default is true.
 /// </param>
 /// <param name="RedactData">
