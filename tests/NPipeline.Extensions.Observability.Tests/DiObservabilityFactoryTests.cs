@@ -20,7 +20,7 @@ public sealed class DiObservabilityFactoryTests
         }
 
         public void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Guid pipelineId, Exception? exception = null,
-            double? peakMemoryMb = null, long? processorTimeMs = null, string? pipelineName = null)
+            double? peakMemoryMb = null, double? processorTimeMs = null, string? pipelineName = null)
         {
             // Custom implementation
         }

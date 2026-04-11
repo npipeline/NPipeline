@@ -195,7 +195,7 @@ services.AddNPipelineObservability<CustomCollector, CustomMetricsSink, CustomPip
 
 - **NodeId**: Unique identifier
 - **StartTime/EndTime**: Execution timestamps
-- **DurationMs**: Execution duration in milliseconds
+- **DurationMs**: Execution duration in milliseconds (fractional values supported)
 - **Success**: Whether execution succeeded
 - **ItemsProcessed/ItemsEmitted**: Item counts (automatically tracked when observability is enabled)
 - **RetryCount**: Number of retry attempts (thread-safe, uses atomic operations)

@@ -20,15 +20,16 @@ public interface INodeMetrics
     Guid PipelineId { get; }
     DateTimeOffset? StartTime { get; }
     DateTimeOffset? EndTime { get; }
-    long? DurationMs { get; }
+    double? DurationMs { get; }
     bool Success { get; }
     long ItemsProcessed { get; }
     long ItemsEmitted { get; }
     Exception? Exception { get; }
     int RetryCount { get; }
-    long? PeakMemoryUsageMb { get; }
-    long? ProcessorTimeMs { get; }
+    double? PeakMemoryUsageMb { get; }
+    double? ProcessorTimeMs { get; }
     double? ThroughputItemsPerSec { get; }
+    double? AverageItemProcessingMs { get; }
     int? ThreadId { get; }
     string? PipelineName { get; }
 }
@@ -78,16 +79,16 @@ public interface INodeMetrics
 
 #### DurationMs
 
-- **Type**: `long?`
+- **Type**: `double?`
 - **Description**: Total execution time in milliseconds
 - **Source**: Calculated from `StartTime` and `EndTime`
 - **Thread-Safe**: Yes (immutable)
-- **Precision**: Millisecond
+- **Precision**: Sub-millisecond (double-precision floating point)
 
 **Calculation**:
 
 ```csharp
-DurationMs = (long)(EndTime - StartTime).TotalMilliseconds
+DurationMs = (EndTime - StartTime).TotalMilliseconds
 ```
 
 **Usage**: Primary metric for identifying performance bottlenecks. Compare duration across nodes to find slow components.
@@ -165,7 +166,7 @@ DurationMs = (long)(EndTime - StartTime).TotalMilliseconds
 
 #### PeakMemoryUsageMb
 
-- **Type**: `long?`
+- **Type**: `double?`
 - **Description**: Per-node managed memory allocation delta in megabytes during node execution
 - **Source**: Calculated as delta between final and initial memory using `GC.GetTotalMemory(false)`
 - **Thread-Safe**: Yes (immutable)
@@ -200,7 +201,7 @@ var memoryDeltaMb = deltaBytes / (1024 * 1024);
 
 #### ProcessorTimeMs
 
-- **Type**: `long?`
+- **Type**: `double?`
 - **Description**: Total processor time used in milliseconds
 - **Source**: Not available per-node in current implementation
 - **Thread-Safe**: Yes (immutable)

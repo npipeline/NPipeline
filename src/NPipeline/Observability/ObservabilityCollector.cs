@@ -33,7 +33,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
 
     /// <inheritdoc />
     public void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Guid pipelineId, Exception? exception = null,
-        double? peakMemoryMb = null, long? processorTimeMs = null, string? pipelineName = null)
+        double? peakMemoryMb = null, double? processorTimeMs = null, string? pipelineName = null)
     {
         ArgumentNullException.ThrowIfNull(nodeId);
 
@@ -177,13 +177,13 @@ public sealed class ObservabilityCollector : IObservabilityCollector
         private string? _pipelineName = pipelineName;
         private readonly object _performanceMetricsLock = new();
         private double? _averageItemProcessingMs;
-        private long? _durationMs;
+        private double? _durationMs;
         private DateTimeOffset? _endTime;
         private Exception? _exception;
         private long _itemsEmitted;
         private long _itemsProcessed;
         private double? _peakMemoryUsageMb;
-        private long? _processorTimeMs;
+        private double? _processorTimeMs;
         private int _retryCount;
         private DateTimeOffset? _startTime;
         private bool _success = true;
@@ -224,7 +224,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
                 _peakMemoryUsageMb = initialMemoryMb;
         }
 
-        public void RecordEnd(DateTimeOffset timestamp, bool success, Exception? exception, double? peakMemoryMb, long? processorTimeMs)
+        public void RecordEnd(DateTimeOffset timestamp, bool success, Exception? exception, double? peakMemoryMb, double? processorTimeMs)
         {
             _endTime = timestamp;
             _success = success;
@@ -233,7 +233,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
             _processorTimeMs = processorTimeMs;
 
             if (_startTime.HasValue)
-                _durationMs = (long)(timestamp - _startTime.Value).TotalMilliseconds;
+                _durationMs = (timestamp - _startTime.Value).TotalMilliseconds;
         }
 
         public void RecordItemMetrics(long itemsProcessed, long itemsEmitted)

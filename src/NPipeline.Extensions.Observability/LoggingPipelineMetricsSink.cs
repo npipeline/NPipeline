@@ -22,11 +22,11 @@ public sealed class LoggingPipelineMetricsSink : IPipelineMetricsSink
             new EventId(2, nameof(LoggingPipelineMetricsSink)),
             "Pipeline {PipelineName} (RunId: {RunId}) failed. Processed {TotalItemsProcessed} items before failure. Exception: {ExceptionMessage}");
 
-    private static readonly Action<ILogger, string, long, long, long, Exception?> s_logNodeSuccess =
-        LoggerMessage.Define<string, long, long, long>(
+    private static readonly Action<ILogger, string, long, long, double, Exception?> s_logNodeSuccess =
+        LoggerMessage.Define<string, long, long, double>(
             LogLevel.Information,
             new EventId(3, nameof(LoggingPipelineMetricsSink)),
-            "  Node {NodeId}: Processed {ItemsProcessed} items, emitted {ItemsEmitted} items in {DurationMs}ms");
+            "  Node {NodeId}: Processed {ItemsProcessed} items, emitted {ItemsEmitted} items in {DurationMs:F3}ms");
 
     private static readonly Action<ILogger, string, long, string, Exception?> s_logNodeFailure =
         LoggerMessage.Define<string, long, string>(
@@ -80,13 +80,13 @@ public sealed class LoggingPipelineMetricsSink : IPipelineMetricsSink
         ArgumentNullException.ThrowIfNull(pipelineMetrics);
 
         using (_logger.BeginScope(new Dictionary<string, object?>
-               {
-                   ["PipelineName"] = pipelineMetrics.PipelineName,
-                   ["RunId"] = pipelineMetrics.RunId,
-                   ["Success"] = pipelineMetrics.Success,
-                   ["TotalItemsProcessed"] = pipelineMetrics.TotalItemsProcessed,
-                   ["DurationMs"] = pipelineMetrics.DurationMs,
-               }))
+        {
+            ["PipelineName"] = pipelineMetrics.PipelineName,
+            ["RunId"] = pipelineMetrics.RunId,
+            ["Success"] = pipelineMetrics.Success,
+            ["TotalItemsProcessed"] = pipelineMetrics.TotalItemsProcessed,
+            ["DurationMs"] = pipelineMetrics.DurationMs,
+        }))
         {
             if (pipelineMetrics.Success)
             {
@@ -119,7 +119,7 @@ public sealed class LoggingPipelineMetricsSink : IPipelineMetricsSink
                         nodeMetric.NodeId,
                         nodeMetric.ItemsProcessed,
                         nodeMetric.ItemsEmitted,
-                        nodeMetric.DurationMs ?? 0,
+                        nodeMetric.DurationMs ?? 0.0,
                         null);
                 }
                 else

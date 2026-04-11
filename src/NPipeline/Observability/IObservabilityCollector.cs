@@ -31,7 +31,7 @@ public interface IObservabilityCollector
     /// <param name="processorTimeMs">The processor time used in milliseconds.</param>
     /// <param name="pipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
     void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Guid pipelineId, Exception? exception = null, double? peakMemoryMb = null,
-        long? processorTimeMs = null, string? pipelineName = null);
+        double? processorTimeMs = null, string? pipelineName = null);
 
     /// <summary>
     ///     Records item processing metrics for a node.

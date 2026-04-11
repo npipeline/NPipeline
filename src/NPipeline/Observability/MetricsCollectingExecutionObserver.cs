@@ -72,7 +72,7 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
             }
         }
 
-        long? processorTimeMs = null;
+        double? processorTimeMs = null;
 
         _collector.RecordNodeEnd(
             e.NodeId,

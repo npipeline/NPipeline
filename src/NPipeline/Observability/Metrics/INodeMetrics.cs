@@ -23,7 +23,7 @@ public interface INodeMetrics
     /// <summary>
     ///     The duration of the node execution in milliseconds.
     /// </summary>
-    long? DurationMs { get; }
+    double? DurationMs { get; }
 
     /// <summary>
     ///     Whether the node execution was successful.
@@ -58,7 +58,7 @@ public interface INodeMetrics
     /// <summary>
     ///     The processor time used in milliseconds.
     /// </summary>
-    long? ProcessorTimeMs { get; }
+    double? ProcessorTimeMs { get; }
 
     /// <summary>
     ///     The throughput in items per second.

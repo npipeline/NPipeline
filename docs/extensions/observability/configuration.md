@@ -232,7 +232,7 @@ public sealed class CustomObservabilityCollector : IObservabilityCollector
     }
 
     public void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Exception? exception = null, 
-        long? peakMemoryMb = null, long? processorTimeMs = null)
+        double? peakMemoryMb = null, double? processorTimeMs = null)
     {
         _baseCollector.RecordNodeEnd(nodeId, timestamp, success, exception, peakMemoryMb, processorTimeMs);
         

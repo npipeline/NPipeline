@@ -18,7 +18,7 @@ public sealed class LoggingMetricsSinkTests
         Exception? exception = null,
         int retryCount = 0,
         long? peakMemoryMb = null,
-        long? processorTimeMs = null,
+        double? processorTimeMs = null,
         double? throughputItemsPerSec = null,
         double? averageItemProcessingMs = null,
         long itemsProcessed = 100,

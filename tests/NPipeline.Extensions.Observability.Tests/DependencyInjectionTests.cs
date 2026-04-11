@@ -654,13 +654,13 @@ public sealed class DependencyInjectionTests
         }
 
         public void RecordNodeEnd(string nodeId, DateTimeOffset timestamp, bool success, Guid pipelineId, Exception? exception = null,
-            double? peakMemoryMb = null, long? processorTimeMs = null, string? pipelineName = null)
+            double? peakMemoryMb = null, double? processorTimeMs = null, string? pipelineName = null)
         {
             var key = BuildKey(nodeId, pipelineId);
 
             if (_nodeMetrics.TryGetValue(key, out var metrics))
             {
-                var duration = (long)(timestamp - metrics.StartTime)!.Value.TotalMilliseconds;
+                var duration = (timestamp - metrics.StartTime)!.Value.TotalMilliseconds;
 
                 _nodeMetrics[key] = metrics with
                 {
