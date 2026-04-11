@@ -202,7 +202,7 @@ services.AddNPipelineObservability<CustomCollector, CustomMetricsSink, CustomPip
 - **ThroughputItemsPerSec**: Processing throughput
 - **AverageItemProcessingMs**: Average time per item in milliseconds
 - **PeakMemoryUsageMb**: Peak memory usage during node execution (per-node delta, not global process memory)
-- **ProcessorTimeMs**: CPU time consumed (not available per-node; only available at process level)
+- **ProcessorTimeMs**: Best-effort CPU time delta captured from process CPU time during node execution
 - **ThreadId**: Executing thread ID
 - **Exception**: Any error that occurred
 
@@ -211,7 +211,7 @@ services.AddNPipelineObservability<CustomCollector, CustomMetricsSink, CustomPip
 - **PipelineName**: Pipeline identifier
 - **RunId**: Unique run identifier (GUID)
 - **StartTime/EndTime**: Pipeline execution timestamps
-- **DurationMs**: Total execution duration
+- **DurationMs**: Total execution duration (fractional values supported)
 - **Success**: Overall pipeline success
 - **TotalItemsProcessed**: Sum of all items processed
 - **NodeMetrics**: Collection of node-level metrics

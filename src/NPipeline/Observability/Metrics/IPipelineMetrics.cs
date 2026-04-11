@@ -66,7 +66,7 @@ public interface IPipelineMetrics
     /// <summary>
     ///     The total duration of the pipeline execution in milliseconds.
     /// </summary>
-    long? DurationMs { get; }
+    double? DurationMs { get; }
 
     /// <summary>
     ///     Whether the pipeline execution was successful.

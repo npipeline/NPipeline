@@ -620,7 +620,7 @@ public sealed class ObservabilityCollectorTests
         Assert.Equal(runId, pipelineMetrics.RunId);
         Assert.Equal(startTime, pipelineMetrics.StartTime);
         Assert.Equal(endTime, pipelineMetrics.EndTime);
-        Assert.Equal(5000, pipelineMetrics.DurationMs);
+        Assert.Equal(5000d, pipelineMetrics.DurationMs);
         Assert.True(pipelineMetrics.Success);
         Assert.Equal(195, pipelineMetrics.TotalItemsProcessed); // 100 + 95
         Assert.Equal(2, pipelineMetrics.NodeMetrics.Count);

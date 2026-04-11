@@ -135,10 +135,12 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
         if (_options.RecordItemCounts)
             _collector.RecordItemMetrics(_nodeId, _itemsProcessed, _itemsEmitted, _pipelineId, _pipelineName);
 
-        if (_options.RecordPerformanceMetrics && _itemsProcessed > 0 && _stopwatch.ElapsedMilliseconds > 0)
+        var elapsedMs = _stopwatch.Elapsed.TotalMilliseconds;
+
+        if (_options.RecordPerformanceMetrics && _itemsProcessed > 0 && elapsedMs > 0)
         {
             var throughput = _itemsProcessed / _stopwatch.Elapsed.TotalSeconds;
-            var avgTimeMs = _stopwatch.ElapsedMilliseconds / (double)_itemsProcessed;
+            var avgTimeMs = elapsedMs / _itemsProcessed;
             _collector.RecordPerformanceMetrics(_nodeId, throughput, avgTimeMs, _pipelineId, _pipelineName);
         }
     }

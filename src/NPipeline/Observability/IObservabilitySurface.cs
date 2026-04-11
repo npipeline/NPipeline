@@ -66,6 +66,7 @@ public readonly struct NodeObservationScope(
     string nodeId,
     string nodeType,
     DateTimeOffset startTime,
+    long startTimestamp,
     IPipelineActivity activity,
     Guid pipelineId,
     string? pipelineName = null,
@@ -101,6 +102,11 @@ public readonly struct NodeObservationScope(
     ///     Gets the timestamp when node execution started.
     /// </summary>
     public DateTimeOffset StartTime { get; } = startTime;
+
+    /// <summary>
+    ///     Gets the high-resolution timestamp captured at node start.
+    /// </summary>
+    public long StartTimestamp { get; } = startTimestamp;
 
     /// <summary>
     ///     Gets the pipeline activity associated with this node observation.
@@ -140,6 +146,7 @@ public readonly struct NodeObservationScope(
                PipelineId == other.PipelineId &&
                PipelineName == other.PipelineName &&
                StartTime.Equals(other.StartTime) &&
+             StartTimestamp == other.StartTimestamp &&
                Equals(Activity, other.Activity) &&
                Equals(AutoObservabilityScope, other.AutoObservabilityScope);
     }
@@ -150,7 +157,7 @@ public readonly struct NodeObservationScope(
     /// <returns>A hash code for current <see cref="NodeObservationScope" />.</returns>
     public override int GetHashCode()
     {
-        return HashCode.Combine(NodeId, NodeType, PipelineId, PipelineName, StartTime, Activity, AutoObservabilityScope);
+        return HashCode.Combine(NodeId, NodeType, PipelineId, PipelineName, StartTime, StartTimestamp, Activity, AutoObservabilityScope);
     }
 
     /// <summary>

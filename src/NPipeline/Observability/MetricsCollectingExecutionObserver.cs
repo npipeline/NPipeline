@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using NPipeline.Execution;
 
 namespace NPipeline.Observability;
@@ -11,6 +12,7 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
     private readonly bool _collectMemoryMetrics = collectMemoryMetrics;
     private readonly IObservabilityCollector _collector = collector ?? throw new ArgumentNullException(nameof(collector));
     private readonly ConcurrentDictionary<string, long> _nodeInitialMemory = new();
+    private readonly ConcurrentDictionary<string, double> _nodeInitialProcessorTimeMs = new();
     private readonly ConcurrentDictionary<string, DateTimeOffset> _nodeStartTimes = new();
     private bool _disposed;
 
@@ -41,6 +43,9 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
 
         _collector.RecordNodeStart(e.NodeId, e.StartTime, e.PipelineId, threadId, initialMemoryMb, e.PipelineName);
         _nodeStartTimes[BuildNodeExecutionKey(e.NodeId, e.PipelineId)] = e.StartTime;
+
+        var initialProcessorTimeMs = Process.GetCurrentProcess().TotalProcessorTime.TotalMilliseconds;
+        _nodeInitialProcessorTimeMs[BuildNodeExecutionKey(e.NodeId, e.PipelineId)] = initialProcessorTimeMs;
     }
 
     /// <inheritdoc />
@@ -73,6 +78,11 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
         }
 
         double? processorTimeMs = null;
+
+        var finalProcessorTimeMs = Process.GetCurrentProcess().TotalProcessorTime.TotalMilliseconds;
+
+        if (_nodeInitialProcessorTimeMs.TryRemove(executionKey, out var initialProcessorTimeMs))
+            processorTimeMs = Math.Max(0, finalProcessorTimeMs - initialProcessorTimeMs);
 
         _collector.RecordNodeEnd(
             e.NodeId,
@@ -131,6 +141,7 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
         if (disposing)
         {
             _nodeInitialMemory.Clear();
+            _nodeInitialProcessorTimeMs.Clear();
             _nodeStartTimes.Clear();
         }
 

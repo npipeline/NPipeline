@@ -19,7 +19,7 @@ public sealed record PipelineMetrics(
     Guid RunId,
     DateTimeOffset StartTime,
     DateTimeOffset? EndTime,
-    long? DurationMs,
+    double? DurationMs,
     bool Success,
     long TotalItemsProcessed,
     IReadOnlyList<INodeMetrics> NodeMetrics,

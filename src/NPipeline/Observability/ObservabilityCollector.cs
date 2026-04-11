@@ -101,7 +101,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
         var totalItemsProcessed = nodeMetrics.Sum(m => m.ItemsProcessed);
 
         var durationMs = endTime.HasValue
-            ? (long?)(long)(endTime.Value - startTime).TotalMilliseconds
+            ? (double?)(endTime.Value - startTime).TotalMilliseconds
             : null;
 
         return new PipelineMetrics(

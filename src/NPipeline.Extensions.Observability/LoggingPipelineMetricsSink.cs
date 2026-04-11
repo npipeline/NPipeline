@@ -10,11 +10,11 @@ namespace NPipeline.Observability;
 public sealed class LoggingPipelineMetricsSink : IPipelineMetricsSink
 {
     // LoggerMessage delegates for high-performance logging - pipeline level
-    private static readonly Action<ILogger, string, Guid, long, long, Exception?> s_logPipelineSuccess =
-        LoggerMessage.Define<string, Guid, long, long>(
+    private static readonly Action<ILogger, string, Guid, long, double, Exception?> s_logPipelineSuccess =
+        LoggerMessage.Define<string, Guid, long, double>(
             LogLevel.Information,
             new EventId(1, nameof(LoggingPipelineMetricsSink)),
-            "Pipeline {PipelineName} (RunId: {RunId}) completed successfully. Processed {TotalItemsProcessed} items in {DurationMs}ms");
+            "Pipeline {PipelineName} (RunId: {RunId}) completed successfully. Processed {TotalItemsProcessed} items in {DurationMs:F3}ms");
 
     private static readonly Action<ILogger, string, Guid, long, string, Exception?> s_logPipelineFailure =
         LoggerMessage.Define<string, Guid, long, string>(
@@ -95,7 +95,7 @@ public sealed class LoggingPipelineMetricsSink : IPipelineMetricsSink
                     pipelineMetrics.PipelineName,
                     pipelineMetrics.RunId,
                     pipelineMetrics.TotalItemsProcessed,
-                    pipelineMetrics.DurationMs ?? 0,
+                    pipelineMetrics.DurationMs ?? 0.0,
                     null);
             }
             else

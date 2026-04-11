@@ -726,10 +726,10 @@ public sealed class DependencyInjectionTests
         public IPipelineMetrics CreatePipelineMetrics(string pipelineName, Guid pipelineId, Guid runId, DateTimeOffset startTime,
             DateTimeOffset? endTime, bool success, Exception? exception = null)
         {
-            long? duration = null;
+            double? duration = null;
 
             if (endTime.HasValue)
-                duration = (long)(endTime.Value - startTime).TotalMilliseconds;
+                duration = (endTime.Value - startTime).TotalMilliseconds;
 
             var totalItemsProcessed = _nodeMetrics.Values.Sum(m => m.ItemsProcessed);
 

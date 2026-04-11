@@ -1,4 +1,5 @@
 using NPipeline.DataFlow.Branching;
+using System.Diagnostics;
 using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
 using NPipeline.Nodes;
@@ -108,6 +109,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         var observer = context.ExecutionObserver;
 
         var startTs = DateTimeOffset.UtcNow;
+        var startTimestamp = Stopwatch.GetTimestamp();
         observer.OnNodeStarted(new NodeExecutionStarted(nodeDef.Id, nodeInstance.GetType().Name, startTs, context.PipelineId, context.PipelineName));
 
         // Check for per-node observability configuration
@@ -135,7 +137,8 @@ public sealed class ObservabilitySurface : IObservabilitySurface
             context.NodeObservabilityScopes[nodeDef.Id] = autoObservabilityScope;
         }
 
-        return new NodeObservationScope(nodeDef.Id, nodeInstance.GetType().Name, startTs, activity, context.PipelineId, context.PipelineName,
+        return new NodeObservationScope(nodeDef.Id, nodeInstance.GetType().Name, startTs, startTimestamp, activity, context.PipelineId,
+            context.PipelineName,
             autoObservabilityScope);
     }
 
@@ -149,7 +152,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
     {
         var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
         ObservabilitySurfaceLogMessages.NodeFinished(logger, scope.NodeId);
-        var duration = DateTimeOffset.UtcNow - scope.StartTime;
+        var duration = Stopwatch.GetElapsedTime(scope.StartTimestamp);
 
         // Check if AutoObservabilityScope recorded a failure
         var failureException = scope.AutoObservabilityScope?.GetFailureException();
@@ -177,7 +180,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
     {
         var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
         ObservabilitySurfaceLogMessages.NodeFailed(logger, ex, scope.NodeId);
-        var duration = DateTimeOffset.UtcNow - scope.StartTime;
+        var duration = Stopwatch.GetElapsedTime(scope.StartTimestamp);
         var completed = new NodeExecutionCompleted(scope.NodeId, scope.NodeType, duration, false, ex, scope.PipelineId, scope.PipelineName);
 
         context.ExecutionObserver.OnNodeCompleted(completed);
