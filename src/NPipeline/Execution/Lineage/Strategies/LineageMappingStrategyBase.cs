@@ -2,9 +2,9 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
-using NPipeline.Execution.Lineage;
 using NPipeline.Lineage;
 
 namespace NPipeline.Execution.Lineage.Strategies;
@@ -21,7 +21,7 @@ internal abstract class LineageMappingStrategyBase
 {
     private static readonly JsonSerializerOptions SnapshotSerializerOptions = new(JsonSerializerDefaults.Web)
     {
-        ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles,
+        ReferenceHandler = ReferenceHandler.IgnoreCycles,
     };
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -55,8 +55,10 @@ internal abstract class LineageMappingStrategyBase
             return existing;
 
         var truncated = existing.Count + 1 >= cap;
+
         var rec = new LineageHop(nodeId, outcome, ObservedCardinality.One, null, outputEmissionCount, null, truncated, pipelineId,
             SnapshotValue(inputSnapshot, opts), SnapshotValue(outputSnapshot, opts), pipelineName, retryCount);
+
         return existing.Add(rec);
     }
 
@@ -66,7 +68,9 @@ internal abstract class LineageMappingStrategyBase
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected static string QualifyNodeId(string nodeId, Guid pipelineId)
-        => $"{pipelineId:N}::{nodeId}";
+    {
+        return $"{pipelineId:N}::{nodeId}";
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected static ImmutableList<LineageHop> AppendHop(ImmutableList<LineageHop> existing, string nodeId, Guid pipelineId,
@@ -81,14 +85,18 @@ internal abstract class LineageMappingStrategyBase
             return existing;
 
         var truncated = existing.Count + 1 >= cap;
+
         var rec = new LineageHop(nodeId, outcome, cardinality, ancestry?.Count, outputEmissionCount, ancestry, truncated, pipelineId,
             SnapshotValue(inputSnapshot, opts), SnapshotValue(outputSnapshot, opts), pipelineName, retryCount);
+
         return existing.Add(rec);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static HopDecisionFlags WithoutRetry(HopDecisionFlags flags)
-        => flags & ~HopDecisionFlags.Retried;
+    {
+        return flags & ~HopDecisionFlags.Retried;
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected static (HopDecisionFlags Outcome, int? RetryCount) ResolveRecordedOutcome(Guid pipelineId, string nodeId, int inputIndex,
@@ -137,7 +145,9 @@ internal abstract class LineageMappingStrategyBase
         if (hasRetry)
             outcome |= HopDecisionFlags.Retried;
 
-        return (outcome, maxRetryCount > 0 ? maxRetryCount : null);
+        return (outcome, maxRetryCount > 0
+            ? maxRetryCount
+            : null);
     }
 
     private static int? ResolveOutputEmissionCount(IReadOnlyList<int>? contributors, IReadOnlyDictionary<int, int>? outputCountByInput, int inputCount)
@@ -314,7 +324,7 @@ internal abstract class LineageMappingStrategyBase
                         ? ObservedCardinality.One
                         : ObservedCardinality.Many;
 
-            int? outputEmissionCount = recordsByOutput is not null
+            var outputEmissionCount = recordsByOutput is not null
                 ? ResolveOutputEmissionCount(contributorsForEmission, outputCountByInput, inputs.Count)
                 : inputPacket is not null
                     ? 1
@@ -325,19 +335,23 @@ internal abstract class LineageMappingStrategyBase
                 var hopRecords = inputPacket.LineageHops;
 
                 if (inputPacket.Collect)
+                {
                     hopRecords = AppendHop(hopRecords, nodeId, pipelineId, pipelineName, opts, effectiveOutcome, cardinalityObserved, ancestry,
                         outputEmissionCount, inputPacket.Data, outputData, retryCount);
+                }
 
                 yield return new LineagePacket<TOut>(outputData, inputPacket.CorrelationId,
-                    inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId)))
-                { Collect = inputPacket.Collect, LineageHops = hopRecords };
+                        inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId)))
+                    { Collect = inputPacket.Collect, LineageHops = hopRecords };
             }
             else
+            {
                 yield return new LineagePacket<TOut>(outputData, Guid.NewGuid(), ImmutableList.Create(QualifyNodeId(nodeId, pipelineId)))
                 {
                     Collect = true,
                     LineageHops = ImmutableList<LineageHop>.Empty,
                 };
+            }
         }
     }
 
@@ -363,12 +377,14 @@ internal abstract class LineageMappingStrategyBase
                 var (effectiveOutcome, retryCount) = ResolveRecordedOutcome(pipelineId, nodeId, matchedInputCount, HopDecisionFlags.Emitted);
 
                 if (inputPacket.Collect)
+                {
                     hopRecords = MaybeAppendHop(hopRecords, nodeId, pipelineId, pipelineName, opts, 1, inputPacket.Data, outputData,
                         effectiveOutcome, retryCount);
+                }
 
                 yield return new LineagePacket<TOut>(outputData, inputPacket.CorrelationId,
-                    inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId)))
-                { Collect = inputPacket.Collect, LineageHops = hopRecords };
+                        inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId)))
+                    { Collect = inputPacket.Collect, LineageHops = hopRecords };
 
                 matchedInputCount++;
                 matchedOutputCount++;

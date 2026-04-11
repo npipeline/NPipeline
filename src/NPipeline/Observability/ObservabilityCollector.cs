@@ -172,9 +172,6 @@ public sealed class ObservabilityCollector : IObservabilityCollector
     private sealed class NodeMetricsBuilder(string nodeId, Guid pipelineId, string? pipelineName = null)
     {
         private readonly object _identityLock = new();
-        private readonly string _nodeId = nodeId;
-        private readonly Guid _pipelineId = pipelineId;
-        private string? _pipelineName = pipelineName;
         private readonly object _performanceMetricsLock = new();
         private double? _averageItemProcessingMs;
         private double? _durationMs;
@@ -190,11 +187,11 @@ public sealed class ObservabilityCollector : IObservabilityCollector
         private int? _threadId;
         private double? _throughputItemsPerSec;
 
-        public string NodeId => _nodeId;
+        public string NodeId { get; } = nodeId;
 
-        public Guid PipelineId => _pipelineId;
+        public Guid PipelineId { get; } = pipelineId;
 
-        public string? PipelineName => _pipelineName;
+        public string? PipelineName { get; private set; } = pipelineName;
 
         public void TrySetPipelineName(string? pipelineName)
         {
@@ -203,7 +200,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
 
             lock (_identityLock)
             {
-                _pipelineName ??= pipelineName;
+                PipelineName ??= pipelineName;
             }
         }
 
@@ -265,7 +262,7 @@ public sealed class ObservabilityCollector : IObservabilityCollector
         public INodeMetrics Build()
         {
             return new NodeMetrics(
-                _nodeId,
+                NodeId,
                 _startTime,
                 _endTime,
                 _durationMs,
@@ -279,8 +276,8 @@ public sealed class ObservabilityCollector : IObservabilityCollector
                 _throughputItemsPerSec,
                 _averageItemProcessingMs,
                 _threadId,
-                _pipelineId,
-                _pipelineName);
+                PipelineId,
+                PipelineName);
         }
     }
 }

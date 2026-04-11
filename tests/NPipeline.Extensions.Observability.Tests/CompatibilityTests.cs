@@ -22,7 +22,9 @@ public sealed class CompatibilityTests
     private static readonly Guid s_pipelineId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     private static INodeMetrics? GetNodeMetricsById(IObservabilityCollector collector, string nodeId)
-        => TestHelpers.GetNodeMetricsById(collector, nodeId);
+    {
+        return TestHelpers.GetNodeMetricsById(collector, nodeId);
+    }
 
     #region Parallel Execution Strategy Compatibility Tests
 

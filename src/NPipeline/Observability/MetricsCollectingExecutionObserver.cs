@@ -103,7 +103,7 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
             if (durationSec > 0)
             {
                 var throughput = nodeMetrics.ItemsProcessed / durationSec;
-                var averageItemProcessingMs = nodeMetrics.DurationMs.Value / (double)nodeMetrics.ItemsProcessed;
+                var averageItemProcessingMs = nodeMetrics.DurationMs.Value / nodeMetrics.ItemsProcessed;
                 _collector.RecordPerformanceMetrics(e.NodeId, throughput, averageItemProcessingMs, e.PipelineId, e.PipelineName);
             }
         }

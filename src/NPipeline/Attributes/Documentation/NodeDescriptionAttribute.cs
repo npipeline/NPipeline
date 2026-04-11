@@ -5,7 +5,7 @@ namespace NPipeline.Attributes.Documentation;
 ///     Displayed in NPipeline Studio's node inspector.
 /// </summary>
 /// <example>
-/// <code>
+///     <code>
 /// [NodeDescription("Enriches orders with customer data from the CRM. " +
 ///     "Performs a lookup by CustomerId and attaches the customer's tier and region.")]
 /// public class EnrichOrderTransform : ITransformNode&lt;PipelineOrder, PipelineOrder&gt;

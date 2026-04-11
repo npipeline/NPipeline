@@ -22,9 +22,11 @@ public sealed class LoggingPipelineMetricsSinkTests
         return logger;
     }
 
-    private static IPipelineMetrics CreatePipelineMetrics(bool success, Exception? exception = null, IReadOnlyList<INodeMetrics>? nodeMetrics = null, long totalItemsProcessed = 285, double? durationMs = 5000)
+    private static IPipelineMetrics CreatePipelineMetrics(bool success, Exception? exception = null, IReadOnlyList<INodeMetrics>? nodeMetrics = null,
+        long totalItemsProcessed = 285, double? durationMs = 5000)
     {
-        return new PipelineMetrics("TestPipeline", s_pipelineId, Guid.NewGuid(), DateTimeOffset.UtcNow.AddSeconds(-5), DateTimeOffset.UtcNow, durationMs, success, totalItemsProcessed, nodeMetrics ?? [], exception);
+        return new PipelineMetrics("TestPipeline", s_pipelineId, Guid.NewGuid(), DateTimeOffset.UtcNow.AddSeconds(-5), DateTimeOffset.UtcNow, durationMs,
+            success, totalItemsProcessed, nodeMetrics ?? [], exception);
     }
 
     private static INodeMetrics CreateNodeMetrics(
@@ -36,7 +38,8 @@ public sealed class LoggingPipelineMetricsSinkTests
         double? throughputItemsPerSec = null,
         double? averageItemProcessingMs = null)
     {
-        return new NodeMetrics(nodeId, DateTimeOffset.UtcNow.AddSeconds(-1), DateTimeOffset.UtcNow, 1000, success, itemsProcessed, itemsProcessed - 5, exception, retryCount, null, null, throughputItemsPerSec, averageItemProcessingMs, 1, s_pipelineId);
+        return new NodeMetrics(nodeId, DateTimeOffset.UtcNow.AddSeconds(-1), DateTimeOffset.UtcNow, 1000, success, itemsProcessed, itemsProcessed - 5,
+            exception, retryCount, null, null, throughputItemsPerSec, averageItemProcessingMs, 1, s_pipelineId);
     }
 
     #endregion
@@ -157,11 +160,11 @@ public sealed class LoggingPipelineMetricsSinkTests
         var sink = new LoggingPipelineMetricsSink(loggerMock);
 
         var metrics = CreatePipelineMetrics(true, nodeMetrics:
-            [
-                CreateNodeMetrics("node1", true, itemsProcessed: 100),
-                CreateNodeMetrics("node2", true, itemsProcessed: 95),
-                CreateNodeMetrics("node3", true, itemsProcessed: 90),
-            ]);
+        [
+            CreateNodeMetrics("node1", true, itemsProcessed: 100),
+            CreateNodeMetrics("node2", true, itemsProcessed: 95),
+            CreateNodeMetrics("node3", true, itemsProcessed: 90),
+        ]);
 
         // Act
         await sink.RecordAsync(metrics, CancellationToken.None);
@@ -182,10 +185,10 @@ public sealed class LoggingPipelineMetricsSinkTests
         var exception = new InvalidOperationException("Node failed");
 
         var metrics = CreatePipelineMetrics(true, nodeMetrics:
-            [
-                CreateNodeMetrics("node1", true, itemsProcessed: 100),
-                CreateNodeMetrics("node2", false, exception, itemsProcessed: 50),
-            ]);
+        [
+            CreateNodeMetrics("node1", true, itemsProcessed: 100),
+            CreateNodeMetrics("node2", false, exception, itemsProcessed: 50),
+        ]);
 
         // Act
         await sink.RecordAsync(metrics, CancellationToken.None);
@@ -204,9 +207,9 @@ public sealed class LoggingPipelineMetricsSinkTests
         var sink = new LoggingPipelineMetricsSink(loggerMock);
 
         var metrics = CreatePipelineMetrics(true, nodeMetrics:
-            [
-                CreateNodeMetrics("node1", true, itemsProcessed: 100, retryCount: 3),
-            ]);
+        [
+            CreateNodeMetrics("node1", true, itemsProcessed: 100, retryCount: 3),
+        ]);
 
         // Act
         await sink.RecordAsync(metrics, CancellationToken.None);
@@ -225,9 +228,9 @@ public sealed class LoggingPipelineMetricsSinkTests
         var sink = new LoggingPipelineMetricsSink(loggerMock);
 
         var metrics = CreatePipelineMetrics(true, nodeMetrics:
-            [
-                CreateNodeMetrics("node1", true, itemsProcessed: 100, throughputItemsPerSec: 1000.5),
-            ]);
+        [
+            CreateNodeMetrics("node1", true, itemsProcessed: 100, throughputItemsPerSec: 1000.5),
+        ]);
 
         // Act
         await sink.RecordAsync(metrics, CancellationToken.None);
@@ -246,9 +249,9 @@ public sealed class LoggingPipelineMetricsSinkTests
         var sink = new LoggingPipelineMetricsSink(loggerMock);
 
         var metrics = CreatePipelineMetrics(true, nodeMetrics:
-            [
-                CreateNodeMetrics("node1", true, itemsProcessed: 100, averageItemProcessingMs: 1.5),
-            ]);
+        [
+            CreateNodeMetrics("node1", true, itemsProcessed: 100, averageItemProcessingMs: 1.5),
+        ]);
 
         // Act
         await sink.RecordAsync(metrics, CancellationToken.None);
@@ -339,9 +342,9 @@ public sealed class LoggingPipelineMetricsSinkTests
         var sink = new LoggingPipelineMetricsSink(loggerMock);
 
         var metrics = CreatePipelineMetrics(false, nodeMetrics:
-            [
-                CreateNodeMetrics("node1", false, itemsProcessed: 50),
-            ]);
+        [
+            CreateNodeMetrics("node1", false, itemsProcessed: 50),
+        ]);
 
         // Act
         await sink.RecordAsync(metrics, CancellationToken.None);
@@ -423,11 +426,11 @@ public sealed class LoggingPipelineMetricsSinkTests
         var sink = new LoggingPipelineMetricsSink(loggerMock);
 
         var metrics = CreatePipelineMetrics(false, nodeMetrics:
-            [
-                CreateNodeMetrics("node1", true, itemsProcessed: 100),
-                CreateNodeMetrics("node2", false, new InvalidOperationException("Failed"), itemsProcessed: 50),
-                CreateNodeMetrics("node3", true, itemsProcessed: 75),
-            ]);
+        [
+            CreateNodeMetrics("node1", true, itemsProcessed: 100),
+            CreateNodeMetrics("node2", false, new InvalidOperationException("Failed"), itemsProcessed: 50),
+            CreateNodeMetrics("node3", true, itemsProcessed: 75),
+        ]);
 
         // Act
         await sink.RecordAsync(metrics, CancellationToken.None);

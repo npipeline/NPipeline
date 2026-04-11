@@ -1,9 +1,10 @@
-using NPipeline.DataFlow.Branching;
 using System.Diagnostics;
+using NPipeline.DataFlow.Branching;
 using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Observability;
+using NPipeline.Observability.Configuration;
 using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
@@ -123,9 +124,9 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         {
             var collector = context.ObservabilityFactory.ResolveObservabilityCollector();
 
-            if (collector != null && optionsValue is Observability.Configuration.ObservabilityOptions obsOptions)
+            if (collector != null && optionsValue is ObservabilityOptions obsOptions)
             {
-                autoObservabilityScope = new Observability.AutoObservabilityScope(collector, nodeDef.Id, obsOptions, context.PipelineId,
+                autoObservabilityScope = new AutoObservabilityScope(collector, nodeDef.Id, obsOptions, context.PipelineId,
                     context.PipelineName);
             }
         }
@@ -195,33 +196,6 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         return completed;
     }
 
-    /// <summary>
-    ///     Emits metrics to registered sinks if observability is enabled.
-    /// </summary>
-    /// <typeparam name="TDefinition">The type of pipeline definition.</typeparam>
-    /// <param name="context">The pipeline context.</param>
-    /// <param name="success">Whether pipeline execution was successful.</param>
-    /// <param name="exception">Any exception that occurred during pipeline execution.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    private async Task EmitMetricsAsync<TDefinition>(PipelineContext context, bool success, Exception? exception) where TDefinition : IPipelineDefinition, new()
-    {
-        var collector = context.ObservabilityFactory.ResolveObservabilityCollector();
-
-        if (collector is null)
-            return;
-
-        var startTime = context.PipelineStartTimeUtc;
-
-        var pipelineRunId = context.RunId == Guid.Empty ? Guid.NewGuid() : context.RunId;
-        var endTime = DateTime.UtcNow;
-        var pipelineName = string.IsNullOrWhiteSpace(context.PipelineName)
-            ? typeof(TDefinition).Name
-            : context.PipelineName!;
-
-        await collector.EmitMetricsAsync(pipelineName, context.PipelineId, pipelineRunId, startTime, endTime, success, exception,
-            context.CancellationToken).ConfigureAwait(false);
-    }
-
     /// <inheritdoc />
     public IPipelineActivity BeginPipeline(Type definitionType, PipelineContext context)
     {
@@ -276,6 +250,37 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         }
     }
 
+    /// <summary>
+    ///     Emits metrics to registered sinks if observability is enabled.
+    /// </summary>
+    /// <typeparam name="TDefinition">The type of pipeline definition.</typeparam>
+    /// <param name="context">The pipeline context.</param>
+    /// <param name="success">Whether pipeline execution was successful.</param>
+    /// <param name="exception">Any exception that occurred during pipeline execution.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    private async Task EmitMetricsAsync<TDefinition>(PipelineContext context, bool success, Exception? exception) where TDefinition : IPipelineDefinition, new()
+    {
+        var collector = context.ObservabilityFactory.ResolveObservabilityCollector();
+
+        if (collector is null)
+            return;
+
+        var startTime = context.PipelineStartTimeUtc;
+
+        var pipelineRunId = context.RunId == Guid.Empty
+            ? Guid.NewGuid()
+            : context.RunId;
+
+        var endTime = DateTime.UtcNow;
+
+        var pipelineName = string.IsNullOrWhiteSpace(context.PipelineName)
+            ? typeof(TDefinition).Name
+            : context.PipelineName!;
+
+        await collector.EmitMetricsAsync(pipelineName, context.PipelineId, pipelineRunId, startTime, endTime, success, exception,
+            context.CancellationToken).ConfigureAwait(false);
+    }
+
     private async Task EmitMetricsAsync(Type definitionType, PipelineContext context, bool success, Exception? exception)
     {
         var collector = context.ObservabilityFactory.ResolveObservabilityCollector();
@@ -284,11 +289,17 @@ public sealed class ObservabilitySurface : IObservabilitySurface
             return;
 
         var startTime = context.PipelineStartTimeUtc;
-        var pipelineRunId = context.RunId == Guid.Empty ? Guid.NewGuid() : context.RunId;
+
+        var pipelineRunId = context.RunId == Guid.Empty
+            ? Guid.NewGuid()
+            : context.RunId;
+
         var endTime = DateTime.UtcNow;
 
         await collector.EmitMetricsAsync(
-            string.IsNullOrWhiteSpace(context.PipelineName) ? definitionType.Name : context.PipelineName!,
+            string.IsNullOrWhiteSpace(context.PipelineName)
+                ? definitionType.Name
+                : context.PipelineName!,
             context.PipelineId,
             pipelineRunId,
             startTime,

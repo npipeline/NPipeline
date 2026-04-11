@@ -5,7 +5,7 @@ namespace NPipeline.Attributes.Documentation;
 ///     Displayed in NPipeline Studio's node inspector.
 /// </summary>
 /// <example>
-/// <code>
+///     <code>
 /// [NodeOwner("Order Processing Team")]
 /// public class EnrichOrderTransform : ITransformNode&lt;PipelineOrder, PipelineOrder&gt;
 /// { }

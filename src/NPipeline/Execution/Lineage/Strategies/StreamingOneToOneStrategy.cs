@@ -38,12 +38,14 @@ internal sealed class StreamingOneToOneStrategy<TIn, TOut> : LineageMappingStrat
                 var (effectiveOutcome, retryCount) = ResolveRecordedOutcome(pipelineId, nodeId, matchedInputCount2, HopDecisionFlags.Emitted);
 
                 if (inputPacket.Collect)
+                {
                     hopRecords = MaybeAppendHop(hopRecords, nodeId, pipelineId, pipelineName, options, 1, inputPacket.Data, outputData,
                         effectiveOutcome, retryCount);
+                }
 
                 yield return new LineagePacket<TOut>(outputData, inputPacket.CorrelationId,
-                    inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId)))
-                { Collect = inputPacket.Collect, LineageHops = hopRecords };
+                        inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId)))
+                    { Collect = inputPacket.Collect, LineageHops = hopRecords };
 
                 matchedInputCount2++;
                 matchedOutputCount2++;

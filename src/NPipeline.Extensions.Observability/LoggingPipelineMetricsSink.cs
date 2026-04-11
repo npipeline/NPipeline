@@ -80,13 +80,13 @@ public sealed class LoggingPipelineMetricsSink : IPipelineMetricsSink
         ArgumentNullException.ThrowIfNull(pipelineMetrics);
 
         using (_logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["PipelineName"] = pipelineMetrics.PipelineName,
-            ["RunId"] = pipelineMetrics.RunId,
-            ["Success"] = pipelineMetrics.Success,
-            ["TotalItemsProcessed"] = pipelineMetrics.TotalItemsProcessed,
-            ["DurationMs"] = pipelineMetrics.DurationMs,
-        }))
+               {
+                   ["PipelineName"] = pipelineMetrics.PipelineName,
+                   ["RunId"] = pipelineMetrics.RunId,
+                   ["Success"] = pipelineMetrics.Success,
+                   ["TotalItemsProcessed"] = pipelineMetrics.TotalItemsProcessed,
+                   ["DurationMs"] = pipelineMetrics.DurationMs,
+               }))
         {
             if (pipelineMetrics.Success)
             {

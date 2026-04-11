@@ -1,5 +1,3 @@
-using System.Threading;
-
 namespace NPipeline.Execution.Lineage;
 
 internal readonly record struct LineageExecutionItemMetadata(Guid CorrelationId, int[]? AncestryInputIndices);

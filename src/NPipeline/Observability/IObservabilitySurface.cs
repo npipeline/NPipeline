@@ -146,7 +146,7 @@ public readonly struct NodeObservationScope(
                PipelineId == other.PipelineId &&
                PipelineName == other.PipelineName &&
                StartTime.Equals(other.StartTime) &&
-             StartTimestamp == other.StartTimestamp &&
+               StartTimestamp == other.StartTimestamp &&
                Equals(Activity, other.Activity) &&
                Equals(AutoObservabilityScope, other.AutoObservabilityScope);
     }

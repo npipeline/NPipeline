@@ -1,27 +1,27 @@
 namespace NPipeline.Sampling;
 
 /// <summary>
-/// Processing outcome for a sampled record.
+///     Processing outcome for a sampled record.
 /// </summary>
 public enum SampleOutcome
 {
     /// <summary>
-    /// The item completed processing successfully.
+    ///     The item completed processing successfully.
     /// </summary>
     Success,
 
     /// <summary>
-    /// The item ended in an error outcome.
+    ///     The item ended in an error outcome.
     /// </summary>
     Error,
 
     /// <summary>
-    /// The item was routed to a dead-letter destination.
+    ///     The item was routed to a dead-letter destination.
     /// </summary>
     DeadLetter,
 
     /// <summary>
-    /// The item was skipped or filtered out.
+    ///     The item was skipped or filtered out.
     /// </summary>
     Skipped,
 }

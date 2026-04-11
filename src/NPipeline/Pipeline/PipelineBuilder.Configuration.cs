@@ -424,17 +424,20 @@ public sealed partial class PipelineBuilder
             // the cascading re-enumeration issue through passthrough wrappers.
             var dataChannel = Channel.CreateUnbounded<(long Index, Guid CorrelationId, int[]? AncestryInputIndices, TIn Data)>(
                 new UnboundedChannelOptions { SingleWriter = true });
+
             var packetChannel = Channel.CreateUnbounded<LineagePacket<TIn>>(new UnboundedChannelOptions { SingleWriter = true });
 
             _ = PumpInputAsync(typedInput, dataChannel.Writer, packetChannel.Writer, cancellationToken);
 
             var unwrappedPipe = new DataStream<TIn>(ProjectWithInputIndex(dataChannel.Reader.ReadAllAsync(cancellationToken), cancellationToken),
                 $"Unwrapped_{typedInput.StreamName}");
+
             return (unwrappedPipe, RewrapFunc);
 
             IDataStream RewrapFunc(IDataStream outputPipe)
             {
                 var typedOutputPipe = (IDataStream<TOut>)outputPipe;
+
                 var rewrappedStream = RewrapStrategy(packetChannel.Reader.ReadAllAsync(cancellationToken),
                     typedOutputPipe, nodeId, pipelineId, pipelineName, declaredCardinality, options, cancellationToken);
 
@@ -515,9 +518,7 @@ public sealed partial class PipelineBuilder
                         var latestHop = packet.LineageHops[^1];
 
                         if (latestHop.AncestryInputIndices is { Count: > 0 })
-                        {
                             ancestryInputIndices = [.. latestHop.AncestryInputIndices];
-                        }
                     }
 
                     // Write packet first so that the strategy's inputStream has data available
@@ -638,6 +639,7 @@ public sealed partial class PipelineBuilder
 
                             var lineageInfo = new LineageInfo(dataToEmit, (Guid)correlationIdProp!.GetValue(obj)!, finalPath, hopRecords, pipelineId,
                                 pipelineName);
+
                             await lineageSink.RecordAsync(lineageInfo, token).ConfigureAwait(false);
                         }
 

@@ -626,11 +626,6 @@ public sealed class DependencyInjectionTests
     {
         private readonly Dictionary<string, NodeMetrics> _nodeMetrics = [];
 
-        private static string BuildKey(string nodeId, Guid pipelineId)
-        {
-            return string.Concat(pipelineId.ToString("N"), "::", nodeId);
-        }
-
         public void RecordNodeStart(string nodeId, DateTimeOffset timestamp, Guid pipelineId, int? threadId = null, double? initialMemoryMb = null,
             string? pipelineName = null)
         {
@@ -751,6 +746,11 @@ public sealed class DependencyInjectionTests
         {
             // Custom implementation - no-op for test
             return Task.CompletedTask;
+        }
+
+        private static string BuildKey(string nodeId, Guid pipelineId)
+        {
+            return string.Concat(pipelineId.ToString("N"), "::", nodeId);
         }
     }
 

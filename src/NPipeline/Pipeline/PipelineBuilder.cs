@@ -145,7 +145,9 @@ public sealed partial class PipelineBuilder
     public TransformNodeHandle<TIn, TOut> AddStreamTransform<TNode, TIn, TOut>(string? name = null) where TNode : IStreamTransformNode<TIn, TOut>
     {
         name ??= GenerateUniqueNodeName(typeof(TNode).Name);
-        return RegisterNode(name, NodeKind.StreamTransform, typeof(TNode), typeof(TIn), typeof(TOut), static (id, def) => new TransformNodeHandle<TIn, TOut>(id));
+
+        return RegisterNode(name, NodeKind.StreamTransform, typeof(TNode), typeof(TIn), typeof(TOut),
+            static (id, def) => new TransformNodeHandle<TIn, TOut>(id));
     }
 
     /// <summary>
@@ -182,7 +184,8 @@ public sealed partial class PipelineBuilder
     ///     Adds a stream transform node with a specific <see cref="NodeKind" /> override.
     ///     Used by extension methods (Batcher, Unbatcher) that are semantically distinct from generic stream transforms.
     /// </summary>
-    internal TransformNodeHandle<TIn, TOut> AddStreamTransformWithKind<TNode, TIn, TOut>(NodeKind kind, string? name = null) where TNode : IStreamTransformNode<TIn, TOut>
+    internal TransformNodeHandle<TIn, TOut> AddStreamTransformWithKind<TNode, TIn, TOut>(NodeKind kind, string? name = null)
+        where TNode : IStreamTransformNode<TIn, TOut>
     {
         name ??= GenerateUniqueNodeName(typeof(TNode).Name);
         return RegisterNode(name, kind, typeof(TNode), typeof(TIn), typeof(TOut), static (id, def) => new TransformNodeHandle<TIn, TOut>(id));
@@ -299,9 +302,7 @@ public sealed partial class PipelineBuilder
 
         if (!replaceExisting && NodeState.PreconfiguredNodeInstances.TryGetValue(nodeId, out var existing) &&
             !ReferenceEquals(existing, instance))
-        {
             throw new InvalidOperationException(ErrorMessages.PreConfiguredInstanceAlreadyAdded(nodeId));
-        }
 
         NodeState.PreconfiguredNodeInstances[nodeId] = instance;
         return this;

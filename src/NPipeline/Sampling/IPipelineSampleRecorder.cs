@@ -1,12 +1,12 @@
 namespace NPipeline.Sampling;
 
 /// <summary>
-/// Allows pipeline instrumentation to record sampled data records with correlation metadata.
+///     Allows pipeline instrumentation to record sampled data records with correlation metadata.
 /// </summary>
 public interface IPipelineSampleRecorder
 {
     /// <summary>
-    /// Records a sampled data item with its correlation metadata.
+    ///     Records a sampled data item with its correlation metadata.
     /// </summary>
     /// <param name="nodeId">The pipeline node that produced this sample.</param>
     /// <param name="direction">The sample direction, for example input or output.</param>
@@ -31,7 +31,7 @@ public interface IPipelineSampleRecorder
         int retryCount = 0);
 
     /// <summary>
-    /// Records an item-level processing error with correlation metadata.
+    ///     Records an item-level processing error with correlation metadata.
     /// </summary>
     /// <param name="nodeId">The pipeline node where the error occurred.</param>
     /// <param name="correlationId">Correlation identifier used to pair samples for a node.</param>

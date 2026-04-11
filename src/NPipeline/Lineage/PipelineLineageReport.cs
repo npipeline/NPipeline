@@ -11,5 +11,6 @@ public sealed record PipelineLineageReport(
     [property: JsonPropertyName("runId")] Guid RunId,
     [property: JsonPropertyName("nodes")] IReadOnlyList<NodeLineageInfo> Nodes,
     [property: JsonPropertyName("edges")] IReadOnlyList<EdgeLineageInfo> Edges,
-    [property: JsonPropertyName("pipelineId")] Guid PipelineId
+    [property: JsonPropertyName("pipelineId")]
+    Guid PipelineId
 );

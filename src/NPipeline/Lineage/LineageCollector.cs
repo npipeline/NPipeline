@@ -111,9 +111,9 @@ public sealed class LineageCollector : ILineageCollector
     /// </summary>
     private sealed class LineageTrail
     {
+        private readonly Guid _correlationId;
         private readonly object? _data;
         private readonly List<LineageHop> _hops = [];
-        private readonly Guid _correlationId;
         private readonly object _lock = new();
         private readonly ImmutableList<string>.Builder _traversalPathBuilder;
 

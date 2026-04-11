@@ -61,8 +61,6 @@ internal sealed class CountingMulticastDataStream<T> : IForwardOnlyDataStream<T>
             Metrics.SetPerSubscriberCapacity(perSubscriberBuffer.Value);
     }
 
-    public BranchMetrics Metrics { get; }
-
     public string StreamName => $"CountedMulticast_{_source.StreamName}";
 
     public Type GetDataType()
@@ -111,6 +109,8 @@ internal sealed class CountingMulticastDataStream<T> : IForwardOnlyDataStream<T>
         _cts.Dispose();
         await _source.DisposeAsync().ConfigureAwait(false);
     }
+
+    public BranchMetrics Metrics { get; }
 
     private async Task PumpAsync()
     {

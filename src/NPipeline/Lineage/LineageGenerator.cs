@@ -27,7 +27,7 @@ public static class LineageGenerator
 
         var edges = graph.Edges.Select(e => new EdgeLineageInfo(e.SourceNodeId, e.TargetNodeId)).ToList();
 
-        return new PipelineLineageReport(pipelineName, runId, nodes, edges, PipelineId: pipelineId);
+        return new PipelineLineageReport(pipelineName, runId, nodes, edges, pipelineId);
     }
 
     // Reflection-based GetNodeTypes removed (metadata now provided by builder at NodeDefinition time).

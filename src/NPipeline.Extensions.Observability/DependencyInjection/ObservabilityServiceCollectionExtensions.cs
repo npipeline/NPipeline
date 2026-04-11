@@ -124,7 +124,7 @@ public static class ObservabilityServiceCollectionExtensions
         services.TryAddScoped<IObservabilityCollector, ObservabilityCollector>();
 
         // Register the metrics sinks as scoped (per pipeline run) using factory delegates
-        services.TryAddScoped<IMetricsSink>(metricsSinkFactory);
+        services.TryAddScoped(metricsSinkFactory);
         services.TryAddScoped<IPipelineMetricsSink>(pipelineMetricsSinkFactory);
 
         RegisterCoreObservabilityServices(services, options);
@@ -223,7 +223,7 @@ public static class ObservabilityServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(options);
 
         // Register the observability collector using factory delegate
-        services.TryAddScoped<IObservabilityCollector>(collectorFactory);
+        services.TryAddScoped(collectorFactory);
 
         // Register the metrics sinks as scoped (per pipeline run)
         services.TryAddScoped<IMetricsSink, TMetricsSink>();

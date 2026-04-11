@@ -541,9 +541,11 @@ public sealed class ErrorScenarioTests
             s_pipelineId);
     }
 
-    private static IPipelineMetrics CreatePipelineMetrics(bool success, Exception? exception = null, IReadOnlyList<INodeMetrics>? nodeMetrics = null, long totalItemsProcessed = 285, double? durationMs = 5000)
+    private static IPipelineMetrics CreatePipelineMetrics(bool success, Exception? exception = null, IReadOnlyList<INodeMetrics>? nodeMetrics = null,
+        long totalItemsProcessed = 285, double? durationMs = 5000)
     {
-        return new PipelineMetrics("TestPipeline", s_pipelineId, Guid.NewGuid(), DateTimeOffset.UtcNow.AddSeconds(-5), DateTimeOffset.UtcNow, durationMs, success, totalItemsProcessed, nodeMetrics ?? [], exception);
+        return new PipelineMetrics("TestPipeline", s_pipelineId, Guid.NewGuid(), DateTimeOffset.UtcNow.AddSeconds(-5), DateTimeOffset.UtcNow, durationMs,
+            success, totalItemsProcessed, nodeMetrics ?? [], exception);
     }
 
     private sealed class TestObservabilityFactory : IObservabilityFactory

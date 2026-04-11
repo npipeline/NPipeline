@@ -6,7 +6,7 @@ namespace NPipeline.Attributes.Documentation;
 ///     Displayed in NPipeline Studio's node inspector.
 /// </summary>
 /// <example>
-/// <code>
+///     <code>
 /// [NodeRemark("Falls back to 'Unknown' tier if CRM lookup fails", Category = "edge-case")]
 /// [NodeRemark("CRM API has a 100 req/s rate limit", Category = "performance")]
 /// public class EnrichOrderTransform : ITransformNode&lt;PipelineOrder, PipelineOrder&gt;

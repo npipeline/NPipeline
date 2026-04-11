@@ -40,8 +40,9 @@ internal static class TestHelpers
         var normalizedContains = allMetrics.FirstOrDefault(m =>
         {
             var normalizedCandidate = Normalize(m.NodeId);
+
             return normalizedCandidate.Contains(normalizedTarget, StringComparison.Ordinal) ||
-                normalizedTarget.Contains(normalizedCandidate, StringComparison.Ordinal);
+                   normalizedTarget.Contains(normalizedCandidate, StringComparison.Ordinal);
         });
 
         if (normalizedContains != null)
@@ -69,8 +70,9 @@ internal static class TestHelpers
             return allMetrics.FirstOrDefault(m =>
             {
                 var normalizedCandidate = Normalize(m.NodeId);
+
                 return !normalizedCandidate.Contains("source", StringComparison.Ordinal) &&
-                    !normalizedCandidate.Contains("sink", StringComparison.Ordinal);
+                       !normalizedCandidate.Contains("sink", StringComparison.Ordinal);
             });
         }
 

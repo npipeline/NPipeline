@@ -45,7 +45,11 @@ public interface IExecutionObserver
 /// <param name="StartTime">The timestamp when execution started.</param>
 /// <param name="PipelineId">The unique pipeline identity for the current execution context.</param>
 /// <param name="PipelineName">The logical pipeline name for the current execution context.</param>
-public sealed record NodeExecutionStarted(string NodeId, string NodeType, DateTimeOffset StartTime, Guid PipelineId,
+public sealed record NodeExecutionStarted(
+    string NodeId,
+    string NodeType,
+    DateTimeOffset StartTime,
+    Guid PipelineId,
     string? PipelineName = null);
 
 /// <summary>
@@ -58,7 +62,12 @@ public sealed record NodeExecutionStarted(string NodeId, string NodeType, DateTi
 /// <param name="Error">The exception if execution failed, otherwise null.</param>
 /// <param name="PipelineId">The unique pipeline identity for the current execution context.</param>
 /// <param name="PipelineName">The logical pipeline name for the current execution context.</param>
-public sealed record NodeExecutionCompleted(string NodeId, string NodeType, TimeSpan Duration, bool Success, Exception? Error,
+public sealed record NodeExecutionCompleted(
+    string NodeId,
+    string NodeType,
+    TimeSpan Duration,
+    bool Success,
+    Exception? Error,
     Guid PipelineId,
     string? PipelineName = null);
 
@@ -87,7 +96,12 @@ public enum RetryKind
 /// <param name="LastException">The exception from the previous attempt, if any.</param>
 /// <param name="PipelineId">The unique pipeline identity for the current execution context.</param>
 /// <param name="PipelineName">The logical pipeline name for the current execution context.</param>
-public sealed record NodeRetryEvent(string NodeId, RetryKind Kind, int Attempt, Exception? LastException, Guid PipelineId,
+public sealed record NodeRetryEvent(
+    string NodeId,
+    RetryKind Kind,
+    int Attempt,
+    Exception? LastException,
+    Guid PipelineId,
     string? PipelineName = null);
 
 /// <summary>

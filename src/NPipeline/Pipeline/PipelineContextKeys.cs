@@ -80,20 +80,20 @@ public static class PipelineContextKeys
     public const string LineageSinkDecorator = "NPipeline.LineageSinkDecorator";
 
     /// <summary>
-    /// Pipeline sample recorder key (value: <c>IPipelineSampleRecorder</c>).
+    ///     Pipeline sample recorder key (value: <c>IPipelineSampleRecorder</c>).
     /// </summary>
     public const string SampleRecorder = "NPipeline.SampleRecorder";
 
     /// <summary>
-    /// Runtime lineage options override key.
-    /// Supports either a <c>LineageOptions</c> value or a <c>Func&lt;LineageOptions?, LineageOptions?&gt;</c>
-    /// to derive options from the graph's configured baseline.
+    ///     Runtime lineage options override key.
+    ///     Supports either a <c>LineageOptions</c> value or a <c>Func&lt;LineageOptions?, LineageOptions?&gt;</c>
+    ///     to derive options from the graph's configured baseline.
     /// </summary>
     public const string LineageOptionsOverride = "NPipeline.LineageOptionsOverride";
 
     /// <summary>
-    /// Runtime item-level lineage enablement override key (value: <c>bool</c>).
-    /// When present, this value overrides the graph's configured <c>ItemLevelLineageEnabled</c> flag for the run.
+    ///     Runtime item-level lineage enablement override key (value: <c>bool</c>).
+    ///     When present, this value overrides the graph's configured <c>ItemLevelLineageEnabled</c> flag for the run.
     /// </summary>
     public const string ItemLevelLineageEnabledOverride = "NPipeline.ItemLevelLineageEnabledOverride";
 

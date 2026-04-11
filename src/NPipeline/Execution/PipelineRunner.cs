@@ -51,6 +51,20 @@ public sealed class PipelineRunner(
         await RunAsync<TDefinition>(context, CancellationToken.None).ConfigureAwait(false);
     }
 
+    /// <inheritdoc />
+    public async Task RunAsync(IPipelineDefinition definition, PipelineContext context, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+        ArgumentNullException.ThrowIfNull(context);
+
+        await RunAsyncCoreAsync(
+                definition.GetType(),
+                context,
+                (factory, runtimeContext) => factory.Create(definition, runtimeContext),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     /// <summary>
     ///     Creates a new PipelineRunner with default factories for simple use cases.
     ///     This method provides the most straightforward way to execute pipelines without
@@ -125,29 +139,15 @@ public sealed class PipelineRunner(
         await RunAsyncCoreAsync(
                 typeof(TDefinition),
                 context,
-            static (pipelineFactory, runtimeContext) => pipelineFactory.Create<TDefinition>(runtimeContext),
-            cancellationToken)
-            .ConfigureAwait(false);
-    }
-
-    /// <inheritdoc />
-    public async Task RunAsync(IPipelineDefinition definition, PipelineContext context, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(definition);
-        ArgumentNullException.ThrowIfNull(context);
-
-        await RunAsyncCoreAsync(
-                definition.GetType(),
-                context,
-            (factory, runtimeContext) => factory.Create(definition, runtimeContext),
-            cancellationToken)
+                static (pipelineFactory, runtimeContext) => pipelineFactory.Create<TDefinition>(runtimeContext),
+                cancellationToken)
             .ConfigureAwait(false);
     }
 
     private async Task RunAsyncCoreAsync(
         Type definitionType,
         PipelineContext context,
-        Func<IPipelineFactory, PipelineContext, NPipeline.Pipeline.Pipeline> createPipeline,
+        Func<IPipelineFactory, PipelineContext, Pipeline.Pipeline> createPipeline,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(definitionType);
@@ -211,6 +211,7 @@ public sealed class PipelineRunner(
     private static void InitializeExecutionContext(PipelineContext context)
     {
         context.PipelineStartTimeUtc = DateTime.UtcNow;
+
         if (context.PipelineId == Guid.Empty)
             context.PipelineId = Guid.NewGuid();
 
@@ -289,7 +290,7 @@ public sealed class PipelineRunner(
         if (!context.Properties.TryGetValue(PipelineContextKeys.LineageOptionsOverride, out var overrideObj) || overrideObj is null)
             return graph;
 
-        LineageOptions? resolved = overrideObj switch
+        var resolved = overrideObj switch
         {
             LineageOptions direct => direct,
             Func<LineageOptions?, LineageOptions?> factory => factory(graph.Lineage.LineageOptions),
@@ -309,11 +310,10 @@ public sealed class PipelineRunner(
     {
         if (!context.Properties.TryGetValue(PipelineContextKeys.ItemLevelLineageEnabledOverride, out var overrideObj) ||
             overrideObj is not bool enabled)
-        {
             return graph;
-        }
 
         var resolvedOptions = graph.Lineage.LineageOptions;
+
         if (enabled && resolvedOptions is null)
         {
             // Mirror PipelineBuilder.EnableItemLevelLineage() defaults for runtime enablement.
@@ -360,9 +360,7 @@ public sealed class PipelineRunner(
     {
         if (context.Properties.TryGetValue(PipelineContextKeys.DeadLetterSinkDecorator, out var decoratorObj) &&
             decoratorObj is Func<IDeadLetterSink?, IDeadLetterSink?> decorator)
-        {
             return decorator(deadLetterSink);
-        }
 
         return deadLetterSink;
     }
@@ -371,9 +369,7 @@ public sealed class PipelineRunner(
     {
         if (context.Properties.TryGetValue(PipelineContextKeys.LineageSinkDecorator, out var decoratorObj) &&
             decoratorObj is Func<ILineageSink?, ILineageSink?> decorator)
-        {
             return decorator(lineageSink);
-        }
 
         return lineageSink;
     }
@@ -563,7 +559,10 @@ public sealed class PipelineRunner(
             return;
 
         var report = LineageGenerator.Generate(definitionType.Name, context.PipelineId, graph,
-            context.RunId == Guid.Empty ? Guid.NewGuid() : context.RunId);
+            context.RunId == Guid.Empty
+                ? Guid.NewGuid()
+                : context.RunId);
+
         await pipelineLineageSink.RecordAsync(report, context.CancellationToken).ConfigureAwait(false);
     }
 

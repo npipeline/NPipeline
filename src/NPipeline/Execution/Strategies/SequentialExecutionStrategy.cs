@@ -152,10 +152,12 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                                 att++;
 
                                 if (att > maxRetries)
+                                {
                                     throw RecordAndReturn(
                                         new InvalidOperationException($"An item failed to process after {att} attempts.", originalException!),
                                         HopDecisionFlags.Error,
                                         maxRetries);
+                                }
 
                                 activity?.SetTag("retry.attempt", att.ToString());
                                 return (false, false, HopDecisionFlags.None);
@@ -178,9 +180,7 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                         yield return output!;
                     }
                     else if (terminalOutcome != HopDecisionFlags.None)
-                    {
                         RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, terminalOutcome, attempt);
-                    }
                 }
             }
             finally
@@ -200,6 +200,7 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                 return;
 
             var normalizedRetryCount = Math.Max(0, retryCount);
+
             var outcome = normalizedRetryCount > 0
                 ? terminalOutcome | HopDecisionFlags.Retried
                 : terminalOutcome;
