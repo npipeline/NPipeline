@@ -38,37 +38,35 @@ public sealed class KafkaDeadLetterSink : IDeadLetterSink
 
     /// <inheritdoc />
     public async Task HandleAsync(
-        string nodeId,
-        object item,
-        Exception error,
+        NPipeline.ErrorHandling.DeadLetterEnvelope envelope,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
-        // Get correlation ID from context parameters or generate one
-        var correlationId = GetCorrelationId(context);
+        // Get correlation ID from attribution or context
+        var correlationId = envelope.Attribution.CorrelationId?.ToString() ?? GetCorrelationId(context);
 
-        // Create dead-letter envelope with metadata
-        var envelope = new DeadLetterEnvelope
+        // Create Kafka-specific dead-letter envelope with metadata
+        var kafkaEnvelope = new Models.DeadLetterEnvelope
         {
-            NodeId = nodeId,
-            OriginalItem = item,
-            ExceptionType = error.GetType().FullName,
-            ExceptionMessage = error.Message,
-            StackTrace = error.StackTrace,
+            NodeId = envelope.Attribution.DecisionNodeId,
+            OriginalItem = envelope.Item,
+            ExceptionType = envelope.Error.GetType().FullName,
+            ExceptionMessage = envelope.Error.Message,
+            StackTrace = envelope.Error.StackTrace,
             Timestamp = DateTime.UtcNow,
             CorrelationId = correlationId,
         };
 
         // Extract Kafka-specific metadata if item implements IKafkaMessageMetadata
-        if (item is IKafkaMessageMetadata kafkaMetadata)
+        if (envelope.Item is IKafkaMessageMetadata kafkaMetadata)
         {
-            envelope.OriginalTopic = kafkaMetadata.Topic;
-            envelope.Partition = kafkaMetadata.Partition;
-            envelope.Offset = kafkaMetadata.Offset;
+            kafkaEnvelope.OriginalTopic = kafkaMetadata.Topic;
+            kafkaEnvelope.Partition = kafkaMetadata.Partition;
+            kafkaEnvelope.Offset = kafkaMetadata.Offset;
         }
 
         // Serialize the envelope to JSON
-        var payload = JsonSerializer.SerializeToUtf8Bytes(envelope, _jsonOptions);
+        var payload = JsonSerializer.SerializeToUtf8Bytes(kafkaEnvelope, _jsonOptions);
 
         // Create the message with headers
         var message = new Message<string, byte[]>
@@ -77,8 +75,9 @@ public sealed class KafkaDeadLetterSink : IDeadLetterSink
             Value = payload,
             Headers = new Headers
             {
-                { "x-dead-letter-reason", Encoding.UTF8.GetBytes(error.GetType().Name) },
-                { "x-original-node", Encoding.UTF8.GetBytes(nodeId) },
+                { "x-dead-letter-reason", Encoding.UTF8.GetBytes(envelope.Error.GetType().Name) },
+                { "x-original-node", Encoding.UTF8.GetBytes(envelope.Attribution.DecisionNodeId) },
+                { "x-origin-node", Encoding.UTF8.GetBytes(envelope.Attribution.OriginNodeId) },
             },
         };
 

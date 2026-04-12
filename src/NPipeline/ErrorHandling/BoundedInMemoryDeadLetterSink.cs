@@ -43,7 +43,7 @@ public class BoundedInMemoryDeadLetterSink : IDeadLetterSink
 {
     private readonly int _capacity;
     private readonly object _lock = new();
-    private readonly ConcurrentQueue<(object Item, Exception Error)> _queue = new();
+    private readonly ConcurrentQueue<DeadLetterEnvelope> _queue = new();
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="BoundedInMemoryDeadLetterSink" /> class.
@@ -66,22 +66,13 @@ public class BoundedInMemoryDeadLetterSink : IDeadLetterSink
     ///     Gets the items that have been collected in the dead-letter sink.
     /// </summary>
     /// <value>
-    ///     A read-only collection of tuples containing the failed item and its associated exception.
+    ///     A read-only collection of envelopes containing the failed item, exception, and failure attribution.
     ///     The collection size will never exceed the configured capacity.
     /// </value>
-    public IReadOnlyCollection<(object Item, Exception Error)> Items => _queue;
+    public IReadOnlyCollection<DeadLetterEnvelope> Items => _queue;
 
     /// <inheritdoc />
-    /// <exception cref="InvalidOperationException">
-    ///     Thrown when the dead-letter queue has reached its configured capacity,
-    ///     indicating that too many items have failed processing.
-    /// </exception>
-    /// <remarks>
-    ///     This method is thread-safe and uses locking to ensure accurate capacity tracking.
-    ///     When capacity is exceeded, the exception includes the capacity value to aid in
-    ///     troubleshooting and configuration adjustments.
-    /// </remarks>
-    public Task HandleAsync(string nodeId, object item, Exception error, PipelineContext context, CancellationToken cancellationToken)
+    public Task HandleAsync(DeadLetterEnvelope envelope, PipelineContext context, CancellationToken cancellationToken)
     {
         lock (_lock)
         {
@@ -91,7 +82,7 @@ public class BoundedInMemoryDeadLetterSink : IDeadLetterSink
                     $"Dead Letter Queue has exceeded its capacity of {_capacity}. Failing pipeline to prevent memory overflow.");
             }
 
-            _queue.Enqueue((item, error));
+            _queue.Enqueue(envelope);
         }
 
         return Task.CompletedTask;

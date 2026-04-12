@@ -168,16 +168,16 @@ public class NestedObservabilityAndLineageTests
     }
 
     [Fact]
-    public void CompositeContextConfiguration_Default_ShouldHaveNewFlagsFalse()
+    public void CompositeContextConfiguration_Default_ShouldHaveObservabilityFlagsTrue()
     {
         // Arrange & Act
         var config = CompositeContextConfiguration.Default;
 
-        // Assert
-        config.InheritRunIdentity.Should().BeFalse();
-        config.InheritLineageSink.Should().BeFalse();
-        config.InheritExecutionObserver.Should().BeFalse();
-        config.InheritDeadLetterDecorator.Should().BeFalse();
+        // Assert — observability inheritance now defaults to true
+        config.InheritRunIdentity.Should().BeTrue();
+        config.InheritLineageSink.Should().BeTrue();
+        config.InheritExecutionObserver.Should().BeTrue();
+        config.InheritDeadLetterDecorator.Should().BeTrue();
     }
 
     [Fact]

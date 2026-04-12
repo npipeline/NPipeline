@@ -206,8 +206,7 @@ public sealed class DefaultNodeFactoryTests(ITestOutputHelper output)
         public Task<NodeErrorDecision> HandleAsync(
             ITransformNode<int, int> node,
             int failedItem,
-            Exception error,
-            PipelineContext context,
+            NodeFailureContext failure,
             CancellationToken cancellationToken)
         {
             return Task.FromResult(NodeErrorDecision.Fail);

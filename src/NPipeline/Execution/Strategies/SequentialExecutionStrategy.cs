@@ -112,13 +112,15 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                                 throw;
                             }
 
-                            var decision = await typedHandler.HandleAsync(node, item, ex, context, ct);
+                            var attribution = FailureAttributionResolver.Resolve(ex, context, nodeId, attempt);
+                            var failureContext = new NodeFailureContext(ex, context, attribution, attempt);
+                            var decision = await typedHandler.HandleAsync(node, item, failureContext, ct);
 
                             // Handle by error decision using pattern matching
                             var (producedValue, shouldGotoAfterItem, decisionOutcome) = decision switch
                             {
                                 NodeErrorDecision.Skip => HandleSkip(),
-                                NodeErrorDecision.DeadLetter => await HandleRedirect(context, nodeId, item, ex, ct),
+                                NodeErrorDecision.DeadLetter => await HandleRedirect(context, nodeId, item, ex, attribution, ct),
                                 NodeErrorDecision.Retry => HandleRetry(ref attempt, effectiveRetries.MaxItemRetries, itemActivity),
                                 NodeErrorDecision.Fail => throw RecordAndReturn(originalException!, HopDecisionFlags.Error, attempt),
                                 _ => throw new InvalidOperationException($"Error handling failed for node {nodeId}", ex),
@@ -138,10 +140,13 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                             }
 
                             static async Task<(bool Produced, bool ShouldGotoAfterItem, HopDecisionFlags Outcome)> HandleRedirect(
-                                PipelineContext ctx, string id, TIn itm, Exception exception, CancellationToken token)
+                                PipelineContext ctx, string id, TIn itm, Exception exception, NodeFailureAttribution attribution, CancellationToken token)
                             {
                                 if (ctx.DeadLetterSink is not null)
-                                    await ctx.DeadLetterSink.HandleAsync(id, itm!, exception, ctx, token).ConfigureAwait(false);
+                                {
+                                    var envelope = new DeadLetterEnvelope(itm!, exception, attribution);
+                                    await ctx.DeadLetterSink.HandleAsync(envelope, ctx, token).ConfigureAwait(false);
+                                }
 
                                 return (false, true, HopDecisionFlags.DeadLettered | HopDecisionFlags.Error);
                             }

@@ -6,19 +6,21 @@ namespace NPipeline.Extensions.Composition.Tests;
 public class CompositeContextConfigurationTests
 {
     [Fact]
-    public void Default_ShouldHaveAllInheritanceFlagsFalse()
+    public void Default_ShouldHaveCorrectInheritanceFlags()
     {
         // Arrange & Act
         var config = CompositeContextConfiguration.Default;
 
-        // Assert
+        // Assert — data inheritance defaults to false
         config.InheritParentParameters.Should().BeFalse();
         config.InheritParentItems.Should().BeFalse();
         config.InheritParentProperties.Should().BeFalse();
-        config.InheritRunIdentity.Should().BeFalse();
-        config.InheritLineageSink.Should().BeFalse();
-        config.InheritExecutionObserver.Should().BeFalse();
-        config.InheritDeadLetterDecorator.Should().BeFalse();
+
+        // Assert — observability inheritance defaults to true
+        config.InheritRunIdentity.Should().BeTrue();
+        config.InheritLineageSink.Should().BeTrue();
+        config.InheritExecutionObserver.Should().BeTrue();
+        config.InheritDeadLetterDecorator.Should().BeTrue();
     }
 
     [Fact]

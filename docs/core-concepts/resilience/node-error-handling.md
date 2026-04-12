@@ -29,15 +29,13 @@ public interface INodeErrorHandler<in TNode, in TData> : INodeErrorHandler where
     /// </summary>
     /// <param name="node">The instance of node that failed.</param>
     /// <param name="failedItem">The data item that caused the error.</param>
-    /// <param name="error">The exception that was thrown.</param>
-    /// <param name="context">The current pipeline context.</param>
+    /// <param name="failure">The failure context containing the exception, pipeline context, and attribution.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
     /// <returns>A <see cref="NodeErrorDecision" /> indicating how to proceed.</returns>
     Task<NodeErrorDecision> HandleAsync(
         TNode node,
         TData failedItem,
-        Exception error,
-        PipelineContext context,
+        NodeFailureContext failure,
         CancellationToken cancellationToken);
 }
 ```
@@ -48,7 +46,26 @@ public interface INodeErrorHandler<in TNode, in TData> : INodeErrorHandler where
 - **`INodeErrorHandler<in TNode, in TData>`**: Generic interface defining the actual error handling logic.
 - **`TNode`**: The type of node where the error occurred.
 - **`TData`**: The type of the data item that caused the error.
-- **`HandleAsync`**: Called when an error occurs. Receives the failing node, item, exception, and pipeline context. Must return a `NodeErrorDecision`.
+- **`HandleAsync`**: Called when an error occurs. Receives the failing node, item, and a `NodeFailureContext`. Must return a `NodeErrorDecision`.
+
+### NodeFailureContext
+
+The `NodeFailureContext` provides structured access to the error details, pipeline context, and failure attribution:
+
+```csharp
+public sealed class NodeFailureContext
+{
+    public Exception Exception { get; }
+    public PipelineContext PipelineContext { get; }
+    public NodeFailureAttribution Attribution { get; }
+    public int RetryAttempt { get; }
+}
+```
+
+- **`Exception`**: The original exception that was thrown.
+- **`PipelineContext`**: The current pipeline context.
+- **`Attribution`**: Identifies the **origin node** (where the error first occurred) and the **decision node** (where the error handler is running). See [Dead Letter Queues](dead-letter-queues.md) for details on `NodeFailureAttribution`.
+- **`RetryAttempt`**: The current retry attempt number (0 on first invocation).
 
 ## NodeErrorDecision Enum
 
@@ -67,7 +84,6 @@ Here's a basic example:
 using NPipeline;
 using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
-using NPipeline.Pipeline;
 
 /// <summary>
 /// Custom node error handler for transform nodes processing string data.
@@ -89,16 +105,15 @@ public sealed class MyNodeErrorHandler : INodeErrorHandler<ITransformNode<string
     public Task<NodeErrorDecision> HandleAsync(
         ITransformNode<string, string> node,
         string failedItem,
-        Exception error,
-        PipelineContext context,
+        NodeFailureContext failure,
         CancellationToken cancellationToken)
     {
         // Log error with full context for troubleshooting
-        _logger.LogError(error, "Error in node '{NodeName}' processing '{FailedItem}': {ErrorMessage}",
-            node.Name, failedItem, error.Message);
+        _logger.LogError(failure.Exception, "Error in node '{NodeName}' processing '{FailedItem}': {ErrorMessage}",
+            node.Name, failedItem, failure.Exception.Message);
 
         // Choose error handling strategy based on exception type
-        return error switch
+        return failure.Exception switch
         {
             // Data format errors are permanent - send to dead letter queue
             FormatException => Task.FromResult(NodeErrorDecision.DeadLetter),
@@ -173,12 +188,11 @@ public class NetworkErrorHandler : INodeErrorHandler<IApiTransformNode, string>
     public Task<NodeErrorDecision> HandleAsync(
         IApiTransformNode node,
         string failedItem,
-        Exception error,
-        PipelineContext context,
+        NodeFailureContext failure,
         CancellationToken cancellationToken)
     {
         // Handle network-related errors specifically
-        if (error is HttpRequestException httpEx)
+        if (failure.Exception is HttpRequestException httpEx)
         {
             _retryCount++;
             _logger.LogWarning("Network error (attempt {RetryCount}): {ErrorMessage}", 
@@ -222,12 +236,11 @@ public class ValidationErrorHandler : INodeErrorHandler<IValidatorNode, string>
     public Task<NodeErrorDecision> HandleAsync(
         IValidatorNode node,
         string failedItem,
-        Exception error,
-        PipelineContext context,
+        NodeFailureContext failure,
         CancellationToken cancellationToken)
     {
         // Handle validation errors specifically
-        if (error is ValidationException validationEx)
+        if (failure.Exception is ValidationException validationEx)
         {
             _logger.LogWarning("Validation failed for item: {Item}. Error: {Error}", 
                 failedItem, validationEx.Message);
@@ -263,21 +276,20 @@ public class ProductionNodeErrorHandler : INodeErrorHandler<ITransformNode<strin
     public Task<NodeErrorDecision> HandleAsync(
         ITransformNode<string, string> node,
         string failedItem,
-        Exception error,
-        PipelineContext context,
+        NodeFailureContext failure,
         CancellationToken cancellationToken)
     {
         // Record error metrics for monitoring
         _metrics.Increment("node_errors", new[] { 
             new KeyValuePair<string, object>("node_type", node.GetType().Name),
-            new KeyValuePair<string, object>("error_type", error.GetType().Name)
+            new KeyValuePair<string, object>("error_type", failure.Exception.GetType().Name)
         });
 
         // Log error with full context
-        _logger.LogError(error, "Error processing item in node {NodeName}", node.Name);
+        _logger.LogError(failure.Exception, "Error processing item in node {NodeName}", node.Name);
 
         // Implement error handling strategy based on exception type
-        return error switch
+        return failure.Exception switch
         {
             // Data validation errors - redirect to dead letter
             ValidationException => Task.FromResult(NodeErrorDecision.DeadLetter),
@@ -371,12 +383,14 @@ var handler = ErrorHandler.ForNode<MyTransform, string>()
 
 ## When to Use Each Approach
 
-### Use Fluent Builder When:
+### Use Fluent Builder When
+
 - ✅ Simple error handling logic with clear exception-to-action mapping
 - ✅ Prototyping or quick implementations
 - ✅ Straightforward retry/skip/dead-letter strategies
 
-### Implement INodeErrorHandler When:
+### Implement INodeErrorHandler When
+
 - ✅ Complex state management across multiple items
 - ✅ Advanced logging, metrics, or custom recovery logic
 - ✅ Error handling that requires dependency injection

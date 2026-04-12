@@ -36,6 +36,7 @@ public sealed class NullPipelineSampleRecorder : IPipelineSampleRecorder
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void RecordError(
         string nodeId,
+        string originNodeId,
         Guid correlationId,
         int[]? ancestryInputIndices,
         object? serializedRecord,

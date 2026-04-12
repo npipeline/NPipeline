@@ -79,9 +79,9 @@ public sealed class ContextPropagationTests
         var sink = serviceProvider.GetRequiredService<CapturingDeadLetterSink>();
         sink.Captured.Should().ContainSingle();
         var entry = sink.Captured.Single();
-        entry.nodeId.Should().Be("fail");
-        entry.item.Should().Be(42);
-        entry.ex.Should().BeOfType<InvalidOperationException>();
+        entry.Attribution.DecisionNodeId.Should().Be("fail");
+        entry.Item.Should().Be(42);
+        entry.Error.Should().BeOfType<InvalidOperationException>();
     }
 
     private sealed class IdCapturingTransform(List<string> observedIds) : TransformNode<int, int>
@@ -106,7 +106,7 @@ public sealed class ContextPropagationTests
 
     private sealed class RedirectingNodeHandler : INodeErrorHandler<ITransformNode<int, int>, int>
     {
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int failedItem, Exception error, PipelineContext context,
+        public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int failedItem, NodeFailureContext failure,
             CancellationToken cancellationToken)
         {
             return Task.FromResult(NodeErrorDecision.DeadLetter);
@@ -126,11 +126,11 @@ public sealed class ContextPropagationTests
 
     private sealed class CapturingDeadLetterSink : IDeadLetterSink
     {
-        public List<(string nodeId, object item, Exception ex)> Captured { get; } = [];
+        public List<DeadLetterEnvelope> Captured { get; } = [];
 
-        public Task HandleAsync(string nodeId, object failedItem, Exception error, PipelineContext context, CancellationToken cancellationToken)
+        public Task HandleAsync(DeadLetterEnvelope envelope, PipelineContext context, CancellationToken cancellationToken)
         {
-            Captured.Add((nodeId, failedItem, error));
+            Captured.Add(envelope);
             return Task.CompletedTask;
         }
     }

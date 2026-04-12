@@ -1,5 +1,4 @@
 using NPipeline.Nodes;
-using NPipeline.Pipeline;
 
 namespace NPipeline.ErrorHandling;
 
@@ -438,15 +437,14 @@ internal sealed class FluentNodeErrorHandler<TNode, TData> : INodeErrorHandler<T
     public Task<NodeErrorDecision> HandleAsync(
         TNode node,
         TData failedItem,
-        Exception error,
-        PipelineContext context,
+        NodeFailureContext failure,
         CancellationToken cancellationToken)
     {
         _attemptCount++;
 
         foreach (var (predicate, factory) in _rules)
         {
-            if (predicate(error))
+            if (predicate(failure.Exception))
             {
                 var decision = factory(_attemptCount);
 

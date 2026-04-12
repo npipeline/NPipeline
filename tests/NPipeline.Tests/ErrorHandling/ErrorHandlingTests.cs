@@ -54,7 +54,7 @@ public sealed class ErrorHandlingTests(ITestOutputHelper output)
 
     public sealed class TestErrorHandler : INodeErrorHandler<ITransformNode<string, string>, string>
     {
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<string, string> node, string failedItem, Exception error, PipelineContext context,
+        public Task<NodeErrorDecision> HandleAsync(ITransformNode<string, string> node, string failedItem, NodeFailureContext failure,
             CancellationToken cancellationToken)
         {
             return Task.FromResult(NodeErrorDecision.Skip);

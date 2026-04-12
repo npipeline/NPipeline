@@ -52,8 +52,7 @@ public sealed class NodeConfigurationExtensionsTests
         public Task<NodeErrorDecision> HandleAsync(
             ITransformNode<int, string> node,
             int item,
-            Exception exception,
-            PipelineContext context,
+            NodeFailureContext failure,
             CancellationToken cancellationToken)
         {
             return Task.FromResult(NodeErrorDecision.Skip);

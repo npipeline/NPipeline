@@ -145,7 +145,8 @@ namespace NPipeline.Extensions.Parallelism
                         throw;
                     }
 
-                    var decision = await HandleNodeErrorAsync(node, cached.NodeId, item, ex, context, typedHandler, cached.CancellationToken).ConfigureAwait(false);
+                    var attribution = FailureAttributionResolver.Resolve(ex, context, cached.NodeId, attempt, correlationId);
+                    var decision = await HandleNodeErrorAsync(node, cached.NodeId, item, ex, context, typedHandler, attribution, attempt, cached.CancellationToken).ConfigureAwait(false);
 
                     switch (decision)
                     {
@@ -192,13 +193,15 @@ namespace NPipeline.Extensions.Parallelism
         }
 
         private static async Task<NodeErrorDecision> HandleNodeErrorAsync<TIn, TOut>(ITransformNode<TIn, TOut> node, string nodeId, TIn item, Exception exception,
-            PipelineContext context, INodeErrorHandler<ITransformNode<TIn, TOut>, TIn> handler, CancellationToken cancellationToken)
+            PipelineContext context, INodeErrorHandler<ITransformNode<TIn, TOut>, TIn> handler, NodeFailureAttribution attribution, int attempt, CancellationToken cancellationToken)
         {
-            var decision = await handler.HandleAsync(node, item, exception, context, cancellationToken).ConfigureAwait(false);
+            var failureContext = new NodeFailureContext(exception, context, attribution, attempt);
+            var decision = await handler.HandleAsync(node, item, failureContext, cancellationToken).ConfigureAwait(false);
 
             if (decision == NodeErrorDecision.DeadLetter && context.DeadLetterSink is not null)
             {
-                await context.DeadLetterSink.HandleAsync(nodeId, item!, exception, context, cancellationToken).ConfigureAwait(false);
+                var envelope = new DeadLetterEnvelope(item!, exception, attribution);
+                await context.DeadLetterSink.HandleAsync(envelope, context, cancellationToken).ConfigureAwait(false);
             }
 
             return decision;

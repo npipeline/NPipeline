@@ -633,8 +633,7 @@ public class PipelineExecutionBenchmarks : IDisposable
         public Task<NodeErrorDecision> HandleAsync(
             ITransformNode<int, int> node,
             int failedItem,
-            Exception error,
-            PipelineContext context,
+            NodeFailureContext failure,
             CancellationToken cancellationToken)
         {
             return Task.FromResult(NodeErrorDecision.Skip); // Skip the error item and continue

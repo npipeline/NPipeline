@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using NPipeline.ErrorHandling;
 using NPipeline.Execution.Lineage;
 using NPipeline.Lineage;
 using NPipeline.Pipeline;
@@ -26,7 +27,8 @@ internal static class PipelineSampleErrorReporter
         Exception exception,
         int retryCount,
         Guid? correlationIdOverride = null,
-        int[]? ancestryInputIndicesOverride = null)
+        int[]? ancestryInputIndicesOverride = null,
+        string? originNodeId = null)
     {
         if (!TryGetRecorder(context, out var recorder))
             return;
@@ -52,8 +54,12 @@ internal static class PipelineSampleErrorReporter
             ? SafeSerialize(envelope.Data)
             : SafeSerialize(item);
 
+        var effectiveOriginNodeId = originNodeId
+                                    ?? FailureAttributionResolver.Resolve(exception, context, nodeId, retryCount).OriginNodeId;
+
         recorder.RecordError(
             nodeId,
+            effectiveOriginNodeId,
             correlationId,
             ancestryInputIndices,
             serialized,

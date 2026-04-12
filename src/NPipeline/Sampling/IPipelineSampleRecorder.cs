@@ -33,7 +33,8 @@ public interface IPipelineSampleRecorder
     /// <summary>
     ///     Records an item-level processing error with correlation metadata.
     /// </summary>
-    /// <param name="nodeId">The pipeline node where the error occurred.</param>
+    /// <param name="nodeId">The pipeline node where the error handling decision was made.</param>
+    /// <param name="originNodeId">The pipeline node where the error originally occurred (may differ from <paramref name="nodeId" /> in composite pipelines).</param>
     /// <param name="correlationId">Correlation identifier used to pair samples for a node.</param>
     /// <param name="ancestryInputIndices">Optional contributor indices for multi-input lineage mappings.</param>
     /// <param name="serializedRecord">JSON-safe serialized payload for the failed item.</param>
@@ -46,6 +47,7 @@ public interface IPipelineSampleRecorder
     /// <param name="timestamp">UTC timestamp when the error was captured.</param>
     void RecordError(
         string nodeId,
+        string originNodeId,
         Guid correlationId,
         int[]? ancestryInputIndices,
         object? serializedRecord,

@@ -101,11 +101,10 @@ internal sealed class CapturingErrorHandler<TNode, TData> : INodeErrorHandler<TN
     public Task<NodeErrorDecision> HandleAsync(
         TNode node,
         TData failedItem,
-        Exception error,
-        PipelineContext context,
+        NodeFailureContext failure,
         CancellationToken cancellationToken)
     {
-        _errors.Add(error);
+        _errors.Add(failure.Exception);
         return Task.FromResult(_decisionOnError);
     }
 }

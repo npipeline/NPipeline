@@ -292,7 +292,7 @@ public sealed class ErrorHandlerResolutionTests
     {
         public int CallCount { get; private set; }
 
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<string, string> node, string failedItem, Exception error, PipelineContext context,
+        public Task<NodeErrorDecision> HandleAsync(ITransformNode<string, string> node, string failedItem, NodeFailureContext failure,
             CancellationToken cancellationToken)
         {
             CallCount++;
@@ -304,7 +304,7 @@ public sealed class ErrorHandlerResolutionTests
     {
         public int CallCount { get; private set; }
 
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<string, string> node, string failedItem, Exception error, PipelineContext context,
+        public Task<NodeErrorDecision> HandleAsync(ITransformNode<string, string> node, string failedItem, NodeFailureContext failure,
             CancellationToken cancellationToken)
         {
             CallCount++;
@@ -316,7 +316,7 @@ public sealed class ErrorHandlerResolutionTests
     {
         public int CallCount { get; private set; }
 
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<string, string> node, string failedItem, Exception error, PipelineContext context,
+        public Task<NodeErrorDecision> HandleAsync(ITransformNode<string, string> node, string failedItem, NodeFailureContext failure,
             CancellationToken cancellationToken)
         {
             CallCount++;
@@ -328,7 +328,7 @@ public sealed class ErrorHandlerResolutionTests
     {
         public int CallCount { get; private set; }
 
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<string, string> node, string failedItem, Exception error, PipelineContext context,
+        public Task<NodeErrorDecision> HandleAsync(ITransformNode<string, string> node, string failedItem, NodeFailureContext failure,
             CancellationToken cancellationToken)
         {
             CallCount++;
@@ -341,7 +341,7 @@ public sealed class ErrorHandlerResolutionTests
         public int CallCount { get; private set; }
         public NodeErrorDecision LastDecision { get; private set; }
 
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<string, string> node, string failedItem, Exception error, PipelineContext context,
+        public Task<NodeErrorDecision> HandleAsync(ITransformNode<string, string> node, string failedItem, NodeFailureContext failure,
             CancellationToken cancellationToken)
         {
             CallCount++;
@@ -355,7 +355,7 @@ public sealed class ErrorHandlerResolutionTests
         public int CallCount { get; private set; }
         public NodeErrorDecision LastDecision { get; private set; }
 
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<string, string> node, string failedItem, Exception error, PipelineContext context,
+        public Task<NodeErrorDecision> HandleAsync(ITransformNode<string, string> node, string failedItem, NodeFailureContext failure,
             CancellationToken cancellationToken)
         {
             CallCount++;

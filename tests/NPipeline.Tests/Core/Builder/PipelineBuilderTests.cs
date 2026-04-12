@@ -240,7 +240,7 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
 
     private sealed class TestErrorHandler : INodeErrorHandler<ITransformNode<string, int>, string>
     {
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<string, int> node, string failedItem, Exception error, PipelineContext context,
+        public Task<NodeErrorDecision> HandleAsync(ITransformNode<string, int> node, string failedItem, NodeFailureContext failure,
             CancellationToken cancellationToken)
         {
             return Task.FromResult(NodeErrorDecision.Fail);

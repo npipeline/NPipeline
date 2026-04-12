@@ -14,7 +14,7 @@ When an `INodeErrorHandler` returns `NodeErrorDecision.DeadLetter`, the failed i
 
 ## IDeadLetterSink Interface
 
-The `IDeadLetterSink` interface defines the contract for dead-letter queue implementations:
+The `IDeadLetterSink` interface defines the contract for dead-letter queue implementations. It receives a `DeadLetterEnvelope` that contains the failed item, the exception, and a `NodeFailureAttribution` that identifies both the **origin node** (where the error first occurred) and the **decision node** (where the dead-letter decision was made):
 
 ```csharp
 public interface IDeadLetterSink
@@ -22,21 +22,37 @@ public interface IDeadLetterSink
     /// <summary>
     ///     Handles a failed item by persisting it for later analysis.
     /// </summary>
-    /// <param name="nodeId">The ID of node where error occurred.</param>
-    /// <param name="item">The item that failed processing.</param>
-    /// <param name="error">The exception that was thrown.</param>
+    /// <param name="envelope">The dead-letter envelope containing the item, error, and failure attribution.</param>
     /// <param name="context">The current pipeline context.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    Task HandleAsync(string nodeId, object item, Exception error, PipelineContext context, CancellationToken cancellationToken);
+    Task HandleAsync(DeadLetterEnvelope envelope, PipelineContext context, CancellationToken cancellationToken);
 }
 ```
 
-* **`nodeId`**: The ID of the node where the error occurred.
-* **`item`**: The item that failed processing (non-generic object type).
-* **`error`**: The exception that was thrown.
+### DeadLetterEnvelope
+
+```csharp
+public sealed record DeadLetterEnvelope(object Item, Exception Error, NodeFailureAttribution Attribution);
+```
+
+### NodeFailureAttribution
+
+```csharp
+public sealed record NodeFailureAttribution(
+    string OriginNodeId,
+    string DecisionNodeId,
+    string? OriginPipelineId,
+    string? DecisionPipelineId,
+    string? RunId,
+    string? CorrelationId,
+    int RetryCount);
+```
+
+* **`envelope`**: Contains the failed item, the exception, and failure attribution metadata.
+* **`envelope.Attribution.OriginNodeId`**: The ID of the node where the error originally occurred (walks the exception chain for composite/nested scenarios).
+* **`envelope.Attribution.DecisionNodeId`**: The ID of the node whose error handler decided to dead-letter the item.
 * **`context`**: The current pipeline context.
 * **`cancellationToken`**: A token to observe for cancellation requests.
-* **`HandleAsync`**: Called when an item needs to be sent to dead-letter queue. Receives the node ID, failed item, exception, pipeline context, and a cancellation token.
 
 ## Built-in Dead Letter Sink Implementations
 
@@ -44,20 +60,20 @@ public interface IDeadLetterSink
 
 NPipeline provides a built-in [`BoundedInMemoryDeadLetterSink`](../../../src/NPipeline/ErrorHandling/BoundedInMemoryDeadLetterSink.cs:42) implementation that stores failed items in a bounded in-memory queue:
 
-- **Default capacity**: 1000 items
-- **Memory usage**: Approximately 8-16MB for typical error objects at full capacity
-- **Behavior**: Throws `InvalidOperationException` when capacity is exceeded, failing the pipeline to prevent memory overflow
-- **Thread safety**: Uses locking to ensure accurate capacity tracking
+* **Default capacity**: 1000 items
+* **Memory usage**: Approximately 8-16MB for typical error objects at full capacity
+* **Behavior**: Throws `InvalidOperationException` when capacity is exceeded, failing the pipeline to prevent memory overflow
+* **Thread safety**: Uses locking to ensure accurate capacity tracking
 
 When to adjust the default capacity:
-- **Increase** (e.g., 2000-5000) for:
-  - High-volume data processing where errors are more frequent
-  - Systems with automated error recovery workflows
-  - Environments with abundant memory resources
-- **Decrease** (e.g., 100-500) for:
-  - Memory-constrained environments (containers, edge devices)
-  - Processing very large error objects
-  - Scenarios where rapid failure detection is preferred over error retention
+* **Increase** (e.g., 2000-5000) for:
+  * High-volume data processing where errors are more frequent
+  * Systems with automated error recovery workflows
+  * Environments with abundant memory resources
+* **Decrease** (e.g., 100-500) for:
+  * Memory-constrained environments (containers, edge devices)
+  * Processing very large error objects
+  * Scenarios where rapid failure detection is preferred over error retention
 
 ```csharp
 // Example: Using default capacity of 1000
@@ -86,23 +102,25 @@ public class FileDeadLetterSink : IDeadLetterSink
         _logger = logger;
     }
 
-    public async Task HandleAsync(string nodeId, object item, Exception error, PipelineContext context, CancellationToken cancellationToken)
+    public async Task HandleAsync(DeadLetterEnvelope envelope, PipelineContext context, CancellationToken cancellationToken)
     {
         var deadLetterEntry = new
         {
             Timestamp = DateTime.UtcNow,
-            NodeId = nodeId,
-            ItemType = item?.GetType().Name ?? "Unknown",
-            Item = item,
-            Error = error.Message,
-            StackTrace = error.StackTrace,
-            ErrorType = error.GetType().Name
+            OriginNodeId = envelope.Attribution.OriginNodeId,
+            DecisionNodeId = envelope.Attribution.DecisionNodeId,
+            ItemType = envelope.Item?.GetType().Name ?? "Unknown",
+            Item = envelope.Item,
+            Error = envelope.Error.Message,
+            StackTrace = envelope.Error.StackTrace,
+            ErrorType = envelope.Error.GetType().Name
         };
 
         var json = JsonSerializer.Serialize(deadLetterEntry, new JsonSerializerOptions { WriteIndented = true });
 
         await File.AppendAllTextAsync(_filePath, json + Environment.NewLine, cancellationToken);
-        _logger.LogWarning("Item from node {NodeId} sent to dead-letter queue: {ItemType}", nodeId, item?.GetType().Name);
+        _logger.LogWarning("Item from node {OriginNodeId} (decided by {DecisionNodeId}) sent to dead-letter queue: {ItemType}",
+            envelope.Attribution.OriginNodeId, envelope.Attribution.DecisionNodeId, envelope.Item?.GetType().Name);
     }
 }
 ```
@@ -123,25 +141,27 @@ public class DatabaseDeadLetterSink : IDeadLetterSink
         _logger = logger;
     }
 
-    public async Task HandleAsync(string nodeId, object item, Exception error, PipelineContext context, CancellationToken cancellationToken)
+    public async Task HandleAsync(DeadLetterEnvelope envelope, PipelineContext context, CancellationToken cancellationToken)
     {
         try
         {
             var command = _connection.CreateCommand();
             command.CommandText = $@"
-                INSERT INTO {_tableName} (Timestamp, NodeId, ItemData, ErrorType, ErrorMessage, StackTrace, ItemType)
-                VALUES (@Timestamp, @NodeId, @ItemData, @ErrorType, @ErrorMessage, @StackTrace, @ItemType)";
+                INSERT INTO {_tableName} (Timestamp, OriginNodeId, DecisionNodeId, ItemData, ErrorType, ErrorMessage, StackTrace, ItemType)
+                VALUES (@Timestamp, @OriginNodeId, @DecisionNodeId, @ItemData, @ErrorType, @ErrorMessage, @StackTrace, @ItemType)";
 
             command.Parameters.Add(new Parameter("@Timestamp", DateTime.UtcNow));
-            command.Parameters.Add(new Parameter("@NodeId", nodeId));
-            command.Parameters.Add(new Parameter("@ItemData", JsonSerializer.Serialize(item)));
-            command.Parameters.Add(new Parameter("@ErrorType", error.GetType().Name));
-            command.Parameters.Add(new Parameter("@ErrorMessage", error.Message));
-            command.Parameters.Add(new Parameter("@StackTrace", error.StackTrace));
-            command.Parameters.Add(new Parameter("@ItemType", item?.GetType().Name ?? "Unknown"));
+            command.Parameters.Add(new Parameter("@OriginNodeId", envelope.Attribution.OriginNodeId));
+            command.Parameters.Add(new Parameter("@DecisionNodeId", envelope.Attribution.DecisionNodeId));
+            command.Parameters.Add(new Parameter("@ItemData", JsonSerializer.Serialize(envelope.Item)));
+            command.Parameters.Add(new Parameter("@ErrorType", envelope.Error.GetType().Name));
+            command.Parameters.Add(new Parameter("@ErrorMessage", envelope.Error.Message));
+            command.Parameters.Add(new Parameter("@StackTrace", envelope.Error.StackTrace));
+            command.Parameters.Add(new Parameter("@ItemType", envelope.Item?.GetType().Name ?? "Unknown"));
 
             await command.ExecuteNonQueryAsync(cancellationToken);
-            _logger.LogWarning("Item from node {NodeId} sent to dead-letter table: {ItemType}", nodeId, item?.GetType().Name);
+            _logger.LogWarning("Item from node {OriginNodeId} sent to dead-letter table: {ItemType}",
+                envelope.Attribution.OriginNodeId, envelope.Item?.GetType().Name);
         }
         catch (Exception ex)
         {
@@ -168,30 +188,32 @@ public class MessageQueueDeadLetterSink : IDeadLetterSink
         _logger = logger;
     }
 
-    public async Task HandleAsync(string nodeId, object item, Exception error, PipelineContext context, CancellationToken cancellationToken)
+    public async Task HandleAsync(DeadLetterEnvelope envelope, PipelineContext context, CancellationToken cancellationToken)
     {
         var deadLetterMessage = new DeadLetterMessage
         {
             Id = Guid.NewGuid().ToString(),
             Timestamp = DateTime.UtcNow,
-            NodeId = nodeId,
-            Item = item,
-            ErrorType = error.GetType().Name,
-            ErrorMessage = error.Message,
-            StackTrace = error.StackTrace,
-            ItemType = item?.GetType().Name ?? "Unknown",
-            RetryCount = 0 // Can be incremented if item is reprocessed
+            OriginNodeId = envelope.Attribution.OriginNodeId,
+            DecisionNodeId = envelope.Attribution.DecisionNodeId,
+            Item = envelope.Item,
+            ErrorType = envelope.Error.GetType().Name,
+            ErrorMessage = envelope.Error.Message,
+            StackTrace = envelope.Error.StackTrace,
+            ItemType = envelope.Item?.GetType().Name ?? "Unknown",
+            RetryCount = envelope.Attribution.RetryCount
         };
 
         await _messageQueue.SendMessageAsync(_queueName, deadLetterMessage, cancellationToken);
-        _logger.LogWarning("Item {ItemId} from node {NodeId} sent to dead-letter queue", deadLetterMessage.Id, nodeId);
+        _logger.LogWarning("Item {ItemId} from node {OriginNodeId} sent to dead-letter queue", deadLetterMessage.Id, envelope.Attribution.OriginNodeId);
     }
 
     private class DeadLetterMessage
     {
         public string Id { get; set; }
         public DateTime Timestamp { get; set; }
-        public string NodeId { get; set; }
+        public string OriginNodeId { get; set; }
+        public string DecisionNodeId { get; set; }
         public object Item { get; set; }
         public string ErrorType { get; set; }
         public string ErrorMessage { get; set; }
@@ -317,17 +339,15 @@ public class DeadLetterAwareErrorHandler : INodeErrorHandler<ITransformNode<stri
     public async Task<NodeErrorDecision> HandleAsync(
         ITransformNode<string, string> node,
         string failedItem,
-        Exception error,
-        PipelineContext context,
+        NodeFailureContext failure,
         CancellationToken cancellationToken)
     {
-        _logger.LogError(error, "Error processing item in node {NodeName}", node.Name);
+        _logger.LogError(failure.Exception, "Error processing item in node {NodeName}", node.Name);
 
         // Send validation errors to dead-letter queue
-        if (error is ValidationException)
+        if (failure.Exception is ValidationException)
         {
             _logger.LogInformation("Validation error, redirecting to dead-letter queue");
-            await _deadLetterSink.HandleAsync(node.Id, failedItem, error, context, cancellationToken);
             return NodeErrorDecision.DeadLetter;
         }
 
@@ -348,23 +368,25 @@ public class FileDeadLetterSink : IDeadLetterSink
         _logger = logger;
     }
 
-    public async Task HandleAsync(string nodeId, object item, Exception error, PipelineContext context, CancellationToken cancellationToken)
+    public async Task HandleAsync(DeadLetterEnvelope envelope, PipelineContext context, CancellationToken cancellationToken)
     {
         var deadLetterEntry = new
         {
             Timestamp = DateTime.UtcNow,
-            NodeId = nodeId,
-            ItemType = item?.GetType().Name ?? "Unknown",
-            Item = item,
-            Error = error.Message,
-            StackTrace = error.StackTrace,
-            ErrorType = error.GetType().Name
+            OriginNodeId = envelope.Attribution.OriginNodeId,
+            DecisionNodeId = envelope.Attribution.DecisionNodeId,
+            ItemType = envelope.Item?.GetType().Name ?? "Unknown",
+            Item = envelope.Item,
+            Error = envelope.Error.Message,
+            StackTrace = envelope.Error.StackTrace,
+            ErrorType = envelope.Error.GetType().Name
         };
 
         var json = JsonSerializer.Serialize(deadLetterEntry, new JsonSerializerOptions { WriteIndented = true });
 
         await File.AppendAllTextAsync(_filePath, json + Environment.NewLine, cancellationToken);
-        _logger.LogWarning("Item from node {NodeId} sent to dead-letter queue: {Item}", nodeId, item);
+        _logger.LogWarning("Item from node {OriginNodeId} sent to dead-letter queue: {Item}",
+            envelope.Attribution.OriginNodeId, envelope.Item);
     }
 }
 
@@ -389,35 +411,28 @@ public class ValidationException : Exception
 public class DeadLetterAwareErrorHandler : INodeErrorHandler<ITransformNode<string, string>, string>
 {
     private readonly ILogger _logger;
-    private readonly IDeadLetterSink _deadLetterSink;
 
-    public DeadLetterAwareErrorHandler(
-        ILogger logger,
-        IDeadLetterSink deadLetterSink)
+    public DeadLetterAwareErrorHandler(ILogger logger)
     {
         _logger = logger;
-        _deadLetterSink = deadLetterSink;
     }
 
     public async Task<NodeErrorDecision> HandleAsync(
         ITransformNode<string, string> node,
         string failedItem,
-        Exception error,
-        PipelineContext context,
+        NodeFailureContext failure,
         CancellationToken cancellationToken)
     {
-        _logger.LogError(error, "Error processing item in node {NodeName}", node.Name);
+        _logger.LogError(failure.Exception, "Error processing item in node {NodeName}", node.Name);
 
-        if (error is ValidationException)
+        if (failure.Exception is ValidationException)
         {
             _logger.LogInformation("Validation error, redirecting to dead-letter queue");
-            await _deadLetterSink.HandleAsync(node.Id, failedItem, error, context, cancellationToken);
             return NodeErrorDecision.DeadLetter;
         }
-        else if (error is FormatException)
+        else if (failure.Exception is FormatException)
         {
             _logger.LogInformation("Format error, redirecting to dead-letter queue");
-            await _deadLetterSink.HandleAsync(node.Id, failedItem, error, context, cancellationToken);
             return NodeErrorDecision.DeadLetter;
         }
         else
@@ -429,10 +444,12 @@ public class DeadLetterAwareErrorHandler : INodeErrorHandler<ITransformNode<stri
 }
 ```
 
+> **Note**: The error handler no longer needs to call `IDeadLetterSink` directly. When you return `NodeErrorDecision.DeadLetter`, the execution strategy automatically creates a `DeadLetterEnvelope` with full `NodeFailureAttribution` and routes it to the configured sink.
+
 ### Advanced Dead Letter Processing with Metadata
 
 ```csharp
-public class EnhancedDeadLetterSink : IDeadLetterSink<object>
+public class EnhancedDeadLetterSink : IDeadLetterSink
 {
     private readonly string _filePath;
     private readonly ILogger _logger;
@@ -445,21 +462,23 @@ public class EnhancedDeadLetterSink : IDeadLetterSink<object>
         _metrics = metrics;
     }
 
-    public async Task SendAsync(object item, Exception error, CancellationToken cancellationToken)
+    public async Task HandleAsync(DeadLetterEnvelope envelope, PipelineContext context, CancellationToken cancellationToken)
     {
         var deadLetterEntry = new DeadLetterEntry
         {
             Id = Guid.NewGuid().ToString(),
             Timestamp = DateTime.UtcNow,
-            Item = item,
-            ItemType = item.GetType().Name,
+            OriginNodeId = envelope.Attribution.OriginNodeId,
+            DecisionNodeId = envelope.Attribution.DecisionNodeId,
+            Item = envelope.Item,
+            ItemType = envelope.Item.GetType().Name,
             Error = new ErrorInfo
             {
-                Type = error.GetType().Name,
-                Message = error.Message,
-                StackTrace = error.StackTrace,
-                Source = error.Source,
-                HResult = error.HResult
+                Type = envelope.Error.GetType().Name,
+                Message = envelope.Error.Message,
+                StackTrace = envelope.Error.StackTrace,
+                Source = envelope.Error.Source,
+                HResult = envelope.Error.HResult
             },
             Metadata = new Dictionary<string, object>
             {
@@ -474,12 +493,12 @@ public class EnhancedDeadLetterSink : IDeadLetterSink<object>
         await File.AppendAllTextAsync(_filePath, json + Environment.NewLine, cancellationToken);
 
         _logger.LogWarning("Item {ItemId} sent to dead-letter queue: {ErrorType}",
-            deadLetterEntry.Id, error.GetType().Name);
+            deadLetterEntry.Id, envelope.Error.GetType().Name);
 
         _metrics.Increment("dead_letter_items", new[]
         {
-            new KeyValuePair<string, object>("error_type", error.GetType().Name),
-            new KeyValuePair<string, object>("item_type", item.GetType().Name)
+            new KeyValuePair<string, object>("error_type", envelope.Error.GetType().Name),
+            new KeyValuePair<string, object>("item_type", envelope.Item.GetType().Name)
         });
     }
 
@@ -487,6 +506,8 @@ public class EnhancedDeadLetterSink : IDeadLetterSink<object>
     {
         public string Id { get; set; }
         public DateTime Timestamp { get; set; }
+        public string OriginNodeId { get; set; }
+        public string DecisionNodeId { get; set; }
         public object Item { get; set; }
         public string ItemType { get; set; }
         public ErrorInfo Error { get; set; }
@@ -511,16 +532,13 @@ public class EnhancedDeadLetterSink : IDeadLetterSink<object>
 ```csharp
 public class DeadLetterReprocessor
 {
-    private readonly IDeadLetterSink<object> _deadLetterSink;
     private readonly ILogger<DeadLetterReprocessor> _logger;
     private readonly ITransformNode<string, string> _targetNode;
 
     public DeadLetterReprocessor(
-        IDeadLetterSink<object> deadLetterSink,
         ILogger<DeadLetterReprocessor> logger,
         ITransformNode<string, string> targetNode)
     {
-        _deadLetterSink = deadLetterSink;
         _logger = logger;
         _targetNode = targetNode;
     }
@@ -592,25 +610,21 @@ public class ProductionDeadLetterErrorHandler : INodeErrorHandler<ITransformNode
 {
     private readonly ILogger _logger;
     private readonly IMetrics _metrics;
-    private readonly IDeadLetterSink<string> _deadLetterSink;
     private readonly ConcurrentDictionary<string, int> _itemRetryCounts = new();
     private readonly int _maxRetriesBeforeDeadLetter = 3;
 
     public ProductionDeadLetterErrorHandler(
         ILogger logger,
-        IMetrics metrics,
-        IDeadLetterSink<string> deadLetterSink)
+        IMetrics metrics)
     {
         _logger = logger;
         _metrics = metrics;
-        _deadLetterSink = deadLetterSink;
     }
 
     public async Task<NodeErrorDecision> HandleAsync(
         ITransformNode<string, string> node,
         string failedItem,
-        Exception error,
-        PipelineContext context,
+        NodeFailureContext failure,
         CancellationToken cancellationToken)
     {
         var itemKey = $"{node.Id}:{failedItem.GetHashCode()}";
@@ -620,40 +634,32 @@ public class ProductionDeadLetterErrorHandler : INodeErrorHandler<ITransformNode
         _metrics.Increment("node_error_handling_attempts", new[]
         {
             new KeyValuePair<string, object>("node_id", node.Id),
-            new KeyValuePair<string, object>("error_type", error.GetType().Name),
+            new KeyValuePair<string, object>("error_type", failure.Exception.GetType().Name),
             new KeyValuePair<string, object>("retry_count", retryCount)
         });
 
-        _logger.LogError(error, "Error processing item in node {NodeName} (attempt {RetryCount})",
+        _logger.LogError(failure.Exception, "Error processing item in node {NodeName} (attempt {RetryCount})",
             node.Name, retryCount);
 
-        if (IsTransientError(error) && retryCount <= _maxRetriesBeforeDeadLetter)
+        if (IsTransientError(failure.Exception) && retryCount <= _maxRetriesBeforeDeadLetter)
         {
             _logger.LogInformation("Retrying item (attempt {RetryCount}/{MaxRetries})", retryCount, _maxRetriesBeforeDeadLetter);
             return NodeErrorDecision.Retry;
         }
 
-        // Send to dead-letter queue
-        try
+        // Return DeadLetter — the execution strategy automatically routes to the
+        // configured IDeadLetterSink with a full DeadLetterEnvelope
+        _metrics.Increment("dead_letter_items_sent", new[]
         {
-            await _deadLetterSink.SendAsync(failedItem, error, cancellationToken);
+            new KeyValuePair<string, object>("node_id", node.Id),
+            new KeyValuePair<string, object>("origin_node_id", failure.Attribution.OriginNodeId),
+            new KeyValuePair<string, object>("error_type", failure.Exception.GetType().Name),
+            new KeyValuePair<string, object>("retry_count", retryCount)
+        });
 
-            _metrics.Increment("dead_letter_items_sent", new[]
-            {
-                new KeyValuePair<string, object>("node_id", node.Id),
-                new KeyValuePair<string, object>("error_type", error.GetType().Name),
-                new KeyValuePair<string, object>("retry_count", retryCount)
-            });
-
-            _logger.LogWarning("Item sent to dead-letter queue after {RetryCount} attempts", retryCount);
-            _itemRetryCounts.TryRemove(itemKey, out _);
-            return NodeErrorDecision.DeadLetter;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to send item to dead-letter queue");
-            return NodeErrorDecision.Skip;
-        }
+        _logger.LogWarning("Item sent to dead-letter queue after {RetryCount} attempts", retryCount);
+        _itemRetryCounts.TryRemove(itemKey, out _);
+        return NodeErrorDecision.DeadLetter;
     }
 
     private static bool IsTransientError(Exception error)
@@ -680,4 +686,3 @@ For comprehensive setup guidance that integrates dead-letter queues with other r
 * **[Pipeline-level Error Handling](error-handling.md)**: Learn about handling errors that affect entire node streams.
 * **[Retries](retries.md)**: Configure retry behavior for items and node restarts.
 * **[Error Handling Overview](error-handling.md)**: Return to the error handling overview.
-

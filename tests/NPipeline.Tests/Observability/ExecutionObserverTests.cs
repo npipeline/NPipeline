@@ -232,7 +232,7 @@ public sealed class ExecutionObserverTests
 
     private sealed class TestItemRetryHandler : INodeErrorHandler<ITransformNode<int, int>, int>
     {
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int item, Exception ex, PipelineContext context,
+        public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int item, NodeFailureContext failure,
             CancellationToken cancellationToken)
         {
             return Task.FromResult(NodeErrorDecision.Retry);

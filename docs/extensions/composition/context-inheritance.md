@@ -64,7 +64,7 @@ context.Properties["Version"] = "1.0.0";
 
 ## Inheritance Strategies
 
-### No Inheritance (Default)
+### Default Configuration
 
 **Configuration:**
 
@@ -75,17 +75,15 @@ builder.AddComposite<TIn, TOut, SubPipeline>(
 
 **When to Use:**
 
-- Sub-pipeline should be completely isolated
-- Testing sub-pipelines independently
-- Avoiding unintended dependencies
-- Maximum modularity
+- Sub-pipeline data should be isolated but observability should be unified
+- Default for most composition scenarios
+- Sub-pipelines participate in parent telemetry by default
 
 **Characteristics:**
 
-- Sub-pipeline has empty context dictionaries
-- No parent data accessible
-- Complete isolation
-- Easiest to test
+- Sub-pipeline has empty context dictionaries (no data inheritance)
+- Observability is inherited: run identity, execution observer, lineage sink, and dead-letter sink are shared with parent
+- Parent linkage keys are stamped automatically (`ParentNodeId`, `ParentPipelineId`, `ParentPipelineName`)
 
 **Example:**
 
@@ -508,10 +506,10 @@ In addition to data dictionaries, `CompositeContextConfiguration` provides fine-
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `InheritRunIdentity` | `false` | Child pipelines share the same run identity as the parent |
-| `InheritLineageSink` | `false` | Child pipelines report lineage through the parent's sink |
-| `InheritExecutionObserver` | `false` | Child pipeline node events emit through the parent's observer |
-| `InheritDeadLetterDecorator` | `false` | Child pipelines use the parent's dead letter sink |
+| `InheritRunIdentity` | `true` | Child pipelines share the same run identity as the parent |
+| `InheritLineageSink` | `true` | Child pipelines report lineage through the parent's sink |
+| `InheritExecutionObserver` | `true` | Child pipeline node events emit through the parent's observer |
+| `InheritDeadLetterDecorator` | `true` | Child pipelines use the parent's dead letter sink |
 
 ### Example: Unified Observability
 
@@ -529,10 +527,17 @@ builder.AddComposite<Order, ProcessedOrder, OrderSubPipeline>(
 
 ### Example: Isolated Child Telemetry
 
-Keep child pipelines completely independent (default):
+To opt out of observability inheritance and keep child pipelines completely independent:
 
 ```csharp
-builder.AddComposite<Order, ProcessedOrder, OrderSubPipeline>();
+builder.AddComposite<Order, ProcessedOrder, OrderSubPipeline>(
+    contextConfiguration: new CompositeContextConfiguration
+    {
+        InheritExecutionObserver = false,
+        InheritLineageSink = false,
+        InheritDeadLetterDecorator = false,
+        InheritRunIdentity = false,
+    });
 // Child pipeline uses its own observer, lineage sink, and dead letter handling
 ```
 

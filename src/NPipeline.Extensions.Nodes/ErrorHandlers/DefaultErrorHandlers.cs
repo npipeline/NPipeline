@@ -1,6 +1,5 @@
 using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
-using NPipeline.Pipeline;
 
 // ReSharper disable once CheckNamespace
 namespace NPipeline.Extensions.Nodes;
@@ -29,11 +28,10 @@ public sealed class DefaultValidationErrorHandler<T> : INodeErrorHandler<ITransf
     public Task<NodeErrorDecision> HandleAsync(
         ITransformNode<T, T> node,
         T failedItem,
-        Exception error,
-        PipelineContext context,
+        NodeFailureContext failure,
         CancellationToken cancellationToken)
     {
-        var decision = error is ValidationException validationEx
+        var decision = failure.Exception is ValidationException validationEx
             ? _onValidationFailure
             : NodeErrorDecision.Fail;
 
@@ -65,11 +63,10 @@ public sealed class DefaultFilteringErrorHandler<T> : INodeErrorHandler<ITransfo
     public Task<NodeErrorDecision> HandleAsync(
         ITransformNode<T, T> node,
         T failedItem,
-        Exception error,
-        PipelineContext context,
+        NodeFailureContext failure,
         CancellationToken cancellationToken)
     {
-        var decision = error is FilteringException filteringEx
+        var decision = failure.Exception is FilteringException filteringEx
             ? _onFilteredOut
             : NodeErrorDecision.Fail;
 
@@ -101,11 +98,10 @@ public sealed class DefaultTypeConversionErrorHandler<TIn, TOut> : INodeErrorHan
     public Task<NodeErrorDecision> HandleAsync(
         ITransformNode<TIn, TOut> node,
         TIn failedItem,
-        Exception error,
-        PipelineContext context,
+        NodeFailureContext failure,
         CancellationToken cancellationToken)
     {
-        var decision = error is TypeConversionException
+        var decision = failure.Exception is TypeConversionException
             ? _onConversionFailure
             : NodeErrorDecision.Fail;
 

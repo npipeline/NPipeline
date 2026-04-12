@@ -10,6 +10,9 @@ namespace NPipeline.Tests.ErrorHandling;
 /// </summary>
 public sealed class FluentErrorHandlerTests
 {
+    private static readonly NodeFailureAttribution TestAttribution = new("test-node", "test-node", Guid.Empty, Guid.Empty);
+    private static NodeFailureContext Failure(Exception ex, int attempt = 0) => new(ex, PipelineContext.Default, TestAttribution, attempt);
+
     [Fact]
     public async Task RetryAlways_CreatesHandlerThatRetriesUpToMaxAttempts()
     {
@@ -25,14 +28,14 @@ public sealed class FluentErrorHandlerTests
         for (var i = 0; i < 3; i++)
         {
             var decision = await handler.As<INodeErrorHandler<TestTransformNode, string>>()
-                .HandleAsync(node, "test", exception, context, CancellationToken.None);
+                .HandleAsync(node, "test", Failure(exception), CancellationToken.None);
 
             decision.Should().Be(NodeErrorDecision.Retry, $"attempt {i + 1} should retry");
         }
 
         // 4th attempt should dead-letter
         var finalDecision = await handler.As<INodeErrorHandler<TestTransformNode, string>>()
-            .HandleAsync(node, "test", exception, context, CancellationToken.None);
+            .HandleAsync(node, "test", Failure(exception), CancellationToken.None);
 
         finalDecision.Should().Be(NodeErrorDecision.DeadLetter, "after max retries, should dead-letter");
     }
@@ -47,7 +50,7 @@ public sealed class FluentErrorHandlerTests
         var node = new TestTransformNode();
 
         var decision = await handler.As<INodeErrorHandler<TestTransformNode, string>>()
-            .HandleAsync(node, "test", new Exception(), new PipelineContext(), CancellationToken.None);
+            .HandleAsync(node, "test", Failure(new Exception()), CancellationToken.None);
 
         // Assert
         decision.Should().Be(NodeErrorDecision.Skip);
@@ -63,7 +66,7 @@ public sealed class FluentErrorHandlerTests
         var node = new TestTransformNode();
 
         var decision = await handler.As<INodeErrorHandler<TestTransformNode, string>>()
-            .HandleAsync(node, "test", new Exception(), new PipelineContext(), CancellationToken.None);
+            .HandleAsync(node, "test", Failure(new Exception()), CancellationToken.None);
 
         // Assert
         decision.Should().Be(NodeErrorDecision.DeadLetter);
@@ -85,19 +88,19 @@ public sealed class FluentErrorHandlerTests
 
         // Act & Assert - TimeoutException should retry
         var timeoutDecision = await typedHandler
-            .HandleAsync(node, "test", new TimeoutException(), context, CancellationToken.None);
+            .HandleAsync(node, "test", Failure(new TimeoutException()), CancellationToken.None);
 
         timeoutDecision.Should().Be(NodeErrorDecision.Retry);
 
         // ArgumentException should skip
         var argDecision = await typedHandler
-            .HandleAsync(node, "test", new ArgumentException(), context, CancellationToken.None);
+            .HandleAsync(node, "test", Failure(new ArgumentException()), CancellationToken.None);
 
         argDecision.Should().Be(NodeErrorDecision.Skip);
 
         // InvalidOperationException should dead-letter (catch-all)
         var invalidDecision = await typedHandler
-            .HandleAsync(node, "test", new InvalidOperationException(), context, CancellationToken.None);
+            .HandleAsync(node, "test", Failure(new InvalidOperationException()), CancellationToken.None);
 
         invalidDecision.Should().Be(NodeErrorDecision.DeadLetter);
     }
@@ -118,19 +121,19 @@ public sealed class FluentErrorHandlerTests
 
         // Act & Assert - Message with "timeout" should retry
         var timeoutDecision = await typedHandler
-            .HandleAsync(node, "test", new Exception("Connection timeout"), context, CancellationToken.None);
+            .HandleAsync(node, "test", Failure(new Exception("Connection timeout")), CancellationToken.None);
 
         timeoutDecision.Should().Be(NodeErrorDecision.Retry);
 
         // Message with "invalid" should skip
         var invalidDecision = await typedHandler
-            .HandleAsync(node, "test", new Exception("Invalid data"), context, CancellationToken.None);
+            .HandleAsync(node, "test", Failure(new Exception("Invalid data")), CancellationToken.None);
 
         invalidDecision.Should().Be(NodeErrorDecision.Skip);
 
         // Other messages should fail
         var otherDecision = await typedHandler
-            .HandleAsync(node, "test", new Exception("Something else"), context, CancellationToken.None);
+            .HandleAsync(node, "test", Failure(new Exception("Something else")), CancellationToken.None);
 
         otherDecision.Should().Be(NodeErrorDecision.Fail);
     }
@@ -150,13 +153,13 @@ public sealed class FluentErrorHandlerTests
 
         // Act & Assert - TimeoutException should retry
         var timeoutDecision = await typedHandler
-            .HandleAsync(node, "test", new TimeoutException(), context, CancellationToken.None);
+            .HandleAsync(node, "test", Failure(new TimeoutException()), CancellationToken.None);
 
         timeoutDecision.Should().Be(NodeErrorDecision.Retry);
 
         // Other exceptions should skip (Otherwise behavior)
         var otherDecision = await typedHandler
-            .HandleAsync(node, "test", new Exception(), context, CancellationToken.None);
+            .HandleAsync(node, "test", Failure(new Exception()), CancellationToken.None);
 
         otherDecision.Should().Be(NodeErrorDecision.Skip);
     }
@@ -177,19 +180,19 @@ public sealed class FluentErrorHandlerTests
 
         // Act & Assert - TimeoutException should match the first rule (Retry)
         var timeoutDecision = await typedHandler
-            .HandleAsync(node, "test", new TimeoutException(), context, CancellationToken.None);
+            .HandleAsync(node, "test", Failure(new TimeoutException()), CancellationToken.None);
 
         timeoutDecision.Should().Be(NodeErrorDecision.Retry);
 
         // InvalidOperationException should match the second rule (Skip)
         var invalidOpDecision = await typedHandler
-            .HandleAsync(node, "test2", new InvalidOperationException(), context, CancellationToken.None);
+            .HandleAsync(node, "test2", Failure(new InvalidOperationException()), CancellationToken.None);
 
         invalidOpDecision.Should().Be(NodeErrorDecision.Skip);
 
         // ArgumentException should match the catch-all (DeadLetter)
         var argDecision = await typedHandler
-            .HandleAsync(node, "test3", new ArgumentException(), context, CancellationToken.None);
+            .HandleAsync(node, "test3", Failure(new ArgumentException()), CancellationToken.None);
 
         argDecision.Should().Be(NodeErrorDecision.DeadLetter);
     }
@@ -208,14 +211,14 @@ public sealed class FluentErrorHandlerTests
         var typedHandler = handler.As<INodeErrorHandler<TestTransformNode, string>>();
 
         // Act & Assert - First 2 attempts should retry
-        var decision1 = await typedHandler.HandleAsync(node, "test", exception, context, CancellationToken.None);
+        var decision1 = await typedHandler.HandleAsync(node, "test", Failure(exception), CancellationToken.None);
         decision1.Should().Be(NodeErrorDecision.Retry);
 
-        var decision2 = await typedHandler.HandleAsync(node, "test", exception, context, CancellationToken.None);
+        var decision2 = await typedHandler.HandleAsync(node, "test", Failure(exception), CancellationToken.None);
         decision2.Should().Be(NodeErrorDecision.Retry);
 
         // 3rd attempt should dead-letter
-        var decision3 = await typedHandler.HandleAsync(node, "test", exception, context, CancellationToken.None);
+        var decision3 = await typedHandler.HandleAsync(node, "test", Failure(exception), CancellationToken.None);
         decision3.Should().Be(NodeErrorDecision.DeadLetter);
     }
 
@@ -234,7 +237,7 @@ public sealed class FluentErrorHandlerTests
 
         // Act & Assert - ArgumentNullException derives from ArgumentException
         var decision = await typedHandler
-            .HandleAsync(node, "test", new ArgumentNullException(), context, CancellationToken.None);
+            .HandleAsync(node, "test", Failure(new ArgumentNullException()), CancellationToken.None);
 
         decision.Should().Be(NodeErrorDecision.Skip, "derived exception types should match parent type rules");
     }
@@ -252,7 +255,7 @@ public sealed class FluentErrorHandlerTests
 
         // Act
         var decision = await typedHandler
-            .HandleAsync(node, "test", new Exception(), context, CancellationToken.None);
+            .HandleAsync(node, "test", Failure(new Exception()), CancellationToken.None);
 
         // Assert
         decision.Should().Be(NodeErrorDecision.Fail, "default behavior when no rules match is Fail");
@@ -275,19 +278,19 @@ public sealed class FluentErrorHandlerTests
         var typedHandler = handler.As<INodeErrorHandler<TestTransformNode, string>>();
 
         // Act & Assert
-        (await typedHandler.HandleAsync(node, "test", new TimeoutException(), context, CancellationToken.None))
+        (await typedHandler.HandleAsync(node, "test", Failure(new TimeoutException()), CancellationToken.None))
             .Should().Be(NodeErrorDecision.Retry);
 
-        (await typedHandler.HandleAsync(node, "test", new IOException(), context, CancellationToken.None))
+        (await typedHandler.HandleAsync(node, "test", Failure(new IOException()), CancellationToken.None))
             .Should().Be(NodeErrorDecision.Retry);
 
-        (await typedHandler.HandleAsync(node, "test", new ArgumentException(), context, CancellationToken.None))
+        (await typedHandler.HandleAsync(node, "test", Failure(new ArgumentException()), CancellationToken.None))
             .Should().Be(NodeErrorDecision.Skip);
 
-        (await typedHandler.HandleAsync(node, "test", new InvalidOperationException(), context, CancellationToken.None))
+        (await typedHandler.HandleAsync(node, "test", Failure(new InvalidOperationException()), CancellationToken.None))
             .Should().Be(NodeErrorDecision.Fail);
 
-        (await typedHandler.HandleAsync(node, "test", new NotSupportedException(), context, CancellationToken.None))
+        (await typedHandler.HandleAsync(node, "test", Failure(new NotSupportedException()), CancellationToken.None))
             .Should().Be(NodeErrorDecision.DeadLetter);
     }
 
@@ -305,7 +308,7 @@ public sealed class FluentErrorHandlerTests
 
         // Act
         var decision = await typedHandler
-            .HandleAsync(node, "test", new InvalidOperationException(), context, CancellationToken.None);
+            .HandleAsync(node, "test", Failure(new InvalidOperationException()), CancellationToken.None);
 
         // Assert
         decision.Should().Be(NodeErrorDecision.Fail);
@@ -324,14 +327,14 @@ public sealed class FluentErrorHandlerTests
         var typedHandler = handler.As<INodeErrorHandler<TestTransformNode, string>>();
 
         // Act & Assert - Retry twice
-        (await typedHandler.HandleAsync(node, "item1", new Exception(), context, CancellationToken.None))
+        (await typedHandler.HandleAsync(node, "item1", Failure(new Exception()), CancellationToken.None))
             .Should().Be(NodeErrorDecision.Retry);
 
-        (await typedHandler.HandleAsync(node, "item1", new Exception(), context, CancellationToken.None))
+        (await typedHandler.HandleAsync(node, "item1", Failure(new Exception()), CancellationToken.None))
             .Should().Be(NodeErrorDecision.Retry);
 
         // Third call exhausts retries and dead-letters
-        (await typedHandler.HandleAsync(node, "item1", new Exception(), context, CancellationToken.None))
+        (await typedHandler.HandleAsync(node, "item1", Failure(new Exception()), CancellationToken.None))
             .Should().Be(NodeErrorDecision.DeadLetter);
 
         // For a new item (simulated by dead-letter resetting the counter), should retry again

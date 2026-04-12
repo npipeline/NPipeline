@@ -129,6 +129,12 @@ public sealed class CompositeTransformNode<TIn, TOut, TDefinition>
         var subContext = new PipelineContext(config);
         subContext.PipelineId = Guid.NewGuid();
 
+        // Stamp parent linkage for observability
+        subContext.Properties[CompositeContextKeys.ParentNodeId] = parentContext.CurrentNodeId ?? string.Empty;
+        subContext.Properties[CompositeContextKeys.ParentPipelineId] = parentContext.PipelineId;
+        if (parentContext.PipelineName is not null)
+            subContext.Properties[CompositeContextKeys.ParentPipelineName] = parentContext.PipelineName;
+
         if (_contextConfiguration.InheritRunIdentity)
             subContext.RunId = parentContext.RunId;
 

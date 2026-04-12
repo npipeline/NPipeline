@@ -247,8 +247,7 @@ public sealed class DefaultErrorHandlerFactoryTests
         public Task<NodeErrorDecision> HandleAsync(
             ITransformNode<int, int> node,
             int failedItem,
-            Exception error,
-            PipelineContext context,
+            NodeFailureContext failure,
             CancellationToken cancellationToken)
         {
             return Task.FromResult(NodeErrorDecision.Skip);
@@ -258,9 +257,7 @@ public sealed class DefaultErrorHandlerFactoryTests
     private sealed class TestDeadLetterSink : IDeadLetterSink
     {
         public Task HandleAsync(
-            string nodeId,
-            object item,
-            Exception error,
+            DeadLetterEnvelope envelope,
             PipelineContext context,
             CancellationToken cancellationToken)
         {
@@ -276,9 +273,7 @@ public sealed class DefaultErrorHandlerFactoryTests
         }
 
         public Task HandleAsync(
-            string nodeId,
-            object item,
-            Exception error,
+            DeadLetterEnvelope envelope,
             PipelineContext context,
             CancellationToken cancellationToken)
         {

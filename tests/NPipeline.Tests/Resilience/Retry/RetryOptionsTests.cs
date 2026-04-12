@@ -90,7 +90,7 @@ public sealed class RetryOptionsTests
 
     private sealed class FlakyNodeErrorHandler : INodeErrorHandler<ITransformNode<int, int>, int>
     {
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int failedItem, Exception error, PipelineContext context,
+        public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int failedItem, NodeFailureContext failure,
             CancellationToken cancellationToken)
         {
             return Task.FromResult(NodeErrorDecision.Retry);

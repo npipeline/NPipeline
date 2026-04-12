@@ -306,7 +306,7 @@ public sealed class LineageContinuityIntegrationTests
 
     private sealed class AlwaysRetryHandler : INodeErrorHandler<ITransformNode<int, int>, int>
     {
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int item, Exception exception, PipelineContext context,
+        public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int item, NodeFailureContext failure,
             CancellationToken cancellationToken)
         {
             return Task.FromResult(NodeErrorDecision.Retry);

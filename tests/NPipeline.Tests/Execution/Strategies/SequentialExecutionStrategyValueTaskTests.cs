@@ -109,7 +109,7 @@ public sealed class SequentialExecutionStrategyValueTaskTests
         {
         }
 
-        public void RecordError(string nodeId, Guid correlationId, int[]? ancestryInputIndices, object? serializedRecord, string errorMessage,
+        public void RecordError(string nodeId, string originNodeId, Guid correlationId, int[]? ancestryInputIndices, object? serializedRecord, string errorMessage,
             string? exceptionType, string? stackTrace, int retryCount = 0, string? pipelineName = null, Guid? runId = null,
             DateTimeOffset timestamp = default)
         {

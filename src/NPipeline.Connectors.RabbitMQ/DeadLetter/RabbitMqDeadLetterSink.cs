@@ -58,12 +58,11 @@ public sealed class RabbitMqDeadLetterSink : IDeadLetterSink, IAsyncDisposable
 
     /// <inheritdoc />
     public async Task HandleAsync(
-        string nodeId,
-        object item,
-        Exception error,
+        DeadLetterEnvelope envelope,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
+        var nodeId = envelope.Attribution.DecisionNodeId;
         LogMessages.DeadLetterPublishing(_logger, _deadLetterExchange, nodeId);
 
         IChannel? channel = null;
@@ -72,7 +71,7 @@ public sealed class RabbitMqDeadLetterSink : IDeadLetterSink, IAsyncDisposable
         {
             channel = await _connectionManager.GetPooledChannelAsync(cancellationToken).ConfigureAwait(false);
 
-            var body = JsonSerializer.SerializeToUtf8Bytes(item, _jsonOptions);
+            var body = JsonSerializer.SerializeToUtf8Bytes(envelope.Item, _jsonOptions);
 
             var properties = new BasicProperties
             {
@@ -82,25 +81,26 @@ public sealed class RabbitMqDeadLetterSink : IDeadLetterSink, IAsyncDisposable
                 Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
                 Headers = new Dictionary<string, object?>
                 {
-                    ["x-death-reason"] = Encoding.UTF8.GetBytes(error.Message),
+                    ["x-death-reason"] = Encoding.UTF8.GetBytes(envelope.Error.Message),
                     ["x-death-node"] = Encoding.UTF8.GetBytes(nodeId),
+                    ["x-death-origin-node"] = Encoding.UTF8.GetBytes(envelope.Attribution.OriginNodeId),
                     ["x-death-timestamp"] = Encoding.UTF8.GetBytes(DateTimeOffset.UtcNow.ToString("O")),
-                    ["x-death-exception-type"] = Encoding.UTF8.GetBytes(error.GetType().FullName ?? error.GetType().Name),
+                    ["x-death-exception-type"] = Encoding.UTF8.GetBytes(envelope.Error.GetType().FullName ?? envelope.Error.GetType().Name),
                 },
             };
 
-            if (error.StackTrace is not null)
+            if (envelope.Error.StackTrace is not null)
             {
                 // Truncate stack trace to avoid oversized headers
-                var truncated = error.StackTrace.Length > 2048
-                    ? error.StackTrace[..2048]
-                    : error.StackTrace;
+                var truncated = envelope.Error.StackTrace.Length > 2048
+                    ? envelope.Error.StackTrace[..2048]
+                    : envelope.Error.StackTrace;
 
                 properties.Headers["x-death-stack-trace"] = Encoding.UTF8.GetBytes(truncated);
             }
 
             // Preserve original message metadata if available
-            if (item is IRabbitMqMessageMetadata sourceMeta)
+            if (envelope.Item is IRabbitMqMessageMetadata sourceMeta)
             {
                 properties.Headers["x-original-exchange"] = Encoding.UTF8.GetBytes(sourceMeta.Exchange);
                 properties.Headers["x-original-routing-key"] = Encoding.UTF8.GetBytes(sourceMeta.RoutingKey);

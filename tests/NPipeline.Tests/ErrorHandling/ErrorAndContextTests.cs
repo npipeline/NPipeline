@@ -84,10 +84,10 @@ public sealed class ErrorAndContextTests
     // Test Error Handler
     private sealed class TestErrorHandler : INodeErrorHandler<ITransformNode<int, int>, int>
     {
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int item, Exception exception, PipelineContext context,
+        public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int item, NodeFailureContext failure,
             CancellationToken cancellationToken)
         {
-            context.Items[ContextKey] = true;
+            failure.PipelineContext.Items[ContextKey] = true;
             return Task.FromResult(NodeErrorDecision.Skip);
         }
     }

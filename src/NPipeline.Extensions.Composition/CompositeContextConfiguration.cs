@@ -6,9 +6,18 @@ namespace NPipeline.Extensions.Composition;
 public sealed class CompositeContextConfiguration
 {
     /// <summary>
-    ///     Gets the default configuration with no parent inheritance.
+    ///     Gets the default configuration with observability inheritance enabled.
+    ///     Run identity, execution observer, lineage sink, and dead-letter decorator are inherited by default
+    ///     so that parent-child telemetry correlates automatically.
+    ///     Data container inheritance (parameters, items, properties) remains opt-in.
     /// </summary>
-    public static CompositeContextConfiguration Default => new();
+    public static CompositeContextConfiguration Default => new()
+    {
+        InheritRunIdentity = true,
+        InheritExecutionObserver = true,
+        InheritLineageSink = true,
+        InheritDeadLetterDecorator = true,
+    };
 
     /// <summary>
     ///     Gets or sets whether to inherit parameters from parent context.

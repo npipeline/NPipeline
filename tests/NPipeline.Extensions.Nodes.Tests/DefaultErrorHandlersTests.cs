@@ -18,7 +18,7 @@ public sealed class DefaultErrorHandlersTests
         var context = PipelineContext.Default;
 
         // Act
-        var decision = await handler.HandleAsync(node, "test", exception, context, CancellationToken.None);
+        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), CancellationToken.None);
 
         // Assert
         decision.Should().Be(NodeErrorDecision.Skip);
@@ -34,7 +34,7 @@ public sealed class DefaultErrorHandlersTests
         var context = PipelineContext.Default;
 
         // Act
-        var decision = await handler.HandleAsync(node, "test", exception, context, CancellationToken.None);
+        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), CancellationToken.None);
 
         // Assert
         decision.Should().Be(NodeErrorDecision.Fail);
@@ -50,7 +50,7 @@ public sealed class DefaultErrorHandlersTests
         var context = PipelineContext.Default;
 
         // Act
-        var decision = await handler.HandleAsync(node, "test", exception, context, CancellationToken.None);
+        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), CancellationToken.None);
 
         // Assert
         decision.Should().Be(NodeErrorDecision.Retry);
@@ -66,7 +66,7 @@ public sealed class DefaultErrorHandlersTests
         var context = PipelineContext.Default;
 
         // Act
-        var decision = await handler.HandleAsync(node, "test", exception, context, CancellationToken.None);
+        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), CancellationToken.None);
 
         // Assert
         decision.Should().Be(NodeErrorDecision.Skip);
@@ -82,7 +82,7 @@ public sealed class DefaultErrorHandlersTests
         var context = PipelineContext.Default;
 
         // Act
-        var decision = await handler.HandleAsync(node, "test", exception, context, CancellationToken.None);
+        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), CancellationToken.None);
 
         // Assert
         decision.Should().Be(NodeErrorDecision.Fail);
@@ -98,7 +98,7 @@ public sealed class DefaultErrorHandlersTests
         var context = PipelineContext.Default;
 
         // Act
-        var decision = await handler.HandleAsync(node, "test", exception, context, CancellationToken.None);
+        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), CancellationToken.None);
 
         // Assert
         decision.Should().Be(NodeErrorDecision.Skip);
@@ -114,7 +114,7 @@ public sealed class DefaultErrorHandlersTests
         var context = PipelineContext.Default;
 
         // Act
-        var decision = await handler.HandleAsync(node, "test", exception, context, CancellationToken.None);
+        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), CancellationToken.None);
 
         // Assert
         decision.Should().Be(NodeErrorDecision.Fail);
@@ -132,7 +132,7 @@ public sealed class DefaultErrorHandlersTests
         cts.Cancel();
 
         // Act - Should not throw despite cancellation
-        var decision = await handler.HandleAsync(node, "test", exception, context, cts.Token);
+        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), cts.Token);
 
         // Assert
         decision.Should().Be(NodeErrorDecision.Skip);
@@ -150,7 +150,7 @@ public sealed class DefaultErrorHandlersTests
         cts.Cancel();
 
         // Act - Should not throw despite cancellation
-        var decision = await handler.HandleAsync(node, "test", exception, context, cts.Token);
+        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), cts.Token);
 
         // Assert
         decision.Should().Be(NodeErrorDecision.Skip);
@@ -168,7 +168,7 @@ public sealed class DefaultErrorHandlersTests
         cts.Cancel();
 
         // Act - Should not throw despite cancellation
-        var decision = await handler.HandleAsync(node, "test", exception, context, cts.Token);
+        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), cts.Token);
 
         // Assert
         decision.Should().Be(NodeErrorDecision.Skip);

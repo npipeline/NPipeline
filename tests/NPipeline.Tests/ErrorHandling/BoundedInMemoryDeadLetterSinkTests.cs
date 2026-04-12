@@ -6,6 +6,10 @@ namespace NPipeline.Tests.ErrorHandling;
 
 public sealed class BoundedInMemoryDeadLetterSinkTests
 {
+    private static readonly NodeFailureAttribution TestAttribution = new("node", "node", Guid.Empty, Guid.Empty);
+
+    private static DeadLetterEnvelope Envelope(object item, Exception? error = null) =>
+        new(item, error ?? new Exception(), TestAttribution);
     #region Error Message Tests
 
     [Fact]
@@ -17,11 +21,11 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
 
         for (var i = 0; i < 5; i++)
         {
-            await sink.HandleAsync("node", $"item-{i}", new Exception(), context, CancellationToken.None);
+            await sink.HandleAsync(Envelope($"item-{i}"), context, CancellationToken.None);
         }
 
         // Act
-        var act = async () => await sink.HandleAsync("node", "overflow", new Exception(), context, CancellationToken.None);
+        var act = async () => await sink.HandleAsync(Envelope("overflow"), context, CancellationToken.None);
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -45,11 +49,11 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
         // Add 1000 items - should succeed
         for (var i = 0; i < 1000; i++)
         {
-            await sink.HandleAsync("node", $"item-{i}", new Exception(), context, CancellationToken.None);
+            await sink.HandleAsync(Envelope($"item-{i}"), context, CancellationToken.None);
         }
 
         // The 1001st item should throw
-        var act = async () => await sink.HandleAsync("node", "item-1000", new Exception(), context, CancellationToken.None);
+        var act = async () => await sink.HandleAsync(Envelope("item-1000"), context, CancellationToken.None);
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*exceeded its capacity of 1000*");
     }
 
@@ -85,7 +89,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
         var error = new InvalidOperationException("test error");
 
         // Act
-        await sink.HandleAsync("node1", item, error, context, CancellationToken.None);
+        await sink.HandleAsync(Envelope(item, error), context, CancellationToken.None);
 
         // Assert
         sink.Items.Should().HaveCount(1);
@@ -103,7 +107,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
         // Act
         for (var i = 0; i < 5; i++)
         {
-            await sink.HandleAsync("node1", $"item-{i}", new Exception($"error-{i}"), context, CancellationToken.None);
+            await sink.HandleAsync(Envelope($"item-{i}", new Exception($"error-{i}")), context, CancellationToken.None);
         }
 
         // Assert
@@ -120,7 +124,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
         var error = new ArgumentException("test");
 
         // Act
-        await sink.HandleAsync("node", item, error, context, CancellationToken.None);
+        await sink.HandleAsync(Envelope(item, error), context, CancellationToken.None);
 
         // Assert
         var deadLetterItem = sink.Items.First();
@@ -140,10 +144,10 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
         var context = PipelineContext.Default;
 
         // Act
-        await sink.HandleAsync("node", "item1", new Exception(), context, CancellationToken.None);
-        await sink.HandleAsync("node", "item2", new Exception(), context, CancellationToken.None);
+        await sink.HandleAsync(Envelope("item1"), context, CancellationToken.None);
+        await sink.HandleAsync(Envelope("item2"), context, CancellationToken.None);
 
-        var act = async () => await sink.HandleAsync("node", "item3", new Exception(), context, CancellationToken.None);
+        var act = async () => await sink.HandleAsync(Envelope("item3"), context, CancellationToken.None);
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -171,7 +175,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
         // Act
         for (var i = 0; i < 3; i++)
         {
-            await sink.HandleAsync("node", $"item-{i}", new Exception(), context, CancellationToken.None);
+            await sink.HandleAsync(Envelope($"item-{i}"), context, CancellationToken.None);
         }
 
         // Assert
@@ -190,9 +194,9 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
         var context = PipelineContext.Default;
 
         // Act & Assert
-        await sink.HandleAsync("node", "string-item", new Exception(), context, CancellationToken.None);
-        await sink.HandleAsync("node", 123, new Exception(), context, CancellationToken.None);
-        await sink.HandleAsync("node", new object(), new Exception(), context, CancellationToken.None);
+        await sink.HandleAsync(Envelope("string-item"), context, CancellationToken.None);
+        await sink.HandleAsync(Envelope(123), context, CancellationToken.None);
+        await sink.HandleAsync(Envelope(new object()), context, CancellationToken.None);
 
         sink.Items.Should().HaveCount(3);
     }
@@ -205,7 +209,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
         var context = PipelineContext.Default;
 
         // Act
-        await sink.HandleAsync("node", null!, new Exception(), context, CancellationToken.None);
+        await sink.HandleAsync(Envelope(null!), context, CancellationToken.None);
 
         // Assert
         sink.Items.Should().HaveCount(1);
@@ -220,7 +224,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
         var context = PipelineContext.Default;
 
         // Act
-        var act = async () => await sink.HandleAsync("node", "item", null!, context, CancellationToken.None);
+        var act = async () => await sink.HandleAsync(Envelope("item", null!), context, CancellationToken.None);
 
         // Assert - should still handle it
         await act.Should().NotThrowAsync();
@@ -243,7 +247,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
         for (var i = 0; i < 10; i++)
         {
             var index = i;
-            tasks.Add(sink.HandleAsync("node", $"item-{index}", new Exception(), context, CancellationToken.None));
+            tasks.Add(sink.HandleAsync(Envelope($"item-{index}"), context, CancellationToken.None));
         }
 
         await Task.WhenAll(tasks);
@@ -269,7 +273,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
             {
                 try
                 {
-                    await sink.HandleAsync("node", $"item-{Guid.NewGuid()}", new Exception(), context, CancellationToken.None);
+                    await sink.HandleAsync(Envelope($"item-{Guid.NewGuid()}"), context, CancellationToken.None);
                 }
                 catch (InvalidOperationException ex)
                 {
@@ -301,7 +305,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
         var cts = new CancellationTokenSource();
 
         // Act
-        await sink.HandleAsync("node", "item", new Exception(), context, cts.Token);
+        await sink.HandleAsync(Envelope("item"), context, cts.Token);
 
         // Assert
         sink.Items.Should().HaveCount(1);
@@ -317,7 +321,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
         cts.Cancel();
 
         // Act - should still complete even with cancelled token
-        await sink.HandleAsync("node", "item", new Exception(), context, cts.Token);
+        await sink.HandleAsync(Envelope("item"), context, cts.Token);
 
         // Assert
         sink.Items.Should().HaveCount(1);
@@ -333,10 +337,10 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
         // Arrange
         var sink = new BoundedInMemoryDeadLetterSink();
         var context = PipelineContext.Default;
-        await sink.HandleAsync("node", "item", new Exception(), context, CancellationToken.None);
+        await sink.HandleAsync(Envelope("item"), context, CancellationToken.None);
 
         // Act & Assert
-        sink.Items.Should().BeAssignableTo<IReadOnlyCollection<(object, Exception)>>();
+        sink.Items.Should().BeAssignableTo<IReadOnlyCollection<DeadLetterEnvelope>>();
     }
 
     [Fact]
@@ -349,7 +353,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
         // Act
         for (var i = 0; i < 100; i++)
         {
-            await sink.HandleAsync("node", i, new Exception(), context, CancellationToken.None);
+            await sink.HandleAsync(Envelope(i), context, CancellationToken.None);
         }
 
         // Assert
