@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using NPipeline.Attributes;
 using NPipeline.DataFlow.Branching;
 using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
@@ -274,7 +275,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         var endTime = DateTime.UtcNow;
 
         var pipelineName = string.IsNullOrWhiteSpace(context.PipelineName)
-            ? typeof(TDefinition).Name
+            ? PipelineAttributeHelper.GetPipelineName(typeof(TDefinition))
             : context.PipelineName!;
 
         await collector.EmitMetricsAsync(pipelineName, context.PipelineId, pipelineRunId, startTime, endTime, success, exception,
@@ -298,7 +299,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
 
         await collector.EmitMetricsAsync(
             string.IsNullOrWhiteSpace(context.PipelineName)
-                ? definitionType.Name
+                ? PipelineAttributeHelper.GetPipelineName(definitionType)
                 : context.PipelineName!,
             context.PipelineId,
             pipelineRunId,

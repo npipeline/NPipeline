@@ -1,3 +1,4 @@
+using NPipeline.Attributes;
 using NPipeline.Configuration;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -51,7 +52,7 @@ public sealed class CompositeTransformNode<TIn, TOut, TDefinition>
     {
         // Create isolated sub-pipeline context
         var subContext = CreateSubPipelineContext(context);
-        subContext.PipelineName = typeof(TDefinition).Name;
+        subContext.PipelineName = PipelineAttributeHelper.GetPipelineName(typeof(TDefinition));
 
         // Store input item in sub-context
         subContext.Parameters[CompositeContextKeys.InputItem] = item is null ? DBNull.Value : item;

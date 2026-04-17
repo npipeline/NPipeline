@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Runtime.ExceptionServices;
+using NPipeline.Attributes;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
@@ -155,7 +156,7 @@ public sealed class PipelineRunner(
         ArgumentNullException.ThrowIfNull(createPipeline);
 
         if (string.IsNullOrWhiteSpace(context.PipelineName))
-            context.PipelineName = definitionType.Name;
+            context.PipelineName = PipelineAttributeHelper.GetPipelineName(definitionType);
 
         using var pipelineActivity = observabilitySurface.BeginPipeline(definitionType, context);
         PipelineGraph? graph = null;
