@@ -32,7 +32,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Parquet.net" Version="5.5.0"/>
+        <PackageReference Include="Parquet.net" Version="5.6.0" />
     </ItemGroup>
 
     <ItemGroup>
