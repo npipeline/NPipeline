@@ -1,8 +1,7 @@
 ---
 title: Parallelism
 description: Enhance your NPipeline's performance by leveraging parallel processing capabilities.
-sidebar_position: 1
-slug: /extensions/parallelism
+order: 1
 ---
 
 # Parallelism

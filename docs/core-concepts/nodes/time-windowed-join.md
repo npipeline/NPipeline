@@ -1,7 +1,7 @@
 ---
 title: Time-Windowed Joins
 description: Learn how to perform joins on streams within specific time windows, a key technique for real-time and event-driven data processing.
-sidebar_position: 11
+order: 11
 ---
 
 # Time-Windowed Joins

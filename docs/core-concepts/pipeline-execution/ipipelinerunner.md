@@ -1,7 +1,7 @@
 ---
 title: IPipelineRunner
 description: Learn about the IPipelineRunner interface, the core component for executing NPipeline data flows.
-sidebar_position: 2
+order: 2
 ---
 
 # `IPipelineRunner`

@@ -1,8 +1,7 @@
 ---
-title: NPipeline Extensions
+title: Extensions
 description: Discover how NPipeline extensions enhance functionality, providing specialized nodes, integrations, and advanced features.
-sidebar_position: 1
-slug: /extensions
+order: 1
 ---
 
 # NPipeline Extensions

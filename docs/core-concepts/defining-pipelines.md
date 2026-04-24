@@ -1,7 +1,7 @@
 ---
 title: Defining Pipelines
 description: Comprehensive guide to defining and constructing data streamlines using NPipeline's fluent PipelineBuilder API and class-based IPipelineDefinition approach.
-sidebar_position: 5
+order: 5
 ---
 
 # Defining Pipelines

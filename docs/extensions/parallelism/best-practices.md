@@ -1,7 +1,7 @@
 ---
 title: Best Practices
 description: Guidelines and considerations for optimizing parallelism in your NPipeline pipelines.
-sidebar_position: 4
+order: 4
 ---
 
 # Best Practices and Considerations

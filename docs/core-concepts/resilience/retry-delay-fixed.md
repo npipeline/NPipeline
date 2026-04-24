@@ -1,7 +1,7 @@
 ---
 title: Fixed Delay
 description: Configure fixed delay retry strategy for simple retry scenarios in NPipeline
-sidebar_position: 8.3
+order: 8.3
 ---
 
 # Fixed Delay

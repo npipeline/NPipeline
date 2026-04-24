@@ -1,8 +1,7 @@
 ---
-title: Troubleshooting Guide
+title: Troubleshooting
 description: Common NPipeline issues and solutions.
-sidebar_position: 1
-slug: /troubleshooting
+order: 1
 ---
 
 # Troubleshooting Guide

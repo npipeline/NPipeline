@@ -1,7 +1,7 @@
 ---
 title: Optimization Principles - How NPipeline Achieves High Performance
 description: Deep dive into architectural and design decisions that enable NPipeline's exceptional performance characteristics.
-sidebar_position: 13
+order: 13
 ---
 
 # Optimization Principles

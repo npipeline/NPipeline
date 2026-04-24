@@ -1,7 +1,7 @@
 ---
 title: Best Practices
 description: Design principles and recommendations for building robust NPipeline pipelines.
-sidebar_position: 11
+order: 11
 ---
 
 # Best Practices

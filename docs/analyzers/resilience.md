@@ -1,7 +1,7 @@
 ---
 title: Resilience Analyzers
 description: Detect incomplete resilience configuration that could lead to silent failures and unexpected behavior.
-sidebar_position: 2
+order: 2
 ---
 
 ## Resilience Analyzers

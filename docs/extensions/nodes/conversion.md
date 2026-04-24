@@ -1,7 +1,7 @@
 ---
 title: Type Conversion Nodes
 description: Convert between types safely with comprehensive error handling.
-sidebar_position: 4
+order: 4
 ---
 
 # Type Conversion Nodes

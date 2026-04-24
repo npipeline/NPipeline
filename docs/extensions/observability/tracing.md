@@ -1,7 +1,7 @@
 ---
 title: Distributed Tracing
 description: OpenTelemetry-compatible distributed tracing for NPipeline pipelines using System.Diagnostics.Activity.
-sidebar_position: 7
+order: 7
 ---
 
 # Distributed Tracing

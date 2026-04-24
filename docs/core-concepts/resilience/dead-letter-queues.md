@@ -1,7 +1,7 @@
 ---
 title: Dead-Letter Queues
 description: Learn how to implement dead-letter queues in NPipeline using IDeadLetterSink to capture and analyze problematic items.
-sidebar_position: 9
+order: 9
 ---
 
 # Dead-Letter Queues

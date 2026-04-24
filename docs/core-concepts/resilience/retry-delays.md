@@ -1,7 +1,7 @@
 ---
 title: Retry Delays
 description: Choose and configure retry delay strategies in NPipeline to handle transient failures gracefully
-sidebar_position: 8
+order: 8
 ---
 
 # Retry Delays

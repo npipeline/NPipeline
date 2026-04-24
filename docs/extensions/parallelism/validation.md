@@ -1,7 +1,7 @@
 ---
 title: Validation
 description: Learn about parallel configuration validation rules and how to prevent common mistakes.
-sidebar_position: 4
+order: 4
 ---
 
 # Validation of Parallel Configuration

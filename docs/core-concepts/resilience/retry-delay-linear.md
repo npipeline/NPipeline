@@ -1,7 +1,7 @@
 ---
 title: Linear Backoff
 description: Configure linear backoff retry delays for database operations in NPipeline
-sidebar_position: 8.2
+order: 8.2
 ---
 
 # Linear Backoff

@@ -1,7 +1,7 @@
 ---
 title: Batching Nodes
 description: Learn how to group data items into batches for efficient processing in NPipeline.
-sidebar_position: 5
+order: 5
 ---
 
 # Batching Nodes

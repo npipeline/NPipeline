@@ -1,7 +1,7 @@
 ---
 title: Error Handling in NPipeline
 description: Comprehensive guide to error handling at both node and pipeline levels in NPipeline
-sidebar_position: 1
+order: 1
 ---
 
 # Error Handling

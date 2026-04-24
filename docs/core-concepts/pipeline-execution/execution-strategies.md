@@ -1,7 +1,7 @@
 ---
 title: Execution Strategies
 description: Learn how to control the execution flow and resilience of your NPipeline nodes using various execution strategies.
-sidebar_position: 3
+order: 3
 ---
 
 # Execution Strategies

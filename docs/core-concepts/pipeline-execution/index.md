@@ -1,8 +1,7 @@
 ---
 title: Pipeline Execution
 description: Understand how NPipeline executes data flows and manages pipeline lifecycle.
-sidebar_position: 1
-slug: /core-concepts/pipeline-execution
+order: 1
 ---
 
 # Pipeline Execution

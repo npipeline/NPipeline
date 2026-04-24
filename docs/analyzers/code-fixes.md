@@ -1,7 +1,7 @@
 ---
 title: Code Fix Providers
 description: Automated code fixes for common analyzer issues in NPipeline.
-sidebar_position: 7
+order: 7
 ---
 
 ## Code Fix Providers

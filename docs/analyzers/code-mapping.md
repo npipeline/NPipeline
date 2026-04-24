@@ -1,7 +1,7 @@
 ---
 title: Analyzer Code Reference
 description: Complete mapping of NPipeline analyzer codes and their implementation details.
-sidebar_position: 7
+order: 7
 ---
 
 # NPipeline Analyzer Code Mapping

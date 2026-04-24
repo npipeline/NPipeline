@@ -1,7 +1,7 @@
 ---
 title: Node Definition Structure
 description: Understanding the nested configuration structure of NodeDefinition in NPipeline.
-sidebar_position: 6
+order: 6
 ---
 
 # Node Definition Structure

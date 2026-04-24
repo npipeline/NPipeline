@@ -1,7 +1,7 @@
 ---
 title: Error Handling Overview
 description: Understand the two levels of error handling in NPipeline and choose the right approach for your pipeline
-sidebar_position: 1
+order: 1
 ---
 
 # Error Handling Overview

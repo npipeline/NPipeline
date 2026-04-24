@@ -1,8 +1,7 @@
 ---
 title: Welcome to NPipeline
 description: Explore the official documentation for NPipeline, a high-performance, graph-based streaming data streamline library for .NET.
-slug: /
-sidebar_position: 0
+order: 0
 ---
 
 # Welcome to NPipeline

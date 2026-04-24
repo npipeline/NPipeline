@@ -1,7 +1,7 @@
 ---
 title: Filtering Nodes
 description: Filter items based on predicates and conditions.
-sidebar_position: 3
+order: 3
 ---
 
 # Filtering Nodes

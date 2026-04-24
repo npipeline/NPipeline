@@ -1,7 +1,7 @@
 ---
 title: Retry Configuration
 description: Learn how to configure retry behavior in NPipeline using PipelineRetryOptions to manage item retries and node restarts.
-sidebar_position: 7
+order: 7
 ---
 
 # Retry Configuration

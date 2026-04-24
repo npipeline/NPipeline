@@ -1,7 +1,7 @@
 ---
 title: Retry Delay Strategies Architecture
 description: How NPipeline's retry delay system works internally, including design patterns, components, and architectural decisions.
-sidebar_position: 8
+order: 8
 ---
 
 # Retry Delay Strategies Architecture

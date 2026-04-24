@@ -1,7 +1,7 @@
 ---
 title: Exponential Backoff
 description: Configure exponential backoff retry delays for external APIs and services in NPipeline
-sidebar_position: 8.1
+order: 8.1
 ---
 
 # Exponential Backoff

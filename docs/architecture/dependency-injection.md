@@ -1,7 +1,7 @@
 ---
 title: Dependency Injection Integration
 description: How NPipeline integrates with dependency injection containers.
-sidebar_position: 5
+order: 5
 ---
 
 # Dependency Injection Integration

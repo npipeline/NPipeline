@@ -1,7 +1,7 @@
 ---
 title: Join Nodes
 description: Merge data from multiple input streams based on common keys or time windows using NPipeline's Join Nodes.
-sidebar_position: 6
+order: 6
 ---
 
 # Join Nodes

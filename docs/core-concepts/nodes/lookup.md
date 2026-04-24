@@ -1,7 +1,7 @@
 ---
 title: Lookup Nodes
 description: Enrich your data streams by performing lookups against external data sources using NPipeline's Lookup Nodes.
-sidebar_position: 7
+order: 7
 ---
 
 # Lookup Nodes

@@ -1,7 +1,7 @@
 ---
 title: Component Architecture
 description: The major system components and their roles in NPipeline.
-sidebar_position: 2
+order: 2
 ---
 
 # Component Architecture

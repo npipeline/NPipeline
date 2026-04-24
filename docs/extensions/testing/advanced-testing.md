@@ -1,7 +1,7 @@
 ---
 title: Advanced Testing
 description: Learn how to test complex pipeline scenarios, including nodes with dependencies, error handling, and more.
-sidebar_position: 4
+order: 4
 ---
 
 # Advanced Pipeline Testing

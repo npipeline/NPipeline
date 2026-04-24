@@ -1,7 +1,7 @@
 ---
 title: Configuration Analyzers
 description: Detect configuration issues that can cause performance problems, resource leaks, or silent failures in NPipeline pipelines.
-sidebar_position: 6
+order: 6
 ---
 
 ## Configuration Analyzers

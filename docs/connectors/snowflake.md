@@ -1,7 +1,7 @@
 ---
 title: Snowflake Connector
 description: Read from and write to Snowflake databases with NPipeline using the Snowflake connector.
-sidebar_position: 12
+order: 12
 ---
 
 ## Snowflake Connector

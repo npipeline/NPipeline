@@ -1,7 +1,7 @@
 ---
 title: Branch Nodes
 description: Duplicate data streams to multiple downstream paths for branching logic or monitoring using NPipeline's Branch Nodes.
-sidebar_position: 8
+order: 8
 ---
 
 # Branch Nodes

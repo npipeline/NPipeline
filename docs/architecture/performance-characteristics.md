@@ -1,7 +1,7 @@
 ---
 title: Performance Characteristics
 description: Memory usage, throughput, and scalability of NPipeline.
-sidebar_position: 8
+order: 8
 ---
 
 # Performance Characteristics

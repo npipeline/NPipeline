@@ -1,8 +1,7 @@
 ---
 title: Error Codes
 description: NPipeline error codes, their causes, and solutions.
-sidebar_position: 1
-slug: /error-codes
+order: 1
 ---
 
 # Error Codes

@@ -1,7 +1,7 @@
 ---
 title: JSON Connector
 description: Read from and write to JSON files with NPipeline using the JSON connector.
-sidebar_position: 7
+order: 7
 ---
 
 ## JSON Connector

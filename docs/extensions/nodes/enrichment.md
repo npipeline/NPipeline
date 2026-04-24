@@ -1,7 +1,7 @@
 ---
 title: Data Enrichment
 description: Enrich data with lookups, computed properties, and defaults using a unified, fluent API
-sidebar_position: 5
+order: 5
 ---
 
 # Data Enrichment

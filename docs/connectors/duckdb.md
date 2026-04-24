@@ -1,7 +1,7 @@
 ---
 title: DuckDB Connector
 description: Read from and write to DuckDB databases and files (Parquet/CSV) with NPipeline using the DuckDB connector.
-sidebar_position: 5
+order: 5
 ---
 
 ## DuckDB Connector

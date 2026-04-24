@@ -1,7 +1,7 @@
 ---
 title: Reliability Analyzers
 description: Identify inefficient exception handling patterns and unsafe access patterns that can harm reliability.
-sidebar_position: 3
+order: 3
 ---
 
 ## Reliability Analyzers

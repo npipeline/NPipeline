@@ -1,8 +1,7 @@
 ---
-title: Testing Extensions
+title: Testing
 description: Learn about NPipeline's testing utilities and helpers for writing comprehensive tests.
-sidebar_position: 7
-slug: /extensions/testing
+order: 7
 ---
 
 # Testing Extensions

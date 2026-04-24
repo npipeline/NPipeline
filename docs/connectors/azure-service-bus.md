@@ -1,7 +1,7 @@
 ---
 title: Azure Service Bus Connector
 description: Consume from and publish to Azure Service Bus with NPipeline using the Azure Service Bus connector with support for queues, topics, sessions, explicit settlement, and Azure AD authentication.
-sidebar_position: 3
+order: 3
 ---
 
 ## Azure Service Bus Connector

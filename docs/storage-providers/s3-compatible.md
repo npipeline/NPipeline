@@ -1,7 +1,7 @@
 ---
 title: S3-Compatible Storage Provider
 description: Read from and write to S3-compatible storage services (MinIO, DigitalOcean Spaces, Cloudflare R2, etc.) using the S3-compatible storage provider.
-sidebar_position: 2
+order: 2
 ---
 
 ## S3-Compatible Storage Provider

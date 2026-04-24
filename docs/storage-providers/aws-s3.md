@@ -1,7 +1,7 @@
 ---
 title: AWS S3 Storage Provider
 description: Read from and write to Amazon S3 using the AWS S3 storage provider with full IAM and credential chain support.
-sidebar_position: 1
+order: 1
 ---
 
 ## AWS S3 Storage Provider

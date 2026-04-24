@@ -1,7 +1,7 @@
 ---
 title: Monitoring Retry Metrics
 description: Observe and measure retry behavior in production NPipeline systems
-sidebar_position: 8.6
+order: 8.6
 ---
 
 # Monitoring Retry Metrics

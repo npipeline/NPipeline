@@ -1,7 +1,7 @@
 ---
 title: Grouping Strategies
 description: Critical decision framework for choosing between batching and aggregation in NPipeline.
-sidebar_position: 10
+order: 10
 ---
 
 ## Batching vs Aggregation

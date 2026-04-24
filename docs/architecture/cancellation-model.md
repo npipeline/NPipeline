@@ -1,7 +1,7 @@
 ---
 title: Cancellation Model
 description: How cancellation tokens propagate through NPipeline.
-sidebar_position: 7
+order: 7
 ---
 
 # Cancellation Model

@@ -1,7 +1,7 @@
 ---
 title: Extension Points
 description: Customization mechanisms in NPipeline.
-sidebar_position: 9
+order: 9
 ---
 
 # Extension Points

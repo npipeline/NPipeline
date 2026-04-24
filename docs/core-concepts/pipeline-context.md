@@ -1,7 +1,7 @@
 ---
 title: Pipeline Context (PipelineContext)
 description: Understand how to manage and share state, configuration, and cancellation across your NPipeline nodes using PipelineContext.
-sidebar_position: 2
+order: 2
 ---
 
 # `PipelineContext`

@@ -1,7 +1,7 @@
 ---
 title: Common Patterns
 description: Practical patterns and recipes for building effective NPipeline pipelines.
-sidebar_position: 12
+order: 12
 ---
 
 ## Common Patterns

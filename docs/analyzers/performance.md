@@ -1,7 +1,7 @@
 ---
 title: Performance Analyzers
 description: Identify blocking operations, non-streaming patterns, and async/await anti-patterns that harm performance.
-sidebar_position: 3
+order: 3
 ---
 
 ## Performance Analyzers

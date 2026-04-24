@@ -1,7 +1,7 @@
 ---
 title: Pipeline Validation
 description: Validate pipeline structures before execution to catch errors early using validation extensions.
-sidebar_position: 9
+order: 9
 ---
 
 # Pipeline Validation Extensions - Usage Guide

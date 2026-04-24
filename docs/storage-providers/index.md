@@ -1,8 +1,7 @@
 ---
-title: Storage Providers Overview
+title: Storage Providers
 description: An overview of the available storage providers for NPipeline.
-sidebar_position: 0
-slug: /storage-providers
+order: 0
 ---
 
 ## Storage Providers Overview

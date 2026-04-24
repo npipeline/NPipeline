@@ -1,7 +1,7 @@
 ---
 title: Advanced Retry Patterns
 description: Implement advanced retry delay patterns including decorrelated jitter, custom strategies, and fallback patterns
-sidebar_position: 8.4
+order: 8.4
 ---
 
 # Advanced Retry Patterns

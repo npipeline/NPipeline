@@ -1,8 +1,7 @@
 ---
 title: Composition
 description: Create hierarchical, modular pipelines by treating entire pipelines as reusable transform nodes.
-sidebar_position: 1
-slug: /extensions/composition
+order: 1
 ---
 
 # Pipeline Composition Extension

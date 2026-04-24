@@ -1,7 +1,7 @@
 ---
 title: FluentAssertions
 description: Use the popular FluentAssertions library to write strongly-typed, descriptive, and readable tests for your NPipelines.
-sidebar_position: 3
+order: 3
 ---
 
 # FluentAssertions Integration

@@ -1,7 +1,7 @@
 ---
-title: Architecture Overview
+title: Architecture
 description: Deep dive into NPipeline's design, internals, and how it works.
-sidebar_position: 12
+order: 12
 ---
 
 # Architecture Overview

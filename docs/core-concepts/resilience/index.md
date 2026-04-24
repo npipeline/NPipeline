@@ -1,7 +1,7 @@
 ---
-title: Resilience Overview
+title: Resilience
 description: Understand resilience concepts in NPipeline and how to build fault-tolerant data streamlines that can recover from failures.
-sidebar_position: 1
+order: 1
 ---
 
 # Resilience Overview

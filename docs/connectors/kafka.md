@@ -1,7 +1,7 @@
 ---
 title: Kafka Connector
 description: Read from and write to Apache Kafka with NPipeline using the Kafka connector with support for multiple serialization formats and delivery semantics.
-sidebar_position: 8
+order: 8
 ---
 
 ## Kafka Connector

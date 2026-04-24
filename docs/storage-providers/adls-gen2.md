@@ -1,7 +1,7 @@
 ---
 title: Azure Data Lake Storage Gen2 Provider
 description: Read from and write to Azure Data Lake Storage Gen2 using the ADLS Gen2 storage provider.
-sidebar_position: 4
+order: 4
 ---
 
 ## Azure Data Lake Storage Gen2 Provider

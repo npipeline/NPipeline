@@ -1,8 +1,7 @@
 ---
 title: Core Concepts
 description: Implementation guides for building pipelines with NPipeline.
-sidebar_position: 1
-slug: /core-concepts
+order: 1
 ---
 
 # Core Concepts

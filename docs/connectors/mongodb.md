@@ -1,7 +1,7 @@
 ---
 title: MongoDB Connector
 description: Read from and write to MongoDB databases with NPipeline using the MongoDB connector.
-sidebar_position: 15
+order: 15
 ---
 
 ## MongoDB Connector

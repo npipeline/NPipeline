@@ -1,7 +1,7 @@
 ---
 title: Error Handling Architecture
 description: How errors propagate and are handled throughout NPipeline.
-sidebar_position: 6
+order: 6
 ---
 
 # Error Handling Architecture

@@ -1,7 +1,7 @@
 ---
 title: Design Principles
 description: Core principles guiding NPipeline's architecture.
-sidebar_position: 10
+order: 10
 ---
 
 # Design Principles

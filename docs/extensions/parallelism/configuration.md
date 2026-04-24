@@ -1,7 +1,7 @@
 ---
 title: Configuration
 description: Learn about different configuration APIs (Preset, Builder, and Manual) for parallel execution.
-sidebar_position: 3
+order: 3
 ---
 
 # Parallel Execution Configuration

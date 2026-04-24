@@ -1,7 +1,7 @@
 ---
 title: Aggregation Nodes
 description: Learn how to perform powerful data aggregations within your NPipeline using specialized nodes.
-sidebar_position: 10
+order: 10
 ---
 
 # Aggregation Nodes

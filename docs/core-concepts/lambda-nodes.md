@@ -1,7 +1,7 @@
 ---
 title: Lambda-Based Node Syntax
 description: Using lambda functions to define simple nodes without creating separate classes.
-sidebar_position: 4
+order: 4
 ---
 
 # Lambda-Based Node Syntax

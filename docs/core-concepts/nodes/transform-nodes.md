@@ -1,7 +1,7 @@
 ---
 title: Transform Nodes
 description: Learn how to implement transform nodes and optimize for high performance using ValueTask<T>.
-sidebar_position: 3
+order: 3
 ---
 
 # Transform Nodes (`ITransformNode<TIn, TOut>`)

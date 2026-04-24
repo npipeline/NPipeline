@@ -1,7 +1,7 @@
 ---
 title: Build-Time Analyzers
 description: NPipeline's comprehensive build-time analyzers enforce the framework's fundamental design contract through automated performance and resilience hygiene checks.
-sidebar_position: 1
+order: 1
 ---
 
 ## Build-Time Guardrails: Automated Enforcement of Best Practices

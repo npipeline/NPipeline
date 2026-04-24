@@ -1,7 +1,7 @@
 ---
 title: Materialization and Buffering
 description: Understand how materialization and buffering enable replay functionality for resilient pipeline execution.
-sidebar_position: 3
+order: 3
 ---
 
 # Materialization and Buffering

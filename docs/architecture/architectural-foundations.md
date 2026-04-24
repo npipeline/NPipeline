@@ -1,7 +1,7 @@
 ---
 title: Architectural Foundations
 description: Fundamental architectural concepts in NPipeline - graphs, nodes, and streaming data.
-sidebar_position: 1
+order: 1
 ---
 
 # Architectural Foundations

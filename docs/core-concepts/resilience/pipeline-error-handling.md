@@ -1,7 +1,7 @@
 ---
 title: Pipeline-Level Error Handling
 description: Handle errors that affect entire node streams using IPipelineErrorHandler
-sidebar_position: 3
+order: 3
 ---
 
 # Pipeline-Level Error Handling

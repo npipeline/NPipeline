@@ -1,7 +1,7 @@
 ---
 title: Troubleshooting
 description: Diagnose and resolve common resilience issues in NPipeline with symptom-based troubleshooting and debugging guidance.
-sidebar_position: 6
+order: 6
 ---
 
 # Troubleshooting

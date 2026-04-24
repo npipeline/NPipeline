@@ -1,7 +1,7 @@
 ---
 title: Learning Paths
 description: Choose your learning path based on your experience level and goals.
-sidebar_position: 4
+order: 4
 ---
 
 # Choose Your Learning Path

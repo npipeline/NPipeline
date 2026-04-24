@@ -1,7 +1,7 @@
 ---
 title: Data Validation Nodes
 description: Validate property values with clear, actionable error messages.
-sidebar_position: 2
+order: 2
 ---
 
 # Data Validation Nodes

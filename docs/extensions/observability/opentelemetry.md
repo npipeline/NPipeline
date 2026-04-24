@@ -1,7 +1,7 @@
 ---
 title: OpenTelemetry Integration
 description: Complete guide to using NPipeline.Extensions.Observability.OpenTelemetry for distributed tracing with OpenTelemetry SDKs.
-sidebar_position: 2
+order: 2
 ---
 
 # OpenTelemetry Integration

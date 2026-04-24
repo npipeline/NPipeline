@@ -1,7 +1,7 @@
 ---
 title: AwesomeAssertions
 description: Write expressive, readable assertions for your pipeline tests with the AwesomeAssertions integration.
-sidebar_position: 2
+order: 2
 ---
 
 # AwesomeAssertions Integration

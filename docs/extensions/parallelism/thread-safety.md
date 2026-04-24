@@ -1,7 +1,7 @@
 ---
 title: Thread Safety
 description: Comprehensive guide to thread safety and shared state management in parallel execution.
-sidebar_position: 2
+order: 2
 ---
 
 # Thread Safety in Parallel Execution

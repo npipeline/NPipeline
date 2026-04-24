@@ -1,7 +1,7 @@
 ---
 title: Data Streams (IDataStream)
 description: Understand how data flows through NPipeline using IDataStream and IDataStream&lt;T&gt;.
-sidebar_position: 3
+order: 3
 ---
 
 # Data Streams (`IDataStream` and `IDataStream<T>`)

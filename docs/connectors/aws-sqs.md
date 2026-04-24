@@ -1,7 +1,7 @@
 ---
 title: AWS SQS Connector
 description: Read from and write to Amazon Simple Queue Service (SQS) with NPipeline using the AWS SQS connector.
-sidebar_position: 2
+order: 2
 ---
 
 ## AWS SQS Connector

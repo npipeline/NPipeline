@@ -1,8 +1,7 @@
 ---
-title: Nodes Extension
+title: Advanced Nodes
 description: Pre-built, high-performance nodes for common data processing operations. Includes cleansing, validation, filtering, and transformation nodes.
-sidebar_position: 4
-slug: /extensions/nodes
+order: 4
 ---
 
 # NPipeline.Extensions.Nodes

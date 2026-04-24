@@ -1,7 +1,7 @@
 ---
 title: Google Cloud Storage Provider
 description: Read from and write to Google Cloud Storage using the GCS storage provider.
-sidebar_position: 5
+order: 5
 ---
 
 ## Google Cloud Storage Provider

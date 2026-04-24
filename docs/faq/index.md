@@ -1,8 +1,7 @@
 ---
 title: Frequently Asked Questions
 description: Answers to common questions about NPipeline.
-sidebar_position: 1
-slug: /faq
+order: 1
 ---
 
 # Frequently Asked Questions

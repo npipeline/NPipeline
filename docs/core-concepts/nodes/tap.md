@@ -1,7 +1,7 @@
 ---
 title: Tap Nodes
 description: Non-intrusive monitoring and side-channel processing using NPipeline's Tap Nodes.
-sidebar_position: 9
+order: 9
 ---
 
 # Tap Nodes

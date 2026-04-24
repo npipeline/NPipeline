@@ -1,7 +1,7 @@
 ---
 title: Data Cleansing Nodes
 description: Clean and normalize string, numeric, datetime, and collection properties.
-sidebar_position: 1
+order: 1
 ---
 
 # Data Cleansing Nodes

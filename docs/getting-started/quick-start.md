@@ -1,7 +1,7 @@
 ---
 title: Quick Start
 description: Build your first NPipeline with a simple "Hello World" example.
-sidebar_position: 3
+order: 3
 ---
 
 # Quick Start: Your First NPipeline

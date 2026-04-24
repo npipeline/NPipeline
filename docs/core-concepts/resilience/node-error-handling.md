@@ -1,7 +1,7 @@
 ---
 title: Node-Level Error Handling
 description: Handle errors for individual items within nodes using INodeErrorHandler
-sidebar_position: 2
+order: 2
 ---
 
 # Node-Level Error Handling

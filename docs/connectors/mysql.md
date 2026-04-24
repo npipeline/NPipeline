@@ -1,7 +1,7 @@
 ---
 title: MySQL Connector
 description: Read from and write to MySQL and MariaDB databases with NPipeline using the MySQL connector.
-sidebar_position: 9
+order: 9
 ---
 
 ## MySQL Connector

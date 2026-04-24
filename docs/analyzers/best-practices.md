@@ -1,7 +1,7 @@
 ---
 title: Best Practice Analyzers
 description: Validate dependency injection, resource management, and framework contract compliance.
-sidebar_position: 5
+order: 5
 ---
 
 ## Best Practice Analyzers

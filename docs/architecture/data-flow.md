@@ -1,7 +1,7 @@
 ---
 title: Data Flow Details
 description: How data streams work and lazy evaluation in NPipeline.
-sidebar_position: 4
+order: 4
 ---
 
 # Data Flow Details

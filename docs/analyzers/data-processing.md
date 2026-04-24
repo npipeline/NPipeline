@@ -1,7 +1,7 @@
 ---
 title: Data Processing Analyzers
 description: Ensure proper input consumption and streaming patterns in pipeline nodes.
-sidebar_position: 4
+order: 4
 ---
 
 ## Data Processing Analyzers

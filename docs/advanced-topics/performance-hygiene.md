@@ -1,7 +1,7 @@
 ---
 title: Performance Hygiene
 description: Best practices for building high-performance, low-allocation data streamlines with NPipeline.
-sidebar_position: 2
+order: 2
 ---
 
 NPipeline is designed for high performance, but building an efficient pipeline requires careful consideration of how you write your nodes and structure your data flow. "Performance hygiene" refers to the practice of writing code that is mindful of memory allocations, CPU usage, and data transfer overhead.

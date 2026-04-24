@@ -1,7 +1,7 @@
 ---
 title: Circuit Breakers
 description: Learn how to configure circuit breaker patterns in NPipeline using PipelineCircuitBreakerOptions to prevent cascading failures.
-sidebar_position: 3
+order: 3
 ---
 
 # Circuit Breakers

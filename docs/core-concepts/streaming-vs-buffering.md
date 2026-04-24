@@ -1,7 +1,7 @@
 ---
 title: Streaming vs Buffering
 description: Understand the differences between streaming and buffering in NPipeline and how they impact performance and memory usage.
-sidebar_position: 7
+order: 7
 ---
 
 # Streaming vs. Buffering

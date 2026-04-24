@@ -1,7 +1,7 @@
 ---
 title: Node Instantiation
 description: How NPipeline instantiates nodes and optimization techniques.
-sidebar_position: 5.5
+order: 5.5
 ---
 
 # Node Instantiation

@@ -1,7 +1,7 @@
 ---
 title: Execution Plan Caching
 description: How NPipeline caches compiled execution plans to eliminate repetitive expression compilation overhead.
-sidebar_position: 14
+order: 14
 ---
 
 # Execution Plan Caching: Eliminating Compilation Overhead

@@ -1,8 +1,7 @@
 ---
 title: Pipeline
 description: Learn about Pipeline, the executable instance of your data streamline.
-sidebar_position: 1
-slug: /core-concepts/ipipeline
+order: 1
 ---
 
 # Pipeline

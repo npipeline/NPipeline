@@ -1,7 +1,7 @@
 ---
 title: Data Lake Connector
 description: Write partitioned Parquet tables, read historical snapshots, and compact small files with NPipeline using the Data Lake connector.
-sidebar_position: 4
+order: 4
 ---
 
 ## Data Lake Connector

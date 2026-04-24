@@ -1,7 +1,7 @@
 ---
 title: HTTP Connector
 description: Read from and write to REST APIs with NPipeline using the HTTP connector with support for pagination, authentication, rate limiting, retry, and observability.
-sidebar_position: 7
+order: 7
 ---
 
 ## HTTP Connector

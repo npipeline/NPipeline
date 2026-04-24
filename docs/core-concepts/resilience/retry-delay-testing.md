@@ -1,7 +1,7 @@
 ---
 title: Testing Retry Behavior
 description: Test retry delay strategies with predictable, deterministic behavior in NPipeline
-sidebar_position: 8.5
+order: 8.5
 ---
 
 # Testing Retry Behavior

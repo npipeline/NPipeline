@@ -1,7 +1,7 @@
 ---
 title: Thread Safety
 description: Guidelines for managing shared state and concurrency in NPipeline pipelines.
-sidebar_position: 8
+order: 8
 ---
 
 # Thread Safety Guidelines

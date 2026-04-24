@@ -1,7 +1,7 @@
 ---
 title: Execution Flow
 description: Understanding how NPipeline executes pipelines - sequential and parallel execution patterns.
-sidebar_position: 3
+order: 3
 ---
 
 # Execution Flow

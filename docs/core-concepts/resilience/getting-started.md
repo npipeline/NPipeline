@@ -1,7 +1,7 @@
 ---
 title: Resilience Quick Start
 description: Get started quickly with resilience in NPipeline. Covers node restarts and retry delay strategies.
-sidebar_position: 2
+order: 2
 ---
 
 # Resilience Quick Start
