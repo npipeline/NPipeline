@@ -4,7 +4,8 @@ description: Consume from and publish to RabbitMQ with NPipeline using the Rabbi
 order: 11
 ---
 
-## RabbitMQ Connector
+# RabbitMQ Connector
+
 
 The `NPipeline.Connectors.RabbitMQ` package provides specialized source and sink nodes for working with RabbitMQ. This allows you to integrate RabbitMQ message queues into your pipelines as an input source, an output destination, or both.
 

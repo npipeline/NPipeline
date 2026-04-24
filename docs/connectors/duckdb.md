@@ -4,7 +4,8 @@ description: Read from and write to DuckDB databases and files (Parquet/CSV) wit
 order: 5
 ---
 
-## DuckDB Connector
+# DuckDB Connector
+
 
 The `NPipeline.Connectors.DuckDB` package provides source and sink nodes for working with [DuckDB](https://duckdb.org/), an in-process analytical database engine. DuckDB excels at analytical queries over local data files (Parquet, CSV, JSON) and in-memory datasets without requiring a separate server process.
 

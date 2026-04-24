@@ -1,6 +1,7 @@
 ---
 title: Metrics Reference
 description: Complete reference for all metrics collected by the NPipeline Observability extension, including node and pipeline metrics, calculations, and thread-safety guarantees.
+order: 1
 ---
 
 # Metrics Reference

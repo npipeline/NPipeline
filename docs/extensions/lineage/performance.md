@@ -1,6 +1,7 @@
 ---
 title: Lineage Performance
 description: Performance characteristics, benchmarks, and optimization strategies for NPipeline Lineage extension.
+order: 4
 ---
 
 # Lineage Performance

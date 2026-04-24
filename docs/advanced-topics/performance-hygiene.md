@@ -4,6 +4,8 @@ description: Best practices for building high-performance, low-allocation data s
 order: 2
 ---
 
+# Performance Hygiene
+
 NPipeline is designed for high performance, but building an efficient pipeline requires careful consideration of how you write your nodes and structure your data flow. "Performance hygiene" refers to the practice of writing code that is mindful of memory allocations, CPU usage, and data transfer overhead.
 
 > For specific optimization patterns and techniques, see [Synchronous Fast Paths](synchronous-fast-paths.md).

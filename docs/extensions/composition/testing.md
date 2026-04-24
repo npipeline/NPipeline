@@ -1,3 +1,9 @@
+---
+title: Testing Composite Pipelines
+description: Testing composite pipelines requires different strategies than testing flat pipelines. This guide covers unit testing, integration testing, and test-driven development approaches.
+order: 6
+---
+
 # Testing Composite Pipelines
 
 ## Overview

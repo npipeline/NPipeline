@@ -1,3 +1,9 @@
+---
+title: Performance Optimization
+description: Composite pipelines introduce some overhead compared to flat pipelines. This guide helps you understand the performance characteristics and optimize for your use case.
+order: 5
+---
+
 # Performance Optimization
 
 ## Overview

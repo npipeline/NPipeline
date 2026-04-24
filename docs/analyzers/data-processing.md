@@ -4,7 +4,8 @@ description: Ensure proper input consumption and streaming patterns in pipeline 
 order: 4
 ---
 
-## Data Processing Analyzers
+# Data Processing Analyzers
+
 
 Data processing analyzers protect the integrity of data flow through your pipelines. They detect patterns that cause data loss, memory bloat, or improper stream handling.
 

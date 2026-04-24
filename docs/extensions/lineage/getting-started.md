@@ -1,6 +1,7 @@
 ---
 title: Getting Started with Lineage
 description: Installation and basic setup guide for NPipeline Lineage extension.
+order: 1
 ---
 
 # Getting Started with Lineage

@@ -4,7 +4,8 @@ description: Write partitioned Parquet tables, read historical snapshots, and co
 order: 4
 ---
 
-## Data Lake Connector
+# Data Lake Connector
+
 
 The `NPipeline.Connectors.DataLake` package adds table-level semantics on top of the [Parquet connector](./parquet.md). It provides:
 

@@ -4,6 +4,8 @@ description: NPipeline's comprehensive build-time analyzers enforce the framewor
 order: 9
 ---
 
+# Build-Time Analyzers
+
 ## Build-Time Guardrails: Automated Enforcement of Best Practices
 
 The **NPipeline.Analyzers** package provides a comprehensive suite of build-time Roslyn analyzers that act as **automated guardrails for code quality**. Rather than treating them as just another error reference, these analyzers are the **framework's proactive enforcement mechanism** for ensuring your pipeline implementations follow the design principles that make NPipeline fast, safe, and reliable.

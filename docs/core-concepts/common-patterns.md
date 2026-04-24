@@ -4,7 +4,8 @@ description: Practical patterns and recipes for building effective NPipeline pip
 order: 12
 ---
 
-## Common Patterns
+# Common Patterns
+
 
 This guide provides practical code recipes and examples for solving real-world scenarios with NPipeline. Each pattern demonstrates a complete, working solution you can adapt to your needs.
 

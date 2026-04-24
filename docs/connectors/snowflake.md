@@ -4,7 +4,8 @@ description: Read from and write to Snowflake databases with NPipeline using the
 order: 12
 ---
 
-## Snowflake Connector
+# Snowflake Connector
+
 
 The `NPipeline.Connectors.Snowflake` package provides specialized source and sink nodes for working with Snowflake cloud data warehouses. This allows you to easily integrate Snowflake data into your pipelines as an input source or an output destination.
 

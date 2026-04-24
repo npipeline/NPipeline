@@ -1,6 +1,7 @@
 ---
 title: Observability Configuration
 description: Detailed guide to configuring NPipeline observability with dependency injection, custom sinks, and advanced scenarios.
+order: 3
 ---
 
 # Observability Configuration

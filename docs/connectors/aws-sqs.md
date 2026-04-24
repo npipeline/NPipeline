@@ -4,7 +4,8 @@ description: Read from and write to Amazon Simple Queue Service (SQS) with NPipe
 order: 2
 ---
 
-## AWS SQS Connector
+# AWS SQS Connector
+
 
 The `NPipeline.Connectors.Aws.Sqs` package provides specialized source and sink nodes for working with Amazon Simple Queue Service (SQS). This allows you to easily integrate SQS message processing into your pipelines as an input source or an output destination.
 

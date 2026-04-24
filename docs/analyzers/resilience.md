@@ -4,7 +4,8 @@ description: Detect incomplete resilience configuration that could lead to silen
 order: 2
 ---
 
-## Resilience Analyzers
+# Resilience Analyzers
+
 
 Resilience analyzers provide build-time detection of incomplete error handling configuration. While runtime validation throws clear `InvalidOperationException` exceptions when prerequisites are missing, these analyzers catch issues earlier during development.
 

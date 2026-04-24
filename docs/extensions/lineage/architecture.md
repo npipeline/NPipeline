@@ -1,6 +1,7 @@
 ---
 title: Lineage Architecture
 description: Internal architecture and design decisions of NPipeline Lineage extension.
+order: 5
 ---
 
 # Lineage Architecture

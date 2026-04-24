@@ -4,7 +4,8 @@ description: Read from and write to Apache Kafka with NPipeline using the Kafka 
 order: 8
 ---
 
-## Kafka Connector
+# Kafka Connector
+
 
 The `NPipeline.Connectors.Kafka` package provides specialized source and sink nodes for working with Apache Kafka. This allows you to easily integrate Kafka message streams into your pipelines as an input source or an output destination.
 

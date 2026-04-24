@@ -4,7 +4,8 @@ description: Read from and write to PostgreSQL databases with NPipeline using th
 order: 10
 ---
 
-## PostgreSQL Connector
+# PostgreSQL Connector
+
 
 The `NPipeline.Connectors.Postgres` package provides specialized source and sink nodes for working with PostgreSQL databases. This allows you to easily integrate PostgreSQL data into your pipelines as an input source or an output destination.
 

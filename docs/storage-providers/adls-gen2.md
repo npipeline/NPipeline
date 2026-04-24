@@ -4,7 +4,8 @@ description: Read from and write to Azure Data Lake Storage Gen2 using the ADLS 
 order: 4
 ---
 
-## Azure Data Lake Storage Gen2 Provider
+# Azure Data Lake Storage Gen2 Provider
+
 
 The ADLS Gen2 provider enables NPipeline applications to read, write, list, move, and delete data in Azure Data Lake Storage Gen2 using the `adls://` URI scheme. Unlike the Azure Blob Storage provider, this provider targets the `Azure.Storage.Files.DataLake` SDK and exposes ADLS Gen2's true hierarchical namespace and O(1) atomic rename operations.
 

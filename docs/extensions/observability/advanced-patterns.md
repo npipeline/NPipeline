@@ -1,3 +1,9 @@
+---
+title: Advanced Observability Patterns
+description: Advanced patterns and real-world scenarios for the NPipeline Observability extension.
+order: 4
+---
+
 # Advanced Observability Patterns
 
 This guide covers advanced patterns and real-world scenarios for the NPipeline Observability extension.

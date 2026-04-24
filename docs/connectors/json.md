@@ -4,7 +4,8 @@ description: Read from and write to JSON files with NPipeline using the JSON con
 order: 7
 ---
 
-## JSON Connector
+# JSON Connector
+
 
 The `NPipeline.Connectors.Json` package provides specialized source and sink nodes for working with JSON files. This allows you to easily integrate JSON data into your pipelines as an input source or an output destination.
 

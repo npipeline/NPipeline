@@ -1,6 +1,7 @@
 ---
 title: Lineage Use Cases
 description: Common use cases and practical examples for NPipeline Lineage extension.
+order: 3
 ---
 
 # Lineage Use Cases

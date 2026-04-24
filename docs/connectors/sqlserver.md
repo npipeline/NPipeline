@@ -4,7 +4,8 @@ description: Read from and write to Microsoft SQL Server databases with NPipelin
 order: 13
 ---
 
-## SQL Server Connector
+# SQL Server Connector
+
 
 The `NPipeline.Connectors.SqlServer` package provides specialized source and sink nodes for working with Microsoft SQL Server databases. This allows you to easily integrate SQL Server data into your pipelines as an input source or an output destination.
 

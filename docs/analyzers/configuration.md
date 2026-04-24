@@ -4,7 +4,8 @@ description: Detect configuration issues that can cause performance problems, re
 order: 6
 ---
 
-## Configuration Analyzers
+# Configuration Analyzers
+
 
 Configuration analyzers detect issues with pipeline configuration that can lead to performance problems, resource leaks, or silent failures. These analyzers focus on ensuring that your pipeline configuration is optimal for your workload and doesn't introduce hidden problems.
 

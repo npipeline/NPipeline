@@ -4,7 +4,8 @@ description: Automated code fixes for common analyzer issues in NPipeline.
 order: 7
 ---
 
-## Code Fix Providers
+# Code Fix Providers
+
 
 NPipeline analyzers include automated code fix providers that can automatically resolve many common issues detected by the analyzers. These code fixes appear as light bulb suggestions in Visual Studio and can be applied with a single click.
 

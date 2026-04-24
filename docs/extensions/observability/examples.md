@@ -1,6 +1,7 @@
 ---
 title: Observability Usage Examples
 description: Complete code examples demonstrating various scenarios for using NPipeline Observability extension, from basic setup to advanced monitoring patterns.
+order: 5
 ---
 
 # Observability Usage Examples

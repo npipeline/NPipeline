@@ -4,7 +4,8 @@ description: Read from and write to SFTP servers using the SFTP storage provider
 order: 6
 ---
 
-## SFTP Storage Provider
+# SFTP Storage Provider
+
 
 The SFTP storage provider enables NPipeline applications to read from and write to SFTP servers using a unified storage abstraction. This provider implements the `IStorageProvider` interface and supports the `sftp://` URI scheme.
 

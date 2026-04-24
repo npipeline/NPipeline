@@ -4,7 +4,8 @@ description: Understanding the IStorageProvider abstraction and implementing cus
 order: 7
 ---
 
-## Storage Provider Interface
+# Storage Provider Interface
+
 
 ## Overview
 

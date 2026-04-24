@@ -4,7 +4,8 @@ description: Read from and write to Azure Cosmos DB with NPipeline using the Cos
 order: 1
 ---
 
-## Azure Cosmos DB Connector
+# Azure Cosmos DB Connector
+
 
 The `NPipeline.Connectors.Azure.CosmosDb` package provides specialized source and sink nodes for working with Azure Cosmos DB. This allows you to easily integrate Cosmos DB data into your pipelines as an input source or an output destination across multiple API types.
 

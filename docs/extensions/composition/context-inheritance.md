@@ -1,3 +1,9 @@
+---
+title: Context Inheritance
+description: Context inheritance controls what data from the parent pipeline's context is available to sub-pipelines.
+order: 2
+---
+
 # Context Inheritance
 
 ## Overview

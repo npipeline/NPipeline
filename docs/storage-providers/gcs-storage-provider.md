@@ -4,7 +4,8 @@ description: Read from and write to Google Cloud Storage using the GCS storage p
 order: 5
 ---
 
-## Google Cloud Storage Provider
+# Google Cloud Storage Provider
+
 
 The Google Cloud Storage (GCS) provider enables NPipeline applications to read from and write to Google Cloud Storage using a unified storage abstraction. This provider implements the `IStorageProvider` interface and supports the `gs://` URI scheme.
 

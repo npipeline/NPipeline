@@ -4,7 +4,8 @@ description: Consume from and publish to Azure Service Bus with NPipeline using 
 order: 3
 ---
 
-## Azure Service Bus Connector
+# Azure Service Bus Connector
+
 
 The `NPipeline.Connectors.Azure.ServiceBus` package provides source and sink nodes for Azure Service Bus,
 Microsoft's fully managed enterprise message broker with message queuing and publish-subscribe capabilities.

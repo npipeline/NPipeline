@@ -4,7 +4,8 @@ description: Read from and write to S3-compatible storage services (MinIO, Digit
 order: 2
 ---
 
-## S3-Compatible Storage Provider
+# S3-Compatible Storage Provider
+
 
 The S3-compatible storage provider enables NPipeline applications to read from and write to S3-compatible storage services using a unified storage abstraction. This provider implements the `IStorageProvider` interface and supports the `s3://` URI scheme.
 

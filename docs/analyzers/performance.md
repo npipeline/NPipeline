@@ -4,7 +4,8 @@ description: Identify blocking operations, non-streaming patterns, and async/awa
 order: 3
 ---
 
-## Performance Analyzers
+# Performance Analyzers
+
 
 Performance analyzers detect patterns that harm throughput, increase latency, cause thread starvation, or prevent proper streaming of data. These violations directly contradict NPipeline's core mission of high-performance, non-blocking I/O.
 

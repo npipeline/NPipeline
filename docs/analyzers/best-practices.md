@@ -4,7 +4,8 @@ description: Validate dependency injection, resource management, and framework c
 order: 5
 ---
 
-## Best Practice Analyzers
+# Best Practice Analyzers
+
 
 Best practice analyzers enforce architectural patterns that ensure your code is testable, maintainable, and follows the framework's design principles.
 

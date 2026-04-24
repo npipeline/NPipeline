@@ -1,3 +1,9 @@
+---
+title: Nested Composition
+description: Nested composition allows composite nodes to contain other composite nodes, creating deep hierarchical pipeline structures.
+order: 4
+---
+
 # Nested Composition
 
 ## Overview

@@ -4,7 +4,8 @@ description: Read from and write to Azure Blob Storage using the Azure Blob Stor
 order: 3
 ---
 
-## Azure Blob Storage Provider
+# Azure Blob Storage Provider
+
 
 The Azure Blob Storage provider enables NPipeline applications to read from and write to Azure Blob Storage using a unified storage abstraction. This provider implements the `IStorageProvider` interface and supports the `azure://` URI scheme.
 

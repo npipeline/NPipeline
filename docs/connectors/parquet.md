@@ -4,7 +4,8 @@ description: Read from and write to Apache Parquet files with NPipeline using th
 order: 9
 ---
 
-## Parquet Connector
+# Parquet Connector
+
 
 The `NPipeline.Connectors.Parquet` package provides specialized source and sink nodes for working with Apache Parquet files. Parquet is a columnar storage format optimised for analytical workloads, offering compact file sizes through column-level compression and efficient columnar scans.
 

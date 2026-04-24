@@ -1,3 +1,9 @@
+---
+title: Error Handling in Composite Pipelines
+description: Error handling in composite pipelines follows NPipeline's standard error handling model, with errors propagating through the pipeline hierarchy.
+order: 3
+---
+
 # Error Handling in Composite Pipelines
 
 ## Overview

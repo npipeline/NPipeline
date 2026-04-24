@@ -4,7 +4,8 @@ description: Read from and write to REST APIs with NPipeline using the HTTP conn
 order: 7
 ---
 
-## HTTP Connector
+# HTTP Connector
+
 
 The `NPipeline.Connectors.Http` package provides specialized source and sink nodes for working with REST APIs. This allows you to easily integrate HTTP endpoints into your pipelines as an input source or an output destination.
 

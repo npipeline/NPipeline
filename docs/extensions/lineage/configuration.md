@@ -1,6 +1,7 @@
 ---
 title: Lineage Configuration
 description: Detailed guide to configuring NPipeline Lineage extension with sampling, redaction, and overflow policies.
+order: 2
 ---
 
 # Lineage Configuration

@@ -4,7 +4,8 @@ description: An overview of the available source and sink connectors for integra
 order: 6
 ---
 
-## Connectors Overview
+# Connectors
+
 
 Connectors are pre-built nodes that make it easy to read data from and write data to external systems. They are specialized `ISourceNode` and `ISinkNode` implementations that handle the specifics of communicating with systems like databases, file formats, message queues, and cloud services.
 

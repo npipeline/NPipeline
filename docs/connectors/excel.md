@@ -4,7 +4,8 @@ description: Read from and write to Excel files (XLS and XLSX) with NPipeline us
 order: 6
 ---
 
-## Excel Connector
+# Excel Connector
+
 
 The `NPipeline.Connectors.Excel` package provides specialized source and sink nodes for working with Excel files. This allows you to easily integrate Excel data into your pipelines as an input source or an output destination.
 

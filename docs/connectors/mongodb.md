@@ -4,7 +4,8 @@ description: Read from and write to MongoDB databases with NPipeline using the M
 order: 15
 ---
 
-## MongoDB Connector
+# MongoDB Connector
+
 
 The `NPipeline.Connectors.MongoDB` package provides specialized source and sink nodes for working with MongoDB databases. This allows you to easily integrate MongoDB data into your pipelines as an input source or an output destination.
 

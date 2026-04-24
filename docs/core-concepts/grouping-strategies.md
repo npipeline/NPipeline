@@ -4,6 +4,8 @@ description: Critical decision framework for choosing between batching and aggre
 order: 10
 ---
 
+# Grouping Strategies
+
 ## Batching vs Aggregation
 
 When building data streamlines, you often need to group items together. NPipeline provides two fundamentally different approaches—**batching** and **aggregation**—each suited for solving different problems.

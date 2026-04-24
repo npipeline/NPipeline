@@ -4,7 +4,8 @@ description: Read from and write to MySQL and MariaDB databases with NPipeline u
 order: 9
 ---
 
-## MySQL Connector
+# MySQL Connector
+
 
 The `NPipeline.Connectors.MySQL` package provides specialized source and sink nodes for working with MySQL and MariaDB databases. This allows you to easily integrate MySQL data into your pipelines as an input source or an output destination.
 
