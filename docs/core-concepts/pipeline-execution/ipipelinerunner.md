@@ -6,11 +6,11 @@ order: 2
 
 # `IPipelineRunner`
 
-The [`IPipelineRunner`](../../../src/NPipeline/Execution/IPipelineRunner.cs) interface is the central component responsible for initiating and managing the execution of a defined NPipeline. After constructing a pipeline using the [`PipelineBuilder`](../../../src/NPipeline/Pipeline/PipelineBuilder.cs), you interact with an implementation of [`IPipelineRunner`](../../../src/NPipeline/Execution/IPipelineRunner.cs) to bring your data flow to life.
+The [`IPipelineRunner`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline/Execution/IPipelineRunner.cs) interface is the central component responsible for initiating and managing the execution of a defined NPipeline. After constructing a pipeline using the [`PipelineBuilder`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline/Pipeline/PipelineBuilder.cs), you interact with an implementation of [`IPipelineRunner`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline/Execution/IPipelineRunner.cs) to bring your data flow to life.
 
 ## Key Responsibilities
 
-The [`IPipelineRunner`](../../../src/NPipeline/Execution/IPipelineRunner.cs) handles:
+The [`IPipelineRunner`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline/Execution/IPipelineRunner.cs) handles:
 
 * **Pipeline Initialization**: Setting up the necessary infrastructure before data processing begins.
 * **Data Flow Management**: Orchestrating the movement of data items through connected nodes.
@@ -20,7 +20,7 @@ The [`IPipelineRunner`](../../../src/NPipeline/Execution/IPipelineRunner.cs) han
 
 ## `RunAsync` Method
 
-The primary method for executing a pipeline is `RunAsync`, which takes a [`PipelineContext`](../../../src/NPipeline/Pipeline/PipelineContext.cs) parameter and requires the pipeline definition type to have a parameterless constructor.
+The primary method for executing a pipeline is `RunAsync`, which takes a [`PipelineContext`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline/Pipeline/PipelineContext.cs) parameter and requires the pipeline definition type to have a parameterless constructor.
 
 ```csharp
 public interface IPipelineRunner
@@ -31,8 +31,8 @@ public interface IPipelineRunner
 }
 ```
 
-* **`TDefinition`**: The type of pipeline definition to run. Must implement [`IPipelineDefinition`](../../../src/NPipeline/Abstractions/Pipeline/IPipelineDefinition.cs) and have a parameterless constructor (indicated by the `new()` constraint).
-* **`context`**: The [`PipelineContext`](../../../src/NPipeline/Pipeline/PipelineContext.cs) containing runtime configuration, shared state, and cancellation tokens.
+* **`TDefinition`**: The type of pipeline definition to run. Must implement [`IPipelineDefinition`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline/Abstractions/Pipeline/IPipelineDefinition.cs) and have a parameterless constructor (indicated by the `new()` constraint).
+* **`context`**: The [`PipelineContext`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline/Pipeline/PipelineContext.cs) containing runtime configuration, shared state, and cancellation tokens.
 * **`new()` constraint**: This ensures the pipeline definition can be instantiated without parameters, allowing the runner to create an instance of the definition.
 
 The second overload accepts a **pre-instantiated** `IPipelineDefinition`, enabling execution of pipeline definitions that require constructor injection or other non-default construction:
@@ -157,7 +157,7 @@ Pipeline execution finished.
 
 ## Cancellation
 
-The [`CancellationToken`](https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtoken) provided through the [`PipelineContext`](../../../src/NPipeline/Pipeline/PipelineContext.cs) is crucial for managing the lifecycle of long-running pipelines. When cancellation is requested, NPipeline attempts to gracefully shut down all active nodes, allowing them to complete any in-flight operations or clean up resources before terminating.
+The [`CancellationToken`](https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtoken) provided through the [`PipelineContext`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline/Pipeline/PipelineContext.cs) is crucial for managing the lifecycle of long-running pipelines. When cancellation is requested, NPipeline attempts to gracefully shut down all active nodes, allowing them to complete any in-flight operations or clean up resources before terminating.
 
 ### Example: Cancelling a Pipeline
 

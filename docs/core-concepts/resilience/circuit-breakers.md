@@ -24,7 +24,7 @@ The circuit breaker pattern is a design pattern used in software development to 
 
 ## PipelineCircuitBreakerOptions
 
-The [`PipelineCircuitBreakerOptions`](../../../src/NPipeline/Configuration/PipelineCircuitBreakerOptions.cs) record allows you to configure a circuit breaker pattern with enhanced functionality.
+The [`PipelineCircuitBreakerOptions`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline/Configuration/PipelineCircuitBreakerOptions.cs) record allows you to configure a circuit breaker pattern with enhanced functionality.
 
 ```csharp
 public sealed record PipelineCircuitBreakerOptions(

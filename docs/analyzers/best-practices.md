@@ -243,6 +243,6 @@ dotnet_diagnostic.NP9404.severity = error
 
 ## See Also
 
-- [Dependency Injection Guide](../../extensions/dependency-injection)
-- [Testing Pipelines](../../extensions/testing/advanced-testing)
-- [SOLID Principles](../../architecture/design-principles)
+- [Dependency Injection Guide](../../extensions/dependency-injection.md)
+- [Testing Pipelines](../../extensions/testing/advanced-testing.md)
+- [SOLID Principles](../../architecture/design-principles.md)

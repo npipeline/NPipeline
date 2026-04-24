@@ -10,7 +10,7 @@ Node-level error handling allows you to define what happens to problematic items
 
 ## INodeErrorHandler Interface
 
-To handle errors within a specific node, implement the [`INodeErrorHandler<in TNode, in TData>`](../../../src/NPipeline/Abstractions/ErrorHandling/INodeErrorHandler.cs) interface.
+To handle errors within a specific node, implement the [`INodeErrorHandler<in TNode, in TData>`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline/Abstractions/ErrorHandling/INodeErrorHandler.cs) interface.
 
 ```csharp
 public interface INodeErrorHandler

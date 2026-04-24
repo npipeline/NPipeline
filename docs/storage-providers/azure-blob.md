@@ -581,43 +581,43 @@ Assign the `Storage Blob Data Contributor` role for full read/write/delete acces
 ### Core Interfaces and Types
 
 - **`IStorageProvider`** - Core storage provider interface
-  - Location: [`NPipeline.StorageProviders.Abstractions.IStorageProvider`](../../src/NPipeline.StorageProviders/Abstractions/IStorageProvider.cs)
+  - Location: [`NPipeline.StorageProviders.Abstractions.IStorageProvider`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.StorageProviders/Abstractions/IStorageProvider.cs)
   - Defines methods for reading, writing, listing, and checking existence of storage objects
 
 - **`StorageUri`** - URI type for storage resources
-  - Location: [`NPipeline.StorageProviders.StorageUri`](../../src/NPipeline.StorageProviders/Models/StorageUri.cs)
+  - Location: [`NPipeline.StorageProviders.StorageUri`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.StorageProviders/Models/StorageUri.cs)
   - Represents a URI for storage resources with scheme, host, path, and parameters
 
 - **`StorageItem`** - Represents a storage item (file or directory)
-  - Location: [`NPipeline.StorageProviders.StorageItem`](../../src/NPipeline.StorageProviders/Models/StorageItem.cs)
+  - Location: [`NPipeline.StorageProviders.StorageItem`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.StorageProviders/Models/StorageItem.cs)
   - Contains URI, size, last modified date, and directory flag
 
 - **`StorageMetadata`** - Metadata for storage objects
-  - Location: [`NPipeline.StorageProviders.StorageMetadata`](../../src/NPipeline.StorageProviders/Models/StorageMetadata.cs)
+  - Location: [`NPipeline.StorageProviders.StorageMetadata`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.StorageProviders/Models/StorageMetadata.cs)
   - Contains size, content type, last modified date, ETag, and custom metadata
 
 ### Azure-Specific Types
 
 - **`AzureBlobStorageProvider`** - Azure Blob Storage provider implementation
-  - Location: [`AzureBlobStorageProvider.cs`](../../src/NPipeline.StorageProviders.Azure/AzureBlobStorageProvider.cs)
+  - Location: [`AzureBlobStorageProvider.cs`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.StorageProviders.Azure/AzureBlobStorageProvider.cs)
   - Implements `IStorageProvider` and `IStorageProviderMetadataProvider`
 
 - **`AzureBlobStorageProviderOptions`** - Configuration options
-  - Location: [`AzureBlobStorageProviderOptions.cs`](../../src/NPipeline.StorageProviders.Azure/AzureBlobStorageProviderOptions.cs)
+  - Location: [`AzureBlobStorageProviderOptions.cs`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.StorageProviders.Azure/AzureBlobStorageProviderOptions.cs)
   - Contains credential, service URL, and upload settings
 
 - **`AzureBlobClientFactory`** - Factory for creating Azure Blob clients
-  - Location: [`AzureBlobClientFactory.cs`](../../src/NPipeline.StorageProviders.Azure/AzureBlobClientFactory.cs)
+  - Location: [`AzureBlobClientFactory.cs`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.StorageProviders.Azure/AzureBlobClientFactory.cs)
   - Creates and caches `BlobServiceClient` instances
 
 - **`AzureStorageException`** - Custom exception for Azure errors
-  - Location: [`AzureStorageException.cs`](../../src/NPipeline.StorageProviders.Azure/AzureStorageException.cs)
+  - Location: [`AzureStorageException.cs`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.StorageProviders.Azure/AzureStorageException.cs)
   - Wraps `RequestFailedException` with container/blob context
 
 ### Extension Methods
 
 - **`ServiceCollectionExtensions.AddAzureBlobStorageProvider`**
-  - Location: [`ServiceCollectionExtensions.cs`](../../src/NPipeline.StorageProviders.Azure/ServiceCollectionExtensions.cs)
+  - Location: [`ServiceCollectionExtensions.cs`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.StorageProviders.Azure/ServiceCollectionExtensions.cs)
   - Extension method for registering Azure Blob Storage provider in DI container
 
 ## Limitations

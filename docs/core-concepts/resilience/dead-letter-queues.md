@@ -58,7 +58,7 @@ public sealed record NodeFailureAttribution(
 
 ### BoundedInMemoryDeadLetterSink
 
-NPipeline provides a built-in [`BoundedInMemoryDeadLetterSink`](../../../src/NPipeline/ErrorHandling/BoundedInMemoryDeadLetterSink.cs:42) implementation that stores failed items in a bounded in-memory queue:
+NPipeline provides a built-in [`BoundedInMemoryDeadLetterSink`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline/ErrorHandling/BoundedInMemoryDeadLetterSink.cs#L42) implementation that stores failed items in a bounded in-memory queue:
 
 * **Default capacity**: 1000 items
 * **Memory usage**: Approximately 8-16MB for typical error objects at full capacity

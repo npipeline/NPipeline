@@ -653,7 +653,7 @@ The HTTP connector handles errors in several ways:
 
 ## Sample Application
 
-See [Sample_HttpConnector](../../../samples/Sample_HttpConnector) for a complete example that fetches GitHub releases and posts summaries to a Slack webhook.
+See [Sample_HttpConnector](https://github.com/npipeline/NPipeline/blob/main/samples/Sample_HttpConnector) for a complete example that fetches GitHub releases and posts summaries to a Slack webhook.
 
 To run the sample:
 

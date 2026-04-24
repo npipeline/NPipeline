@@ -12,7 +12,7 @@ NPipeline offers different types of join nodes to cater to various joining strat
 
 ## `IJoinNode`
 
-The [`IJoinNode`](src/NPipeline/Interfaces/IJoinNode.cs) interface represents the contract for any node that performs a join operation. Implementations will typically take multiple input streams and produce a single output stream containing the combined data.
+The [`IJoinNode`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Interfaces/IJoinNode.cs) interface represents the contract for any node that performs a join operation. Implementations will typically take multiple input streams and produce a single output stream containing the combined data.
 
 ## Keyed Join Nodes
 
@@ -20,7 +20,7 @@ Keyed join nodes merge items from different streams based on a common key. When 
 
 ### `KeyedJoinNode<TKey, TIn1, TIn2, TOut>`
 
-This node performs a join based on a key selector and extends the [`BaseJoinNode<TKey, TIn1, TIn2, TOut>`](src/NPipeline/Nodes/Join/BaseJoinNode.cs) abstract base class, which provides common functionality for processing two input streams. You need to define how to extract the key from the left and right input items.
+This node performs a join based on a key selector and extends the [`BaseJoinNode<TKey, TIn1, TIn2, TOut>`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/Join/BaseJoinNode.cs) abstract base class, which provides common functionality for processing two input streams. You need to define how to extract the key from the left and right input items.
 
 * `TKey`: The type of the join key.
 * `TIn1`: The type of items from the first input stream.
@@ -52,13 +52,13 @@ To implement a custom keyed join, you must override the following methods:
 
 Key extraction for the join can be defined in two ways:
 
-1. **Using KeySelectorAttribute** (Recommended): Apply the [`KeySelectorAttribute`](src/NPipeline/Attributes/Nodes/KeySelectorAttribute.cs) to your join class to specify which properties to use as keys for each input type.
+1. **Using KeySelectorAttribute** (Recommended): Apply the [`KeySelectorAttribute`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Attributes/Nodes/KeySelectorAttribute.cs) to your join class to specify which properties to use as keys for each input type.
 
 2. **Custom key extraction**: For more complex key extraction logic, you can override the key selection process.
 
 #### Join Types
 
-The [`JoinType`](src/NPipeline/Nodes/Join/JoinType.cs) property controls how unmatched items are handled:
+The [`JoinType`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/Join/JoinType.cs) property controls how unmatched items are handled:
 
 * `Inner`: Only produces output when there's a match in both streams (default).
 * `LeftOuter`: Produces all left items, with matching right items when available.
@@ -410,7 +410,7 @@ Time-windowed join nodes combine items from different streams that occur within 
 
 ### `TimeWindowedJoinNode<TLeft, TRight, TKey, TOutput>`
 
-This node extends [`KeyedJoinNode`](src/NPipeline/Nodes/Join/KeyedJoinNode.cs) by adding a time window constraint. Items are considered for joining only if their timestamps fall within the defined window and their keys match.
+This node extends [`KeyedJoinNode`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/Join/KeyedJoinNode.cs) by adding a time window constraint. Items are considered for joining only if their timestamps fall within the defined window and their keys match.
 
 ### Example: Correlating Events within a Time Window
 
@@ -458,9 +458,9 @@ Self-join enables joining two streams containing items of the same type from dif
 
 ### Why Self-Join is Needed
 
-The standard [`KeyedJoinNode<TKey, TIn1, TIn2, TOut>`](src/NPipeline/Nodes/Join/KeyedJoinNode.cs) uses runtime type checking (`item is TIn1`, `item is TIn2`) to distinguish between items from the left and right input streams. When `TIn1` and `TIn2` are the same type, this type checking fails because items from both streams are indistinguishable at runtime. This is known as the "BaseJoinNode Secondary Input Type Erasure" issue.
+The standard [`KeyedJoinNode<TKey, TIn1, TIn2, TOut>`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/Join/KeyedJoinNode.cs) uses runtime type checking (`item is TIn1`, `item is TIn2`) to distinguish between items from the left and right input streams. When `TIn1` and `TIn2` are the same type, this type checking fails because items from both streams are indistinguishable at runtime. This is known as the "BaseJoinNode Secondary Input Type Erasure" issue.
 
-The [`AddSelfJoin`](src/NPipeline/SelfJoinExtensions.cs) extension method solves this by internally wrapping items from each stream with distinct wrapper types ([`LeftWrapper<T>`](src/NPipeline/Nodes/Internal/SelfJoinTransform.cs) and [`RightWrapper<T>`](src/NPipeline/Nodes/Internal/SelfJoinTransform.cs)), allowing the join node to differentiate between items from the left and right streams even though they have the same underlying type. The join node unwraps items before applying your output factory, so you work with the original unwrapped items.
+The [`AddSelfJoin`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/SelfJoinExtensions.cs) extension method solves this by internally wrapping items from each stream with distinct wrapper types ([`LeftWrapper<T>`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/Internal/SelfJoinTransform.cs) and [`RightWrapper<T>`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/Internal/SelfJoinTransform.cs)), allowing the join node to differentiate between items from the left and right streams even though they have the same underlying type. The join node unwraps items before applying your output factory, so you work with the original unwrapped items.
 
 ### When to Use Self-Join
 
@@ -474,7 +474,7 @@ Common use cases for self-joins include:
 
 ### `AddSelfJoin` Extension Method
 
-The [`AddSelfJoin`](src/NPipeline/SelfJoinExtensions.cs) extension method provides a convenient way to add self-join nodes to your pipeline without manually creating wrapper types.
+The [`AddSelfJoin`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/SelfJoinExtensions.cs) extension method provides a convenient way to add self-join nodes to your pipeline without manually creating wrapper types.
 
 #### Method Signature
 
@@ -508,7 +508,7 @@ public static IOutputNodeHandle<TOut> AddSelfJoin<TItem, TKey, TOut>(
 
 #### Return Type
 
-Returns an [`IOutputNodeHandle<TOut>`](src/NPipeline/Graph/IOutputNodeHandle.cs) to the newly added join node, which can be connected to downstream nodes.
+Returns an [`IOutputNodeHandle<TOut>`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Graph/IOutputNodeHandle.cs) to the newly added join node, which can be connected to downstream nodes.
 
 #### How Self-Join Works
 
@@ -767,7 +767,7 @@ CorrelatedEvents { CorrelationId = "CORR-001", Timestamp = 2024-01-01T10:00:00Z,
 #### When to Use Self-Join vs Regular Join
 
 * **Use Self-Join** when both input streams contain items of the same type but from different sources. This is the only way to correctly join same-type items due to the type erasure issue.
-* **Use Regular Join** ([`KeyedJoinNode`](src/NPipeline/Nodes/Join/KeyedJoinNode.cs)) when joining items of different types, such as joining `Order` with `Customer` or `Product` with `Category`.
+* **Use Regular Join** ([`KeyedJoinNode`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/Join/KeyedJoinNode.cs)) when joining items of different types, such as joining `Order` with `Customer` or `Product` with `Category`.
 
 #### Performance Considerations
 
@@ -782,7 +782,7 @@ CorrelatedEvents { CorrelationId = "CORR-001", Timestamp = 2024-01-01T10:00:00Z,
 * **Null Key Handling**: The key type `TKey` is constrained to be non-null (`where TKey : notnull`). Ensure your key selectors never return null values, as this will cause runtime exceptions.
 * **Stream Ordering**: Self-joins process items as they arrive. If ordering matters for your use case, ensure streams are properly ordered before the join or implement additional logic to handle ordering requirements.
 
-## Key Configuration with [`KeySelectorAttribute`](src/NPipeline/Attributes/Nodes/KeySelectorAttribute.cs)
+## Key Configuration with [`KeySelectorAttribute`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Attributes/Nodes/KeySelectorAttribute.cs)
 
 Some join nodes may utilize the `KeySelectorAttribute` to automatically infer key extraction logic based on property names or custom functions. This provides a declarative way to specify join keys.
 

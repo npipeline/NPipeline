@@ -27,11 +27,11 @@ graph TD
 
 *Figure: BranchNode fan-out pattern showing how a single input stream is duplicated to multiple independent processing branches.*
 
-NPipeline provides the [`BranchNode<T>`](src/NPipeline/Nodes/BranchNode.cs) for general-purpose stream duplication. For non-intrusive monitoring and side-channel processing, see [Tap Nodes](tap.md).
+NPipeline provides the [`BranchNode<T>`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/BranchNode.cs) for general-purpose stream duplication. For non-intrusive monitoring and side-channel processing, see [Tap Nodes](tap.md).
 
-## [`BranchNode<T>`](src/NPipeline/Nodes/BranchNode.cs): Duplicating Streams
+## [`BranchNode<T>`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/BranchNode.cs): Duplicating Streams
 
-The [`BranchNode<T>`](src/NPipeline/Nodes/BranchNode.cs) takes a single input stream of type `T` and produces multiple output streams of the same type `T`. Each item that enters the `BranchNode` is sent to all connected downstream nodes.
+The [`BranchNode<T>`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/BranchNode.cs) takes a single input stream of type `T` and produces multiple output streams of the same type `T`. Each item that enters the `BranchNode` is sent to all connected downstream nodes.
 
 ### Example: Processing Data in Multiple Ways
 

@@ -20,7 +20,7 @@ Execution strategies primarily apply to [Transform Nodes](../nodes/index.md#tran
 
 ## `IExecutionStrategy`
 
-The core interface for all execution strategies is [`IExecutionStrategy`](../../../src/NPipeline/Execution/IExecutionStrategy.cs). It defines a single method:
+The core interface for all execution strategies is [`IExecutionStrategy`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline/Execution/IExecutionStrategy.cs). It defines a single method:
 
 ```csharp
 public interface IExecutionStrategy
@@ -298,7 +298,7 @@ graph TD
 
 *Figure: Resilient execution provides error handling, retries, and circuit breaker functionality.*
 
-The `ResilientExecutionStrategy` wraps another execution strategy (e.g., `SequentialExecutionStrategy` or `ParallelExecutionStrategy`) to provide robust error handling capabilities. It integrates with NPipeline's [error handling mechanisms](error-handling) to implement:
+The `ResilientExecutionStrategy` wraps another execution strategy (e.g., `SequentialExecutionStrategy` or `ParallelExecutionStrategy`) to provide robust error handling capabilities. It integrates with NPipeline's [error handling mechanisms](../resilience/error-handling.md) to implement:
 
 - **Node Restart**: Automatically re-executes a node if its underlying stream fails.
 - **Circuit Breaker**: Prevents repeated failures by temporarily stopping execution if a failure threshold is met.

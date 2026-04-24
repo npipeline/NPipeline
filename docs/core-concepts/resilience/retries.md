@@ -14,7 +14,7 @@ NPipeline provides configurable retry options that control both individual item 
 
 ## PipelineRetryOptions
 
-The [`PipelineRetryOptions`](../../src/NPipeline/Configuration/PipelineRetryOptions.cs) record configures retry behavior for items and node restarts.
+The [`PipelineRetryOptions`](https://github.com/npipeline/NPipeline/blob/main/docs/src/NPipeline/Configuration/PipelineRetryOptions.cs) record configures retry behavior for items and node restarts.
 
 ```csharp
 public sealed record PipelineRetryOptions(

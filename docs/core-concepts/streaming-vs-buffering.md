@@ -157,7 +157,7 @@ While buffering can introduce latency and higher memory usage, it can also lead 
 
 ### Example: Introducing Buffering with a Batching Node
 
-NPipeline provides specific nodes, like [`BatchingNode<T>`](src/NPipeline/Nodes/Batching/BatchingNode.cs), to introduce explicit buffering.
+NPipeline provides specific nodes, like [`BatchingNode<T>`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/src/NPipeline/Nodes/Batching/BatchingNode.cs), to introduce explicit buffering.
 
 ```csharp
 using NPipeline;

@@ -342,7 +342,7 @@ Sinks are scoped because:
 
 ### ObservabilityExtensionOptions
 
-The [`ObservabilityExtensionOptions`](../../src/NPipeline.Extensions.Observability/DependencyInjection/ObservabilityExtensionOptions.cs) class controls global behavior of the observability extension:
+The [`ObservabilityExtensionOptions`](https://github.com/npipeline/NPipeline/blob/main/docs/src/NPipeline.Extensions.Observability/DependencyInjection/ObservabilityExtensionOptions.cs) class controls global behavior of the observability extension:
 
 ```csharp
 public sealed record ObservabilityExtensionOptions

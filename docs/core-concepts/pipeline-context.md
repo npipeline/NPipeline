@@ -6,7 +6,7 @@ order: 2
 
 # `PipelineContext`
 
-The [`PipelineContext`](src/NPipeline/PipelineContext.cs) is a crucial component in NPipeline that provides a mechanism for sharing runtime information, services, and state across different nodes within a pipeline. It acts as a lightweight, scoped container that is passed through the pipeline during execution, allowing nodes to access common resources without explicit dependency injection in their constructors.
+The [`PipelineContext`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/src/NPipeline/PipelineContext.cs) is a crucial component in NPipeline that provides a mechanism for sharing runtime information, services, and state across different nodes within a pipeline. It acts as a lightweight, scoped container that is passed through the pipeline during execution, allowing nodes to access common resources without explicit dependency injection in their constructors.
 
 This context is particularly useful for:
 
@@ -131,7 +131,7 @@ You have several options depending on your needs:
 
 ### Standard Access
 
-Nodes that implement `TransformNode<TInput, TOutput>` or `SinkNode<TInput>` can access the [`PipelineContext`](src/NPipeline/PipelineContext.cs) through their `TransformAsync` and `ConsumeAsync` methods, respectively.
+Nodes that implement `TransformNode<TInput, TOutput>` or `SinkNode<TInput>` can access the [`PipelineContext`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/src/NPipeline/PipelineContext.cs) through their `TransformAsync` and `ConsumeAsync` methods, respectively.
 
 ```csharp
 public abstract class TransformNode<TInput, TOutput>
@@ -166,7 +166,7 @@ NPipeline will automatically detect if your node implements `IContextAwareNode` 
 
 ## Key Properties and Methods
 
-The [`PipelineContext`](src/NPipeline/PipelineContext.cs) includes properties and methods for:
+The [`PipelineContext`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/src/NPipeline/PipelineContext.cs) includes properties and methods for:
 
 ### Data and Configuration Properties
 

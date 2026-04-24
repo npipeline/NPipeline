@@ -23,11 +23,11 @@ graph LR
 
 *Figure: TapNode pattern showing non-intrusive monitoring where the main data flow continues uninterrupted while a copy is sent to monitoring.*
 
-NPipeline provides the specialized [`TapNode<T>`](src/NPipeline/Nodes/TapNode.cs) for this purpose.
+NPipeline provides the specialized [`TapNode<T>`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/TapNode.cs) for this purpose.
 
-## [`TapNode<T>`](src/NPipeline/Nodes/TapNode.cs): Non-Intrusive Monitoring
+## [`TapNode<T>`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/TapNode.cs): Non-Intrusive Monitoring
 
-The [`TapNode<T>`](src/NPipeline/Nodes/TapNode.cs) is a specialized form of a fan-out node designed for non-intrusive monitoring or logging. It allows you to "tap into" a data stream without affecting the primary flow of data. Data passing through a `TapNode` also continues to the next node in the main pipeline path.
+The [`TapNode<T>`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/TapNode.cs) is a specialized form of a fan-out node designed for non-intrusive monitoring or logging. It allows you to "tap into" a data stream without affecting the primary flow of data. Data passing through a `TapNode` also continues to the next node in the main pipeline path.
 
 ### Constructor
 
@@ -104,7 +104,7 @@ public sealed class TapPipelineDefinition : IPipelineDefinition
 ## Considerations for Tap Nodes
 
 * **Isolation**: Tap nodes provide isolation between the main pipeline and the monitoring/logging branch, allowing them to proceed independently.
-* **Error Handling**: Errors in the tapped branch will typically not affect the main pipeline path, allowing for isolated fault tolerance. However, an unhandled error in a [`TapNode`](src/NPipeline/Nodes/TapNode.cs) can still propagate and potentially halt the pipeline if not caught.
+* **Error Handling**: Errors in the tapped branch will typically not affect the main pipeline path, allowing for isolated fault tolerance. However, an unhandled error in a [`TapNode`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/TapNode.cs) can still propagate and potentially halt the pipeline if not caught.
 * **Observability**: Tap nodes are ideal for observability scenarios where you need to extract metrics, traces, or logs without modifying the core business logic.
 
 Tap nodes are powerful tools for adding non-intrusive monitoring and side-channel processing to your NPipelines without disrupting the main data flow.

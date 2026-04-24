@@ -569,7 +569,7 @@ This is particularly useful when URIs are read from configuration files at runti
 
 ## Samples
 
-A working sample application is in [samples/Sample_MySQLConnector](../../samples/Sample_MySQLConnector/). It demonstrates:
+A working sample application is in [samples/Sample_MySQLConnector](https://github.com/npipeline/NPipeline/blob/main/samples/Sample_MySQLConnector). It demonstrates:
 
 - PerRow, Batch, and BulkLoad write strategies
 - Upsert with `OnDuplicateKeyAction.Update` and `OnDuplicateKeyAction.Ignore`
@@ -581,7 +581,7 @@ A working sample application is in [samples/Sample_MySQLConnector](../../samples
 
 ## Next Steps
 
-- [Configuration Reference](../../src/NPipeline.Connectors.MySQL/Configuration/MySqlConfiguration.cs)
+- [Configuration Reference](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Connectors.MySQL/Configuration/MySqlConfiguration.cs)
 - [PostgreSQL Connector](postgres.md) — similar connector for PostgreSQL
 - [SQL Server Connector](sqlserver.md) — similar connector for SQL Server
 - [Getting Started](../getting-started/installation.md)

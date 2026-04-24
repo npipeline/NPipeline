@@ -24,15 +24,15 @@ Common mistake: Using batching when you actually need aggregation → silent dat
 
 > **Architectural Pattern Shared with Aggregation:** Like [aggregation nodes](aggregation.md), batching represents a shift from NPipeline's item-level streaming model to higher-level data grouping. Both require you to step outside of the default item-by-item pattern. The key difference: **batching groups by count/time** for operational efficiency, while **aggregation groups by key and event time** for data correctness. See [Aggregation Nodes](aggregation.md) for patterns that handle temporal ordering of events.
 
-NPipeline provides the [`BatchingNode<T>`](src/NPipeline/Nodes/BatchingNode.cs) transform node and related extensions to simplify batching operations.
+NPipeline provides the [`BatchingNode<T>`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/BatchingNode.cs) transform node and related extensions to simplify batching operations.
 
-## [`BatchingNode<T>`](src/NPipeline/Nodes/BatchingNode.cs)
+## [`BatchingNode<T>`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/BatchingNode.cs)
 
-The [`BatchingNode<T>`](src/NPipeline/Nodes/BatchingNode.cs) is a stream transform that takes individual items of type `T` and outputs `IReadOnlyCollection<T>`, representing a batch of items.
+The [`BatchingNode<T>`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/BatchingNode.cs) is a stream transform that takes individual items of type `T` and outputs `IReadOnlyCollection<T>`, representing a batch of items.
 
 ### How It Works: Stream-Based Processing
 
-The `BatchingNode<T>` implements [`IStreamTransformNode<T, IReadOnlyCollection<T>>`](src/NPipeline/Nodes/IStreamTransformNode.cs) and uses [`BatchingExecutionStrategy`](src/NPipeline/Execution/Strategies/BatchingExecutionStrategy.cs) to handle batching logic. The `TransformAsync` method operates on entire input streams, collecting items until either the configured batch size is reached or a timeout expires, then emits the collected batch as `IReadOnlyCollection<T>`.
+The `BatchingNode<T>` implements [`IStreamTransformNode<T, IReadOnlyCollection<T>>`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/IStreamTransformNode.cs) and uses [`BatchingExecutionStrategy`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Execution/Strategies/BatchingExecutionStrategy.cs) to handle batching logic. The `TransformAsync` method operates on entire input streams, collecting items until either the configured batch size is reached or a timeout expires, then emits the collected batch as `IReadOnlyCollection<T>`.
 
 ### Configuration
 
@@ -150,9 +150,9 @@ Batching pipeline finished.
 
 Notice that the last batch contains only 1 item because the source finished producing, and the timeout (or end of pipeline) triggered emission of a partial batch.
 
-## [`BatchingPipelineBuilderExtensions`](src/NPipeline/Pipeline/BatchingPipelineBuilderExtensions.cs)
+## [`BatchingPipelineBuilderExtensions`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Pipeline/BatchingPipelineBuilderExtensions.cs)
 
-The [`BatchingPipelineBuilderExtensions`](src/NPipeline/Pipeline/BatchingPipelineBuilderExtensions.cs) provide a convenient fluent API for adding batching functionality to your pipeline. The `AddBatcher` extension method simplifies the creation and configuration of [`BatchingNode<T>`](src/NPipeline/Nodes/BatchingNode.cs).
+The [`BatchingPipelineBuilderExtensions`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Pipeline/BatchingPipelineBuilderExtensions.cs) provide a convenient fluent API for adding batching functionality to your pipeline. The `AddBatcher` extension method simplifies the creation and configuration of [`BatchingNode<T>`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/BatchingNode.cs).
 
 ```csharp
 using NPipeline;

@@ -290,7 +290,7 @@ See the following guides for detailed information:
 
 ## Examples
 
-Complete examples are available in the [samples directory](../../../samples/Sample_Composition/):
+Complete examples are available in the [samples directory](https://github.com/npipeline/NPipeline/blob/main/samples/Sample_Composition):
 
 - Basic composition with simple sub-pipelines
 - Context inheritance patterns

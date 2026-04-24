@@ -107,6 +107,6 @@ dotnet_diagnostic.NP9301.severity = error
 
 ## See Also
 
-- [Streaming vs Buffering](../../core-concepts/streaming-vs-buffering)
-- [Data Streams](../../core-concepts/data-streams)
-- [Performance Characteristics](../../architecture/performance-characteristics)
+- [Streaming vs Buffering](../../core-concepts/streaming-vs-buffering.md)
+- [Data Streams](../../core-concepts/data-streams.md)
+- [Performance Characteristics](../../architecture/performance-characteristics.md)

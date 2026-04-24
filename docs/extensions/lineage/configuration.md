@@ -9,7 +9,7 @@ This guide covers all configuration options for the NPipeline Lineage extension,
 
 ## LineageOptions
 
-The [`LineageOptions`](../../../src/NPipeline/Configuration/LineageOptions.cs) class controls item-level lineage tracking behavior:
+The [`LineageOptions`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline/Configuration/LineageOptions.cs) class controls item-level lineage tracking behavior:
 
 ```csharp
 public sealed record LineageOptions

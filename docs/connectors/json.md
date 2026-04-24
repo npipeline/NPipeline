@@ -554,7 +554,7 @@ The `JsonPropertyNamingPolicy` enum specifies the naming policy for JSON propert
 
 ### Buffer Size Configuration
 
-The [`BufferSize`](../../src/NPipeline.Connectors.Json/JsonConfiguration.cs:46) property controls the internal buffer size for JSON I/O operations:
+The [`BufferSize`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Connectors.Json/JsonConfiguration.cs#L46) property controls the internal buffer size for JSON I/O operations:
 
 - **Default value**: 4096 bytes (4KB)
 - **Purpose**: Determines the size of the buffer used for stream operations when reading or writing JSON files
@@ -759,7 +759,7 @@ The JSON connector supports automatic type conversion for the following .NET typ
 The `JsonSourceNode<T>` uses streaming access for memory-efficient processing of large JSON files:
 
 - **Streaming**: Data is read row-by-row (or line-by-line for NDJSON), minimizing memory usage
-- **Buffer Size**: Configure [`BufferSize`](../../src/NPipeline.Connectors.Json/JsonConfiguration.cs:46) to optimize I/O performance
+- **Buffer Size**: Configure [`BufferSize`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Connectors.Json/JsonConfiguration.cs#L46) to optimize I/O performance
 - **Type Detection**: Automatic type detection via System.Text.Json
 - **Format Handling**: Efficient parsing for both JSON Array and NDJSON formats
 
@@ -768,7 +768,7 @@ The `JsonSourceNode<T>` uses streaming access for memory-efficient processing of
 The `JsonSinkNode<T>` writes items as they arrive from the pipeline using streaming:
 
 - **Memory Usage**: Items are written as they arrive, no buffering of entire dataset
-- **Buffer Size**: Configure [`BufferSize`](../../src/NPipeline.Connectors.Json/JsonConfiguration.cs:46) to optimize I/O performance
+- **Buffer Size**: Configure [`BufferSize`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Connectors.Json/JsonConfiguration.cs#L46) to optimize I/O performance
 - **Streaming**: Uses `Utf8JsonWriter` for efficient serialization
 - **Format Support**: Both JSON Array and NDJSON formats supported
 

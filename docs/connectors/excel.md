@@ -362,7 +362,7 @@ The `ExcelConfiguration` class provides comprehensive options for configuring Ex
 
 ### Buffer Size Configuration
 
-The [`BufferSize`](../../../src/NPipeline.Connectors.Excel/ExcelConfiguration.cs:42) property controls the internal buffer size for Excel I/O operations:
+The [`BufferSize`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Connectors.Excel/ExcelConfiguration.cs#L42) property controls the internal buffer size for Excel I/O operations:
 
 - **Default value**: 4096 bytes (4KB)
 - **Purpose**: Determines the size of the buffer used for stream operations when reading or writing Excel files
@@ -606,7 +606,7 @@ The Excel connector supports automatic type conversion for the following .NET ty
 The `ExcelSourceNode<T>` uses streaming access for memory-efficient processing of large Excel files:
 
 - **Streaming**: Data is read row-by-row, minimizing memory usage
-- **Buffer Size**: Configure [`BufferSize`](../../../src/NPipeline.Connectors.Excel/ExcelConfiguration.cs:42) to optimize I/O performance
+- **Buffer Size**: Configure [`BufferSize`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Connectors.Excel/ExcelConfiguration.cs#L42) to optimize I/O performance
 - **Type Detection**: Use `AnalyzeAllColumns = false` with appropriate `AnalyzeInitialRowCount` for better performance with large files
 - **Sheet Selection**: Specify `SheetName` explicitly to avoid unnecessary sheet traversal
 
@@ -615,7 +615,7 @@ The `ExcelSourceNode<T>` uses streaming access for memory-efficient processing o
 The `ExcelSinkNode<T>` collects all items in memory before writing due to XLSX format requirements:
 
 - **Memory Usage**: All items are collected in a list before writing to the Excel file
-- **Buffer Size**: Configure [`BufferSize`](../../../src/NPipeline.Connectors.Excel/ExcelConfiguration.cs:42) to optimize I/O performance
+- **Buffer Size**: Configure [`BufferSize`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Connectors.Excel/ExcelConfiguration.cs#L42) to optimize I/O performance
 - **Batching**: Consider batching large datasets to manage memory usage
 - **Sheet Creation**: Only creates one sheet per write operation
 

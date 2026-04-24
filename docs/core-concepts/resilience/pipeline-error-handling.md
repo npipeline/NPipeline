@@ -12,7 +12,7 @@ When an error occurs that affects an entire node's stream (e.g., an external ser
 
 ## IPipelineErrorHandler Interface
 
-For errors affecting an entire node's stream, implement [`IPipelineErrorHandler`](../../../src/NPipeline/Abstractions/ErrorHandling/IPipelineErrorHandler.cs):
+For errors affecting an entire node's stream, implement [`IPipelineErrorHandler`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline/Abstractions/ErrorHandling/IPipelineErrorHandler.cs):
 
 ```csharp
 public interface IPipelineErrorHandler

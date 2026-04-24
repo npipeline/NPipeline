@@ -69,7 +69,7 @@ public SqsSourceNode(SqsConfiguration configuration)
 public SqsSourceNode(IAmazonSQS sqsClient, SqsConfiguration configuration)
 ```
 
-- **`configuration`**: The [`SqsConfiguration`](../../../src/NPipeline.Connectors.Aws.Sqs/Configuration/SqsConfiguration.cs:10) object with queue URL, polling settings, and AWS credentials.
+- **`configuration`**: The [`SqsConfiguration`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Connectors.Aws.Sqs/Configuration/SqsConfiguration.cs#L10) object with queue URL, polling settings, and AWS credentials.
 - **`sqsClient`**: *(Optional)* A custom `IAmazonSQS` client. If not provided, one is created from the configuration.
 
 ### Example: Reading from an SQS Queue
@@ -149,7 +149,7 @@ public SqsSinkNode(SqsConfiguration configuration)
 public SqsSinkNode(IAmazonSQS sqsClient, SqsConfiguration configuration)
 ```
 
-- **`configuration`**: The [`SqsConfiguration`](../../../src/NPipeline.Connectors.Aws.Sqs/Configuration/SqsConfiguration.cs:10) object with queue URL, batch settings, and AWS credentials.
+- **`configuration`**: The [`SqsConfiguration`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Connectors.Aws.Sqs/Configuration/SqsConfiguration.cs#L10) object with queue URL, batch settings, and AWS credentials.
 - **`sqsClient`**: *(Optional)* A custom `IAmazonSQS` client. If not provided, one is created from the configuration.
 
 ### Example: Writing to an SQS Queue
@@ -216,7 +216,7 @@ var config = new SqsConfiguration
 
 ### Manual
 
-Messages are sent to the sink but not acknowledged. You must manually call [`AcknowledgeAsync()`](../../../src/NPipeline.Connectors.Aws.Sqs/Models/SqsMessage.cs:107):
+Messages are sent to the sink but not acknowledged. You must manually call [`AcknowledgeAsync()`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Connectors.Aws.Sqs/Models/SqsMessage.cs#L107):
 
 ```csharp
 var config = new SqsConfiguration
@@ -396,7 +396,7 @@ var config = new SqsConfiguration
 
 ## `SqsMessage<T>`
 
-The [`SqsMessage<T>`](../../../src/NPipeline.Connectors.Aws.Sqs/Models/SqsMessage.cs:17) wraps deserialized messages with acknowledgment capability:
+The [`SqsMessage<T>`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Connectors.Aws.Sqs/Models/SqsMessage.cs#L17) wraps deserialized messages with acknowledgment capability:
 
 ```csharp
 public sealed class SqsMessage<T> : IAcknowledgableMessage<T>
@@ -536,7 +536,7 @@ public sealed class OrderTransform : ITransformNode<SqsMessage<OrderMessage>, Pr
 | Value | Description |
 |-------|-------------|
 | `AutoOnSinkSuccess` | Acknowledge immediately after successful sink processing (default) |
-| `Manual` | Manual acknowledgment via [`AcknowledgeAsync()`](../../../src/NPipeline.Connectors.Aws.Sqs/Models/SqsMessage.cs:107) |
+| `Manual` | Manual acknowledgment via [`AcknowledgeAsync()`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Connectors.Aws.Sqs/Models/SqsMessage.cs#L107) |
 | `Delayed` | Acknowledge after configurable delay |
 | `None` | Never acknowledge automatically |
 

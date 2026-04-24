@@ -20,7 +20,7 @@ New to NPipeline? Get started in three simple steps:
 
 - [Installation](./installation.md) - Set up NPipeline (2 minutes)
 - [Your First Pipeline](./quick-start.md) - Build a simple data streamline (5 minutes)
-- [Why NPipeline?](../) - Understand the benefits and philosophy (8 minutes)
+- [Why NPipeline?](..//index.md) - Understand the benefits and philosophy (8 minutes)
 
 ---
 

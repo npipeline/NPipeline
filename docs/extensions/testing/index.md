@@ -184,7 +184,7 @@ Test error scenarios and recovery:
 
 ## Pipeline Builder Testing Extensions
 
-The [`PipelineBuilderTestingExtensions`](../../../src/NPipeline.Extensions.Testing/PipelineBuilderTestingExtensions.cs) class provides convenient methods for setting up test pipelines:
+The [`PipelineBuilderTestingExtensions`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Testing/PipelineBuilderTestingExtensions.cs) class provides convenient methods for setting up test pipelines:
 
 ### In-Memory Sources
 
@@ -227,7 +227,7 @@ var transform = builder.AddPassThroughTransform<string, int>("ToInt");
 
 ## Context Extensions for Testing
 
-The [`TestingContextExtensions`](../../../src/NPipeline.Extensions.Testing/TestingContextExtensions.cs) provides methods for managing test data:
+The [`TestingContextExtensions`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Testing/TestingContextExtensions.cs) provides methods for managing test data:
 
 ```csharp
 // Set source data for a specific node type

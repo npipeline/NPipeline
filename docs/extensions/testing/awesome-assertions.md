@@ -125,7 +125,7 @@ public class InMemorySinkTests
 
 ## Available Extension Methods
 
-The [`InMemorySinkExtensions`](../../../src/NPipeline.Extensions.Testing.AwesomeAssertions/InMemorySinkExtensions.cs) class provides these assertion methods for sink nodes:
+The [`InMemorySinkExtensions`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Testing.AwesomeAssertions/InMemorySinkExtensions.cs) class provides these assertion methods for sink nodes:
 
 ### Count Assertions
 

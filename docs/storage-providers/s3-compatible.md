@@ -688,39 +688,39 @@ services.AddS3CompatibleStorageProvider(new S3CompatibleStorageProviderOptions
 ### Core Interfaces and Types
 
 - **`IStorageProvider`** - Core storage provider interface
-  - Location: [`NPipeline.StorageProviders.Abstractions.IStorageProvider`](../../src/NPipeline.StorageProviders/Abstractions/IStorageProvider.cs)
+  - Location: [`NPipeline.StorageProviders.Abstractions.IStorageProvider`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.StorageProviders/Abstractions/IStorageProvider.cs)
   - Defines methods for reading, writing, listing, and checking existence
 
 - **`StorageUri`** - URI type for storage resources
-  - Location: [`NPipeline.StorageProviders.StorageUri`](../../src/NPipeline.StorageProviders/Models/StorageUri.cs)
+  - Location: [`NPipeline.StorageProviders.StorageUri`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.StorageProviders/Models/StorageUri.cs)
   - Represents S3 resource URIs (scheme, bucket, path)
 
 - **`StorageItem`** - Represents a storage item (file or directory)
-  - Location: [`NPipeline.StorageProviders.StorageItem`](../../src/NPipeline.StorageProviders/Models/StorageItem.cs)
+  - Location: [`NPipeline.StorageProviders.StorageItem`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.StorageProviders/Models/StorageItem.cs)
   - Contains URI, size, last modified date, and directory flag
 
 - **`StorageMetadata`** - Metadata for storage objects
-  - Location: [`NPipeline.StorageProviders.StorageMetadata`](../../src/NPipeline.StorageProviders/Models/StorageMetadata.cs)
+  - Location: [`NPipeline.StorageProviders.StorageMetadata`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.StorageProviders/Models/StorageMetadata.cs)
   - Contains size, content type, last modified date, ETag, and custom metadata
 
 ### S3-Compatible Specific Types
 
 - **`S3CompatibleStorageProvider`** - S3-compatible storage provider implementation
-  - Location: [`S3CompatibleStorageProvider.cs`](../../src/NPipeline.StorageProviders.S3.Compatible/S3CompatibleStorageProvider.cs)
+  - Location: [`S3CompatibleStorageProvider.cs`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.StorageProviders.S3.Compatible/S3CompatibleStorageProvider.cs)
   - Implements `IStorageProvider` and `IStorageProviderMetadataProvider`
 
 - **`S3CompatibleStorageProviderOptions`** - Configuration options
-  - Location: [`S3CompatibleStorageProviderOptions.cs`](../../src/NPipeline.StorageProviders.S3.Compatible/S3CompatibleStorageProviderOptions.cs)
+  - Location: [`S3CompatibleStorageProviderOptions.cs`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.StorageProviders.S3.Compatible/S3CompatibleStorageProviderOptions.cs)
   - Contains endpoint, access key, secret key, and other settings
 
 - **`S3CompatibleClientFactory`** - Factory for creating S3 clients
-  - Location: [`S3CompatibleClientFactory.cs`](../../src/NPipeline.StorageProviders.S3.Compatible/S3CompatibleClientFactory.cs)
+  - Location: [`S3CompatibleClientFactory.cs`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.StorageProviders.S3.Compatible/S3CompatibleClientFactory.cs)
   - Creates and caches `AmazonS3Client` instances with provider configuration
 
 ### Extension Methods
 
 - **`ServiceCollectionExtensions.AddS3CompatibleStorageProvider`**
-  - Location: [`ServiceCollectionExtensions.cs`](../../src/NPipeline.StorageProviders.S3.Compatible/ServiceCollectionExtensions.cs)
+  - Location: [`ServiceCollectionExtensions.cs`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.StorageProviders.S3.Compatible/ServiceCollectionExtensions.cs)
   - Extension method for registering S3-compatible storage provider in DI container
 
 ## Additional Resources

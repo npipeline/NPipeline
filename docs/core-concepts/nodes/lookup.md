@@ -8,7 +8,7 @@ order: 7
 
 Lookup nodes are specialized transforms that enrich incoming data items by querying an external data source (e.g., a database, an in-memory cache, an API) to retrieve additional information. This is a common pattern in ETL and data processing pipelines where raw data needs to be augmented with reference data.
 
-NPipeline provides an abstract [`LookupNode<TIn, TKey, TValue, TOut>`](src/NPipeline/Nodes/Lookup/LookupNode.cs) base class and a concrete [`InMemoryLookupNode<TIn, TKey, TValue, TOut>`](src/NPipeline/Nodes/Lookup/InMemoryLookupNode.cs) for in-memory lookups.
+NPipeline provides an abstract [`LookupNode<TIn, TKey, TValue, TOut>`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/Lookup/LookupNode.cs) base class and a concrete [`InMemoryLookupNode<TIn, TKey, TValue, TOut>`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/Lookup/InMemoryLookupNode.cs) for in-memory lookups.
 
 ## `LookupNode<TIn, TKey, TValue, TOut>`
 
@@ -21,9 +21,9 @@ This abstract base class allows you to define custom lookup logic. You need to s
 
 To implement a custom lookup, you typically override methods to:
 
-* [`ExtractKey(TIn input, PipelineContext context)`](src/NPipeline/Nodes/Lookup/LookupNode.cs:22): Extracts the lookup key from the input item.
-* [`LookupAsync(TKey key, PipelineContext context, CancellationToken cancellationToken)`](src/NPipeline/Nodes/Lookup/LookupNode.cs:33): Asynchronously performs the actual lookup operation and returns the `TValue`.
-* [`CreateOutput(TIn input, TValue? lookupValue, PipelineContext context)`](src/NPipeline/Nodes/Lookup/LookupNode.cs:46): Combines the original input item with the retrieved lookup value to form the enriched output.
+* [`ExtractKey(TIn input, PipelineContext context)`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/Lookup/LookupNode.cs#L22): Extracts the lookup key from the input item.
+* [`LookupAsync(TKey key, PipelineContext context, CancellationToken cancellationToken)`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/Lookup/LookupNode.cs#L33): Asynchronously performs the actual lookup operation and returns the `TValue`.
+* [`CreateOutput(TIn input, TValue? lookupValue, PipelineContext context)`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Nodes/Lookup/LookupNode.cs#L46): Combines the original input item with the retrieved lookup value to form the enriched output.
 
 ## `InMemoryLookupNode<TIn, TKey, TValue, TOut>`
 
@@ -118,7 +118,7 @@ Lookup pipeline finished.
 
 ## `PipelineBuilderLookupExtensions`
 
-The [`PipelineBuilderLookupExtensions`](src/NPipeline/Pipeline/PipelineBuilderLookupExtensions.cs) provide convenient extension methods for integrating lookup nodes into your pipelines, often simplifying the syntax for common lookup scenarios.
+The [`PipelineBuilderLookupExtensions`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/nodes/src/NPipeline/Pipeline/PipelineBuilderLookupExtensions.cs) provide convenient extension methods for integrating lookup nodes into your pipelines, often simplifying the syntax for common lookup scenarios.
 
 ```csharp
 // Example using lookup extension
@@ -167,7 +167,7 @@ var config = new InMemoryLookupNode<TIn, TKey, TValue, TOut>.Configuration(
 * **Lookup Source Performance:** The performance of your lookup node is heavily dependent on the underlying lookup source. Optimize your data access (e.g., indexing, caching) for frequently accessed lookup data.
 * **Memory vs. External Calls:** For large lookup datasets, consider whether an `InMemoryLookupNode` is feasible or if an external lookup (e.g., database query, API call) is more appropriate.
 * **Error Handling:** Implement robust error handling for lookup failures (e.g., key not found, external service unavailable). Decide whether to skip the item, return a default value, or halt the pipeline.
-* **Asynchronous Lookups:** Ensure your [`LookupAsync`](/docs-final/api/NPipeline.Nodes.Lookup.LookupNode#lookupAsync) implementation is truly asynchronous to avoid blocking the pipeline.
+* **Asynchronous Lookups:** Ensure your `LookupAsync` implementation is truly asynchronous to avoid blocking the pipeline.
 
 Lookup nodes are powerful for creating rich, contextual data streams within your NPipelines.
 

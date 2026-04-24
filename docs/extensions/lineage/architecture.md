@@ -76,7 +76,7 @@ This allows downstream lineage queries to retain upstream ancestry context.
 
 ### LineageCollector
 
-The [`LineageCollector`](../../../src/NPipeline.Extensions.Lineage/LineageCollector.cs) is the central component for collecting and storing lineage data:
+The [`LineageCollector`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Lineage/LineageCollector.cs) is the central component for collecting and storing lineage data:
 
 **Key Responsibilities:**
 

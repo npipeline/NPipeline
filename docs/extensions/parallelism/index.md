@@ -6,15 +6,15 @@ order: 1
 
 # Parallelism
 
-NPipeline is designed for high performance, and a key aspect of this is its ability to execute parts of your pipeline in parallel. The [`NPipeline.Extensions.Parallelism`](../../../src/NPipeline.Extensions.Parallelism/NPipeline.Extensions.Parallelism.csproj) package provides tools and extensions to easily introduce parallel processing into your data flows, allowing you to scale out your computations and maximize throughput.
+NPipeline is designed for high performance, and a key aspect of this is its ability to execute parts of your pipeline in parallel. The [`NPipeline.Extensions.Parallelism`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Parallelism/NPipeline.Extensions.Parallelism.csproj) package provides tools and extensions to easily introduce parallel processing into your data flows, allowing you to scale out your computations and maximize throughput.
 
 ## Understanding Parallelism in NPipeline
 
 Parallelism in NPipeline typically means processing multiple data items concurrently, either within a single node or across multiple independent branches of a pipeline. This is distinct from concurrency, which is about managing multiple tasks that may or may not run simultaneously.
 
-## [`NPipeline.Extensions.Parallelism`](../../../src/NPipeline.Extensions.Parallelism/NPipeline.Extensions.Parallelism.csproj)
+## [`NPipeline.Extensions.Parallelism`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Parallelism/NPipeline.Extensions.Parallelism.csproj)
 
-This extension package provides the [`ParallelExecutionStrategy`](../../../src/NPipeline.Extensions.Parallelism/ParallelExecutionStrategy.cs) class and builder extensions to enable and manage parallel execution.
+This extension package provides the [`ParallelExecutionStrategy`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Parallelism/ParallelExecutionStrategy.cs) class and builder extensions to enable and manage parallel execution.
 
 ### Important: Thread Safety
 
@@ -93,8 +93,8 @@ public static class Program
 
 In this example, we:
 
-1. Use [`WithParallelOptions(transform, new ParallelOptions { MaxDegreeOfParallelism = 4 })`](../../../src/NPipeline.Extensions.Parallelism/ParallelOptions.cs:47) to configure parallel execution options for the transform
-2. Set the [`ExecutionStrategy`](../../../src/NPipeline/Graph/NodeDefinition.cs) property to [`ParallelExecutionStrategy`](../../../src/NPipeline.Extensions.Parallelism/ParallelExecutionStrategy.cs) to enable parallel processing
+1. Use [`WithParallelOptions(transform, new ParallelOptions { MaxDegreeOfParallelism = 4 })`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Parallelism/ParallelOptions.cs#L47) to configure parallel execution options for the transform
+2. Set the [`ExecutionStrategy`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline/Graph/NodeDefinition.cs) property to [`ParallelExecutionStrategy`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Parallelism/ParallelExecutionStrategy.cs) to enable parallel processing
 
 ## Non-Ordered Parallel Execution for Maximum Throughput
 
@@ -165,7 +165,7 @@ public static class Program
 }
 ```
 
-In this example, we explicitly set `PreserveOrdering = false` in the [`ParallelOptions`](../../../src/NPipeline.Extensions.Parallelism/ParallelOptions.cs:34). This configuration:
+In this example, we explicitly set `PreserveOrdering = false` in the [`ParallelOptions`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Parallelism/ParallelOptions.cs#L34). This configuration:
 
 1. Allows items to be emitted as soon as they are processed, without waiting for slower items
 2. Eliminates the overhead of tracking and reordering items
@@ -193,7 +193,7 @@ Consider using `PreserveOrdering = false` when:
 
 ## Advanced Parallel Options
 
-The [`ParallelOptions`](../../../src/NPipeline.Extensions.Parallelism/ParallelOptions.cs:34) class provides additional configuration options for fine-tuning parallel execution:
+The [`ParallelOptions`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Parallelism/ParallelOptions.cs#L34) class provides additional configuration options for fine-tuning parallel execution:
 
 ```csharp
 var options = new ParallelOptions
@@ -209,7 +209,7 @@ var options = new ParallelOptions
 
 ### Metrics Configuration
 
-The [`MetricsInterval`](../../../src/NPipeline.Extensions.Parallelism/ParallelOptions.cs:45) property controls how frequently parallel execution metrics are emitted:
+The [`MetricsInterval`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Parallelism/ParallelOptions.cs#L45) property controls how frequently parallel execution metrics are emitted:
 
 - **Default value**: 1 second
 - **Purpose**: Determines the interval at which performance metrics (throughput, queue depth, worker utilization) are collected and reported
@@ -244,7 +244,7 @@ When `MaxQueueLength` is specified, you can control the behavior when the queue 
 
 ### Default Queue Length
 
-The [`ParallelNodeConfigurationExtensions.DefaultQueueLength`](../../../src/NPipeline.Extensions.Parallelism/ParallelNodeConfigurationExtensions.cs:27) constant defines the default queue length for bounded parallel execution strategies:
+The [`ParallelNodeConfigurationExtensions.DefaultQueueLength`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Parallelism/ParallelNodeConfigurationExtensions.cs#L27) constant defines the default queue length for bounded parallel execution strategies:
 
 - **Default value**: 100 items
 - **Applied to**: Drop-oldest and drop-newest parallel strategies when no explicit queue length is provided

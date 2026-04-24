@@ -371,7 +371,7 @@ var source = DuckDBSourceNode<T>.FromFile(
 
 ## Sample
 
-See the [DuckDB Connector Sample](../../samples/Sample_DuckDBConnector/) for a complete working example that:
+See the [DuckDB Connector Sample](https://github.com/npipeline/NPipeline/blob/main/samples/Sample_DuckDBConnector) for a complete working example that:
 
 1. Generates 1,000 synthetic sensor readings
 2. Writes them to a local DuckDB database using the Appender API

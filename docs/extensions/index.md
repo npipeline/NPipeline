@@ -34,20 +34,20 @@ This section details the officially supported extensions and how to leverage the
 
 | Package | Description | Key Features |
 |----------|-------------|---------------|
-| [`NPipeline.Extensions.DependencyInjection`](../../../src/NPipeline.Extensions.DependencyInjection/NPipeline.Extensions.DependencyInjection.csproj) | DI container integration | Constructor injection, service lifetime management, `RunPipelineAsync()` extension |
-| [`NPipeline.Extensions.Composition`](../../../src/NPipeline.Extensions.Composition/NPipeline.Extensions.Composition.csproj) | Hierarchical pipeline composition | Sub-pipelines as nodes, modular design, context control, unlimited nesting |
-| [`NPipeline.Extensions.Nodes`](../../src/NPipeline.Extensions.Nodes/NPipeline.Extensions.Nodes.csproj) | Pre-built data processing nodes | String/numeric/datetime cleansing, validation, filtering, type conversion |
-| [`NPipeline.Extensions.Parallelism`](../../../src/NPipeline.Extensions.Parallelism/NPipeline.Extensions.Parallelism.csproj) | Parallel processing capabilities | `ParallelExecutionStrategy`, `WithParallelOptions()`, queue policies |
-| [`NPipeline.Extensions.Observability`](../../../src/NPipeline.Extensions.Observability/NPipeline.Extensions.Observability.csproj) | Metrics collection and monitoring | Node/pipeline metrics, throughput tracking, memory/CPU monitoring, custom sinks |
-| [`NPipeline.Extensions.Lineage`](../../../src/NPipeline.Extensions.Lineage/NPipeline.Extensions.Lineage.csproj) | Data lineage tracking | Item-level lineage, pipeline reports, configurable sampling, custom sinks |
-| [`NPipeline.Extensions.Testing`](../../../src/NPipeline.Extensions.Testing/NPipeline.Extensions.Testing.csproj) | Testing utilities | In-memory nodes, pipeline builder extensions, test context helpers |
+| [`NPipeline.Extensions.DependencyInjection`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.DependencyInjection/NPipeline.Extensions.DependencyInjection.csproj) | DI container integration | Constructor injection, service lifetime management, `RunPipelineAsync()` extension |
+| [`NPipeline.Extensions.Composition`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Composition/NPipeline.Extensions.Composition.csproj) | Hierarchical pipeline composition | Sub-pipelines as nodes, modular design, context control, unlimited nesting |
+| [`NPipeline.Extensions.Nodes`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Nodes/NPipeline.Extensions.Nodes.csproj) | Pre-built data processing nodes | String/numeric/datetime cleansing, validation, filtering, type conversion |
+| [`NPipeline.Extensions.Parallelism`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Parallelism/NPipeline.Extensions.Parallelism.csproj) | Parallel processing capabilities | `ParallelExecutionStrategy`, `WithParallelOptions()`, queue policies |
+| [`NPipeline.Extensions.Observability`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Observability/NPipeline.Extensions.Observability.csproj) | Metrics collection and monitoring | Node/pipeline metrics, throughput tracking, memory/CPU monitoring, custom sinks |
+| [`NPipeline.Extensions.Lineage`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Lineage/NPipeline.Extensions.Lineage.csproj) | Data lineage tracking | Item-level lineage, pipeline reports, configurable sampling, custom sinks |
+| [`NPipeline.Extensions.Testing`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Testing/NPipeline.Extensions.Testing.csproj) | Testing utilities | In-memory nodes, pipeline builder extensions, test context helpers |
 
 ### Assertion Libraries
 
 | Package | Description | Integration |
 |----------|-------------|--------------|
-| [`NPipeline.Extensions.Testing.AwesomeAssertions`](../../../src/NPipeline.Extensions.Testing.AwesomeAssertions/NPipeline.Extensions.Testing.AwesomeAssertions.csproj) | AwesomeAssertions integration | `ShouldHaveReceived()`, `ShouldContain()`, `ShouldOnlyContain()` |
-| [`NPipeline.Extensions.Testing.FluentAssertions`](../../../src/NPipeline.Extensions.Testing.FluentAssertions/NPipeline.Extensions.Testing.FluentAssertions.csproj) | FluentAssertions integration | `ShouldHaveReceived()`, `ShouldContain()`, `ShouldNotContain()` |
+| [`NPipeline.Extensions.Testing.AwesomeAssertions`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Testing.AwesomeAssertions/NPipeline.Extensions.Testing.AwesomeAssertions.csproj) | AwesomeAssertions integration | `ShouldHaveReceived()`, `ShouldContain()`, `ShouldOnlyContain()` |
+| [`NPipeline.Extensions.Testing.FluentAssertions`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline.Extensions.Testing.FluentAssertions/NPipeline.Extensions.Testing.FluentAssertions.csproj) | FluentAssertions integration | `ShouldHaveReceived()`, `ShouldContain()`, `ShouldNotContain()` |
 
 ## Getting Started with Extensions
 
