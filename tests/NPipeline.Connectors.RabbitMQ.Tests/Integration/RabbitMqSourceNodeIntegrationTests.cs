@@ -56,7 +56,7 @@ public sealed class RabbitMqSourceNodeIntegrationTests : IAsyncDisposable
         var pubChannel = await connection.CreateChannelAsync(
             new CreateChannelOptions(true, true));
 
-        await pubChannel.QueueDeclareAsync(queueName, false, false, true);
+        await pubChannel.QueueDeclareAsync(queueName, true, false, true);
 
         for (var i = 0; i < 5; i++)
         {
@@ -114,7 +114,7 @@ public sealed class RabbitMqSourceNodeIntegrationTests : IAsyncDisposable
         var pubChannel = await connection.CreateChannelAsync(
             new CreateChannelOptions(true, true));
 
-        await pubChannel.QueueDeclareAsync(queueName, false, false, false);
+        await pubChannel.QueueDeclareAsync(queueName, true, false, false);
 
         var body = serializer.Serialize(new TestMessage("ack-test", 1));
         await pubChannel.BasicPublishAsync("", queueName, false, new BasicProperties(), body);

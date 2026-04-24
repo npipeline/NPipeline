@@ -48,7 +48,7 @@ public sealed class RabbitMqSinkNodeIntegrationTests : IAsyncDisposable
         // Declare queue
         var connection = await _connectionManager.GetConnectionAsync();
         var setupChannel = await connection.CreateChannelAsync();
-        await setupChannel.QueueDeclareAsync(queueName, false, false, true);
+        await setupChannel.QueueDeclareAsync(queueName, true, false, true);
         await setupChannel.CloseAsync();
 
         var sinkOptions = new RabbitMqSinkOptions
@@ -92,7 +92,7 @@ public sealed class RabbitMqSinkNodeIntegrationTests : IAsyncDisposable
 
         var connection = await _connectionManager.GetConnectionAsync();
         var setupChannel = await connection.CreateChannelAsync();
-        await setupChannel.QueueDeclareAsync(queueName, false, false, true);
+        await setupChannel.QueueDeclareAsync(queueName, true, false, true);
         await setupChannel.CloseAsync();
 
         var sinkOptions = new RabbitMqSinkOptions
