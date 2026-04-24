@@ -31,7 +31,7 @@ This gets flagged immediately at build time, during development, before runtime 
 
 #### Solution: Complete Configuration
 
-**For detailed step-by-step configuration instructions, see [Getting Started with Resilience](../../core-concepts/resilience/getting-started.md) guide.**
+**For detailed step-by-step configuration instructions, see [Getting Started with Resilience](/core-concepts/resilience/getting-started.md) guide.**
 
 The three mandatory prerequisites are:
 
@@ -48,11 +48,11 @@ If any prerequisite is missing when `RestartNode` is returned, the system throws
 3. **Set realistic MaxNodeRestartAttempts** - Usually 2-3 attempts is sufficient
 4. **Configure MaxMaterializedItems appropriately** - Balance memory usage with retry capability
 
-**Configuration Guidance:** Always set `MaxMaterializedItems` to a positive bounded value. Setting it to `null` (unbounded) will cause `InvalidOperationException` at runtime when `RestartNode` is attempted. See the [Getting Started with Resilience](../../core-concepts/resilience/getting-started.md) guide for detailed explanation of why bounded buffers are required for resilience guarantees.
+**Configuration Guidance:** Always set `MaxMaterializedItems` to a positive bounded value. Setting it to `null` (unbounded) will cause `InvalidOperationException` at runtime when `RestartNode` is attempted. See the [Getting Started with Resilience](/core-concepts/resilience/getting-started.md) guide for detailed explanation of why bounded buffers are required for resilience guarantees.
 
 ## See Also
 
-- **[Getting Started with Resilience](../../core-concepts/resilience/getting-started.md)** - Complete step-by-step configuration guide
-- [Resilience Configuration Guide](../../core-concepts/resilience/error-handling.md)
-- [Error Handling Architecture](../../architecture/error-handling-architecture.md)
-- [Cancellation Model](../../architecture/cancellation-model.md)
+- **[Getting Started with Resilience](/core-concepts/resilience/getting-started.md)** - Complete step-by-step configuration guide
+- [Resilience Configuration Guide](/core-concepts/resilience/error-handling.md)
+- [Error Handling Architecture](/architecture/error-handling-architecture.md)
+- [Cancellation Model](/architecture/cancellation-model.md)

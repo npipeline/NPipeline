@@ -558,5 +558,5 @@ dotnet_diagnostic.NP9107.severity = error
 
 ## See Also
 
-- [Performance Hygiene](../../advanced-topics/performance-hygiene.md)
-- [Performance Characteristics](../../architecture/performance-characteristics.md)
+- [Performance Hygiene](/advanced-topics/performance-hygiene.md)
+- [Performance Characteristics](/architecture/performance-characteristics.md)

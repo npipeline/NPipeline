@@ -138,5 +138,5 @@ dotnet_diagnostic.NP9005.severity = warning
 
 ## See Also
 
-- [Resilience Configuration](../../core-concepts/resilience/error-handling.md)
-- [Performance Characteristics](../../architecture/performance-characteristics.md)
+- [Resilience Configuration](/core-concepts/resilience/error-handling.md)
+- [Performance Characteristics](/architecture/performance-characteristics.md)
