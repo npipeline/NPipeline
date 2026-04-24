@@ -22,34 +22,6 @@ jobs:
         with:
           ref: ${{ github.event.inputs.branch || 'main' }}
 
-      - name: Checkout npipeline.dev repo
-        uses: actions/checkout@v6
-        with:
-          repository: npipeline/npipeline.dev
-          token: ${{ secrets.NPIPELINE_DEV_TOKEN }}
-          path: ./npipeline-dev
-
-      - name: Deploy to npipeline.dev
-        run: |
-          # Copy docs content to target repo /docs directory
-          mkdir -p ./npipeline-dev/docs
-          rm -rf ./npipeline-dev/docs/*
-          cp -r ./docs/* ./npipeline-dev/docs/
-
-          # Configure git
-          cd ./npipeline-dev
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Commit and push
-          git add -A
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "docs: update documentation (manual deployment from NPipeline)"
-            git push origin main
-          fi
-
       - name: Checkout docs.npipeline.net repo
         uses: actions/checkout@v6
         with:
