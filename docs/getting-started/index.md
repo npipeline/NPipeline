@@ -1,7 +1,7 @@
 ---
 title: Getting Started
 description: Install NPipeline and build your first pipeline.
-order: 1
+order: 2
 ---
 
 Welcome to NPipeline! Ready to build your first data streamline? Follow these steps to get up and running.

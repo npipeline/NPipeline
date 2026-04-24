@@ -1,7 +1,7 @@
 ---
 title: Troubleshooting
 description: Common NPipeline issues and solutions.
-order: 1
+order: 12
 ---
 
 # Troubleshooting Guide

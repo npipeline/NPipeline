@@ -1,7 +1,7 @@
 ---
 title: Architecture
 description: Deep dive into NPipeline's design, internals, and how it works.
-order: 12
+order: 4
 ---
 
 # Architecture Overview

@@ -1,7 +1,7 @@
 ---
 title: Nodes
 description: Explore the fundamental building blocks of any NPipeline – Source, Transform, Sink, and specialized nodes for complex data processing patterns.
-order: 1
+order: 2
 ---
 
 # Nodes: Source, Transform, Sink, and Specialized

@@ -1,7 +1,7 @@
 ---
 title: Connectors
 description: An overview of the available source and sink connectors for integrating NPipelines with external systems.
-order: 1
+order: 6
 ---
 
 ## Connectors Overview

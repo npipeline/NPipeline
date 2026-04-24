@@ -1,7 +1,7 @@
 ---
 title: Advanced Nodes
 description: Pre-built, high-performance nodes for common data processing operations. Includes cleansing, validation, filtering, and transformation nodes.
-order: 4
+order: 5
 ---
 
 # NPipeline.Extensions.Nodes

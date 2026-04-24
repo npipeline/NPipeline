@@ -1,7 +1,7 @@
 ---
 title: Core Concepts
 description: Implementation guides for building pipelines with NPipeline.
-order: 1
+order: 3
 ---
 
 # Core Concepts

@@ -1,7 +1,7 @@
 ---
 title: Storage Providers
 description: An overview of the available storage providers for NPipeline.
-order: 0
+order: 5
 ---
 
 ## Storage Providers Overview

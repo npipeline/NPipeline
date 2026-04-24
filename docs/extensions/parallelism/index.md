@@ -1,7 +1,7 @@
 ---
 title: Parallelism
 description: Enhance your NPipeline's performance by leveraging parallel processing capabilities.
-order: 1
+order: 2
 ---
 
 # Parallelism

@@ -1,7 +1,7 @@
 ---
 title: Observability
 description: Comprehensive metrics collection and monitoring for NPipeline pipelines.
-order: 5
+order: 6
 ---
 
 # NPipeline Observability Extension

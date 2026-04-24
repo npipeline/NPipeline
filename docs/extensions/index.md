@@ -1,7 +1,7 @@
 ---
 title: Extensions
 description: Discover how NPipeline extensions enhance functionality, providing specialized nodes, integrations, and advanced features.
-order: 1
+order: 7
 ---
 
 # NPipeline Extensions

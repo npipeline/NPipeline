@@ -1,7 +1,7 @@
 ---
 title: Error Codes
 description: NPipeline error codes, their causes, and solutions.
-order: 1
+order: 10
 ---
 
 # Error Codes

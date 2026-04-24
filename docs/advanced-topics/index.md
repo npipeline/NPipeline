@@ -1,7 +1,7 @@
 ---
 title: Advanced Topics
 description: Expert-level guides for high-performance optimization, production deployment, and advanced implementation patterns.
-order: 1
+order: 8
 ---
 
 # Advanced Topics

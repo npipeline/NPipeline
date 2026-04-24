@@ -1,7 +1,7 @@
 ---
 title: Samples
 description: Index of sample applications demonstrating NPipeline concepts and patterns
-order: 1
+order: 11
 ---
 
 # Sample Applications
