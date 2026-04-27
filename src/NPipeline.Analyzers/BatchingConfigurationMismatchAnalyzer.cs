@@ -29,7 +29,7 @@ public sealed class BatchingConfigurationMismatchAnalyzer : DiagnosticAnalyzer
         + "Large batch sizes with short timeouts may never fill the batch, causing frequent processing. "
         + "Small batch sizes with long timeouts cause unnecessary latency. "
         + "Ensure batch sizes and timeouts are properly aligned for optimal performance. "
-        + "https://npipeline.dev/docs/performance/batching-configuration.");
+        + "https://docs.npipeline.net/analyzers/configuration#np9004-batching-configuration-mismatch.");
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];

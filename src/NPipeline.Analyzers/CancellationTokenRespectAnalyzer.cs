@@ -28,7 +28,7 @@ public sealed class CancellationTokenRespectAnalyzer : DiagnosticAnalyzer
         "Reliability & Error Handling",
         DiagnosticSeverity.Warning,
         true,
-        "Cancellation tokens should be passed to async operations and checked periodically to ensure responsive cancellation. This helps prevent hanging operations and improves application responsiveness. https://npipeline.dev/docs/core-concepts/cancellation/best-practices.");
+        "Cancellation tokens should be passed to async operations and checked periodically to ensure responsive cancellation. This helps prevent hanging operations and improves application responsiveness. https://docs.npipeline.net/analyzers/reliability");
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

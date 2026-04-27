@@ -32,7 +32,7 @@ public sealed class PipelineContextAccessAnalyzer : DiagnosticAnalyzer
         "PipelineContext has several nullable properties and dictionary access patterns that require careful handling. "
         + "Always use null-conditional operators or explicit null checks to prevent runtime exceptions. "
         + "For dictionary access, use TryGetValue pattern or null-conditional operators with proper type checking. "
-        + "https://npipeline.dev/docs/core-concepts/pipeline-context/safe-access-patterns.");
+        + "https://docs.npipeline.net/analyzers/best-practices#np9302-unsafe-pipelinecontext-access.");
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

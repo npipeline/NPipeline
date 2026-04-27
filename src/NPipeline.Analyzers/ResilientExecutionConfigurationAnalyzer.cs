@@ -34,7 +34,7 @@ public sealed class ResilientExecutionConfigurationAnalyzer : DiagnosticAnalyzer
         true,
         "See node restart quick start guide for complete configuration requirements. "
         + "Each prerequisite is mandatory - skipping even one will silently disable restart: "
-        + "https://npipeline.dev/docs/core-concepts/resilience/getting-started.");
+        + "https://docs.npipeline.net/analyzers/resilience#np9001-incomplete-resilient-configuration.");
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

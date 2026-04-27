@@ -29,7 +29,7 @@ public sealed class LinqInHotPathsAnalyzer : DiagnosticAnalyzer
         "LINQ operations in hot paths create unnecessary allocations and GC pressure. "
         + "In high-throughput NPipeline scenarios, use imperative alternatives like foreach/for loops instead of LINQ. "
         + "Common LINQ methods to avoid in hot paths: Where, Select, GroupBy, OrderBy, ToList, ToArray, First, Single, etc. "
-        + "https://npipeline.dev/docs/performance/avoiding-linq-in-hot-paths.");
+        + "https://docs.npipeline.net/analyzers/performance#np9103-linq-operations-in-hot-paths.");
 
     private static readonly ImmutableHashSet<string> LinqMethodNames =
         ImmutableHashSet.Create(StringComparer.Ordinal,

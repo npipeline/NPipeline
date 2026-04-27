@@ -76,9 +76,9 @@ This analyzer only applies to:
 
 ## Related Documentation
 
-- [PostgreSQL Connector Documentation](https://npipeline.dev/docs/connectors/postgresql)
-- [Checkpointing Best Practices](https://npipeline.dev/docs/guides/checkpointing)
-- [Production Recommendations](https://npipeline.dev/docs/connectors/postgresql-production-recommendations)
+- [PostgreSQL Connector Documentation](https://docs.npipeline.net/connectors/postgres)
+- [Checkpointing Best Practices](https://docs.npipeline.net/core-concepts/resilience/getting-started)
+- [Production Recommendations](https://docs.npipeline.net/connectors/postgres)
 
 ## License
 

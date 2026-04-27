@@ -29,7 +29,7 @@ public sealed class StreamTransformNodeExecutionStrategyAnalyzer : DiagnosticAna
         + "Using a regular IExecutionStrategy may result in suboptimal performance as it cannot take advantage of "
         + "stream-specific optimizations. Consider using BatchingExecutionStrategy, UnbatchingExecutionStrategy, or "
         + "creating a custom strategy that implements both interfaces. "
-        + "https://npipeline.dev/docs/core-concepts/nodes/stream-transform-nodes.");
+        + "https://docs.npipeline.net/analyzers/best-practices");
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];

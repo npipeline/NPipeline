@@ -28,7 +28,7 @@ public sealed class InefficientExceptionHandlingAnalyzer : DiagnosticAnalyzer
         "Inefficient exception handling can cause performance issues and mask important errors. "
         + "Use specific exception types, avoid catch-all patterns, and handle exceptions appropriately. "
         + "Avoid empty catch blocks and re-throwing with 'throw;' which loses stack trace information. "
-        + "https://npipeline.dev/docs/reliability/efficient-exception-handling.");
+        + "https://docs.npipeline.net/analyzers/reliability#np9202-inefficient-exception-handling.");
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];

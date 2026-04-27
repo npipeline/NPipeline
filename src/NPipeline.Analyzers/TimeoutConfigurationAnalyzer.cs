@@ -29,7 +29,7 @@ public sealed class TimeoutConfigurationAnalyzer : DiagnosticAnalyzer
         + "or inefficient resource utilization. For I/O-bound operations, use timeouts >= 500ms. "
         + "For CPU-bound operations, use timeouts <= 5 minutes. Avoid zero or negative timeouts. "
         + "Keep retry timeouts reasonable (< 30 minutes). "
-        + "https://npipeline.dev/docs/configuration/timeouts.");
+        + "https://docs.npipeline.net/analyzers/configuration#np9005-timeout-configuration-issues.");
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];

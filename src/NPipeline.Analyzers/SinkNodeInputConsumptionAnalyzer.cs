@@ -25,7 +25,7 @@ public sealed class SinkNodeInputConsumptionAnalyzer : DiagnosticAnalyzer
         "Data Integrity & Correctness",
         DiagnosticSeverity.Error,
         true,
-        "SinkNode implementations should consume all items from their input data pipe. Failing to consume input may result in data loss and unexpected behavior. Use await foreach to iterate through input items. https://npipeline.dev/docs/nodes/sink-nodes/best-practices.");
+        "SinkNode implementations should consume all items from their input data pipe. Failing to consume input may result in data loss and unexpected behavior. Use await foreach to iterate through input items. https://docs.npipeline.net/analyzers/data-processing#np9301-input-parameter-not-consumed");
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

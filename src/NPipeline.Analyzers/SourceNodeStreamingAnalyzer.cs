@@ -33,7 +33,7 @@ public sealed class SourceNodeStreamingAnalyzer : DiagnosticAnalyzer
         "Non-streaming patterns in SourceNode implementations can cause memory issues and performance problems. "
         + "Use streaming patterns: IAsyncEnumerable with yield return, DataStream, async I/O operations, "
         + "and avoid materializing collections in memory. "
-        + "https://npipeline.dev/docs/performance/source-node-streaming-patterns.");
+        + "https://docs.npipeline.net/analyzers/performance#np9107-non-streaming-patterns-in-sourcenode");
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

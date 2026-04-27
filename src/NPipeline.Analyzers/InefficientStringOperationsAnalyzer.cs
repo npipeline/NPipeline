@@ -28,7 +28,7 @@ public sealed class InefficientStringOperationsAnalyzer : DiagnosticAnalyzer
         "String operations in hot paths can cause significant memory pressure and performance degradation. "
         + "Use StringBuilder for concatenation, string interpolation for formatting, and cached strings for repeated values. "
         + "Avoid string concatenation with '+' in loops and hot path methods. "
-        + "https://npipeline.dev/docs/performance/efficient-string-operations.");
+        + "https://docs.npipeline.net/analyzers/performance#np9104-inefficient-string-operations");
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];

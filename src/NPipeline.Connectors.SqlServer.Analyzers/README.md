@@ -76,9 +76,9 @@ This analyzer only applies to:
 
 ## Related Documentation
 
-- [SQL Server Connector Documentation](https://npipeline.dev/docs/connectors/sqlserver)
-- [Checkpointing Best Practices](https://npipeline.dev/docs/guides/checkpointing)
-- [Production Recommendations](https://npipeline.dev/docs/connectors/sqlserver-production-recommendations)
+- [SQL Server Connector Documentation](https://docs.npipeline.net/connectors/sqlserver)
+- [Checkpointing Best Practices](https://docs.npipeline.net/core-concepts/resilience/getting-started)
+- [Production Recommendations](https://docs.npipeline.net/connectors/sqlserver)
 
 ## License
 

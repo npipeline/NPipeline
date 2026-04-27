@@ -34,7 +34,7 @@ public sealed class BlockingAsyncOperationAnalyzer : DiagnosticAnalyzer
         "Blocking operations in async methods can cause deadlocks and performance issues. "
         + "Use async alternatives: await instead of .Result/.Wait(), Task.Delay instead of Thread.Sleep, "
         + "File.ReadAllTextAsync instead of File.ReadAllText, etc. "
-        + "https://npipeline.dev/docs/async-programming/avoiding-blocking-patterns.");
+        + "https://docs.npipeline.net/analyzers/performance#np9101-blocking-operations-in-async-methods");
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

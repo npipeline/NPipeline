@@ -32,7 +32,7 @@ public sealed class InappropriateParallelismConfigurationAnalyzer : DiagnosticAn
         "Inappropriate parallelism configurations can cause resource contention, thread pool starvation, "
         + "or suboptimal resource utilization. For CPU-bound workloads, use parallelism close to processor count. "
         + "For I/O-bound workloads, use moderate parallelism. Avoid PreserveOrdering with high parallelism. "
-        + "https://npipeline.dev/docs/performance/parallelism-configuration.");
+        + "https://docs.npipeline.net/analyzers/configuration#np9003-inappropriate-parallelism-configuration");
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];

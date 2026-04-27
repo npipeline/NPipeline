@@ -32,7 +32,7 @@ public sealed class SynchronousOverAsyncAnalyzer : DiagnosticAnalyzer
         "Synchronous over async patterns can cause deadlocks and performance issues. "
         + "Use proper async patterns: await async methods instead of using .Result/.Wait(), "
         + "avoid Task.Run() to wrap synchronous operations, and don't block in Task-returning methods. "
-        + "https://npipeline.dev/docs/async-programming/avoiding-sync-over-async-patterns.");
+        + "https://docs.npipeline.net/analyzers/performance#np9102-synchronous-over-async-patterns");
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

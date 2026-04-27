@@ -29,7 +29,7 @@ public sealed class AnonymousObjectAllocationAnalyzer : DiagnosticAnalyzer
         "Anonymous object allocations in hot paths create unnecessary GC pressure and allocation overhead. "
         + "In high-throughput NPipeline scenarios, use value types, named types, or object pooling instead of anonymous objects. "
         + "Anonymous objects are particularly problematic in loops, LINQ expressions, and async methods. "
-        + "https://npipeline.dev/docs/performance/avoiding-anonymous-object-allocations.");
+        + "https://docs.npipeline.net/analyzers/performance#np9105-anonymous-object-allocation.");
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];

@@ -28,7 +28,7 @@ public sealed class StreamTransformNodeSuggestionAnalyzer : DiagnosticAnalyzer
         "When TransformAsync returns IAsyncEnumerable, node is performing stream-based transformations. "
         + "IStreamTransformNode is designed specifically for this use case and provides better interface segregation. "
         + "Using IStreamTransformNode makes intent clearer and allows for more optimized execution strategies. "
-        + "https://npipeline.dev/docs/core-concepts/nodes/stream-transform-nodes.");
+        + "https://docs.npipeline.net/analyzers/best-practices");
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
