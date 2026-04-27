@@ -36,7 +36,7 @@ var sink = builder.AddSink(new SqsSinkNode<ProcessedOrder>(config), "sqs-sink");
 
 ## Documentation
 
-For comprehensive documentation, see [AWS SQS Connector Documentation](https://www.npipeline.dev/docs/connectors/aws-sqs).
+For comprehensive documentation, see [AWS SQS Connector Documentation](https://docs.npipeline.net/connectors/aws-sqs).
 
 ## Related Packages
 

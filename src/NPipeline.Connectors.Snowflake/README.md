@@ -28,4 +28,4 @@ var sink = new SnowflakeSinkNode<Customer>(
 
 ## Documentation
 
-See the [full documentation](https://npipeline.dev/connectors/snowflake) for detailed usage instructions.
+See the [full documentation](https://docs.npipeline.net/connectors/snowflake) for detailed usage instructions.

@@ -244,11 +244,11 @@ Memory metrics are measured as **per-node deltas** using `GC.GetTotalMemory(fals
 
 ## Documentation
 
-- [Configuration Guide](https://www.npipeline.dev/docs/extensions/observability/configuration)
-- [Usage Examples](https://www.npipeline.dev/docs/extensions/observability/examples)
-- [Metrics Reference](https://www.npipeline.dev/docs/extensions/observability/metrics)
-- [Distributed Tracing](https://www.npipeline.dev/docs/extensions/observability/tracing)
-- [Main Observability Documentation](https://www.npipeline.dev/docs/extensions/observability/)
+- [Configuration Guide](https://docs.npipeline.net/extensions/observability/configuration)
+- [Usage Examples](https://docs.npipeline.net/extensions/observability/examples)
+- [Metrics Reference](https://docs.npipeline.net/extensions/observability/metrics)
+- [Distributed Tracing](https://docs.npipeline.net/extensions/observability/tracing)
+- [Main Observability Documentation](https://docs.npipeline.net/extensions/observability/)
 
 ## Thread Safety
 

@@ -162,7 +162,7 @@ var config = new KafkaConfiguration
 ## Documentation
 
 For comprehensive documentation, including advanced topics, partitioning, dead letter handling, and best practices, see
-the [Kafka Connector Documentation](https://www.npipeline.dev/docs/connectors/kafka).
+the [Kafka Connector Documentation](https://docs.npipeline.net/connectors/kafka).
 
 ## Related Packages
 

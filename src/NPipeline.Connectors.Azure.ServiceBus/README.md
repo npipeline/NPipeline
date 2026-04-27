@@ -153,7 +153,7 @@ var config = new ServiceBusConfiguration
 
 ## Documentation
 
-For comprehensive documentation, see [Azure Service Bus Connector Documentation](https://www.npipeline.dev/docs/connectors/azure-service-bus).
+For comprehensive documentation, see [Azure Service Bus Connector Documentation](https://docs.npipeline.net/connectors/azure-service-bus).
 
 ## Related Packages
 

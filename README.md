@@ -185,13 +185,13 @@ NPipeline is modular - install only what you need.
 ### Complete Package List
 
 For the complete list of all available packages including assertion library integrations (FluentAssertions, AwesomeAssertions) and OpenTelemetry support, see
-the [Extensions Documentation](https://www.npipeline.dev/docs/extensions) and [Connectors Documentation](https://www.npipeline.dev/docs/connectors).
+the [Extensions Documentation](https://docs.npipeline.net/extensions) and [Connectors Documentation](https://docs.npipeline.net/connectors).
 
 ## What's Next?
 
-1. **[Installation](https://www.npipeline.dev/docs/getting-started/installation)** - Set up NPipeline in your project
-2. **[Quick Start](https://www.npipeline.dev/docs/getting-started/quick-start)** - Build a complete pipeline step-by-step
-3. **[Core Concepts](https://www.npipeline.dev/docs/core-concepts)** - Learn the fundamentals of NPipeline
+1. **[Installation](https://docs.npipeline.net/getting-started/installation)** - Set up NPipeline in your project
+2. **[Quick Start](https://docs.npipeline.net/getting-started/quick-start)** - Build a complete pipeline step-by-step
+3. **[Core Concepts](https://docs.npipeline.net/core-concepts)** - Learn the fundamentals of NPipeline
 
 ## Transparency: AI-Assisted Development
 
