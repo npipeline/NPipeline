@@ -193,17 +193,6 @@ the [Extensions Documentation](https://docs.npipeline.net/extensions) and [Conne
 2. **[Quick Start](https://docs.npipeline.net/getting-started/quick-start)** - Build a complete pipeline step-by-step
 3. **[Core Concepts](https://docs.npipeline.net/core-concepts)** - Learn the fundamentals of NPipeline
 
-## Transparency: AI-Assisted Development
-
-We believe in being open about how this library is built. We use AI tools to assist with boilerplate tasks like documentation, XML comments, and test generation
-to keep development pace high.
-
-### Our Commitment to Quality
-
-- **Manual Validation:** All AI-suggested content is vetted against project standards before being merged.
-- **Core Integrity:** Architecture and critical logic are human-designed.
-- **Goal:** Leveraging AI as a "force multiplier" without compromising code quality or reliability.
-
 ## Contributing
 
 Contributions are welcome! Please feel free to open an issue or submit a pull request.
