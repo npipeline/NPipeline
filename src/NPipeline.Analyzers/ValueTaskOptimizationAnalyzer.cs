@@ -33,8 +33,7 @@ public sealed class ValueTaskOptimizationAnalyzer : DiagnosticAnalyzer
         true,
         "TransformNode implementations that use Task.FromResult for synchronous operations can benefit from "
         + "overriding ExecuteValueTaskAsync to return ValueTask.FromResult directly. This avoids unnecessary Task allocations "
-        + "and improves performance, especially in high-throughput scenarios. "
-        + "https://docs.npipeline.net/analyzers/performance#np9106-missing-valuetask-optimization");
+        + "and improves performance, especially in high-throughput scenarios.");
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>

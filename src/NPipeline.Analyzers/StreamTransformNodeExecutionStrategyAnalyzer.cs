@@ -28,8 +28,7 @@ public sealed class StreamTransformNodeExecutionStrategyAnalyzer : DiagnosticAna
         "IStreamTransformNode is designed to work with execution strategies that implement IStreamExecutionStrategy. "
         + "Using a regular IExecutionStrategy may result in suboptimal performance as it cannot take advantage of "
         + "stream-specific optimizations. Consider using BatchingExecutionStrategy, UnbatchingExecutionStrategy, or "
-        + "creating a custom strategy that implements both interfaces. "
-        + "https://docs.npipeline.net/analyzers/best-practices");
+        + "creating a custom strategy that implements both interfaces.");
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];

@@ -33,8 +33,7 @@ public sealed class OperationCanceledExceptionAnalyzer : DiagnosticAnalyzer
         true,
         "OperationCanceledException should never be swallowed as it breaks cancellation chains. "
         + "Always re-throw OperationCanceledException to ensure graceful shutdown. "
-        + "For broad catches, check exception type and re-throw if it's OperationCanceledException. "
-        + "https://docs.npipeline.net/analyzers/reliability");
+        + "For broad catches, check exception type and re-throw if it's OperationCanceledException.");
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
