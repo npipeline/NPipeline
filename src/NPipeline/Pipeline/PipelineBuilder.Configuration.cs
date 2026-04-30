@@ -200,21 +200,24 @@ public sealed partial class PipelineBuilder
         _config = _config with
         {
             ItemLevelLineageEnabled = true,
-            LineageOptions = _config.LineageOptions ?? new LineageOptions(SampleEvery: 1, RedactData: false),
+            LineageOptions = _config.LineageOptions ?? LineageOptions.CompleteLineage,
         };
 
         return this;
     }
 
     /// <summary>
-    ///     Enables item-level lineage tracking with custom configuration options.
+    ///     Enables item-level lineage tracking with custom immutable option transformation.
     /// </summary>
-    /// <param name="configure">An action to configure the lineage options.</param>
+    /// <param name="configure">A function that transforms baseline lineage options.</param>
     /// <returns>The current PipelineBuilder instance for method chaining.</returns>
-    public PipelineBuilder EnableItemLevelLineage(Action<LineageOptions> configure)
+    public PipelineBuilder EnableItemLevelLineage(Func<LineageOptions, LineageOptions> configure)
     {
-        var opts = _config.LineageOptions ?? LineageOptions.Default;
-        configure(opts);
+        ArgumentNullException.ThrowIfNull(configure);
+
+        var baseline = _config.LineageOptions ?? LineageOptions.CompleteLineage;
+        var opts = configure(baseline);
+        ArgumentNullException.ThrowIfNull(opts);
         _config = _config with { ItemLevelLineageEnabled = true, LineageOptions = opts };
         return this;
     }
@@ -513,12 +516,12 @@ public sealed partial class PipelineBuilder
                 {
                     int[]? ancestryInputIndices = null;
 
-                    if (packet.LineageHops.Count > 0)
+                    if (packet.LineageRecords.Count > 0)
                     {
-                        var latestHop = packet.LineageHops[^1];
+                        var latestRecord = packet.LineageRecords[^1];
 
-                        if (latestHop.AncestryInputIndices is { Count: > 0 })
-                            ancestryInputIndices = [.. latestHop.AncestryInputIndices];
+                        if (latestRecord.ContributorInputIndices is { Count: > 0 })
+                            ancestryInputIndices = [.. latestRecord.ContributorInputIndices];
                     }
 
                     // Write packet first so that the strategy's inputStream has data available
@@ -577,29 +580,88 @@ public sealed partial class PipelineBuilder
 
             async IAsyncEnumerable<TIn> Project(IDataStream<LineagePacket<TIn>> input, [EnumeratorCancellation] CancellationToken token)
             {
+                var terminalCorrelations = new HashSet<Guid>();
+                var emittedRecordsByCorrelation = new Dictionary<Guid, HashSet<LineageRecord>>();
+
                 await foreach (var packet in input.WithCancellation(token).ConfigureAwait(false))
                 {
                     if (lineageSink is not null && packet.Collect)
                     {
-                        var finalPath = packet.TraversalPath.Add($"{pipelineId:N}::{sinkNodeId}");
+                        if (options?.EmitIntermediateNodeRecords != false)
+                        {
+                            var emittedForCorrelation = GetOrCreateEmittedSet(packet.CorrelationId);
 
-                        var dataToEmit = options?.RedactData == true
-                            ? null
-                            : (object?)packet.Data;
+                            foreach (var record in packet.LineageRecords)
+                            {
+                                if (emittedForCorrelation.Add(record))
+                                {
+                                    await lineageSink.RecordAsync(record, token).ConfigureAwait(false);
+                                }
+                            }
+                        }
 
-                        var hopRecords = (IReadOnlyList<LineageHop>)packet.LineageHops;
-                        var lineageInfo = new LineageInfo(dataToEmit, packet.CorrelationId, finalPath, hopRecords, pipelineId, pipelineName);
-                        await lineageSink.RecordAsync(lineageInfo, token).ConfigureAwait(false);
+                        if (options?.EnsurePerInputTerminalRecord != false &&
+                            !packet.LineageRecords.Any(static r => r.IsTerminal) &&
+                            terminalCorrelations.Add(packet.CorrelationId))
+                        {
+                            var finalPath = packet.TraversalPath.Add($"{pipelineId:N}::{sinkNodeId}");
+                            var latestRecord = packet.LineageRecords.Count > 0
+                                ? packet.LineageRecords[^1]
+                                : null;
+
+                            var terminalRecord = new LineageRecord(
+                                packet.CorrelationId,
+                                sinkNodeId,
+                                pipelineId,
+                                LineageOutcomeReason.ConsumedWithoutEmission,
+                                true,
+                                finalPath,
+                                pipelineName,
+                                DateTimeOffset.UtcNow,
+                                latestRecord?.RetryCount,
+                                options?.IncludeContributorCorrelationIds == true
+                                    ? latestRecord?.ContributorCorrelationIds ?? [packet.CorrelationId]
+                                    : null,
+                                latestRecord?.ContributorInputIndices,
+                                latestRecord?.InputContributorCount ?? 1,
+                                null,
+                                latestRecord?.Cardinality ?? ObservedCardinality.One,
+                                null,
+                                null,
+                                options?.RedactData == true
+                                    ? null
+                                    : packet.Data).Normalize();
+
+                            await lineageSink.RecordAsync(terminalRecord, token).ConfigureAwait(false);
+                        }
+
+                        if (packet.LineageRecords.Any(static r => r.IsTerminal) || terminalCorrelations.Contains(packet.CorrelationId))
+                        {
+                            _ = emittedRecordsByCorrelation.Remove(packet.CorrelationId);
+                        }
                     }
 
                     yield return packet.Data;
+                }
+
+                HashSet<LineageRecord> GetOrCreateEmittedSet(Guid correlationId)
+                {
+                    if (!emittedRecordsByCorrelation.TryGetValue(correlationId, out var emittedForCorrelation))
+                    {
+                        emittedForCorrelation = new HashSet<LineageRecord>(ReferenceEqualityComparer.Instance);
+                        emittedRecordsByCorrelation[correlationId] = emittedForCorrelation;
+                    }
+
+                    return emittedForCorrelation;
                 }
             }
 
             async IAsyncEnumerable<TIn> ProjectDynamic(IDataStream dynamicPipe, [EnumeratorCancellation] CancellationToken token)
             {
-                PropertyInfo? dataProp = null, collectProp = null, correlationIdProp = null, pathProp = null, hopsProp = null;
+                PropertyInfo? dataProp = null, collectProp = null, correlationIdProp = null, pathProp = null, recordsProp = null;
                 Type? lastObservedType = null;
+                var terminalCorrelations = new HashSet<Guid>();
+                var emittedRecordsByCorrelation = new Dictionary<Guid, HashSet<LineageRecord>>();
 
                 await foreach (var obj in dynamicPipe.ToAsyncEnumerable(token).WithCancellation(token).ConfigureAwait(false))
                 {
@@ -617,10 +679,10 @@ public sealed partial class PipelineBuilder
                         collectProp = objType.GetProperty("Collect");
                         correlationIdProp = objType.GetProperty("CorrelationId");
                         pathProp = objType.GetProperty("TraversalPath");
-                        hopsProp = objType.GetProperty("LineageHops");
+                        recordsProp = objType.GetProperty("LineageRecords");
                         lastObservedType = objType;
 
-                        if (dataProp is null || collectProp is null || correlationIdProp is null || pathProp is null || hopsProp is null)
+                        if (dataProp is null || collectProp is null || correlationIdProp is null || pathProp is null || recordsProp is null)
                             continue; // malformed lineage packet type
                     }
 
@@ -630,21 +692,77 @@ public sealed partial class PipelineBuilder
                     {
                         if (lineageSink is not null && (bool)collectProp!.GetValue(obj)!)
                         {
-                            var finalPath = ((IImmutableList<string>)pathProp!.GetValue(obj)!).Add($"{pipelineId:N}::{sinkNodeId}");
-                            var hopRecords = (IReadOnlyList<LineageHop>)hopsProp!.GetValue(obj)!;
+                            var correlationId = (Guid)correlationIdProp!.GetValue(obj)!;
+                            var packetPath = (IImmutableList<string>)pathProp!.GetValue(obj)!;
+                            var packetRecords = (IReadOnlyList<LineageRecord>)recordsProp!.GetValue(obj)!;
 
-                            var dataToEmit = options?.RedactData == true
-                                ? null
-                                : (object?)typedVal;
+                            if (options?.EmitIntermediateNodeRecords != false)
+                            {
+                                var emittedForCorrelation = GetOrCreateEmittedSet(correlationId);
 
-                            var lineageInfo = new LineageInfo(dataToEmit, (Guid)correlationIdProp!.GetValue(obj)!, finalPath, hopRecords, pipelineId,
-                                pipelineName);
+                                foreach (var record in packetRecords)
+                                {
+                                    if (emittedForCorrelation.Add(record))
+                                    {
+                                        await lineageSink.RecordAsync(record, token).ConfigureAwait(false);
+                                    }
+                                }
+                            }
 
-                            await lineageSink.RecordAsync(lineageInfo, token).ConfigureAwait(false);
+                            if (options?.EnsurePerInputTerminalRecord != false &&
+                                !packetRecords.Any(static r => r.IsTerminal) &&
+                                terminalCorrelations.Add(correlationId))
+                            {
+                                var finalPath = packetPath.Add($"{pipelineId:N}::{sinkNodeId}");
+                                var latestRecord = packetRecords.Count > 0
+                                    ? packetRecords[packetRecords.Count - 1]
+                                    : null;
+
+                                var terminalRecord = new LineageRecord(
+                                    correlationId,
+                                    sinkNodeId,
+                                    pipelineId,
+                                    LineageOutcomeReason.ConsumedWithoutEmission,
+                                    true,
+                                    finalPath,
+                                    pipelineName,
+                                    DateTimeOffset.UtcNow,
+                                    latestRecord?.RetryCount,
+                                    options?.IncludeContributorCorrelationIds == true
+                                        ? latestRecord?.ContributorCorrelationIds ?? [correlationId]
+                                        : null,
+                                    latestRecord?.ContributorInputIndices,
+                                    latestRecord?.InputContributorCount ?? 1,
+                                    null,
+                                    latestRecord?.Cardinality ?? ObservedCardinality.One,
+                                    null,
+                                    null,
+                                    options?.RedactData == true
+                                        ? null
+                                        : typedVal).Normalize();
+
+                                await lineageSink.RecordAsync(terminalRecord, token).ConfigureAwait(false);
+                            }
+
+                            if (packetRecords.Any(static r => r.IsTerminal) || terminalCorrelations.Contains(correlationId))
+                            {
+                                _ = emittedRecordsByCorrelation.Remove(correlationId);
+                            }
                         }
 
                         yield return typedVal;
                     }
+                }
+
+                HashSet<LineageRecord> GetOrCreateEmittedSet(Guid correlationId)
+                {
+                    if (!emittedRecordsByCorrelation.TryGetValue(correlationId, out var emittedForCorrelation))
+                    {
+                        emittedForCorrelation = new HashSet<LineageRecord>(ReferenceEqualityComparer.Instance);
+                        emittedRecordsByCorrelation[correlationId] = emittedForCorrelation;
+                    }
+
+                    return emittedForCorrelation;
                 }
             }
         };

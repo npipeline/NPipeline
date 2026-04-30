@@ -19,6 +19,6 @@ public interface ILineageEnvelope
     /// <summary>Traversal path accumulated for this item.</summary>
     ImmutableList<string> TraversalPath { get; }
 
-    /// <summary>Recorded lineage hops accumulated for this item.</summary>
-    ImmutableList<LineageHop> LineageHops { get; }
+    /// <summary>Recorded lineage events accumulated for this item.</summary>
+    ImmutableList<LineageRecord> LineageRecords { get; }
 }

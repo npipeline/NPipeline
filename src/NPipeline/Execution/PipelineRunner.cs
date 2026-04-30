@@ -318,7 +318,7 @@ public sealed class PipelineRunner(
         if (enabled && resolvedOptions is null)
         {
             // Mirror PipelineBuilder.EnableItemLevelLineage() defaults for runtime enablement.
-            resolvedOptions = new LineageOptions(SampleEvery: 1, RedactData: false);
+            resolvedOptions = LineageOptions.CompleteLineage;
         }
 
         return graph with

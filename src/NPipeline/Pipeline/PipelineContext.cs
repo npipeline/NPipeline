@@ -283,6 +283,11 @@ public sealed class PipelineContext
     public IPipelineLineageSink? PipelineLineageSink { get; internal set; }
 
     /// <summary>
+    ///     Item-level lineage collector resolved for the current run.
+    /// </summary>
+    public ILineageCollector? LineageCollector { get; internal set; }
+
+    /// <summary>
     ///     A dictionary for storing properties that can be used by extensions and plugins.
     ///     This provides a way to extend the PipelineContext without modifying its core structure.
     /// </summary>

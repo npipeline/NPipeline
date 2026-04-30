@@ -119,7 +119,7 @@ namespace NPipeline.Extensions.Parallelism
                 try
                 {
                     var output = await ExecuteNodeAsync(node, item, context, cached.CancellationToken).ConfigureAwait(false);
-                    RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, HopDecisionFlags.Emitted, attempt);
+                    RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, LineageOutcomeReason.Emitted, attempt);
                     return output;
                 }
                 catch (Exception ex)
@@ -134,14 +134,14 @@ namespace NPipeline.Extensions.Parallelism
                     if (node.ErrorHandler is null)
                     {
                         PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, ex, attempt, correlationId, ancestryInputIndices);
-                        RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, HopDecisionFlags.Error, attempt);
+                        RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, LineageOutcomeReason.Error, attempt);
                         throw;
                     }
 
                     if (node.ErrorHandler is not INodeErrorHandler<ITransformNode<TIn, TOut>, TIn> typedHandler)
                     {
                         PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, ex, attempt, correlationId, ancestryInputIndices);
-                        RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, HopDecisionFlags.Error, attempt);
+                        RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, LineageOutcomeReason.Error, attempt);
                         throw;
                     }
 
@@ -151,10 +151,10 @@ namespace NPipeline.Extensions.Parallelism
                     switch (decision)
                     {
                         case NodeErrorDecision.Skip:
-                            RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, HopDecisionFlags.FilteredOut, attempt);
+                            RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, LineageOutcomeReason.FilteredOut, attempt);
                             return default;
                         case NodeErrorDecision.DeadLetter:
-                            RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, HopDecisionFlags.DeadLettered | HopDecisionFlags.Error,
+                            RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, LineageOutcomeReason.DeadLettered,
                                 attempt);
                             return default;
                         case NodeErrorDecision.Retry:
@@ -162,7 +162,7 @@ namespace NPipeline.Extensions.Parallelism
                             {
                                 PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, ex, cached.RetryOptions.MaxItemRetries,
                                     correlationId, ancestryInputIndices);
-                                RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, HopDecisionFlags.Error,
+                                RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, LineageOutcomeReason.Error,
                                     cached.RetryOptions.MaxItemRetries);
                                 throw;
                             }
@@ -173,11 +173,11 @@ namespace NPipeline.Extensions.Parallelism
                             continue;
                         case NodeErrorDecision.Fail:
                             PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, ex, attempt, correlationId, ancestryInputIndices);
-                            RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, HopDecisionFlags.Error, attempt);
+                            RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, LineageOutcomeReason.Error, attempt);
                             throw;
                         default:
                             PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, ex, attempt, correlationId, ancestryInputIndices);
-                            RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, HopDecisionFlags.Error, attempt);
+                            RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, LineageOutcomeReason.Error, attempt);
                             throw;
                     }
                 }
@@ -215,7 +215,7 @@ namespace NPipeline.Extensions.Parallelism
         }
 
         private static void RecordLineageOutcome(long? lineageInputIndex, PipelineContext context, string nodeId,
-            HopDecisionFlags terminalOutcome, int retryCount)
+            LineageOutcomeReason outcomeReason, int retryCount)
         {
             if (lineageInputIndex is null)
             {
@@ -223,11 +223,7 @@ namespace NPipeline.Extensions.Parallelism
             }
 
             var normalizedRetryCount = Math.Max(0, retryCount);
-            var outcome = normalizedRetryCount > 0
-                ? terminalOutcome | HopDecisionFlags.Retried
-                : terminalOutcome;
-
-            LineageNodeOutcomeRegistry.Record(context.PipelineId, nodeId, lineageInputIndex.Value, outcome, normalizedRetryCount);
+            LineageNodeOutcomeRegistry.Record(context.PipelineId, nodeId, lineageInputIndex.Value, outcomeReason, normalizedRetryCount);
         }
 
         /// <summary>

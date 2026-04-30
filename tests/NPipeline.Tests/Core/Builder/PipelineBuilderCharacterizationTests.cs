@@ -192,9 +192,7 @@ public sealed class PipelineBuilderCharacterizationTests
         b.Connect(s, t).Connect(t, k);
 
         b.EnableItemLevelLineage(o =>
-        {
-            o = o.With(sampleEvery: 1, materializationCap: 10); // ensure cap path still supported
-        });
+            o.With(sampleEvery: 1, materializationCap: 10)); // ensure cap path still supported
 
         var p = b.Build();
         var def = p.Graph.Nodes.Single(n => n.Id == t.Id);
@@ -212,10 +210,8 @@ public sealed class PipelineBuilderCharacterizationTests
         b.Connect(s, t).Connect(t, k);
 
         b.EnableItemLevelLineage(o =>
-        {
-            o = o.With(sampleEvery: 1, materializationCap: 1,
-                overflowPolicy: LineageOverflowPolicy.Strict); // force overflow path for one-to-many mapping logic
-        });
+            o.With(sampleEvery: 1, materializationCap: 1,
+                overflowPolicy: LineageOverflowPolicy.Strict)); // force overflow path for one-to-many mapping logic
 
         // Current behavior: Build does not execute transformation, so overflow cannot occur here. Expect no throw.
         // (Characterizing that overflow policy Strict does NOT impact Build-time for static graph.)
@@ -233,9 +229,7 @@ public sealed class PipelineBuilderCharacterizationTests
         b.Connect(s, t).Connect(t, k);
 
         b.EnableItemLevelLineage(o =>
-        {
-            o = o.With(sampleEvery: 1, materializationCap: 1, overflowPolicy: LineageOverflowPolicy.WarnContinue); // force potential overflow later
-        });
+            o.With(sampleEvery: 1, materializationCap: 1, overflowPolicy: LineageOverflowPolicy.WarnContinue)); // force potential overflow later
 
         var p = b.Build();
         p.Graph.Nodes.Should().ContainSingle(n => n.Id == t.Id);

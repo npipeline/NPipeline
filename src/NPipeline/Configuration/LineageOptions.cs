@@ -53,12 +53,28 @@ namespace NPipeline.Configuration;
 ///     Default is true.
 /// </param>
 /// <param name="RedactData">
-///     When true, payload Data is omitted (null) in emitted LineageInfo records.
+///     When true, payload Data is omitted (null) in emitted LineageRecord events.
 ///     Default is true.
 /// </param>
 /// <param name="MaxHopRecordsPerItem">
 ///     Maximum number of hop records retained per item. Additional hops are truncated.
 ///     Default is 256.
+/// </param>
+/// <param name="EnsurePerInputTerminalRecord">
+///     Ensures each sampled correlation is finalized with at least one terminal lineage record.
+///     Default is true.
+/// </param>
+/// <param name="EmitBackpressureDropRecords">
+///     Emits terminal records for items dropped by queue backpressure policies.
+///     Default is true.
+/// </param>
+/// <param name="IncludeContributorCorrelationIds">
+///     Includes contributor correlation IDs on emitted records in many-to-one paths.
+///     Default is true.
+/// </param>
+/// <param name="EmitIntermediateNodeRecords">
+///     Emits non-terminal records for intermediate node outcomes.
+///     Default is true.
 /// </param>
 public sealed record LineageOptions(
     bool Strict = false,
@@ -74,12 +90,59 @@ public sealed record LineageOptions(
     int SampleEvery = 100,
     bool DeterministicSampling = true,
     bool RedactData = true,
-    int MaxHopRecordsPerItem = 256)
+    int MaxHopRecordsPerItem = 256,
+    bool EnsurePerInputTerminalRecord = true,
+    bool EmitBackpressureDropRecords = true,
+    bool IncludeContributorCorrelationIds = true,
+    bool EmitIntermediateNodeRecords = true)
 {
     /// <summary>
-    ///     Default lineage options with sensible defaults for most use cases.
+    ///     Default lineage profile for production throughput.
     /// </summary>
-    public static LineageOptions Default { get; } = new();
+    public static LineageOptions Default => FastLineage;
+
+    /// <summary>
+    ///     Reduced-overhead profile focused on throughput.
+    /// </summary>
+    public static LineageOptions FastLineage { get; } = new(
+        SampleEvery: 100,
+        DeterministicSampling: true,
+        RedactData: true,
+        CaptureAncestryMapping: false,
+        CaptureHopSnapshots: false,
+        EnsurePerInputTerminalRecord: true,
+        EmitBackpressureDropRecords: true,
+        IncludeContributorCorrelationIds: false,
+        EmitIntermediateNodeRecords: false);
+
+    /// <summary>
+    ///     Completeness-first profile intended for development and diagnostics.
+    /// </summary>
+    public static LineageOptions CompleteLineage { get; } = new(
+        SampleEvery: 1,
+        DeterministicSampling: true,
+        RedactData: false,
+        CaptureAncestryMapping: true,
+        CaptureHopSnapshots: true,
+        EnsurePerInputTerminalRecord: true,
+        EmitBackpressureDropRecords: true,
+        IncludeContributorCorrelationIds: true,
+        EmitIntermediateNodeRecords: true);
+
+    /// <summary>
+    ///     Returns a predefined options profile.
+    /// </summary>
+    /// <param name="profile">Profile selection.</param>
+    /// <returns>Lineage options for the selected profile.</returns>
+    public static LineageOptions ForProfile(LineageProfile profile)
+    {
+        return profile switch
+        {
+            LineageProfile.FastLineage => FastLineage,
+            LineageProfile.CompleteLineage => CompleteLineage,
+            _ => throw new ArgumentOutOfRangeException(nameof(profile), profile, null),
+        };
+    }
 
     /// <summary>
     ///     Creates a new instance with updated options, preserving unspecified values.
@@ -98,7 +161,11 @@ public sealed record LineageOptions(
         int? sampleEvery = null,
         bool? deterministicSampling = null,
         bool? redactData = null,
-        int? maxHopRecordsPerItem = null)
+        int? maxHopRecordsPerItem = null,
+        bool? ensurePerInputTerminalRecord = null,
+        bool? emitBackpressureDropRecords = null,
+        bool? includeContributorCorrelationIds = null,
+        bool? emitIntermediateNodeRecords = null)
     {
         return new LineageOptions(
             strict ?? Strict,
@@ -114,8 +181,28 @@ public sealed record LineageOptions(
             sampleEvery ?? SampleEvery,
             deterministicSampling ?? DeterministicSampling,
             redactData ?? RedactData,
-            maxHopRecordsPerItem ?? MaxHopRecordsPerItem);
+            maxHopRecordsPerItem ?? MaxHopRecordsPerItem,
+            ensurePerInputTerminalRecord ?? EnsurePerInputTerminalRecord,
+            emitBackpressureDropRecords ?? EmitBackpressureDropRecords,
+            includeContributorCorrelationIds ?? IncludeContributorCorrelationIds,
+            emitIntermediateNodeRecords ?? EmitIntermediateNodeRecords);
     }
+}
+
+/// <summary>
+///     Package-level lineage profile presets.
+/// </summary>
+public enum LineageProfile
+{
+    /// <summary>
+    ///     Throughput-oriented profile with reduced lineage detail.
+    /// </summary>
+    FastLineage = 0,
+
+    /// <summary>
+    ///     Completeness-oriented profile with rich lineage detail.
+    /// </summary>
+    CompleteLineage = 1,
 }
 
 /// <summary>

@@ -54,7 +54,7 @@ public interface ILineageService
     /// <param name="ct">A cancellation token.</param>
     /// <returns>A new data pipe containing the wrapped output items.</returns>
     IDataStream WrapNodeOutput(IDataStream output, string currentNodeId, Guid pipelineId, string? pipelineName, LineageOptions? options,
-        HopDecisionFlags outcome, CancellationToken ct = default);
+        LineageOutcomeReason outcome, CancellationToken ct = default);
 
     /// <summary>
     ///     Wraps node output using upstream lineage context rather than minting fresh lineage by default.
@@ -76,7 +76,7 @@ public interface ILineageService
         Guid pipelineId,
         string? pipelineName,
         LineageOptions? options,
-        HopDecisionFlags outcome,
+        LineageOutcomeReason outcome,
         Type? lineageMapperType = null,
         CancellationToken ct = default);
 }

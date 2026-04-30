@@ -108,15 +108,15 @@ public sealed class SamplingDataStream<T>(
                     var outcome = SampleOutcome.Success;
                     var retryCount = 0;
 
-                    if (envelope.LineageHops.Count > 0)
+                    if (envelope.LineageRecords.Count > 0)
                     {
-                        var latestHop = envelope.LineageHops[^1];
+                        var latestRecord = envelope.LineageRecords[^1];
 
-                        if (latestHop.AncestryInputIndices is { Count: > 0 })
-                            ancestryInputIndices = [.. latestHop.AncestryInputIndices];
+                        if (latestRecord.ContributorInputIndices is { Count: > 0 })
+                            ancestryInputIndices = [.. latestRecord.ContributorInputIndices];
 
-                        outcome = DetermineOutcome(latestHop.Outcome);
-                        retryCount = DetermineRetryCount(envelope.LineageHops);
+                        outcome = DetermineOutcome(latestRecord.OutcomeReason);
+                        retryCount = DetermineRetryCount(envelope.LineageRecords);
                     }
 
                     var serialized = SafeSerialize(envelope.Data);
@@ -139,46 +139,26 @@ public sealed class SamplingDataStream<T>(
         }
     }
 
-    private static SampleOutcome DetermineOutcome(HopDecisionFlags flags)
+    private static SampleOutcome DetermineOutcome(LineageOutcomeReason reason)
     {
-        if ((flags & HopDecisionFlags.DeadLettered) != 0)
-            return SampleOutcome.DeadLetter;
-
-        if ((flags & HopDecisionFlags.Error) != 0)
-            return SampleOutcome.Error;
-
-        return (flags & HopDecisionFlags.FilteredOut) != 0
-            ? SampleOutcome.Skipped
-            : SampleOutcome.Success;
+        return reason switch
+        {
+            LineageOutcomeReason.DeadLettered => SampleOutcome.DeadLetter,
+            LineageOutcomeReason.Error => SampleOutcome.Error,
+            LineageOutcomeReason.FilteredOut => SampleOutcome.Skipped,
+            _ => SampleOutcome.Success,
+        };
     }
 
-    private static int DetermineRetryCount(IReadOnlyList<LineageHop> lineageHops)
+    private static int DetermineRetryCount(IReadOnlyList<LineageRecord> lineageRecords)
     {
-        if (lineageHops.Count == 0)
+        if (lineageRecords.Count == 0)
             return 0;
 
-        var latestHop = lineageHops[^1];
-
-        if (latestHop.RetryCount is > 0)
-            return latestHop.RetryCount.Value;
-
-        if ((latestHop.Outcome & HopDecisionFlags.Retried) == 0)
-            return 0;
-
-        var retryCount = 0;
-
-        for (var index = lineageHops.Count - 1; index >= 0; index--)
-        {
-            var hop = lineageHops[index];
-
-            if (!string.Equals(hop.NodeId, latestHop.NodeId, StringComparison.Ordinal))
-                break;
-
-            if ((hop.Outcome & HopDecisionFlags.Retried) != 0)
-                retryCount++;
-        }
-
-        return Math.Max(1, retryCount);
+        var retryCount = lineageRecords[^1].RetryCount;
+        return retryCount is > 0
+            ? retryCount.Value
+            : 0;
     }
 
     private static object? SafeSerialize(object? item)

@@ -9,7 +9,8 @@ namespace NPipeline.Lineage;
 /// </summary>
 public sealed class LineageCollector : ILineageCollector
 {
-    private readonly ConcurrentDictionary<Guid, LineageTrail> _lineageTrails = new();
+    private readonly ConcurrentDictionary<Guid, CorrelationTrail> _lineageTrails = new();
+    private long _globalSequence;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="LineageCollector" /> class.
@@ -32,21 +33,25 @@ public sealed class LineageCollector : ILineageCollector
         var correlationId = Guid.NewGuid();
         var traversalPath = ImmutableList.Create(sourceNodeId);
 
-        // Initialize the lineage trail
-        _ = _lineageTrails.TryAdd(correlationId, new LineageTrail(correlationId, item, traversalPath));
+        _ = _lineageTrails.TryAdd(correlationId, new CorrelationTrail(correlationId, traversalPath));
 
         return new LineagePacket<T>(item, correlationId, traversalPath);
     }
 
     /// <summary>
-    ///     Records a hop in the lineage trail for an item.
+    ///     Records an event for a lineage correlation.
     /// </summary>
-    /// <param name="correlationId">The unique ID of the item being tracked.</param>
-    /// <param name="hop">The lineage hop to record.</param>
-    public void RecordHop(Guid correlationId, LineageHop hop)
+    /// <param name="record">Event record.</param>
+    public void Record(LineageRecord record)
     {
-        if (_lineageTrails.TryGetValue(correlationId, out var trail))
-            trail.AddHop(hop);
+        var normalized = record.Normalize();
+
+        var trail = _lineageTrails.GetOrAdd(
+            normalized.CorrelationId,
+            id => new CorrelationTrail(id, [.. normalized.TraversalPath]));
+
+        var sequence = Interlocked.Increment(ref _globalSequence);
+        trail.AddRecord(normalized, sequence);
     }
 
     /// <summary>
@@ -78,24 +83,51 @@ public sealed class LineageCollector : ILineageCollector
     }
 
     /// <summary>
-    ///     Gets the lineage information for a specific item.
+    ///     Gets event history for a specific correlation.
     /// </summary>
     /// <param name="correlationId">The unique ID of the item.</param>
-    /// <returns>The lineage information, or null if not found.</returns>
-    public LineageInfo? GetLineageInfo(Guid correlationId)
+    /// <returns>Ordered records for the correlation.</returns>
+    public IReadOnlyList<LineageRecord> GetCorrelationHistory(Guid correlationId)
     {
         return _lineageTrails.TryGetValue(correlationId, out var trail)
-            ? trail.ToLineageInfo()
+            ? trail.GetOrderedRecords()
+            : [];
+    }
+
+    /// <summary>
+    ///     Gets final terminal reason for a correlation, when available.
+    /// </summary>
+    /// <param name="correlationId">The unique ID of the item.</param>
+    /// <returns>Terminal reason or null when unresolved.</returns>
+    public LineageOutcomeReason? GetTerminalReason(Guid correlationId)
+    {
+        return _lineageTrails.TryGetValue(correlationId, out var trail)
+            ? trail.GetTerminalReason()
             : null;
     }
 
     /// <summary>
-    ///     Gets all collected lineage information.
+    ///     Gets all collected lineage records.
     /// </summary>
-    /// <returns>A collection of all lineage information.</returns>
-    public IReadOnlyList<LineageInfo> GetAllLineageInfo()
+    /// <returns>All lineage records in deterministic order.</returns>
+    public IReadOnlyList<LineageRecord> GetAllRecords()
     {
-        return [.. _lineageTrails.Values.Select(static trail => trail.ToLineageInfo())];
+        return [.. _lineageTrails.Values
+            .SelectMany(static trail => trail.GetOrderedEntries())
+            .OrderBy(static entry => entry.Sequence)
+            .Select(static entry => entry.Record)];
+    }
+
+    /// <summary>
+    ///     Gets correlations that currently have no terminal record.
+    /// </summary>
+    /// <returns>Unresolved correlation ids.</returns>
+    public IReadOnlyList<Guid> GetUnresolvedCorrelations()
+    {
+        return [.. _lineageTrails.Values
+            .Where(static trail => !trail.HasTerminalRecord)
+            .Select(static trail => trail.CorrelationId)
+            .OrderBy(static id => id)];
     }
 
     /// <summary>
@@ -107,75 +139,83 @@ public sealed class LineageCollector : ILineageCollector
     }
 
     /// <summary>
-    ///     Internal representation of a lineage trail for a single data item.
+    ///     Internal representation of a correlation timeline.
     /// </summary>
-    private sealed class LineageTrail
+    private sealed class CorrelationTrail
     {
         private readonly Guid _correlationId;
-        private readonly object? _data;
-        private readonly List<LineageHop> _hops = [];
+        private readonly List<LineageRecordEntry> _records = [];
         private readonly object _lock = new();
         private readonly ImmutableList<string>.Builder _traversalPathBuilder;
+        private LineageOutcomeReason? _terminalReason;
 
-        public LineageTrail(Guid correlationId, object? data, ImmutableList<string> initialPath)
+        public CorrelationTrail(Guid correlationId, ImmutableList<string> initialPath)
         {
             _correlationId = correlationId;
-            _data = data;
             _traversalPathBuilder = ImmutableList.CreateBuilder<string>();
             _traversalPathBuilder.AddRange(initialPath);
         }
 
-        public void AddHop(LineageHop hop)
+        public Guid CorrelationId => _correlationId;
+
+        public bool HasTerminalRecord
         {
-            lock (_lock)
+            get
             {
-                _hops.Add(hop);
-
-                // Build a qualified path segment that includes pipeline context for child nodes
-                var pathSegment = hop.PipelineId != Guid.Empty
-                    ? $"{hop.PipelineId:N}::{hop.NodeId}"
-                    : hop.NodeId;
-
-                // Add the path segment to the traversal path if not already present
-                if (!_traversalPathBuilder.Contains(pathSegment))
-                    _traversalPathBuilder.Add(pathSegment);
+                lock (_lock)
+                {
+                    return _terminalReason is not null;
+                }
             }
         }
 
-        public LineageInfo ToLineageInfo()
+        public void AddRecord(LineageRecord record, long sequence)
         {
             lock (_lock)
             {
-                var pipelineIds = _hops
-                    .Select(static h => h.PipelineId)
-                    .Where(static id => id != Guid.Empty)
-                    .Distinct()
-                    .Take(2)
-                    .ToArray();
+                var normalizedPath = record.TraversalPath is ImmutableList<string> immutable
+                    ? immutable
+                    : [.. record.TraversalPath];
 
-                var pipelineId = pipelineIds.Length == 1
-                    ? pipelineIds[0]
-                    : Guid.Empty;
+                _records.Add(new LineageRecordEntry(sequence, record with { TraversalPath = normalizedPath }));
 
-                var pipelineNames = _hops
-                    .Select(static h => h.PipelineName)
-                    .Where(static name => !string.IsNullOrWhiteSpace(name))
-                    .Distinct(StringComparer.Ordinal)
-                    .Take(2)
-                    .ToArray();
+                if (record.IsTerminal)
+                    _terminalReason = record.OutcomeReason;
 
-                var pipelineName = pipelineNames.Length == 1
-                    ? pipelineNames[0]
-                    : null;
+                foreach (var pathSegment in normalizedPath)
+                {
+                    if (!_traversalPathBuilder.Contains(pathSegment))
+                        _traversalPathBuilder.Add(pathSegment);
+                }
+            }
+        }
 
-                return new LineageInfo(
-                    _data,
-                    _correlationId,
-                    _traversalPathBuilder.ToImmutable(),
-                    [.. _hops],
-                    pipelineId,
-                    pipelineName);
+        public IReadOnlyList<LineageRecord> GetOrderedRecords()
+        {
+            lock (_lock)
+            {
+                return [.. _records
+                    .OrderBy(static record => record.Sequence)
+                    .Select(static record => record.Record)];
+            }
+        }
+
+        public IReadOnlyList<LineageRecordEntry> GetOrderedEntries()
+        {
+            lock (_lock)
+            {
+                return [.. _records.OrderBy(static record => record.Sequence)];
+            }
+        }
+
+        public LineageOutcomeReason? GetTerminalReason()
+        {
+            lock (_lock)
+            {
+                return _terminalReason;
             }
         }
     }
+
+    private sealed record LineageRecordEntry(long Sequence, LineageRecord Record);
 }

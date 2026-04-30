@@ -549,19 +549,21 @@ builder.AddComposite<Order, ProcessedOrder, OrderSubPipeline>(
 
 ### Pipeline Identity in Lineage and Metrics
 
-Lineage hops and node metrics now carry an optional `PipelineName` property. When set, this enables:
+Lineage records and node metrics carry an optional `PipelineName` property. When set, this enables:
 
 - **Unambiguous node identification** across nested pipelines (canonical key: `pipelineName + nodeId`)
 - **Child-level filtering** in lineage queries and dashboards
 - **Pipeline-qualified traversal paths** (e.g., `"ChildPipeline::transform"` in the traversal path)
 
 ```csharp
-// LineageHop now includes PipelineName
-var hop = new LineageHop(
-    "transform-node",
-    HopDecisionFlags.Emitted,
-    ObservedCardinality.One,
-    1, 1, null, false,
+// LineageRecord includes PipelineName
+var record = new LineageRecord(
+    CorrelationId: Guid.NewGuid(),
+    NodeId: "transform-node",
+    PipelineId: Guid.NewGuid(),
+    OutcomeReason: LineageOutcomeReason.Emitted,
+    IsTerminal: false,
+    TraversalPath: new[] { "OrderValidationSubPipeline::transform-node" },
     PipelineName: "OrderValidationSubPipeline");
 
 // INodeMetrics now includes PipelineName

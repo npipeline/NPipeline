@@ -15,9 +15,21 @@ Data lineage tracking is the process of recording and maintaining information ab
 - **Origin**: Where each data item entered the pipeline (source node)
 - **Transformations**: Which nodes processed or modified the data
 - **Path**: The complete sequence of nodes each item traversed
-- **Decisions**: Branching decisions and routing outcomes
+- **Outcome Events**: Explicit non-terminal and terminal lineage outcomes
 - **Cardinality**: How many items were produced/consumed at each hop
 - **Timing**: When each transformation occurred (optional)
+
+## Breaking Model Update
+
+Lineage in NPipeline now uses an event model centered on `LineageRecord`.
+
+- Item-level sinks now receive single records via `ILineageSink.RecordAsync(LineageRecord, CancellationToken)`.
+- Collectors now expose correlation history and terminal state through:
+  - `GetCorrelationHistory(Guid)`
+  - `GetTerminalReason(Guid)`
+  - `GetAllRecords()`
+  - `GetUnresolvedCorrelations()`
+- Terminal completeness is explicit: sampled correlations are finalized with terminal records (including backpressure drops when enabled).
 
 ## Key Features
 
@@ -26,14 +38,12 @@ Data lineage tracking is the process of recording and maintaining information ab
 Track individual data items as they flow through the pipeline, recording:
 
 - **Traversal Path**: Complete list of node IDs the item passed through
-- **Lineage Hops**: Detailed information about each hop including:
-  - Node ID
-  - Decision outcome (success, failure, filtered, etc.)
-  - Observed cardinality (one-to-one, one-to-many, many-to-one, many-to-many)
-  - Input contributor count
-  - Output emission count
-  - Ancestry input indices (for join operations)
-  - Truncation status
+- **Lineage Records**: Event records with explicit `OutcomeReason` and `IsTerminal` semantics
+  - Node ID and pipeline identity
+  - Observed cardinality and contributor counts
+  - Contributor correlation IDs / contributor input indices
+  - Optional input/output snapshots and payload redaction
+  - Retry count and truncation markers
 - **Continuous aggregate/join lineage**: Upstream ancestry remains visible across aggregate/join boundaries instead of resetting lineage roots.
 
 ### Pipeline-Level Reports
@@ -115,13 +125,9 @@ Configure lineage tracking directly on your pipeline builder:
 ```csharp
 var builder = new PipelineBuilder("MyPipeline");
 
-// Enable item-level lineage tracking
-builder.EnableItemLevelLineage(options =>
-{
-    options.SampleEvery = 10;
-    options.DeterministicSampling = true;
-    options.RedactData = true;
-});
+// Enable item-level lineage tracking using completeness-first profile
+builder.EnableItemLevelLineage(options => options
+  .With(sampleEvery: 10, deterministicSampling: true, redactData: true));
 
 // Add pipeline-level lineage sink
 builder.UseLoggingPipelineLineageSink();

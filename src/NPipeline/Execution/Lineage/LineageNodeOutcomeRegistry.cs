@@ -3,7 +3,7 @@ using NPipeline.Lineage;
 
 namespace NPipeline.Execution.Lineage;
 
-internal readonly record struct LineageItemOutcome(HopDecisionFlags OutcomeFlags, int RetryCount);
+internal readonly record struct LineageItemOutcome(LineageOutcomeReason OutcomeReason, int RetryCount);
 
 internal static class LineageNodeOutcomeRegistry
 {
@@ -14,18 +14,40 @@ internal static class LineageNodeOutcomeRegistry
         Outcomes[(pipelineId, nodeId)] = new ConcurrentDictionary<long, LineageItemOutcome>();
     }
 
-    public static void Record(Guid pipelineId, string nodeId, long inputIndex, HopDecisionFlags outcomeFlags, int retryCount)
+    public static void Record(Guid pipelineId, string nodeId, long inputIndex, LineageOutcomeReason outcomeReason, int retryCount)
     {
         var nodeOutcomes = Outcomes.GetOrAdd((pipelineId, nodeId), static _ => new ConcurrentDictionary<long, LineageItemOutcome>());
         var normalizedRetryCount = Math.Max(0, retryCount);
 
         _ = nodeOutcomes.AddOrUpdate(
             inputIndex,
-            static (_, state) => new LineageItemOutcome(state.OutcomeFlags, state.RetryCount),
+            static (_, state) => new LineageItemOutcome(state.OutcomeReason, state.RetryCount),
             static (_, existing, state) => new LineageItemOutcome(
-                existing.OutcomeFlags | state.OutcomeFlags,
+                MergeOutcome(existing.OutcomeReason, state.OutcomeReason),
                 Math.Max(existing.RetryCount, state.RetryCount)),
-            (OutcomeFlags: outcomeFlags, RetryCount: normalizedRetryCount));
+            (OutcomeReason: outcomeReason, RetryCount: normalizedRetryCount));
+    }
+
+    private static LineageOutcomeReason MergeOutcome(LineageOutcomeReason current, LineageOutcomeReason candidate)
+    {
+        return Priority(candidate) >= Priority(current)
+            ? candidate
+            : current;
+    }
+
+    private static int Priority(LineageOutcomeReason reason)
+    {
+        return reason switch
+        {
+            LineageOutcomeReason.DeadLettered => 700,
+            LineageOutcomeReason.Error => 600,
+            LineageOutcomeReason.FilteredOut => 500,
+            LineageOutcomeReason.DroppedByBackpressure => 400,
+            LineageOutcomeReason.Aggregated => 300,
+            LineageOutcomeReason.Joined => 200,
+            LineageOutcomeReason.ConsumedWithoutEmission => 150,
+            _ => 100,
+        };
     }
 
     public static bool TryGet(Guid pipelineId, string nodeId, long inputIndex, out LineageItemOutcome outcome)

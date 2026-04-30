@@ -156,7 +156,7 @@ public sealed class DefaultLineageFactoryTests
     private sealed class TestLineageSink : ILineageSink
     {
         public Task RecordAsync(
-            LineageInfo lineageInfo,
+            LineageRecord record,
             CancellationToken cancellationToken)
         {
             return Task.CompletedTask;
@@ -181,7 +181,7 @@ public sealed class DefaultLineageFactoryTests
         }
 
         public Task RecordAsync(
-            LineageInfo lineageInfo,
+            LineageRecord record,
             CancellationToken cancellationToken)
         {
             return Task.CompletedTask;

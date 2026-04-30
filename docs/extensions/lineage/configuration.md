@@ -13,51 +13,29 @@ This guide covers all configuration options for the NPipeline Lineage extension,
 The [`LineageOptions`](https://github.com/npipeline/NPipeline/blob/main/src/NPipeline/Configuration/LineageOptions.cs) class controls item-level lineage tracking behavior:
 
 ```csharp
-public sealed record LineageOptions
-{
-    /// Throw on cardinality mismatch instead of logging (default: false)
-    bool Strict { get; init; } = false;
-    
-    /// Log warning on mismatch when Strict=false (default: true)
-    bool WarnOnMismatch { get; init; } = true;
-    
-    /// Optional callback invoked on mismatch (default: null)
-    Action<LineageMismatchContext>? OnMismatch { get; init; } = null;
-    
-    /// Maximum items to materialize for lineage mapping (default: null = unbounded)
-    int? MaterializationCap { get; init; } = null;
-    
-    /// Behavior when materialization cap is exceeded (default: Degrade)
-    LineageOverflowPolicy OverflowPolicy { get; init; } = LineageOverflowPolicy.Degrade;
-    
-    /// Capture per-hop enter/exit timestamps (default: true)
-    bool CaptureHopTimestamps { get; init; } = true;
-    
-    /// Capture decision outcomes like Emitted, FilteredOut (default: true)
-    bool CaptureDecisions { get; init; } = true;
-    
-    /// Capture observed cardinality and counts (default: true)
-    bool CaptureObservedCardinality { get; init; } = true;
-    
-    /// Capture ancestry mapping when mapper is declared (default: false)
-    bool CaptureAncestryMapping { get; init; } = false;
-    
-    /// Capture per-hop input/output snapshots for Studio lineage diff visualization (default: false)
-    bool CaptureHopSnapshots { get; init; } = false;
-    
-    /// Sample every Nth item - 1 means all items (default: 100)
-    int SampleEvery { get; init; } = 100;
-    
-    /// Use deterministic (hash-based) sampling (default: true)
-    bool DeterministicSampling { get; init; } = true;
-    
-    /// Omit payload Data in LineageInfo records (default: true)
-    bool RedactData { get; init; } = true;
-    
-    /// Maximum hop records per item before truncation (default: 256)
-    int MaxHopRecordsPerItem { get; init; } = 256;
-}
+// Recommended presets:
+var fast = LineageOptions.FastLineage;
+var complete = LineageOptions.CompleteLineage;
+
+// Customize via immutable copy:
+var tuned = LineageOptions.CompleteLineage.With(
+    sampleEvery: 10,
+    deterministicSampling: true,
+    redactData: true,
+    emitBackpressureDropRecords: true,
+    includeContributorCorrelationIds: true,
+    emitIntermediateNodeRecords: true,
+    ensurePerInputTerminalRecord: true);
 ```
+
+Use `EnableItemLevelLineage(Func<LineageOptions, LineageOptions>)` when applying custom options:
+
+```csharp
+builder.EnableItemLevelLineage(options => options.With(sampleEvery: 10, redactData: true));
+```
+
+`LineageOptions.Default` maps to `LineageOptions.FastLineage`.
+`PipelineBuilder.EnableItemLevelLineage()` without custom options uses `LineageOptions.CompleteLineage`.
 
 ## Sampling Configuration
 
@@ -68,8 +46,7 @@ Deterministic sampling uses a hash-based approach to select items consistently a
 ```csharp
 builder.EnableItemLevelLineage(options =>
 {
-    options.SampleEvery = 100;  // Sample 1% of items
-    options.DeterministicSampling = true;
+    return options.With(sampleEvery: 100, deterministicSampling: true); // Sample 1% of items
 });
 ```
 
@@ -93,8 +70,7 @@ Random sampling selects items at the specified rate without consistency across r
 ```csharp
 builder.EnableItemLevelLineage(options =>
 {
-    options.SampleEvery = 100;  // Sample 1% of items
-    options.DeterministicSampling = false;
+    return options.With(sampleEvery: 100, deterministicSampling: false); // Sample 1% of items
 });
 ```
 
@@ -114,7 +90,7 @@ builder.EnableItemLevelLineage(options =>
 ### Sampling Rate Guidelines
 
 | Scenario | Recommended Rate | Reasoning |
-|-----------|------------------|-------------|
+| ----------- | ------------------ | ------------- |
 | Production compliance | 100% (SampleEvery = 1) | Complete audit trails required |
 | Production monitoring | 1-10% (SampleEvery = 10-100) | Balance visibility and overhead |
 | Development/debugging | 10-50% (SampleEvery = 2-10) | Good visibility with manageable overhead |
@@ -127,7 +103,7 @@ Redaction excludes actual data from lineage records, storing only metadata:
 ```csharp
 builder.EnableItemLevelLineage(options =>
 {
-    options.RedactData = true;
+    return options.With(redactData: true);
 });
 ```
 
@@ -139,7 +115,7 @@ builder.EnableItemLevelLineage(options =>
 
 **Impact:**
 
-- `LineageInfo.Data` field will be `null`
+- `LineageRecord.Data` field will be `null`
 - All other lineage metadata preserved
 - Reduces memory usage by not storing actual data
 - No impact on tracking accuracy
@@ -147,25 +123,22 @@ builder.EnableItemLevelLineage(options =>
 **Example:**
 
 ```csharp
-// Without redaction
-var lineageInfo = collector.GetLineageInfo(correlationId);
-Console.WriteLine(lineageInfo.Data);  // Outputs actual data
+var history = collector.GetCorrelationHistory(correlationId);
+var latest = history[^1];
 
-// With redaction
-var lineageInfo = collector.GetLineageInfo(correlationId);
-Console.WriteLine(lineageInfo.Data);  // Outputs: null
-Console.WriteLine(lineageInfo.CorrelationId);  // Still available
-Console.WriteLine(lineageInfo.TraversalPath);  // Still available
+Console.WriteLine(latest.Data);          // null when redacted
+Console.WriteLine(latest.CorrelationId); // still available
+Console.WriteLine(latest.TraversalPath); // still available
 ```
 
 ## Hop Snapshots
 
-When `CaptureHopSnapshots` is enabled each `LineageHop` record includes a before/after snapshot of the item at that node, serialized as a `JsonElement`. This powers NPipeline Studio's lineage diff view.
+When `CaptureHopSnapshots` is enabled each `LineageRecord` event includes a before/after snapshot of the item at that node, serialized as a `JsonElement`. This powers NPipeline Studio's lineage diff view.
 
 ```csharp
 builder.EnableItemLevelLineage(options =>
 {
-    options.CaptureHopSnapshots = true;  // Default: false
+    return options.With(captureHopSnapshots: true); // Default: false
 });
 ```
 
@@ -188,7 +161,7 @@ The cap limits memory usage by materializing only a subset of items:
 ```csharp
 builder.EnableItemLevelLineage(options =>
 {
-    options.MaterializationCap = 10000;  // Default is null (unbounded)
+    return options.With(materializationCap: 10000); // Default is null (unbounded)
 });
 ```
 
@@ -206,7 +179,8 @@ builder.EnableItemLevelLineage(options =>
 Switches to streaming positional mapping when cap is exceeded:
 
 ```csharp
-options.OverflowPolicy = LineageOverflowPolicy.Degrade;  // Default
+var options = LineageOptions.CompleteLineage.With(
+    overflowPolicy: LineageOverflowPolicy.Degrade);  // Default
 ```
 
 **Characteristics:**
@@ -226,7 +200,8 @@ options.OverflowPolicy = LineageOverflowPolicy.Degrade;  // Default
 Throws immediately when cap is exceeded:
 
 ```csharp
-options.OverflowPolicy = LineageOverflowPolicy.Strict;
+var options = LineageOptions.CompleteLineage.With(
+    overflowPolicy: LineageOverflowPolicy.Strict);
 ```
 
 **Characteristics:**
@@ -246,7 +221,8 @@ options.OverflowPolicy = LineageOverflowPolicy.Strict;
 Emits warnings when cap is exceeded and continues:
 
 ```csharp
-options.OverflowPolicy = LineageOverflowPolicy.WarnContinue;
+var options = LineageOptions.CompleteLineage.With(
+    overflowPolicy: LineageOverflowPolicy.WarnContinue);
 ```
 
 **Characteristics:**
@@ -264,7 +240,7 @@ options.OverflowPolicy = LineageOverflowPolicy.WarnContinue;
 ### Choosing an Overflow Policy
 
 | Scenario | Policy | Reasoning |
-|-----------|----------|-------------|
+| ----------- | ---------- | ------------- |
 | Production pipelines | Degrade | Safe default, graceful degradation |
 | Memory-constrained | Strict | Enforce limits strictly |
 | Development/debugging | WarnContinue | Visibility without failing |
@@ -294,18 +270,19 @@ public sealed class DatabaseLineageSink : ILineageSink
         _connection = connection;
     }
 
-    public async Task RecordAsync(LineageInfo lineageInfo, CancellationToken cancellationToken)
+    public async Task RecordAsync(LineageRecord record, CancellationToken cancellationToken)
     {
         const string sql = @"
-            INSERT INTO Lineage (CorrelationId, Data, TraversalPath, Timestamp)
-            VALUES (@CorrelationId, @Data, @TraversalPath, @Timestamp)";
+            INSERT INTO Lineage (CorrelationId, NodeId, OutcomeReason, IsTerminal, Timestamp)
+            VALUES (@CorrelationId, @NodeId, @OutcomeReason, @IsTerminal, @Timestamp)";
         
         await _connection.ExecuteAsync(sql, new
         {
-            CorrelationId = lineageInfo.CorrelationId,
-            Data = lineageInfo.Data?.ToString(),
-            TraversalPath = string.Join(",", lineageInfo.TraversalPath),
-            Timestamp = DateTime.UtcNow
+            CorrelationId = record.CorrelationId,
+            NodeId = record.NodeId,
+            OutcomeReason = record.OutcomeReason.ToString(),
+            IsTerminal = record.IsTerminal,
+            Timestamp = record.TimestampUtc
         }, cancellationToken);
     }
 }
@@ -369,7 +346,7 @@ services.AddNPipelineLineage();
 - `ILineageSink` → `LoggingPipelineLineageSink` (transient)
 - `IPipelineLineageSink` → `LoggingPipelineLineageSink` (transient)
 
-### Custom Sink Registration
+### DI Custom Sink Registration
 
 ```csharp
 services.AddNPipelineLineage<CustomLineageSink>();
@@ -402,11 +379,12 @@ services.AddNPipelineLineage<DatabaseLineageSink>();
 // In pipeline
 builder.EnableItemLevelLineage(options =>
 {
-    options.SampleEvery = 100;  // 1% sampling (default)
-    options.DeterministicSampling = true;  // Default
-    options.RedactData = true;  // Don't store sensitive data (default)
-    options.MaterializationCap = 10000;
-    options.OverflowPolicy = LineageOverflowPolicy.Degrade;  // Default
+    return options.With(
+        sampleEvery: 100,               // 1% sampling
+        deterministicSampling: true,
+        redactData: true,
+        materializationCap: 10000,
+        overflowPolicy: LineageOverflowPolicy.Degrade);
 });
 ```
 
@@ -418,11 +396,12 @@ services.AddNPipelineLineage();  // Use logging sink
 // In pipeline
 builder.EnableItemLevelLineage(options =>
 {
-    options.SampleEvery = 1;  // Track everything
-    options.DeterministicSampling = true;
-    options.RedactData = false;  // Keep data for debugging
-    options.MaterializationCap = null;  // No cap (unbounded)
-    options.OverflowPolicy = LineageOverflowPolicy.WarnContinue;
+    return options.With(
+        sampleEvery: 1,
+        deterministicSampling: true,
+        redactData: false,
+        materializationCap: null,
+        overflowPolicy: LineageOverflowPolicy.WarnContinue);
 });
 ```
 
@@ -434,11 +413,12 @@ services.AddNPipelineLineage<PrometheusLineageSink>();
 // In pipeline
 builder.EnableItemLevelLineage(options =>
 {
-    options.SampleEvery = 1000;  // 0.1% sampling
-    options.DeterministicSampling = false;  // Random sampling
-    options.RedactData = true;  // Minimal memory (default)
-    options.MaterializationCap = 1000;  // Small cap
-    options.OverflowPolicy = LineageOverflowPolicy.Degrade;  // Graceful degradation
+    return options.With(
+        sampleEvery: 1000,
+        deterministicSampling: false,
+        redactData: true,
+        materializationCap: 1000,
+        overflowPolicy: LineageOverflowPolicy.Degrade);
 });
 ```
 
@@ -449,7 +429,7 @@ builder.EnableItemLevelLineage(options =>
 Begin with 1-10% sampling in production:
 
 ```csharp
-options.SampleEvery = 100;  // Conservative start
+var options = LineageOptions.CompleteLineage.With(sampleEvery: 100);
 ```
 
 Adjust based on requirements and performance impact.
@@ -459,8 +439,9 @@ Adjust based on requirements and performance impact.
 When investigating specific issues:
 
 ```csharp
-options.DeterministicSampling = true;
-options.SampleEvery = 1;  // Track all items temporarily
+var options = LineageOptions.CompleteLineage.With(
+    deterministicSampling: true,
+    sampleEvery: 1); // Track all items temporarily
 ```
 
 ### 3. Enable Redaction for Sensitive Data
@@ -468,7 +449,7 @@ options.SampleEvery = 1;  // Track all items temporarily
 Always redact PII, financial data, or health records:
 
 ```csharp
-options.RedactData = true;
+var options = LineageOptions.CompleteLineage.With(redactData: true);
 ```
 
 ### 4. Use Degrade Policy in Production
@@ -476,7 +457,8 @@ options.RedactData = true;
 Default policy provides best balance:
 
 ```csharp
-options.OverflowPolicy = LineageOverflowPolicy.Degrade;
+var options = LineageOptions.CompleteLineage.With(
+    overflowPolicy: LineageOverflowPolicy.Degrade);
 ```
 
 ### 5. Implement Async Sinks
@@ -484,7 +466,7 @@ options.OverflowPolicy = LineageOverflowPolicy.Degrade;
 Use async operations in custom sinks:
 
 ```csharp
-public async Task RecordAsync(LineageInfo lineageInfo, CancellationToken cancellationToken)
+public async Task RecordAsync(LineageRecord record, CancellationToken cancellationToken)
 {
     await _database.SaveChangesAsync(cancellationToken);
 }

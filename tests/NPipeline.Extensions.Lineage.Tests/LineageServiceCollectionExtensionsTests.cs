@@ -473,13 +473,16 @@ public class LineageServiceCollectionExtensionsTests
 
     private sealed class TestLineageCollector : ILineageCollector
     {
+        private readonly List<LineageRecord> _records = [];
+
         public LineagePacket<T> CreateLineagePacket<T>(T item, string sourceNodeId)
         {
             return new LineagePacket<T>(item, Guid.NewGuid(), ImmutableList.Create(sourceNodeId));
         }
 
-        public void RecordHop(Guid correlationId, LineageHop hop)
+        public void Record(LineageRecord record)
         {
+            _records.Add(record);
         }
 
         public bool ShouldCollectLineage(Guid correlationId, LineageOptions? options)
@@ -487,14 +490,31 @@ public class LineageServiceCollectionExtensionsTests
             return true;
         }
 
-        public LineageInfo? GetLineageInfo(Guid correlationId)
+        public IReadOnlyList<LineageRecord> GetCorrelationHistory(Guid correlationId)
         {
-            return null;
+            return _records.Where(record => record.CorrelationId == correlationId).ToList();
         }
 
-        public IReadOnlyList<LineageInfo> GetAllLineageInfo()
+        public LineageOutcomeReason? GetTerminalReason(Guid correlationId)
         {
-            return [];
+            return _records
+                .Where(record => record.CorrelationId == correlationId && record.IsTerminal)
+                .Select(record => (LineageOutcomeReason?)record.OutcomeReason)
+                .LastOrDefault();
+        }
+
+        public IReadOnlyList<LineageRecord> GetAllRecords()
+        {
+            return _records;
+        }
+
+        public IReadOnlyList<Guid> GetUnresolvedCorrelations()
+        {
+            var grouped = _records.GroupBy(record => record.CorrelationId);
+            return grouped
+                .Where(group => group.Key != Guid.Empty && !group.Any(record => record.IsTerminal))
+                .Select(group => group.Key)
+                .ToList();
         }
 
         public void Clear()
@@ -527,6 +547,8 @@ public class LineageServiceCollectionExtensionsTests
 
     private sealed class DependentLineageCollector : ILineageCollector
     {
+        private readonly List<LineageRecord> _records = [];
+
         public DependentLineageCollector(ITestDependency dependency)
         {
             Dependency = dependency;
@@ -539,8 +561,9 @@ public class LineageServiceCollectionExtensionsTests
             return new LineagePacket<T>(item, Guid.NewGuid(), ImmutableList.Create(sourceNodeId));
         }
 
-        public void RecordHop(Guid correlationId, LineageHop hop)
+        public void Record(LineageRecord record)
         {
+            _records.Add(record);
         }
 
         public bool ShouldCollectLineage(Guid correlationId, LineageOptions? options)
@@ -548,14 +571,31 @@ public class LineageServiceCollectionExtensionsTests
             return true;
         }
 
-        public LineageInfo? GetLineageInfo(Guid correlationId)
+        public IReadOnlyList<LineageRecord> GetCorrelationHistory(Guid correlationId)
         {
-            return null;
+            return _records.Where(record => record.CorrelationId == correlationId).ToList();
         }
 
-        public IReadOnlyList<LineageInfo> GetAllLineageInfo()
+        public LineageOutcomeReason? GetTerminalReason(Guid correlationId)
         {
-            return [];
+            return _records
+                .Where(record => record.CorrelationId == correlationId && record.IsTerminal)
+                .Select(record => (LineageOutcomeReason?)record.OutcomeReason)
+                .LastOrDefault();
+        }
+
+        public IReadOnlyList<LineageRecord> GetAllRecords()
+        {
+            return _records;
+        }
+
+        public IReadOnlyList<Guid> GetUnresolvedCorrelations()
+        {
+            var grouped = _records.GroupBy(record => record.CorrelationId);
+            return grouped
+                .Where(group => group.Key != Guid.Empty && !group.Any(record => record.IsTerminal))
+                .Select(group => group.Key)
+                .ToList();
         }
 
         public void Clear()

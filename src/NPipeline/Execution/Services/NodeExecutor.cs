@@ -163,7 +163,7 @@ public sealed class NodeExecutor(
                 context.PipelineId,
                 context.PipelineName,
                 graph.Lineage.LineageOptions,
-                HopDecisionFlags.Joined,
+                LineageOutcomeReason.Joined,
                 nodeDef.LineageMapperType,
                 context.CancellationToken);
         }
@@ -226,7 +226,7 @@ public sealed class NodeExecutor(
                 context.PipelineId,
                 context.PipelineName,
                 graph.Lineage.LineageOptions,
-                HopDecisionFlags.Aggregated,
+                LineageOutcomeReason.Aggregated,
                 nodeDef.LineageMapperType,
                 context.CancellationToken);
         }

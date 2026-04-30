@@ -6,563 +6,175 @@ order: 4
 
 # Lineage Performance
 
-This guide covers performance characteristics, benchmarks, and optimization strategies for NPipeline Lineage extension.
+This guide explains where lineage overhead comes from and how to tune it for throughput or completeness.
 
-## Performance Characteristics
+## What Drives Overhead
 
-### Overhead Breakdown
+Lineage overhead is primarily driven by:
 
-Lineage tracking introduces overhead at several points in pipeline execution:
+- sampling rate (`SampleEvery`)
+- event volume (`EmitIntermediateNodeRecords`, terminal guarantees)
+- payload retention (`RedactData`)
+- snapshots (`CaptureHopSnapshots`)
+- sink implementation latency (`ILineageSink.RecordAsync`)
 
-| Component | Impact | Notes |
-|-----------|--------|-------|
-| LineagePacket creation | Per item | One-time allocation |
-| Hop recording | Per hop | Metadata updates |
-| Sampling check | Per hop | Hash or random operation |
-| Dictionary lookup | Per hop | ConcurrentDictionary access |
-| Sink export | Per item | Depends on sink implementation |
+In practice, lineage cost scales with:
 
-**Note:** Total overhead scales with the number of items processed and the number of hops in the pipeline.
+- number of sampled correlations
+- number of nodes traversed by sampled correlations
+- size/shape of payload data retained in records
 
-### Estimated Performance Impact
+## Recommended Profiles
 
-Performance impact varies based on configuration and pipeline characteristics:
-
-| Configuration | Relative Impact | Notes |
-|--------------|-----------------|---------|
-| Without lineage (baseline) | None | No tracking overhead |
-| 100% tracking, no redaction | Highest | Complete visibility |
-| 10% sampling, no redaction | Low | Good balance |
-| 1% sampling, no redaction | Minimal | Minimal overhead |
-| 10% sampling, with redaction | Low | Reduces memory usage |
-
-**Important:** Actual performance impact depends on data sizes, pipeline complexity, and hardware. Measure performance in your specific environment to determine the actual impact.
-
-## Memory Usage
-
-### Per-Item Memory
-
-Memory usage scales with data size and number of hops:
+Use profile presets first, then tune:
 
 ```csharp
-// Approximate memory per item
-var perItemMemory = 
-    sizeof(Guid) +                          // CorrelationId: 16 bytes
-    sizeof(List<string>) +                   // TraversalPath: list overhead
-    sizeof(List<LineageHop>) +              // LineageHops: list overhead
-    (hopCount * perHopOverhead) +           // Per hop: metadata
-    (dataRedacted ? 0 : dataSize);         // Data: 0 or actual size
+// Throughput-oriented defaults
+var fast = LineageOptions.FastLineage;
+
+// Completeness-oriented defaults
+var complete = LineageOptions.CompleteLineage;
 ```
 
-**Factors affecting memory:**
+### FastLineage
 
-- Data size (unless redacted)
-- Number of hops in the pipeline
-- Number of items sampled
-- Metadata stored per hop
+Best for high-volume production workloads where audit completeness is not required for every node event.
 
-### Per-Pipeline Memory
+Defaults include lower detail and reduced event count.
 
-Fixed overhead per pipeline execution:
+### CompleteLineage
 
-| Component | Memory | Notes |
-|-----------|---------|-------|
-| LineageCollector | Dictionary overhead | Scales with items |
-| LineageOptions | Configuration | Negligible |
-| Total | Varies | Depends on items sampled |
+Best for debugging, data quality investigations, and strict traceability workflows.
 
-### Memory Scaling
+Defaults include rich event coverage, contributor metadata, snapshots, and per-input terminal closure.
 
-Memory usage scales linearly with:
+## Tuning Patterns
 
-- **Number of items sampled**: Each sampled item adds memory
-- **Number of hops**: Each hop adds metadata
-- **Data size**: Proportional to actual data (unless redacted)
-
-**Formula:**
-
-```
-TotalMemory = PipelineOverhead + (SampledItems × PerItemMemory)
-```
-
-**Note:** Use sampling and redaction to control memory usage. The materialization cap provides additional protection against excessive memory consumption.
-
-## CPU Impact
-
-## Aggregate/Join Mapping Performance
-
-Aggregate and join nodes are special because output cardinality is often not 1:1 with input cardinality.
-
-Current behavior balances continuity and throughput:
-
-- Preserves upstream lineage context for aggregate/join outputs.
-- Uses mapper-driven ancestry when a `LineageMapperAttribute` mapper is present.
-- Uses deterministic fallback mapping when mapper data is unavailable.
-
-## Per-Item Outcome Registry Overhead
-
-When lineage is enabled, execution strategies record per-item outcomes (retry count, error/skip/dead-letter flags) into a concurrent in-memory registry. This registry is scoped per `(PipelineId, NodeId)` and is cleared after each node's output stream is fully consumed.
-
-| Operation | Cost | Notes |
-|-----------|------|-------|
-| Registry write | `ConcurrentDictionary` add/update per item | Only when lineage is active for the node |
-| Registry read | Dictionary lookup per item during hop construction | Inline with existing lineage mapping |
-| Registry clear | Single `TryRemove` per node completion | Frees all per-item entries at once |
-
-The overhead is proportional to the number of items processed per node and is bounded by node lifetime. For pipelines without lineage enabled, no registry operations occur.
-
-To avoid forcing full-stream materialization on hot paths, core only materializes when useful for accurate mapping (for example, mapper-driven mapping or small/capped input sets). For larger streams, it degrades to representative-chain lineage with contributor metadata instead of buffering unbounded output.
-
-This keeps lineage continuous while avoiding a fundamental shift away from streaming execution.
-
-### Practical Guidance
-
-- For high-throughput pipelines: keep sampling enabled (`SampleEvery > 1`) and avoid expensive custom mappers unless necessary.
-- For precise aggregate/join ancestry: provide a dedicated mapper and set a practical `MaterializationCap`.
-- For memory-sensitive workloads: prefer `OverflowPolicy = Degrade` and keep `CaptureHopSnapshots = false`.
-
-### Per-Operation Costs
-
-| Operation | Cost | Frequency | Notes |
-|-----------|------|-----------|-------|
-| LineagePacket creation | Per item | One-time | Allocation |
-| Sampling check | Per hop | Hash or random | Fast operation |
-| Hop recording | Per hop | List operations | Metadata updates |
-| Dictionary lookup | Per hop | ConcurrentDictionary | Efficient access |
-| Sink export | Per item | Depends on sink | I/O bound |
-
-### Hash vs Random Sampling
-
-| Sampling Type | Characteristics | Use Case |
-|--------------|-----------------|-----------|
-| Deterministic (hash) | Consistent items across runs | Debugging, compliance |
-| Random | Different items each run | Monitoring, analytics |
-
-**Note:** Both sampling methods have similar CPU characteristics. Hash-based sampling provides consistency across runs.
-
-## Optimization Strategies
-
-### 1. Use Sampling
-
-The most effective optimization is sampling:
+### 1. Throughput First
 
 ```csharp
-// Production: 1% sampling
-builder.EnableItemLevelLineage(options =>
-{
-    options.SampleEvery = 100;
-    options.DeterministicSampling = true;
-});
-
-// High-volume: 0.1% sampling
-builder.EnableItemLevelLineage(options =>
-{
-    options.SampleEvery = 1000;
-    options.DeterministicSampling = false;
-});
+builder.EnableItemLevelLineage(options => options.With(
+    sampleEvery: 500,
+    deterministicSampling: true,
+    redactData: true,
+    emitIntermediateNodeRecords: false,
+    includeContributorCorrelationIds: false,
+    emitBackpressureDropRecords: true,
+    captureHopSnapshots: false));
 ```
 
-**Impact:**
-
-- Reduces memory usage proportionally
-- Reduces CPU overhead proportionally
-- Maintains representative visibility
-
-### 2. Enable Data Redaction
-
-Redact data when possible:
+### 2. Completeness First
 
 ```csharp
-builder.EnableItemLevelLineage(options =>
-{
-    options.RedactData = true;  // Reduces memory usage
-});
+builder.EnableItemLevelLineage(options => options.With(
+    sampleEvery: 1,
+    deterministicSampling: true,
+    redactData: false,
+    emitIntermediateNodeRecords: true,
+    includeContributorCorrelationIds: true,
+    ensurePerInputTerminalRecord: true,
+    captureHopSnapshots: true));
 ```
 
-**Impact:**
-
-- Reduces memory usage by not storing actual data
-- No CPU impact
-- Maintains all metadata
-
-### 3. Use Materialization Cap
-
-Limit in-memory storage:
+### 3. Memory Guardrails
 
 ```csharp
-builder.EnableItemLevelLineage(options =>
-{
-    options.MaterializationCap = 10000;  // Default
-    options.OverflowPolicy = LineageOverflowPolicy.Degrade;
-});
+builder.EnableItemLevelLineage(options => options.With(
+    materializationCap: 10_000,
+    overflowPolicy: LineageOverflowPolicy.Degrade,
+    maxHopRecordsPerItem: 256));
 ```
 
-**Impact:**
+## Option Impact Matrix
 
-- Predictable memory usage
-- Prevents out-of-memory errors
-- Graceful degradation
+| Option | Throughput Impact | Memory Impact | Notes |
+| --- | --- | --- | --- |
+| `SampleEvery` lower value | High | High | `1` means capture all sampled events |
+| `RedactData = false` | Medium | High | Stores payload in records |
+| `CaptureHopSnapshots = true` | High | High | JSON snapshot per sampled hop |
+| `EmitIntermediateNodeRecords = true` | Medium | Medium | More events per correlation |
+| `IncludeContributorCorrelationIds = true` | Low-Medium | Medium | Useful for many-to-one provenance |
+| `EnsurePerInputTerminalRecord = true` | Low | Low | Strong completeness guarantee |
 
-### 4. Use Async Sinks
+## Sink Performance
 
-Implement async sink operations:
+A slow sink can dominate lineage overhead. Prefer non-blocking sink implementations:
 
-```csharp
-public sealed class DatabaseLineageSink : ILineageSink
-{
-    public async Task RecordAsync(LineageInfo lineageInfo, CancellationToken cancellationToken)
-    {
-        // Non-blocking async I/O
-        await _database.SaveChangesAsync(cancellationToken);
-    }
-}
-```
+- buffer writes in memory/channel
+- batch persistence to storage
+- avoid synchronous I/O
+- apply backpressure or bounded queues in sink internals
 
-**Impact:**
-
-- Non-blocking to pipeline execution
-- Better throughput
-- No pipeline stalls
-
-### 5. Batch Sink Operations
-
-Batch multiple lineage records:
+Example:
 
 ```csharp
 public sealed class BatchedLineageSink : ILineageSink
 {
-    private readonly List<LineageInfo> _batch = new();
-    private readonly int _batchSize;
-
-    public Task RecordAsync(LineageInfo lineageInfo, CancellationToken cancellationToken)
+    public Task RecordAsync(LineageRecord record, CancellationToken cancellationToken)
     {
-        lock (_batch)
-        {
-            _batch.Add(lineageInfo);
-            
-            if (_batch.Count >= _batchSize)
-            {
-                return FlushBatchAsync(cancellationToken);
-            }
-        }
+        // Enqueue record to an internal bounded channel for background batch flush.
         return Task.CompletedTask;
-    }
-
-    private async Task FlushBatchAsync(CancellationToken cancellationToken)
-    {
-        List<LineageInfo> itemsToFlush;
-        lock (_batch)
-        {
-            itemsToFlush = _batch.ToList();
-            _batch.Clear();
-        }
-        
-        await _database.BulkInsertAsync(itemsToFlush, cancellationToken);
     }
 }
 ```
 
-**Impact:**
+## Measuring in Your Environment
 
-- Reduces database round trips
-- Better throughput
-- Lower CPU overhead
+Use A/B comparisons with representative data:
 
-### 6. Use Degrade Overflow Policy
+1. Baseline run without lineage.
+2. Run with `FastLineage`.
+3. Run with `CompleteLineage`.
+4. Tune one option at a time and re-measure.
 
-Default policy provides best balance:
+Track at least:
 
-```csharp
-options.OverflowPolicy = LineageOverflowPolicy.Degrade;
-```
+- throughput (items/sec)
+- end-to-end latency
+- memory (working set)
+- lineage event count (`collector.GetAllRecords().Count`)
+- unresolved count (`collector.GetUnresolvedCorrelations().Count`)
 
-**Impact:**
+### Benchmark Template
 
-- Predictable memory usage
-- Maintains visibility
-- Automatic cleanup
-
-### 7. Minimize Hop Count
-
-Reduce pipeline complexity:
+Use BenchmarkDotNet for repeatable A/B checks:
 
 ```csharp
-// Complex: Many hops
-[Source] → [Transform1] → [Transform2] → [Transform3] → [Sink]
-
-// Simplified: Fewer hops
-[Source] → [CombinedTransform] → [Sink]
-```
-
-**Impact:**
-
-- Reduces lineage overhead
-- Faster pipeline execution
-- Lower memory usage
-
-## Benchmarking
-
-### Measuring Lineage Overhead
-
-```csharp
-using BenchmarkDotNet.Attributes;
-
 [MemoryDiagnoser]
 public class LineageBenchmarks
 {
-    private PipelineRunner _runner = null!;
-    private PipelineContext _context = null!;
-    
-    [GlobalSetup]
-    public void Setup()
-    {
-        _runner = PipelineRunner.Create();
-        _context = new PipelineContext();
-    }
-    
     [Benchmark(Baseline = true)]
-    public async Task NoLineage()
+    public Task Baseline()
     {
-        var builder = new PipelineBuilder("TestPipeline");
-        // No lineage enabled
-        await _runner.RunAsync(builder.Build(), _context);
+        return RunPipeline(lineageEnabled: false);
     }
-    
+
     [Benchmark]
-    public async Task WithLineage_100Percent()
+    public Task FastProfile()
     {
-        var builder = new PipelineBuilder("TestPipeline");
-        builder.EnableItemLevelLineage(options =>
-        {
-            options.SampleEvery = 1;  // 100%
-        });
-        await _runner.RunAsync(builder.Build(), _context);
+        return RunPipeline(lineageOptions: LineageOptions.FastLineage);
     }
-    
+
     [Benchmark]
-    public async Task WithLineage_10Percent()
+    public Task CompleteProfile()
     {
-        var builder = new PipelineBuilder("TestPipeline");
-        builder.EnableItemLevelLineage(options =>
-        {
-            options.SampleEvery = 10;  // 10%
-        });
-        await _runner.RunAsync(builder.Build(), _context);
-    }
-    
-    [Benchmark]
-    public async Task WithLineage_Redacted()
-    {
-        var builder = new PipelineBuilder("TestPipeline");
-        builder.EnableItemLevelLineage(options =>
-        {
-            options.SampleEvery = 1;
-            options.RedactData = true;
-        });
-        await _runner.RunAsync(builder.Build(), _context);
+        return RunPipeline(lineageOptions: LineageOptions.CompleteLineage);
     }
 }
 ```
 
-**Note:** Run benchmarks in your specific environment with representative data to measure actual performance impact.
+## Practical Defaults
 
-## Real-World Scenarios
+For most production pipelines:
 
-### Scenario 1: Production ETL Pipeline
-
-**Requirements:**
-
-- Process items at production volume
-- Multiple nodes in pipeline
-- Need compliance tracking
-
-**Configuration:**
-
-```csharp
-builder.EnableItemLevelLineage(options =>
-{
-    options.SampleEvery = 1;  // 100% for compliance
-    options.RedactData = true;  // Sensitive data
-    options.MaterializationCap = 100000;  // All items
-    options.OverflowPolicy = LineageOverflowPolicy.Degrade;
-});
-```
-
-**Considerations:**
-
-- CPU overhead is present but acceptable for compliance
-- Memory usage scales with number of items processed
-- Throughput impact depends on pipeline complexity and data sizes
-
-### Scenario 2: High-Volume Analytics Pipeline
-
-**Requirements:**
-
-- High throughput processing
-- Multiple nodes in pipeline
-- Need monitoring, not compliance
-
-**Configuration:**
-
-```csharp
-builder.EnableItemLevelLineage(options =>
-{
-    options.SampleEvery = 1000;  // 0.1% sampling
-    options.RedactData = true;   // Default
-    options.MaterializationCap = 1000;  // Small cap
-    options.OverflowPolicy = LineageOverflowPolicy.Degrade;  // Graceful degradation
-});
-```
-
-**Considerations:**
-
-- Minimal CPU overhead with aggressive sampling
-- Low memory footprint with small cap
-- Throughput impact is negligible
-
-### Scenario 3: Development/Debugging Pipeline
-
-**Requirements:**
-
-- Process items for testing
-- Multiple nodes in pipeline
-- Need complete visibility
-
-**Configuration:**
-
-```csharp
-builder.EnableItemLevelLineage(options =>
-{
-    options.SampleEvery = 1;  // 100% for debugging
-    options.RedactData = false;  // Keep data for inspection
-    options.MaterializationCap = int.MaxValue;  // No cap
-    options.OverflowPolicy = LineageOverflowPolicy.Materialize;
-});
-```
-
-**Considerations:**
-
-- CPU overhead is acceptable for development
-- Memory usage scales with test data size
-- Throughput is not critical for development
-
-## Performance Monitoring
-
-### Track Lineage Performance
-
-Monitor lineage-specific metrics:
-
-```csharp
-public sealed class LineagePerformanceSink : ILineageSink
-{
-    private readonly ILogger _logger;
-    private readonly Stopwatch _sw = new();
-
-    public LineagePerformanceSink(ILogger<LineagePerformanceSink> logger)
-    {
-        _logger = logger;
-    }
-
-    public async Task RecordAsync(LineageInfo lineageInfo, CancellationToken cancellationToken)
-    {
-        _sw.Restart();
-        
-        // Actual sink operation
-        await _database.SaveAsync(lineageInfo, cancellationToken);
-        
-        var elapsed = _sw.ElapsedMilliseconds;
-        
-        if (elapsed > 100)
-        {
-            _logger.LogWarning(
-                "Slow lineage export: {ElapsedMs}ms for {CorrelationId}",
-                elapsed,
-                lineageInfo.CorrelationId);
-        }
-    }
-}
-```
-
-### Metrics to Track
-
-- **Lineage export time**: Time to write to sinks
-- **Memory usage**: Collector memory over time
-- **Sampling rate**: Actual vs configured
-- **Overflow events**: How often cap is reached
-- **Sink errors**: Failed exports
-
-## Best Practices
-
-### 1. Profile Before Optimizing
-
-Measure before making changes:
-
-```csharp
-// Use BenchmarkDotNet or similar tools
-[Benchmark]
-public async Task Baseline()
-{
-    await RunPipeline(withLineage: false);
-}
-
-[Benchmark]
-public async Task WithLineage()
-{
-    await RunPipeline(withLineage: true);
-}
-```
-
-### 2. Start Conservative, Adjust Later
-
-Begin with low sampling rate:
-
-```csharp
-options.SampleEvery = 100;  // Conservative start
-```
-
-Monitor and adjust based on requirements.
-
-### 3. Use Appropriate Overflow Policy
-
-Choose policy based on scenario:
-
-| Scenario | Policy |
-| | Production | Degrade |
-| Development | WarnContinue |
-| Memory-constrained | Strict |
-| Compliance | Degrade |
-
-### 4. Implement Async Sinks
-
-Always use async operations in sinks:
-
-```csharp
-public async Task RecordAsync(LineageInfo lineageInfo, CancellationToken cancellationToken)
-{
-    await _repository.SaveAsync(lineageInfo, cancellationToken);
-}
-```
-
-### 5. Monitor Memory Usage
-
-Track collector memory:
-
-```csharp
-var collector = serviceProvider.GetRequiredService<ILineageCollector>();
-var lineageCount = collector.GetAllLineageInfo().Count;
-var estimatedMemory = lineageCount * 750;  // Approximate bytes
-
-_logger.LogInformation(
-    "Lineage memory: {Count} items, ~{MemoryMB} MB",
-    lineageCount,
-    estimatedMemory / (1024 * 1024));
-```
-
-**Note:** Actual memory usage depends on data sizes and pipeline complexity. Monitor in production to understand real memory consumption.
+- start from `FastLineage`
+- keep `EmitBackpressureDropRecords = true`
+- use deterministic sampling
+- enable richer options only where diagnostics require them
 
 ## Related Topics
 
-- **[Getting Started](./getting-started.md)** - Installation and basic setup
-- **[Configuration](./configuration.md)** - Configuration options and settings
-- **[Architecture](./architecture.md)** - Internal architecture and design decisions
-- **[Use Cases](./use-cases.md)** - Common use cases and examples
+- [Getting Started](./getting-started.md)
+- [Configuration](./configuration.md)
+- [Architecture](./architecture.md)
+- [Use Cases](./use-cases.md)

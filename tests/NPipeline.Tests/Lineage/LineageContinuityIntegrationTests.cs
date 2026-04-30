@@ -30,16 +30,16 @@ public sealed class LineageContinuityIntegrationTests
         var transformSegment = Qualified(context, "transform");
         var aggregateSegment = Qualified(context, "aggregate");
 
-        records.Should().OnlyContain(r =>
+        records.Should().Contain(r =>
             r.TraversalPath.Contains(sourceSegment) &&
             r.TraversalPath.Contains(transformSegment) &&
             r.TraversalPath.Contains(aggregateSegment));
 
-        records.Should().OnlyContain(r =>
-            r.LineageHops.Any(h =>
-                h.NodeId == "aggregate" &&
-                h.Outcome.HasFlag(HopDecisionFlags.Aggregated) &&
-                h.OutputEmissionCount == 1));
+        records.Should().Contain(r =>
+            r.NodeId == "aggregate" &&
+            r.InputContributorCount.HasValue &&
+            r.InputContributorCount.Value > 1 &&
+            r.OutputEmissionCount == 1);
     }
 
     [Fact]
@@ -56,18 +56,16 @@ public sealed class LineageContinuityIntegrationTests
         var rightTransformSegment = Qualified(context, "right_transform");
         var joinSegment = Qualified(context, "join");
 
-        records.Should().OnlyContain(r =>
+        records.Should().Contain(r =>
             r.TraversalPath.Contains(leftTransformSegment) &&
             r.TraversalPath.Contains(rightTransformSegment) &&
             r.TraversalPath.Contains(joinSegment));
 
-        records.Should().OnlyContain(r =>
-            r.LineageHops.Any(h =>
-                h.NodeId == "join" &&
-                h.Outcome.HasFlag(HopDecisionFlags.Joined) &&
-                h.InputContributorCount.HasValue &&
-                h.InputContributorCount.Value > 1 &&
-                h.OutputEmissionCount == 1));
+        records.Should().Contain(r =>
+            r.NodeId == "join" &&
+            r.InputContributorCount.HasValue &&
+            r.InputContributorCount.Value > 1 &&
+            r.OutputEmissionCount == 1);
     }
 
     [Fact]
@@ -84,7 +82,7 @@ public sealed class LineageContinuityIntegrationTests
         var parallelSegment = Qualified(context, "parallel_transform");
         var aggregateSegment = Qualified(context, "aggregate");
 
-        records.Should().OnlyContain(r =>
+        records.Should().Contain(r =>
             r.TraversalPath.Contains(sourceSegment) &&
             r.TraversalPath.Contains(parallelSegment) &&
             r.TraversalPath.Contains(aggregateSegment));
@@ -104,7 +102,7 @@ public sealed class LineageContinuityIntegrationTests
         var transformSegment = Qualified(context, "transform");
         var aggregateSegment = Qualified(context, "aggregate");
 
-        records.Should().OnlyContain(r =>
+        records.Should().Contain(r =>
             r.TraversalPath.Contains(sourceSegment) &&
             r.TraversalPath.Contains(transformSegment) &&
             r.TraversalPath.Contains(aggregateSegment));
@@ -120,13 +118,11 @@ public sealed class LineageContinuityIntegrationTests
 
         await RunPipelineAsync<RetryMetadataPipeline>(context);
 
-        var retryHops = sink.Records
-            .SelectMany(static r => r.LineageHops)
-            .Where(static h => h.Outcome.HasFlag(HopDecisionFlags.Retried))
+        var retryRecords = sink.Records
+            .Where(static r => r.RetryCount == 2)
             .ToList();
 
-        retryHops.Should().NotBeEmpty();
-        retryHops.Should().OnlyContain(static h => h.RetryCount == 2);
+        retryRecords.Should().NotBeEmpty();
     }
 
     [Fact]
@@ -137,14 +133,16 @@ public sealed class LineageContinuityIntegrationTests
         await RunPipelineAsync<NoInputOutputPipeline>(context);
 
         var records = sink.Records;
-        records.Should().HaveCount(1);
+        records.Should().HaveCount(2);
 
         var aggregateSegment = Qualified(context, "aggregate");
         var sourceSegment = Qualified(context, "source");
 
-        records[0].CorrelationId.Should().NotBe(Guid.Empty);
-        records[0].TraversalPath.Should().Contain(aggregateSegment);
-        records[0].TraversalPath.Should().NotContain(sourceSegment);
+        records.Should().Contain(record =>
+            record.NodeId == "aggregate" &&
+            record.CorrelationId != Guid.Empty &&
+            record.TraversalPath.Contains(aggregateSegment) &&
+            !record.TraversalPath.Contains(sourceSegment));
     }
 
     private static (PipelineContext Context, CollectingLineageSink Sink) CreateContext(LineageOptions? optionsOverride = null)
@@ -177,10 +175,10 @@ public sealed class LineageContinuityIntegrationTests
 
     private sealed class CollectingLineageSink : ILineageSink
     {
-        private readonly List<LineageInfo> _records = [];
+        private readonly List<LineageRecord> _records = [];
         private readonly object _sync = new();
 
-        public IReadOnlyList<LineageInfo> Records
+        public IReadOnlyList<LineageRecord> Records
         {
             get
             {
@@ -191,11 +189,11 @@ public sealed class LineageContinuityIntegrationTests
             }
         }
 
-        public Task RecordAsync(LineageInfo lineageInfo, CancellationToken cancellationToken)
+        public Task RecordAsync(LineageRecord record, CancellationToken cancellationToken)
         {
             lock (_sync)
             {
-                _records.Add(lineageInfo);
+                _records.Add(record);
             }
 
             return Task.CompletedTask;

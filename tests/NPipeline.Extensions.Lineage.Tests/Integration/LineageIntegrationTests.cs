@@ -15,6 +15,20 @@ public class LineageIntegrationTests
 
     private static string QualifiedPathNode(string nodeId) => $"{s_pipelineId:N}::{nodeId}";
 
+    private static LineageRecord BuildRecord(Guid correlationId, string nodeId, IReadOnlyList<string> traversalPath, object? data = null,
+        LineageOutcomeReason outcomeReason = LineageOutcomeReason.Emitted, bool isTerminal = false)
+    {
+        return new LineageRecord(
+            correlationId,
+            nodeId,
+            s_pipelineId,
+            outcomeReason,
+            isTerminal,
+            traversalPath,
+            Data: data,
+            Cardinality: ObservedCardinality.One);
+    }
+
     [Fact]
     public void AddNPipelineLineage_ShouldRegisterAllRequiredServices()
     {
@@ -46,15 +60,16 @@ public class LineageIntegrationTests
         var packet2 = collector.CreateLineagePacket("item2", "source-node");
         var packet3 = collector.CreateLineagePacket("item3", "source-node");
 
-        collector.RecordHop(packet1.CorrelationId, new LineageHop("transform-node", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId));
-        collector.RecordHop(packet2.CorrelationId, new LineageHop("transform-node", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId));
-        collector.RecordHop(packet3.CorrelationId, new LineageHop("transform-node", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId));
+        collector.Record(BuildRecord(packet1.CorrelationId, "transform-node", ["source-node", QualifiedPathNode("transform-node")], "item1"));
+        collector.Record(BuildRecord(packet2.CorrelationId, "transform-node", ["source-node", QualifiedPathNode("transform-node")], "item2"));
+        collector.Record(BuildRecord(packet3.CorrelationId, "transform-node", ["source-node", QualifiedPathNode("transform-node")], "item3"));
 
         // Assert
-        var allLineage = collector.GetAllLineageInfo();
-        allLineage.Should().HaveCount(3);
-        allLineage.Should().OnlyContain(l => l.TraversalPath.Contains("source-node"));
-        allLineage.Should().OnlyContain(l => l.TraversalPath.Contains(QualifiedPathNode("transform-node")));
+        var allRecords = collector.GetAllRecords();
+        allRecords.Should().HaveCount(3);
+        allRecords.Select(r => r.CorrelationId).Distinct().Should().HaveCount(3);
+        allRecords.Should().OnlyContain(r => r.TraversalPath.Contains("source-node"));
+        allRecords.Should().OnlyContain(r => r.TraversalPath.Contains(QualifiedPathNode("transform-node")));
     }
 
     [Fact]
@@ -94,18 +109,18 @@ public class LineageIntegrationTests
 
         // Add some data
         var packet = collector.CreateLineagePacket("test", "source");
-        collector.RecordHop(packet.CorrelationId, new LineageHop("node1", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId));
+        collector.Record(BuildRecord(packet.CorrelationId, "node1", ["source", QualifiedPathNode("node1")], "test"));
 
         // Act
         collector.Clear();
 
         // Assert
-        collector.GetAllLineageInfo().Should().BeEmpty();
-        collector.GetLineageInfo(packet.CorrelationId).Should().BeNull();
+        collector.GetAllRecords().Should().BeEmpty();
+        collector.GetCorrelationHistory(packet.CorrelationId).Should().BeEmpty();
     }
 
     [Fact]
-    public void LineageCollector_GetLineageInfo_ShouldReturnCorrectItem()
+    public void LineageCollector_GetCorrelationHistory_ShouldReturnCorrectItemTimeline()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -117,21 +132,17 @@ public class LineageIntegrationTests
         var packet1 = collector.CreateLineagePacket("item1", "source");
         var packet2 = collector.CreateLineagePacket("item2", "source");
 
-        collector.RecordHop(packet1.CorrelationId, new LineageHop("node1", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId));
+        collector.Record(BuildRecord(packet1.CorrelationId, "node1", ["source", QualifiedPathNode("node1")], "item1"));
 
         // Assert
-        var lineage1 = collector.GetLineageInfo(packet1.CorrelationId);
-        var lineage2 = collector.GetLineageInfo(packet2.CorrelationId);
+        var lineage1 = collector.GetCorrelationHistory(packet1.CorrelationId);
+        var lineage2 = collector.GetCorrelationHistory(packet2.CorrelationId);
 
-        lineage1.Should().NotBeNull();
-        lineage1!.CorrelationId.Should().Be(packet1.CorrelationId);
-        lineage1.Data.Should().Be("item1");
-        lineage1.LineageHops.Should().HaveCount(1);
+        lineage1.Should().HaveCount(1);
+        lineage1[0].CorrelationId.Should().Be(packet1.CorrelationId);
+        lineage1[0].Data.Should().Be("item1");
 
-        lineage2.Should().NotBeNull();
-        lineage2!.CorrelationId.Should().Be(packet2.CorrelationId);
-        lineage2.Data.Should().Be("item2");
-        lineage2.LineageHops.Should().BeEmpty();
+        lineage2.Should().BeEmpty();
     }
 
     [Fact]
@@ -180,22 +191,19 @@ public class LineageIntegrationTests
         var packet = collector.CreateLineagePacket("test", "source");
 
         // Act
-        collector.RecordHop(packet.CorrelationId, new LineageHop("node1", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId));
-        collector.RecordHop(packet.CorrelationId, new LineageHop("node2", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId));
-        collector.RecordHop(packet.CorrelationId, new LineageHop("node3", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, s_pipelineId));
+        collector.Record(BuildRecord(packet.CorrelationId, "node1", ["source", QualifiedPathNode("node1")], "test"));
+        collector.Record(BuildRecord(packet.CorrelationId, "node2", ["source", QualifiedPathNode("node1"), QualifiedPathNode("node2")], "test"));
+        collector.Record(BuildRecord(packet.CorrelationId, "node3", ["source", QualifiedPathNode("node1"), QualifiedPathNode("node2"), QualifiedPathNode("node3")], "test"));
 
         // Assert
-        var lineage = collector.GetLineageInfo(packet.CorrelationId);
-        lineage.Should().NotBeNull();
-        lineage!.TraversalPath.Should().ContainInOrder(
+        var lineage = collector.GetCorrelationHistory(packet.CorrelationId);
+        lineage.Should().HaveCount(3);
+        lineage[^1].TraversalPath.Should().ContainInOrder(
             "source",
             QualifiedPathNode("node1"),
             QualifiedPathNode("node2"),
             QualifiedPathNode("node3"));
-        lineage.LineageHops.Should().HaveCount(3);
-        lineage.LineageHops[0].NodeId.Should().Be("node1");
-        lineage.LineageHops[1].NodeId.Should().Be("node2");
-        lineage.LineageHops[2].NodeId.Should().Be("node3");
+        lineage.Select(r => r.NodeId).Should().ContainInOrder("node1", "node2", "node3");
     }
 
     [Fact]
@@ -233,11 +241,12 @@ public class LineageIntegrationTests
 
         // Add data to collector1 only
         var packet = collector1.CreateLineagePacket("test", "source");
+        collector1.Record(BuildRecord(packet.CorrelationId, "node1", ["source", QualifiedPathNode("node1")], "test"));
 
         // Assert - collectors should be independent
         collector1.Should().NotBeSameAs(collector2);
-        collector1.GetAllLineageInfo().Should().HaveCount(1);
-        collector2.GetAllLineageInfo().Should().BeEmpty();
+        collector1.GetAllRecords().Should().HaveCount(1);
+        collector2.GetAllRecords().Should().BeEmpty();
     }
 
     [Fact]

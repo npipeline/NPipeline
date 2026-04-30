@@ -86,7 +86,7 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                     TOut? output = default;
                     Exception? originalException;
                     var shouldSkipToNextItem = false;
-                    var terminalOutcome = HopDecisionFlags.None;
+                    LineageOutcomeReason? terminalOutcome = null;
 
                     while (!shouldSkipToNextItem)
                     {
@@ -108,7 +108,7 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                             {
                                 // No handler or wrong type, rethrow original exception
                                 PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, ex, attempt);
-                                RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, HopDecisionFlags.Error, attempt);
+                                RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, LineageOutcomeReason.Error, attempt);
                                 throw;
                             }
 
@@ -122,7 +122,7 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                                 NodeErrorDecision.Skip => HandleSkip(),
                                 NodeErrorDecision.DeadLetter => await HandleRedirect(context, nodeId, item, ex, attribution, ct),
                                 NodeErrorDecision.Retry => HandleRetry(ref attempt, effectiveRetries.MaxItemRetries, itemActivity),
-                                NodeErrorDecision.Fail => throw RecordAndReturn(originalException!, HopDecisionFlags.Error, attempt),
+                                NodeErrorDecision.Fail => throw RecordAndReturn(originalException!, LineageOutcomeReason.Error, attempt),
                                 _ => throw new InvalidOperationException($"Error handling failed for node {nodeId}", ex),
                             };
 
@@ -134,12 +134,12 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                             }
 
                             // Local functions for handling each decision type
-                            static (bool Produced, bool ShouldGotoAfterItem, HopDecisionFlags Outcome) HandleSkip()
+                            static (bool Produced, bool ShouldGotoAfterItem, LineageOutcomeReason? Outcome) HandleSkip()
                             {
-                                return (false, true, HopDecisionFlags.FilteredOut);
+                                return (false, true, LineageOutcomeReason.FilteredOut);
                             }
 
-                            static async Task<(bool Produced, bool ShouldGotoAfterItem, HopDecisionFlags Outcome)> HandleRedirect(
+                            static async Task<(bool Produced, bool ShouldGotoAfterItem, LineageOutcomeReason? Outcome)> HandleRedirect(
                                 PipelineContext ctx, string id, TIn itm, Exception exception, NodeFailureAttribution attribution, CancellationToken token)
                             {
                                 if (ctx.DeadLetterSink is not null)
@@ -148,10 +148,10 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                                     await ctx.DeadLetterSink.HandleAsync(envelope, ctx, token).ConfigureAwait(false);
                                 }
 
-                                return (false, true, HopDecisionFlags.DeadLettered | HopDecisionFlags.Error);
+                                return (false, true, LineageOutcomeReason.DeadLettered);
                             }
 
-                            (bool Produced, bool ShouldGotoAfterItem, HopDecisionFlags Outcome) HandleRetry(
+                            (bool Produced, bool ShouldGotoAfterItem, LineageOutcomeReason? Outcome) HandleRetry(
                                 ref int att, int maxRetries, IPipelineActivity? activity)
                             {
                                 att++;
@@ -160,18 +160,18 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                                 {
                                     throw RecordAndReturn(
                                         new InvalidOperationException($"An item failed to process after {att} attempts.", originalException!),
-                                        HopDecisionFlags.Error,
+                                        LineageOutcomeReason.Error,
                                         maxRetries);
                                 }
 
                                 activity?.SetTag("retry.attempt", att.ToString());
-                                return (false, false, HopDecisionFlags.None);
+                                return (false, false, null);
                             }
 
-                            Exception RecordAndReturn(Exception exception, HopDecisionFlags outcome, int retryCount)
+                            Exception RecordAndReturn(Exception exception, LineageOutcomeReason outcomeReason, int retryCount)
                             {
                                 PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, exception, retryCount);
-                                RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, outcome, retryCount);
+                                RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, outcomeReason, retryCount);
                                 return exception;
                             }
                         }
@@ -181,11 +181,11 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                     {
                         // Track item emitted
                         observabilityScope?.IncrementEmitted();
-                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, HopDecisionFlags.Emitted, attempt);
+                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, LineageOutcomeReason.Emitted, attempt);
                         yield return output!;
                     }
-                    else if (terminalOutcome != HopDecisionFlags.None)
-                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, terminalOutcome, attempt);
+                    else if (terminalOutcome is not null)
+                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, terminalOutcome.Value, attempt);
                 }
             }
             finally
@@ -199,18 +199,13 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
         }
 
         static void RecordLineageOutcome(bool hasLineageIndex, long lineageInputIndex, PipelineContext context, string nodeId,
-            HopDecisionFlags terminalOutcome, int retryCount)
+            LineageOutcomeReason outcomeReason, int retryCount)
         {
             if (!hasLineageIndex)
                 return;
 
             var normalizedRetryCount = Math.Max(0, retryCount);
-
-            var outcome = normalizedRetryCount > 0
-                ? terminalOutcome | HopDecisionFlags.Retried
-                : terminalOutcome;
-
-            LineageNodeOutcomeRegistry.Record(context.PipelineId, nodeId, lineageInputIndex, outcome, normalizedRetryCount);
+            LineageNodeOutcomeRegistry.Record(context.PipelineId, nodeId, lineageInputIndex, outcomeReason, normalizedRetryCount);
         }
     }
 }

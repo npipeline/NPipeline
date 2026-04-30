@@ -21,11 +21,11 @@ public sealed class LineageService : ILineageService
     private const int SmallMaterializationThreshold = 256;
     private static readonly ConcurrentDictionary<Type, Func<IDataStream, string, Guid, string?, LineageOptions?, IDataStream>> WrapSourceDelegates = new();
 
-    private static readonly ConcurrentDictionary<Type, Func<object, string, Guid, string?, LineageOptions?, HopDecisionFlags, CancellationToken, object>>
+    private static readonly ConcurrentDictionary<Type, Func<object, string, Guid, string?, LineageOptions?, LineageOutcomeReason, CancellationToken, object>>
         WrapJoinOutputsDelegates = new();
 
     private static readonly ConcurrentDictionary<Type, Func<object, IAsyncEnumerable<object?>, string, Guid, string?, LineageOptions?,
-        HopDecisionFlags, Type?, CancellationToken, object>> WrapNodeOutputsFromInputDelegates = new();
+        LineageOutcomeReason, Type?, CancellationToken, object>> WrapNodeOutputsFromInputDelegates = new();
 
     private static readonly ConcurrentDictionary<Type, Func<IEnumerable, object>> EnumerableToAsyncDelegates = new();
     private static readonly ConcurrentDictionary<Type, ILineageMapper> MapperInstances = new();
@@ -70,7 +70,7 @@ public sealed class LineageService : ILineageService
 
     /// <inheritdoc />
     public IDataStream WrapNodeOutput(IDataStream output, string currentNodeId, Guid pipelineId, string? pipelineName, LineageOptions? options,
-        HopDecisionFlags outcome, CancellationToken ct = default)
+        LineageOutcomeReason outcome, CancellationToken ct = default)
     {
         var outType = output.GetDataType();
 
@@ -108,7 +108,7 @@ public sealed class LineageService : ILineageService
         Guid pipelineId,
         string? pipelineName,
         LineageOptions? options,
-        HopDecisionFlags outcome,
+        LineageOutcomeReason outcome,
         Type? lineageMapperType = null,
         CancellationToken ct = default)
     {
@@ -240,7 +240,7 @@ public sealed class LineageService : ILineageService
         return hash % mod == 0;
     }
 
-    private static Func<object, string, Guid, string?, LineageOptions?, HopDecisionFlags, CancellationToken, object> BuildWrapJoinOutputsDelegate(
+    private static Func<object, string, Guid, string?, LineageOptions?, LineageOutcomeReason, CancellationToken, object> BuildWrapJoinOutputsDelegate(
         Type outType)
     {
         var method = typeof(LineageService).GetMethod(nameof(WrapJoinOutputsGeneric), BindingFlags.NonPublic | BindingFlags.Static)!.MakeGenericMethod(outType);
@@ -249,19 +249,19 @@ public sealed class LineageService : ILineageService
         var pipelineIdParam = Expression.Parameter(typeof(Guid), "pipelineId");
         var pipelineNameParam = Expression.Parameter(typeof(string), "pipelineName");
         var optsParam = Expression.Parameter(typeof(LineageOptions), "options");
-        var outcomeParam = Expression.Parameter(typeof(HopDecisionFlags), "outcome");
+        var outcomeParam = Expression.Parameter(typeof(LineageOutcomeReason), "outcome");
         var ctParam = Expression.Parameter(typeof(CancellationToken), "ct");
         var castOutput = Expression.Convert(outputParam, typeof(IAsyncEnumerable<>).MakeGenericType(outType));
         var call = Expression.Call(method, castOutput, nodeParam, pipelineIdParam, pipelineNameParam, optsParam, outcomeParam, ctParam);
         var castResult = Expression.Convert(call, typeof(object));
 
-        var lambda = Expression.Lambda<Func<object, string, Guid, string?, LineageOptions?, HopDecisionFlags, CancellationToken, object>>(castResult,
+        var lambda = Expression.Lambda<Func<object, string, Guid, string?, LineageOptions?, LineageOutcomeReason, CancellationToken, object>>(castResult,
             outputParam, nodeParam, pipelineIdParam, pipelineNameParam, optsParam, outcomeParam, ctParam);
 
         return lambda.Compile();
     }
 
-    private static Func<object, IAsyncEnumerable<object?>, string, Guid, string?, LineageOptions?, HopDecisionFlags, Type?, CancellationToken, object>
+    private static Func<object, IAsyncEnumerable<object?>, string, Guid, string?, LineageOptions?, LineageOutcomeReason, Type?, CancellationToken, object>
         BuildWrapNodeOutputFromInputDelegate(Type outType)
     {
         var method = typeof(LineageService)
@@ -274,7 +274,7 @@ public sealed class LineageService : ILineageService
         var pipelineIdParam = Expression.Parameter(typeof(Guid), "pipelineId");
         var pipelineNameParam = Expression.Parameter(typeof(string), "pipelineName");
         var optsParam = Expression.Parameter(typeof(LineageOptions), "options");
-        var outcomeParam = Expression.Parameter(typeof(HopDecisionFlags), "outcome");
+        var outcomeParam = Expression.Parameter(typeof(LineageOutcomeReason), "outcome");
         var mapperTypeParam = Expression.Parameter(typeof(Type), "mapperType");
         var ctParam = Expression.Parameter(typeof(CancellationToken), "ct");
 
@@ -285,7 +285,7 @@ public sealed class LineageService : ILineageService
 
         var castResult = Expression.Convert(call, typeof(object));
 
-        var lambda = Expression.Lambda<Func<object, IAsyncEnumerable<object?>, string, Guid, string?, LineageOptions?, HopDecisionFlags, Type?,
+        var lambda = Expression.Lambda<Func<object, IAsyncEnumerable<object?>, string, Guid, string?, LineageOptions?, LineageOutcomeReason, Type?,
             CancellationToken, object>>(castResult, outputParam, inputCtxParam, nodeParam, pipelineIdParam, pipelineNameParam, optsParam, outcomeParam,
             mapperTypeParam, ctParam);
 
@@ -299,7 +299,7 @@ public sealed class LineageService : ILineageService
         Guid pipelineId,
         string? pipelineName,
         LineageOptions? options,
-        HopDecisionFlags outcome,
+        LineageOutcomeReason outcome,
         Type? mapperType,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
@@ -350,9 +350,9 @@ public sealed class LineageService : ILineageService
         }
     }
 
-    private static bool ShouldMaterializeJoinAggregate(int inputCount, HopDecisionFlags outcome, LineageOptions? options)
+    private static bool ShouldMaterializeJoinAggregate(int inputCount, LineageOutcomeReason outcome, LineageOptions? options)
     {
-        if ((outcome & (HopDecisionFlags.Joined | HopDecisionFlags.Aggregated)) == 0)
+        if (outcome is not LineageOutcomeReason.Joined and not LineageOutcomeReason.Aggregated)
             return false;
 
         var cap = options?.MaterializationCap;
@@ -407,7 +407,7 @@ public sealed class LineageService : ILineageService
         Guid pipelineId,
         string? pipelineName,
         LineageOptions? options,
-        HopDecisionFlags outcome)
+        LineageOutcomeReason outcome)
     {
         var inputCount = inputs.Count;
         var outputCount = outputs.Count;
@@ -511,7 +511,7 @@ public sealed class LineageService : ILineageService
         Guid pipelineId,
         string? pipelineName,
         LineageOptions? options,
-        HopDecisionFlags outcome,
+        LineageOutcomeReason outcome,
         int? outputEmissionCount)
     {
         if (contributorIndices.Count == 0 || contributorCount <= 0)
@@ -539,18 +539,43 @@ public sealed class LineageService : ILineageService
         var representative = lineageContributors[0];
         var traversalPath = MergeTraversalPath(lineageContributors).Add(QualifyNodeId(currentNodeId, pipelineId));
 
-        var hopRecords = representative.LineageHops;
+        var lineageRecords = representative.LineageRecords;
+
+        IReadOnlyList<Guid>? contributorCorrelationIds = null;
+
+        if (options?.IncludeContributorCorrelationIds == true && contributorIndices.Count > 0)
+        {
+            contributorCorrelationIds = contributorIndices
+                .Where(index => index >= 0 && index < inputs.Count)
+                .Select(index => inputs[index].CorrelationId)
+                .Distinct()
+                .OrderBy(static id => id)
+                .ToArray();
+        }
 
         if (representative.Collect)
         {
-            hopRecords = AppendOutcomeHop(hopRecords, currentNodeId, pipelineId, pipelineName, options, outcome, contributorCount,
-                contributorIndices, outputEmissionCount, representative.Data, outputData);
+            lineageRecords = AppendOutcomeHop(
+                lineageRecords,
+                representative.CorrelationId,
+                traversalPath,
+                currentNodeId,
+                pipelineId,
+                pipelineName,
+                options,
+                outcome,
+                contributorCount,
+                contributorIndices,
+                contributorCorrelationIds,
+                outputEmissionCount,
+                representative.Data,
+                outputData);
         }
 
         return new LineagePacket<TOut>(outputData!, representative.CorrelationId, traversalPath)
         {
             Collect = representative.Collect,
-            LineageHops = hopRecords,
+            LineageRecords = lineageRecords,
         };
     }
 
@@ -560,38 +585,55 @@ public sealed class LineageService : ILineageService
         Guid pipelineId,
         string? pipelineName,
         LineageOptions? options,
-        HopDecisionFlags outcome,
+        LineageOutcomeReason outcome,
         int contributorCount,
         IReadOnlyList<int>? contributorIndices,
         int? outputEmissionCount)
     {
         var correlationId = Guid.NewGuid();
         var collect = ShouldCollect(correlationId, options);
+        var traversalPath = ImmutableList.Create(QualifyNodeId(currentNodeId, pipelineId));
 
-        var hopRecords = ImmutableList<LineageHop>.Empty;
+        var lineageRecords = ImmutableList<LineageRecord>.Empty;
 
         if (collect)
         {
-            hopRecords = AppendOutcomeHop(hopRecords, currentNodeId, pipelineId, pipelineName, options, outcome, contributorCount,
-                contributorIndices, outputEmissionCount, null, outputData);
+            lineageRecords = AppendOutcomeHop(
+                lineageRecords,
+                correlationId,
+                traversalPath,
+                currentNodeId,
+                pipelineId,
+                pipelineName,
+                options,
+                outcome,
+                contributorCount,
+                contributorIndices,
+                null,
+                outputEmissionCount,
+                null,
+                outputData);
         }
 
-        return new LineagePacket<TOut>(outputData!, correlationId, [QualifyNodeId(currentNodeId, pipelineId)])
+        return new LineagePacket<TOut>(outputData!, correlationId, traversalPath)
         {
             Collect = collect,
-            LineageHops = hopRecords,
+            LineageRecords = lineageRecords,
         };
     }
 
-    private static ImmutableList<LineageHop> AppendOutcomeHop(
-        ImmutableList<LineageHop> existing,
+    private static ImmutableList<LineageRecord> AppendOutcomeHop(
+        ImmutableList<LineageRecord> existing,
+        Guid correlationId,
+        IReadOnlyList<string> traversalPath,
         string nodeId,
         Guid pipelineId,
         string? pipelineName,
         LineageOptions? options,
-        HopDecisionFlags outcome,
+        LineageOutcomeReason outcome,
         int contributorCount,
         IReadOnlyList<int>? contributorIndices,
+        IReadOnlyList<Guid>? contributorCorrelationIds,
         int? outputEmissionCount,
         object? inputSnapshot,
         object? outputSnapshot)
@@ -624,20 +666,31 @@ public sealed class LineageService : ILineageService
             ? contributorIndices
             : null;
 
-        var hop = new LineageHop(
+        var record = new LineageRecord(
+            correlationId,
             nodeId,
+            pipelineId,
             outcome,
-            cardinality,
+            false,
+            traversalPath,
+            pipelineName,
+            DateTimeOffset.UtcNow,
+            null,
+            contributorCorrelationIds,
+            ancestryField,
             contributorField,
             outputEmissionField,
-            ancestryField,
-            truncated,
-            pipelineId,
+            cardinality,
             SnapshotValue(inputSnapshot, options),
             SnapshotValue(outputSnapshot, options),
-            pipelineName);
+            options?.RedactData == true
+                ? null
+                : outputSnapshot ?? inputSnapshot)
+        {
+            Truncated = truncated,
+        }.Normalize();
 
-        return existing.Add(hop);
+        return existing.Add(record);
     }
 
     private static ImmutableList<string> MergeTraversalPath(IReadOnlyList<InputLineageEntry> contributors)
@@ -672,10 +725,10 @@ public sealed class LineageService : ILineageService
         {
             // ReSharper disable once RedundantCast - Without the cast, we'd get a runtime error trying to spread null.
             var traversal = envelope.TraversalPath as ImmutableList<string> ?? [.. envelope.TraversalPath];
-            var hops = envelope.LineageHops as ImmutableList<LineageHop> ?? [.. envelope.LineageHops];
+            var records = envelope.LineageRecords as ImmutableList<LineageRecord> ?? [.. envelope.LineageRecords];
             // ReSharper restore RedundantCast
 
-            return new InputLineageEntry(envelope.Data, envelope.CorrelationId, traversal, hops, envelope.Collect, true, context);
+            return new InputLineageEntry(envelope.Data, envelope.CorrelationId, traversal, records, envelope.Collect, true, context);
         }
 
         if (context is RawInputContext raw)
@@ -698,14 +751,15 @@ public sealed class LineageService : ILineageService
         Guid pipelineId,
         string? pipelineName,
         LineageOptions? options,
-        HopDecisionFlags outcome,
+        LineageOutcomeReason outcome,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
         await foreach (var item in output.WithCancellation(ct).ConfigureAwait(false))
         {
             var correlationId = Guid.NewGuid();
             var collect = ShouldCollect(correlationId, options);
-            var hopRecords = ImmutableList<LineageHop>.Empty;
+            var traversalPath = ImmutableList.Create(QualifyNodeId(currentNodeId, pipelineId));
+            var lineageRecords = ImmutableList<LineageRecord>.Empty;
 
             if (collect)
             {
@@ -715,27 +769,35 @@ public sealed class LineageService : ILineageService
 
                 if (cap > 0)
                 {
-                    var seed = new LineageHop(
+                    var seed = new LineageRecord(
+                        correlationId,
                         currentNodeId,
+                        pipelineId,
                         outcome,
+                        false,
+                        traversalPath,
+                        pipelineName,
+                        DateTimeOffset.UtcNow,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
                         ObservedCardinality.Unknown,
                         null,
-                        null,
-                        null,
-                        false,
-                        pipelineId,
-                        null,
                         SnapshotValue(item, options),
-                        pipelineName);
+                        options?.RedactData == true
+                            ? null
+                            : item).Normalize();
 
-                    hopRecords = hopRecords.Add(seed);
+                    lineageRecords = lineageRecords.Add(seed);
                 }
             }
 
-            yield return new LineagePacket<T>(item!, correlationId, [$"{pipelineId:N}::{currentNodeId}"])
+            yield return new LineagePacket<T>(item!, correlationId, traversalPath)
             {
                 Collect = collect,
-                LineageHops = hopRecords,
+                LineageRecords = lineageRecords,
             };
         }
     }
@@ -807,7 +869,7 @@ public sealed class LineageService : ILineageService
         object? Data,
         Guid CorrelationId,
         ImmutableList<string> TraversalPath,
-        ImmutableList<LineageHop> LineageHops,
+        ImmutableList<LineageRecord> LineageRecords,
         bool Collect,
         bool HasLineage,
         object? OriginalPacket);

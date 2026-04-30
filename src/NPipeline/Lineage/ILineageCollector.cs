@@ -17,11 +17,10 @@ public interface ILineageCollector
     LineagePacket<T> CreateLineagePacket<T>(T item, string sourceNodeId);
 
     /// <summary>
-    ///     Records a hop in the lineage trail for an item.
+    ///     Records a lineage event.
     /// </summary>
-    /// <param name="correlationId">The unique ID of the item being tracked.</param>
-    /// <param name="hop">The lineage hop to record.</param>
-    void RecordHop(Guid correlationId, LineageHop hop);
+    /// <param name="record">Record to persist.</param>
+    void Record(LineageRecord record);
 
     /// <summary>
     ///     Determines if lineage should be collected for a given item based on sampling settings.
@@ -32,17 +31,30 @@ public interface ILineageCollector
     bool ShouldCollectLineage(Guid correlationId, LineageOptions? options);
 
     /// <summary>
-    ///     Gets the lineage information for a specific item.
+    ///     Gets the complete event history for a correlation.
     /// </summary>
     /// <param name="correlationId">The unique ID of the item.</param>
-    /// <returns>The lineage information, or null if not found.</returns>
-    LineageInfo? GetLineageInfo(Guid correlationId);
+    /// <returns>Ordered event history for the correlation.</returns>
+    IReadOnlyList<LineageRecord> GetCorrelationHistory(Guid correlationId);
 
     /// <summary>
-    ///     Gets all collected lineage information.
+    ///     Gets the final terminal reason for a correlation, when present.
     /// </summary>
-    /// <returns>A read-only collection of all lineage information.</returns>
-    IReadOnlyList<LineageInfo> GetAllLineageInfo();
+    /// <param name="correlationId">The unique ID of the item.</param>
+    /// <returns>Terminal reason or null when unresolved.</returns>
+    LineageOutcomeReason? GetTerminalReason(Guid correlationId);
+
+    /// <summary>
+    ///     Gets all collected lineage records across all correlations.
+    /// </summary>
+    /// <returns>A read-only collection of all lineage records.</returns>
+    IReadOnlyList<LineageRecord> GetAllRecords();
+
+    /// <summary>
+    ///     Gets correlation ids that do not have a terminal lineage record.
+    /// </summary>
+    /// <returns>Correlation ids with unresolved terminal state.</returns>
+    IReadOnlyList<Guid> GetUnresolvedCorrelations();
 
     /// <summary>
     ///     Clears all collected lineage information.

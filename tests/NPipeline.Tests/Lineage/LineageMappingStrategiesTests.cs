@@ -35,7 +35,7 @@ public sealed class LineageMappingStrategiesTests
                 ImmutableList.Create($"node_{index}"))
             {
                 Collect = true,
-                LineageHops = ImmutableList<LineageHop>.Empty,
+                LineageRecords = ImmutableList<LineageRecord>.Empty,
             };
 
             index++;
@@ -230,7 +230,7 @@ public sealed class LineageMappingStrategiesTests
             new(42, correlationId, ImmutableList.Create("input_node"))
             {
                 Collect = true,
-                LineageHops = ImmutableList<LineageHop>.Empty,
+                LineageRecords = ImmutableList<LineageRecord>.Empty,
             },
         ];
 
@@ -255,7 +255,7 @@ public sealed class LineageMappingStrategiesTests
     }
 
     [Fact]
-    public async Task StreamingOneToOneStrategy_MaxHopRecordsCap_TruncatesLineageHops()
+    public async Task StreamingOneToOneStrategy_MaxHopRecordsCap_TruncatesLineageRecords()
     {
         // Arrange
         var inputPackets = CreatePacketStream(1);
@@ -274,7 +274,7 @@ public sealed class LineageMappingStrategiesTests
 
         // Assert
         _ = results.Should().HaveCount(1);
-        _ = results[0].LineageHops.Should().HaveCount(1);
+        _ = results[0].LineageRecords.Should().HaveCount(1);
     }
 
     [Fact]
@@ -300,8 +300,8 @@ public sealed class LineageMappingStrategiesTests
 
         foreach (var packet in results)
         {
-            _ = packet.LineageHops.Should().HaveCount(1);
-            _ = packet.LineageHops[0].OutputEmissionCount.Should().Be(1);
+            _ = packet.LineageRecords.Should().HaveCount(1);
+            _ = packet.LineageRecords[0].OutputEmissionCount.Should().Be(1);
         }
     }
 
@@ -310,7 +310,7 @@ public sealed class LineageMappingStrategiesTests
     {
         // Arrange
         LineageNodeOutcomeRegistry.BeginNode(s_pipelineId, "test_node");
-        LineageNodeOutcomeRegistry.Record(s_pipelineId, "test_node", 0, HopDecisionFlags.Emitted | HopDecisionFlags.Retried, 3);
+        LineageNodeOutcomeRegistry.Record(s_pipelineId, "test_node", 0, LineageOutcomeReason.Emitted, 3);
 
         var inputPackets = CreatePacketStream(1);
         var outputData = CreateDataStream("a");
@@ -328,9 +328,9 @@ public sealed class LineageMappingStrategiesTests
 
         // Assert
         _ = results.Should().HaveCount(1);
-        _ = results[0].LineageHops.Should().HaveCount(1);
-        _ = results[0].LineageHops[0].Outcome.HasFlag(HopDecisionFlags.Retried).Should().BeTrue();
-        _ = results[0].LineageHops[0].RetryCount.Should().Be(3);
+        _ = results[0].LineageRecords.Should().HaveCount(1);
+        _ = results[0].LineageRecords[0].OutcomeReason.Should().Be(LineageOutcomeReason.Emitted);
+        _ = results[0].LineageRecords[0].RetryCount.Should().Be(3);
 
         // Cleanup for isolation
         LineageNodeOutcomeRegistry.ClearNode(s_pipelineId, "test_node");
@@ -342,7 +342,7 @@ public sealed class LineageMappingStrategiesTests
         // Arrange
         const string nodeId = "test_node_non_retry";
         LineageNodeOutcomeRegistry.BeginNode(s_pipelineId, nodeId);
-        LineageNodeOutcomeRegistry.Record(s_pipelineId, nodeId, 0, HopDecisionFlags.DeadLettered | HopDecisionFlags.Error, 0);
+        LineageNodeOutcomeRegistry.Record(s_pipelineId, nodeId, 0, LineageOutcomeReason.DeadLettered, 0);
 
         var inputPackets = CreatePacketStream(1);
         var outputData = CreateDataStream("a");
@@ -360,14 +360,10 @@ public sealed class LineageMappingStrategiesTests
 
         // Assert
         _ = results.Should().HaveCount(1);
-        _ = results[0].LineageHops.Should().HaveCount(1);
+        _ = results[0].LineageRecords.Should().HaveCount(1);
 
-        var outcome = results[0].LineageHops[0].Outcome;
-
-        _ = outcome.HasFlag(HopDecisionFlags.DeadLettered).Should().BeTrue();
-        _ = outcome.HasFlag(HopDecisionFlags.Error).Should().BeTrue();
-        _ = outcome.HasFlag(HopDecisionFlags.Retried).Should().BeFalse();
-        _ = results[0].LineageHops[0].RetryCount.Should().BeNull();
+        _ = results[0].LineageRecords[0].OutcomeReason.Should().Be(LineageOutcomeReason.DeadLettered);
+        _ = results[0].LineageRecords[0].RetryCount.Should().BeNull();
 
         // Cleanup for isolation
         LineageNodeOutcomeRegistry.ClearNode(s_pipelineId, nodeId);
@@ -499,7 +495,7 @@ public sealed class LineageMappingStrategiesTests
         // Arrange
         const string nodeId = "test_node_materialized_non_retry";
         LineageNodeOutcomeRegistry.BeginNode(s_pipelineId, nodeId);
-        LineageNodeOutcomeRegistry.Record(s_pipelineId, nodeId, 0, HopDecisionFlags.DeadLettered | HopDecisionFlags.Error, 0);
+        LineageNodeOutcomeRegistry.Record(s_pipelineId, nodeId, 0, LineageOutcomeReason.DeadLettered, 0);
 
         var inputPackets = CreatePacketStream(1);
         var outputData = CreateDataStream("a");
@@ -517,14 +513,10 @@ public sealed class LineageMappingStrategiesTests
 
         // Assert
         _ = results.Should().HaveCount(1);
-        _ = results[0].LineageHops.Should().HaveCount(1);
+        _ = results[0].LineageRecords.Should().HaveCount(1);
 
-        var outcome = results[0].LineageHops[0].Outcome;
-
-        _ = outcome.HasFlag(HopDecisionFlags.DeadLettered).Should().BeTrue();
-        _ = outcome.HasFlag(HopDecisionFlags.Error).Should().BeTrue();
-        _ = outcome.HasFlag(HopDecisionFlags.Retried).Should().BeFalse();
-        _ = results[0].LineageHops[0].RetryCount.Should().BeNull();
+        _ = results[0].LineageRecords[0].OutcomeReason.Should().Be(LineageOutcomeReason.DeadLettered);
+        _ = results[0].LineageRecords[0].RetryCount.Should().BeNull();
 
         // Cleanup for isolation
         LineageNodeOutcomeRegistry.ClearNode(s_pipelineId, nodeId);
@@ -601,10 +593,10 @@ public sealed class LineageMappingStrategiesTests
 
         foreach (var packet in results)
         {
-            _ = packet.LineageHops.Should().HaveCount(1);
-            _ = packet.LineageHops[0].AncestryInputIndices.Should().BeEquivalentTo([0]);
-            _ = packet.LineageHops[0].InputContributorCount.Should().Be(1);
-            _ = packet.LineageHops[0].OutputEmissionCount.Should().Be(3);
+            _ = packet.LineageRecords.Should().HaveCount(1);
+            _ = packet.LineageRecords[0].ContributorInputIndices.Should().BeEquivalentTo([0]);
+            _ = packet.LineageRecords[0].InputContributorCount.Should().Be(1);
+            _ = packet.LineageRecords[0].OutputEmissionCount.Should().Be(3);
         }
     }
 
@@ -628,7 +620,7 @@ public sealed class LineageMappingStrategiesTests
 
         // Assert
         _ = results.Should().HaveCount(4);
-        var outputEmissionByOutputData = results.ToDictionary(r => r.Data, r => r.LineageHops[0].OutputEmissionCount);
+        var outputEmissionByOutputData = results.ToDictionary(r => r.Data, r => r.LineageRecords[0].OutputEmissionCount);
 
         _ = outputEmissionByOutputData["out-0"].Should().Be(2);
         _ = outputEmissionByOutputData["out-1"].Should().BeNull();

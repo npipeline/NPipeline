@@ -12,11 +12,6 @@ namespace NPipeline.Execution.Lineage.Strategies;
 /// <summary>
 ///     Base class providing shared lineage mapping helper methods for strategy implementations.
 /// </summary>
-/// <remarks>
-///     Allocation notes:
-///     - Materialization path uses lists sized to observed counts (or cap) and reuses local collections.
-///     - Streaming path enumerates in lock-step minimizing buffering.
-/// </remarks>
 internal abstract class LineageMappingStrategyBase
 {
     private static readonly JsonSerializerOptions SnapshotSerializerOptions = new(JsonSerializerDefaults.Web)
@@ -32,40 +27,14 @@ internal abstract class LineageMappingStrategyBase
 
         try
         {
-            // Serialize/deserialize to produce an immutable-by-value snapshot of the object graph.
             return JsonSerializer.SerializeToElement(value, SnapshotSerializerOptions);
         }
         catch
         {
-            // Best-effort snapshot: keep lineage flow robust even for non-serializable payloads.
             return value.ToString();
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected static ImmutableList<LineageHop> MaybeAppendHop(ImmutableList<LineageHop> existing, string nodeId, Guid pipelineId,
-        string? pipelineName, LineageOptions? opts, int? outputEmissionCount, object? inputSnapshot, object? outputSnapshot,
-        HopDecisionFlags outcome = HopDecisionFlags.Emitted, int? retryCount = null)
-    {
-        var cap = opts != null && opts.MaxHopRecordsPerItem > 0
-            ? opts.MaxHopRecordsPerItem
-            : int.MaxValue;
-
-        if (existing.Count >= cap)
-            return existing;
-
-        var truncated = existing.Count + 1 >= cap;
-
-        var rec = new LineageHop(nodeId, outcome, ObservedCardinality.One, null, outputEmissionCount, null, truncated, pipelineId,
-            SnapshotValue(inputSnapshot, opts), SnapshotValue(outputSnapshot, opts), pipelineName, retryCount);
-
-        return existing.Add(rec);
-    }
-
-    /// <summary>
-    ///     Returns a traversal-path segment qualified with the pipeline identity.
-    ///     This matches the scheme used by <see cref="NPipeline.Lineage.LineageCollector" /> when recording hops with a non-empty pipeline id.
-    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected static string QualifyNodeId(string nodeId, Guid pipelineId)
     {
@@ -73,11 +42,50 @@ internal abstract class LineageMappingStrategyBase
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected static ImmutableList<LineageHop> AppendHop(ImmutableList<LineageHop> existing, string nodeId, Guid pipelineId,
-        string? pipelineName, LineageOptions? opts, HopDecisionFlags outcome, ObservedCardinality cardinality, IReadOnlyList<int>? ancestry,
-        int? outputEmissionCount, object? inputSnapshot, object? outputSnapshot, int? retryCount = null)
+    private static int OutcomePriority(LineageOutcomeReason reason)
     {
-        var cap = opts != null && opts.MaxHopRecordsPerItem > 0
+        return reason switch
+        {
+            LineageOutcomeReason.DeadLettered => 700,
+            LineageOutcomeReason.Error => 600,
+            LineageOutcomeReason.FilteredOut => 500,
+            LineageOutcomeReason.DroppedByBackpressure => 400,
+            LineageOutcomeReason.Aggregated => 300,
+            LineageOutcomeReason.Joined => 200,
+            LineageOutcomeReason.ConsumedWithoutEmission => 150,
+            _ => 100,
+        };
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static LineageOutcomeReason MergeOutcomeReason(LineageOutcomeReason current, LineageOutcomeReason candidate)
+    {
+        return OutcomePriority(candidate) >= OutcomePriority(current)
+            ? candidate
+            : current;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static ImmutableList<LineageRecord> AppendRecord(
+        ImmutableList<LineageRecord> existing,
+        Guid correlationId,
+        IReadOnlyList<string> traversalPath,
+        string nodeId,
+        Guid pipelineId,
+        string? pipelineName,
+        LineageOptions? opts,
+        LineageOutcomeReason outcomeReason,
+        bool isTerminal,
+        ObservedCardinality cardinality,
+        IReadOnlyList<int>? contributorInputIndices,
+        IReadOnlyList<Guid>? contributorCorrelationIds,
+        int? inputContributorCount,
+        int? outputEmissionCount,
+        object? inputSnapshot,
+        object? outputSnapshot,
+        int? retryCount)
+    {
+        var cap = opts is not null && opts.MaxHopRecordsPerItem > 0
             ? opts.MaxHopRecordsPerItem
             : int.MaxValue;
 
@@ -86,21 +94,116 @@ internal abstract class LineageMappingStrategyBase
 
         var truncated = existing.Count + 1 >= cap;
 
-        var rec = new LineageHop(nodeId, outcome, cardinality, ancestry?.Count, outputEmissionCount, ancestry, truncated, pipelineId,
-            SnapshotValue(inputSnapshot, opts), SnapshotValue(outputSnapshot, opts), pipelineName, retryCount);
+        var normalizedContributors = opts?.IncludeContributorCorrelationIds == true
+            ? contributorCorrelationIds
+            : null;
 
-        return existing.Add(rec);
+        var record = new LineageRecord(
+            correlationId,
+            nodeId,
+            pipelineId,
+            outcomeReason,
+            isTerminal,
+            traversalPath,
+            pipelineName,
+            DateTimeOffset.UtcNow,
+            retryCount,
+            normalizedContributors,
+            contributorInputIndices,
+            inputContributorCount,
+            outputEmissionCount,
+            cardinality,
+            SnapshotValue(inputSnapshot, opts),
+            SnapshotValue(outputSnapshot, opts),
+            opts?.RedactData == true
+                ? null
+                : outputSnapshot ?? inputSnapshot)
+        {
+            Truncated = truncated,
+        }.Normalize();
+
+        return existing.Add(record);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static HopDecisionFlags WithoutRetry(HopDecisionFlags flags)
+    protected static ImmutableList<LineageRecord> MaybeAppendHop(
+        ImmutableList<LineageRecord> existing,
+        Guid correlationId,
+        IReadOnlyList<string> traversalPath,
+        string nodeId,
+        Guid pipelineId,
+        string? pipelineName,
+        LineageOptions? opts,
+        int? outputEmissionCount,
+        object? inputSnapshot,
+        object? outputSnapshot,
+        LineageOutcomeReason outcomeReason = LineageOutcomeReason.Emitted,
+        int? retryCount = null)
     {
-        return flags & ~HopDecisionFlags.Retried;
+        return AppendRecord(
+            existing,
+            correlationId,
+            traversalPath,
+            nodeId,
+            pipelineId,
+            pipelineName,
+            opts,
+            outcomeReason,
+            false,
+            ObservedCardinality.One,
+            null,
+            null,
+            null,
+            outputEmissionCount,
+            inputSnapshot,
+            outputSnapshot,
+            retryCount);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected static (HopDecisionFlags Outcome, int? RetryCount) ResolveRecordedOutcome(Guid pipelineId, string nodeId, int inputIndex,
-        HopDecisionFlags baseOutcome)
+    protected static ImmutableList<LineageRecord> AppendHop(
+        ImmutableList<LineageRecord> existing,
+        Guid correlationId,
+        IReadOnlyList<string> traversalPath,
+        string nodeId,
+        Guid pipelineId,
+        string? pipelineName,
+        LineageOptions? opts,
+        LineageOutcomeReason outcomeReason,
+        ObservedCardinality cardinality,
+        IReadOnlyList<int>? ancestry,
+        IReadOnlyList<Guid>? contributorCorrelationIds,
+        int? outputEmissionCount,
+        object? inputSnapshot,
+        object? outputSnapshot,
+        int? retryCount = null)
+    {
+        return AppendRecord(
+            existing,
+            correlationId,
+            traversalPath,
+            nodeId,
+            pipelineId,
+            pipelineName,
+            opts,
+            outcomeReason,
+            false,
+            cardinality,
+            ancestry,
+            contributorCorrelationIds,
+            ancestry?.Count,
+            outputEmissionCount,
+            inputSnapshot,
+            outputSnapshot,
+            retryCount);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    protected static (LineageOutcomeReason Outcome, int? RetryCount) ResolveRecordedOutcome(
+        Guid pipelineId,
+        string nodeId,
+        int inputIndex,
+        LineageOutcomeReason baseOutcome)
     {
         if (!LineageNodeOutcomeRegistry.TryGet(pipelineId, nodeId, inputIndex, out var recorded))
             return (baseOutcome, null);
@@ -109,23 +212,22 @@ internal abstract class LineageMappingStrategyBase
             ? recorded.RetryCount
             : (int?)null;
 
-        var outcome = baseOutcome | WithoutRetry(recorded.OutcomeFlags);
-
-        if ((recorded.OutcomeFlags & HopDecisionFlags.Retried) != 0 || recorded.RetryCount > 0)
-            outcome |= HopDecisionFlags.Retried;
+        var outcome = MergeOutcomeReason(baseOutcome, recorded.OutcomeReason);
 
         return (outcome, retryCount);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static (HopDecisionFlags Outcome, int? RetryCount) ResolveRecordedOutcome(Guid pipelineId, string nodeId,
-        IReadOnlyList<int>? contributorIndices, HopDecisionFlags baseOutcome)
+    private static (LineageOutcomeReason Outcome, int? RetryCount) ResolveRecordedOutcome(
+        Guid pipelineId,
+        string nodeId,
+        IReadOnlyList<int>? contributorIndices,
+        LineageOutcomeReason baseOutcome)
     {
         if (contributorIndices is null || contributorIndices.Count == 0)
             return (baseOutcome, null);
 
         var outcome = baseOutcome;
-        var hasRetry = false;
         var maxRetryCount = 0;
 
         foreach (var contributorIndex in contributorIndices)
@@ -133,24 +235,19 @@ internal abstract class LineageMappingStrategyBase
             if (!LineageNodeOutcomeRegistry.TryGet(pipelineId, nodeId, contributorIndex, out var recorded))
                 continue;
 
-            outcome |= WithoutRetry(recorded.OutcomeFlags);
-
-            if ((recorded.OutcomeFlags & HopDecisionFlags.Retried) != 0 || recorded.RetryCount > 0)
-            {
-                hasRetry = true;
-                maxRetryCount = Math.Max(maxRetryCount, recorded.RetryCount);
-            }
+            outcome = MergeOutcomeReason(outcome, recorded.OutcomeReason);
+            maxRetryCount = Math.Max(maxRetryCount, recorded.RetryCount);
         }
-
-        if (hasRetry)
-            outcome |= HopDecisionFlags.Retried;
 
         return (outcome, maxRetryCount > 0
             ? maxRetryCount
             : null);
     }
 
-    private static int? ResolveOutputEmissionCount(IReadOnlyList<int>? contributors, IReadOnlyDictionary<int, int>? outputCountByInput, int inputCount)
+    private static int? ResolveOutputEmissionCount(
+        IReadOnlyList<int>? contributors,
+        IReadOnlyDictionary<int, int>? outputCountByInput,
+        int inputCount)
     {
         if (contributors is null || contributors.Count == 0 || outputCountByInput is null)
             return null;
@@ -172,17 +269,45 @@ internal abstract class LineageMappingStrategyBase
             }
 
             if (resolved.Value != contributorOutputCount)
-            {
-                // A single scalar cannot represent conflicting fan-out counts across contributors.
                 return null;
-            }
         }
 
         return resolved;
     }
 
-    protected static IEnumerable<LineagePacket<TOut>> MapMaterialized<TIn, TOut>(List<LineagePacket<TIn>> inputs, List<TOut> outputs, string nodeId,
-        Guid pipelineId, string? pipelineName, TransformCardinality card, LineageOptions? opts, Type? mapperType, ILineageMapper? mapperInstance)
+    private static IReadOnlyList<Guid>? ResolveContributorCorrelationIds<TIn>(
+        IReadOnlyList<int>? contributorIndices,
+        IReadOnlyList<LineagePacket<TIn>> inputs,
+        LineageOptions? opts)
+    {
+        if (opts?.IncludeContributorCorrelationIds != true || contributorIndices is null || contributorIndices.Count == 0)
+            return null;
+
+        var ids = new List<Guid>(contributorIndices.Count);
+
+        foreach (var contributorIndex in contributorIndices)
+        {
+            if (contributorIndex < 0 || contributorIndex >= inputs.Count)
+                continue;
+
+            ids.Add(inputs[contributorIndex].CorrelationId);
+        }
+
+        return ids.Count > 0
+            ? ids.Distinct().OrderBy(static id => id).ToArray()
+            : null;
+    }
+
+    protected static IEnumerable<LineagePacket<TOut>> MapMaterialized<TIn, TOut>(
+        List<LineagePacket<TIn>> inputs,
+        List<TOut> outputs,
+        string nodeId,
+        Guid pipelineId,
+        string? pipelineName,
+        TransformCardinality card,
+        LineageOptions? opts,
+        Type? mapperType,
+        ILineageMapper? mapperInstance)
     {
         Dictionary<int, IReadOnlyList<int>>? recordsByOutput = null;
         Dictionary<int, int>? outputCountByInput = null;
@@ -310,11 +435,11 @@ internal abstract class LineageMappingStrategyBase
                     contributorsForEmission = [oi];
             }
 
-            var outcome = ancestry is not null && ancestry.Count > 1
-                ? HopDecisionFlags.Aggregated
-                : HopDecisionFlags.Emitted;
+            var outcomeReason = ancestry is not null && ancestry.Count > 1
+                ? LineageOutcomeReason.Aggregated
+                : LineageOutcomeReason.Emitted;
 
-            var (effectiveOutcome, retryCount) = ResolveRecordedOutcome(pipelineId, nodeId, contributorsForEmission, outcome);
+            var (effectiveOutcome, retryCount) = ResolveRecordedOutcome(pipelineId, nodeId, contributorsForEmission, outcomeReason);
 
             var cardinalityObserved = ancestry is null
                 ? ObservedCardinality.Unknown
@@ -330,33 +455,79 @@ internal abstract class LineageMappingStrategyBase
                     ? 1
                     : null;
 
+            var contributorCorrelationIds = ResolveContributorCorrelationIds(contributorsForEmission, inputs, opts);
+
             if (inputPacket is not null)
             {
-                var hopRecords = inputPacket.LineageHops;
+                var traversalPath = inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId));
+                var lineageRecords = inputPacket.LineageRecords;
 
                 if (inputPacket.Collect)
                 {
-                    hopRecords = AppendHop(hopRecords, nodeId, pipelineId, pipelineName, opts, effectiveOutcome, cardinalityObserved, ancestry,
-                        outputEmissionCount, inputPacket.Data, outputData, retryCount);
+                    lineageRecords = AppendHop(
+                        lineageRecords,
+                        inputPacket.CorrelationId,
+                        traversalPath,
+                        nodeId,
+                        pipelineId,
+                        pipelineName,
+                        opts,
+                        effectiveOutcome,
+                        cardinalityObserved,
+                        ancestry,
+                        contributorCorrelationIds,
+                        outputEmissionCount,
+                        inputPacket.Data,
+                        outputData,
+                        retryCount);
                 }
 
-                yield return new LineagePacket<TOut>(outputData, inputPacket.CorrelationId,
-                        inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId)))
-                    { Collect = inputPacket.Collect, LineageHops = hopRecords };
+                yield return new LineagePacket<TOut>(outputData, inputPacket.CorrelationId, traversalPath)
+                { Collect = inputPacket.Collect, LineageRecords = lineageRecords };
             }
             else
             {
-                yield return new LineagePacket<TOut>(outputData, Guid.NewGuid(), ImmutableList.Create(QualifyNodeId(nodeId, pipelineId)))
+                var correlationId = Guid.NewGuid();
+                var traversalPath = ImmutableList.Create(QualifyNodeId(nodeId, pipelineId));
+                var records = ImmutableList<LineageRecord>.Empty;
+
+                if (opts?.EmitIntermediateNodeRecords != false)
+                {
+                    records = AppendHop(
+                        records,
+                        correlationId,
+                        traversalPath,
+                        nodeId,
+                        pipelineId,
+                        pipelineName,
+                        opts,
+                        LineageOutcomeReason.Emitted,
+                        ObservedCardinality.Zero,
+                        null,
+                        null,
+                        null,
+                        null,
+                        outputData,
+                        null);
+                }
+
+                yield return new LineagePacket<TOut>(outputData, correlationId, traversalPath)
                 {
                     Collect = true,
-                    LineageHops = ImmutableList<LineageHop>.Empty,
+                    LineageRecords = records,
                 };
             }
         }
     }
 
-    protected static async IAsyncEnumerable<LineagePacket<TOut>> PositionalStreamingMap<TIn, TOut>(IAsyncEnumerable<LineagePacket<TIn>> inAll,
-        IAsyncEnumerable<TOut> outAll, string nodeId, Guid pipelineId, string? pipelineName, TransformCardinality card, LineageOptions? opts,
+    protected static async IAsyncEnumerable<LineagePacket<TOut>> PositionalStreamingMap<TIn, TOut>(
+        IAsyncEnumerable<LineagePacket<TIn>> inAll,
+        IAsyncEnumerable<TOut> outAll,
+        string nodeId,
+        Guid pipelineId,
+        string? pipelineName,
+        TransformCardinality card,
+        LineageOptions? opts,
         [EnumeratorCancellation] CancellationToken token)
     {
         await using var inputEnumerator = inAll.GetAsyncEnumerator(token);
@@ -373,18 +544,29 @@ internal abstract class LineageMappingStrategyBase
             {
                 var inputPacket = inputEnumerator.Current;
                 var outputData = outputEnumerator.Current;
-                var hopRecords = inputPacket.LineageHops;
-                var (effectiveOutcome, retryCount) = ResolveRecordedOutcome(pipelineId, nodeId, matchedInputCount, HopDecisionFlags.Emitted);
+                var traversalPath = inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId));
+                var lineageRecords = inputPacket.LineageRecords;
+                var (effectiveOutcome, retryCount) = ResolveRecordedOutcome(pipelineId, nodeId, matchedInputCount, LineageOutcomeReason.Emitted);
 
                 if (inputPacket.Collect)
                 {
-                    hopRecords = MaybeAppendHop(hopRecords, nodeId, pipelineId, pipelineName, opts, 1, inputPacket.Data, outputData,
-                        effectiveOutcome, retryCount);
+                    lineageRecords = MaybeAppendHop(
+                        lineageRecords,
+                        inputPacket.CorrelationId,
+                        traversalPath,
+                        nodeId,
+                        pipelineId,
+                        pipelineName,
+                        opts,
+                        1,
+                        inputPacket.Data,
+                        outputData,
+                        effectiveOutcome,
+                        retryCount);
                 }
 
-                yield return new LineagePacket<TOut>(outputData, inputPacket.CorrelationId,
-                        inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId)))
-                    { Collect = inputPacket.Collect, LineageHops = hopRecords };
+                yield return new LineagePacket<TOut>(outputData, inputPacket.CorrelationId, traversalPath)
+                { Collect = inputPacket.Collect, LineageRecords = lineageRecords };
 
                 matchedInputCount++;
                 matchedOutputCount++;

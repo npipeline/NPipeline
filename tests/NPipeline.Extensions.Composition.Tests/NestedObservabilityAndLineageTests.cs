@@ -93,36 +93,73 @@ public class NestedObservabilityAndLineageTests
         var collector = new LineageCollector();
         var packet = collector.CreateLineagePacket("test-data", "source");
         var childPipelineId = Guid.NewGuid();
+        var sourcePath = new[] { "source" };
+        var childTransformPath = new[] { "source", $"{childPipelineId:N}::transform" };
+        var childOutputPath = new[] { "source", $"{childPipelineId:N}::transform", $"{childPipelineId:N}::output" };
 
-        // Act — record hops with pipeline name context
-        collector.RecordHop(packet.CorrelationId, new LineageHop(
-            "source", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false,
-            PipelineId: Guid.Empty));
+        // Act — record lineage events with pipeline name context
+        collector.Record(new LineageRecord(
+            packet.CorrelationId,
+            "source",
+            Guid.Empty,
+            LineageOutcomeReason.Emitted,
+            false,
+            sourcePath,
+            null,
+            DateTimeOffset.UtcNow,
+            null,
+            null,
+            null,
+            1,
+            1,
+            ObservedCardinality.One));
 
-        collector.RecordHop(packet.CorrelationId, new LineageHop(
-            "transform", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false,
-            PipelineId: childPipelineId,
-            PipelineName: "ChildSubPipeline"));
+        collector.Record(new LineageRecord(
+            packet.CorrelationId,
+            "transform",
+            childPipelineId,
+            LineageOutcomeReason.Emitted,
+            false,
+            childTransformPath,
+            "ChildSubPipeline",
+            DateTimeOffset.UtcNow,
+            null,
+            null,
+            null,
+            1,
+            1,
+            ObservedCardinality.One));
 
-        collector.RecordHop(packet.CorrelationId, new LineageHop(
-            "output", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false,
-            PipelineId: childPipelineId,
-            PipelineName: "ChildSubPipeline"));
+        collector.Record(new LineageRecord(
+            packet.CorrelationId,
+            "output",
+            childPipelineId,
+            LineageOutcomeReason.Emitted,
+            true,
+            childOutputPath,
+            "ChildSubPipeline",
+            DateTimeOffset.UtcNow,
+            null,
+            null,
+            null,
+            1,
+            1,
+            ObservedCardinality.One));
 
         // Assert
-        var lineageInfo = collector.GetLineageInfo(packet.CorrelationId);
-        lineageInfo.Should().NotBeNull();
+        var history = collector.GetCorrelationHistory(packet.CorrelationId);
+        history.Should().NotBeEmpty();
 
         // Traversal path should include pipeline-qualified segments for child nodes
-        lineageInfo!.TraversalPath.Should().Contain("source");
-        lineageInfo.TraversalPath.Should().Contain($"{childPipelineId:N}::transform");
-        lineageInfo.TraversalPath.Should().Contain($"{childPipelineId:N}::output");
+        history.Should().Contain(record => record.TraversalPath.Contains("source"));
+        history.Should().Contain(record => record.TraversalPath.Contains($"{childPipelineId:N}::transform"));
+        history.Should().Contain(record => record.TraversalPath.Contains($"{childPipelineId:N}::output"));
 
-        // Hops should carry pipeline name
-        lineageInfo.LineageHops.Should().HaveCount(3);
-        lineageInfo.LineageHops[0].PipelineName.Should().BeNull();
-        lineageInfo.LineageHops[1].PipelineName.Should().Be("ChildSubPipeline");
-        lineageInfo.LineageHops[2].PipelineName.Should().Be("ChildSubPipeline");
+        // Records should carry pipeline name
+        history.Should().HaveCount(3);
+        history[0].PipelineName.Should().BeNull();
+        history[1].PipelineName.Should().Be("ChildSubPipeline");
+        history[2].PipelineName.Should().Be("ChildSubPipeline");
     }
 
     [Fact]
@@ -307,20 +344,21 @@ public class NestedObservabilityAndLineageTests
     }
 
     [Fact]
-    public void LineageHop_ShouldSupportPipelineNameProperty()
+    public void LineageRecord_ShouldSupportPipelineNameProperty()
     {
         // Arrange & Act
-        var hop = new LineageHop(
+        var record = new LineageRecord(
+            Guid.NewGuid(),
             "test-node",
-            HopDecisionFlags.Emitted,
-            ObservedCardinality.One,
-            1, 1, null, false,
-            PipelineId: Guid.Empty,
+            Guid.Empty,
+            LineageOutcomeReason.Emitted,
+            false,
+            [],
             PipelineName: "TestPipeline");
 
         // Assert
-        hop.PipelineName.Should().Be("TestPipeline");
-        hop.NodeId.Should().Be("test-node");
+        record.PipelineName.Should().Be("TestPipeline");
+        record.NodeId.Should().Be("test-node");
     }
 
     // ——————————————————————————————————————

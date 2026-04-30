@@ -34,18 +34,29 @@ internal sealed class StreamingOneToOneStrategy<TIn, TOut> : LineageMappingStrat
             {
                 var inputPacket = inputEnumerator2.Current;
                 var outputData = outputEnumerator2.Current;
-                var hopRecords = inputPacket.LineageHops;
-                var (effectiveOutcome, retryCount) = ResolveRecordedOutcome(pipelineId, nodeId, matchedInputCount2, HopDecisionFlags.Emitted);
+                var traversalPath = inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId));
+                var lineageRecords = inputPacket.LineageRecords;
+                var (effectiveOutcome, retryCount) = ResolveRecordedOutcome(pipelineId, nodeId, matchedInputCount2, LineageOutcomeReason.Emitted);
 
                 if (inputPacket.Collect)
                 {
-                    hopRecords = MaybeAppendHop(hopRecords, nodeId, pipelineId, pipelineName, options, 1, inputPacket.Data, outputData,
-                        effectiveOutcome, retryCount);
+                    lineageRecords = MaybeAppendHop(
+                        lineageRecords,
+                        inputPacket.CorrelationId,
+                        traversalPath,
+                        nodeId,
+                        pipelineId,
+                        pipelineName,
+                        options,
+                        1,
+                        inputPacket.Data,
+                        outputData,
+                        effectiveOutcome,
+                        retryCount);
                 }
 
-                yield return new LineagePacket<TOut>(outputData, inputPacket.CorrelationId,
-                        inputPacket.TraversalPath.Add(QualifyNodeId(nodeId, pipelineId)))
-                    { Collect = inputPacket.Collect, LineageHops = hopRecords };
+                yield return new LineagePacket<TOut>(outputData, inputPacket.CorrelationId, traversalPath)
+                { Collect = inputPacket.Collect, LineageRecords = lineageRecords };
 
                 matchedInputCount2++;
                 matchedOutputCount2++;

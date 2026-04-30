@@ -9,7 +9,7 @@ namespace NPipeline.Tests.DataFlow;
 public sealed class SamplingDataStreamTests
 {
     [Fact]
-    public async Task Enumerate_WithLineageItemWithoutHops_RecordsSuccessWithZeroRetries()
+    public async Task Enumerate_WithLineageItemWithoutRecords_RecordsSuccessWithZeroRetries()
     {
         var recorder = new TestSampleRecorder();
         var packet = new LineagePacket<int>(42, Guid.NewGuid(), ImmutableList<string>.Empty);
@@ -24,13 +24,13 @@ public sealed class SamplingDataStreamTests
     }
 
     [Theory]
-    [InlineData(HopDecisionFlags.Error, SampleOutcome.Error)]
-    [InlineData(HopDecisionFlags.FilteredOut, SampleOutcome.Skipped)]
-    [InlineData(HopDecisionFlags.Retried, SampleOutcome.Success)]
-    public async Task Enumerate_WithLineageHop_MapsOutcomeFromLatestHop(HopDecisionFlags flags, SampleOutcome expectedOutcome)
+    [InlineData(LineageOutcomeReason.Error, SampleOutcome.Error)]
+    [InlineData(LineageOutcomeReason.FilteredOut, SampleOutcome.Skipped)]
+    [InlineData(LineageOutcomeReason.Emitted, SampleOutcome.Success)]
+    public async Task Enumerate_WithLineageRecord_MapsOutcomeFromLatestRecord(LineageOutcomeReason reason, SampleOutcome expectedOutcome)
     {
         var recorder = new TestSampleRecorder();
-        var packet = BuildPacket("node-a", flags, ancestryInputIndices: [3, 5]);
+        var packet = BuildPacket("node-a", reason, retryCount: 1, contributorInputIndices: [3, 5]);
         await using var input = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<LineagePacket<int>>([packet], "input");
         await using var sampled = new SamplingDataStream<LineagePacket<int>>(input, "node-a", "output", recorder, sampleRate: 1);
 
@@ -39,13 +39,14 @@ public sealed class SamplingDataStreamTests
         _ = recorder.Calls.Should().HaveCount(1);
         _ = recorder.Calls[0].Outcome.Should().Be(expectedOutcome);
         _ = recorder.Calls[0].AncestryInputIndices.Should().BeEquivalentTo([3, 5]);
+        _ = recorder.Calls[0].RetryCount.Should().Be(1);
     }
 
     [Fact]
-    public async Task Enumerate_WhenLatestHopIncludesDeadLetterAndError_PrefersDeadLetter()
+    public async Task Enumerate_WhenLatestRecordIsDeadLettered_RecordsDeadLetterOutcome()
     {
         var recorder = new TestSampleRecorder();
-        var packet = BuildPacket("node-a", HopDecisionFlags.DeadLettered | HopDecisionFlags.Error | HopDecisionFlags.FilteredOut);
+        var packet = BuildPacket("node-a", LineageOutcomeReason.DeadLettered);
         await using var input = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<LineagePacket<int>>([packet], "input");
         await using var sampled = new SamplingDataStream<LineagePacket<int>>(input, "node-a", "output", recorder, sampleRate: 1);
 
@@ -56,18 +57,18 @@ public sealed class SamplingDataStreamTests
     }
 
     [Fact]
-    public async Task Enumerate_WithConsecutiveRetriedHopsForSameNode_CountsRetries()
+    public async Task Enumerate_WithConsecutiveRecords_UsesLatestRetryCount()
     {
         var recorder = new TestSampleRecorder();
         var correlationId = Guid.NewGuid();
-        var hops = ImmutableList.Create(
-            new LineageHop("upstream", HopDecisionFlags.Emitted, ObservedCardinality.One, 1, 1, null, false, Guid.NewGuid()),
-            new LineageHop("node-a", HopDecisionFlags.Retried, ObservedCardinality.One, 1, 1, null, false, Guid.NewGuid()),
-            new LineageHop("node-a", HopDecisionFlags.Emitted | HopDecisionFlags.Retried, ObservedCardinality.One, 1, 1, null, false, Guid.NewGuid()));
+        var records = ImmutableList.Create(
+            BuildRecord(correlationId, "upstream", LineageOutcomeReason.Emitted, retryCount: null),
+            BuildRecord(correlationId, "node-a", LineageOutcomeReason.Emitted, retryCount: 1),
+            BuildRecord(correlationId, "node-a", LineageOutcomeReason.Emitted, retryCount: 2));
 
         var packet = new LineagePacket<int>(42, correlationId, ImmutableList<string>.Empty)
         {
-            LineageHops = hops,
+            LineageRecords = records,
         };
 
         await using var input = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<LineagePacket<int>>([packet], "input");
@@ -81,14 +82,13 @@ public sealed class SamplingDataStreamTests
     }
 
     [Fact]
-    public async Task Enumerate_WithExplicitHopRetryCount_UsesHopRetryCount()
+    public async Task Enumerate_WithExplicitRecordRetryCount_UsesRecordRetryCount()
     {
         var recorder = new TestSampleRecorder();
-        var hop = new LineageHop("node-a", HopDecisionFlags.Emitted | HopDecisionFlags.Retried, ObservedCardinality.One, 1, 1, null, false,
-            Guid.NewGuid(), RetryCount: 4);
-        var packet = new LineagePacket<int>(42, Guid.NewGuid(), ImmutableList<string>.Empty)
+        var correlationId = Guid.NewGuid();
+        var packet = new LineagePacket<int>(42, correlationId, ImmutableList<string>.Empty)
         {
-            LineageHops = ImmutableList.Create(hop),
+            LineageRecords = ImmutableList.Create(BuildRecord(correlationId, "node-a", LineageOutcomeReason.Emitted, retryCount: 4)),
         };
 
         await using var input = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<LineagePacket<int>>([packet], "input");
@@ -100,13 +100,29 @@ public sealed class SamplingDataStreamTests
         _ = recorder.Calls[0].RetryCount.Should().Be(4);
     }
 
-    private static LineagePacket<int> BuildPacket(string nodeId, HopDecisionFlags flags, int[]? ancestryInputIndices = null)
+    private static LineagePacket<int> BuildPacket(string nodeId, LineageOutcomeReason reason, int? retryCount = null,
+        int[]? contributorInputIndices = null)
     {
-        var hop = new LineageHop(nodeId, flags, ObservedCardinality.One, 1, 1, ancestryInputIndices, false, Guid.NewGuid());
-        return new LineagePacket<int>(42, Guid.NewGuid(), ImmutableList<string>.Empty)
+        var correlationId = Guid.NewGuid();
+        return new LineagePacket<int>(42, correlationId, ImmutableList<string>.Empty)
         {
-            LineageHops = ImmutableList.Create(hop),
+            LineageRecords = ImmutableList.Create(BuildRecord(correlationId, nodeId, reason, retryCount, contributorInputIndices)),
         };
+    }
+
+    private static LineageRecord BuildRecord(Guid correlationId, string nodeId, LineageOutcomeReason reason, int? retryCount = null,
+        int[]? contributorInputIndices = null)
+    {
+        return new LineageRecord(
+            correlationId,
+            nodeId,
+            Guid.NewGuid(),
+            reason,
+            false,
+            ImmutableList<string>.Empty,
+            RetryCount: retryCount,
+            ContributorInputIndices: contributorInputIndices,
+            Cardinality: ObservedCardinality.One);
     }
 
     private static async Task DrainAsync<T>(IAsyncEnumerable<T> stream)

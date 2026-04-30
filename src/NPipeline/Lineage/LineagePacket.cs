@@ -17,9 +17,9 @@ public sealed record LineagePacket<T>(
     : ILineageEnvelope
 {
     /// <summary>
-    ///     Collected lineage-specific hop information.
+    ///     Collected lineage event information.
     /// </summary>
-    public ImmutableList<LineageHop> LineageHops { get; init; } = ImmutableList<LineageHop>.Empty;
+    public ImmutableList<LineageRecord> LineageRecords { get; init; } = ImmutableList<LineageRecord>.Empty;
 
     /// <summary>
     ///     Whether this item is selected for lineage collection (sampling). Defaults to true.

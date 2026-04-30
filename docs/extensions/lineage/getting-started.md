@@ -153,7 +153,7 @@ public class Program
         await runner.RunAsync(builder.Build(), new PipelineContext());
 
         // Access collected lineage data
-        Console.WriteLine($"\nCollected lineage for {collector.GetAllLineageInfo().Count()} items");
+        Console.WriteLine($"\nCollected lineage records: {collector.GetAllRecords().Count}");
     }
 }
 ```
@@ -162,12 +162,13 @@ public class Program
 
 With default configuration, lineage tracking captures:
 
-**For each item:**
+**For each sampled correlation:**
 
 - Unique correlation ID
 - Complete traversal path (all node IDs)
-- Per-hop details (node, outcome, cardinality, counts)
-- Original data (unless redacted)
+- Event records (`LineageRecord`) with explicit terminal/non-terminal outcomes
+- Contributor metadata for many-to-one mappings
+- Optional payload data (unless redacted)
 
 **For the pipeline:**
 

@@ -19,7 +19,7 @@ public sealed class DataLakePartitionTests
         spec.Columns.Should().HaveCount(1);
         spec.Columns[0].ColumnName.Should().Be("event_date");
         spec.Columns[0].PropertyName.Should().Be("EventDate");
-        spec.Columns[0].ValueType.Should().Be(typeof(DateOnly));
+        spec.Columns[0].ValueType.Should().Be<DateOnly>();
     }
 
     [Fact]

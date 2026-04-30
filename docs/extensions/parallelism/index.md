@@ -184,7 +184,7 @@ Consider using `PreserveOrdering = false` when:
 ### Trade-offs
 
 | Aspect | PreserveOrdering: true (Default) | PreserveOrdering: false |
-|--------|----------------------------------|-------------------------|
+| -------- | ---------------------------------- | ------------------------- |
 | **Throughput** | Good | Excellent |
 | **Output Order** | Matches input order | May be out of order |
 | **Memory Usage** | Higher (needs to buffer) | Lower |
@@ -241,6 +241,8 @@ When `MaxQueueLength` is specified, you can control the behavior when the queue 
 - **`BoundedQueuePolicy.Block`**: Wait until space becomes available (default)
 - **`BoundedQueuePolicy.DropNewest`**: Drop the incoming item
 - **`BoundedQueuePolicy.DropOldest`**: Remove the oldest item to make space
+
+When item-level lineage is enabled and `LineageOptions.EmitBackpressureDropRecords` is `true` (enabled by `FastLineage`, `CompleteLineage`, and constructor defaults), dropped items produce terminal lineage records with `OutcomeReason = DroppedByBackpressure`. This gives explicit, queryable drop visibility in high-throughput pipelines.
 
 ### Default Queue Length
 
