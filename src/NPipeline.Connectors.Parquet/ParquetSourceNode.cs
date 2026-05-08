@@ -274,7 +274,7 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
         if (stream.CanSeek)
             totalBytes = stream.Length;
 
-        using var reader = await ParquetReader.CreateAsync(stream, cancellationToken: cancellationToken);
+        await using var reader = await ParquetReader.CreateAsync(stream, cancellationToken: cancellationToken);
 
         // Validate schema if configured
         if (config.SchemaValidator is not null)
@@ -374,22 +374,122 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
             if (!columnNameToField.TryGetValue(columnName, out var field))
                 continue;
 
-            // Read the column using the DataField
-            var data = await rowGroupReader.ReadColumnAsync(field, cancellationToken);
-
-            // Convert DataColumn.Data array to object array
-            var dataArray = data.Data;
-            var values = new object?[dataArray.Length];
-
-            for (var i = 0; i < dataArray.Length; i++)
-            {
-                values[i] = dataArray.GetValue(i);
-            }
-
+            // Read the column using reflection to invoke the Parquet.net v6 ReadAsync overloads.
+            var values = await ReadColumnDataAsync(rowGroupReader, field, cancellationToken);
             columnData[columnName] = values;
         }
 
         return columnData;
+    }
+
+    private async Task<object?[]> ReadColumnDataAsync(ParquetRowGroupReader rowGroupReader, DataField field, CancellationToken cancellationToken)
+    {
+        var rowCount = checked((int)rowGroupReader.RowCount);
+        var clrType = field.ClrType;
+
+        Array typedValues;
+        object valuesMemory;
+        object? invocationResult;
+
+        if (clrType == typeof(string))
+        {
+            typedValues = new string[rowCount];
+            valuesMemory = new Memory<string>((string[])typedValues);
+
+            var stringReadMethod = typeof(ParquetRowGroupReader).GetMethod(
+                nameof(ParquetRowGroupReader.ReadAsync),
+                [typeof(DataField), typeof(Memory<string>), typeof(Memory<int>?), typeof(CancellationToken)])
+                ?? throw new InvalidOperationException("Could not find string ReadAsync overload on ParquetRowGroupReader");
+
+            invocationResult = stringReadMethod.Invoke(rowGroupReader, [field, valuesMemory, null, cancellationToken]);
+        }
+        else
+        {
+            var usesNullableValueBuffer = field.IsNullable && clrType.IsValueType;
+            var elementType = usesNullableValueBuffer ? typeof(Nullable<>).MakeGenericType(clrType) : clrType;
+
+            typedValues = Array.CreateInstance(elementType, rowCount);
+
+            var memoryType = typeof(Memory<>).MakeGenericType(elementType);
+            valuesMemory = Activator.CreateInstance(memoryType, typedValues)
+                ?? throw new InvalidOperationException($"Failed to create {memoryType}");
+
+            var readMethod = GetGenericReadAsyncMethod(usesNullableValueBuffer).MakeGenericMethod(clrType);
+            invocationResult = readMethod.Invoke(rowGroupReader, [field, valuesMemory, null, cancellationToken]);
+        }
+
+        await AwaitReadAsyncResult(invocationResult).ConfigureAwait(false);
+
+        var result = new object?[typedValues.Length];
+        for (var i = 0; i < typedValues.Length; i++)
+        {
+            result[i] = typedValues.GetValue(i);
+        }
+
+        return result;
+    }
+
+    private static System.Reflection.MethodInfo GetGenericReadAsyncMethod(bool nullableValueBuffer)
+    {
+        var readMethods = typeof(ParquetRowGroupReader)
+            .GetMethods()
+            .Where(m => m.Name == nameof(ParquetRowGroupReader.ReadAsync)
+                && m.IsGenericMethodDefinition
+                && m.GetGenericArguments().Length == 1);
+
+        foreach (var method in readMethods)
+        {
+            var parameters = method.GetParameters();
+
+            if (parameters.Length != 4
+                || parameters[0].ParameterType != typeof(DataField)
+                || parameters[2].ParameterType != typeof(Memory<int>?)
+                || parameters[3].ParameterType != typeof(CancellationToken))
+            {
+                continue;
+            }
+
+            var valuesParameterType = parameters[1].ParameterType;
+            if (!valuesParameterType.IsGenericType || valuesParameterType.GetGenericTypeDefinition() != typeof(Memory<>))
+            {
+                continue;
+            }
+
+            var valueType = valuesParameterType.GetGenericArguments()[0];
+
+            if (!nullableValueBuffer && valueType.IsGenericParameter)
+            {
+                return method;
+            }
+
+            if (nullableValueBuffer
+                && valueType.IsGenericType
+                && valueType.GetGenericTypeDefinition() == typeof(Nullable<>)
+                && valueType.GetGenericArguments()[0].IsGenericParameter)
+            {
+                return method;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Could not find generic ReadAsync overload for nullableValueBuffer={nullableValueBuffer}.");
+    }
+
+    private static async Task AwaitReadAsyncResult(object? invocationResult)
+    {
+        if (invocationResult is ValueTask valueTask)
+        {
+            await valueTask.ConfigureAwait(false);
+            return;
+        }
+
+        if (invocationResult is Task task)
+        {
+            await task.ConfigureAwait(false);
+            return;
+        }
+
+        throw new InvalidOperationException("Unexpected ReadAsync return type.");
     }
 
     private ParquetRow CreateParquetRow(

@@ -183,12 +183,14 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
         ParquetSchema schema,
         CancellationToken cancellationToken)
     {
-        // Parquet.Net 5.x uses compression directly on the writer
-        var writer = await ParquetWriter.CreateAsync(schema, stream, cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
-
+        var options = new ParquetOptions();
+        
         // Apply compression setting from configuration
-        writer.CompressionMethod = _configuration.Compression;
+        options.CompressionMethod = _configuration.Compression;
+
+        // Parquet.Net 6.x uses ParquetOptions for configuration
+        var writer = await ParquetWriter.CreateAsync(schema, stream, options: options, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
 
         return writer;
     }
@@ -208,445 +210,317 @@ public sealed class ParquetSinkNode<T> : SinkNode<T>
         for (var colIndex = 0; colIndex < columnNames.Length; colIndex++)
         {
             var columnName = columnNames[colIndex];
-            var field = schema.Fields.FirstOrDefault(f => f.Name == columnName);
+            var dataField = schema.DataFields.FirstOrDefault(f => f.Name == columnName);
 
-            if (field is null)
+            if (dataField is null)
                 continue;
 
             var property = properties[colIndex];
-            var columnData = CreateColumnData(field, property.PropertyType, buffer, valueGetters[colIndex]);
+            var underlyingType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+            var isNullableProperty = Nullable.GetUnderlyingType(property.PropertyType) is not null;
+            var valueGetter = valueGetters[colIndex];
 
-            await rowGroupWriter.WriteColumnAsync(columnData, cancellationToken);
+            // Use reflection to call the appropriate WriteAsync<T> method
+            await WriteColumnData(rowGroupWriter, dataField, underlyingType, isNullableProperty, buffer, valueGetter, cancellationToken);
         }
     }
 
-    private DataColumn CreateColumnData(
-        Field field,
-        Type propertyType,
+    private async Task WriteColumnData(
+        ParquetRowGroupWriter rowGroupWriter,
+        DataField dataField,
+        Type underlyingType,
+        bool isNullableProperty,
         List<T> buffer,
-        Func<T, object?> valueGetter)
+        Func<T, object?> valueGetter,
+        CancellationToken cancellationToken)
     {
-        var underlyingType = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
-        var isNullableProperty = Nullable.GetUnderlyingType(propertyType) is not null;
-
-        // Handle different types appropriately
+        // Note: WriteAsync in Parquet.Net v6 does not support cancellation tokens
+        // CA2016 warning is suppressed as intentional - the API design doesn't allow token forwarding
+#pragma warning disable CA2016
         if (underlyingType == typeof(string))
         {
             var data = new string?[buffer.Count];
-
             for (var i = 0; i < buffer.Count; i++)
-            {
                 data[i] = valueGetter(buffer[i]) as string;
-            }
-
-            return new DataColumn((DataField)field, data);
+            await rowGroupWriter.WriteAsync(dataField, data);
         }
-
-        if (underlyingType == typeof(int))
+        else if (underlyingType == typeof(int))
         {
             if (isNullableProperty)
             {
                 var data = new int?[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    data[i] = value is int intValue
-                        ? intValue
-                        : null;
+                    data[i] = value is int intValue ? intValue : null;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<int>(dataField, data);
             }
             else
             {
                 var data = new int[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    data[i] = value is int intValue
-                        ? intValue
-                        : default;
+                    data[i] = value is int intValue ? intValue : default;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<int>(dataField, data);
             }
         }
-
-        if (underlyingType == typeof(long))
+        else if (underlyingType == typeof(long))
         {
             if (isNullableProperty)
             {
                 var data = new long?[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    data[i] = value is long longValue
-                        ? longValue
-                        : null;
+                    data[i] = value is long longValue ? longValue : null;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<long>(dataField, data);
             }
             else
             {
                 var data = new long[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    data[i] = value is long longValue
-                        ? longValue
-                        : default;
+                    data[i] = value is long longValue ? longValue : default;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<long>(dataField, data);
             }
         }
-
-        if (underlyingType == typeof(short))
+        else if (underlyingType == typeof(short))
         {
             if (isNullableProperty)
             {
                 var data = new short?[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    data[i] = value is short shortValue
-                        ? shortValue
-                        : null;
+                    data[i] = value is short shortValue ? shortValue : null;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<short>(dataField, data);
             }
             else
             {
                 var data = new short[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    data[i] = value is short shortValue
-                        ? shortValue
-                        : default;
+                    data[i] = value is short shortValue ? shortValue : default;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<short>(dataField, data);
             }
         }
-
-        if (underlyingType == typeof(byte))
+        else if (underlyingType == typeof(byte))
         {
             if (isNullableProperty)
             {
                 var data = new byte?[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    data[i] = value is byte byteValue
-                        ? byteValue
-                        : null;
+                    data[i] = value is byte byteValue ? byteValue : null;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<byte>(dataField, data);
             }
             else
             {
                 var data = new byte[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    data[i] = value is byte byteValue
-                        ? byteValue
-                        : default;
+                    data[i] = value is byte byteValue ? byteValue : default;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<byte>(dataField, data);
             }
         }
-
-        if (underlyingType == typeof(float))
+        else if (underlyingType == typeof(float))
         {
             if (isNullableProperty)
             {
                 var data = new float?[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    data[i] = value is float floatValue
-                        ? floatValue
-                        : null;
+                    data[i] = value is float floatValue ? floatValue : null;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<float>(dataField, data);
             }
             else
             {
                 var data = new float[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    data[i] = value is float floatValue
-                        ? floatValue
-                        : default;
+                    data[i] = value is float floatValue ? floatValue : default;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<float>(dataField, data);
             }
         }
-
-        if (underlyingType == typeof(double))
+        else if (underlyingType == typeof(double))
         {
             if (isNullableProperty)
             {
                 var data = new double?[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    data[i] = value is double doubleValue
-                        ? doubleValue
-                        : null;
+                    data[i] = value is double doubleValue ? doubleValue : null;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<double>(dataField, data);
             }
             else
             {
                 var data = new double[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    data[i] = value is double doubleValue
-                        ? doubleValue
-                        : default;
+                    data[i] = value is double doubleValue ? doubleValue : default;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<double>(dataField, data);
             }
         }
-
-        if (underlyingType == typeof(bool))
+        else if (underlyingType == typeof(bool))
         {
             if (isNullableProperty)
             {
                 var data = new bool?[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    data[i] = value is bool boolValue
-                        ? boolValue
-                        : null;
+                    data[i] = value is bool boolValue ? boolValue : null;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<bool>(dataField, data);
             }
             else
             {
                 var data = new bool[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    data[i] = value is bool boolValue
-                        ? boolValue
-                        : default;
+                    data[i] = value is bool boolValue ? boolValue : default;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<bool>(dataField, data);
             }
         }
-
-        if (underlyingType == typeof(decimal))
+        else if (underlyingType == typeof(decimal))
         {
             if (isNullableProperty)
             {
                 var data = new decimal?[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    data[i] = value is decimal decimalValue
-                        ? decimalValue
-                        : null;
+                    data[i] = value is decimal decimalValue ? decimalValue : null;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<decimal>(dataField, data);
             }
             else
             {
                 var data = new decimal[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    data[i] = value is decimal decimalValue
-                        ? decimalValue
-                        : default;
+                    data[i] = value is decimal decimalValue ? decimalValue : default;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<decimal>(dataField, data);
             }
         }
-
-        if (underlyingType == typeof(DateTime))
+        else if (underlyingType == typeof(DateTime))
         {
             if (isNullableProperty)
             {
                 var data = new DateTime?[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    data[i] = value is DateTime dateTimeValue
-                        ? dateTimeValue
-                        : null;
+                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : null;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
             }
             else
             {
                 var data = new DateTime[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    data[i] = value is DateTime dateTimeValue
-                        ? dateTimeValue
-                        : default;
+                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : default;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
             }
         }
-
-        if (underlyingType == typeof(DateTimeOffset))
+        else if (underlyingType == typeof(DateTimeOffset))
         {
             // DateTimeOffset is converted to DateTime (UTC) for storage
             if (isNullableProperty)
             {
                 var data = new DateTime?[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    // Value getter already converts DateTimeOffset to DateTime via UtcDateTime property
-                    data[i] = value is DateTime dateTimeValue
-                        ? dateTimeValue
-                        : null;
+                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : null;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
             }
             else
             {
                 var data = new DateTime[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    // Value getter already converts DateTimeOffset to DateTime via UtcDateTime property
-                    data[i] = value is DateTime dateTimeValue
-                        ? dateTimeValue
-                        : default;
+                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : default;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
             }
         }
-
-        if (underlyingType == typeof(DateOnly))
+        else if (underlyingType == typeof(DateOnly))
         {
             // DateOnly is converted to DateTime for storage
             if (isNullableProperty)
             {
                 var data = new DateTime?[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    // Value getter already converts DateOnly to DateTime via ToDateTime method
-                    data[i] = value is DateTime dateTimeValue
-                        ? dateTimeValue
-                        : null;
+                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : null;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
             }
             else
             {
                 var data = new DateTime[buffer.Count];
-
                 for (var i = 0; i < buffer.Count; i++)
                 {
                     var value = valueGetter(buffer[i]);
-
-                    // Value getter already converts DateOnly to DateTime via ToDateTime method
-                    data[i] = value is DateTime dateTimeValue
-                        ? dateTimeValue
-                        : default;
+                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : default;
                 }
-
-                return new DataColumn((DataField)field, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
             }
         }
-
-        if (underlyingType == typeof(byte[]))
+        else if (underlyingType == typeof(byte[]))
         {
             var data = new byte[buffer.Count][];
-
             for (var i = 0; i < buffer.Count; i++)
             {
                 var value = valueGetter(buffer[i]);
                 data[i] = value as byte[] ?? [];
             }
-
-            return new DataColumn((DataField)field, data);
+            await rowGroupWriter.WriteAsync(dataField, data);
         }
-
-        // Default: convert to string representation
+        else
         {
+            // Default: convert to string representation
             var data = new string?[buffer.Count];
-
             for (var i = 0; i < buffer.Count; i++)
             {
                 var value = valueGetter(buffer[i]);
                 data[i] = value?.ToString();
             }
-
-            return new DataColumn((DataField)field, data);
+            await rowGroupWriter.WriteAsync(dataField, data);
         }
+#pragma warning restore CA2016
     }
 
     private static StorageUri CreateTempUri(StorageUri uri)

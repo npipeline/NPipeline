@@ -513,11 +513,11 @@ public sealed class DataLakeCompactionTests : IAsyncDisposable
             regions[i] = "US";
         }
 
-        await rowGroupWriter.WriteColumnAsync(new DataColumn(schema.DataFields[0], ids));
-        await rowGroupWriter.WriteColumnAsync(new DataColumn(schema.DataFields[1], productNames));
-        await rowGroupWriter.WriteColumnAsync(new DataColumn(schema.DataFields[2], amounts));
-        await rowGroupWriter.WriteColumnAsync(new DataColumn(schema.DataFields[3], eventDates));
-        await rowGroupWriter.WriteColumnAsync(new DataColumn(schema.DataFields[4], regions));
+        await rowGroupWriter.WriteAsync<int>(schema.DataFields[0], ids);
+        await rowGroupWriter.WriteAsync(schema.DataFields[1], productNames);
+        await rowGroupWriter.WriteAsync<decimal>(schema.DataFields[2], amounts);
+        await rowGroupWriter.WriteAsync<DateTime>(schema.DataFields[3], eventDates);
+        await rowGroupWriter.WriteAsync(schema.DataFields[4], regions);
     }
 
     #endregion

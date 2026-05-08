@@ -343,7 +343,10 @@ public sealed class DataLakeCompactor
         await using var stream = await _provider.OpenWriteAsync(fileUri, cancellationToken)
             .ConfigureAwait(false);
 
-        await using var writer = await ParquetWriter.CreateAsync(schema, stream, cancellationToken: cancellationToken)
+        var options = new ParquetOptions();
+        options.CompressionMethod = _configuration.Compression;
+
+        await using var writer = await ParquetWriter.CreateAsync(schema, stream, options: options, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
         using var rowGroupWriter = writer.CreateRowGroup();
@@ -356,358 +359,306 @@ public sealed class DataLakeCompactor
             if (field is null || field is not DataField dataField)
                 continue;
 
-            var columnData = CreateColumnData(dataField, records, columnName);
-            await rowGroupWriter.WriteColumnAsync(columnData, cancellationToken).ConfigureAwait(false);
+            await WriteColumnDataAsync(rowGroupWriter, dataField, records, columnName, cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 
-    private DataColumn CreateColumnData(DataField field, List<ParquetRow> records, string columnName)
+    private async Task WriteColumnDataAsync(
+        ParquetRowGroupWriter rowGroupWriter,
+        DataField dataField,
+        List<ParquetRow> records,
+        string columnName,
+        CancellationToken cancellationToken)
     {
-        var fieldType = field.ClrType;
+        var fieldType = dataField.ClrType;
+        var isNullable = dataField.IsNullable;
 
+        // Note: WriteAsync in Parquet.Net v6 does not support cancellation tokens
+        // CA2016 warning is suppressed as intentional - the API design doesn't allow token forwarding
+#pragma warning disable CA2016
         if (fieldType == typeof(string))
         {
             var data = new string?[records.Count];
-
             for (var i = 0; i < records.Count; i++)
-            {
                 data[i] = records[i][columnName] as string;
-            }
-
-            return new DataColumn(field, data);
+            await rowGroupWriter.WriteAsync(dataField, data);
         }
-
-        if (fieldType == typeof(int))
+        else if (fieldType == typeof(int))
         {
-            if (field.IsNullable)
+            if (isNullable)
             {
                 var data = new int?[records.Count];
-
                 for (var i = 0; i < records.Count; i++)
                 {
                     var value = records[i][columnName];
-
-                    data[i] = value is int intValue
-                        ? intValue
-                        : null;
+                    data[i] = value is int intValue ? intValue : null;
                 }
-
-                return new DataColumn(field, data);
+                await rowGroupWriter.WriteAsync<int>(dataField, data);
             }
             else
             {
                 var data = new int[records.Count];
-
                 for (var i = 0; i < records.Count; i++)
                 {
                     var value = records[i][columnName];
-
-                    data[i] = value is int intValue
-                        ? intValue
-                        : default;
+                    data[i] = value is int intValue ? intValue : default;
                 }
-
-                return new DataColumn(field, data);
+                await rowGroupWriter.WriteAsync<int>(dataField, data);
             }
         }
-
-        if (fieldType == typeof(long))
+        else if (fieldType == typeof(long))
         {
-            if (field.IsNullable)
+            if (isNullable)
             {
                 var data = new long?[records.Count];
-
                 for (var i = 0; i < records.Count; i++)
                 {
                     var value = records[i][columnName];
-
-                    data[i] = value is long longValue
-                        ? longValue
-                        : null;
+                    data[i] = value is long longValue ? longValue : null;
                 }
-
-                return new DataColumn(field, data);
+                await rowGroupWriter.WriteAsync<long>(dataField, data);
             }
             else
             {
                 var data = new long[records.Count];
-
                 for (var i = 0; i < records.Count; i++)
                 {
                     var value = records[i][columnName];
-
-                    data[i] = value is long longValue
-                        ? longValue
-                        : default;
+                    data[i] = value is long longValue ? longValue : default;
                 }
-
-                return new DataColumn(field, data);
+                await rowGroupWriter.WriteAsync<long>(dataField, data);
             }
         }
-
-        if (fieldType == typeof(short))
+        else if (fieldType == typeof(short))
         {
-            if (field.IsNullable)
+            if (isNullable)
             {
                 var data = new short?[records.Count];
-
                 for (var i = 0; i < records.Count; i++)
                 {
                     var value = records[i][columnName];
-
-                    data[i] = value is short shortValue
-                        ? shortValue
-                        : null;
+                    data[i] = value is short shortValue ? shortValue : null;
                 }
-
-                return new DataColumn(field, data);
+                await rowGroupWriter.WriteAsync<short>(dataField, data);
             }
             else
             {
                 var data = new short[records.Count];
-
                 for (var i = 0; i < records.Count; i++)
                 {
                     var value = records[i][columnName];
-
-                    data[i] = value is short shortValue
-                        ? shortValue
-                        : default;
+                    data[i] = value is short shortValue ? shortValue : default;
                 }
-
-                return new DataColumn(field, data);
+                await rowGroupWriter.WriteAsync<short>(dataField, data);
             }
         }
-
-        if (fieldType == typeof(byte))
+        else if (fieldType == typeof(byte))
         {
-            if (field.IsNullable)
+            if (isNullable)
             {
                 var data = new byte?[records.Count];
-
                 for (var i = 0; i < records.Count; i++)
                 {
                     var value = records[i][columnName];
-
-                    data[i] = value is byte byteValue
-                        ? byteValue
-                        : null;
+                    data[i] = value is byte byteValue ? byteValue : null;
                 }
-
-                return new DataColumn(field, data);
+                await rowGroupWriter.WriteAsync<byte>(dataField, data);
             }
             else
             {
                 var data = new byte[records.Count];
-
                 for (var i = 0; i < records.Count; i++)
                 {
                     var value = records[i][columnName];
-
-                    data[i] = value is byte byteValue
-                        ? byteValue
-                        : default;
+                    data[i] = value is byte byteValue ? byteValue : default;
                 }
-
-                return new DataColumn(field, data);
+                await rowGroupWriter.WriteAsync<byte>(dataField, data);
             }
         }
-
-        if (fieldType == typeof(float))
+        else if (fieldType == typeof(float))
         {
-            if (field.IsNullable)
+            if (isNullable)
             {
                 var data = new float?[records.Count];
-
                 for (var i = 0; i < records.Count; i++)
                 {
                     var value = records[i][columnName];
-
-                    data[i] = value is float floatValue
-                        ? floatValue
-                        : null;
+                    data[i] = value is float floatValue ? floatValue : null;
                 }
-
-                return new DataColumn(field, data);
+                await rowGroupWriter.WriteAsync<float>(dataField, data);
             }
             else
             {
                 var data = new float[records.Count];
-
                 for (var i = 0; i < records.Count; i++)
                 {
                     var value = records[i][columnName];
-
-                    data[i] = value is float floatValue
-                        ? floatValue
-                        : default;
+                    data[i] = value is float floatValue ? floatValue : default;
                 }
-
-                return new DataColumn(field, data);
+                await rowGroupWriter.WriteAsync<float>(dataField, data);
             }
         }
-
-        if (fieldType == typeof(double))
+        else if (fieldType == typeof(double))
         {
-            if (field.IsNullable)
+            if (isNullable)
             {
                 var data = new double?[records.Count];
-
                 for (var i = 0; i < records.Count; i++)
                 {
                     var value = records[i][columnName];
-
-                    data[i] = value is double doubleValue
-                        ? doubleValue
-                        : null;
+                    data[i] = value is double doubleValue ? doubleValue : null;
                 }
-
-                return new DataColumn(field, data);
+                await rowGroupWriter.WriteAsync<double>(dataField, data);
             }
             else
             {
                 var data = new double[records.Count];
-
                 for (var i = 0; i < records.Count; i++)
                 {
                     var value = records[i][columnName];
-
-                    data[i] = value is double doubleValue
-                        ? doubleValue
-                        : default;
+                    data[i] = value is double doubleValue ? doubleValue : default;
                 }
-
-                return new DataColumn(field, data);
+                await rowGroupWriter.WriteAsync<double>(dataField, data);
             }
         }
-
-        if (fieldType == typeof(bool))
+        else if (fieldType == typeof(bool))
         {
-            if (field.IsNullable)
+            if (isNullable)
             {
                 var data = new bool?[records.Count];
-
                 for (var i = 0; i < records.Count; i++)
                 {
                     var value = records[i][columnName];
-
-                    data[i] = value is bool boolValue
-                        ? boolValue
-                        : null;
+                    data[i] = value is bool boolValue ? boolValue : null;
                 }
-
-                return new DataColumn(field, data);
+                await rowGroupWriter.WriteAsync<bool>(dataField, data);
             }
             else
             {
                 var data = new bool[records.Count];
-
                 for (var i = 0; i < records.Count; i++)
                 {
                     var value = records[i][columnName];
-
-                    data[i] = value is bool boolValue
-                        ? boolValue
-                        : default;
+                    data[i] = value is bool boolValue ? boolValue : default;
                 }
-
-                return new DataColumn(field, data);
+                await rowGroupWriter.WriteAsync<bool>(dataField, data);
             }
         }
-
-        if (fieldType == typeof(decimal))
+        else if (fieldType == typeof(decimal))
         {
-            if (field.IsNullable)
+            if (isNullable)
             {
                 var data = new decimal?[records.Count];
-
                 for (var i = 0; i < records.Count; i++)
                 {
                     var value = records[i][columnName];
-
-                    data[i] = value is decimal decimalValue
-                        ? decimalValue
-                        : null;
+                    data[i] = value is decimal decimalValue ? decimalValue : null;
                 }
-
-                return new DataColumn(field, data);
+                await rowGroupWriter.WriteAsync<decimal>(dataField, data);
             }
             else
             {
                 var data = new decimal[records.Count];
-
                 for (var i = 0; i < records.Count; i++)
                 {
                     var value = records[i][columnName];
-
-                    data[i] = value is decimal decimalValue
-                        ? decimalValue
-                        : default;
+                    data[i] = value is decimal decimalValue ? decimalValue : default;
                 }
-
-                return new DataColumn(field, data);
+                await rowGroupWriter.WriteAsync<decimal>(dataField, data);
             }
         }
-
-        if (fieldType == typeof(DateTime))
+        else if (fieldType == typeof(DateTime))
         {
-            if (field.IsNullable)
+            if (isNullable)
             {
                 var data = new DateTime?[records.Count];
-
                 for (var i = 0; i < records.Count; i++)
                 {
                     var value = records[i][columnName];
-
-                    data[i] = value is DateTime dateTimeValue
-                        ? dateTimeValue
-                        : null;
+                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : null;
                 }
-
-                return new DataColumn(field, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
             }
             else
             {
                 var data = new DateTime[records.Count];
-
                 for (var i = 0; i < records.Count; i++)
                 {
                     var value = records[i][columnName];
-
-                    data[i] = value is DateTime dateTimeValue
-                        ? dateTimeValue
-                        : default;
+                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : default;
                 }
-
-                return new DataColumn(field, data);
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
             }
         }
-
-        if (fieldType == typeof(byte[]))
+        else if (fieldType == typeof(DateTimeOffset))
+        {
+            if (isNullable)
+            {
+                var data = new DateTime?[records.Count];
+                for (var i = 0; i < records.Count; i++)
+                {
+                    var value = records[i][columnName];
+                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : null;
+                }
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
+            }
+            else
+            {
+                var data = new DateTime[records.Count];
+                for (var i = 0; i < records.Count; i++)
+                {
+                    var value = records[i][columnName];
+                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : default;
+                }
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
+            }
+        }
+        else if (fieldType == typeof(DateOnly))
+        {
+            if (isNullable)
+            {
+                var data = new DateTime?[records.Count];
+                for (var i = 0; i < records.Count; i++)
+                {
+                    var value = records[i][columnName];
+                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : null;
+                }
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
+            }
+            else
+            {
+                var data = new DateTime[records.Count];
+                for (var i = 0; i < records.Count; i++)
+                {
+                    var value = records[i][columnName];
+                    data[i] = value is DateTime dateTimeValue ? dateTimeValue : default;
+                }
+                await rowGroupWriter.WriteAsync<DateTime>(dataField, data);
+            }
+        }
+        else if (fieldType == typeof(byte[]))
         {
             var data = new byte[records.Count][];
-
             for (var i = 0; i < records.Count; i++)
             {
                 var value = records[i][columnName];
                 data[i] = value as byte[] ?? [];
             }
-
-            return new DataColumn(field, data);
+            await rowGroupWriter.WriteAsync(dataField, data);
         }
-
-        // Default: convert to string representation
+        else
         {
+            // Default: convert to string representation
             var data = new string?[records.Count];
-
             for (var i = 0; i < records.Count; i++)
             {
                 var value = records[i][columnName];
                 data[i] = value?.ToString();
             }
-
-            return new DataColumn(field, data);
+            await rowGroupWriter.WriteAsync(dataField, data);
         }
+#pragma warning restore CA2016
     }
 
     private async Task DeleteFilesAsync(
