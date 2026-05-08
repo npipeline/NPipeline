@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using NPipeline.Attributes;
 using NPipeline.DataFlow.Branching;
+using NPipeline.Execution;
 using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
 using NPipeline.Nodes;
@@ -10,7 +11,7 @@ using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
 
-namespace NPipeline.Execution.Services;
+namespace NPipeline.Observability;
 
 /// <summary>
 ///     Default implementation of <see cref="IObservabilitySurface" /> centralizing logging, tracing and observer events.

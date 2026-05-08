@@ -1,3 +1,5 @@
+using NPipeline.Graph;
+
 namespace NPipeline.Lineage;
 
 /// <summary>
@@ -39,4 +41,15 @@ public interface ILineageFactory
     /// </summary>
     /// <returns>An <see cref="ILineageCollector" /> instance or null if lineage is not enabled.</returns>
     ILineageCollector? ResolveLineageCollector();
+
+    /// <summary>
+    ///     Creates a lineage report for a pipeline run.
+    /// </summary>
+    /// <param name="pipelineName">The name of the pipeline.</param>
+    /// <param name="pipelineId">The pipeline identifier.</param>
+    /// <param name="graph">The pipeline graph.</param>
+    /// <param name="runId">The run identifier.</param>
+    /// <returns>A <see cref="PipelineLineageReport" />, or null if lineage reporting is not available.</returns>
+    PipelineLineageReport? CreateLineageReport(
+        string pipelineName, Guid pipelineId, PipelineGraph graph, Guid runId);
 }

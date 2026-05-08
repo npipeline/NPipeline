@@ -98,7 +98,7 @@ public sealed class PipelineRunnerBuilder
 
         var executionCoordinator = _executionCoordinator ?? new PipelineExecutionCoordinator(
             new NodeExecutor(
-                new LineageService(),
+                NullLineageService.Instance,
                 new PipeMergeService(new MergeStrategySelector()),
                 new DataStreamWrapperService()),
             new TopologyService(),
@@ -108,7 +108,7 @@ public sealed class PipelineRunnerBuilder
             ErrorHandlingService.Instance,
             PersistenceService.Instance);
 
-        var observabilitySurface = _observabilitySurface ?? new ObservabilitySurface();
+        var observabilitySurface = _observabilitySurface ?? NullObservabilitySurface.Instance;
 
         return new PipelineRunner(
             pipelineFactory,

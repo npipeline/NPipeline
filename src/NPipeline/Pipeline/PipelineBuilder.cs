@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Reflection;
 using NPipeline.Configuration;
+using NPipeline.Lineage;
 using NPipeline.Graph;
 using NPipeline.Graph.PipelineDelegates;
 using NPipeline.Graph.Validation;
@@ -26,6 +27,9 @@ public sealed partial class PipelineBuilder
 
     // Flag to prevent builder reuse after Build() has been called
     private bool _built;
+
+    public static ILineageAdapterBuilder LineageAdapterBuilder { get; set; }
+        = NullLineageAdapterBuilder.Instance;
 
     // State objects encapsulating related fields by concern
 
@@ -465,50 +469,36 @@ public sealed partial class PipelineBuilder
         return handleFactory(id, def);
     }
 
-    private static LineageAdapterDelegate BuildLineageAdapterReflection(Type? inType, Type? outType, Type? lineageMapperType)
+    private static LineageAdapterDelegate? BuildLineageAdapterReflection(Type? inType, Type? outType, Type? lineageMapperType)
     {
         if (inType is null || outType is null)
-            throw new InvalidOperationException("Lineage adapter creation requires non-null input and output types.");
+            return null;
 
-        var method = typeof(PipelineBuilder).GetMethod("BuildLineageAdapter", BindingFlags.NonPublic | BindingFlags.Static)
-                     ?? throw new InvalidOperationException("Internal method 'BuildLineageAdapter' was not found on PipelineBuilder.");
+        var method = typeof(ILineageAdapterBuilder).GetMethod(nameof(ILineageAdapterBuilder.BuildLineageAdapter),
+                         BindingFlags.Public | BindingFlags.Instance)
+                     ?? throw new InvalidOperationException("Method 'BuildLineageAdapter' not found on ILineageAdapterBuilder.");
 
-        try
-        {
-            var result = method.MakeGenericMethod(inType, outType).Invoke(null, [lineageMapperType]);
+        var genericMethod = method.MakeGenericMethod(inType, outType);
 
-            return result as LineageAdapterDelegate
-                   ?? throw new InvalidOperationException("Internal method 'BuildLineageAdapter' returned an unexpected delegate type.");
-        }
-        catch (TargetInvocationException ex) when (ex.InnerException is not null)
-        {
-            throw new InvalidOperationException(
-                $"Failed to create lineage adapter for input '{inType}' and output '{outType}'.",
-                ex.InnerException);
-        }
+        var result = genericMethod.Invoke(PipelineBuilder.LineageAdapterBuilder, [lineageMapperType]);
+
+        return result as LineageAdapterDelegate;
     }
 
-    private static SinkLineageUnwrapDelegate BuildSinkLineageUnwrapReflection(Type? inType)
+    private static SinkLineageUnwrapDelegate? BuildSinkLineageUnwrapReflection(Type? inType)
     {
         if (inType is null)
-            throw new InvalidOperationException("Sink lineage unwrap creation requires a non-null input type.");
+            return null;
 
-        var method = typeof(PipelineBuilder).GetMethod("BuildSinkLineageUnwrapDelegate", BindingFlags.NonPublic | BindingFlags.Static)
-                     ?? throw new InvalidOperationException("Internal method 'BuildSinkLineageUnwrapDelegate' was not found on PipelineBuilder.");
+        var method = typeof(ILineageAdapterBuilder).GetMethod(nameof(ILineageAdapterBuilder.BuildSinkLineageUnwrapDelegate),
+                         BindingFlags.Public | BindingFlags.Instance)
+                     ?? throw new InvalidOperationException("Method 'BuildSinkLineageUnwrapDelegate' not found on ILineageAdapterBuilder.");
 
-        try
-        {
-            var result = method.MakeGenericMethod(inType).Invoke(null, null);
+        var genericMethod = method.MakeGenericMethod(inType);
 
-            return result as SinkLineageUnwrapDelegate
-                   ?? throw new InvalidOperationException("Internal method 'BuildSinkLineageUnwrapDelegate' returned an unexpected delegate type.");
-        }
-        catch (TargetInvocationException ex) when (ex.InnerException is not null)
-        {
-            throw new InvalidOperationException(
-                $"Failed to create sink lineage unwrap delegate for input '{inType}'.",
-                ex.InnerException);
-        }
+        var result = genericMethod.Invoke(PipelineBuilder.LineageAdapterBuilder, []);
+
+        return result as SinkLineageUnwrapDelegate;
     }
 
     /// <summary>

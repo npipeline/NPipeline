@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NPipeline.Execution;
 using NPipeline.Extensions.Observability;
+using NPipeline.Observability;
 using NPipeline.Observability.Metrics;
 
 namespace NPipeline.Observability.DependencyInjection;
@@ -250,5 +251,8 @@ public static class ObservabilityServiceCollectionExtensions
 
         // Register the context factory for automatic observer configuration
         services.TryAddScoped<IObservablePipelineContextFactory, ObservablePipelineContextFactory>();
+
+        // Replace the core null observability surface with the real one.
+        services.AddScoped<IObservabilitySurface, ObservabilitySurface>();
     }
 }

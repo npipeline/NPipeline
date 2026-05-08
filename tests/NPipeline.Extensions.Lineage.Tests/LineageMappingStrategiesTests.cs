@@ -5,10 +5,9 @@ using AwesomeAssertions;
 using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
 using NPipeline.Execution.Lineage;
-using NPipeline.Execution.Lineage.Strategies;
 using NPipeline.Lineage;
 
-namespace NPipeline.Tests.Lineage;
+namespace NPipeline.Extensions.Lineage.Tests;
 
 /// <summary>
 ///     Comprehensive tests for lineage mapping strategies.

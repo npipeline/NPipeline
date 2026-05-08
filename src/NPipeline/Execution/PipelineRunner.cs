@@ -559,10 +559,14 @@ public sealed class PipelineRunner(
         if (!graph.Lineage.ItemLevelLineageEnabled || pipelineLineageSink is null)
             return;
 
-        var report = LineageGenerator.Generate(definitionType.Name, context.PipelineId, graph,
-            context.RunId == Guid.Empty
-                ? Guid.NewGuid()
-                : context.RunId);
+        var runId = context.RunId == Guid.Empty
+            ? Guid.NewGuid()
+            : context.RunId;
+
+        var report = context.LineageFactory.CreateLineageReport(definitionType.Name, context.PipelineId, graph, runId);
+
+        if (report is null)
+            return;
 
         await pipelineLineageSink.RecordAsync(report, context.CancellationToken).ConfigureAwait(false);
     }

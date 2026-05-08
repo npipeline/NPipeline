@@ -3,7 +3,6 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using AwesomeAssertions;
-using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
 using NPipeline.Execution;
 using NPipeline.Execution.Annotations;
@@ -168,74 +167,6 @@ public sealed class PipelineBuilderCharacterizationTests
     }
 
     [Fact]
-    public void EnableLineage_OneToOne_NoMaterializationPathRetained()
-    {
-        var b = new PipelineBuilder().WithoutExtendedValidation();
-        var s = b.AddSource<InMemorySourceNode<int>, int>("s");
-        var t = b.AddTransform<PassthroughTransform, int, int>("t");
-        var k = b.AddSink<InMemorySinkNode<int>, int>("k");
-        b.Connect(s, t).Connect(t, k);
-        b.EnableItemLevelLineage();
-        var p = b.Build();
-        var tDef = p.Graph.Nodes.Single(n => n.Id == t.Id);
-        tDef.DeclaredCardinality.Should().BeNull(); // current behavior (no attribute)
-        tDef.LineageAdapter.Should().NotBeNull();
-    }
-
-    [Fact]
-    public void Lineage_WithDeclaredOneToMany_AdapterPresent()
-    {
-        var b = new PipelineBuilder().WithoutExtendedValidation();
-        var s = b.AddSource<InMemorySourceNode<int>, int>("s");
-        var t = b.AddTransform<OneToManyTransform, int, int>("oom");
-        var k = b.AddSink<InMemorySinkNode<int>, int>("k");
-        b.Connect(s, t).Connect(t, k);
-
-        b.EnableItemLevelLineage(o =>
-            o.With(sampleEvery: 1, materializationCap: 10)); // ensure cap path still supported
-
-        var p = b.Build();
-        var def = p.Graph.Nodes.Single(n => n.Id == t.Id);
-        def.DeclaredCardinality.Should().Be(TransformCardinality.OneToMany);
-        def.LineageAdapter.Should().NotBeNull();
-    }
-
-    [Fact]
-    public void Lineage_OverflowPolicyStrict_WhenCapExceeded_ThrowsDuringBuildMaterializationPhase()
-    {
-        var b = new PipelineBuilder().WithoutExtendedValidation();
-        var s = b.AddSource<InMemorySourceNode<int>, int>("s");
-        var t = b.AddTransform<OneToManyTransform, int, int>("oom");
-        var k = b.AddSink<InMemorySinkNode<int>, int>("k");
-        b.Connect(s, t).Connect(t, k);
-
-        b.EnableItemLevelLineage(o =>
-            o.With(sampleEvery: 1, materializationCap: 1,
-                overflowPolicy: LineageOverflowPolicy.Strict)); // force overflow path for one-to-many mapping logic
-
-        // Current behavior: Build does not execute transformation, so overflow cannot occur here. Expect no throw.
-        // (Characterizing that overflow policy Strict does NOT impact Build-time for static graph.)
-        var p = b.Build();
-        p.Should().NotBeNull();
-    }
-
-    [Fact]
-    public void Lineage_OverflowPolicyWarnContinue_DoesNotAffectBuild()
-    {
-        var b = new PipelineBuilder().WithoutExtendedValidation();
-        var s = b.AddSource<InMemorySourceNode<int>, int>("s");
-        var t = b.AddTransform<OneToManyTransform, int, int>("oom");
-        var k = b.AddSink<InMemorySinkNode<int>, int>("k");
-        b.Connect(s, t).Connect(t, k);
-
-        b.EnableItemLevelLineage(o =>
-            o.With(sampleEvery: 1, materializationCap: 1, overflowPolicy: LineageOverflowPolicy.WarnContinue)); // force potential overflow later
-
-        var p = b.Build();
-        p.Graph.Nodes.Should().ContainSingle(n => n.Id == t.Id);
-    }
-
-    [Fact]
     public void RetryOptions_GlobalAndPerNodeOverridePersisted()
     {
         var b = new PipelineBuilder().WithoutExtendedValidation();
@@ -321,15 +252,6 @@ public sealed class PipelineBuilderCharacterizationTests
     // Test types used only within characterization tests
 
     private sealed class PassthroughTransform : TransformNode<int, int>
-    {
-        public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(item);
-        }
-    }
-
-    [TransformCardinality(TransformCardinality.OneToMany)]
-    private sealed class OneToManyTransform : TransformNode<int, int>
     {
         public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {

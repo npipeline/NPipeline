@@ -8,7 +8,7 @@ using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
-namespace NPipeline.Tests.Lineage;
+namespace NPipeline.Extensions.Lineage.Tests;
 
 /// <summary>
 ///     Tests for LineageGenerator static utility.

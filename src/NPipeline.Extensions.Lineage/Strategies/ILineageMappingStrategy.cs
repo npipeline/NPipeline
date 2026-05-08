@@ -2,7 +2,7 @@ using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
 using NPipeline.Lineage;
 
-namespace NPipeline.Execution.Lineage.Strategies;
+namespace NPipeline.Lineage;
 
 /// <summary>
 ///     Strategy abstraction for mapping lineage-wrapped input packets to lineage-wrapped output packets.

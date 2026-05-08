@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using NPipeline.Graph;
 using NPipeline.Observability.Logging;
 
 namespace NPipeline.Lineage;
@@ -71,6 +72,17 @@ internal sealed class DefaultLineageFactory : ILineageFactory
         // Lineage collection requires DI registration through services.AddLineageTracking().
         return null;
     }
+
+    /// <summary>
+    ///     Creates a lineage report for a pipeline run.
+    /// </summary>
+    /// <param name="pipelineName">The name of the pipeline.</param>
+    /// <param name="pipelineId">The pipeline identifier.</param>
+    /// <param name="graph">The pipeline graph.</param>
+    /// <param name="runId">The run identifier.</param>
+    /// <returns>A <see cref="PipelineLineageReport" />, or null if lineage reporting is not available.</returns>
+    public PipelineLineageReport? CreateLineageReport(string pipelineName, Guid pipelineId, PipelineGraph graph, Guid runId)
+        => null;
 
     /// <summary>
     ///     Attempts to create an instance of the specified type using reflection.

@@ -5,6 +5,7 @@ using NPipeline.Configuration;
 using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
 using NPipeline.Graph.Validation;
+using NPipeline.Lineage;
 
 namespace NPipeline.Pipeline;
 
@@ -32,6 +33,12 @@ public sealed partial class PipelineBuilder
 
         if (NodeState.Nodes.Count == 0)
             throw new InvalidOperationException(ErrorMessages.PipelineRequiresAtLeastOneNode());
+
+        if (_config.ItemLevelLineageEnabled && LineageAdapterBuilder is NullLineageAdapterBuilder)
+            throw new InvalidOperationException(
+                "Item-level lineage requires NPipeline.Extensions.Lineage. " +
+                "Install the NPipeline.Extensions.Lineage package and call services.AddNPipelineLineage() " +
+                "in your DI configuration.");
 
         if (ConfigurationState.GlobalExecutionObserver is not null)
             NodeState.ExecutionAnnotations[ExecutionAnnotationKeys.GlobalExecutionObserver] = ConfigurationState.GlobalExecutionObserver;
@@ -106,6 +113,18 @@ public sealed partial class PipelineBuilder
         {
             validationResult = new PipelineValidationResult(
                 ImmutableList.Create(new ValidationIssue(ValidationSeverity.Error, "A pipeline must have at least one node.", "Structure")));
+
+            return false;
+        }
+
+        if (_config.ItemLevelLineageEnabled && LineageAdapterBuilder is NullLineageAdapterBuilder)
+        {
+            validationResult = new PipelineValidationResult(
+                ImmutableList.Create(new ValidationIssue(ValidationSeverity.Error,
+                    "Item-level lineage requires NPipeline.Extensions.Lineage. " +
+                    "Install the NPipeline.Extensions.Lineage package and call services.AddNPipelineLineage() " +
+                    "in your DI configuration.",
+                    "Lineage")));
 
             return false;
         }

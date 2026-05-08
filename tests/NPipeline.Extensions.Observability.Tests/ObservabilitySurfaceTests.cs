@@ -3,12 +3,12 @@ using NPipeline.DataFlow;
 using NPipeline.DataFlow.Branching;
 using NPipeline.Execution;
 using NPipeline.Execution.Annotations;
-using NPipeline.Execution.Services;
 using NPipeline.Graph;
 using NPipeline.Nodes;
+using NPipeline.Observability;
 using NPipeline.Pipeline;
 
-namespace NPipeline.Tests.Observability;
+namespace NPipeline.Extensions.Observability.Tests;
 
 public sealed class ObservabilitySurfaceTests
 {

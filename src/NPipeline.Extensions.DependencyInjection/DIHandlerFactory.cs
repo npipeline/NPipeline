@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.ErrorHandling;
+using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Observability;
 using NPipeline.Observability.Metrics;
@@ -210,5 +211,13 @@ public sealed class DiHandlerFactory(IServiceProvider serviceProvider) : IErrorH
         {
             return null;
         }
+    }
+
+    /// <summary>
+    ///     Creates a lineage report for the given pipeline.
+    /// </summary>
+    public PipelineLineageReport? CreateLineageReport(string pipelineName, Guid pipelineId, PipelineGraph graph, Guid runId)
+    {
+        return null;
     }
 }

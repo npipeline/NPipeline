@@ -5,7 +5,7 @@ using NPipeline.Configuration;
 using NPipeline.Execution;
 using NPipeline.Execution.Caching;
 using NPipeline.Execution.Plans;
-using NPipeline.Execution.Services;
+using NPipeline.Observability;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -22,7 +22,7 @@ public sealed class PipelineRunnerLineageOverrideTests
         var nodeFactory = A.Fake<INodeFactory>();
         var executionCoordinator = A.Fake<IPipelineExecutionCoordinator>();
         var infrastructureService = A.Fake<IPipelineInfrastructureService>();
-        var observabilitySurface = new ObservabilitySurface();
+        var observabilitySurface = NullObservabilitySurface.Instance;
 
         var baseGraph = PipelineGraphBuilder.Create()
             .WithNodes(ImmutableArray<NodeDefinition>.Empty)
@@ -82,7 +82,7 @@ public sealed class PipelineRunnerLineageOverrideTests
         var nodeFactory = A.Fake<INodeFactory>();
         var executionCoordinator = A.Fake<IPipelineExecutionCoordinator>();
         var infrastructureService = A.Fake<IPipelineInfrastructureService>();
-        var observabilitySurface = new ObservabilitySurface();
+        var observabilitySurface = NullObservabilitySurface.Instance;
 
         var baseGraph = PipelineGraphBuilder.Create()
             .WithNodes(ImmutableArray<NodeDefinition>.Empty)

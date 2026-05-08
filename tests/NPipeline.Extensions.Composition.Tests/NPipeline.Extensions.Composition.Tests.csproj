@@ -22,6 +22,8 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\NPipeline\NPipeline.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Extensions.Composition\NPipeline.Extensions.Composition.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.Extensions.Lineage\NPipeline.Extensions.Lineage.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.Extensions.Observability\NPipeline.Extensions.Observability.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline.Extensions.Testing.AwesomeAssertions\NPipeline.Extensions.Testing.AwesomeAssertions.csproj"/>
     </ItemGroup>
 

@@ -5,6 +5,7 @@ using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
+using NPipeline.Observability;
 using NPipeline.Observability.Metrics;
 using NPipeline.Pipeline;
 using Xunit;
@@ -21,7 +22,9 @@ public class NestedObservabilityAndLineageTests
     {
         // Arrange
         var observer = new RecordingExecutionObserver();
-        var runner = PipelineRunner.Create();
+        var runner = new PipelineRunnerBuilder()
+            .WithObservabilitySurface(new ObservabilitySurface())
+            .Build();
         var context = new PipelineContext();
         context.ExecutionObserver = observer;
 
@@ -167,7 +170,9 @@ public class NestedObservabilityAndLineageTests
     {
         // Arrange
         var observer = new RecordingExecutionObserver();
-        var runner = PipelineRunner.Create();
+        var runner = new PipelineRunnerBuilder()
+            .WithObservabilitySurface(new ObservabilitySurface())
+            .Build();
         var context = new PipelineContext();
         context.ExecutionObserver = observer;
 
@@ -222,7 +227,9 @@ public class NestedObservabilityAndLineageTests
     {
         // Arrange
         var observer = new RecordingExecutionObserver();
-        var runner = PipelineRunner.Create();
+        var runner = new PipelineRunnerBuilder()
+            .WithObservabilitySurface(new ObservabilitySurface())
+            .Build();
         var context = new PipelineContext();
         context.ExecutionObserver = observer;
 
@@ -241,7 +248,7 @@ public class NestedObservabilityAndLineageTests
         // Arrange
         ParentRunIdCaptureTransform.CapturedRunId = Guid.Empty;
         RunIdCaptureTransform.CapturedRunId = Guid.Empty;
-        var runner = PipelineRunner.Create();
+        var runner = new PipelineRunnerBuilder().Build();
         var context = new PipelineContext();
 
         // Act
@@ -258,7 +265,7 @@ public class NestedObservabilityAndLineageTests
         // Arrange
         ParentRunIdCaptureTransform.CapturedRunId = Guid.Empty;
         RunIdCaptureTransform.CapturedRunId = Guid.Empty;
-        var runner = PipelineRunner.Create();
+        var runner = new PipelineRunnerBuilder().Build();
         var context = new PipelineContext();
 
         // Act

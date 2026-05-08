@@ -1,5 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using NPipeline.Execution;
+using NPipeline.Pipeline;
 
 namespace NPipeline.Lineage.DependencyInjection;
 
@@ -122,10 +124,17 @@ public static class LineageServiceCollectionExtensions
     /// </summary>
     private static void RegisterCoreLineageServices(IServiceCollection services)
     {
-        // Register the factory for DI resolution
-        services.TryAddScoped<ILineageFactory, DiLineageFactory>();
+        // Replace the core DiHandlerFactory (which returns null for lineage report)
+        // with DiLineageFactory (which delegates to LineageGenerator).
+        services.AddScoped<ILineageFactory, DiLineageFactory>();
+
+        // Replace the core null lineage service with the real one.
+        services.AddScoped<ILineageService, LineageService>();
 
         // Register the default pipeline lineage sink provider
         services.TryAddScoped<IPipelineLineageSinkProvider, DefaultPipelineLineageSinkProvider>();
+
+        // Set the static adapter builder so PipelineBuilder can construct lineage adapters
+        PipelineBuilder.LineageAdapterBuilder = new DefaultLineageAdapterBuilder();
     }
 }

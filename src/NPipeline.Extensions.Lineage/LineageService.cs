@@ -8,10 +8,10 @@ using System.Threading.Channels;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
-using NPipeline.Execution.Lineage.Strategies;
+using NPipeline.Execution;
 using NPipeline.Lineage;
 
-namespace NPipeline.Execution.Services;
+namespace NPipeline.Lineage;
 
 /// <summary>
 ///     Provides services for managing item-level lineage throughout a pipeline execution.

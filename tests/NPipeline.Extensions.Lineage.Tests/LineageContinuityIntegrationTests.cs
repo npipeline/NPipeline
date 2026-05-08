@@ -6,11 +6,12 @@ using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Parallelism;
 using NPipeline.Lineage;
+using NPipeline.Lineage.DependencyInjection;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using System.Runtime.CompilerServices;
 
-namespace NPipeline.Tests.Lineage;
+namespace NPipeline.Extensions.Lineage.Tests;
 
 public sealed class LineageContinuityIntegrationTests
 {
@@ -167,6 +168,7 @@ public sealed class LineageContinuityIntegrationTests
     {
         var services = new ServiceCollection();
         services.AddNPipeline(typeof(LineageContinuityIntegrationTests).Assembly);
+        services.AddNPipelineLineage();
 
         await using var provider = services.BuildServiceProvider();
         var runner = provider.GetRequiredService<IPipelineRunner>();

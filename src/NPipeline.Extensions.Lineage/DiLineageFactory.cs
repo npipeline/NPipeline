@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using NPipeline.Graph;
 
 namespace NPipeline.Lineage;
 
@@ -88,8 +89,12 @@ public sealed class DiLineageFactory : ILineageFactory
     /// <returns>An <see cref="ILineageCollector" /> instance or null if lineage is not enabled.</returns>
     public ILineageCollector? ResolveLineageCollector()
     {
-        // Try to resolve from the service provider
-        // Returns null if not registered, allowing lineage to be optional
         return _serviceProvider.GetService<ILineageCollector>();
     }
+
+    /// <summary>
+    ///     Creates a lineage report for the given pipeline execution using <see cref="LineageGenerator" />.
+    /// </summary>
+    public PipelineLineageReport? CreateLineageReport(string pipelineName, Guid pipelineId, PipelineGraph graph, Guid runId)
+        => LineageGenerator.Generate(pipelineName, pipelineId, graph, runId);
 }

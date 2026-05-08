@@ -2,7 +2,7 @@ using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
 using NPipeline.Lineage;
 
-namespace NPipeline.Execution.Lineage.Strategies;
+namespace NPipeline.Lineage;
 
 internal sealed class PositionalStreamingStrategy<TIn, TOut> : LineageMappingStrategyBase, ILineageMappingStrategy<TIn, TOut>
 {

@@ -5,9 +5,10 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using NPipeline.Attributes.Lineage;
 using NPipeline.Configuration;
+using NPipeline.Execution.Lineage;
 using NPipeline.Lineage;
 
-namespace NPipeline.Execution.Lineage.Strategies;
+namespace NPipeline.Lineage;
 
 /// <summary>
 ///     Base class providing shared lineage mapping helper methods for strategy implementations.

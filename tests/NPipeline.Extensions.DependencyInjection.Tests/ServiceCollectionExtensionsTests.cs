@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NPipeline.DataFlow;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
+using NPipeline.Execution.Services;
 using NPipeline.Extensions.Testing;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
@@ -247,6 +248,28 @@ public sealed class ServiceCollectionExtensionsTests
         // Assert
         var runner = sp.GetRequiredService<IPipelineRunner>();
         runner.Should().BeOfType<FakeRunner>();
+    }
+
+    [Fact]
+    public void AddNPipeline_ResolvesNullLineageService_ByDefault()
+    {
+        var services = new ServiceCollection();
+        services.AddNPipeline();
+        var sp = services.BuildServiceProvider();
+        using var scope = sp.CreateScope();
+        var lineageService = scope.ServiceProvider.GetRequiredService<ILineageService>();
+        Assert.IsType<NullLineageService>(lineageService);
+    }
+
+    [Fact]
+    public void AddNPipeline_ResolvesNullObservabilitySurface_ByDefault()
+    {
+        var services = new ServiceCollection();
+        services.AddNPipeline();
+        var sp = services.BuildServiceProvider();
+        using var scope = sp.CreateScope();
+        var surface = scope.ServiceProvider.GetRequiredService<IObservabilitySurface>();
+        Assert.IsType<NullObservabilitySurface>(surface);
     }
 
     [Fact]
