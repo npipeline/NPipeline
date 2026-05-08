@@ -97,6 +97,20 @@ Provides an embedded analytical database connector for SQL-over-files (Parquet/C
 dotnet add package NPipeline.Connectors.DuckDB
 ```
 
+**12. NPipeline.Extensions.Lineage (Optional)**
+Enables comprehensive data lineage tracking and provenance capabilities for audit trails, data governance, and debugging.
+
+```bash
+dotnet add package NPipeline.Extensions.Lineage
+```
+
+**13. NPipeline.Extensions.Observability (Optional)**
+Provides metrics collection and monitoring capabilities for pipeline performance tracking and health monitoring.
+
+```bash
+dotnet add package NPipeline.Extensions.Observability
+```
+
 ### Using Visual Studio NuGet Package Manager
 
 1. Right-click on your project in the Solution Explorer and select "Manage NuGet Packages...".
@@ -111,6 +125,8 @@ The following table shows the dependencies for each NPipeline package:
 | Package | Dependencies |
 | --- | --- |
 | NPipeline.Extensions.DependencyInjection | Microsoft.Extensions.DependencyInjection.Abstractions |
+| NPipeline.Extensions.Lineage | Microsoft.Extensions.Logging.Abstractions |
+| NPipeline.Extensions.Observability | Microsoft.Extensions.Logging.Abstractions |
 | NPipeline.Connectors | Microsoft.Extensions.DependencyInjection.Abstractions |
 | NPipeline.Connectors.Csv | CsvHelper |
 | NPipeline.Connectors.Excel | ExcelDataReader, DocumentFormat.OpenXml |

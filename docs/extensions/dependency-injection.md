@@ -213,6 +213,10 @@ In addition to scanning for your implementations, `AddNPipeline` registers these
 - **Error handling**: ErrorHandlingService
 - **Persistence**: PersistenceService
 
+> **Note**: Lineage and Observability require their respective extensions to be enabled. The core NPipeline uses null implementations by default. To enable these features, install and register:
+> - `NPipeline.Extensions.Lineage` with `services.AddNPipelineLineage()`
+> - `NPipeline.Extensions.Observability` with `services.AddNPipelineObservability()`
+
 ### Overriding Default Registrations
 
 Default registrations can be overridden or customized if needed. For example, to configure a singleton instance of a particular node:

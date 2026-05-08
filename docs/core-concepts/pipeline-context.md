@@ -66,8 +66,8 @@ The simplest way to create a `PipelineContext` is by using its public constructo
 All of these components have built-in defaults - you don't need to explicitly set them:
 
 * **`ErrorHandlerFactory`**: `DefaultErrorHandlerFactory` (handles errors according to pipeline settings)
-* **`LineageFactory`**: `DefaultLineageFactory` (tracks data lineage)
-* **`ObservabilityFactory`**: `DefaultObservabilityFactory` (provides observability hooks)
+* **`LineageFactory`**: Null implementation by default (lineage tracking disabled). Enable with `AddNPipelineLineage()` in DI registration or provide a custom factory.
+* **`ObservabilityFactory`**: Null implementation by default (observability disabled). Enable with `AddNPipelineObservability()` in DI registration or provide a custom factory.
 * **`LoggerFactory`**: `NullLoggerFactory` (no-op logger)
 * **`Tracer`**: `NullPipelineTracer` (no-op tracer)
 * **`RetryOptions`**: `PipelineRetryOptions.Default` (no retries)
