@@ -110,7 +110,7 @@ catch (OperationCanceledException)
 The `PipelineRunner` provides a static factory method and a builder for different use cases:
 
 ```csharp
-// Default runner with all default services
+// Default runner with all default services (including transient error handling/persistence services)
 var runner = PipelineRunner.Create();
 
 // With custom factories using the Builder

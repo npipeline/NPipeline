@@ -18,7 +18,7 @@ public sealed class ErrorHandlingAndPersistenceTests
     public async Task ErrorHandling_Retries_Until_Limit()
     {
         // Arrange
-        var svc = ErrorHandlingService.Instance;
+        var svc = new ErrorHandlingService();
         var context = PipelineContext.Default;
         var handler = new TestErrorHandler(2);
         context.PipelineErrorHandler = handler;
@@ -60,7 +60,7 @@ public sealed class ErrorHandlingAndPersistenceTests
     [Fact]
     public void Persistence_Attempts_Snapshot()
     {
-        var persistence = PersistenceService.Instance;
+        var persistence = new PersistenceService();
 
         var ctx = new PipelineContext(
             PipelineContextConfiguration.WithParameters(new Dictionary<string, object>()));

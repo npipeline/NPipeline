@@ -31,7 +31,7 @@ internal sealed class ValueTaskTransformAdapter<TIn, TOut> : ITransformNode<TIn,
         ErrorHandler = errorHandler;
     }
 
-    public IExecutionStrategy ExecutionStrategy { get; set; } = SequentialExecutionStrategy.Instance;
+    public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
 
     public INodeErrorHandler? ErrorHandler { get; set; }
 

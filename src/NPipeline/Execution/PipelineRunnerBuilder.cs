@@ -143,8 +143,8 @@ public sealed class PipelineRunnerBuilder
 
         var topologyService = _topologyService ?? new TopologyService();
         var nodeInstantiationService = _nodeInstantiationService ?? new NodeInstantiationService();
-        var errorHandlingService = _errorHandlingService ?? ErrorHandlingService.Instance;
-        var persistenceService = _persistenceService ?? PersistenceService.Instance;
+        var errorHandlingService = _errorHandlingService ?? new ErrorHandlingService();
+        var persistenceService = _persistenceService ?? new PersistenceService();
         var runtimePipelineBinder = _runtimePipelineBinder ?? RuntimePipelineBinder.Instance;
 
         var observabilitySurface = _observabilitySurface ?? NullObservabilitySurface.Instance;

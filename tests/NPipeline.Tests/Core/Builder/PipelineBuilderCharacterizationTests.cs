@@ -335,7 +335,7 @@ public sealed class PipelineBuilderCharacterizationTests
 
     private sealed class PassthroughStreamTransform : IStreamTransformNode<int, int>
     {
-        public IExecutionStrategy ExecutionStrategy { get; set; } = SequentialExecutionStrategy.Instance;
+        public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
         public INodeErrorHandler? ErrorHandler { get; set; }
 
         public async IAsyncEnumerable<int> TransformAsync(IAsyncEnumerable<int> items, PipelineContext context,

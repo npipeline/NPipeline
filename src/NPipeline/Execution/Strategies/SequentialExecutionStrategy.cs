@@ -21,11 +21,6 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
     private readonly IPerItemRetryExecutor _perItemRetryExecutor;
 
     /// <summary>
-    ///     Shared singleton instance for the stateless sequential strategy.
-    /// </summary>
-    public static SequentialExecutionStrategy Instance { get; } = new();
-
-    /// <summary>
     ///     Initializes a new instance of <see cref="SequentialExecutionStrategy" />.
     /// </summary>
     public SequentialExecutionStrategy() : this(PerItemRetryExecutor.Instance)

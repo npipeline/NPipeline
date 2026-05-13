@@ -210,10 +210,11 @@ In addition to scanning for your implementations, `AddNPipeline` registers these
 - **`IObservabilityFactory`**: Factory for resolving observability collectors
 - **Execution services**: CountingService, MergeStrategySelector, PipeMergeService, etc.
 - **Observability services**: LineageService, BranchService, NodeExecutor, etc.
-- **Error handling**: ErrorHandlingService
-- **Persistence**: PersistenceService
+- **Error handling**: ErrorHandlingService (transient)
+- **Persistence**: PersistenceService (transient)
 
 > **Note**: Lineage and Observability require their respective extensions to be enabled. The core NPipeline uses null implementations by default. To enable these features, install and register:
+>
 > - `NPipeline.Extensions.Lineage` with `services.AddNPipelineLineage()`
 > - `NPipeline.Extensions.Observability` with `services.AddNPipelineObservability()`
 

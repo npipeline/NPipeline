@@ -11,14 +11,9 @@ public sealed class PersistenceService : IPersistenceService
     /// <summary>
     ///     Initializes a new instance of the <see cref="PersistenceService" /> class.
     /// </summary>
-    private PersistenceService()
+    public PersistenceService()
     {
     }
-
-    /// <summary>
-    ///     Gets the singleton instance of the <see cref="PersistenceService" />.
-    /// </summary>
-    public static PersistenceService Instance { get; } = new();
 
     /// <summary>
     ///     Attempts to persist state after node execution completion.
