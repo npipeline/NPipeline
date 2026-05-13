@@ -11,12 +11,15 @@ namespace NPipeline.Execution;
 /// </summary>
 public sealed class PipelineRunnerBuilder
 {
-    private IPipelineExecutionCoordinator? _executionCoordinator;
+    private IErrorHandlingService? _errorHandlingService;
     private IPipelineExecutionPlanCache? _executionPlanCache;
-    private IPipelineInfrastructureService? _infrastructureService;
     private INodeFactory? _nodeFactory;
+    private INodeExecutor? _nodeExecutor;
+    private INodeInstantiationService? _nodeInstantiationService;
     private IObservabilitySurface? _observabilitySurface;
+    private IPersistenceService? _persistenceService;
     private IPipelineFactory? _pipelineFactory;
+    private ITopologyService? _topologyService;
 
     /// <summary>
     ///     Sets the pipeline factory.
@@ -37,20 +40,47 @@ public sealed class PipelineRunnerBuilder
     }
 
     /// <summary>
-    ///     Sets the execution coordinator.
+    ///     Sets the node executor.
     /// </summary>
-    public PipelineRunnerBuilder WithExecutionCoordinator(IPipelineExecutionCoordinator executionCoordinator)
+    public PipelineRunnerBuilder WithNodeExecutor(INodeExecutor nodeExecutor)
     {
-        _executionCoordinator = executionCoordinator;
+        _nodeExecutor = nodeExecutor;
         return this;
     }
 
     /// <summary>
-    ///     Sets the infrastructure service.
+    ///     Sets the topology service.
     /// </summary>
-    public PipelineRunnerBuilder WithInfrastructureService(IPipelineInfrastructureService infrastructureService)
+    public PipelineRunnerBuilder WithTopologyService(ITopologyService topologyService)
     {
-        _infrastructureService = infrastructureService;
+        _topologyService = topologyService;
+        return this;
+    }
+
+    /// <summary>
+    ///     Sets the node instantiation service.
+    /// </summary>
+    public PipelineRunnerBuilder WithNodeInstantiationService(INodeInstantiationService nodeInstantiationService)
+    {
+        _nodeInstantiationService = nodeInstantiationService;
+        return this;
+    }
+
+    /// <summary>
+    ///     Sets the error handling service.
+    /// </summary>
+    public PipelineRunnerBuilder WithErrorHandlingService(IErrorHandlingService errorHandlingService)
+    {
+        _errorHandlingService = errorHandlingService;
+        return this;
+    }
+
+    /// <summary>
+    ///     Sets the persistence service.
+    /// </summary>
+    public PipelineRunnerBuilder WithPersistenceService(IPersistenceService persistenceService)
+    {
+        _persistenceService = persistenceService;
         return this;
     }
 
@@ -96,25 +126,26 @@ public sealed class PipelineRunnerBuilder
         var pipelineFactory = _pipelineFactory ?? new PipelineFactory();
         var nodeFactory = _nodeFactory ?? new DefaultNodeFactory();
 
-        var executionCoordinator = _executionCoordinator ?? new PipelineExecutionCoordinator(
-            new NodeExecutor(
-                NullLineageService.Instance,
-                new PipeMergeService(new MergeStrategySelector()),
-                new DataStreamWrapperService()),
-            new TopologyService(),
-            new NodeInstantiationService());
+        var nodeExecutor = _nodeExecutor ?? new NodeExecutor(
+            NullLineageService.Instance,
+            new PipeMergeService(new MergeStrategySelector()),
+            new DataStreamWrapperService());
 
-        var infrastructureService = _infrastructureService ?? new PipelineInfrastructureService(
-            ErrorHandlingService.Instance,
-            PersistenceService.Instance);
+        var topologyService = _topologyService ?? new TopologyService();
+        var nodeInstantiationService = _nodeInstantiationService ?? new NodeInstantiationService();
+        var errorHandlingService = _errorHandlingService ?? ErrorHandlingService.Instance;
+        var persistenceService = _persistenceService ?? PersistenceService.Instance;
 
         var observabilitySurface = _observabilitySurface ?? NullObservabilitySurface.Instance;
 
         return new PipelineRunner(
             pipelineFactory,
             nodeFactory,
-            executionCoordinator,
-            infrastructureService,
+            nodeExecutor,
+            topologyService,
+            nodeInstantiationService,
+            errorHandlingService,
+            persistenceService,
             observabilitySurface,
             _executionPlanCache);
     }

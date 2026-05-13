@@ -279,8 +279,11 @@ var runner = new PipelineRunnerBuilder()
 var runner = new PipelineRunnerBuilder()
     .WithPipelineFactory(pipelineFactory)
     .WithNodeFactory(nodeFactory)
-    .WithExecutionCoordinator(executionCoordinator)
-    .WithInfrastructureService(infrastructureService)
+    .WithNodeExecutor(nodeExecutor)
+    .WithTopologyService(topologyService)
+    .WithNodeInstantiationService(nodeInstantiationService)
+    .WithErrorHandlingService(errorHandlingService)
+    .WithPersistenceService(persistenceService)
     .WithObservabilitySurface(observabilitySurface)
     .Build();
 ```

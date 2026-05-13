@@ -39,8 +39,11 @@ namespace NPipeline.Execution;
 public sealed class PipelineRunner(
     IPipelineFactory pipelineFactory,
     INodeFactory nodeFactory,
-    IPipelineExecutionCoordinator executionCoordinator,
-    IPipelineInfrastructureService infrastructureService,
+    INodeExecutor nodeExecutor,
+    ITopologyService topologyService,
+    INodeInstantiationService nodeInstantiationService,
+    IErrorHandlingService errorHandlingService,
+    IPersistenceService persistenceService,
     IObservabilitySurface observabilitySurface,
     IPipelineExecutionPlanCache? executionPlanCache = null) : IPipelineRunner
 {
@@ -180,7 +183,7 @@ public sealed class PipelineRunner(
             ConfigureCircuitBreaker(graph, context);
             var pipelineLineageSink = ResolveAndApplyExecutionHandlers(graph, context);
 
-            nodeInstances = executionCoordinator.InstantiateNodes(graph, nodeFactory);
+            nodeInstances = nodeInstantiationService.InstantiateNodes(graph, nodeFactory);
             ApplyNodeExecutionStrategies(graph, nodeInstances);
             ApplyGlobalExecutionAnnotations(graph, context);
             ApplyGlobalServicesFromProperties(context);
@@ -191,7 +194,7 @@ public sealed class PipelineRunner(
 
             var executionPlans = BuildExecutionPlans(definitionType, graph, nodeInstances);
             ApplyStatefulRegistryFromProperties(context);
-            executionCoordinator.RegisterStatefulNodes(nodeInstances, context);
+            nodeInstantiationService.RegisterStatefulNodes(nodeInstances, context);
 
             await ExecuteNodesInOrderAsync(graph, context, nodeInstances, nodeDefinitionMap, executionPlans, nodeOutputs).ConfigureAwait(false);
             await RecordPipelineLineageAsync(definitionType, graph, context, pipelineLineageSink).ConfigureAwait(false);
@@ -412,8 +415,26 @@ public sealed class PipelineRunner(
         Dictionary<string, INode> nodeInstances)
     {
         return ShouldUseCache(graph)
-            ? executionCoordinator.BuildPlansWithCache(definitionType, graph, nodeInstances, _executionPlanCache)
-            : executionCoordinator.BuildPlans(graph, nodeInstances);
+            ? BuildPlansWithCache(definitionType, graph, nodeInstances)
+            : nodeInstantiationService.BuildPlans(graph, nodeInstances);
+    }
+
+    private Dictionary<string, NodeExecutionPlan> BuildPlansWithCache(
+        Type pipelineDefinitionType,
+        PipelineGraph graph,
+        IReadOnlyDictionary<string, INode> nodeInstances)
+    {
+        ArgumentNullException.ThrowIfNull(pipelineDefinitionType);
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(nodeInstances);
+
+        if (_executionPlanCache.TryGetCachedPlans(pipelineDefinitionType, graph, out var cachedPlans) && cachedPlans is not null)
+            return cachedPlans;
+
+        var plans = nodeInstantiationService.BuildPlans(graph, nodeInstances);
+        _executionPlanCache.CachePlans(pipelineDefinitionType, graph, plans);
+
+        return plans;
     }
 
     private static void ApplyStatefulRegistryFromProperties(PipelineContext context)
@@ -430,8 +451,8 @@ public sealed class PipelineRunner(
         IReadOnlyDictionary<string, NodeExecutionPlan> executionPlans,
         IDictionary<string, IDataStream?> nodeOutputs)
     {
-        var inputLookup = executionCoordinator.BuildInputLookup(graph);
-        var sortedNodes = executionCoordinator.TopologicalSort(graph);
+        var inputLookup = topologyService.BuildInputLookup(graph);
+        var sortedNodes = topologyService.TopologicalSort(graph);
 
         foreach (var nodeDef in sortedNodes.Select(id => nodeDefinitionMap[id]))
         {
@@ -461,7 +482,7 @@ public sealed class PipelineRunner(
             {
                 context.Properties[$"NodeError_{nodeDef.Id}"] = true;
                 var failedEvent = observabilitySurface.CompleteNodeFailure(context, nodeScope, ex);
-                infrastructureService.TryPersistAfterNode(context, failedEvent);
+                persistenceService.TryPersistAfterNode(context, failedEvent);
                 HandleNodeExecutionException(nodeDef, context, ex);
             }
         }
@@ -488,7 +509,7 @@ public sealed class PipelineRunner(
         IReadOnlyDictionary<string, INode> nodeInstances,
         IReadOnlyDictionary<string, NodeDefinition> nodeDefinitionMap)
     {
-        await infrastructureService.ExecuteWithRetriesAsync(
+        await errorHandlingService.ExecuteWithRetriesAsync(
             nodeDef,
             nodeInstance,
             graph,
@@ -497,7 +518,7 @@ public sealed class PipelineRunner(
             {
                 var plan = executionPlans[nodeDef.Id];
 
-                await executionCoordinator.ExecuteNodeAsync(
+                await nodeExecutor.ExecuteAsync(
                     plan,
                     graph,
                     context,
@@ -508,7 +529,7 @@ public sealed class PipelineRunner(
 
                 var completedEvent = observabilitySurface.CompleteNodeSuccess(context, nodeScope);
                 context.Properties[$"NodeCompleted_{nodeDef.Id}"] = true;
-                infrastructureService.TryPersistAfterNode(context, completedEvent);
+                persistenceService.TryPersistAfterNode(context, completedEvent);
             },
             context.CancellationToken).ConfigureAwait(false);
     }

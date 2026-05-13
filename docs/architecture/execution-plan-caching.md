@@ -432,7 +432,7 @@ Cache effectiveness depends on pipeline reuse:
 
 ## Integration Points
 
-### PipelineRunner
+### PipelineRunner Plan Build Flow
 
 The pipeline runner accepts an optional cache:
 
@@ -446,24 +446,33 @@ public sealed class PipelineRunner(
 }
 ```
 
-### PipelineExecutionCoordinator
+### PipelineRunner
 
-The coordinator implements the caching logic:
+The runner owns both the cache decision and the cache lookup/store logic:
 
 ```csharp
-public Dictionary<string, NodeExecutionPlan> BuildPlansWithCache(
+private Dictionary<string, NodeExecutionPlan> BuildExecutionPlans(
+    Type definitionType,
+    PipelineGraph graph,
+    Dictionary<string, INode> nodeInstances)
+{
+    return ShouldUseCache(graph)
+        ? BuildPlansWithCache(definitionType, graph, nodeInstances)
+        : nodeInstantiationService.BuildPlans(graph, nodeInstances);
+}
+
+private Dictionary<string, NodeExecutionPlan> BuildPlansWithCache(
     Type pipelineDefinitionType,
     PipelineGraph graph,
-    IReadOnlyDictionary<string, INode> nodeInstances,
-    IPipelineExecutionPlanCache cache)
+    IReadOnlyDictionary<string, INode> nodeInstances)
 {
     // Try cache first
-    if (cache.TryGetCachedPlans(pipelineDefinitionType, graph, out var cached))
-        return cached;
+    if (_executionPlanCache.TryGetCachedPlans(pipelineDefinitionType, graph, out var cachedPlans) && cachedPlans is not null)
+        return cachedPlans;
 
     // Cache miss - compile and store
     var plans = nodeInstantiationService.BuildPlans(graph, nodeInstances);
-    cache.CachePlans(pipelineDefinitionType, graph, plans);
+    _executionPlanCache.CachePlans(pipelineDefinitionType, graph, plans);
     
     return plans;
 }

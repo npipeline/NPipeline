@@ -118,10 +118,8 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IExecutionAnnotationsService, ExecutionAnnotationsService>();
         services.TryAddScoped<ITopologyService, TopologyService>();
         services.TryAddScoped<INodeInstantiationService, NodeInstantiationService>();
-        services.TryAddScoped<IPipelineExecutionCoordinator, PipelineExecutionCoordinator>();
         services.TryAddSingleton<IErrorHandlingService>(ErrorHandlingService.Instance);
         services.TryAddSingleton<IPersistenceService>(PersistenceService.Instance);
-        services.TryAddScoped<IPipelineInfrastructureService, PipelineInfrastructureService>();
         services.TryAddScoped<IObservabilitySurface>(_ => NullObservabilitySurface.Instance);
     }
 
