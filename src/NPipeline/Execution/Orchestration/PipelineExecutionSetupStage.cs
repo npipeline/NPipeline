@@ -64,16 +64,17 @@ internal sealed class PipelineExecutionSetupStage(
     private static void ApplyRetryOptions(PipelineGraph graph, PipelineContext context)
     {
         var logger = context.LoggerFactory.CreateLogger(nameof(PipelineRunner));
+        var execution = context.ExecutionConfiguration;
 
         if (graph.ErrorHandling.RetryOptions is not null)
         {
             PipelineRunnerLogMessages.StoringRetryOptions(logger, graph.ErrorHandling.RetryOptions.MaxItemRetries);
-            context.GlobalRetryOptions = graph.ErrorHandling.RetryOptions;
+            execution.GlobalRetryOptions = graph.ErrorHandling.RetryOptions;
         }
         else
         {
             PipelineRunnerLogMessages.RetryOptionsNull(logger);
-            context.GlobalRetryOptions = context.RetryOptions;
+            execution.GlobalRetryOptions = execution.RetryOptions;
         }
 
         if (graph.ErrorHandling.NodeRetryOverrides is not { Count: > 0 })
@@ -81,41 +82,45 @@ internal sealed class PipelineExecutionSetupStage(
 
         foreach (var kvp in graph.ErrorHandling.NodeRetryOverrides)
         {
-            context.NodeRetryOverrides[kvp.Key] = kvp.Value;
+            execution.NodeRetryOverrides[kvp.Key] = kvp.Value;
         }
     }
 
     private static void ConfigureCircuitBreaker(PipelineGraph graph, PipelineContext context)
     {
+        var execution = context.ExecutionConfiguration;
+
         if (graph.ErrorHandling.CircuitBreakerOptions is null)
         {
-            context.CircuitBreakerOptions = null;
-            context.CircuitBreakerManager = null;
-            context.CircuitBreakerMemoryOptions = null;
+            execution.CircuitBreakerOptions = null;
+            execution.CircuitBreakerManager = null;
+            execution.CircuitBreakerMemoryOptions = null;
             return;
         }
 
-        context.CircuitBreakerOptions = graph.ErrorHandling.CircuitBreakerOptions;
+        execution.CircuitBreakerOptions = graph.ErrorHandling.CircuitBreakerOptions;
         var memoryOptions = graph.ErrorHandling.CircuitBreakerMemoryOptions;
-        context.CircuitBreakerMemoryOptions = memoryOptions;
+        execution.CircuitBreakerMemoryOptions = memoryOptions;
 
         if (!graph.ErrorHandling.CircuitBreakerOptions.Enabled)
         {
-            context.CircuitBreakerManager = null;
-            context.CircuitBreakerMemoryOptions = null;
+            execution.CircuitBreakerManager = null;
+            execution.CircuitBreakerMemoryOptions = null;
             return;
         }
 
         var managerLogger = context.LoggerFactory.CreateLogger(nameof(CircuitBreakerManager));
         var circuitBreakerManager = context.CreateAndRegister(new CircuitBreakerManager(managerLogger, memoryOptions));
-        context.CircuitBreakerManager = circuitBreakerManager;
+        execution.CircuitBreakerManager = circuitBreakerManager;
         PipelineRunnerLogMessages.CircuitBreakerManagerCreated(managerLogger);
     }
 
     private static void ApplyRuntimeBindings(PipelineContext context, RuntimePipelineBindingResult runtimeBinding)
     {
-        context.LineageSink = runtimeBinding.LineageSink;
-        context.PipelineLineageSink = runtimeBinding.PipelineLineageSink;
+        var lineage = context.Lineage;
+
+        lineage.LineageSink = runtimeBinding.LineageSink;
+        lineage.PipelineLineageSink = runtimeBinding.PipelineLineageSink;
 
         if (runtimeBinding.PipelineErrorHandler is not null)
             context.PipelineErrorHandler = runtimeBinding.PipelineErrorHandler;

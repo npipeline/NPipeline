@@ -116,19 +116,24 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
 
     private static void InitializeExecutionContext(PipelineContext context)
     {
-        context.PipelineStartTimeUtc = DateTime.UtcNow;
+        var runIdentity = context.RunIdentity;
+        var execution = context.ExecutionConfiguration;
+        var observability = context.Observability;
+        var nodeEnvironment = context.NodeEnvironment;
 
-        if (context.PipelineId == Guid.Empty)
-            context.PipelineId = Guid.NewGuid();
+        runIdentity.PipelineStartTimeUtc = DateTime.UtcNow;
 
-        if (context.RunId == Guid.Empty)
-            context.RunId = Guid.NewGuid();
+        if (runIdentity.PipelineId == Guid.Empty)
+            runIdentity.PipelineId = Guid.NewGuid();
 
-        context.ProcessedItemsCounter = new StatsCounter();
-        context.GlobalRetryOptions = context.RetryOptions;
-        context.NodeRetryOverrides.Clear();
-        context.NodeExecutionScopeRegistry.Clear();
-        context.IsParallelExecution = false;
-        context.LastRetryExhaustedException = null;
+        if (runIdentity.RunId == Guid.Empty)
+            runIdentity.RunId = Guid.NewGuid();
+
+        observability.ProcessedItemsCounter = new StatsCounter();
+        execution.GlobalRetryOptions = execution.RetryOptions;
+        execution.NodeRetryOverrides.Clear();
+        nodeEnvironment.NodeExecutionScopeRegistry.Clear();
+        execution.IsParallelExecution = false;
+        execution.LastRetryExhaustedException = null;
     }
 }
