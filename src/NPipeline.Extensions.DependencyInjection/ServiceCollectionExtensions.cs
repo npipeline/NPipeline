@@ -120,6 +120,7 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<INodeInstantiationService, NodeInstantiationService>();
         services.TryAddSingleton<IErrorHandlingService>(ErrorHandlingService.Instance);
         services.TryAddSingleton<IPersistenceService>(PersistenceService.Instance);
+        services.TryAddSingleton<IRuntimePipelineBinder>(_ => RuntimePipelineBinder.Instance);
         services.TryAddScoped<IObservabilitySurface>(_ => NullObservabilitySurface.Instance);
     }
 

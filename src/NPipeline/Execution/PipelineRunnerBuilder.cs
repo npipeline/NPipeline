@@ -19,6 +19,7 @@ public sealed class PipelineRunnerBuilder
     private IObservabilitySurface? _observabilitySurface;
     private IPersistenceService? _persistenceService;
     private IPipelineFactory? _pipelineFactory;
+    private IRuntimePipelineBinder? _runtimePipelineBinder;
     private ITopologyService? _topologyService;
 
     /// <summary>
@@ -94,6 +95,15 @@ public sealed class PipelineRunnerBuilder
     }
 
     /// <summary>
+    ///     Sets the runtime pipeline binder.
+    /// </summary>
+    public PipelineRunnerBuilder WithRuntimePipelineBinder(IRuntimePipelineBinder runtimePipelineBinder)
+    {
+        _runtimePipelineBinder = runtimePipelineBinder;
+        return this;
+    }
+
+    /// <summary>
     ///     Sets the execution plan cache. Use <see cref="NullPipelineExecutionPlanCache.Instance" /> to disable caching.
     /// </summary>
     /// <param name="executionPlanCache">The cache implementation to use, or null to use the default in-memory cache.</param>
@@ -135,6 +145,7 @@ public sealed class PipelineRunnerBuilder
         var nodeInstantiationService = _nodeInstantiationService ?? new NodeInstantiationService();
         var errorHandlingService = _errorHandlingService ?? ErrorHandlingService.Instance;
         var persistenceService = _persistenceService ?? PersistenceService.Instance;
+        var runtimePipelineBinder = _runtimePipelineBinder ?? RuntimePipelineBinder.Instance;
 
         var observabilitySurface = _observabilitySurface ?? NullObservabilitySurface.Instance;
 
@@ -147,6 +158,7 @@ public sealed class PipelineRunnerBuilder
             errorHandlingService,
             persistenceService,
             observabilitySurface,
-            _executionPlanCache);
+            _executionPlanCache,
+            runtimePipelineBinder);
     }
 }
