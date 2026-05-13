@@ -62,61 +62,48 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
             var nodeId = cached.NodeId;
             var lineageTrackingEnabled = LineageNodeOutcomeRegistry.IsTracking(context.PipelineId, nodeId);
             long fallbackInputIndex = -1;
+            using var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
 
-            // Get observability scope if available
-            IAutoObservabilityScope? observabilityScope = null;
-
-            if (context.NodeObservabilityScopes.TryGetValue(nodeId, out var scope))
-                observabilityScope = scope;
-
-            try
+            await foreach (var item in input.WithCancellation(ct).ConfigureAwait(false))
             {
-                await foreach (var item in input.WithCancellation(ct).ConfigureAwait(false))
+                // Track item processed
+                observabilityScope.IncrementProcessed();
+
+                fallbackInputIndex++;
+
+                var hasLineageIndex = LineageExecutionItemContext.TryGetCurrentInputIndex(out var lineageInputIndex);
+
+                if (!hasLineageIndex && lineageTrackingEnabled)
                 {
-                    // Track item processed
-                    observabilityScope?.IncrementProcessed();
-
-                    fallbackInputIndex++;
-
-                    var hasLineageIndex = LineageExecutionItemContext.TryGetCurrentInputIndex(out var lineageInputIndex);
-
-                    if (!hasLineageIndex && lineageTrackingEnabled)
-                    {
-                        hasLineageIndex = true;
-                        lineageInputIndex = fallbackInputIndex;
-                    }
-
-                    // Use cached values to avoid per-item dictionary lookups and allocations
-                    using var itemActivity = cached.TracingEnabled
-                        ? tracer.StartActivity("Item.Transform")
-                        : null;
-
-                    using var _ = context.ScopedNode(cached.NodeId);
-                    var executionResult = await _perItemRetryExecutor.ExecuteWithRetryAsync(
-                            item,
-                            node,
-                            valueTaskTransform,
-                            context,
-                            nodeId,
-                            cached.RetryOptions.MaxItemRetries,
-                            hasLineageIndex,
-                            lineageInputIndex,
-                            itemActivity,
-                            ct)
-                        .ConfigureAwait(false);
-
-                    if (!executionResult.Produced)
-                        continue;
-
-                    // Track item emitted
-                    observabilityScope?.IncrementEmitted();
-                    yield return executionResult.Output!;
+                    hasLineageIndex = true;
+                    lineageInputIndex = fallbackInputIndex;
                 }
-            }
-            finally
-            {
-                // Dispose AutoObservabilityScope after all items are processed, even on failure or cancellation
-                observabilityScope?.Dispose();
+
+                // Use cached values to avoid per-item dictionary lookups and allocations
+                using var itemActivity = cached.TracingEnabled
+                    ? tracer.StartActivity("Item.Transform")
+                    : null;
+
+                using var _ = context.ScopedNode(cached.NodeId);
+                var executionResult = await _perItemRetryExecutor.ExecuteWithRetryAsync(
+                        item,
+                        node,
+                        valueTaskTransform,
+                        context,
+                        nodeId,
+                        cached.RetryOptions.MaxItemRetries,
+                        hasLineageIndex,
+                        lineageInputIndex,
+                        itemActivity,
+                        ct)
+                    .ConfigureAwait(false);
+
+                if (!executionResult.Produced)
+                    continue;
+
+                // Track item emitted
+                observabilityScope.IncrementEmitted();
+                yield return executionResult.Output!;
             }
 
             // Validate context immutability after processing all items (DEBUG-only, zero overhead in RELEASE)

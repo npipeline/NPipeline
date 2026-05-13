@@ -16,14 +16,16 @@ public sealed class SequentialExecutionStrategyValueTaskTests
         var transform = new ValueTaskFriendlyTransform();
         var strategy = new SequentialExecutionStrategy();
         var context = new PipelineContext();
-
-        await using var output = await strategy.ExecuteAsync(input, transform, context, CancellationToken.None);
-
         var results = new List<int>();
 
-        await foreach (var value in output.WithCancellation(CancellationToken.None))
+        using (context.ScopedNode("transform"))
         {
-            results.Add(value);
+            await using var output = await strategy.ExecuteAsync(input, transform, context, CancellationToken.None);
+
+            await foreach (var value in output.WithCancellation(CancellationToken.None))
+            {
+                results.Add(value);
+            }
         }
 
         _ = results.Should().BeEquivalentTo([2, 3, 4]);

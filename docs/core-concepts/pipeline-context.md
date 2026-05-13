@@ -218,9 +218,8 @@ The [`PipelineContext`](https://github.com/npipeline/NPipeline/blob/main/docs/co
 
 ### Node Annotations and Metadata
 
-* **`NodeExecutionAnnotations`**: A dictionary for per-node execution annotations indexed by node ID (for example, strategy-specific options).
-* **`NodeObservabilityScopes`**: A dictionary for per-node observability scopes indexed by node ID.
-* **`RuntimeAnnotations`**: A dictionary for framework-managed runtime annotations and diagnostics.
+* **`NodeExecutionScopeRegistry`**: Centralized registry for per-node execution annotations, node observability scope lifecycle, and framework-managed runtime annotations.
+    Use it to set/get per-node options, begin node scopes via `BeginNodeScope(nodeId)`, and read/write runtime diagnostics without directly mutating context dictionaries.
 * **`PreconfiguredNodeInstances`**: Optional preconfigured node instances to seed graph construction, indexed by node ID.
 
 ## State Management Capabilities

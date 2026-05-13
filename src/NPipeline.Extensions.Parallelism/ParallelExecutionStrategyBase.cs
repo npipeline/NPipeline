@@ -283,8 +283,8 @@ namespace NPipeline.Extensions.Parallelism
         /// <param name="context">The pipeline execution context.</param>
         /// <param name="metrics">The metrics tracker.</param>
         /// <param name="currentActivity">The current tracing activity.</param>
+        /// <param name="observabilityScope">Observability scope handle for recording item counts and scope disposal.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
-        /// <param name="observabilityScope">Optional observability scope for recording item counts.</param>
         /// <returns>An async enumerable of output items.</returns>
         protected static async IAsyncEnumerable<TOut> CreateOutputEnumerable<TOut>(
             Channel<TOut> outChannel,
@@ -292,21 +292,21 @@ namespace NPipeline.Extensions.Parallelism
             PipelineContext context,
             ParallelExecutionMetrics metrics,
             IPipelineActivity? currentActivity,
-            [EnumeratorCancellation] CancellationToken cancellationToken,
-            IAutoObservabilityScope? observabilityScope = null)
+            IAutoObservabilityScope observabilityScope,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
         {
+            using var scope = observabilityScope;
+
             try
             {
                 await foreach (var item in outChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
                 {
-                    observabilityScope?.IncrementEmitted();
+                    scope.IncrementEmitted();
                     yield return item;
                 }
             }
             finally
             {
-                observabilityScope?.Dispose();
-
                 // Tag drop and queue metrics on the current activity for observability
                 currentActivity?.SetTag("parallel.dropped.newest", metrics.DroppedNewest);
                 currentActivity?.SetTag("parallel.dropped.oldest", metrics.DroppedOldest);
@@ -314,10 +314,12 @@ namespace NPipeline.Extensions.Parallelism
                 currentActivity?.SetTag("parallel.processed", metrics.Processed);
 
                 // Store metrics in context runtime annotations for downstream monitoring.
-                context.RuntimeAnnotations[PipelineContextKeys.ParallelMetricsDroppedNewest(nodeId)] = metrics.DroppedNewest;
-                context.RuntimeAnnotations[PipelineContextKeys.ParallelMetricsDroppedOldest(nodeId)] = metrics.DroppedOldest;
-                context.RuntimeAnnotations[PipelineContextKeys.ParallelMetricsEnqueued(nodeId)] = metrics.Enqueued;
-                context.RuntimeAnnotations[PipelineContextKeys.ParallelMetricsProcessed(nodeId)] = metrics.Processed;
+                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsDroppedNewest(nodeId),
+                    metrics.DroppedNewest);
+                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsDroppedOldest(nodeId),
+                    metrics.DroppedOldest);
+                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsEnqueued(nodeId), metrics.Enqueued);
+                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsProcessed(nodeId), metrics.Processed);
             }
         }
 
@@ -326,12 +328,10 @@ namespace NPipeline.Extensions.Parallelism
         /// </summary>
         /// <param name="context">The pipeline execution context.</param>
         /// <param name="nodeId">The node identifier.</param>
-        /// <returns>The configured scope, or null when observability is not enabled.</returns>
-        protected static IAutoObservabilityScope? TryGetNodeObservabilityScope(PipelineContext context, string nodeId)
+        /// <returns>The configured scope handle, or a no-op scope when observability is not enabled.</returns>
+        protected static IAutoObservabilityScope BeginNodeObservabilityScope(PipelineContext context, string nodeId)
         {
-            return context.NodeObservabilityScopes.TryGetValue(nodeId, out var scope)
-                ? scope
-                : null;
+            return context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
         }
     }
 }

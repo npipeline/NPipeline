@@ -73,8 +73,8 @@ public static class ExecutionAnnotationKeys
     // ============================
 
     /// <summary>
-    ///     Prefix used to store and retrieve per-node branch metrics objects in <c>PipelineContext.RuntimeAnnotations</c>,
-    ///     keyed as "branch.metrics::{nodeId}".
+    ///     Prefix used to store and retrieve per-node branch metrics objects in
+    ///     <c>PipelineContext.NodeExecutionScopeRegistry</c> runtime annotations, keyed as "branch.metrics::{nodeId}".
     /// </summary>
     public const string BranchMetricsPrefix = "branch.metrics::";
 
@@ -101,7 +101,8 @@ public static class ExecutionAnnotationKeys
     }
 
     /// <summary>
-    ///     Builds the branching metrics key used with <c>PipelineContext.RuntimeAnnotations</c> for a given <paramref name="nodeId" />.
+    ///     Builds the branching metrics key used with <c>PipelineContext.NodeExecutionScopeRegistry</c> runtime annotations
+    ///     for a given <paramref name="nodeId" />.
     /// </summary>
     public static string BranchMetricsForNode(string nodeId)
     {

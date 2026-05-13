@@ -23,19 +23,14 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
         // Therefore, input IDataStream<TIn> can be treated as an IAsyncEnumerable<IEnumerable<TOut>>.
         if (input is not IAsyncEnumerable<IEnumerable<TOut>> batchedSource)
 
-            // This should not happen if the pipeline is configured correctly.
+        // This should not happen if the pipeline is configured correctly.
         {
             throw new InvalidOperationException(
                 $"The input for {nameof(UnbatchingExecutionStrategy)} must be an IAsyncEnumerable of IEnumerable<{typeof(TOut).Name}>.");
         }
 
         var nodeId = context.CurrentNodeId;
-
-        // Get observability scope if available
-        IAutoObservabilityScope? observabilityScope = null;
-
-        if (context.NodeObservabilityScopes.TryGetValue(nodeId, out var scope))
-            observabilityScope = scope;
+        var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
 
         var flattenedSource = FlattenWithObservabilityAsync(batchedSource, observabilityScope, cancellationToken);
 
@@ -58,19 +53,14 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
         // Therefore, input IDataStream<TIn> can be treated as an IAsyncEnumerable<IEnumerable<TOut>>.
         if (input is not IAsyncEnumerable<IEnumerable<TOut>> batchedSource)
 
-            // This should not happen if the pipeline is configured correctly.
+        // This should not happen if the pipeline is configured correctly.
         {
             throw new InvalidOperationException(
                 $"The input for {nameof(UnbatchingExecutionStrategy)} must be an IAsyncEnumerable of IEnumerable<{typeof(TOut).Name}>.");
         }
 
         var nodeId = context.CurrentNodeId;
-
-        // Get observability scope if available
-        IAutoObservabilityScope? observabilityScope = null;
-
-        if (context.NodeObservabilityScopes.TryGetValue(nodeId, out var scope))
-            observabilityScope = scope;
+        var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
 
         var flattenedSource = FlattenWithObservabilityAsync(batchedSource, observabilityScope, cancellationToken);
 
@@ -85,28 +75,22 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
     /// </summary>
     private static async IAsyncEnumerable<T> FlattenWithObservabilityAsync<T>(
         IAsyncEnumerable<IEnumerable<T>> batchedSource,
-        IAutoObservabilityScope? observabilityScope,
+        IAutoObservabilityScope observabilityScope,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        try
-        {
-            await foreach (var batch in batchedSource.WithCancellation(cancellationToken))
-            {
-                // Track item processed (one batch)
-                observabilityScope?.IncrementProcessed();
+        using var scope = observabilityScope;
 
-                foreach (var item in batch)
-                {
-                    // Track item emitted (each item in the batch)
-                    observabilityScope?.IncrementEmitted();
-                    yield return item;
-                }
-            }
-        }
-        finally
+        await foreach (var batch in batchedSource.WithCancellation(cancellationToken))
         {
-            // Dispose AutoObservabilityScope after all items are processed, even on failure or cancellation
-            observabilityScope?.Dispose();
+            // Track item processed (one batch)
+            scope.IncrementProcessed();
+
+            foreach (var item in batch)
+            {
+                // Track item emitted (each item in the batch)
+                scope.IncrementEmitted();
+                yield return item;
+            }
         }
     }
 }

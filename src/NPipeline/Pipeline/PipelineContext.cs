@@ -200,19 +200,9 @@ public sealed class PipelineContext
     public Dictionary<string, PipelineRetryOptions> NodeRetryOverrides { get; } = new();
 
     /// <summary>
-    ///     Per-node execution annotations indexed by node id (for example, strategy-specific options).
+    ///     Registry for node execution annotations, observability scopes, and runtime annotations.
     /// </summary>
-    public Dictionary<string, object> NodeExecutionAnnotations { get; } = new();
-
-    /// <summary>
-    ///     Per-node observability scopes indexed by node id.
-    /// </summary>
-    public Dictionary<string, IAutoObservabilityScope> NodeObservabilityScopes { get; } = new();
-
-    /// <summary>
-    ///     Framework-managed runtime annotations and diagnostics.
-    /// </summary>
-    public Dictionary<string, object> RuntimeAnnotations { get; } = new();
+    public NodeExecutionScopeRegistry NodeExecutionScopeRegistry { get; } = new();
 
     /// <summary>
     ///     Optional preconfigured node instances to seed graph construction.
@@ -473,9 +463,7 @@ public sealed class PipelineContext
     private void ReturnPooledDictionaries()
     {
         NodeRetryOverrides.Clear();
-        NodeExecutionAnnotations.Clear();
-        NodeObservabilityScopes.Clear();
-        RuntimeAnnotations.Clear();
+        NodeExecutionScopeRegistry.Clear();
 
         if (_ownsParametersDictionary)
         {

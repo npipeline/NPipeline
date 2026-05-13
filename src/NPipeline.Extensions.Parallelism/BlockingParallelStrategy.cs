@@ -38,7 +38,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         // Capture a stable node id (PipelineRunner sets this prior to invoking the strategy). In parallel execution
         // relying on context.CurrentNodeId inside the delegate would be racy if other nodes change it.
         var nodeId = context.CurrentNodeId;
-        var observabilityScope = TryGetNodeObservabilityScope(context, nodeId);
+        var observabilityScope = BeginNodeObservabilityScope(context, nodeId);
 
         // Capture the current activity for tagging observability metrics
         var currentActivity = context.Tracer.CurrentActivity;
@@ -51,7 +51,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         // Resolve per-node parallel options if provided
         ParallelOptions? parallelOptions = null;
 
-        if (context.NodeExecutionAnnotations.TryGetValue(nodeId, out var opt) && opt is ParallelOptions po)
+        if (context.NodeExecutionScopeRegistry.TryGetNodeExecutionAnnotation(nodeId, out var opt) && opt is ParallelOptions po)
             parallelOptions = po;
 
         var effectiveDop = parallelOptions?.MaxDegreeOfParallelism ?? ConfiguredMaxDop ?? Environment.ProcessorCount;
@@ -61,13 +61,13 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         // Metrics only created for drop policies previously; extend to Block path for retry visibility.
         ParallelExecutionMetrics? blockMetrics = null;
 
-        if (context.RuntimeAnnotations.TryGetValue(PipelineContextKeys.ParallelMetrics(nodeId), out var existingMetrics) &&
+        if (context.NodeExecutionScopeRegistry.TryGetRuntimeAnnotation(PipelineContextKeys.ParallelMetrics(nodeId), out var existingMetrics) &&
             existingMetrics is ParallelExecutionMetrics cached)
             blockMetrics = cached;
         else
         {
             blockMetrics = new ParallelExecutionMetrics();
-            context.RuntimeAnnotations[PipelineContextKeys.ParallelMetrics(nodeId)] = blockMetrics;
+            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetrics(nodeId), blockMetrics);
         }
 
         // Create cached execution context once for all items (performance optimization)
@@ -180,6 +180,8 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
 
         async IAsyncEnumerable<TOut> ReadOut([EnumeratorCancellation] CancellationToken ct)
         {
+            using var _ = observabilityScope;
+
             try
             {
                 await foreach (var item in channel.Reader.ReadAllAsync(ct).ConfigureAwait(false))
@@ -196,12 +198,13 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
                 if (outputCap is not null)
                 {
                     currentActivity?.SetTag("parallel.output.capacity", outputCap.Value);
-                    context.RuntimeAnnotations[PipelineContextKeys.ParallelMetricsOutputCapacity(nodeId)] = outputCap.Value;
+                    context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsOutputCapacity(nodeId),
+                        outputCap.Value);
                 }
 
                 // Store metrics in context.Items for downstream monitoring
-                context.RuntimeAnnotations[PipelineContextKeys.ParallelMetricsInputHighWater(nodeId)] = inputHighWater;
-                context.RuntimeAnnotations[PipelineContextKeys.ParallelMetricsOutputHighWater(nodeId)] = outputHighWater;
+                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsInputHighWater(nodeId), inputHighWater);
+                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsOutputHighWater(nodeId), outputHighWater);
 
                 if (blockMetrics is not null)
                 {
@@ -209,12 +212,13 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
                     currentActivity?.SetTag("parallel.retry.items", blockMetrics.ItemsWithRetry);
                     currentActivity?.SetTag("parallel.retry.maxItemAttempts", blockMetrics.MaxItemRetryAttempts);
 
-                    context.RuntimeAnnotations[PipelineContextKeys.ParallelMetricsRetryEvents(nodeId)] = blockMetrics.RetryEvents;
-                    context.RuntimeAnnotations[PipelineContextKeys.ParallelMetricsRetryItems(nodeId)] = blockMetrics.ItemsWithRetry;
-                    context.RuntimeAnnotations[PipelineContextKeys.ParallelMetricsMaxItemRetryAttempts(nodeId)] = blockMetrics.MaxItemRetryAttempts;
+                    context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsRetryEvents(nodeId),
+                        blockMetrics.RetryEvents);
+                    context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsRetryItems(nodeId),
+                        blockMetrics.ItemsWithRetry);
+                    context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsMaxItemRetryAttempts(nodeId),
+                        blockMetrics.MaxItemRetryAttempts);
                 }
-
-                observabilityScope?.Dispose();
             }
         }
     }

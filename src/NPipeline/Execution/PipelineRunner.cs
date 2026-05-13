@@ -230,9 +230,7 @@ public sealed class PipelineRunner(
         context.ProcessedItemsCounter = new StatsCounter();
         context.GlobalRetryOptions = context.RetryOptions;
         context.NodeRetryOverrides.Clear();
-        context.NodeExecutionAnnotations.Clear();
-        context.NodeObservabilityScopes.Clear();
-        context.RuntimeAnnotations.Clear();
+        context.NodeExecutionScopeRegistry.Clear();
         context.IsParallelExecution = false;
         context.LastRetryExhaustedException = null;
     }
@@ -420,9 +418,9 @@ public sealed class PipelineRunner(
     {
         if (graph.ExecutionOptions.NodeExecutionAnnotations != null &&
             graph.ExecutionOptions.NodeExecutionAnnotations.TryGetValue(nodeId, out var annotation))
-            context.NodeExecutionAnnotations[nodeId] = annotation;
+            context.NodeExecutionScopeRegistry.SetNodeExecutionAnnotation(nodeId, annotation);
         else
-            _ = context.NodeExecutionAnnotations.Remove(nodeId);
+            _ = context.NodeExecutionScopeRegistry.RemoveNodeExecutionAnnotation(nodeId);
     }
 
     private async Task ExecuteNodeWithRetriesAsync(

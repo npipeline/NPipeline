@@ -34,7 +34,7 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
         context.IsParallelExecution = true;
 
         var nodeId = context.CurrentNodeId;
-        var observabilityScope = TryGetNodeObservabilityScope(context, nodeId);
+        var observabilityScope = BeginNodeObservabilityScope(context, nodeId);
         var currentActivity = context.Tracer.CurrentActivity;
         var effectiveRetries = GetRetryOptions(nodeId, context);
         var cachedContext = CachedNodeExecutionContext.CreateWithRetryOptions(context, nodeId, effectiveRetries);
@@ -43,7 +43,7 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
 
         ParallelOptions? parallelOptions = null;
 
-        if (context.NodeExecutionAnnotations.TryGetValue(nodeId, out var opt) && opt is ParallelOptions po)
+        if (context.NodeExecutionScopeRegistry.TryGetNodeExecutionAnnotation(nodeId, out var opt) && opt is ParallelOptions po)
             parallelOptions = po;
 
         var effectiveDop = parallelOptions?.MaxDegreeOfParallelism ?? ConfiguredMaxDop ?? Environment.ProcessorCount;
@@ -67,13 +67,14 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
         // Check if metrics already exist before creating new ones
         ParallelExecutionMetrics metrics;
 
-        if (!context.RuntimeAnnotations.TryGetValue(PipelineContextKeys.ParallelMetrics(nodeId), out _))
+        if (!context.NodeExecutionScopeRegistry.TryGetRuntimeAnnotation(PipelineContextKeys.ParallelMetrics(nodeId), out var existingMetrics) ||
+            existingMetrics is not ParallelExecutionMetrics cachedMetrics)
         {
             metrics = new ParallelExecutionMetrics();
-            context.RuntimeAnnotations[PipelineContextKeys.ParallelMetrics(nodeId)] = metrics;
+            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetrics(nodeId), metrics);
         }
         else
-            metrics = (ParallelExecutionMetrics)context.RuntimeAnnotations[PipelineContextKeys.ParallelMetrics(nodeId)];
+            metrics = cachedMetrics;
 
         _ = Task.Run(async () =>
         {
@@ -169,6 +170,6 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
         _ = Task.WhenAll(workers).ContinueWith(t => { outChannel.Writer.TryComplete(t.Exception); }, cancellationToken);
 
         return Task.FromResult<IDataStream<TOut>>(
-            new DataStream<TOut>(CreateOutputEnumerable(outChannel, nodeId, context, metrics, currentActivity, cancellationToken, observabilityScope)));
+            new DataStream<TOut>(CreateOutputEnumerable(outChannel, nodeId, context, metrics, currentActivity, observabilityScope, cancellationToken)));
     }
 }
