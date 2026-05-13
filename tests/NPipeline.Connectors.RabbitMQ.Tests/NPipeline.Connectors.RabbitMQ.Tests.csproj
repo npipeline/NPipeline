@@ -36,8 +36,8 @@
     <ItemGroup>
         <PackageReference Include="AwesomeAssertions" Version="9.4.0"/>
         <PackageReference Include="FakeItEasy" Version="9.0.1"/>
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.7" />
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.7" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.8" />
         <PackageReference Include="Testcontainers.RabbitMq" Version="4.11.0" />
     </ItemGroup>
 
