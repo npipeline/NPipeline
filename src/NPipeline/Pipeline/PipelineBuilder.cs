@@ -28,6 +28,12 @@ public sealed partial class PipelineBuilder
     // Flag to prevent builder reuse after Build() has been called
     private bool _built;
 
+    /// <summary>
+    /// Gets or sets the lineage adapter builder to use for constructing lineage transformation delegates.
+    /// </summary>
+    /// <remarks>
+    /// Defaults to <see cref="NullLineageAdapterBuilder.Instance"/> which does not perform any lineage transformation.
+    /// </remarks>
     public static ILineageAdapterBuilder LineageAdapterBuilder { get; set; }
         = NullLineageAdapterBuilder.Instance;
 
