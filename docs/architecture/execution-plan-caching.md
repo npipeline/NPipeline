@@ -434,21 +434,24 @@ Cache effectiveness depends on pipeline reuse:
 
 ### PipelineRunner Plan Build Flow
 
-The pipeline runner accepts an optional cache:
+`PipelineRunner` still accepts an optional cache, but plan-build ownership now lives in the execution setup stage:
 
 ```csharp
 public sealed class PipelineRunner(
     // ... other dependencies ...
     IPipelineExecutionPlanCache? executionPlanCache = null) : IPipelineRunner
 {
-    private readonly IPipelineExecutionPlanCache _executionPlanCache = 
-        executionPlanCache ?? new InMemoryPipelineExecutionPlanCache();
+    private readonly IPipelineExecutionOrchestrator _executionOrchestrator =
+        new PipelineExecutionOrchestrator(
+            // ...
+            executionPlanCache ?? new InMemoryPipelineExecutionPlanCache(),
+            runtimePipelineBinder ?? RuntimePipelineBinder.Instance);
 }
 ```
 
-### PipelineRunner
+### Setup Stage Ownership
 
-The runner owns both the cache decision and the cache lookup/store logic:
+The setup stage owns both the cache decision and the cache lookup/store logic:
 
 ```csharp
 private Dictionary<string, NodeExecutionPlan> BuildExecutionPlans(

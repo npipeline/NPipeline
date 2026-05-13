@@ -12,6 +12,22 @@ For practical configuration guidance, see [Execution Strategies](../core-concept
 
 NPipeline supports multiple execution models to handle different requirements: sequential (the default) and parallel execution through extensions.
 
+## Internal Orchestration Stages
+
+The public `PipelineRunner` API remains the same, but internally execution now runs through a staged orchestration module.
+
+Pipeline execution is coordinated as:
+
+1. **Initialize**: Establish run identity/state on `PipelineContext`.
+2. **Bind**: Apply runtime graph overrides and resolve runtime handlers/sinks.
+3. **Instantiate**: Create node instances and apply node/global execution annotations.
+4. **Plan**: Build (or cache-hit) per-node execution plans.
+5. **Execute**: Run nodes in topological order with retry/error handling.
+6. **Record**: Emit pipeline-level lineage report when enabled.
+7. **Cleanup**: Dispose streams/nodes and complete observability lifecycle.
+
+This split keeps behavior unchanged for callers while making each stage independently testable and easier to evolve without changing `IPipelineRunner`.
+
 ## Core Design: Source Initialization + Asynchronous Execution
 
 NPipeline follows a clear separation of concerns:

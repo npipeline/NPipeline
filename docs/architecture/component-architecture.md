@@ -209,12 +209,12 @@ public class PipelineRunner
 
 **Execution Workflow:**
 
-1. Instantiates pipeline definition
-2. Creates pipeline builder
-3. Calls `Define()` to build graph
-4. Traverses graph and connects nodes
-5. Starts execution from source nodes
-6. Waits for completion
+1. Resolves pipeline name/context defaults
+2. Delegates run orchestration to an internal execution module
+3. Binds runtime graph/services and instantiates nodes
+4. Builds or reuses cached execution plans
+5. Executes nodes in topological order with retry/error handling
+6. Records lineage (when enabled) and performs cleanup
 
 **Usage Examples:**
 
@@ -293,9 +293,9 @@ graph TD
 
     subgraph "Execution Phase"
         PR[PipelineRunner] -->|Creates| PD
-        PR -->|Builds| PB
+        PR -->|Delegates to| PO[PipelineExecutionOrchestrator]
         PR -->|Provides| PC[PipelineContext]
-        PR -->|Executes| G
+        PO -->|Executes| G
         G -->|Uses| PC
     end
 
