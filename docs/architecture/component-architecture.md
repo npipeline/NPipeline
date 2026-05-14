@@ -238,6 +238,11 @@ await runner.RunAsync<MyPipeline>(context, cts.Token);
 
 NPipeline uses a **plan-based execution model** for optimal performance. During pipeline initialization, the system generates pre-compiled execution plans for each node containing strongly-typed delegates that eliminate reflection overhead during steady-state execution.
 
+At registration time, `PipelineBuilder` also delegates specialized delegate/caching preparation to module-owned components:
+
+- Lineage adapters are produced through `PipelineBuilder.Lineage`.
+- Join selector precompilation and custom merge delegate construction are produced through `PipelineBuilder.ExecutionRegistrationPlanner`.
+
 **Benefits:**
 
 - Zero reflection overhead during execution
