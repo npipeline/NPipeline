@@ -6,7 +6,7 @@ order: 3
 
 # Materialization and Buffering
 
-Materialization is the process of buffering incoming items before processing them, which enables replay functionality when a node needs to restart. This capability is essential for the `PipelineErrorDecision.RestartNode` feature and is a critical component of NPipeline's resilience framework.
+Materialization is the process of buffering incoming items before processing them, which enables replay functionality when a node needs to restart. This capability is essential for the `ResilienceDecision.RestartNode` feature and is a critical component of NPipeline's resilience framework.
 
 ## What is Materialization?
 
@@ -213,7 +213,7 @@ public class BufferingPipelineDefinition : IPipelineDefinition
         builder.Connect(sourceHandle, transformHandle);
         builder.Connect(transformHandle, sinkHandle);
 
-        builder.AddPipelineErrorHandler<DefaultPipelineErrorHandler>();
+        builder.AddResiliencePolicy<DefaultResiliencePolicy>();
         
         builder.WithRetryOptions(new PipelineRetryOptions(
             MaxItemRetries: 3,
@@ -258,7 +258,7 @@ public class PerNodeMaterializationPipelineDefinition : IPipelineDefinition
         builder.Connect(criticalHandle, nonCriticalHandle);
         builder.Connect(nonCriticalHandle, sinkHandle);
 
-        builder.AddPipelineErrorHandler<DefaultPipelineErrorHandler>();
+        builder.AddResiliencePolicy<DefaultResiliencePolicy>();
     }
 }
 ```
@@ -301,24 +301,24 @@ context.ExecutionObserver = new MaterializationObserver();
 When `MaxMaterializedItems` is set, monitor for overflow exceptions:
 
 ```csharp
-public class OverflowAwareErrorHandler : IPipelineErrorHandler
+public class OverflowAwareResiliencePolicy : ResiliencePolicyBase
 {
-    public async Task<PipelineErrorDecision> HandleNodeFailureAsync(
+    public override Task<ResilienceDecision> DecidePipelineFailureAsync(
         string nodeId,
-        Exception error,
+        Exception exception,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
         // Detect buffer overflow
-        if (error.Message.Contains("Resilience materialization exceeded MaxMaterializedItems"))
+        if (exception.Message.Contains("Resilience materialization exceeded MaxMaterializedItems"))
         {
             Console.WriteLine($"Buffer overflow detected for node {nodeId}");
             // Consider alternative recovery strategy
-            return PipelineErrorDecision.ContinueWithoutNode;
+            return Task.FromResult(ResilienceDecision.ContinueWithoutNode);
         }
 
         // Normal error handling logic
-        return await HandleNormalFailure(nodeId, error, context, cancellationToken);
+        return Task.FromResult(ResilienceDecision.Fail);
     }
 }
 ```
@@ -423,7 +423,7 @@ public class MonitoredPipelineDefinition : IPipelineDefinition
             .WithExecutionStrategy(builder, new ResilientExecutionStrategy(
                 new SequentialExecutionStrategy()
             ));
-        builder.AddPipelineErrorHandler<MemoryAwareErrorHandler>();
+        builder.AddResiliencePolicy<MemoryAwareResiliencePolicy>();
     }
 }
 ```
@@ -431,6 +431,5 @@ public class MonitoredPipelineDefinition : IPipelineDefinition
 ## Next Steps
 
 - **[Getting Started with Resilience](./getting-started.md)**: Complete quick-start and step-by-step configuration guide
-- **[Getting Started with Resilience](getting-started.md)**: Understand the critical prerequisite relationships
-- **[Error Handling Guide](error-handling.md)**: Get practical implementation guidance
+- **[Resilience Policy](resilience-policy.md)**: Implement `IResiliencePolicy` with `ResiliencePolicyBase`
 - **[Troubleshooting](troubleshooting.md)**: Learn to diagnose and resolve materialization issues

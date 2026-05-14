@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using NPipeline.ErrorHandling;
+using NPipeline.Resilience;
 
 namespace NPipeline.Configuration;
 
@@ -9,19 +10,19 @@ namespace NPipeline.Configuration;
 public sealed record ErrorHandlingConfiguration
 {
     /// <summary>
-    ///     The optional pipeline-level error handler.
+    ///     The optional unified resilience policy instance.
     /// </summary>
-    public IPipelineErrorHandler? PipelineErrorHandler { get; init; }
+    public IResiliencePolicy? ResiliencePolicy { get; init; }
+
+    /// <summary>
+    ///     The optional unified resilience policy type.
+    /// </summary>
+    public Type? ResiliencePolicyType { get; init; }
 
     /// <summary>
     ///     The optional sink for failed items.
     /// </summary>
     public IDeadLetterSink? DeadLetterSink { get; init; }
-
-    /// <summary>
-    ///     The type of the pipeline error handler.
-    /// </summary>
-    public Type? PipelineErrorHandlerType { get; init; }
 
     /// <summary>
     ///     The type of the dead letter sink.

@@ -6,7 +6,6 @@ order: 5
 
 # Best Practice Analyzers
 
-
 Best practice analyzers enforce architectural patterns that ensure your code is testable, maintainable, and follows the framework's design principles.
 
 ### NP9302: Unsafe PipelineContext Access
@@ -23,8 +22,8 @@ This analyzer detects unsafe access patterns to nullable properties on PipelineC
 // PROBLEM: Direct access to potentially null property
 public async Task HandleErrorAsync(PipelineContext context, Exception error)
 {
-    // NP9302: PipelineErrorHandler might be null
-    await context.PipelineErrorHandler.HandleNodeFailureAsync(
+    // NP9302: ResiliencePolicy might be null
+    await context.ResiliencePolicy.DecidePipelineFailureAsync(
         "nodeId", error, context, cancellationToken);
 }
 
@@ -50,20 +49,20 @@ public void ProcessConfig(PipelineContext context)
 // CORRECT: Use null-conditional operator
 public async Task HandleErrorAsync(PipelineContext context, Exception error, CancellationToken cancellationToken)
 {
-    // Safe access - operation only occurs if PipelineErrorHandler is not null
-    await context.PipelineErrorHandler?.HandleNodeFailureAsync(
+    // Safe access - operation only occurs if ResiliencePolicy is not null
+    await context.ResiliencePolicy?.DecidePipelineFailureAsync(
         "nodeId", error, context, cancellationToken);
 }
 
 // CORRECT: Explicit null check with comment
 public async Task HandleErrorAsync(PipelineContext context, Exception error, CancellationToken cancellationToken)
 {
-    if (context.PipelineErrorHandler == null)
+    if (context.ResiliencePolicy == null)
     {
-        throw new InvalidOperationException("PipelineErrorHandler must be configured for this operation");
+        throw new InvalidOperationException("ResiliencePolicy must be configured for this operation");
     }
     
-    await context.PipelineErrorHandler.HandleNodeFailureAsync(
+    await context.ResiliencePolicy.DecidePipelineFailureAsync(
         "nodeId", error, context, cancellationToken);
 }
 
@@ -86,12 +85,12 @@ public void ProcessConfig(PipelineContext context)
 // CORRECT: Use pattern matching with property access
 public string GetValue(PipelineContext context)
 {
-    if (context.PipelineErrorHandler is { } handler)
+    if (context.ResiliencePolicy is { } policy)
     {
-        return handler.GetType().Name;
+        return policy.GetType().Name;
     }
     
-    return "No error handler configured";
+    return "No resilience policy configured";
 }
 ```
 

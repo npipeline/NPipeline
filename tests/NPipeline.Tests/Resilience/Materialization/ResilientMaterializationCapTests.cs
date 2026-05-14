@@ -7,8 +7,10 @@ using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
+using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Tests.Resilience.Materialization;
 
@@ -19,7 +21,6 @@ public sealed class ResilientMaterializationCapTests
     {
         var services = new ServiceCollection();
         services.AddNPipeline(Assembly.GetExecutingAssembly());
-        services.AddSingleton<NoopHandler>();
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
         var ctx = PipelineContext.Default;
@@ -36,7 +37,6 @@ public sealed class ResilientMaterializationCapTests
     {
         var services = new ServiceCollection();
         services.AddNPipeline(Assembly.GetExecutingAssembly());
-        services.AddSingleton<NoopHandler>();
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
         var ctx = PipelineContext.Default;
@@ -44,11 +44,47 @@ public sealed class ResilientMaterializationCapTests
         await act.Should().NotThrowAsync();
     }
 
-    private sealed class NoopHandler : IPipelineErrorHandler
+    private sealed class NoopResiliencePolicy : IResiliencePolicy
     {
-        public Task<PipelineErrorDecision> HandleNodeFailureAsync(string nodeId, Exception error, PipelineContext context, CancellationToken cancellationToken)
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception error,
+            PipelineContext context,
+            CancellationToken cancellationToken)
         {
-            return Task.FromResult(PipelineErrorDecision.FailPipeline);
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
+            string nodeId,
+            Exception error,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 
@@ -81,7 +117,7 @@ public sealed class ResilientMaterializationCapTests
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
             builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 1, maxMaterializedItems: 50));
-            builder.AddPipelineErrorHandler<NoopHandler>(); // ensure resilience layer activates
+            builder.AddResiliencePolicy<NoopResiliencePolicy>();
         }
     }
 
@@ -95,7 +131,7 @@ public sealed class ResilientMaterializationCapTests
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
             builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 1, maxMaterializedItems: 120));
-            builder.AddPipelineErrorHandler<NoopHandler>(); // ensure resilience layer activates
+            builder.AddResiliencePolicy<NoopResiliencePolicy>();
         }
     }
 }

@@ -6,6 +6,7 @@ using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
+using NPipeline.Resilience;
 using NPipeline.Visualization;
 
 namespace NPipeline.Graph;
@@ -122,8 +123,8 @@ public sealed class PipelineGraphBuilder
     private ImmutableDictionary<string, object> _nodeExecutionAnnotations = ImmutableDictionary<string, object>.Empty;
     private ImmutableDictionary<string, PipelineRetryOptions> _nodeRetryOverrides = ImmutableDictionary<string, PipelineRetryOptions>.Empty;
     private ImmutableArray<NodeDefinition> _nodes = [];
-    private IPipelineErrorHandler? _pipelineErrorHandler;
-    private Type? _pipelineErrorHandlerType;
+    private IResiliencePolicy? _resiliencePolicy;
+    private Type? _resiliencePolicyType;
     private IPipelineLineageSink? _pipelineLineageSink;
     private Type? _pipelineLineageSinkType;
     private FrozenDictionary<string, INode> _preconfiguredNodeInstances = FrozenDictionary<string, INode>.Empty;
@@ -224,24 +225,24 @@ public sealed class PipelineGraphBuilder
     }
 
     /// <summary>
-    ///     Sets the pipeline error handler.
+    ///     Sets the unified resilience policy instance.
     /// </summary>
-    /// <param name="handler">The pipeline error handler.</param>
+    /// <param name="policy">The resilience policy.</param>
     /// <returns>The builder instance for method chaining.</returns>
-    public PipelineGraphBuilder WithPipelineErrorHandler(IPipelineErrorHandler? handler)
+    public PipelineGraphBuilder WithResiliencePolicy(IResiliencePolicy? policy)
     {
-        _pipelineErrorHandler = handler;
+        _resiliencePolicy = policy;
         return this;
     }
 
     /// <summary>
-    ///     Sets the pipeline error handler type.
+    ///     Sets the unified resilience policy type.
     /// </summary>
-    /// <param name="handlerType">The pipeline error handler type.</param>
+    /// <param name="policyType">The resilience policy type.</param>
     /// <returns>The builder instance for method chaining.</returns>
-    public PipelineGraphBuilder WithPipelineErrorHandlerType(Type? handlerType)
+    public PipelineGraphBuilder WithResiliencePolicyType(Type? policyType)
     {
-        _pipelineErrorHandlerType = handlerType;
+        _resiliencePolicyType = policyType;
         return this;
     }
 
@@ -430,8 +431,8 @@ public sealed class PipelineGraphBuilder
     {
         ArgumentNullException.ThrowIfNull(config);
 
-        _pipelineErrorHandler = config.PipelineErrorHandler;
-        _pipelineErrorHandlerType = config.PipelineErrorHandlerType;
+        _resiliencePolicy = config.ResiliencePolicy;
+        _resiliencePolicyType = config.ResiliencePolicyType;
         _deadLetterSink = config.DeadLetterSink;
         _deadLetterSinkType = config.DeadLetterSinkType;
         _retryOptions = config.RetryOptions;
@@ -490,9 +491,9 @@ public sealed class PipelineGraphBuilder
             NodeDefinitionMap = _nodeDefinitionMap,
             ErrorHandling = new ErrorHandlingConfiguration
             {
-                PipelineErrorHandler = _pipelineErrorHandler,
+                ResiliencePolicy = _resiliencePolicy,
+                ResiliencePolicyType = _resiliencePolicyType,
                 DeadLetterSink = _deadLetterSink,
-                PipelineErrorHandlerType = _pipelineErrorHandlerType,
                 DeadLetterSinkType = _deadLetterSinkType,
                 RetryOptions = _retryOptions,
                 NodeRetryOverrides = _nodeRetryOverrides,

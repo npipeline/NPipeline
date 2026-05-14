@@ -45,8 +45,7 @@ public class Program
         // - IPipelineRunner
         // - Any IPipelineDefinition implementations
         // - Any INode implementations
-        // - Any INodeErrorHandler implementations
-        // - Any IPipelineErrorHandler implementations
+        // - Any IResiliencePolicy implementations
         // - Any IDeadLetterSink implementations
         // - Any ILineageSink implementations
         // - Any IPipelineLineageSink implementations
@@ -165,9 +164,9 @@ AddPipeline<TPipeline>(ServiceLifetime lifetime)
 AddErrorHandler<THandler>()
 AddErrorHandler<THandler>(ServiceLifetime lifetime)
 
-// Register pipeline error handlers (default: Transient)
-AddPipelineErrorHandler<THandler>()
-AddPipelineErrorHandler<THandler>(ServiceLifetime lifetime)
+// Register resilience policies (default: Transient)
+AddResiliencePolicy<THandler>()
+AddResiliencePolicy<THandler>(ServiceLifetime lifetime)
 
 // Register sinks (default: Transient)
 AddDeadLetterSink<TSink>()
@@ -193,7 +192,7 @@ ScanAssemblies(params Assembly[] assemblies)
 
 - **`IPipelineDefinition`**: Your pipeline definitions are registered as transient services, meaning a new instance is created for each pipeline run.
 - **`INode`**: Your custom node implementations (sources, transforms, sinks, join nodes, aggregation nodes) are registered as transient services by default. This ensures node isolation between pipeline runs.
-- **`INodeErrorHandler` / `IPipelineErrorHandler`**: Custom error handlers are also registered.
+- **`IResiliencePolicy`**: Custom resilience policies are also registered.
 - **`IDeadLetterSink`**: Dead letter sink implementations for handling failed items.
 - **`ILineageSink` / `IPipelineLineageSink`**: Lineage tracking sink implementations.
 - **`IPipelineLineageSinkProvider`**: Providers for creating lineage sinks dynamically.

@@ -1,11 +1,12 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
+using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Tests.ErrorHandling;
 
@@ -61,11 +62,47 @@ public sealed class GraphLevelErrorHandlingTests
     }
 
     // Test Error Handler
-    private sealed class RestartingErrorHandler : IPipelineErrorHandler
+    private sealed class RestartingResiliencePolicy : IResiliencePolicy
     {
-        public Task<PipelineErrorDecision> HandleNodeFailureAsync(string nodeId, Exception error, PipelineContext context, CancellationToken cancellationToken)
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception error,
+            PipelineContext context,
+            CancellationToken cancellationToken)
         {
-            return Task.FromResult(PipelineErrorDecision.RestartNode);
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
+            string nodeId,
+            Exception error,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.RestartNode);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 
@@ -82,7 +119,7 @@ public sealed class GraphLevelErrorHandlingTests
                 .Connect(flaky, sink)
                 .WithResilience(flaky);
 
-            builder.AddPipelineErrorHandler<RestartingErrorHandler>();
+            builder.AddResiliencePolicy<RestartingResiliencePolicy>();
             builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 3, maxMaterializedItems: 1000));
         }
     }

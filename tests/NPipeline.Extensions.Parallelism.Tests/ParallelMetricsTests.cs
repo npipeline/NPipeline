@@ -4,11 +4,12 @@ using System.Collections.Concurrent;
 using AwesomeAssertions;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
-using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Extensions.Testing;
+using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 using NPipeline.Tests.Common;
 using ParallelExecOptions = NPipeline.Extensions.Parallelism.ParallelOptions;
 
@@ -82,12 +83,47 @@ public class ParallelMetricsTests
         }
     }
 
-    private sealed class RetryAllHandler : INodeErrorHandler<ITransformNode<int, int>, int>
+    private sealed class RetryAllHandler : IResiliencePolicy
     {
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int failedItem, NodeFailureContext failure,
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception exception,
+            PipelineContext context,
             CancellationToken cancellationToken)
         {
-            return Task.FromResult(NodeErrorDecision.Retry);
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
+            string nodeId,
+            Exception exception,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Retry);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 
@@ -153,7 +189,7 @@ public class ParallelMetricsTests
             _ = builder.WithParallelOptions(transform, opts);
 
             // Global retry limit allows two retries (third attempt succeeds)
-            _ = builder.WithErrorHandler(transform, typeof(RetryAllHandler));
+            _ = builder.SetNodeResiliencePolicy(transform, new RetryAllHandler());
             _ = builder.WithRetryOptions(o => o.With(2));
 
             context.Items[NodeIdKey] = transform.Id;
@@ -187,7 +223,7 @@ public class ParallelMetricsTests
             _ = builder.WithExecutionStrategy(transform, new ParallelExecutionStrategy());
             _ = builder.SetNodeExecutionOption(transform.Id, new ParallelExecOptions(2, 4));
             _ = builder.WithRetryOptions(o => o.With(2));
-            _ = builder.WithErrorHandler(transform, typeof(RetryHandler));
+            _ = builder.SetNodeResiliencePolicy(transform, new RetryHandler());
 
             // Set the test data
             context.SetSourceData(Enumerable.Range(0, 10), "Source");

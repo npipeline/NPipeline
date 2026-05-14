@@ -1,6 +1,7 @@
 using NPipeline.ErrorHandling;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Nodes;
 
@@ -180,7 +181,7 @@ public sealed class BranchNode<T> : TransformNode<T, T>
         switch (ErrorHandlingMode)
         {
             case BranchErrorHandlingMode.RouteToErrorHandler:
-                await RouteToPipelineErrorHandlerAsync(branchException, context, cancellationToken).ConfigureAwait(false);
+                await RouteToResiliencePolicyAsync(branchException, context, cancellationToken).ConfigureAwait(false);
                 break;
 
             case BranchErrorHandlingMode.CollectAndThrow:
@@ -198,43 +199,37 @@ public sealed class BranchNode<T> : TransformNode<T, T>
         }
     }
 
-    private async Task RouteToPipelineErrorHandlerAsync(
+    private async Task RouteToResiliencePolicyAsync(
         BranchHandlerException branchException,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
-        if (context.PipelineErrorHandler is not null)
-        {
-            var decision = await context.PipelineErrorHandler.HandleNodeFailureAsync(
+        var decision = await context.ResiliencePolicy
+            .DecidePipelineFailureAsync(
                 context.CurrentNodeId,
                 branchException,
                 context,
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken)
+            .ConfigureAwait(false);
 
-            switch (decision)
-            {
-                case PipelineErrorDecision.FailPipeline:
-                    throw branchException;
-
-                case PipelineErrorDecision.ContinueWithoutNode:
-                    // Log and continue - the error handler has decided to skip this branch failure
-                    LogBranchException(branchException, context, "Error handler decided to continue without node.");
-                    break;
-
-                case PipelineErrorDecision.RestartNode:
-                    // For branch handlers, restart doesn't make sense - treat as continue
-                    LogBranchException(branchException, context, "RestartNode decision received for branch handler; treating as ContinueWithoutNode.");
-                    break;
-
-                default:
-                    // Unknown decision - fail to be safe
-                    throw branchException;
-            }
-        }
-        else
+        switch (decision)
         {
-            // No pipeline error handler configured - throw to fail the pipeline
-            throw branchException;
+            case ResilienceDecision.Fail:
+                throw branchException;
+
+            case ResilienceDecision.ContinueWithoutNode:
+                // Log and continue - the resilience policy has decided to skip this branch failure.
+                LogBranchException(branchException, context, "Resilience policy decided to continue without node.");
+                break;
+
+            case ResilienceDecision.RestartNode:
+                // For branch handlers, restart doesn't make sense - treat as continue
+                LogBranchException(branchException, context, "RestartNode decision received for branch handler; treating as ContinueWithoutNode.");
+                break;
+
+            default:
+                // Unknown decision - fail to be safe
+                throw branchException;
         }
     }
 
@@ -274,8 +269,8 @@ public sealed class BranchNode<T> : TransformNode<T, T>
 public enum BranchErrorHandlingMode
 {
     /// <summary>
-    ///     Route exceptions through the pipeline's error handling system via <see cref="IPipelineErrorHandler" />.
-    ///     This is the default and recommended mode. If no error handler is configured, the exception will propagate.
+    ///     Route exceptions through the configured <see cref="Resilience.IResiliencePolicy" />.
+    ///     This is the default and recommended mode.
     /// </summary>
     RouteToErrorHandler,
 

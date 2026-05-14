@@ -4,7 +4,7 @@ using NPipeline.Observability.Logging;
 namespace NPipeline.ErrorHandling;
 
 /// <summary>
-///     Default implementation of <see cref="IErrorHandlerFactory" /> that creates error handlers and dead-letter sinks
+///     Default implementation of <see cref="IErrorHandlerFactory" /> that creates dead-letter sinks
 ///     using reflection with proper error handling and logging.
 /// </summary>
 public sealed class DefaultErrorHandlerFactory : IErrorHandlerFactory
@@ -19,26 +19,6 @@ public sealed class DefaultErrorHandlerFactory : IErrorHandlerFactory
     {
         var factory = loggerFactory ?? NullLoggerFactory.Instance;
         _logger = factory.CreateLogger(nameof(DefaultErrorHandlerFactory));
-    }
-
-    /// <summary>
-    ///     Creates an instance of the specified error handler type.
-    /// </summary>
-    /// <param name="handlerType">The type of the error handler to create.</param>
-    /// <returns>An instance of <see cref="IPipelineErrorHandler" />, or null if it cannot be created.</returns>
-    public IPipelineErrorHandler? CreateErrorHandler(Type handlerType)
-    {
-        return TryCreateInstance<IPipelineErrorHandler>(handlerType, nameof(CreateErrorHandler));
-    }
-
-    /// <summary>
-    ///     Creates an instance of the specified node error handler type.
-    /// </summary>
-    /// <param name="handlerType">The type of the error handler to create.</param>
-    /// <returns>An instance of <see cref="INodeErrorHandler" />, or null if it cannot be created.</returns>
-    public INodeErrorHandler? CreateNodeErrorHandler(Type handlerType)
-    {
-        return TryCreateInstance<INodeErrorHandler>(handlerType, nameof(CreateNodeErrorHandler));
     }
 
     /// <summary>

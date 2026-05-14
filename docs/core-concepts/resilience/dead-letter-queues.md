@@ -10,7 +10,7 @@ Dead-letter queues in NPipeline provide a mechanism to capture and store items t
 
 ## Overview
 
-When an `INodeErrorHandler` returns `NodeErrorDecision.DeadLetter`, the failed item is sent to an `IDeadLetterSink`. This pattern allows your pipeline to continue processing other items while isolating problematic ones for later analysis and potential reprocessing.
+When `DecideItemFailureAsync` returns `ResilienceDecision.DeadLetter`, the failed item is sent to an `IDeadLetterSink`. This pattern allows your pipeline to continue processing other items while isolating problematic ones for later analysis and potential reprocessing.
 
 ## IDeadLetterSink Interface
 
@@ -66,6 +66,7 @@ NPipeline provides a built-in [`BoundedInMemoryDeadLetterSink`](https://github.c
 * **Thread safety**: Uses locking to ensure accurate capacity tracking
 
 When to adjust the default capacity:
+
 * **Increase** (e.g., 2000-5000) for:
   * High-volume data processing where errors are more frequent
   * Systems with automated error recovery workflows
@@ -277,11 +278,10 @@ public class Program
                 "dead-letters.json",
                 provider.GetRequiredService<ILogger<FileDeadLetterSink>>()));
 
-        // Step 2: Register error handler that uses the dead-letter sink
-        services.AddSingleton<INodeErrorHandler<ITransformNode<string, string>, string>>(provider =>
-            new DeadLetterAwareErrorHandler(
-                provider.GetRequiredService<ILogger<DeadLetterAwareErrorHandler>>(),
-                provider.GetRequiredService<IDeadLetterSink>())));
+        // Step 2: Register resilience policy that routes to dead-letter
+        services.AddSingleton<IResiliencePolicy>(provider =>
+            new DeadLetterResiliencePolicy(
+                provider.GetRequiredService<ILogger<DeadLetterResiliencePolicy>>()));
 
         var serviceProvider = services.BuildServiceProvider();
 
@@ -301,8 +301,8 @@ public class Program
             })
             .Build();
 
-        // Get the error handler from DI
-        var errorHandler = serviceProvider.GetRequiredService<INodeErrorHandler<ITransformNode<string, string>, string>>();
+        // Get the resilience policy from DI
+        var resiliencePolicy = serviceProvider.GetRequiredService<IResiliencePolicy>();
 
         var context = PipelineContext.Default;
         var items = new[] { "valid1", "INVALID_ITEM", "valid2", "INVALID_ITEM2" };
@@ -323,37 +323,36 @@ public class Program
     }
 }
 
-public class DeadLetterAwareErrorHandler : INodeErrorHandler<ITransformNode<string, string>, string>
+public class DeadLetterResiliencePolicy : ResiliencePolicyBase
 {
     private readonly ILogger _logger;
-    private readonly IDeadLetterSink _deadLetterSink;
 
-    public DeadLetterAwareErrorHandler(
-        ILogger logger,
-        IDeadLetterSink deadLetterSink)
+    public DeadLetterResiliencePolicy(ILogger logger)
     {
         _logger = logger;
-        _deadLetterSink = deadLetterSink;
     }
 
-    public async Task<NodeErrorDecision> HandleAsync(
-        ITransformNode<string, string> node,
-        string failedItem,
-        NodeFailureContext failure,
+    public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+        ITransformNode<TIn, TOut> node,
+        TIn failedItem,
+        Exception exception,
+        PipelineContext context,
+        string nodeId,
+        int retryAttempt,
         CancellationToken cancellationToken)
     {
-        _logger.LogError(failure.Exception, "Error processing item in node {NodeName}", node.Name);
+        _logger.LogError(exception, "Error processing item in node {NodeId}", nodeId);
 
         // Send validation errors to dead-letter queue
-        if (failure.Exception is ValidationException)
+        if (exception is ValidationException)
         {
             _logger.LogInformation("Validation error, redirecting to dead-letter queue");
-            return NodeErrorDecision.DeadLetter;
+            return Task.FromResult(ResilienceDecision.DeadLetter);
         }
 
         // Log and skip other errors
         _logger.LogWarning("Unexpected error, skipping item");
-        return NodeErrorDecision.Skip;
+        return Task.FromResult(ResilienceDecision.Skip);
     }
 }
 
@@ -399,52 +398,54 @@ public class ValidationException : Exception
 **Key configuration steps:**
 
 1. **Register the sink**: Register your chosen `IDeadLetterSink` implementation in the DI container.
-2. **Register the error handler**: Register an `INodeErrorHandler` that uses the dead-letter sink to send failed items to the queue.
+2. **Register a resilience policy**: Register an `IResiliencePolicy` that returns `ResilienceDecision.DeadLetter` for the appropriate errors.
 3. **Build the pipeline**: Create your pipeline with the appropriate nodes.
-4. **Execute and handle errors**: When items fail, the error handler determines whether to redirect them to the dead-letter queue or skip them.
+4. **Execute and handle errors**: When items fail, the resilience policy determines whether to redirect them to the dead-letter queue or skip them.
 
-## Using Dead Letter Queues with Error Handlers
+## Using Dead Letter Queues with a Resilience Policy
 
-### Basic Usage with Node Error Handler
+### Basic Usage
 
 ```csharp
-public class DeadLetterAwareErrorHandler : INodeErrorHandler<ITransformNode<string, string>, string>
+public class DeadLetterResiliencePolicy : ResiliencePolicyBase
 {
     private readonly ILogger _logger;
 
-    public DeadLetterAwareErrorHandler(ILogger logger)
+    public DeadLetterResiliencePolicy(ILogger logger)
     {
         _logger = logger;
     }
 
-    public async Task<NodeErrorDecision> HandleAsync(
-        ITransformNode<string, string> node,
-        string failedItem,
-        NodeFailureContext failure,
+    public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+        ITransformNode<TIn, TOut> node,
+        TIn failedItem,
+        Exception exception,
+        PipelineContext context,
+        string nodeId,
+        int retryAttempt,
         CancellationToken cancellationToken)
     {
-        _logger.LogError(failure.Exception, "Error processing item in node {NodeName}", node.Name);
+        _logger.LogError(exception, "Error processing item in node {NodeId}", nodeId);
 
-        if (failure.Exception is ValidationException)
+        if (exception is ValidationException)
         {
             _logger.LogInformation("Validation error, redirecting to dead-letter queue");
-            return NodeErrorDecision.DeadLetter;
+            return Task.FromResult(ResilienceDecision.DeadLetter);
         }
-        else if (failure.Exception is FormatException)
+
+        if (exception is FormatException)
         {
             _logger.LogInformation("Format error, redirecting to dead-letter queue");
-            return NodeErrorDecision.DeadLetter;
+            return Task.FromResult(ResilienceDecision.DeadLetter);
         }
-        else
-        {
-            _logger.LogWarning("Unexpected error, skipping item");
-            return NodeErrorDecision.Skip;
-        }
+
+        _logger.LogWarning("Unexpected error, skipping item");
+        return Task.FromResult(ResilienceDecision.Skip);
     }
 }
 ```
 
-> **Note**: The error handler no longer needs to call `IDeadLetterSink` directly. When you return `NodeErrorDecision.DeadLetter`, the execution strategy automatically creates a `DeadLetterEnvelope` with full `NodeFailureAttribution` and routes it to the configured sink.
+> **Note**: Returning `ResilienceDecision.DeadLetter` is all that is required. The execution strategy automatically creates a `DeadLetterEnvelope` with full `NodeFailureAttribution` and routes it to the configured `IDeadLetterSink`.
 
 ### Advanced Dead Letter Processing with Metadata
 
@@ -606,14 +607,14 @@ Here's a comprehensive example that combines multiple dead-letter queue concepts
 using NPipeline;
 using NPipeline.ErrorHandling;
 
-public class ProductionDeadLetterErrorHandler : INodeErrorHandler<ITransformNode<string, string>, string>
+public class ProductionDeadLetterResiliencePolicy : ResiliencePolicyBase
 {
     private readonly ILogger _logger;
     private readonly IMetrics _metrics;
     private readonly ConcurrentDictionary<string, int> _itemRetryCounts = new();
     private readonly int _maxRetriesBeforeDeadLetter = 3;
 
-    public ProductionDeadLetterErrorHandler(
+    public ProductionDeadLetterResiliencePolicy(
         ILogger logger,
         IMetrics metrics)
     {
@@ -621,45 +622,42 @@ public class ProductionDeadLetterErrorHandler : INodeErrorHandler<ITransformNode
         _metrics = metrics;
     }
 
-    public async Task<NodeErrorDecision> HandleAsync(
-        ITransformNode<string, string> node,
-        string failedItem,
-        NodeFailureContext failure,
+    public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+        ITransformNode<TIn, TOut> node,
+        TIn failedItem,
+        Exception exception,
+        PipelineContext context,
+        string nodeId,
+        int retryAttempt,
         CancellationToken cancellationToken)
     {
-        var itemKey = $"{node.Id}:{failedItem.GetHashCode()}";
-        var retryCount = _itemRetryCounts.AddOrUpdate(itemKey, 1, (_, count) => count + 1);
-
-        // Record metrics
         _metrics.Increment("node_error_handling_attempts", new[]
         {
-            new KeyValuePair<string, object>("node_id", node.Id),
-            new KeyValuePair<string, object>("error_type", failure.Exception.GetType().Name),
-            new KeyValuePair<string, object>("retry_count", retryCount)
+            new KeyValuePair<string, object>("node_id", nodeId),
+            new KeyValuePair<string, object>("error_type", exception.GetType().Name),
+            new KeyValuePair<string, object>("retry_attempt", retryAttempt)
         });
 
-        _logger.LogError(failure.Exception, "Error processing item in node {NodeName} (attempt {RetryCount})",
-            node.Name, retryCount);
+        _logger.LogError(exception, "Error processing item in node {NodeId} (attempt {Attempt})",
+            nodeId, retryAttempt);
 
-        if (IsTransientError(failure.Exception) && retryCount <= _maxRetriesBeforeDeadLetter)
+        if (IsTransientError(exception) && retryAttempt < _maxRetriesBeforeDeadLetter)
         {
-            _logger.LogInformation("Retrying item (attempt {RetryCount}/{MaxRetries})", retryCount, _maxRetriesBeforeDeadLetter);
-            return NodeErrorDecision.Retry;
+            _logger.LogInformation("Retrying item (attempt {Attempt}/{MaxRetries})", retryAttempt, _maxRetriesBeforeDeadLetter);
+            return Task.FromResult(ResilienceDecision.Retry);
         }
 
         // Return DeadLetter — the execution strategy automatically routes to the
         // configured IDeadLetterSink with a full DeadLetterEnvelope
         _metrics.Increment("dead_letter_items_sent", new[]
         {
-            new KeyValuePair<string, object>("node_id", node.Id),
-            new KeyValuePair<string, object>("origin_node_id", failure.Attribution.OriginNodeId),
-            new KeyValuePair<string, object>("error_type", failure.Exception.GetType().Name),
-            new KeyValuePair<string, object>("retry_count", retryCount)
+            new KeyValuePair<string, object>("node_id", nodeId),
+            new KeyValuePair<string, object>("error_type", exception.GetType().Name),
+            new KeyValuePair<string, object>("retry_attempt", retryAttempt)
         });
 
-        _logger.LogWarning("Item sent to dead-letter queue after {RetryCount} attempts", retryCount);
-        _itemRetryCounts.TryRemove(itemKey, out _);
-        return NodeErrorDecision.DeadLetter;
+        _logger.LogWarning("Item sent to dead-letter queue after {Attempt} attempts", retryAttempt);
+        return Task.FromResult(ResilienceDecision.DeadLetter);
     }
 
     private static bool IsTransientError(Exception error)
@@ -671,18 +669,18 @@ public class ProductionDeadLetterErrorHandler : INodeErrorHandler<ITransformNode
 
 ## Configuration Guidance
 
-For comprehensive setup guidance that integrates dead-letter queues with other resilience features, see the [Error Handling Guide](../resilience/error-handling.md) in the resilience section.
+For comprehensive setup guidance that integrates dead-letter queues with other resilience features, see the [Error Handling Overview](error-handling-overview.md) and [Resilience Policy](resilience-policy.md) docs.
 
 ## See Also
 
 * **[Resilience Overview](../resilience/index.md)**: Comprehensive guide to building fault-tolerant pipelines
-* **[Error Handling Guide](../resilience/error-handling.md)**: Practical implementation guidance with code examples
-* **[Getting Started with Resilience](../resilience/getting-started.md)**: Understanding critical prerequisites and foundational concepts for resilience features
+* **[Resilience Policy](resilience-policy.md)**: Implement `IResiliencePolicy` and `ResiliencePolicyBase`
+* **[Getting Started with Resilience](../resilience/getting-started.md)**: Critical prerequisites and foundational resilience concepts
 * **[Troubleshooting](../resilience/troubleshooting.md)**: Diagnose and resolve common resilience issues
 
 ## Related Topics
 
-* **[Node-level Error Handling](error-handling.md)**: Learn about handling errors for individual items.
-* **[Pipeline-level Error Handling](error-handling.md)**: Learn about handling errors that affect entire node streams.
+* **[Node-level Error Handling](node-error-handling.md)**: Handle errors for individual items.
+* **[Pipeline-level Error Handling](pipeline-error-handling.md)**: Handle errors that affect entire node streams.
 * **[Retries](retries.md)**: Configure retry behavior for items and node restarts.
-* **[Error Handling Overview](error-handling.md)**: Return to the error handling overview.
+* **[Error Handling Overview](error-handling-overview.md)**: Return to the error handling overview.

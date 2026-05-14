@@ -12,6 +12,7 @@ using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 using NPipeline.State;
 
 namespace NPipeline.Tests.Core.Execution;
@@ -31,18 +32,18 @@ public sealed class PipelineExecutionSetupStageTests
         var nodeInstances = new Dictionary<string, INode> { ["bound-node"] = A.Fake<INode>() };
         var plans = new Dictionary<string, NodeExecutionPlan>();
 
-        var pipelineErrorHandler = A.Fake<IPipelineErrorHandler>();
         var deadLetterSink = A.Fake<IDeadLetterSink>();
         var lineageSink = A.Fake<ILineageSink>();
         var pipelineLineageSink = A.Fake<IPipelineLineageSink>();
+        var resiliencePolicy = A.Fake<IResiliencePolicy>();
 
         _ = A.CallTo(() => runtimeBinder.BindAsync(baseGraph, A<PipelineContext>._))
             .Returns(new RuntimePipelineBindingResult(
                 boundGraph,
-                pipelineErrorHandler,
                 deadLetterSink,
                 lineageSink,
-                pipelineLineageSink));
+                pipelineLineageSink,
+                resiliencePolicy));
 
         _ = A.CallTo(() => nodeInstantiationService.InstantiateNodes(boundGraph, nodeFactory))
             .Returns(nodeInstances);
@@ -71,10 +72,10 @@ public sealed class PipelineExecutionSetupStageTests
         _ = result.ExecutionPlans.Should().BeEmpty();
         _ = result.PipelineLineageSink.Should().BeSameAs(pipelineLineageSink);
 
-        _ = context.PipelineErrorHandler.Should().BeSameAs(pipelineErrorHandler);
         _ = context.DeadLetterSink.Should().BeSameAs(deadLetterSink);
         _ = context.LineageSink.Should().BeSameAs(lineageSink);
         _ = context.PipelineLineageSink.Should().BeSameAs(pipelineLineageSink);
+        _ = context.ResiliencePolicy.Should().BeSameAs(resiliencePolicy);
 
         _ = A.CallTo(() => nodeInstantiationService.InstantiateNodes(boundGraph, nodeFactory))
             .MustHaveHappenedOnceExactly();
@@ -109,7 +110,7 @@ public sealed class PipelineExecutionSetupStageTests
         var plans = new Dictionary<string, NodeExecutionPlan>();
 
         _ = A.CallTo(() => runtimeBinder.BindAsync(graph, A<PipelineContext>._))
-            .Returns(new RuntimePipelineBindingResult(graph, null, null, null, null));
+            .Returns(new RuntimePipelineBindingResult(graph, null, null, null, DefaultResiliencePolicy.Instance));
 
         _ = A.CallTo(() => nodeInstantiationService.InstantiateNodes(graph, nodeFactory))
             .Returns(nodeInstances);

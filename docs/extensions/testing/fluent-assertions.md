@@ -138,7 +138,7 @@ public class PipelineWithErrorHandlingTests
         // Arrange
         var result = await new PipelineTestHarness<PipelineThatCanFail>()
             .WithParameter("input", problemData)
-            .CaptureErrors(PipelineErrorDecision.ContinueWithoutNode)
+            .CaptureErrors(ResilienceDecision.ContinueWithoutNode)
             .RunAsync();
 
         // Assert - fluent assertions make this very readable
@@ -155,12 +155,12 @@ public class PipelineWithErrorHandlingTests
     [Fact]
     public async Task Pipeline_Should_Preserve_Custom_Error_Handlers()
     {
-        // Arrange - create a context with custom error handler
+        // Arrange - create a context with a custom resilience policy
         var errorLog = new List<string>();
-        var customHandler = new LoggingErrorHandler(errorLog);
+        var customPolicy = new LoggingResiliencePolicy(errorLog);
         
-        var context = new PipelineContext();
-        context.PipelineErrorHandler = customHandler;
+        var context = new PipelineContext(
+            PipelineContextConfiguration.WithResilience(customPolicy));
 
         // Act - test harness will chain custom handler with capturing handler
         var result = await new PipelineTestHarness<MyPipeline>(context)

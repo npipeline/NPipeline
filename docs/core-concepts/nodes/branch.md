@@ -134,7 +134,7 @@ Branch handlers are user-provided delegates that execute in parallel. When a bra
 
 | Mode | Behavior | Use Case |
 |------|----------|----------|
-| `RouteToErrorHandler` (default) | Exceptions are wrapped in `BranchHandlerException` and routed through the pipeline's `IPipelineErrorHandler`. If no handler is configured, the exception propagates. | Production pipelines with error monitoring |
+| `RouteToErrorHandler` (default) | Exceptions are wrapped in `BranchHandlerException` and routed through the pipeline's `IResiliencePolicy`. If no policy is configured, the exception propagates. | Production pipelines with error monitoring |
 | `CollectAndThrow` | All branch exceptions are collected and thrown as an `AggregateException` after all branches complete. | When you need all branches to attempt execution |
 | `LogAndContinue` | Exceptions are logged but swallowed, allowing the pipeline to continue. | Non-critical side effects (use with caution) |
 
@@ -154,26 +154,26 @@ branchNode.AddOutput(async reading =>
 });
 ```
 
-### Example: Handling Branch Errors with IPipelineErrorHandler
+### Example: Handling Branch Errors with IResiliencePolicy
 
 ```csharp
-public class MyErrorHandler : IPipelineErrorHandler
+public class MyResiliencePolicy : ResiliencePolicyBase
 {
-    public Task<PipelineErrorDecision> HandleNodeFailureAsync(
+    public override Task<ResilienceDecision> DecidePipelineFailureAsync(
         string nodeId,
-        Exception error,
+        Exception exception,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
-        if (error is BranchHandlerException branchEx)
+        if (exception is BranchHandlerException branchEx)
         {
             // Log the branch failure but continue the pipeline
             Console.WriteLine($"Branch {branchEx.BranchIndex} failed: {branchEx.InnerException?.Message}");
-            return Task.FromResult(PipelineErrorDecision.ContinueWithoutNode);
+            return Task.FromResult(ResilienceDecision.ContinueWithoutNode);
         }
 
         // For other errors, fail the pipeline
-        return Task.FromResult(PipelineErrorDecision.FailPipeline);
+        return Task.FromResult(ResilienceDecision.Fail);
     }
 }
 ```

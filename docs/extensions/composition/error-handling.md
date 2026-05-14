@@ -180,33 +180,32 @@ public class ParentPipeline : IPipelineDefinition
     }
 }
 
-// Configure error handler via context when running
+// Configure resilience policy via context when running
 var context = new PipelineContext(
-    PipelineContextConfiguration.WithErrorHandling(
-        pipelineErrorHandler: new CustomErrorHandler()));
+    PipelineContextConfiguration.WithResilience(new CustomResiliencePolicy()));
 
 await runner.RunAsync<ParentPipeline>(context);
 
-public class CustomErrorHandler : IPipelineErrorHandler
+public class CustomResiliencePolicy : ResiliencePolicyBase
 {
-    public Task<PipelineErrorDecision> HandleNodeFailureAsync(
+    public override Task<ResilienceDecision> DecidePipelineFailureAsync(
         string nodeId, 
-        Exception error,
+        Exception exception,
         PipelineContext context, 
         CancellationToken cancellationToken)
     {
         // Log error
-        Log.Error(error, "Error in node {NodeId}", nodeId);
+        Log.Error(exception, "Error in node {NodeId}", nodeId);
         
         // Decide how to proceed
-        if (error is ValidationException)
+        if (exception is ValidationException)
         {
             // Continue without this node
-            return Task.FromResult(PipelineErrorDecision.ContinueWithoutNode);
+            return Task.FromResult(ResilienceDecision.ContinueWithoutNode);
         }
         
         // Fail pipeline
-        return Task.FromResult(PipelineErrorDecision.FailPipeline);
+        return Task.FromResult(ResilienceDecision.Fail);
     }
 }
 ```
@@ -561,7 +560,7 @@ public async Task ParentPipeline_WithSubPipelineError_ShouldHandleGracefully()
     // Arrange
     var context = new PipelineContext();
     var errorHandler = new MockErrorHandler();
-    builder.WithErrorHandler(errorHandler);
+    builder.AddResiliencePolicy<MockResiliencePolicy>();
     
     // Act
     await runner.RunAsync<ParentPipeline>(context);

@@ -17,9 +17,9 @@ public class PipelineGraphTests
         var result = ErrorHandlingConfiguration.Default;
 
         _ = result.Should().NotBeNull();
-        _ = result.PipelineErrorHandler.Should().BeNull();
+        _ = result.ResiliencePolicy.Should().BeNull();
         _ = result.DeadLetterSink.Should().BeNull();
-        _ = result.PipelineErrorHandlerType.Should().BeNull();
+        _ = result.ResiliencePolicyType.Should().BeNull();
         _ = result.DeadLetterSinkType.Should().BeNull();
         _ = result.RetryOptions.Should().BeNull();
         _ = result.NodeRetryOverrides.Should().BeNull();
@@ -65,11 +65,11 @@ public class PipelineGraphTests
 
         var modified = original with
         {
-            PipelineErrorHandlerType = typeof(object),
+            ResiliencePolicyType = typeof(object),
         };
 
-        _ = original.PipelineErrorHandlerType.Should().BeNull();
-        _ = modified.PipelineErrorHandlerType.Should().NotBeNull();
+        _ = original.ResiliencePolicyType.Should().BeNull();
+        _ = modified.ResiliencePolicyType.Should().NotBeNull();
     }
 
     #endregion
@@ -241,14 +241,14 @@ public class PipelineGraphTests
             RetryOptions = retryOpts,
             CircuitBreakerOptions = cbOpts,
             CircuitBreakerMemoryOptions = memoryOptions,
-            PipelineErrorHandlerType = typeof(object),
+            ResiliencePolicyType = typeof(object),
             DeadLetterSinkType = typeof(object),
         };
 
         _ = config.RetryOptions.Should().Be(retryOpts);
         _ = config.CircuitBreakerOptions.Should().Be(cbOpts);
         _ = config.CircuitBreakerMemoryOptions.Should().Be(memoryOptions);
-        _ = config.PipelineErrorHandlerType.Should().NotBeNull();
+        _ = config.ResiliencePolicyType.Should().NotBeNull();
         _ = config.DeadLetterSinkType.Should().NotBeNull();
     }
 

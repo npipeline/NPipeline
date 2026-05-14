@@ -1,4 +1,3 @@
-using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Execution.Strategies;
 using NPipeline.Pipeline;
@@ -14,18 +13,6 @@ namespace NPipeline.Nodes;
 public abstract class TransformNode<TIn, TOut>
     : ITransformNode<TIn, TOut>, INodeTypeMetadata, IValueTaskTransform<TIn, TOut>
 {
-    private INodeErrorHandler? _errorHandler;
-
-    /// <summary>
-    ///     Gets the strongly-typed error handler for this node.
-    ///     <para>
-    ///         This property is optimized for performance by caching the typed reference during setter validation.
-    ///         Since type validation occurs at assignment time, the cached reference is guaranteed to be of the correct type,
-    ///         allowing this property to be a simple field read rather than a repeated cast operation.
-    ///     </para>
-    /// </summary>
-    protected INodeErrorHandler<ITransformNode<TIn, TOut>, TIn>? TypedErrorHandler { get; private set; }
-
     /// <summary>
     ///     Gets the input type of the transform node.
     /// </summary>
@@ -45,26 +32,6 @@ public abstract class TransformNode<TIn, TOut>
     ///     </para>
     /// </summary>
     public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
-
-    /// <inheritdoc />
-    public INodeErrorHandler? ErrorHandler
-    {
-        get => _errorHandler;
-        set
-        {
-            if (value is not null and not INodeErrorHandler<ITransformNode<TIn, TOut>, TIn>)
-            {
-                throw new ArgumentException(
-                    $"The provided error handler is not of the expected type INodeErrorHandler<ITransformNode<TIn, TOut>, TIn> for node {GetType().Name}.",
-                    nameof(value));
-            }
-
-            _errorHandler = value;
-
-            // Cache the typed reference for zero-cost property access (avoids repeated cast operations)
-            TypedErrorHandler = value as INodeErrorHandler<ITransformNode<TIn, TOut>, TIn>;
-        }
-    }
 
     /// <inheritdoc />
     public abstract Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken);

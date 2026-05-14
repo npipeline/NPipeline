@@ -1,11 +1,13 @@
 using AwesomeAssertions;
 using NPipeline.DataFlow;
-using NPipeline.ErrorHandling;
+using NPipeline.Execution.Annotations;
 using NPipeline.Execution.Strategies;
+using NPipeline.ErrorHandling;
 using NPipeline.Graph;
 using NPipeline.Graph.Validation;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 using Xunit.Abstractions;
 
 namespace NPipeline.Tests.Core.Builder;
@@ -192,7 +194,7 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void WithErrorHandler_ShouldSetErrorHandlerTypeOnNode()
+    public void SetNodeResiliencePolicy_ShouldSetPolicyAnnotationOnNode()
     {
         _ = output; // Parameter is unused but required for test infrastructure
 
@@ -203,12 +205,12 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
         builder.Connect(source, transform);
 
         // Act
-        transform.WithErrorHandler<string, int, TestErrorHandler>(builder);
+        builder.SetNodeResiliencePolicy(transform, new TestResiliencePolicy());
         var pipeline = builder.Build();
 
         // Assert
-        var nodeDef = pipeline.Graph.Nodes.Single(n => n.Id == "transform");
-        nodeDef.ErrorHandlerType.Should().Be<TestErrorHandler>();
+        var key = ExecutionAnnotationKeys.NodeResiliencePolicyForNode("transform");
+        pipeline.Graph.ExecutionOptions.NodeExecutionAnnotations.Should().ContainKey(key);
     }
 
 
@@ -238,12 +240,47 @@ public sealed class PipelineBuilderTests(ITestOutputHelper output)
         }
     }
 
-    private sealed class TestErrorHandler : INodeErrorHandler<ITransformNode<string, int>, string>
+    private sealed class TestResiliencePolicy : IResiliencePolicy
     {
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<string, int> node, string failedItem, NodeFailureContext failure,
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception error,
+            PipelineContext context,
             CancellationToken cancellationToken)
         {
-            return Task.FromResult(NodeErrorDecision.Fail);
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
+            string nodeId,
+            Exception error,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 

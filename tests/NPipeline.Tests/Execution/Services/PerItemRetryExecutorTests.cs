@@ -3,10 +3,12 @@ using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Execution.Lineage;
 using NPipeline.Execution.Services;
+using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 using NPipeline.Sampling;
 
 namespace NPipeline.Tests.Execution.Services;
@@ -21,12 +23,11 @@ public sealed class PerItemRetryExecutorTests
         var executor = PerItemRetryExecutor.Instance;
         var transformException = new InvalidOperationException("skip-me");
         var transform = new ScriptedTransform(transformException);
-        var errorHandler = new SequenceDecisionErrorHandler(NodeErrorDecision.Skip);
+        var resiliencePolicy = new SequenceDecisionPolicy(ResilienceDecision.Skip);
         var deadLetterSink = new RecordingDeadLetterSink();
 
-        transform.ErrorHandler = errorHandler;
-
         var (context, pipelineId) = CreateTrackedContext();
+        context.ResiliencePolicy = resiliencePolicy;
         context.DeadLetterSink = deadLetterSink;
         var activity = new RecordingPipelineActivity();
 
@@ -47,7 +48,7 @@ public sealed class PerItemRetryExecutorTests
             _ = result.Outcome.Should().Be(ItemExecutionOutcome.Skipped);
             _ = result.Produced.Should().BeFalse();
             _ = result.RetryCount.Should().Be(0);
-            _ = errorHandler.CallCount.Should().Be(1);
+            _ = resiliencePolicy.CallCount.Should().Be(1);
             _ = deadLetterSink.Envelopes.Should().BeEmpty();
             _ = activity.Exceptions.Should().HaveCount(1);
 
@@ -68,12 +69,11 @@ public sealed class PerItemRetryExecutorTests
         var executor = PerItemRetryExecutor.Instance;
         var transformException = new InvalidOperationException("dead-letter-me");
         var transform = new ScriptedTransform(transformException);
-        var errorHandler = new SequenceDecisionErrorHandler(NodeErrorDecision.DeadLetter);
+        var resiliencePolicy = new SequenceDecisionPolicy(ResilienceDecision.DeadLetter);
         var deadLetterSink = new RecordingDeadLetterSink();
 
-        transform.ErrorHandler = errorHandler;
-
         var (context, pipelineId) = CreateTrackedContext();
+        context.ResiliencePolicy = resiliencePolicy;
         context.DeadLetterSink = deadLetterSink;
 
         try
@@ -113,12 +113,11 @@ public sealed class PerItemRetryExecutorTests
     {
         var executor = PerItemRetryExecutor.Instance;
         var transform = new ScriptedTransform(new InvalidOperationException("transient"), 99);
-        var errorHandler = new SequenceDecisionErrorHandler(NodeErrorDecision.Retry);
+        var resiliencePolicy = new SequenceDecisionPolicy(ResilienceDecision.Retry);
         var activity = new RecordingPipelineActivity();
 
-        transform.ErrorHandler = errorHandler;
-
         var (context, pipelineId) = CreateTrackedContext();
+        context.ResiliencePolicy = resiliencePolicy;
 
         try
         {
@@ -139,7 +138,7 @@ public sealed class PerItemRetryExecutorTests
             _ = result.Output.Should().Be(99);
             _ = result.RetryCount.Should().Be(1);
             _ = transform.InvocationCount.Should().Be(2);
-            _ = errorHandler.CallCount.Should().Be(1);
+            _ = resiliencePolicy.CallCount.Should().Be(1);
             _ = activity.Exceptions.Should().HaveCount(1);
             _ = activity.Tags.Should().ContainKey("retry.attempt");
             _ = activity.Tags["retry.attempt"].Should().Be("1");
@@ -161,12 +160,11 @@ public sealed class PerItemRetryExecutorTests
         var executor = PerItemRetryExecutor.Instance;
         var transformException = new InvalidOperationException("terminal");
         var transform = new ScriptedTransform(transformException);
-        var errorHandler = new SequenceDecisionErrorHandler(NodeErrorDecision.Fail);
+        var resiliencePolicy = new SequenceDecisionPolicy(ResilienceDecision.Fail);
         var recorder = new RecordingSampleRecorder();
 
-        transform.ErrorHandler = errorHandler;
-
         var (context, pipelineId) = CreateTrackedContext();
+        context.ResiliencePolicy = resiliencePolicy;
         context.Properties[PipelineContextKeys.SampleRecorder] = recorder;
         LineageExecutionItemContext.SetCurrentInputContext(0, Guid.NewGuid(), [1, 2]);
 
@@ -207,12 +205,11 @@ public sealed class PerItemRetryExecutorTests
     {
         var executor = PerItemRetryExecutor.Instance;
         var transform = new ScriptedTransform(new InvalidOperationException("first"), new InvalidOperationException("second"));
-        var errorHandler = new SequenceDecisionErrorHandler(NodeErrorDecision.Retry, NodeErrorDecision.Retry);
+        var resiliencePolicy = new SequenceDecisionPolicy(ResilienceDecision.Retry, ResilienceDecision.Retry);
         var recorder = new RecordingSampleRecorder();
 
-        transform.ErrorHandler = errorHandler;
-
         var (context, pipelineId) = CreateTrackedContext();
+        context.ResiliencePolicy = resiliencePolicy;
         context.Properties[PipelineContextKeys.SampleRecorder] = recorder;
         LineageExecutionItemContext.SetCurrentInputContext(0, Guid.NewGuid(), [4]);
 
@@ -283,26 +280,58 @@ public sealed class PerItemRetryExecutorTests
         }
     }
 
-    private sealed class SequenceDecisionErrorHandler(params NodeErrorDecision[] decisions)
-        : INodeErrorHandler<ITransformNode<int, int>, int>
+    private sealed class SequenceDecisionPolicy(params ResilienceDecision[] decisions)
+        : IResiliencePolicy
     {
-        private readonly Queue<NodeErrorDecision> _decisions = new(decisions);
+        private readonly Queue<ResilienceDecision> _decisions = new(decisions);
 
         public int CallCount { get; private set; }
 
-        public Task<NodeErrorDecision> HandleAsync(
-            ITransformNode<int, int> node,
-            int failedItem,
-            NodeFailureContext failure,
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception exception,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
+            string nodeId,
+            Exception exception,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
             CancellationToken cancellationToken)
         {
             CallCount++;
 
             var decision = _decisions.Count > 0
                 ? _decisions.Dequeue()
-                : NodeErrorDecision.Fail;
+                : ResilienceDecision.Fail;
 
             return Task.FromResult(decision);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 

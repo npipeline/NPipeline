@@ -78,6 +78,12 @@ public static class ExecutionAnnotationKeys
     /// </summary>
     public const string BranchMetricsPrefix = "branch.metrics::";
 
+    /// <summary>
+    ///     Prefix used to store and retrieve node-scoped resilience policy overrides in runtime annotations,
+    ///     keyed as "resilience.policy::{nodeId}".
+    /// </summary>
+    public const string NodeResiliencePolicyPrefix = "resilience.policy::";
+
     // ============================
     // Node-scoped annotations
     // ============================
@@ -107,5 +113,13 @@ public static class ExecutionAnnotationKeys
     public static string BranchMetricsForNode(string nodeId)
     {
         return BranchMetricsPrefix + nodeId;
+    }
+
+    /// <summary>
+    ///     Builds the node-scoped resilience policy key for a given <paramref name="nodeId" />.
+    /// </summary>
+    public static string NodeResiliencePolicyForNode(string nodeId)
+    {
+        return NodeResiliencePolicyPrefix + nodeId;
     }
 }

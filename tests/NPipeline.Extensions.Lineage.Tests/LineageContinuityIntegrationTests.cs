@@ -2,13 +2,14 @@ using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
-using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Parallelism;
+using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Lineage.DependencyInjection;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 using System.Runtime.CompilerServices;
 
 namespace NPipeline.Extensions.Lineage.Tests;
@@ -287,11 +288,6 @@ public sealed class LineageContinuityIntegrationTests
     {
         private int _attempt;
 
-        public RetryMetadataTransformNode()
-        {
-            ErrorHandler = new AlwaysRetryHandler();
-        }
-
         public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
             if (_attempt < 2)
@@ -304,12 +300,47 @@ public sealed class LineageContinuityIntegrationTests
         }
     }
 
-    private sealed class AlwaysRetryHandler : INodeErrorHandler<ITransformNode<int, int>, int>
+    private sealed class AlwaysRetryPolicy : IResiliencePolicy
     {
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int item, NodeFailureContext failure,
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception exception,
+            PipelineContext context,
             CancellationToken cancellationToken)
         {
-            return Task.FromResult(NodeErrorDecision.Retry);
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
+            string nodeId,
+            Exception exception,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Retry);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 
@@ -520,6 +551,7 @@ public sealed class LineageContinuityIntegrationTests
             var transform = builder
                 .AddTransform<RetryMetadataTransformNode, int, int>("retry_transform")
                 .WithRetries(builder, 3);
+            builder.SetNodeResiliencePolicy(transform, new AlwaysRetryPolicy());
             var aggregate = builder.AddAggregate<PassThroughAggregateNode, int, int, int>("aggregate");
             var sink = builder.AddSink<DrainSinkNode<int>, int>("sink");
 

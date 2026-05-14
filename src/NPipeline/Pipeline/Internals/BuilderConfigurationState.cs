@@ -1,5 +1,6 @@
 using NPipeline.ErrorHandling;
 using NPipeline.Lineage;
+using NPipeline.Resilience;
 using NPipeline.Visualization;
 
 namespace NPipeline.Pipeline.Internals;
@@ -11,14 +12,14 @@ namespace NPipeline.Pipeline.Internals;
 internal sealed class BuilderConfigurationState
 {
     /// <summary>
-    ///     Pipeline-level error handler instance.
+    ///     Unified resilience policy instance.
     /// </summary>
-    public IPipelineErrorHandler? PipelineErrorHandler { get; set; }
+    public IResiliencePolicy? ResiliencePolicy { get; set; }
 
     /// <summary>
-    ///     Pipeline-level error handler type (for lazy initialization).
+    ///     Unified resilience policy type (for lazy initialization).
     /// </summary>
-    public Type? PipelineErrorHandlerType { get; set; }
+    public Type? ResiliencePolicyType { get; set; }
 
     /// <summary>
     ///     Dead letter sink instance for failed items.
@@ -65,8 +66,8 @@ internal sealed class BuilderConfigurationState
     /// </summary>
     public void Clear()
     {
-        PipelineErrorHandler = null;
-        PipelineErrorHandlerType = null;
+        ResiliencePolicy = null;
+        ResiliencePolicyType = null;
         DeadLetterSink = null;
         DeadLetterSinkType = null;
         LineageSink = null;

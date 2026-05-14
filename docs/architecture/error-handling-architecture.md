@@ -15,6 +15,8 @@ NPipeline provides multiple strategies for handling errors that occur during pip
 
 For practical implementation guidance, see [Error Handling](../core-concepts/resilience/error-handling.md).
 
+As of the resilience module consolidation, runtime execution coordinates retry, decision routing, dead-letter integration, and circuit breaker resolution through a single policy entry point: [`IResiliencePolicy`](../core-concepts/resilience/resilience-policy.md) (default implementation: `DefaultResiliencePolicy`).
+
 ## Error Propagation
 
 By default, errors propagate up the pipeline and stop execution. This is often the right behavior for critical failures, but may be too harsh for transient errors or data validation issues.
@@ -92,30 +94,17 @@ var deadLetterSink = new FileDeadLetterSink("dead-letters.json");
 var context = new PipelineContext(
     new PipelineContextConfiguration(DeadLetterSink: deadLetterSink));
 
-// In a transform node, use INodeErrorHandler to route failed items
-public class OrderTransform : ITransformNode<Order, ProcessedOrder>
+// Resilience policy returns DeadLetter to route failed items
+public class OrderResiliencePolicy : ResiliencePolicyBase
 {
-    public INodeErrorHandler? ErrorHandler { get; set; }
-
-    public async Task<ProcessedOrder> TransformAsync(
-        Order item,
-        PipelineContext context,
-        CancellationToken cancellationToken)
+    public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+        ITransformNode<TIn, TOut> node, TIn failedItem, Exception exception,
+        PipelineContext context, string nodeId, int retryAttempt, CancellationToken ct)
     {
-        try
-        {
-            // Validate and process order
-            if (item.Amount <= 0)
-                throw new InvalidOperationException("Invalid order amount");
-                
-            return new ProcessedOrder { /* ... */ };
-        }
-        catch (Exception ex)
-        {
-            // Error handler can route to dead-letter sink
-            ErrorHandler?.Handle(item, ex, context);
-            throw; // Or return default value depending on strategy
-        }
+        if (exception is InvalidOperationException)
+            return Task.FromResult(ResilienceDecision.DeadLetter);
+
+        return Task.FromResult(ResilienceDecision.Skip);
     }
 }
 ```

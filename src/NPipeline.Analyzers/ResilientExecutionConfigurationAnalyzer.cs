@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace NPipeline.Analyzers;
 
 /// <summary>
-///     Analyzer that detects when PipelineErrorDecision.RestartNode is returned but the
+///     Analyzer that detects when ResilienceDecision.RestartNode is returned from policy code but the
 ///     three mandatory prerequisites are missing:
 ///     1. ResilientExecutionStrategy must be applied to the node
 ///     2. MaxNodeRestartAttempts must be set to a value > 0
@@ -26,7 +26,7 @@ public sealed class ResilientExecutionConfigurationAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor IncompleteResilientConfigurationRule = new(
         IncompleteResilientConfigurationId,
         "RestartNode decision requires complete resilience configuration",
-        "Error handler can return PipelineErrorDecision.RestartNode but may not have all three mandatory prerequisites configured. "
+        "Resilience policy can return ResilienceDecision.RestartNode but may not have all three mandatory prerequisites configured. "
         + "Missing prerequisites will silently disable restart, causing the entire pipeline to fail instead of recovering the failed node. "
         + "Checklist: (1) Node wrapped with ResilientExecutionStrategy, (2) MaxNodeRestartAttempts > 0, (3) MaxMaterializedItems is not null.",
         "Configuration & Setup",
@@ -46,29 +46,29 @@ public sealed class ResilientExecutionConfigurationAnalyzer : DiagnosticAnalyzer
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
 
-        // Register to analyze method declarations that implement IPipelineErrorHandler.HandleNodeFailureAsync
-        context.RegisterSymbolAction(AnalyzeErrorHandler, SymbolKind.Method);
+        // Register to analyze method declarations that implement IResiliencePolicy.DecidePipelineFailureAsync.
+        context.RegisterSymbolAction(AnalyzeResiliencePolicyDecision, SymbolKind.Method);
     }
 
-    private static void AnalyzeErrorHandler(SymbolAnalysisContext context)
+    private static void AnalyzeResiliencePolicyDecision(SymbolAnalysisContext context)
     {
         if (context.Symbol is not IMethodSymbol methodSymbol)
             return;
 
-        // Check if this is the HandleNodeFailureAsync method
-        if (methodSymbol.Name != "HandleNodeFailureAsync" || methodSymbol.Parameters.Length < 4)
+        // Check if this is the DecidePipelineFailureAsync method.
+        if (methodSymbol.Name != "DecidePipelineFailureAsync" || methodSymbol.Parameters.Length < 4)
             return;
 
-        // Verify it's implementing IPipelineErrorHandler.HandleNodeFailureAsync
+        // Verify it's implementing IResiliencePolicy.DecidePipelineFailureAsync.
         var containingType = methodSymbol.ContainingType;
 
         if (containingType == null)
             return;
 
-        var implementsErrorHandler = containingType.AllInterfaces
-            .Any(i => i.Name == "IPipelineErrorHandler" && i.ContainingNamespace?.Name == "ErrorHandling");
+        var implementsResiliencePolicy = containingType.AllInterfaces
+            .Any(i => i.Name == "IResiliencePolicy" && i.ContainingNamespace?.Name == "Resilience");
 
-        if (!implementsErrorHandler)
+        if (!implementsResiliencePolicy)
             return;
 
         // Get the syntax reference to analyze the method body
@@ -82,7 +82,7 @@ public sealed class ResilientExecutionConfigurationAnalyzer : DiagnosticAnalyzer
         if (methodNode == null)
             return;
 
-        // Check if the method can return PipelineErrorDecision.RestartNode
+        // Check if the method can return ResilienceDecision.RestartNode.
         var canReturnRestartNode = CanReturnRestartNode(methodNode);
 
         if (!canReturnRestartNode)
@@ -97,7 +97,7 @@ public sealed class ResilientExecutionConfigurationAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    ///     Checks if a method can return PipelineErrorDecision.RestartNode.
+    ///     Checks if a method can return ResilienceDecision.RestartNode.
     /// </summary>
     private static bool CanReturnRestartNode(MethodDeclarationSyntax methodNode)
     {
@@ -108,7 +108,7 @@ public sealed class ResilientExecutionConfigurationAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    ///     AST walker that detects if a method can return PipelineErrorDecision.RestartNode.
+    ///     AST walker that detects if a method can return ResilienceDecision.RestartNode.
     /// </summary>
     private sealed class RestartNodeReturnWalker : CSharpSyntaxWalker
     {
@@ -157,18 +157,18 @@ public sealed class ResilientExecutionConfigurationAnalyzer : DiagnosticAnalyzer
         }
 
         /// <summary>
-        ///     Checks if an expression evaluates to or returns PipelineErrorDecision.RestartNode.
+        ///     Checks if an expression evaluates to or returns ResilienceDecision.RestartNode.
         /// </summary>
         private static bool IsRestartNodeReference(ExpressionSyntax? expression)
         {
             if (expression == null)
                 return false;
 
-            // Direct member access: PipelineErrorDecision.RestartNode
+            // Direct member access: ResilienceDecision.RestartNode
             if (expression is MemberAccessExpressionSyntax memberAccess)
             {
                 return memberAccess.Name.Identifier.Text == "RestartNode" &&
-                       memberAccess.Expression is IdentifierNameSyntax { Identifier.Text: "PipelineErrorDecision" };
+                       memberAccess.Expression is IdentifierNameSyntax { Identifier.Text: "ResilienceDecision" };
             }
 
             // Simple identifier (when using static import): RestartNode

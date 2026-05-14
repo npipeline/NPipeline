@@ -55,6 +55,7 @@ NPipeline's resilience framework is built around several interconnected componen
 | Component | Role | Best For |
 |-----------|------|----------|
 | **[Getting Started with Resilience](./getting-started.md)** | Quick-start checklist for node restarts and retry delays | New users; configuring resilience for the first time |
+| **[Resilience Policy](./resilience-policy.md)** | Single entry point for retry, error routing, dead-letter, and circuit breaking | Teams that want one resilience abstraction to customize |
 | **[Error Handling](error-handling.md)** | How to respond to failures at node and pipeline levels | Understanding error recovery strategies |
 | **[Retry Options](retries.md)** | Configure retry limits, delays, and materialization | Fine-tuning resilience behavior |
 | **[Materialization & Buffering](materialization.md)** | How buffering enables replay during restarts | Understanding the replay mechanism |
@@ -75,10 +76,11 @@ NPipeline's resilience framework is built around several interconnected componen
 ## Recommended Reading Order
 
 1. **[Getting Started with Resilience](./getting-started.md)** ← Start here for a quick checklist
-2. **[Error Handling](./error-handling.md)** ← Understand error recovery strategies
-3. **[Retry Options](./retries.md)** ← Fine-tune retry behavior
-4. **[Materialization & Buffering](./materialization.md)** ← Understand how replay works
-5. **[Troubleshooting](./troubleshooting.md)** ← Debug issues
+2. **[Resilience Policy](./resilience-policy.md)** ← Configure one resilience entry point
+3. **[Error Handling](./error-handling.md)** ← Understand error recovery strategies
+4. **[Retry Options](./retries.md)** ← Fine-tune retry behavior
+5. **[Materialization & Buffering](./materialization.md)** ← Understand how replay works
+6. **[Troubleshooting](./troubleshooting.md)** ← Debug issues
 
 ## Advanced Topics
 

@@ -199,9 +199,9 @@ public sealed partial class PipelineBuilder
 
         return new ErrorHandlingConfiguration
         {
-            PipelineErrorHandler = ConfigurationState.PipelineErrorHandler,
+            ResiliencePolicy = ConfigurationState.ResiliencePolicy,
+            ResiliencePolicyType = ConfigurationState.ResiliencePolicyType,
             DeadLetterSink = ConfigurationState.DeadLetterSink,
-            PipelineErrorHandlerType = ConfigurationState.PipelineErrorHandlerType,
             DeadLetterSinkType = ConfigurationState.DeadLetterSinkType,
             RetryOptions = _config.RetryOptions,
             NodeRetryOverrides = overrideDict,

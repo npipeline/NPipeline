@@ -1,6 +1,7 @@
 using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution.CircuitBreaking;
+using NPipeline.Resilience;
 
 namespace NPipeline.Pipeline;
 
@@ -13,6 +14,7 @@ public sealed class PipelineExecutionConfigurationContext
     {
         RetryOptions = retryOptions;
         GlobalRetryOptions = retryOptions;
+        ResiliencePolicy = DefaultResiliencePolicy.Instance;
     }
 
     /// <summary>
@@ -29,6 +31,11 @@ public sealed class PipelineExecutionConfigurationContext
     ///     Per-node retry option overrides indexed by node id.
     /// </summary>
     public Dictionary<string, PipelineRetryOptions> NodeRetryOverrides { get; } = new();
+
+    /// <summary>
+    ///     Unified resilience policy used by runtime execution.
+    /// </summary>
+    public IResiliencePolicy ResiliencePolicy { get; internal set; }
 
     /// <summary>
     ///     Circuit-breaker options for the current run.

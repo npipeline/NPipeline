@@ -9,8 +9,10 @@ using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
+using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Tests.Resilience.Restart;
 
@@ -42,7 +44,6 @@ public sealed class ResilientMemoryUsageTests
 
         var services = new ServiceCollection();
         services.AddNPipeline(Assembly.GetExecutingAssembly());
-        services.AddSingleton<MemoryTestErrorHandler>();
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
         var ctx = PipelineContext.Default;
@@ -74,7 +75,6 @@ public sealed class ResilientMemoryUsageTests
         // Arrange
         var services = new ServiceCollection();
         services.AddNPipeline(Assembly.GetExecutingAssembly());
-        services.AddSingleton<MemoryTestErrorHandler>();
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
@@ -118,7 +118,6 @@ public sealed class ResilientMemoryUsageTests
 
         var services = new ServiceCollection();
         services.AddNPipeline(Assembly.GetExecutingAssembly());
-        services.AddSingleton<MemoryTestErrorHandler>();
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
         var ctx = PipelineContext.Default;
@@ -145,7 +144,6 @@ public sealed class ResilientMemoryUsageTests
         // Arrange
         var services = new ServiceCollection();
         services.AddNPipeline(Assembly.GetExecutingAssembly());
-        services.AddSingleton<MemoryTestErrorHandler>();
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
         var ctx = PipelineContext.Default;
@@ -162,11 +160,47 @@ public sealed class ResilientMemoryUsageTests
     }
 
     // Helper classes for the tests
-    private sealed class MemoryTestErrorHandler : IPipelineErrorHandler
+    private sealed class MemoryTestResiliencePolicy : IResiliencePolicy
     {
-        public Task<PipelineErrorDecision> HandleNodeFailureAsync(string nodeId, Exception error, PipelineContext context, CancellationToken cancellationToken)
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception error,
+            PipelineContext context,
+            CancellationToken cancellationToken)
         {
-            return Task.FromResult(PipelineErrorDecision.FailPipeline);
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
+            string nodeId,
+            Exception error,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 
@@ -247,7 +281,7 @@ public sealed class ResilientMemoryUsageTests
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
             builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 1, maxMaterializedItems: 100));
-            builder.AddPipelineErrorHandler<MemoryTestErrorHandler>();
+            builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
         }
     }
 
@@ -261,7 +295,7 @@ public sealed class ResilientMemoryUsageTests
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
             builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 1, maxMaterializedItems: 50));
-            builder.AddPipelineErrorHandler<MemoryTestErrorHandler>();
+            builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
         }
     }
 
@@ -275,7 +309,7 @@ public sealed class ResilientMemoryUsageTests
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
             builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 1, maxMaterializedItems: 500));
-            builder.AddPipelineErrorHandler<MemoryTestErrorHandler>();
+            builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
         }
     }
 
@@ -289,7 +323,7 @@ public sealed class ResilientMemoryUsageTests
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
             builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 1, maxMaterializedItems: 200));
-            builder.AddPipelineErrorHandler<MemoryTestErrorHandler>();
+            builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
         }
     }
 
@@ -303,7 +337,7 @@ public sealed class ResilientMemoryUsageTests
             builder.Connect(s, t).Connect(t, k);
             builder.WithResilience(t);
             builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 1, maxMaterializedItems: 100));
-            builder.AddPipelineErrorHandler<MemoryTestErrorHandler>();
+            builder.AddResiliencePolicy<MemoryTestResiliencePolicy>();
         }
     }
 }

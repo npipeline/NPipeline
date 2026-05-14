@@ -4,6 +4,7 @@ using NPipeline.Lineage;
 using NPipeline.Observability;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Configuration;
 
@@ -28,7 +29,7 @@ public sealed record PipelineContextConfiguration(
     Dictionary<string, object>? Properties = null,
     PipelineRetryOptions? RetryOptions = null,
     IErrorHandlerFactory? ErrorHandlerFactory = null,
-    IPipelineErrorHandler? PipelineErrorHandler = null,
+    IResiliencePolicy? ResiliencePolicy = null,
     IDeadLetterSink? DeadLetterSink = null,
     ILoggerFactory? LoggerFactory = null,
     IPipelineTracer? Tracer = null,
@@ -121,18 +122,25 @@ public sealed record PipelineContextConfiguration(
     }
 
     /// <summary>
-    ///     Creates a configuration with error handling components.
-    ///     Useful for configuring pipeline error handlers and dead-letter sinks.
+    ///     Creates a configuration with dead-letter handling components.
     /// </summary>
-    /// <param name="pipelineErrorHandler">The pipeline-level error handler.</param>
     /// <param name="deadLetterSink">The dead-letter sink for failed items.</param>
-    /// <returns>A new configuration with the specified error handling components.</returns>
+    /// <returns>A new configuration with the specified dead-letter components.</returns>
     public static PipelineContextConfiguration WithErrorHandling(
-        IPipelineErrorHandler? pipelineErrorHandler = null,
         IDeadLetterSink? deadLetterSink = null)
     {
         return new PipelineContextConfiguration(
-            PipelineErrorHandler: pipelineErrorHandler,
             DeadLetterSink: deadLetterSink);
+    }
+
+    /// <summary>
+    ///     Creates a configuration with a unified resilience policy.
+    /// </summary>
+    /// <param name="resiliencePolicy">The resilience policy to use during execution.</param>
+    /// <returns>A new configuration with the specified resilience policy.</returns>
+    public static PipelineContextConfiguration WithResilience(IResiliencePolicy resiliencePolicy)
+    {
+        ArgumentNullException.ThrowIfNull(resiliencePolicy);
+        return new PipelineContextConfiguration(ResiliencePolicy: resiliencePolicy);
     }
 }

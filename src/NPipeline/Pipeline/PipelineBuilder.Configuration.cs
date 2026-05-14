@@ -10,9 +10,11 @@ using NPipeline.ErrorHandling;
 using NPipeline.Graph;
 using NPipeline.Graph.PipelineDelegates;
 using NPipeline.Graph.Validation;
+using NPipeline.Execution.Annotations;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Visualization;
+using NPipeline.Resilience;
 
 namespace NPipeline.Pipeline;
 
@@ -71,50 +73,27 @@ public sealed partial class PipelineBuilder
     }
 
     /// <summary>
-    ///     Method for setting error handlers on nodes. Use fluent extension methods on node handles instead.
+    ///     Adds a unified resilience policy to coordinate retry, error routing, circuit breaking, and dead-letter decisions.
     /// </summary>
-    /// <remarks>
-    ///     This method is public to support fluent extensions in separate assemblies,
-    ///     but is hidden from IntelliSense to discourage direct use. Always use the fluent extension methods on node handles.
-    /// </remarks>
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public PipelineBuilder WithErrorHandler(NodeHandle handle, Type errorHandlerType)
+    /// <param name="resiliencePolicy">The resilience policy instance to use during execution.</param>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
+    public PipelineBuilder AddResiliencePolicy(IResiliencePolicy resiliencePolicy)
     {
-        ArgumentNullException.ThrowIfNull(handle);
-        ArgumentNullException.ThrowIfNull(errorHandlerType);
-
-        if (!NodeState.Nodes.TryGetValue(handle.Id, out var nodeDef))
-            throw new InvalidOperationException(ErrorMessages.NodeNotFoundInBuilder(handle.Id, "WithErrorHandler"));
-
-        if (!typeof(INodeErrorHandler).IsAssignableFrom(errorHandlerType))
-            throw new ArgumentException(ErrorMessages.InvalidErrorHandlerType(errorHandlerType.Name), nameof(errorHandlerType));
-
-        NodeState.Nodes[handle.Id] = nodeDef.WithErrorHandlerType(errorHandlerType);
+        ArgumentNullException.ThrowIfNull(resiliencePolicy);
+        ConfigurationState.ResiliencePolicy = resiliencePolicy;
+        ConfigurationState.ResiliencePolicyType = null;
         return this;
     }
 
     /// <summary>
-    ///     Adds a pipeline error handler to handle errors that occur during pipeline execution.
+    ///     Adds a unified resilience policy type to coordinate retry, error routing, circuit breaking, and dead-letter decisions.
     /// </summary>
-    /// <param name="errorHandler">The error handler instance to use for pipeline-wide error handling.</param>
+    /// <typeparam name="T">The resilience policy type that implements <see cref="IResiliencePolicy" />.</typeparam>
     /// <returns>The current PipelineBuilder instance for method chaining.</returns>
-    public PipelineBuilder AddPipelineErrorHandler(IPipelineErrorHandler errorHandler)
+    public PipelineBuilder AddResiliencePolicy<T>() where T : IResiliencePolicy
     {
-        ArgumentNullException.ThrowIfNull(errorHandler);
-        ConfigurationState.PipelineErrorHandler = errorHandler;
-        ConfigurationState.PipelineErrorHandlerType = null;
-        return this;
-    }
-
-    /// <summary>
-    ///     Adds a pipeline error handler of type T to handle errors that occur during pipeline execution.
-    /// </summary>
-    /// <typeparam name="T">The type of the error handler that implements IPipelineErrorHandler.</typeparam>
-    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
-    public PipelineBuilder AddPipelineErrorHandler<T>() where T : IPipelineErrorHandler
-    {
-        ConfigurationState.PipelineErrorHandlerType = typeof(T);
-        ConfigurationState.PipelineErrorHandler = null;
+        ConfigurationState.ResiliencePolicyType = typeof(T);
+        ConfigurationState.ResiliencePolicy = null;
         return this;
     }
 
@@ -277,6 +256,25 @@ public sealed partial class PipelineBuilder
             throw new InvalidOperationException(ErrorMessages.NodeNotFoundInBuilder(handle.Id, "WithRetryOptions"));
 
         NodeState.RetryOverrides[handle.Id] = options;
+        return this;
+    }
+
+    /// <summary>
+    ///     Sets a node-scoped resilience policy override for item-level failures.
+    /// </summary>
+    /// <remarks>
+    ///     This API exists to support fluent extension packages in separate assemblies.
+    /// </remarks>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public PipelineBuilder SetNodeResiliencePolicy(NodeHandle handle, IResiliencePolicy policy)
+    {
+        ArgumentNullException.ThrowIfNull(handle);
+        ArgumentNullException.ThrowIfNull(policy);
+
+        if (!NodeState.Nodes.ContainsKey(handle.Id))
+            throw new InvalidOperationException(ErrorMessages.NodeNotFoundInBuilder(handle.Id, "SetNodeResiliencePolicy"));
+
+        NodeState.ExecutionAnnotations[ExecutionAnnotationKeys.NodeResiliencePolicyForNode(handle.Id)] = policy;
         return this;
     }
 

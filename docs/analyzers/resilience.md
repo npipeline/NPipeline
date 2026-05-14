@@ -6,7 +6,6 @@ order: 2
 
 # Resilience Analyzers
 
-
 Resilience analyzers provide build-time detection of incomplete error handling configuration. While runtime validation throws clear `InvalidOperationException` exceptions when prerequisites are missing, these analyzers catch issues earlier during development.
 
 ### NP9001: Incomplete Resilient Configuration
@@ -15,7 +14,7 @@ Resilience analyzers provide build-time detection of incomplete error handling c
 **Severity:** Warning  
 **Category:** Resilience  
 
-This analyzer detects when an error handler can return `PipelineErrorDecision.RestartNode` but is missing one or more of three mandatory prerequisites for node restart functionality.
+This analyzer detects when a resilience policy can return `ResilienceDecision.RestartNode` but is missing one or more of three mandatory prerequisites for node restart functionality.
 
 #### The Problem
 
@@ -24,7 +23,7 @@ Without using this analyzer, developers may miss one of the three mandatory prer
 #### With Analyzer
 
 ```text
-CSC : warning NP9001: Error handler can return PipelineErrorDecision.RestartNode
+CSC : warning NP9001: Resilience policy can return ResilienceDecision.RestartNode
 but node may not have all three mandatory prerequisites configured...
 ```
 
@@ -54,6 +53,6 @@ If any prerequisite is missing when `RestartNode` is returned, the system throws
 ## See Also
 
 - **[Getting Started with Resilience](/core-concepts/resilience/getting-started.md)** - Complete step-by-step configuration guide
-- [Resilience Configuration Guide](/core-concepts/resilience/error-handling.md)
+- [Resilience Policy](/core-concepts/resilience/resilience-policy.md)
 - [Error Handling Architecture](/architecture/error-handling-architecture.md)
 - [Cancellation Model](/architecture/cancellation-model.md)

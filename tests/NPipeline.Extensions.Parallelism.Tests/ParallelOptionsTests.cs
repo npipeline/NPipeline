@@ -1,9 +1,10 @@
 using AwesomeAssertions;
-using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Extensions.Testing;
+using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 using NPipeline.Tests.Common;
 using ParallelExecOptions = NPipeline.Extensions.Parallelism.ParallelOptions;
 using QueuePolicy = NPipeline.Extensions.Parallelism.BoundedQueuePolicy;
@@ -229,7 +230,7 @@ public class ParallelOptionsTests
             builder.WithRetryOptions(o => o.With(2));
 
             // Attach a RetryAllHandler from the retry tests (type may not be visible here, replicate minimal handler)
-            builder.WithErrorHandler(t, typeof(LocalRetryAllHandler));
+            builder.SetNodeResiliencePolicy(t, new LocalRetryAllHandler());
         }
     }
 
@@ -308,12 +309,47 @@ public class ParallelOptionsTests
         }
     }
 
-    public sealed class LocalRetryAllHandler : INodeErrorHandler<ITransformNode<int, int>, int>
+    public sealed class LocalRetryAllHandler : IResiliencePolicy
     {
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int failedItem, NodeFailureContext failure,
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception exception,
+            PipelineContext context,
             CancellationToken cancellationToken)
         {
-            return Task.FromResult(NodeErrorDecision.Retry);
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
+            string nodeId,
+            Exception exception,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Retry);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 }

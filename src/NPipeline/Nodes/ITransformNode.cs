@@ -1,4 +1,3 @@
-using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Pipeline;
 
@@ -13,11 +12,6 @@ public interface ITransformNode : INode
     ///     Gets or sets the execution strategy for this node.
     /// </summary>
     IExecutionStrategy ExecutionStrategy { get; set; }
-
-    /// <summary>
-    ///     Gets or sets the error handler for this node.
-    /// </summary>
-    INodeErrorHandler? ErrorHandler { get; set; }
 }
 
 /// <summary>

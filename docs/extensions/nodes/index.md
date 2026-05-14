@@ -226,8 +226,9 @@ catch (ValidationException ex)
     Console.WriteLine($"Validation failed on {ex.PropertyPath}: {ex.Message}");
 }
 
-// Configure custom error handlers
-builder.WithErrorHandler(validationHandle, new CustomValidationHandler());
+// Configure a node-scoped resilience policy
+builder.SetNodeResiliencePolicy(validationHandle,
+    new DefaultValidationErrorHandler<MyType>(ResilienceDecision.Skip));
 ```
 
 ## Best Practices

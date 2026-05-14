@@ -8,6 +8,7 @@ using NPipeline.Execution.Strategies;
 using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 using NPipeline.State;
 
 namespace NPipeline.Tests.ErrorHandling;
@@ -20,8 +21,8 @@ public sealed class ErrorHandlingAndPersistenceTests
         // Arrange
         var svc = new ErrorHandlingService();
         var context = PipelineContext.Default;
-        var handler = new TestErrorHandler(2);
-        context.PipelineErrorHandler = handler;
+        var policy = new RestartingPolicy(2);
+        context.ResiliencePolicy = policy;
 
         var nodeDef = new NodeDefinition(
             new NodeIdentity("s1", "s1"),
@@ -54,7 +55,7 @@ public sealed class ErrorHandlingAndPersistenceTests
                 context.CancellationToken));
 
         Assert.Equal(3, node.Attempts); // initial + 2 restarts
-        Assert.Equal(3, handler.Calls);
+        Assert.Equal(3, policy.Calls);
     }
 
     [Fact]
@@ -99,18 +100,54 @@ public sealed class ErrorHandlingAndPersistenceTests
         }
     }
 
-    private sealed class TestErrorHandler(int restartLimit) : IPipelineErrorHandler
+    private sealed class RestartingPolicy(int restartLimit) : IResiliencePolicy
     {
         public int Calls { get; private set; }
 
-        public Task<PipelineErrorDecision> HandleNodeFailureAsync(string nodeId, Exception ex, PipelineContext context, CancellationToken cancellationToken)
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception exception,
+            PipelineContext context,
+            CancellationToken cancellationToken)
         {
             Calls++;
 
             if (Calls <= restartLimit)
-                return Task.FromResult(PipelineErrorDecision.RestartNode);
+                return Task.FromResult(ResilienceDecision.Retry);
 
-            return Task.FromResult(PipelineErrorDecision.FailPipeline);
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
+            string nodeId,
+            Exception exception,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 

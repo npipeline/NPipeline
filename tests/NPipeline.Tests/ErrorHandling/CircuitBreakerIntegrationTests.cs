@@ -5,8 +5,10 @@ using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Execution.Strategies;
+using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Tests.ErrorHandling;
 
@@ -285,8 +287,16 @@ public class CircuitBreakerIntegrationTests
         {
             await using var result = await resilientStrategy.ExecuteAsync(input, node, context, CancellationToken.None);
 
+            var outputs = new List<string>();
+
+            await foreach (var item in result.WithCancellation(CancellationToken.None))
+            {
+                outputs.Add(item);
+            }
+
             // Assert
             result.Should().NotBeNull();
+            outputs.Should().HaveCount(3);
             context.CircuitBreakerManager.Should().NotBeNull();
             context.CircuitBreakerManager.Should().BeAssignableTo<ICircuitBreakerManager>();
         }
@@ -307,8 +317,16 @@ public class CircuitBreakerIntegrationTests
         {
             await using var result = await resilientStrategy.ExecuteAsync(input, node, context, CancellationToken.None);
 
+            var outputs = new List<string>();
+
+            await foreach (var item in result.WithCancellation(CancellationToken.None))
+            {
+                outputs.Add(item);
+            }
+
             // Assert
             result.Should().NotBeNull();
+            outputs.Should().HaveCount(3);
             context.CircuitBreakerManager.Should().BeNull();
         }
     }
@@ -426,7 +444,10 @@ public class CircuitBreakerIntegrationTests
         CircuitBreakerMemoryManagementOptions? memoryOptions = null)
     {
         var context = new PipelineContext(
-            PipelineContextConfiguration.Default with { PipelineErrorHandler = new TestErrorHandler(PipelineErrorDecision.RestartNode) });
+            PipelineContextConfiguration.Default with
+            {
+                ResiliencePolicy = new TestResiliencePolicy(ResilienceDecision.RestartNode),
+            });
 
         context.CircuitBreakerOptions = (options ?? new PipelineCircuitBreakerOptions(
             3,
@@ -442,7 +463,10 @@ public class CircuitBreakerIntegrationTests
     private static PipelineContext CreatePipelineContextWithoutCircuitBreaker()
     {
         return new PipelineContext(
-            PipelineContextConfiguration.Default with { PipelineErrorHandler = new TestErrorHandler(PipelineErrorDecision.RestartNode) });
+            PipelineContextConfiguration.Default with
+            {
+                ResiliencePolicy = new TestResiliencePolicy(ResilienceDecision.RestartNode),
+            });
     }
 
     #endregion
@@ -487,11 +511,47 @@ public class CircuitBreakerIntegrationTests
         }
     }
 
-    private sealed class TestErrorHandler(PipelineErrorDecision decision) : IPipelineErrorHandler
+    private sealed class TestResiliencePolicy(ResilienceDecision decision) : IResiliencePolicy
     {
-        public Task<PipelineErrorDecision> HandleNodeFailureAsync(string nodeId, Exception error, PipelineContext context, CancellationToken cancellationToken)
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception exception,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
+            string nodeId,
+            Exception error,
+            PipelineContext context,
+            CancellationToken cancellationToken)
         {
             return Task.FromResult(decision);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 

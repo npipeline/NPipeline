@@ -71,7 +71,6 @@ public sealed record NodeTypeSystem(
 /// </summary>
 public sealed record NodeExecutionConfig(
     IExecutionStrategy? ExecutionStrategy = null,
-    Type? ErrorHandlerType = null,
     TransformCardinality? DeclaredCardinality = null);
 
 /// <summary>
@@ -107,7 +106,6 @@ public sealed record NodeDefinition(
     Type? InputType = null,
     Type? OutputType = null,
     IExecutionStrategy? ExecutionStrategy = null,
-    Type? ErrorHandlerType = null,
     TransformCardinality? DeclaredCardinality = null,
     MergeType? MergeStrategy = null,
     bool HasCustomMerge = false,
@@ -136,7 +134,6 @@ public sealed record NodeDefinition(
             typeSystem.InputType,
             typeSystem.OutputType,
             executionConfig.ExecutionStrategy,
-            executionConfig.ErrorHandlerType,
             executionConfig.DeclaredCardinality,
             mergeConfig.MergeStrategy,
             mergeConfig.HasCustomMerge,
@@ -161,7 +158,7 @@ public sealed record NodeDefinition(
     /// <summary>
     ///     Legacy nested execution view.
     /// </summary>
-    public NodeExecutionConfig ExecutionConfig => new(ExecutionStrategy, ErrorHandlerType, DeclaredCardinality);
+    public NodeExecutionConfig ExecutionConfig => new(ExecutionStrategy, DeclaredCardinality);
 
     /// <summary>
     ///     Legacy nested merge view.
@@ -183,13 +180,4 @@ public sealed record NodeDefinition(
         return this with { ExecutionStrategy = executionStrategy };
     }
 
-    /// <summary>
-    ///     Creates a new NodeDefinition with updated error handler type.
-    /// </summary>
-    /// <param name="errorHandlerType">The new error handler type.</param>
-    /// <returns>A new NodeDefinition with the updated error handler type.</returns>
-    public NodeDefinition WithErrorHandlerType(Type? errorHandlerType)
-    {
-        return this with { ErrorHandlerType = errorHandlerType };
-    }
 }

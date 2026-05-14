@@ -26,15 +26,6 @@ using System.Diagnostics.CodeAnalysis;
         Justification =
             "Delegate suffix usage provides immediate clarity about purpose and usage patterns, which is more valuable than strict naming conventions.")]
 
-// CA1040: Avoid empty interfaces
-// Justification: INodeErrorHandler is a marker interface that enables discovery via reflection
-// and dependency injection filtering. While it has no members, it serves a critical architectural
-// purpose in the error handling subsystem by providing a type-safe contract for error handlers.
-[assembly:
-    SuppressMessage("Design", "CA1040:Avoid empty interfaces",
-        Justification =
-            "INodeErrorHandler is a marker interface that enables discovery via reflection and dependency injection filtering, serving a critical architectural purpose despite having no members.")]
-
 // ============================================================================
 // ERROR HANDLING & VALIDATION - Pipeline orchestration requirements
 // ============================================================================

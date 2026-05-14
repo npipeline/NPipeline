@@ -1,4 +1,3 @@
-using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Execution.Strategies;
 using NPipeline.Pipeline;
@@ -20,20 +19,15 @@ internal sealed class ValueTaskTransformAdapter<TIn, TOut> : ITransformNode<TIn,
     ///     Initializes a new instance of the <see cref="ValueTaskTransformAdapter{TIn, TOut}" /> class.
     /// </summary>
     /// <param name="producer">The delegate that produces a ValueTask representing the transformation.</param>
-    /// <param name="errorHandler">Optional error handler for handling exceptions during transformation. Defaults to null.</param>
     /// <exception cref="ArgumentNullException">Thrown when producer is null.</exception>
     public ValueTaskTransformAdapter(
-        Func<TIn, PipelineContext, CancellationToken, ValueTask<TOut>> producer,
-        INodeErrorHandler? errorHandler = null)
+        Func<TIn, PipelineContext, CancellationToken, ValueTask<TOut>> producer)
     {
         ArgumentNullException.ThrowIfNull(producer);
         _producer = producer;
-        ErrorHandler = errorHandler;
     }
 
     public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
-
-    public INodeErrorHandler? ErrorHandler { get; set; }
 
     public Task<TOut> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
     {

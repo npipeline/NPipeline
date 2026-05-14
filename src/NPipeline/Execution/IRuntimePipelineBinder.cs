@@ -2,6 +2,7 @@ using NPipeline.ErrorHandling;
 using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Execution;
 
@@ -23,13 +24,13 @@ public interface IRuntimePipelineBinder
 ///     Result of runtime binding for a single pipeline run.
 /// </summary>
 /// <param name="Graph">Effective graph after runtime overrides are applied.</param>
-/// <param name="PipelineErrorHandler">Resolved pipeline error handler (if any).</param>
 /// <param name="DeadLetterSink">Resolved dead-letter sink (if any).</param>
 /// <param name="LineageSink">Resolved item-level lineage sink (if any).</param>
 /// <param name="PipelineLineageSink">Resolved pipeline-level lineage sink (if any).</param>
+/// <param name="ResiliencePolicy">Resolved resilience policy for execution.</param>
 public readonly record struct RuntimePipelineBindingResult(
     PipelineGraph Graph,
-    IPipelineErrorHandler? PipelineErrorHandler,
     IDeadLetterSink? DeadLetterSink,
     ILineageSink? LineageSink,
-    IPipelineLineageSink? PipelineLineageSink);
+    IPipelineLineageSink? PipelineLineageSink,
+    IResiliencePolicy ResiliencePolicy);

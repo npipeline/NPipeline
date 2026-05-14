@@ -1,12 +1,12 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using NPipeline.Configuration;
-using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
+using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Tests.Resilience.Retry;
 
@@ -18,13 +18,11 @@ public sealed class ResilienceRetryTests
         // Arrange DI runner
         var services = new ServiceCollection();
         services.AddNPipeline(Assembly.GetExecutingAssembly());
-        services.AddSingleton<RestartHandler>();
 
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
-        var ctx = new PipelineContext(
-            PipelineContextConfiguration.Default with { ErrorHandlerFactory = new DefaultErrorHandlerFactory() });
+        var ctx = PipelineContext.Default;
 
         // Provide a single item source
         ctx.SetSourceData([42]);
@@ -58,13 +56,47 @@ public sealed class ResilienceRetryTests
         }
     }
 
-    private sealed class RestartHandler : IPipelineErrorHandler
+    private sealed class RestartResiliencePolicy : IResiliencePolicy
     {
-        public Task<PipelineErrorDecision> HandleNodeFailureAsync(string nodeId, Exception exception, PipelineContext context,
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception exception,
+            PipelineContext context,
             CancellationToken cancellationToken)
         {
-            // Always request restart for transient failures
-            return Task.FromResult(PipelineErrorDecision.RestartNode);
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
+            string nodeId,
+            Exception exception,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.RestartNode);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 
@@ -76,7 +108,7 @@ public sealed class ResilienceRetryTests
             var t = builder.AddTransform<TransientFailTransform, int, int>("txR");
             var k = builder.AddInMemorySink<int>("snkR");
             builder.Connect(s, t).Connect(t, k);
-            builder.AddPipelineErrorHandler<RestartHandler>();
+            builder.AddResiliencePolicy<RestartResiliencePolicy>();
             builder.WithResilience(t);
             builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 3, maxMaterializedItems: 1000));
         }
