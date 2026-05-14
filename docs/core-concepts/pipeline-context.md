@@ -8,6 +8,8 @@ order: 2
 
 The [`PipelineContext`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/src/NPipeline/PipelineContext.cs) is a crucial component in NPipeline that provides a mechanism for sharing runtime information, services, and state across different nodes within a pipeline. It acts as a lightweight, scoped container that is passed through the pipeline during execution, allowing nodes to access common resources without explicit dependency injection in their constructors.
 
+As of the composed context model, `PipelineContext` is also a compatibility adapter over focused subcontexts. This keeps existing node signatures stable while improving separation of concerns internally.
+
 This context is particularly useful for:
 
 * **Logging**: Providing a consistent logging mechanism.
@@ -22,33 +24,33 @@ This context is particularly useful for:
 
 Key elements managed by `PipelineContext` include:
 
+* **Focused subcontexts:** `RunIdentity`, `ExecutionConfiguration`, `Observability`, `NodeEnvironment`, and `Lineage`.
 * **`CancellationToken`:** A primary mechanism for cooperative cancellation of the pipeline. All nodes should respect this token for graceful shutdown.
-* **Parameters:** A dictionary for holding runtime parameters passed to the pipeline during initialization.
+* **Parameters:** A dictionary for runtime parameters passed to the pipeline during initialization.
 * **Items:** A dictionary for sharing transient state between pipeline nodes during execution.
-* **Properties:** A dictionary for storing properties that can be used by extensions and plugins, providing a way to extend PipelineContext without modifying its core structure.
-* **Arbitrary State:** You can store and retrieve any custom data or objects that need to be accessible by multiple nodes during the pipeline's execution. This is particularly useful for configuration, metrics, or shared resources.
+* **Properties:** A dictionary for extension/plugin state.
+
+## Composition Model (Focused Subcontexts)
+
+`PipelineContext` now composes five focused objects:
+
+* **`RunIdentity`**: `PipelineId`, `RunId`, `PipelineName`, `PipelineStartTimeUtc`
+* **`ExecutionConfiguration`**: retry options, node retry overrides, circuit-breaker options, and retry-exhaustion state
+* **`Observability`**: `LoggerFactory`, `Tracer`, `ObservabilityFactory`, `ExecutionObserver`, processed-items counter
+* **`NodeEnvironment`**: `CurrentNodeId`, node execution scope registry, preconfigured node instances, DI ownership flag
+* **`Lineage`**: lineage factory, item-level sink, pipeline-level sink, collector
+
+Existing top-level properties remain available for compatibility and map to these focused contexts.
 
 ## Constructor Parameters
 
-The `PipelineContext` constructor accepts several optional parameters to customize the execution environment:
+The `PipelineContext` constructor accepts a single optional configuration object:
 
 ```csharp
-public PipelineContext(
-    Dictionary<string, object>? parameters = null,
-    Dictionary<string, object>? items = null,
-    Dictionary<string, object>? properties = null,
-    PipelineRetryOptions? retryOptions = null,
-    IErrorHandlerFactory? errorHandlerFactory = null,
-    IPipelineErrorHandler? pipelineErrorHandler = null,
-    IDeadLetterSink? deadLetterSink = null,
-    ILoggerFactory? loggerFactory = null,
-    IPipelineTracer? tracer = null,
-    IObservabilityFactory? observabilityFactory = null,
-    ILineageFactory? lineageFactory = null,
-    CancellationToken cancellationToken = default)
+public PipelineContext(PipelineContextConfiguration? config = null)
 ```
 
-The parameters are organized into logical groups:
+`PipelineContextConfiguration` holds the optional knobs, organized into logical groups:
 
 1. **Runtime Data Dictionaries**: `Parameters`, `Items`, `Properties`
 2. **Resilience Options**: `RetryOptions`
@@ -99,16 +101,16 @@ await runner.RunAsync<MyPipeline>(context);
 
 ### With Multiple Configurations
 
-For complex scenarios, use the `PipelineContextConfiguration` factory methods:
+For complex scenarios, construct `PipelineContextConfiguration` directly (or combine with `with` expressions):
 
 ```csharp
-var config = PipelineContextConfiguration.Create(
-    cancellationToken: cancellationToken,
-    retryOptions: new PipelineRetryOptions(maxItemRetries: 3),
-    parameters: new Dictionary<string, object> { { "userId", 123 } },
-    errorHandlerFactory: myCustomErrorHandlerFactory,
-    loggerFactory: myLoggerFactory,
-    tracer: myTracer);
+var config = new PipelineContextConfiguration(
+    CancellationToken: cancellationToken,
+    RetryOptions: new PipelineRetryOptions(MaxItemRetries: 3),
+    Parameters: new Dictionary<string, object> { ["userId"] = 123 },
+    ErrorHandlerFactory: myCustomErrorHandlerFactory,
+    LoggerFactory: myLoggerFactory,
+    Tracer: myTracer);
 
 var context = new PipelineContext(config);
 
@@ -168,6 +170,14 @@ NPipeline will automatically detect if your node implements `IContextAwareNode` 
 
 The [`PipelineContext`](https://github.com/npipeline/NPipeline/blob/main/docs/core-concepts/src/NPipeline/PipelineContext.cs) includes properties and methods for:
 
+### Focused Context Objects
+
+* **`RunIdentity`**: Focused run identity state (`PipelineId`, `RunId`, `PipelineName`, `PipelineStartTimeUtc`).
+* **`ExecutionConfiguration`**: Focused execution/resilience state (`RetryOptions`, `GlobalRetryOptions`, `NodeRetryOverrides`, circuit-breaker state).
+* **`Observability`**: Focused observability state (`LoggerFactory`, `Tracer`, `ObservabilityFactory`, `ExecutionObserver`, `ProcessedItemsCounter`).
+* **`NodeEnvironment`**: Focused node/runtime state (`CurrentNodeId`, `NodeExecutionScopeRegistry`, `PreconfiguredNodeInstances`, `DiOwnedNodes`).
+* **`Lineage`**: Focused lineage state (`LineageFactory`, `LineageSink`, `PipelineLineageSink`, `LineageCollector`).
+
 ### Data and Configuration Properties
 
 * **`CancellationToken`**: A token that signals if the pipeline execution has been requested to stop. Nodes should monitor this token and cease operations if cancellation is requested.
@@ -218,9 +228,8 @@ The [`PipelineContext`](https://github.com/npipeline/NPipeline/blob/main/docs/co
 
 ### Node Annotations and Metadata
 
-* **`NodeExecutionAnnotations`**: A dictionary for per-node execution annotations indexed by node ID (for example, strategy-specific options).
-* **`NodeObservabilityScopes`**: A dictionary for per-node observability scopes indexed by node ID.
-* **`RuntimeAnnotations`**: A dictionary for framework-managed runtime annotations and diagnostics.
+* **`NodeExecutionScopeRegistry`**: Centralized registry for per-node execution annotations, node observability scope lifecycle, and framework-managed runtime annotations.
+    Use it to set/get per-node options, begin node scopes via `BeginNodeScope(nodeId)`, and read/write runtime diagnostics without directly mutating context dictionaries.
 * **`PreconfiguredNodeInstances`**: Optional preconfigured node instances to seed graph construction, indexed by node ID.
 
 ## State Management Capabilities

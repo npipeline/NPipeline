@@ -13,7 +13,7 @@ public sealed class PipelineBuilderCharacterizationTests
     [Fact]
     public void EnableLineage_OneToOne_NoMaterializationPathRetained()
     {
-        PipelineBuilder.LineageAdapterBuilder = new DefaultLineageAdapterBuilder();
+        PipelineBuilder.Lineage = new LineageService();
         try
         {
             var b = new PipelineBuilder().WithoutExtendedValidation();
@@ -29,14 +29,14 @@ public sealed class PipelineBuilderCharacterizationTests
         }
         finally
         {
-            PipelineBuilder.LineageAdapterBuilder = NullLineageAdapterBuilder.Instance;
+            PipelineBuilder.Lineage = NullLineage.Instance;
         }
     }
 
     [Fact]
     public void Lineage_WithDeclaredOneToMany_AdapterPresent()
     {
-        PipelineBuilder.LineageAdapterBuilder = new DefaultLineageAdapterBuilder();
+        PipelineBuilder.Lineage = new LineageService();
         try
         {
             var b = new PipelineBuilder().WithoutExtendedValidation();
@@ -55,14 +55,14 @@ public sealed class PipelineBuilderCharacterizationTests
         }
         finally
         {
-            PipelineBuilder.LineageAdapterBuilder = NullLineageAdapterBuilder.Instance;
+            PipelineBuilder.Lineage = NullLineage.Instance;
         }
     }
 
     [Fact]
     public void Lineage_OverflowPolicyStrict_WhenCapExceeded_ThrowsDuringBuildMaterializationPhase()
     {
-        PipelineBuilder.LineageAdapterBuilder = new DefaultLineageAdapterBuilder();
+        PipelineBuilder.Lineage = new LineageService();
         try
         {
             var b = new PipelineBuilder().WithoutExtendedValidation();
@@ -80,14 +80,14 @@ public sealed class PipelineBuilderCharacterizationTests
         }
         finally
         {
-            PipelineBuilder.LineageAdapterBuilder = NullLineageAdapterBuilder.Instance;
+            PipelineBuilder.Lineage = NullLineage.Instance;
         }
     }
 
     [Fact]
     public void Lineage_OverflowPolicyWarnContinue_DoesNotAffectBuild()
     {
-        PipelineBuilder.LineageAdapterBuilder = new DefaultLineageAdapterBuilder();
+        PipelineBuilder.Lineage = new LineageService();
         try
         {
             var b = new PipelineBuilder().WithoutExtendedValidation();
@@ -104,7 +104,7 @@ public sealed class PipelineBuilderCharacterizationTests
         }
         finally
         {
-            PipelineBuilder.LineageAdapterBuilder = NullLineageAdapterBuilder.Instance;
+            PipelineBuilder.Lineage = NullLineage.Instance;
         }
     }
 

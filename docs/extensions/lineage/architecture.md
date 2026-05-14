@@ -46,6 +46,18 @@ This guide describes how lineage is captured, stored, and exported in the curren
 
 ## Core Contracts
 
+### `ILineage`
+
+`ILineage` is the primary seam between core execution and lineage behavior.
+
+It centralizes three responsibilities:
+
+- Build-time adapter creation for node definitions (`BuildLineageAdapter(...)`, `BuildSinkLineageUnwrap(...)`)
+- Item-level stream wrapping/unwrapping and lineage mapping (source, transform/join/aggregate, sink paths)
+- Pipeline-level report recording (`RecordPipelineAsync(...)`)
+
+This keeps lineage orchestration local to one module and avoids split contracts across core and extension code.
+
 ### `LineageRecord`
 
 `LineageRecord` is the canonical lineage event shape. Each record represents one correlation-scoped event at one node.

@@ -152,6 +152,21 @@ public class ThrottledExecutionStrategy : INodeExecutionStrategy
 }
 ```
 
+## Builder Registration Modules
+
+`PipelineBuilder` keeps node registration focused on graph shape and delegates registration-time delegate construction to dedicated modules:
+
+- `PipelineBuilder.Lineage` builds lineage adapter and sink unwrap delegates.
+- `PipelineBuilder.ExecutionRegistrationPlanner` prepares execution registration artifacts (for example, join key selector precompilation and custom merge delegates).
+
+This separation keeps reflection-heavy or expression-heavy logic in module-owned code paths that are easier to unit test in isolation.
+
+```csharp
+// Optional: replace defaults with custom implementations
+PipelineBuilder.Lineage = NullLineage.Instance;
+PipelineBuilder.ExecutionRegistrationPlanner = DefaultNodeRegistrationPlanner.Instance;
+```
+
 ## Context Data
 
 Store and retrieve arbitrary data in pipeline context using the `Items` dictionary:

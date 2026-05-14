@@ -43,7 +43,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         where TDefinition : IPipelineDefinition, new()
     {
         // Emit branch metrics as tracing tags
-        foreach (var kv in context.RuntimeAnnotations.Where(kv => kv.Key.StartsWith(ExecutionAnnotationKeys.BranchMetricsPrefix, StringComparison.Ordinal)))
+        foreach (var kv in context.NodeExecutionScopeRegistry.EnumerateRuntimeAnnotationsWithPrefix(ExecutionAnnotationKeys.BranchMetricsPrefix))
         {
             if (kv.Value is BranchMetrics fm)
             {
@@ -137,7 +137,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         if (autoObservabilityScope != null)
         {
             ObservabilitySurfaceLogMessages.AutoObservabilityScopeStored(logger, nodeDef.Id);
-            context.NodeObservabilityScopes[nodeDef.Id] = autoObservabilityScope;
+            context.NodeExecutionScopeRegistry.RegisterNodeObservabilityScope(nodeDef.Id, autoObservabilityScope);
         }
 
         return new NodeObservationScope(nodeDef.Id, nodeInstance.GetType().Name, startTs, startTimestamp, activity, context.PipelineId,
@@ -188,11 +188,12 @@ public sealed class ObservabilitySurface : IObservabilitySurface
 
         context.ExecutionObserver.OnNodeCompleted(completed);
 
-        // Record failure on AutoObservabilityScope if present and dispose it
-        if (scope.AutoObservabilityScope is IAutoObservabilityScope autoScope)
+        // Record failure on the registered node scope and dispose it.
+        if (!context.NodeExecutionScopeRegistry.RecordNodeFailureAndDispose(scope.NodeId, ex) &&
+            scope.AutoObservabilityScope is IAutoObservabilityScope autoScope)
         {
             autoScope.RecordFailure(ex);
-            autoScope.Dispose(); // Dispose scope to ensure metrics are recorded
+            autoScope.Dispose();
         }
 
         return completed;
@@ -210,7 +211,7 @@ public sealed class ObservabilitySurface : IObservabilitySurface
     /// <inheritdoc />
     public async Task CompletePipeline(Type definitionType, PipelineContext context, PipelineGraph graph, IPipelineActivity pipelineActivity)
     {
-        foreach (var kv in context.RuntimeAnnotations.Where(kv => kv.Key.StartsWith(ExecutionAnnotationKeys.BranchMetricsPrefix, StringComparison.Ordinal)))
+        foreach (var kv in context.NodeExecutionScopeRegistry.EnumerateRuntimeAnnotationsWithPrefix(ExecutionAnnotationKeys.BranchMetricsPrefix))
         {
             if (kv.Value is BranchMetrics fm)
             {

@@ -16,11 +16,14 @@ namespace NPipeline.Tests.ErrorHandling;
 /// </summary>
 public sealed class PipelineRunnerTests
 {
-    private readonly IPipelineExecutionCoordinator _executionCoordinator = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateExecutionCoordinator();
-    private readonly IPipelineInfrastructureService _infrastructureService = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateInfrastructureService();
+    private readonly IErrorHandlingService _errorHandlingService = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateErrorHandlingService();
     private readonly INodeFactory _nodeFactory = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateNodeFactory();
+    private readonly INodeExecutor _nodeExecutor = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateNodeExecutor();
+    private readonly INodeInstantiationService _nodeInstantiationService = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateNodeInstantiationService();
     private readonly IObservabilitySurface _observabilitySurface = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateObservabilitySurface();
+    private readonly IPersistenceService _persistenceService = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreatePersistenceService();
     private readonly IPipelineFactory _pipelineFactory = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreatePipelineFactory();
+    private readonly ITopologyService _topologyService = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateTopologyService();
 
     #region Retry Tests
 
@@ -41,13 +44,13 @@ public sealed class PipelineRunnerTests
 
         A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
-        A.CallTo(() => _executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
+        A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
             .Returns(new Dictionary<string, INode> { { nodeId, failingNode } });
 
-        A.CallTo(() => _executionCoordinator.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());
-        A.CallTo(() => _executionCoordinator.TopologicalSort(A<PipelineGraph>._)).Returns([nodeId]);
+        A.CallTo(() => _topologyService.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());
+        A.CallTo(() => _topologyService.TopologicalSort(A<PipelineGraph>._)).Returns([nodeId]);
 
-        A.CallTo(() => _infrastructureService.ExecuteWithRetriesAsync(
+        A.CallTo(() => _errorHandlingService.ExecuteWithRetriesAsync(
                 A<NodeDefinition>._,
                 A<INode>._,
                 A<PipelineGraph>._,
@@ -60,8 +63,11 @@ public sealed class PipelineRunnerTests
         var runner = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateRunner(
             _pipelineFactory,
             _nodeFactory,
-            _executionCoordinator,
-            _infrastructureService,
+            _nodeExecutor,
+            _topologyService,
+            _nodeInstantiationService,
+            _errorHandlingService,
+            _persistenceService,
             _observabilitySurface);
 
         var context = PipelineContext.Default;
@@ -92,13 +98,13 @@ public sealed class PipelineRunnerTests
         A.CallTo(() => _pipelineFactory.Create<PipelineRunnerTestHelpers.TestPipelineDefinition>(A<PipelineContext>._))
             .Returns(new NPipeline.Pipeline.Pipeline(graph));
 
-        A.CallTo(() => _executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
+        A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
             .Returns(new Dictionary<string, INode> { { nodeId, A.Fake<INode>() } });
 
-        A.CallTo(() => _executionCoordinator.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());
-        A.CallTo(() => _executionCoordinator.TopologicalSort(A<PipelineGraph>._)).Returns([nodeId]);
+        A.CallTo(() => _topologyService.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());
+        A.CallTo(() => _topologyService.TopologicalSort(A<PipelineGraph>._)).Returns([nodeId]);
 
-        A.CallTo(() => _infrastructureService.ExecuteWithRetriesAsync(
+        A.CallTo(() => _errorHandlingService.ExecuteWithRetriesAsync(
                 A<NodeDefinition>._,
                 A<INode>._,
                 A<PipelineGraph>._,
@@ -110,8 +116,11 @@ public sealed class PipelineRunnerTests
         var runner = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateRunner(
             _pipelineFactory,
             _nodeFactory,
-            _executionCoordinator,
-            _infrastructureService,
+            _nodeExecutor,
+            _topologyService,
+            _nodeInstantiationService,
+            _errorHandlingService,
+            _persistenceService,
             _observabilitySurface);
 
         var context = PipelineContext.Default;
@@ -134,13 +143,13 @@ public sealed class PipelineRunnerTests
         A.CallTo(() => _pipelineFactory.Create<PipelineRunnerTestHelpers.TestPipelineDefinition>(A<PipelineContext>._))
             .Returns(new NPipeline.Pipeline.Pipeline(graph));
 
-        A.CallTo(() => _executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
+        A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
             .Returns(new Dictionary<string, INode> { { nodeId, A.Fake<INode>() } });
 
-        A.CallTo(() => _executionCoordinator.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());
-        A.CallTo(() => _executionCoordinator.TopologicalSort(A<PipelineGraph>._)).Returns([nodeId]);
+        A.CallTo(() => _topologyService.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());
+        A.CallTo(() => _topologyService.TopologicalSort(A<PipelineGraph>._)).Returns([nodeId]);
 
-        A.CallTo(() => _infrastructureService.ExecuteWithRetriesAsync(
+        A.CallTo(() => _errorHandlingService.ExecuteWithRetriesAsync(
                 A<NodeDefinition>._,
                 A<INode>._,
                 A<PipelineGraph>._,
@@ -152,8 +161,11 @@ public sealed class PipelineRunnerTests
         var runner = PipelineRunnerTestHelpers.PipelineRunnerMockFactory.CreateRunner(
             _pipelineFactory,
             _nodeFactory,
-            _executionCoordinator,
-            _infrastructureService,
+            _nodeExecutor,
+            _topologyService,
+            _nodeInstantiationService,
+            _errorHandlingService,
+            _persistenceService,
             _observabilitySurface);
 
         var context = PipelineContext.Default;

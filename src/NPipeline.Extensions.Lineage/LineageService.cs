@@ -8,17 +8,29 @@ using System.Threading.Channels;
 using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
-using NPipeline.Execution;
+using NPipeline.Graph;
+using NPipeline.Graph.PipelineDelegates;
 using NPipeline.Lineage;
+using NPipeline.Pipeline;
 
 namespace NPipeline.Lineage;
 
 /// <summary>
 ///     Provides services for managing item-level lineage throughout a pipeline execution.
 /// </summary>
-public sealed class LineageService : ILineageService
+public sealed class LineageService : ILineage
 {
     private const int SmallMaterializationThreshold = 256;
+    private static readonly DefaultLineageAdapterBuilder AdapterBuilder = new();
+
+    private static readonly MethodInfo BuildAdapterGenericMethodDefinition = typeof(DefaultLineageAdapterBuilder)
+        .GetMethod(nameof(DefaultLineageAdapterBuilder.BuildLineageAdapter), BindingFlags.Public | BindingFlags.Instance)
+        ?? throw new InvalidOperationException("Method 'BuildLineageAdapter' not found on DefaultLineageAdapterBuilder.");
+
+    private static readonly MethodInfo BuildSinkUnwrapGenericMethodDefinition = typeof(DefaultLineageAdapterBuilder)
+        .GetMethod(nameof(DefaultLineageAdapterBuilder.BuildSinkLineageUnwrapDelegate), BindingFlags.Public | BindingFlags.Instance)
+        ?? throw new InvalidOperationException("Method 'BuildSinkLineageUnwrapDelegate' not found on DefaultLineageAdapterBuilder.");
+
     private static readonly ConcurrentDictionary<Type, Func<IDataStream, string, Guid, string?, LineageOptions?, IDataStream>> WrapSourceDelegates = new();
 
     private static readonly ConcurrentDictionary<Type, Func<object, string, Guid, string?, LineageOptions?, LineageOutcomeReason, CancellationToken, object>>
@@ -29,6 +41,62 @@ public sealed class LineageService : ILineageService
 
     private static readonly ConcurrentDictionary<Type, Func<IEnumerable, object>> EnumerableToAsyncDelegates = new();
     private static readonly ConcurrentDictionary<Type, ILineageMapper> MapperInstances = new();
+
+    /// <inheritdoc />
+    public bool SupportsItemLevelLineage => true;
+
+    /// <inheritdoc />
+    public LineageAdapterDelegate? BuildLineageAdapter<TIn, TOut>(Type? lineageMapperType)
+        => AdapterBuilder.BuildLineageAdapter<TIn, TOut>(lineageMapperType);
+
+    /// <inheritdoc />
+    public SinkLineageUnwrapDelegate? BuildSinkLineageUnwrapDelegate<TIn>()
+        => AdapterBuilder.BuildSinkLineageUnwrapDelegate<TIn>();
+
+    /// <inheritdoc />
+    public LineageAdapterDelegate? BuildLineageAdapter(Type? inType, Type? outType, Type? lineageMapperType)
+    {
+        if (inType is null || outType is null)
+            return null;
+
+        var genericMethod = BuildAdapterGenericMethodDefinition.MakeGenericMethod(inType, outType);
+        var result = genericMethod.Invoke(AdapterBuilder, [lineageMapperType]);
+        return result as LineageAdapterDelegate;
+    }
+
+    /// <inheritdoc />
+    public SinkLineageUnwrapDelegate? BuildSinkLineageUnwrap(Type? inType)
+    {
+        if (inType is null)
+            return null;
+
+        var genericMethod = BuildSinkUnwrapGenericMethodDefinition.MakeGenericMethod(inType);
+        var result = genericMethod.Invoke(AdapterBuilder, []);
+        return result as SinkLineageUnwrapDelegate;
+    }
+
+    /// <inheritdoc />
+    public async Task RecordPipelineAsync(Type definitionType, PipelineGraph graph, PipelineContext context,
+        IPipelineLineageSink? pipelineLineageSink)
+    {
+        ArgumentNullException.ThrowIfNull(definitionType);
+        ArgumentNullException.ThrowIfNull(graph);
+        ArgumentNullException.ThrowIfNull(context);
+
+        if (!graph.Lineage.ItemLevelLineageEnabled || pipelineLineageSink is null)
+            return;
+
+        var runId = context.RunId == Guid.Empty
+            ? Guid.NewGuid()
+            : context.RunId;
+
+        var report = context.LineageFactory.CreateLineageReport(definitionType.Name, context.PipelineId, graph, runId);
+
+        if (report is null)
+            return;
+
+        await pipelineLineageSink.RecordAsync(report, context.CancellationToken).ConfigureAwait(false);
+    }
 
     /// <inheritdoc />
     public IDataStream WrapSourceStream(IDataStream sourcePipe, string nodeId, Guid pipelineId, string? pipelineName, LineageOptions? options)

@@ -58,14 +58,29 @@ public static class PipelineRunnerTestHelpers
             return A.Fake<INodeFactory>();
         }
 
-        public static IPipelineExecutionCoordinator CreateExecutionCoordinator()
+        public static INodeExecutor CreateNodeExecutor()
         {
-            return A.Fake<IPipelineExecutionCoordinator>();
+            return A.Fake<INodeExecutor>();
         }
 
-        public static IPipelineInfrastructureService CreateInfrastructureService()
+        public static ITopologyService CreateTopologyService()
         {
-            return A.Fake<IPipelineInfrastructureService>();
+            return A.Fake<ITopologyService>();
+        }
+
+        public static INodeInstantiationService CreateNodeInstantiationService()
+        {
+            return A.Fake<INodeInstantiationService>();
+        }
+
+        public static IErrorHandlingService CreateErrorHandlingService()
+        {
+            return A.Fake<IErrorHandlingService>();
+        }
+
+        public static IPersistenceService CreatePersistenceService()
+        {
+            return A.Fake<IPersistenceService>();
         }
 
         public static IObservabilitySurface CreateObservabilitySurface()
@@ -76,15 +91,21 @@ public static class PipelineRunnerTestHelpers
         public static PipelineRunner CreateRunner(
             IPipelineFactory? pipelineFactory = null,
             INodeFactory? nodeFactory = null,
-            IPipelineExecutionCoordinator? executionCoordinator = null,
-            IPipelineInfrastructureService? infrastructureService = null,
+            INodeExecutor? nodeExecutor = null,
+            ITopologyService? topologyService = null,
+            INodeInstantiationService? nodeInstantiationService = null,
+            IErrorHandlingService? errorHandlingService = null,
+            IPersistenceService? persistenceService = null,
             IObservabilitySurface? observabilitySurface = null)
         {
             return new PipelineRunnerBuilder()
                 .WithPipelineFactory(pipelineFactory ?? CreatePipelineFactory())
                 .WithNodeFactory(nodeFactory ?? CreateNodeFactory())
-                .WithExecutionCoordinator(executionCoordinator ?? CreateExecutionCoordinator())
-                .WithInfrastructureService(infrastructureService ?? CreateInfrastructureService())
+                .WithNodeExecutor(nodeExecutor ?? CreateNodeExecutor())
+                .WithTopologyService(topologyService ?? CreateTopologyService())
+                .WithNodeInstantiationService(nodeInstantiationService ?? CreateNodeInstantiationService())
+                .WithErrorHandlingService(errorHandlingService ?? CreateErrorHandlingService())
+                .WithPersistenceService(persistenceService ?? CreatePersistenceService())
                 .WithObservabilitySurface(observabilitySurface ?? CreateObservabilitySurface())
                 .Build();
         }

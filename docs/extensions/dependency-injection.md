@@ -207,13 +207,15 @@ In addition to scanning for your implementations, `AddNPipeline` registers these
 - **`INodeFactory`**: DI-aware node factory (replaces default factory)
 - **`IErrorHandlerFactory`**: Factory for creating error handlers and dead-letter sinks
 - **`ILineageFactory`**: Factory for creating lineage sinks and resolving lineage collectors
+- **`ILineage`**: Unified lineage module used by execution and build-time lineage adapter wiring
 - **`IObservabilityFactory`**: Factory for resolving observability collectors
 - **Execution services**: CountingService, MergeStrategySelector, PipeMergeService, etc.
-- **Observability services**: LineageService, BranchService, NodeExecutor, etc.
-- **Error handling**: ErrorHandlingService
-- **Persistence**: PersistenceService
+- **Runtime services**: Null lineage module, NodeExecutor, error handling, persistence, and topology services
+- **Error handling**: ErrorHandlingService (transient)
+- **Persistence**: PersistenceService (transient)
 
 > **Note**: Lineage and Observability require their respective extensions to be enabled. The core NPipeline uses null implementations by default. To enable these features, install and register:
+>
 > - `NPipeline.Extensions.Lineage` with `services.AddNPipelineLineage()`
 > - `NPipeline.Extensions.Observability` with `services.AddNPipelineObservability()`
 

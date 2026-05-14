@@ -112,16 +112,15 @@ public static class ServiceCollectionExtensions
         // causing MissingMethodException for nodes with DI-only constructors (ConcurrentQueue<>, etc.).
         services.TryAddScoped<IMergeStrategySelector, MergeStrategySelector>();
         services.TryAddScoped<IPipeMergeService>(sp => new PipeMergeService(sp.GetRequiredService<IMergeStrategySelector>()));
-        services.TryAddScoped<ILineageService>(_ => NullLineageService.Instance);
+        services.TryAddScoped<ILineage>(_ => NullLineage.Instance);
         services.TryAddScoped<DataStreamWrapperService>();
         services.TryAddScoped<INodeExecutor, NodeExecutor>();
         services.TryAddScoped<IExecutionAnnotationsService, ExecutionAnnotationsService>();
         services.TryAddScoped<ITopologyService, TopologyService>();
         services.TryAddScoped<INodeInstantiationService, NodeInstantiationService>();
-        services.TryAddScoped<IPipelineExecutionCoordinator, PipelineExecutionCoordinator>();
-        services.TryAddSingleton<IErrorHandlingService>(ErrorHandlingService.Instance);
-        services.TryAddSingleton<IPersistenceService>(PersistenceService.Instance);
-        services.TryAddScoped<IPipelineInfrastructureService, PipelineInfrastructureService>();
+        services.TryAddTransient<IErrorHandlingService, ErrorHandlingService>();
+        services.TryAddTransient<IPersistenceService, PersistenceService>();
+        services.TryAddSingleton<IRuntimePipelineBinder>(_ => RuntimePipelineBinder.Instance);
         services.TryAddScoped<IObservabilitySurface>(_ => NullObservabilitySurface.Instance);
     }
 

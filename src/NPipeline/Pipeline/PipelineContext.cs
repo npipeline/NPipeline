@@ -53,6 +53,12 @@ namespace NPipeline.Pipeline;
 ///         (single-threaded execution). NPipeline follows the principle of paying only for what you use. For the rare cases
 ///         requiring thread-safe shared state, use <see cref="IPipelineStateManager" /> instead.
 ///     </para>
+///     <para>
+///         <strong>Composition Model:</strong>
+///         <see cref="PipelineContext" /> composes focused context objects (<see cref="RunIdentity" />, <see cref="ExecutionConfiguration" />,
+///         <see cref="Observability" />, <see cref="NodeEnvironment" />, and <see cref="Lineage" />) and exposes compatibility properties
+///         for existing node and extension code.
+///     </para>
 /// </remarks>
 public sealed class PipelineContext
 {
@@ -64,7 +70,6 @@ public sealed class PipelineContext
     // Composite disposal registry for lifecycle-managed IAsyncDisposable resources (lazy initialized)
     private List<IAsyncDisposable>? _disposables;
     private bool _disposed;
-    private IExecutionObserver _executionObserver = NullExecutionObserver.Instance;
 
     /// <summary>
     ///     Creates a new <see cref="PipelineContext" /> with the specified configuration.
@@ -138,19 +143,48 @@ public sealed class PipelineContext
             _ownsPropertiesDictionary = true;
         }
 
+        var loggerFactory = config.LoggerFactory ?? NullLoggerFactory.Instance;
+        var tracer = config.Tracer ?? NullPipelineTracer.Instance;
+        var observabilityFactory = config.ObservabilityFactory ?? new DefaultObservabilityFactory();
+        var retryOptions = config.RetryOptions ?? PipelineRetryOptions.Default;
+        var lineageFactory = config.LineageFactory ?? new DefaultLineageFactory(loggerFactory);
+
         CancellationToken = config.CancellationToken;
-        LoggerFactory = config.LoggerFactory ?? NullLoggerFactory.Instance;
-        Tracer = config.Tracer ?? NullPipelineTracer.Instance;
         PipelineErrorHandler = config.PipelineErrorHandler;
         DeadLetterSink = config.DeadLetterSink;
-        ErrorHandlerFactory = config.ErrorHandlerFactory ?? new DefaultErrorHandlerFactory(LoggerFactory);
-        LineageFactory = config.LineageFactory ?? new DefaultLineageFactory(LoggerFactory);
-        ObservabilityFactory = config.ObservabilityFactory ?? new DefaultObservabilityFactory();
-        RetryOptions = config.RetryOptions ?? PipelineRetryOptions.Default;
-        GlobalRetryOptions = RetryOptions;
-        ProcessedItemsCounter = new StatsCounter();
-        PipelineStartTimeUtc = DateTime.UtcNow;
+        ErrorHandlerFactory = config.ErrorHandlerFactory ?? new DefaultErrorHandlerFactory(loggerFactory);
+
+        RunIdentity = new PipelineRunIdentityContext(DateTime.UtcNow);
+        ExecutionConfiguration = new PipelineExecutionConfigurationContext(retryOptions);
+        Observability = new PipelineObservabilityContext(loggerFactory, tracer, observabilityFactory);
+        NodeEnvironment = new PipelineNodeEnvironmentContext();
+        Lineage = new PipelineLineageContext(lineageFactory);
     }
+
+    /// <summary>
+    ///     Focused run identity state for this execution.
+    /// </summary>
+    public PipelineRunIdentityContext RunIdentity { get; }
+
+    /// <summary>
+    ///     Focused execution configuration and resilience state for this execution.
+    /// </summary>
+    public PipelineExecutionConfigurationContext ExecutionConfiguration { get; }
+
+    /// <summary>
+    ///     Focused observability surface for this execution.
+    /// </summary>
+    public PipelineObservabilityContext Observability { get; }
+
+    /// <summary>
+    ///     Focused node environment state for this execution.
+    /// </summary>
+    public PipelineNodeEnvironmentContext NodeEnvironment { get; }
+
+    /// <summary>
+    ///     Focused lineage services and sink state for this execution.
+    /// </summary>
+    public PipelineLineageContext Lineage { get; }
 
     /// <summary>
     ///     A dictionary to hold any runtime parameters for the pipeline.
@@ -187,105 +221,155 @@ public sealed class PipelineContext
     ///     Framework-managed services and execution state should be stored on strongly-typed members.
     ///     <see cref="Items" /> is reserved for user-defined values.
     /// </summary>
-    public StatsCounter ProcessedItemsCounter { get; internal set; }
+    public StatsCounter ProcessedItemsCounter
+    {
+        get => Observability.ProcessedItemsCounter;
+        internal set => Observability.ProcessedItemsCounter = value;
+    }
 
     /// <summary>
     ///     Effective global retry options for the current pipeline run.
     /// </summary>
-    public PipelineRetryOptions GlobalRetryOptions { get; internal set; }
+    public PipelineRetryOptions GlobalRetryOptions
+    {
+        get => ExecutionConfiguration.GlobalRetryOptions;
+        internal set => ExecutionConfiguration.GlobalRetryOptions = value;
+    }
 
     /// <summary>
     ///     Per-node retry option overrides indexed by node id.
     /// </summary>
-    public Dictionary<string, PipelineRetryOptions> NodeRetryOverrides { get; } = new();
+    public Dictionary<string, PipelineRetryOptions> NodeRetryOverrides => ExecutionConfiguration.NodeRetryOverrides;
 
     /// <summary>
-    ///     Per-node execution annotations indexed by node id (for example, strategy-specific options).
+    ///     Registry for node execution annotations, observability scopes, and runtime annotations.
     /// </summary>
-    public Dictionary<string, object> NodeExecutionAnnotations { get; } = new();
-
-    /// <summary>
-    ///     Per-node observability scopes indexed by node id.
-    /// </summary>
-    public Dictionary<string, IAutoObservabilityScope> NodeObservabilityScopes { get; } = new();
-
-    /// <summary>
-    ///     Framework-managed runtime annotations and diagnostics.
-    /// </summary>
-    public Dictionary<string, object> RuntimeAnnotations { get; } = new();
+    public NodeExecutionScopeRegistry NodeExecutionScopeRegistry => NodeEnvironment.NodeExecutionScopeRegistry;
 
     /// <summary>
     ///     Optional preconfigured node instances to seed graph construction.
     /// </summary>
-    public Dictionary<string, INode> PreconfiguredNodeInstances { get; } = new();
+    public Dictionary<string, INode> PreconfiguredNodeInstances => NodeEnvironment.PreconfiguredNodeInstances;
 
     /// <summary>
     ///     Indicates the current run uses parallel execution behavior.
     /// </summary>
-    public bool IsParallelExecution { get; internal set; }
+    public bool IsParallelExecution
+    {
+        get => ExecutionConfiguration.IsParallelExecution;
+        internal set => ExecutionConfiguration.IsParallelExecution = value;
+    }
 
     /// <summary>
     ///     Indicates node lifetimes are owned externally (for example by DI container).
     /// </summary>
-    public bool DiOwnedNodes { get; set; }
+    public bool DiOwnedNodes
+    {
+        get => NodeEnvironment.DiOwnedNodes;
+        set => NodeEnvironment.DiOwnedNodes = value;
+    }
 
     /// <summary>
     ///     The last retry-exhausted exception observed in the pipeline.
     /// </summary>
-    public RetryExhaustedException? LastRetryExhaustedException { get; internal set; }
+    public RetryExhaustedException? LastRetryExhaustedException
+    {
+        get => ExecutionConfiguration.LastRetryExhaustedException;
+        internal set => ExecutionConfiguration.LastRetryExhaustedException = value;
+    }
 
     /// <summary>
     ///     The pipeline-level UTC start timestamp.
     /// </summary>
-    public DateTime PipelineStartTimeUtc { get; internal set; }
+    public DateTime PipelineStartTimeUtc
+    {
+        get => RunIdentity.PipelineStartTimeUtc;
+        internal set => RunIdentity.PipelineStartTimeUtc = value;
+    }
 
     /// <summary>
     ///     Unique pipeline identity for this execution context.
     ///     This is stable for the lifetime of the context and is used for unambiguous lineage/metrics keying.
     /// </summary>
-    public Guid PipelineId { get; internal set; }
+    public Guid PipelineId
+    {
+        get => RunIdentity.PipelineId;
+        internal set => RunIdentity.PipelineId = value;
+    }
 
     /// <summary>
     ///     Unique run identifier for this pipeline execution.
     ///     This can be inherited by child pipelines when composite run identity inheritance is enabled.
     /// </summary>
-    public Guid RunId { get; internal set; }
+    public Guid RunId
+    {
+        get => RunIdentity.RunId;
+        internal set => RunIdentity.RunId = value;
+    }
 
     /// <summary>
     ///     Logical pipeline name for this execution context.
     ///     Used by observability and lineage to disambiguate nested node identities.
     /// </summary>
-    public string? PipelineName { get; internal set; }
+    public string? PipelineName
+    {
+        get => RunIdentity.PipelineName;
+        internal set => RunIdentity.PipelineName = value;
+    }
 
     /// <summary>
     ///     Circuit-breaker options for the current run.
     /// </summary>
-    public PipelineCircuitBreakerOptions? CircuitBreakerOptions { get; internal set; }
+    public PipelineCircuitBreakerOptions? CircuitBreakerOptions
+    {
+        get => ExecutionConfiguration.CircuitBreakerOptions;
+        internal set => ExecutionConfiguration.CircuitBreakerOptions = value;
+    }
 
     /// <summary>
     ///     Circuit-breaker memory management options for the current run.
     /// </summary>
-    public CircuitBreakerMemoryManagementOptions? CircuitBreakerMemoryOptions { get; internal set; }
+    public CircuitBreakerMemoryManagementOptions? CircuitBreakerMemoryOptions
+    {
+        get => ExecutionConfiguration.CircuitBreakerMemoryOptions;
+        internal set => ExecutionConfiguration.CircuitBreakerMemoryOptions = value;
+    }
 
     /// <summary>
     ///     Circuit-breaker manager for the current run.
     /// </summary>
-    internal ICircuitBreakerManager? CircuitBreakerManager { get; set; }
+    internal ICircuitBreakerManager? CircuitBreakerManager
+    {
+        get => ExecutionConfiguration.CircuitBreakerManager;
+        set => ExecutionConfiguration.CircuitBreakerManager = value;
+    }
 
     /// <summary>
     ///     Item-level lineage sink resolved for the current run.
     /// </summary>
-    public ILineageSink? LineageSink { get; internal set; }
+    public ILineageSink? LineageSink
+    {
+        get => Lineage.LineageSink;
+        internal set => Lineage.LineageSink = value;
+    }
 
     /// <summary>
     ///     Pipeline-level lineage sink resolved for the current run.
     /// </summary>
-    public IPipelineLineageSink? PipelineLineageSink { get; internal set; }
+    public IPipelineLineageSink? PipelineLineageSink
+    {
+        get => Lineage.PipelineLineageSink;
+        internal set => Lineage.PipelineLineageSink = value;
+    }
 
     /// <summary>
     ///     Item-level lineage collector resolved for the current run.
     /// </summary>
-    public ILineageCollector? LineageCollector { get; internal set; }
+    public ILineageCollector? LineageCollector
+    {
+        get => Lineage.LineageCollector;
+        internal set => Lineage.LineageCollector = value;
+    }
 
     /// <summary>
     ///     A dictionary for storing properties that can be used by extensions and plugins.
@@ -312,12 +396,12 @@ public sealed class PipelineContext
     /// <summary>
     ///     The logger factory for this pipeline run.
     /// </summary>
-    public ILoggerFactory LoggerFactory { get; }
+    public ILoggerFactory LoggerFactory => Observability.LoggerFactory;
 
     /// <summary>
     ///     The tracer for this pipeline run.
     /// </summary>
-    public IPipelineTracer Tracer { get; }
+    public IPipelineTracer Tracer => Observability.Tracer;
 
     /// <summary>
     ///     The error handler for the entire pipeline.
@@ -337,17 +421,21 @@ public sealed class PipelineContext
     /// <summary>
     ///     The factory for creating lineage-related components.
     /// </summary>
-    public ILineageFactory LineageFactory { get; }
+    public ILineageFactory LineageFactory => Lineage.LineageFactory;
 
     /// <summary>
     ///     The factory for resolving observability-related components.
     /// </summary>
-    public IObservabilityFactory ObservabilityFactory { get; }
+    public IObservabilityFactory ObservabilityFactory => Observability.ObservabilityFactory;
 
     /// <summary>
     ///     The ID of the node currently being executed.
     /// </summary>
-    public string CurrentNodeId { get; private set; } = string.Empty;
+    public string CurrentNodeId
+    {
+        get => NodeEnvironment.CurrentNodeId;
+        private set => NodeEnvironment.CurrentNodeId = value;
+    }
 
     /// <summary>
     ///     Execution observer for instrumentation (node lifecycle, retries, queue/backpressure events).
@@ -357,15 +445,15 @@ public sealed class PipelineContext
     /// </summary>
     public IExecutionObserver ExecutionObserver
     {
-        get => _executionObserver;
-        set => _executionObserver = value ?? NullExecutionObserver.Instance;
+        get => Observability.ExecutionObserver;
+        set => Observability.ExecutionObserver = value;
     }
 
     /// <summary>
     ///     Execution / retry configuration for this pipeline run.
     ///     Values here override builder defaults when provided.
     /// </summary>
-    public PipelineRetryOptions RetryOptions { get; }
+    public PipelineRetryOptions RetryOptions => ExecutionConfiguration.RetryOptions;
 
     /// <summary>
     ///     Creates a default pipeline context with all default values.
@@ -473,9 +561,7 @@ public sealed class PipelineContext
     private void ReturnPooledDictionaries()
     {
         NodeRetryOverrides.Clear();
-        NodeExecutionAnnotations.Clear();
-        NodeObservabilityScopes.Clear();
-        RuntimeAnnotations.Clear();
+        NodeExecutionScopeRegistry.Clear();
 
         if (_ownsParametersDictionary)
         {

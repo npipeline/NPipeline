@@ -5,7 +5,8 @@ namespace NPipeline.DataFlow.Branching;
 
 /// <summary>
 ///     Metrics captured for a branch (multicast) wrapper.
-///     Stored in PipelineContext.RuntimeAnnotations with key prefix ExecutionAnnotationKeys.BranchMetricsPrefix and node id suffix.
+///     Stored in PipelineContext.NodeExecutionScopeRegistry runtime annotations
+///     with key prefix ExecutionAnnotationKeys.BranchMetricsPrefix and node id suffix.
 /// </summary>
 public sealed class BranchMetrics
 {
@@ -115,7 +116,8 @@ public static class BranchMetricsContextExtensions
     /// <returns>The branch metrics for the specified node, or null if not found.</returns>
     public static BranchMetrics? GetBranchMetrics(this PipelineContext context, string nodeId)
     {
-        if (context.RuntimeAnnotations.TryGetValue(ExecutionAnnotationKeys.BranchMetricsForNode(nodeId), out var m) && m is BranchMetrics fm)
+        if (context.NodeExecutionScopeRegistry.TryGetRuntimeAnnotation(ExecutionAnnotationKeys.BranchMetricsForNode(nodeId), out var m) &&
+            m is BranchMetrics fm)
             return fm;
 
         return null;

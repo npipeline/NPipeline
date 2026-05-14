@@ -15,11 +15,14 @@ namespace NPipeline.Tests.Core.Execution;
 
 public sealed class PipelineRunnerErrorTests
 {
-    private readonly IPipelineExecutionCoordinator _executionCoordinator = A.Fake<IPipelineExecutionCoordinator>();
-    private readonly IPipelineInfrastructureService _infrastructureService = A.Fake<IPipelineInfrastructureService>();
+    private readonly IErrorHandlingService _errorHandlingService = A.Fake<IErrorHandlingService>();
     private readonly INodeFactory _nodeFactory = A.Fake<INodeFactory>();
+    private readonly INodeExecutor _nodeExecutor = A.Fake<INodeExecutor>();
+    private readonly INodeInstantiationService _nodeInstantiationService = A.Fake<INodeInstantiationService>();
     private readonly IObservabilitySurface _observabilitySurface = A.Fake<IObservabilitySurface>();
+    private readonly IPersistenceService _persistenceService = A.Fake<IPersistenceService>();
     private readonly IPipelineFactory _pipelineFactory = A.Fake<IPipelineFactory>();
+    private readonly ITopologyService _topologyService = A.Fake<ITopologyService>();
 
     [Fact]
     public async Task RunAsync_NodeFailsAndRetriesExhausted_ThrowsRetryExhaustedException()
@@ -46,13 +49,13 @@ public sealed class PipelineRunnerErrorTests
 
         _ = A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
-        _ = A.CallTo(() => _executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
+        _ = A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
             .Returns(new Dictionary<string, INode> { { nodeId, failingNode } });
 
-        _ = A.CallTo(() => _executionCoordinator.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());
-        _ = A.CallTo(() => _executionCoordinator.TopologicalSort(A<PipelineGraph>._)).Returns([nodeId]);
+        _ = A.CallTo(() => _topologyService.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());
+        _ = A.CallTo(() => _topologyService.TopologicalSort(A<PipelineGraph>._)).Returns([nodeId]);
 
-        _ = A.CallTo(() => _infrastructureService.ExecuteWithRetriesAsync(
+        _ = A.CallTo(() => _errorHandlingService.ExecuteWithRetriesAsync(
                 A<NodeDefinition>._,
                 A<INode>._,
                 A<PipelineGraph>._,
@@ -65,8 +68,11 @@ public sealed class PipelineRunnerErrorTests
         var runner = new PipelineRunnerBuilder()
             .WithPipelineFactory(_pipelineFactory)
             .WithNodeFactory(_nodeFactory)
-            .WithExecutionCoordinator(_executionCoordinator)
-            .WithInfrastructureService(_infrastructureService)
+            .WithNodeExecutor(_nodeExecutor)
+            .WithTopologyService(_topologyService)
+            .WithNodeInstantiationService(_nodeInstantiationService)
+            .WithErrorHandlingService(_errorHandlingService)
+            .WithPersistenceService(_persistenceService)
             .WithObservabilitySurface(_observabilitySurface)
             .Build();
 
@@ -111,13 +117,13 @@ public sealed class PipelineRunnerErrorTests
 
         _ = A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
-        _ = A.CallTo(() => _executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
+        _ = A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
             .Returns(new Dictionary<string, INode> { { nodeId, failingNode } });
 
-        _ = A.CallTo(() => _executionCoordinator.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());
-        _ = A.CallTo(() => _executionCoordinator.TopologicalSort(A<PipelineGraph>._)).Returns([nodeId]);
+        _ = A.CallTo(() => _topologyService.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());
+        _ = A.CallTo(() => _topologyService.TopologicalSort(A<PipelineGraph>._)).Returns([nodeId]);
 
-        _ = A.CallTo(() => _infrastructureService.ExecuteWithRetriesAsync(
+        _ = A.CallTo(() => _errorHandlingService.ExecuteWithRetriesAsync(
                 A<NodeDefinition>._,
                 A<INode>._,
                 A<PipelineGraph>._,
@@ -135,8 +141,11 @@ public sealed class PipelineRunnerErrorTests
         var runner = new PipelineRunnerBuilder()
             .WithPipelineFactory(_pipelineFactory)
             .WithNodeFactory(_nodeFactory)
-            .WithExecutionCoordinator(_executionCoordinator)
-            .WithInfrastructureService(_infrastructureService)
+            .WithNodeExecutor(_nodeExecutor)
+            .WithTopologyService(_topologyService)
+            .WithNodeInstantiationService(_nodeInstantiationService)
+            .WithErrorHandlingService(_errorHandlingService)
+            .WithPersistenceService(_persistenceService)
             .WithObservabilitySurface(_observabilitySurface)
             .Build();
 
@@ -175,13 +184,13 @@ public sealed class PipelineRunnerErrorTests
 
         _ = A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
-        _ = A.CallTo(() => _executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
+        _ = A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
             .Returns(new Dictionary<string, INode> { { nodeId, failingNode } });
 
-        _ = A.CallTo(() => _executionCoordinator.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());
-        _ = A.CallTo(() => _executionCoordinator.TopologicalSort(A<PipelineGraph>._)).Returns([nodeId]);
+        _ = A.CallTo(() => _topologyService.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());
+        _ = A.CallTo(() => _topologyService.TopologicalSort(A<PipelineGraph>._)).Returns([nodeId]);
 
-        _ = A.CallTo(() => _infrastructureService.ExecuteWithRetriesAsync(
+        _ = A.CallTo(() => _errorHandlingService.ExecuteWithRetriesAsync(
                 A<NodeDefinition>._,
                 A<INode>._,
                 A<PipelineGraph>._,
@@ -193,8 +202,11 @@ public sealed class PipelineRunnerErrorTests
         var runner = new PipelineRunnerBuilder()
             .WithPipelineFactory(_pipelineFactory)
             .WithNodeFactory(_nodeFactory)
-            .WithExecutionCoordinator(_executionCoordinator)
-            .WithInfrastructureService(_infrastructureService)
+            .WithNodeExecutor(_nodeExecutor)
+            .WithTopologyService(_topologyService)
+            .WithNodeInstantiationService(_nodeInstantiationService)
+            .WithErrorHandlingService(_errorHandlingService)
+            .WithPersistenceService(_persistenceService)
             .WithObservabilitySurface(_observabilitySurface)
             .Build();
 
@@ -234,13 +246,13 @@ public sealed class PipelineRunnerErrorTests
 
         _ = A.CallTo(() => _nodeFactory.Create(A<NodeDefinition>._, A<PipelineGraph>._)).Returns(failingNode);
 
-        _ = A.CallTo(() => _executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
+        _ = A.CallTo(() => _nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
             .Returns(new Dictionary<string, INode> { { nodeId, failingNode } });
 
-        _ = A.CallTo(() => _executionCoordinator.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());
-        _ = A.CallTo(() => _executionCoordinator.TopologicalSort(A<PipelineGraph>._)).Returns([nodeId]);
+        _ = A.CallTo(() => _topologyService.BuildInputLookup(A<PipelineGraph>._)).Returns(A.Fake<ILookup<string, Edge>>());
+        _ = A.CallTo(() => _topologyService.TopologicalSort(A<PipelineGraph>._)).Returns([nodeId]);
 
-        _ = A.CallTo(() => _infrastructureService.ExecuteWithRetriesAsync(
+        _ = A.CallTo(() => _errorHandlingService.ExecuteWithRetriesAsync(
                 A<NodeDefinition>._,
                 A<INode>._,
                 A<PipelineGraph>._,
@@ -252,8 +264,11 @@ public sealed class PipelineRunnerErrorTests
         var runner = new PipelineRunnerBuilder()
             .WithPipelineFactory(_pipelineFactory)
             .WithNodeFactory(_nodeFactory)
-            .WithExecutionCoordinator(_executionCoordinator)
-            .WithInfrastructureService(_infrastructureService)
+            .WithNodeExecutor(_nodeExecutor)
+            .WithTopologyService(_topologyService)
+            .WithNodeInstantiationService(_nodeInstantiationService)
+            .WithErrorHandlingService(_errorHandlingService)
+            .WithPersistenceService(_persistenceService)
             .WithObservabilitySurface(_observabilitySurface)
             .Build();
 

@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
-using System.Reflection;
 using NPipeline.Configuration;
+using NPipeline.Execution;
+using NPipeline.Execution.Plans;
 using NPipeline.Lineage;
 using NPipeline.Graph;
 using NPipeline.Graph.PipelineDelegates;
@@ -28,8 +29,21 @@ public sealed partial class PipelineBuilder
     // Flag to prevent builder reuse after Build() has been called
     private bool _built;
 
-    public static ILineageAdapterBuilder LineageAdapterBuilder { get; set; }
-        = NullLineageAdapterBuilder.Instance;
+    /// <summary>
+    /// Gets or sets the unified lineage module used by build-time adapter construction and runtime lineage orchestration.
+    /// </summary>
+    /// <remarks>
+    /// Defaults to <see cref="NullLineage.Instance"/> which does not perform lineage tracking.
+    /// </remarks>
+    public static ILineage Lineage { get; set; } = NullLineage.Instance;
+
+    /// <summary>
+    /// Gets or sets the execution module that prepares registration-time delegates and caches.
+    /// </summary>
+    /// <remarks>
+    /// Defaults to <see cref="DefaultNodeRegistrationPlanner.Instance"/>.
+    /// </remarks>
+    public static INodeRegistrationPlanner ExecutionRegistrationPlanner { get; set; } = DefaultNodeRegistrationPlanner.Instance;
 
     // State objects encapsulating related fields by concern
 
@@ -373,7 +387,9 @@ public sealed partial class PipelineBuilder
         LineageAdapterDelegate? lineageAdapter = null;
         SinkLineageUnwrapDelegate? sinkUnwrap = null;
         CustomMergeDelegate? customMerge = null;
-        var isJoin = false;
+        var isJoin = kind == NodeKind.Join;
+
+        ExecutionRegistrationPlanner.PrepareNode(kind, nodeType);
 
         switch (kind)
         {
@@ -383,69 +399,29 @@ public sealed partial class PipelineBuilder
             case NodeKind.Branch:
             case NodeKind.Lookup:
             case NodeKind.Batch:
-                lineageAdapter = BuildLineageAdapterReflection(inType, outType, meta.LineageMapperType);
-
-                if (meta.HasCustomMerge)
-                    customMerge = BuildCustomMergeDelegate(nodeType);
-
+                lineageAdapter = BuildLineageAdapter(inType, outType, meta.LineageMapperType);
                 break;
             case NodeKind.Sink:
-                sinkUnwrap = BuildSinkLineageUnwrapReflection(inType);
-
-                if (meta.HasCustomMerge)
-                    customMerge = BuildCustomMergeDelegate(nodeType);
-
+                sinkUnwrap = BuildSinkLineageUnwrap(inType);
                 break;
             case NodeKind.Join:
-                lineageAdapter = BuildLineageAdapterReflection(inType, outType, meta.LineageMapperType);
-
-                // Pre-compile join key selectors during builder phase for zero-overhead runtime access
-                // Extract join key type and input types from the join node's generic hierarchy
-                var joinInputTypes = ExtractJoinInputTypes(nodeType);
-
-                if (joinInputTypes.HasValue)
-                {
-                    var keyType = ExtractJoinKeyType(nodeType);
-
-                    if (keyType is not null)
-                    {
-                        var (in1Type, in2Type) = joinInputTypes.Value;
-                        var (sel1, sel2) = JoinKeySelectorRegistry.Compile(nodeType, keyType, in1Type, in2Type);
-
-                        // Register pre-compiled selectors in the runtime registry
-                        if (sel1 is not null && sel2 is not null)
-                            JoinKeySelectorRegistry.Register(nodeType, sel1, sel2);
-                    }
-                }
-
-                if (meta.HasCustomMerge)
-                    customMerge = BuildCustomMergeDelegate(nodeType);
-
-                isJoin = true;
+                lineageAdapter = BuildLineageAdapter(inType, outType, meta.LineageMapperType);
                 break;
             case NodeKind.Aggregate:
             case NodeKind.Source:
             case NodeKind.CompositeInput:
                 // nothing extra
-                if (meta.HasCustomMerge)
-                    customMerge = BuildCustomMergeDelegate(nodeType);
-
                 break;
             case NodeKind.Composite:
-                lineageAdapter = BuildLineageAdapterReflection(inType, outType, meta.LineageMapperType);
-
-                if (meta.HasCustomMerge)
-                    customMerge = BuildCustomMergeDelegate(nodeType);
-
+                lineageAdapter = BuildLineageAdapter(inType, outType, meta.LineageMapperType);
                 break;
             case NodeKind.CompositeOutput:
-                sinkUnwrap = BuildSinkLineageUnwrapReflection(inType);
-
-                if (meta.HasCustomMerge)
-                    customMerge = BuildCustomMergeDelegate(nodeType);
-
+                sinkUnwrap = BuildSinkLineageUnwrap(inType);
                 break;
         }
+
+        if (meta.HasCustomMerge)
+            customMerge = ExecutionRegistrationPlanner.BuildCustomMergeDelegate(nodeType);
 
         var def = new NodeDefinition(
             id,
@@ -469,97 +445,11 @@ public sealed partial class PipelineBuilder
         return handleFactory(id, def);
     }
 
-    private static LineageAdapterDelegate? BuildLineageAdapterReflection(Type? inType, Type? outType, Type? lineageMapperType)
-    {
-        if (inType is null || outType is null)
-            return null;
+    private static LineageAdapterDelegate? BuildLineageAdapter(Type? inType, Type? outType, Type? lineageMapperType)
+        => PipelineBuilder.Lineage.BuildLineageAdapter(inType, outType, lineageMapperType);
 
-        var method = typeof(ILineageAdapterBuilder).GetMethod(nameof(ILineageAdapterBuilder.BuildLineageAdapter),
-                         BindingFlags.Public | BindingFlags.Instance)
-                     ?? throw new InvalidOperationException("Method 'BuildLineageAdapter' not found on ILineageAdapterBuilder.");
-
-        var genericMethod = method.MakeGenericMethod(inType, outType);
-
-        var result = genericMethod.Invoke(PipelineBuilder.LineageAdapterBuilder, [lineageMapperType]);
-
-        return result as LineageAdapterDelegate;
-    }
-
-    private static SinkLineageUnwrapDelegate? BuildSinkLineageUnwrapReflection(Type? inType)
-    {
-        if (inType is null)
-            return null;
-
-        var method = typeof(ILineageAdapterBuilder).GetMethod(nameof(ILineageAdapterBuilder.BuildSinkLineageUnwrapDelegate),
-                         BindingFlags.Public | BindingFlags.Instance)
-                     ?? throw new InvalidOperationException("Method 'BuildSinkLineageUnwrapDelegate' not found on ILineageAdapterBuilder.");
-
-        var genericMethod = method.MakeGenericMethod(inType);
-
-        var result = genericMethod.Invoke(PipelineBuilder.LineageAdapterBuilder, []);
-
-        return result as SinkLineageUnwrapDelegate;
-    }
-
-    /// <summary>
-    ///     Extracts join input types from a join node's generic hierarchy.
-    /// </summary>
-    private static (Type, Type)? ExtractJoinInputTypes(Type joinNodeType)
-    {
-        // Join nodes derive from BaseJoinNode<TKey, TIn1, TIn2, TOut>
-        var baseType = joinNodeType.BaseType;
-
-        while (baseType is not null)
-        {
-            if (baseType.IsGenericType)
-            {
-                var genericDef = baseType.GetGenericTypeDefinition();
-
-                // Check if this is BaseJoinNode<TKey, TIn1, TIn2, TOut>
-                if (genericDef.Name == "BaseJoinNode`4")
-                {
-                    var args = baseType.GetGenericArguments();
-
-                    // args[0] = TKey, args[1] = TIn1, args[2] = TIn2, args[3] = TOut
-                    return (args[1], args[2]);
-                }
-            }
-
-            baseType = baseType.BaseType;
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    ///     Extracts the key type from a join node's generic hierarchy.
-    /// </summary>
-    private static Type? ExtractJoinKeyType(Type joinNodeType)
-    {
-        // Join nodes derive from BaseJoinNode<TKey, TIn1, TIn2, TOut>
-        var baseType = joinNodeType.BaseType;
-
-        while (baseType is not null)
-        {
-            if (baseType.IsGenericType)
-            {
-                var genericDef = baseType.GetGenericTypeDefinition();
-
-                // Check if this is BaseJoinNode<TKey, TIn1, TIn2, TOut>
-                if (genericDef.Name == "BaseJoinNode`4")
-                {
-                    var args = baseType.GetGenericArguments();
-
-                    // args[0] = TKey, args[1] = TIn1, args[2] = TIn2, args[3] = TOut
-                    return args[0];
-                }
-            }
-
-            baseType = baseType.BaseType;
-        }
-
-        return null;
-    }
+    private static SinkLineageUnwrapDelegate? BuildSinkLineageUnwrap(Type? inType)
+        => PipelineBuilder.Lineage.BuildSinkLineageUnwrap(inType);
 
     #endregion
 
@@ -658,32 +548,6 @@ public sealed partial class PipelineBuilder
     private void EnsureUniqueName(string name)
     {
         NodeNameGenerator.EnsureUniqueName(name, NodeState.Nodes.Values);
-    }
-
-    /// <summary>
-    ///     Builds custom merge delegates for nodes implementing either <see cref="ICustomMergeNodeUntyped" /> or
-    ///     <c>ICustomMergeNode&lt;TIn&gt;</c>. Reflection is performed once per merge node at build time.
-    /// </summary>
-    private static CustomMergeDelegate BuildCustomMergeDelegate(Type nodeType)
-    {
-        if (typeof(ICustomMergeNodeUntyped).IsAssignableFrom(nodeType))
-            return async (node, pipes, ct) => await ((ICustomMergeNodeUntyped)node).MergeAsyncUntyped(pipes, ct).ConfigureAwait(false);
-
-        var genericIface = nodeType.GetInterfaces()
-                               .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICustomMergeNode<>))
-                           ?? throw new InvalidOperationException($"Custom merge node '{nodeType.Name}' does not implement expected generic interface.");
-
-        var inType = genericIface.GetGenericArguments()[0];
-
-        var helper = typeof(PipelineBuilder).GetMethod(nameof(BuildStronglyTypedCustomMergeDelegate), BindingFlags.NonPublic | BindingFlags.Static)!
-            .MakeGenericMethod(inType);
-
-        return (CustomMergeDelegate)helper.Invoke(null, null)!;
-    }
-
-    private static CustomMergeDelegate BuildStronglyTypedCustomMergeDelegate<TIn>()
-    {
-        return async (node, pipes, ct) => await ((ICustomMergeNode<TIn>)node).MergeAsync(pipes, ct).ConfigureAwait(false);
     }
 
     #endregion

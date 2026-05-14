@@ -37,15 +37,6 @@ namespace NPipeline.Execution.Services;
 /// </remarks>
 public sealed class ErrorHandlingService : IErrorHandlingService
 {
-    /// <summary>
-    ///     Gets the singleton instance of the ErrorHandlingService.
-    ///     <para>
-    ///         This singleton pattern ensures consistent error handling behavior across the pipeline
-    ///         while minimizing resource usage.
-    ///     </para>
-    /// </summary>
-    public static ErrorHandlingService Instance { get; } = new();
-
     /// <inheritdoc />
     /// <summary>
     ///     Executes a node with retry logic and error handling.

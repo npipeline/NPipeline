@@ -128,13 +128,13 @@ public static class LineageServiceCollectionExtensions
         // with DiLineageFactory (which delegates to LineageGenerator).
         services.AddScoped<ILineageFactory, DiLineageFactory>();
 
-        // Replace the core null lineage service with the real one.
-        services.AddScoped<ILineageService, LineageService>();
+        // Replace the core null lineage module/service with the real one.
+        services.AddScoped<ILineage, LineageService>();
 
         // Register the default pipeline lineage sink provider
         services.TryAddScoped<IPipelineLineageSinkProvider, DefaultPipelineLineageSinkProvider>();
 
-        // Set the static adapter builder so PipelineBuilder can construct lineage adapters
-        PipelineBuilder.LineageAdapterBuilder = new DefaultLineageAdapterBuilder();
+        // Set the static lineage module so PipelineBuilder can construct lineage adapters
+        PipelineBuilder.Lineage = new LineageService();
     }
 }

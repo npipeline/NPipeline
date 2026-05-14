@@ -10,8 +10,8 @@ public sealed class LineageGuardrailTests
     [Fact]
     public void BuildPipeline_WithLineageEnabledWithoutExtension_ThrowsClearError()
     {
-        // Without calling AddNPipelineLineage(), PipelineBuilder.LineageAdapterBuilder
-        // is NullLineageAdapterBuilder. The guardrail should throw with
+        // Without calling AddNPipelineLineage(), PipelineBuilder.Lineage
+        // is NullLineage. The guardrail should throw with
         // a clear message at Build() time when lineage is enabled.
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<DummySource, int>("source");
@@ -27,7 +27,7 @@ public sealed class LineageGuardrailTests
     public void BuildPipeline_WithoutLineageEnabled_DoesNotThrow()
     {
         // Without lineage enabled, the guardrail should not fire even though
-        // LineageAdapterBuilder is the NullLineageAdapterBuilder.
+        // PipelineBuilder.Lineage is NullLineage.
         var builder = new PipelineBuilder().WithoutExtendedValidation();
         var source = builder.AddSource<DummySource, int>("source");
         var transform = builder.AddTransform<DummyTransform, int, int>("transform");

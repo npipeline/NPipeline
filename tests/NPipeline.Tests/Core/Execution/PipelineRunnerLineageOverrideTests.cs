@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using FakeItEasy;
 using NPipeline.Configuration;
 using NPipeline.Execution;
-using NPipeline.Execution.Caching;
 using NPipeline.Execution.Plans;
 using NPipeline.Observability;
 using NPipeline.Graph;
@@ -20,8 +19,11 @@ public sealed class PipelineRunnerLineageOverrideTests
         // Arrange
         var pipelineFactory = A.Fake<IPipelineFactory>();
         var nodeFactory = A.Fake<INodeFactory>();
-        var executionCoordinator = A.Fake<IPipelineExecutionCoordinator>();
-        var infrastructureService = A.Fake<IPipelineInfrastructureService>();
+        var nodeExecutor = A.Fake<INodeExecutor>();
+        var topologyService = A.Fake<ITopologyService>();
+        var nodeInstantiationService = A.Fake<INodeInstantiationService>();
+        var errorHandlingService = A.Fake<IErrorHandlingService>();
+        var persistenceService = A.Fake<IPersistenceService>();
         var observabilitySurface = NullObservabilitySurface.Instance;
 
         var baseGraph = PipelineGraphBuilder.Create()
@@ -35,28 +37,29 @@ public sealed class PipelineRunnerLineageOverrideTests
             .Returns(new NPipeline.Pipeline.Pipeline(baseGraph));
 
         PipelineGraph? observedGraph = null;
-        _ = A.CallTo(() => executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
+        _ = A.CallTo(() => nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
             .Invokes((PipelineGraph graph, INodeFactory _) => observedGraph = graph)
             .Returns(new Dictionary<string, INode>());
 
-        _ = A.CallTo(() => executionCoordinator.BuildPlansWithCache(
-                typeof(TestPipelineDefinition),
+        _ = A.CallTo(() => nodeInstantiationService.BuildPlans(
                 A<PipelineGraph>._,
-                A<Dictionary<string, INode>>._,
-                A<IPipelineExecutionPlanCache>._))
+                A<Dictionary<string, INode>>._))
             .Returns(new Dictionary<string, NodeExecutionPlan>());
 
-        _ = A.CallTo(() => executionCoordinator.BuildInputLookup(A<PipelineGraph>._))
+        _ = A.CallTo(() => topologyService.BuildInputLookup(A<PipelineGraph>._))
             .Returns(A.Fake<ILookup<string, Edge>>());
 
-        _ = A.CallTo(() => executionCoordinator.TopologicalSort(A<PipelineGraph>._))
+        _ = A.CallTo(() => topologyService.TopologicalSort(A<PipelineGraph>._))
             .Returns([]);
 
         var runner = new PipelineRunnerBuilder()
             .WithPipelineFactory(pipelineFactory)
             .WithNodeFactory(nodeFactory)
-            .WithExecutionCoordinator(executionCoordinator)
-            .WithInfrastructureService(infrastructureService)
+            .WithNodeExecutor(nodeExecutor)
+            .WithTopologyService(topologyService)
+            .WithNodeInstantiationService(nodeInstantiationService)
+            .WithErrorHandlingService(errorHandlingService)
+            .WithPersistenceService(persistenceService)
             .WithObservabilitySurface(observabilitySurface)
             .Build();
 
@@ -80,8 +83,11 @@ public sealed class PipelineRunnerLineageOverrideTests
         // Arrange
         var pipelineFactory = A.Fake<IPipelineFactory>();
         var nodeFactory = A.Fake<INodeFactory>();
-        var executionCoordinator = A.Fake<IPipelineExecutionCoordinator>();
-        var infrastructureService = A.Fake<IPipelineInfrastructureService>();
+        var nodeExecutor = A.Fake<INodeExecutor>();
+        var topologyService = A.Fake<ITopologyService>();
+        var nodeInstantiationService = A.Fake<INodeInstantiationService>();
+        var errorHandlingService = A.Fake<IErrorHandlingService>();
+        var persistenceService = A.Fake<IPersistenceService>();
         var observabilitySurface = NullObservabilitySurface.Instance;
 
         var baseGraph = PipelineGraphBuilder.Create()
@@ -96,28 +102,29 @@ public sealed class PipelineRunnerLineageOverrideTests
             .Returns(new NPipeline.Pipeline.Pipeline(baseGraph));
 
         PipelineGraph? observedGraph = null;
-        _ = A.CallTo(() => executionCoordinator.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
+        _ = A.CallTo(() => nodeInstantiationService.InstantiateNodes(A<PipelineGraph>._, A<INodeFactory>._))
             .Invokes((PipelineGraph graph, INodeFactory _) => observedGraph = graph)
             .Returns(new Dictionary<string, INode>());
 
-        _ = A.CallTo(() => executionCoordinator.BuildPlansWithCache(
-                typeof(TestPipelineDefinition),
+        _ = A.CallTo(() => nodeInstantiationService.BuildPlans(
                 A<PipelineGraph>._,
-                A<Dictionary<string, INode>>._,
-                A<IPipelineExecutionPlanCache>._))
+                A<Dictionary<string, INode>>._))
             .Returns(new Dictionary<string, NodeExecutionPlan>());
 
-        _ = A.CallTo(() => executionCoordinator.BuildInputLookup(A<PipelineGraph>._))
+        _ = A.CallTo(() => topologyService.BuildInputLookup(A<PipelineGraph>._))
             .Returns(A.Fake<ILookup<string, Edge>>());
 
-        _ = A.CallTo(() => executionCoordinator.TopologicalSort(A<PipelineGraph>._))
+        _ = A.CallTo(() => topologyService.TopologicalSort(A<PipelineGraph>._))
             .Returns([]);
 
         var runner = new PipelineRunnerBuilder()
             .WithPipelineFactory(pipelineFactory)
             .WithNodeFactory(nodeFactory)
-            .WithExecutionCoordinator(executionCoordinator)
-            .WithInfrastructureService(infrastructureService)
+            .WithNodeExecutor(nodeExecutor)
+            .WithTopologyService(topologyService)
+            .WithNodeInstantiationService(nodeInstantiationService)
+            .WithErrorHandlingService(errorHandlingService)
+            .WithPersistenceService(persistenceService)
             .WithObservabilitySurface(observabilitySurface)
             .Build();
 

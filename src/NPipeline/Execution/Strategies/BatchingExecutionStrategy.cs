@@ -104,12 +104,7 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
         }
 
         var nodeId = context.CurrentNodeId;
-
-        // Get observability scope if available
-        IAutoObservabilityScope? observabilityScope = null;
-
-        if (context.NodeObservabilityScopes.TryGetValue(nodeId, out var scope))
-            observabilityScope = scope;
+        var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
 
         var batchedStream = BatchWithObservabilityAsync(input, BatchSize, Timespan, observabilityScope, cancellationToken);
 
@@ -139,12 +134,7 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
         }
 
         var nodeId = context.CurrentNodeId;
-
-        // Get observability scope if available
-        IAutoObservabilityScope? observabilityScope = null;
-
-        if (context.NodeObservabilityScopes.TryGetValue(nodeId, out var scope))
-            observabilityScope = scope;
+        var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
 
         var batchedStream = BatchWithObservabilityAsync(input, BatchSize, Timespan, observabilityScope, cancellationToken);
 
@@ -163,45 +153,39 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
         IDataStream<T> input,
         int batchSize,
         TimeSpan timespan,
-        IAutoObservabilityScope? observabilityScope,
+        IAutoObservabilityScope observabilityScope,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        try
+        using var scope = observabilityScope;
+
+        var batch = new List<T>(batchSize);
+        var lastYieldTime = DateTime.UtcNow;
+
+        await foreach (var item in input.WithCancellation(cancellationToken))
         {
-            var batch = new List<T>(batchSize);
-            var lastYieldTime = DateTime.UtcNow;
+            // Track item processed
+            scope.IncrementProcessed();
 
-            await foreach (var item in input.WithCancellation(cancellationToken))
-            {
-                // Track item processed
-                observabilityScope?.IncrementProcessed();
+            batch.Add(item);
 
-                batch.Add(item);
-
-                // Check if we should emit the batch
-                if (batch.Count >= batchSize || DateTime.UtcNow - lastYieldTime >= timespan)
-                {
-                    // Track item emitted (one batch)
-                    observabilityScope?.IncrementEmitted();
-                    yield return batch;
-
-                    batch = new List<T>(batchSize);
-                    lastYieldTime = DateTime.UtcNow;
-                }
-            }
-
-            // Emit any remaining items in the final batch
-            if (batch.Count > 0)
+            // Check if we should emit the batch
+            if (batch.Count >= batchSize || DateTime.UtcNow - lastYieldTime >= timespan)
             {
                 // Track item emitted (one batch)
-                observabilityScope?.IncrementEmitted();
+                scope.IncrementEmitted();
                 yield return batch;
+
+                batch = new List<T>(batchSize);
+                lastYieldTime = DateTime.UtcNow;
             }
         }
-        finally
+
+        // Emit any remaining items in the final batch
+        if (batch.Count > 0)
         {
-            // Dispose AutoObservabilityScope after all items are processed, even on failure or cancellation
-            observabilityScope?.Dispose();
+            // Track item emitted (one batch)
+            scope.IncrementEmitted();
+            yield return batch;
         }
     }
 }

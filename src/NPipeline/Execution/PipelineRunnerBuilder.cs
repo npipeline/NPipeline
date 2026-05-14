@@ -1,6 +1,7 @@
 using NPipeline.Execution.Caching;
 using NPipeline.Execution.Factories;
 using NPipeline.Execution.Services;
+using NPipeline.Lineage;
 using NPipeline.Observability;
 using NPipeline.Pipeline;
 
@@ -11,12 +12,17 @@ namespace NPipeline.Execution;
 /// </summary>
 public sealed class PipelineRunnerBuilder
 {
-    private IPipelineExecutionCoordinator? _executionCoordinator;
+    private IErrorHandlingService? _errorHandlingService;
     private IPipelineExecutionPlanCache? _executionPlanCache;
-    private IPipelineInfrastructureService? _infrastructureService;
     private INodeFactory? _nodeFactory;
+    private INodeExecutor? _nodeExecutor;
+    private INodeInstantiationService? _nodeInstantiationService;
     private IObservabilitySurface? _observabilitySurface;
+    private IPersistenceService? _persistenceService;
     private IPipelineFactory? _pipelineFactory;
+    private ILineage? _lineage;
+    private IRuntimePipelineBinder? _runtimePipelineBinder;
+    private ITopologyService? _topologyService;
 
     /// <summary>
     ///     Sets the pipeline factory.
@@ -37,20 +43,56 @@ public sealed class PipelineRunnerBuilder
     }
 
     /// <summary>
-    ///     Sets the execution coordinator.
+    ///     Sets the node executor.
     /// </summary>
-    public PipelineRunnerBuilder WithExecutionCoordinator(IPipelineExecutionCoordinator executionCoordinator)
+    public PipelineRunnerBuilder WithNodeExecutor(INodeExecutor nodeExecutor)
     {
-        _executionCoordinator = executionCoordinator;
+        _nodeExecutor = nodeExecutor;
         return this;
     }
 
     /// <summary>
-    ///     Sets the infrastructure service.
+    ///     Sets the lineage module used by execution orchestration and default node execution.
     /// </summary>
-    public PipelineRunnerBuilder WithInfrastructureService(IPipelineInfrastructureService infrastructureService)
+    public PipelineRunnerBuilder WithLineage(ILineage lineage)
     {
-        _infrastructureService = infrastructureService;
+        _lineage = lineage;
+        return this;
+    }
+
+    /// <summary>
+    ///     Sets the topology service.
+    /// </summary>
+    public PipelineRunnerBuilder WithTopologyService(ITopologyService topologyService)
+    {
+        _topologyService = topologyService;
+        return this;
+    }
+
+    /// <summary>
+    ///     Sets the node instantiation service.
+    /// </summary>
+    public PipelineRunnerBuilder WithNodeInstantiationService(INodeInstantiationService nodeInstantiationService)
+    {
+        _nodeInstantiationService = nodeInstantiationService;
+        return this;
+    }
+
+    /// <summary>
+    ///     Sets the error handling service.
+    /// </summary>
+    public PipelineRunnerBuilder WithErrorHandlingService(IErrorHandlingService errorHandlingService)
+    {
+        _errorHandlingService = errorHandlingService;
+        return this;
+    }
+
+    /// <summary>
+    ///     Sets the persistence service.
+    /// </summary>
+    public PipelineRunnerBuilder WithPersistenceService(IPersistenceService persistenceService)
+    {
+        _persistenceService = persistenceService;
         return this;
     }
 
@@ -60,6 +102,15 @@ public sealed class PipelineRunnerBuilder
     public PipelineRunnerBuilder WithObservabilitySurface(IObservabilitySurface observabilitySurface)
     {
         _observabilitySurface = observabilitySurface;
+        return this;
+    }
+
+    /// <summary>
+    ///     Sets the runtime pipeline binder.
+    /// </summary>
+    public PipelineRunnerBuilder WithRuntimePipelineBinder(IRuntimePipelineBinder runtimePipelineBinder)
+    {
+        _runtimePipelineBinder = runtimePipelineBinder;
         return this;
     }
 
@@ -95,27 +146,32 @@ public sealed class PipelineRunnerBuilder
     {
         var pipelineFactory = _pipelineFactory ?? new PipelineFactory();
         var nodeFactory = _nodeFactory ?? new DefaultNodeFactory();
+        var lineage = _lineage ?? NullLineage.Instance;
 
-        var executionCoordinator = _executionCoordinator ?? new PipelineExecutionCoordinator(
-            new NodeExecutor(
-                NullLineageService.Instance,
-                new PipeMergeService(new MergeStrategySelector()),
-                new DataStreamWrapperService()),
-            new TopologyService(),
-            new NodeInstantiationService());
+        var nodeExecutor = _nodeExecutor ?? new NodeExecutor(
+            lineage,
+            new PipeMergeService(new MergeStrategySelector()),
+            new DataStreamWrapperService());
 
-        var infrastructureService = _infrastructureService ?? new PipelineInfrastructureService(
-            ErrorHandlingService.Instance,
-            PersistenceService.Instance);
+        var topologyService = _topologyService ?? new TopologyService();
+        var nodeInstantiationService = _nodeInstantiationService ?? new NodeInstantiationService();
+        var errorHandlingService = _errorHandlingService ?? new ErrorHandlingService();
+        var persistenceService = _persistenceService ?? new PersistenceService();
+        var runtimePipelineBinder = _runtimePipelineBinder ?? RuntimePipelineBinder.Instance;
 
         var observabilitySurface = _observabilitySurface ?? NullObservabilitySurface.Instance;
 
         return new PipelineRunner(
             pipelineFactory,
             nodeFactory,
-            executionCoordinator,
-            infrastructureService,
+            nodeExecutor,
+            topologyService,
+            nodeInstantiationService,
+            errorHandlingService,
+            persistenceService,
             observabilitySurface,
-            _executionPlanCache);
+            lineage,
+            _executionPlanCache,
+            runtimePipelineBinder);
     }
 }

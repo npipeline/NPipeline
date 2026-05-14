@@ -432,38 +432,50 @@ Cache effectiveness depends on pipeline reuse:
 
 ## Integration Points
 
-### PipelineRunner
+### PipelineRunner Plan Build Flow
 
-The pipeline runner accepts an optional cache:
+`PipelineRunner` still accepts an optional cache, but plan-build ownership now lives in the execution setup stage:
 
 ```csharp
 public sealed class PipelineRunner(
     // ... other dependencies ...
     IPipelineExecutionPlanCache? executionPlanCache = null) : IPipelineRunner
 {
-    private readonly IPipelineExecutionPlanCache _executionPlanCache = 
-        executionPlanCache ?? new InMemoryPipelineExecutionPlanCache();
+    private readonly IPipelineExecutionOrchestrator _executionOrchestrator =
+        new PipelineExecutionOrchestrator(
+            // ...
+            executionPlanCache ?? new InMemoryPipelineExecutionPlanCache(),
+            runtimePipelineBinder ?? RuntimePipelineBinder.Instance);
 }
 ```
 
-### PipelineExecutionCoordinator
+### Setup Stage Ownership
 
-The coordinator implements the caching logic:
+The setup stage owns both the cache decision and the cache lookup/store logic:
 
 ```csharp
-public Dictionary<string, NodeExecutionPlan> BuildPlansWithCache(
+private Dictionary<string, NodeExecutionPlan> BuildExecutionPlans(
+    Type definitionType,
+    PipelineGraph graph,
+    Dictionary<string, INode> nodeInstances)
+{
+    return ShouldUseCache(graph)
+        ? BuildPlansWithCache(definitionType, graph, nodeInstances)
+        : nodeInstantiationService.BuildPlans(graph, nodeInstances);
+}
+
+private Dictionary<string, NodeExecutionPlan> BuildPlansWithCache(
     Type pipelineDefinitionType,
     PipelineGraph graph,
-    IReadOnlyDictionary<string, INode> nodeInstances,
-    IPipelineExecutionPlanCache cache)
+    IReadOnlyDictionary<string, INode> nodeInstances)
 {
     // Try cache first
-    if (cache.TryGetCachedPlans(pipelineDefinitionType, graph, out var cached))
-        return cached;
+    if (_executionPlanCache.TryGetCachedPlans(pipelineDefinitionType, graph, out var cachedPlans) && cachedPlans is not null)
+        return cachedPlans;
 
     // Cache miss - compile and store
     var plans = nodeInstantiationService.BuildPlans(graph, nodeInstances);
-    cache.CachePlans(pipelineDefinitionType, graph, plans);
+    _executionPlanCache.CachePlans(pipelineDefinitionType, graph, plans);
     
     return plans;
 }

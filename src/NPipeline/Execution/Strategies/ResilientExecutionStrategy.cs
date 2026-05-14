@@ -261,9 +261,10 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         {
             if (circuitBreaker is not null && !circuitBreaker.CanExecute())
             {
-                context.RuntimeAnnotations[PipelineContextKeys.DiagnosticsResilienceFailures(nodeId)] = failures;
-                context.RuntimeAnnotations[PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId)] = consecutiveFailures;
-                context.RuntimeAnnotations[PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId)] = true;
+                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceFailures(nodeId), failures);
+                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId),
+                    consecutiveFailures);
+                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId), true);
                 throw CreateCircuitBreakerOpenException(nodeId, circuitBreaker, "Execution blocked before attempt due to open circuit breaker.");
             }
 
@@ -315,9 +316,11 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
 
                         if (!breakerResult.Allowed)
                         {
-                            context.RuntimeAnnotations[PipelineContextKeys.DiagnosticsResilienceFailures(nodeId)] = failures;
-                            context.RuntimeAnnotations[PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId)] = consecutiveFailures;
-                            context.RuntimeAnnotations[PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId)] = true;
+                            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceFailures(nodeId), failures);
+                            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId),
+                                consecutiveFailures);
+                            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId),
+                                true);
                             throw CreateCircuitBreakerOpenException(nodeId, circuitBreaker, breakerResult.Message);
                         }
                     }
@@ -335,9 +338,11 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                             /* ignore */
                         }
 
-                        context.RuntimeAnnotations[PipelineContextKeys.DiagnosticsResilienceFailures(nodeId)] = failures;
-                        context.RuntimeAnnotations[PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId)] = consecutiveFailures;
-                        context.RuntimeAnnotations[PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId)] = true;
+                        context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceFailures(nodeId), failures);
+                        context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId),
+                            consecutiveFailures);
+                        context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId),
+                            true);
 
                         // Log before throwing to capture the state
                         ResilientExecutionStrategyLogMessages.FailureLimitReached(logger, nodeId, failures, consecutiveFailures,

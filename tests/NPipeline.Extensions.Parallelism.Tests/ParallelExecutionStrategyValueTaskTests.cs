@@ -44,12 +44,12 @@ public sealed class ParallelExecutionStrategyValueTaskTests
 
         using (context.ScopedNode("transform"))
         {
-            context.NodeExecutionAnnotations["transform"] = new ParallelOptions
+            context.NodeExecutionScopeRegistry.SetNodeExecutionAnnotation("transform", new ParallelOptions
             {
                 MaxDegreeOfParallelism = 1,
                 MaxQueueLength = 4,
                 QueuePolicy = BoundedQueuePolicy.DropOldest,
-            };
+            });
 
             await using var output = await strategy.ExecuteAsync(input, transform, context, CancellationToken.None);
 
@@ -76,12 +76,12 @@ public sealed class ParallelExecutionStrategyValueTaskTests
 
         using (context.ScopedNode("transform"))
         {
-            context.NodeExecutionAnnotations["transform"] = new ParallelOptions
+            context.NodeExecutionScopeRegistry.SetNodeExecutionAnnotation("transform", new ParallelOptions
             {
                 MaxDegreeOfParallelism = 1,
                 MaxQueueLength = 4,
                 QueuePolicy = BoundedQueuePolicy.DropNewest,
-            };
+            });
 
             await using var output = await strategy.ExecuteAsync(input, transform, context, CancellationToken.None);
 

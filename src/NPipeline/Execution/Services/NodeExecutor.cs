@@ -13,7 +13,7 @@ namespace NPipeline.Execution.Services;
 ///     Service responsible for executing a single node within a pipeline graph.
 /// </summary>
 public sealed class NodeExecutor(
-    ILineageService lineageService,
+    ILineage lineage,
     IPipeMergeService pipeMergeService,
     DataStreamWrapperService dataStreamWrapperService)
     : INodeExecutor
@@ -73,7 +73,7 @@ public sealed class NodeExecutor(
         var output = await plan.ExecuteSource!(context, context.CancellationToken);
 
         if (graph.Lineage.ItemLevelLineageEnabled)
-            output = lineageService.WrapSourceStream(output, plan.NodeId, context.PipelineId, context.PipelineName, graph.Lineage.LineageOptions);
+            output = lineage.WrapSourceStream(output, plan.NodeId, context.PipelineId, context.PipelineName, graph.Lineage.LineageOptions);
 
         var counter = GetOrCreateCounter(context);
         output = dataStreamWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
@@ -147,7 +147,7 @@ public sealed class NodeExecutor(
 
         if (graph.Lineage.ItemLevelLineageEnabled)
         {
-            var (unwrappedInput, inputLineageContext) = lineageService.PrepareInputWithLineageContext(merged, context.CancellationToken);
+            var (unwrappedInput, inputLineageContext) = lineage.PrepareInputWithLineageContext(merged, context.CancellationToken);
             context.RegisterForDisposal(unwrappedInput as IAsyncDisposable ?? merged);
 
             var rawOutput = await plan.ExecuteJoin!([unwrappedInput], context, context.CancellationToken);
@@ -156,7 +156,7 @@ public sealed class NodeExecutor(
             if (rawOutput.GetDataType() != expectedOut)
                 rawOutput = AdaptOutput(plan, rawOutput, expectedOut, $"JoinResult_{plan.NodeId}");
 
-            output = lineageService.WrapNodeOutputFromInputLineage(
+            output = lineage.WrapNodeOutputFromInputLineage(
                 rawOutput,
                 inputLineageContext,
                 plan.NodeId,
@@ -210,7 +210,7 @@ public sealed class NodeExecutor(
 
         if (graph.Lineage.ItemLevelLineageEnabled)
         {
-            var (unwrappedInput, inputLineageContext) = lineageService.PrepareInputWithLineageContext(input, context.CancellationToken);
+            var (unwrappedInput, inputLineageContext) = lineage.PrepareInputWithLineageContext(input, context.CancellationToken);
             context.RegisterForDisposal(unwrappedInput as IAsyncDisposable ?? input);
 
             output = await plan.ExecuteAggregate!(unwrappedInput, context, context.CancellationToken);
@@ -219,7 +219,7 @@ public sealed class NodeExecutor(
             if (nodeDef.OutputType is not null && output.GetDataType() != nodeDef.OutputType)
                 output = AdaptOutput(plan, output, nodeDef.OutputType, $"AggregateResult_{plan.NodeId}");
 
-            output = lineageService.WrapNodeOutputFromInputLineage(
+            output = lineage.WrapNodeOutputFromInputLineage(
                 output,
                 inputLineageContext,
                 plan.NodeId,

@@ -251,14 +251,14 @@ public sealed class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddNPipeline_ResolvesNullLineageService_ByDefault()
+    public void AddNPipeline_ResolvesNullLineage_ByDefault()
     {
         var services = new ServiceCollection();
         services.AddNPipeline();
         var sp = services.BuildServiceProvider();
         using var scope = sp.CreateScope();
-        var lineageService = scope.ServiceProvider.GetRequiredService<ILineageService>();
-        Assert.IsType<NullLineageService>(lineageService);
+        var lineage = scope.ServiceProvider.GetRequiredService<ILineage>();
+        Assert.IsType<NullLineage>(lineage);
     }
 
     [Fact]

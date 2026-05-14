@@ -61,7 +61,7 @@ public sealed partial class PipelineBuilder
         if (!typeof(ITransformNode).IsAssignableFrom(nodeDef.NodeType))
             throw new InvalidOperationException(ErrorMessages.ResilienceCannotBeAppliedToNonTransformNode(nodeDef.Name, nodeDef.Kind.ToString()));
 
-        var currentStrategy = nodeDef.ExecutionStrategy ?? SequentialExecutionStrategy.Instance;
+        var currentStrategy = nodeDef.ExecutionStrategy ?? new SequentialExecutionStrategy();
 
         if (currentStrategy is not ResilientExecutionStrategy)
             currentStrategy = new ResilientExecutionStrategy(currentStrategy);
