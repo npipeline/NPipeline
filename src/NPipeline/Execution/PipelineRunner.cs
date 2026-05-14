@@ -5,6 +5,7 @@ using NPipeline.Execution.Caching;
 using NPipeline.Execution.Orchestration;
 using NPipeline.Execution.Services;
 using NPipeline.Graph;
+using NPipeline.Lineage;
 using NPipeline.Observability;
 using NPipeline.Pipeline;
 
@@ -34,6 +35,7 @@ public sealed class PipelineRunner(
     IErrorHandlingService errorHandlingService,
     IPersistenceService persistenceService,
     IObservabilitySurface observabilitySurface,
+    ILineage lineage,
     IPipelineExecutionPlanCache? executionPlanCache = null,
     IRuntimePipelineBinder? runtimePipelineBinder = null) : IPipelineRunner
 {
@@ -46,6 +48,7 @@ public sealed class PipelineRunner(
         errorHandlingService,
         persistenceService,
         observabilitySurface,
+        lineage,
         executionPlanCache ?? new InMemoryPipelineExecutionPlanCache(),
         runtimePipelineBinder ?? RuntimePipelineBinder.Instance);
 

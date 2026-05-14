@@ -12,7 +12,7 @@ using NPipeline.Lineage;
 
 namespace NPipeline.Lineage;
 
-public sealed class DefaultLineageAdapterBuilder : ILineageAdapterBuilder
+internal sealed class DefaultLineageAdapterBuilder
 {
     public LineageAdapterDelegate? BuildLineageAdapter<TIn, TOut>(Type? lineageMapperType)
     {

@@ -29,13 +29,12 @@ public sealed partial class PipelineBuilder
     private bool _built;
 
     /// <summary>
-    /// Gets or sets the lineage adapter builder to use for constructing lineage transformation delegates.
+    /// Gets or sets the unified lineage module used by build-time adapter construction and runtime lineage orchestration.
     /// </summary>
     /// <remarks>
-    /// Defaults to <see cref="NullLineageAdapterBuilder.Instance"/> which does not perform any lineage transformation.
+    /// Defaults to <see cref="NullLineage.Instance"/> which does not perform lineage tracking.
     /// </remarks>
-    public static ILineageAdapterBuilder LineageAdapterBuilder { get; set; }
-        = NullLineageAdapterBuilder.Instance;
+    public static ILineage Lineage { get; set; } = NullLineage.Instance;
 
     // State objects encapsulating related fields by concern
 
@@ -389,21 +388,21 @@ public sealed partial class PipelineBuilder
             case NodeKind.Branch:
             case NodeKind.Lookup:
             case NodeKind.Batch:
-                lineageAdapter = BuildLineageAdapterReflection(inType, outType, meta.LineageMapperType);
+                lineageAdapter = BuildLineageAdapter(inType, outType, meta.LineageMapperType);
 
                 if (meta.HasCustomMerge)
                     customMerge = BuildCustomMergeDelegate(nodeType);
 
                 break;
             case NodeKind.Sink:
-                sinkUnwrap = BuildSinkLineageUnwrapReflection(inType);
+                sinkUnwrap = BuildSinkLineageUnwrap(inType);
 
                 if (meta.HasCustomMerge)
                     customMerge = BuildCustomMergeDelegate(nodeType);
 
                 break;
             case NodeKind.Join:
-                lineageAdapter = BuildLineageAdapterReflection(inType, outType, meta.LineageMapperType);
+                lineageAdapter = BuildLineageAdapter(inType, outType, meta.LineageMapperType);
 
                 // Pre-compile join key selectors during builder phase for zero-overhead runtime access
                 // Extract join key type and input types from the join node's generic hierarchy
@@ -438,14 +437,14 @@ public sealed partial class PipelineBuilder
 
                 break;
             case NodeKind.Composite:
-                lineageAdapter = BuildLineageAdapterReflection(inType, outType, meta.LineageMapperType);
+                lineageAdapter = BuildLineageAdapter(inType, outType, meta.LineageMapperType);
 
                 if (meta.HasCustomMerge)
                     customMerge = BuildCustomMergeDelegate(nodeType);
 
                 break;
             case NodeKind.CompositeOutput:
-                sinkUnwrap = BuildSinkLineageUnwrapReflection(inType);
+                sinkUnwrap = BuildSinkLineageUnwrap(inType);
 
                 if (meta.HasCustomMerge)
                     customMerge = BuildCustomMergeDelegate(nodeType);
@@ -475,37 +474,11 @@ public sealed partial class PipelineBuilder
         return handleFactory(id, def);
     }
 
-    private static LineageAdapterDelegate? BuildLineageAdapterReflection(Type? inType, Type? outType, Type? lineageMapperType)
-    {
-        if (inType is null || outType is null)
-            return null;
+    private static LineageAdapterDelegate? BuildLineageAdapter(Type? inType, Type? outType, Type? lineageMapperType)
+        => PipelineBuilder.Lineage.BuildLineageAdapter(inType, outType, lineageMapperType);
 
-        var method = typeof(ILineageAdapterBuilder).GetMethod(nameof(ILineageAdapterBuilder.BuildLineageAdapter),
-                         BindingFlags.Public | BindingFlags.Instance)
-                     ?? throw new InvalidOperationException("Method 'BuildLineageAdapter' not found on ILineageAdapterBuilder.");
-
-        var genericMethod = method.MakeGenericMethod(inType, outType);
-
-        var result = genericMethod.Invoke(PipelineBuilder.LineageAdapterBuilder, [lineageMapperType]);
-
-        return result as LineageAdapterDelegate;
-    }
-
-    private static SinkLineageUnwrapDelegate? BuildSinkLineageUnwrapReflection(Type? inType)
-    {
-        if (inType is null)
-            return null;
-
-        var method = typeof(ILineageAdapterBuilder).GetMethod(nameof(ILineageAdapterBuilder.BuildSinkLineageUnwrapDelegate),
-                         BindingFlags.Public | BindingFlags.Instance)
-                     ?? throw new InvalidOperationException("Method 'BuildSinkLineageUnwrapDelegate' not found on ILineageAdapterBuilder.");
-
-        var genericMethod = method.MakeGenericMethod(inType);
-
-        var result = genericMethod.Invoke(PipelineBuilder.LineageAdapterBuilder, []);
-
-        return result as SinkLineageUnwrapDelegate;
-    }
+    private static SinkLineageUnwrapDelegate? BuildSinkLineageUnwrap(Type? inType)
+        => PipelineBuilder.Lineage.BuildSinkLineageUnwrap(inType);
 
     /// <summary>
     ///     Extracts join input types from a join node's generic hierarchy.

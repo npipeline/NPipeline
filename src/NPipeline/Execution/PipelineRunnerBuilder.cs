@@ -1,6 +1,7 @@
 using NPipeline.Execution.Caching;
 using NPipeline.Execution.Factories;
 using NPipeline.Execution.Services;
+using NPipeline.Lineage;
 using NPipeline.Observability;
 using NPipeline.Pipeline;
 
@@ -19,6 +20,7 @@ public sealed class PipelineRunnerBuilder
     private IObservabilitySurface? _observabilitySurface;
     private IPersistenceService? _persistenceService;
     private IPipelineFactory? _pipelineFactory;
+    private ILineage? _lineage;
     private IRuntimePipelineBinder? _runtimePipelineBinder;
     private ITopologyService? _topologyService;
 
@@ -46,6 +48,15 @@ public sealed class PipelineRunnerBuilder
     public PipelineRunnerBuilder WithNodeExecutor(INodeExecutor nodeExecutor)
     {
         _nodeExecutor = nodeExecutor;
+        return this;
+    }
+
+    /// <summary>
+    ///     Sets the lineage module used by execution orchestration and default node execution.
+    /// </summary>
+    public PipelineRunnerBuilder WithLineage(ILineage lineage)
+    {
+        _lineage = lineage;
         return this;
     }
 
@@ -135,9 +146,10 @@ public sealed class PipelineRunnerBuilder
     {
         var pipelineFactory = _pipelineFactory ?? new PipelineFactory();
         var nodeFactory = _nodeFactory ?? new DefaultNodeFactory();
+        var lineage = _lineage ?? NullLineage.Instance;
 
         var nodeExecutor = _nodeExecutor ?? new NodeExecutor(
-            NullLineageService.Instance,
+            lineage,
             new PipeMergeService(new MergeStrategySelector()),
             new DataStreamWrapperService());
 
@@ -158,6 +170,7 @@ public sealed class PipelineRunnerBuilder
             errorHandlingService,
             persistenceService,
             observabilitySurface,
+            lineage,
             _executionPlanCache,
             runtimePipelineBinder);
     }

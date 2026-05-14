@@ -2,6 +2,7 @@ using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution.Caching;
 using NPipeline.Execution.Pooling;
 using NPipeline.Graph;
+using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Pipeline;
@@ -27,6 +28,7 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
         IErrorHandlingService errorHandlingService,
         IPersistenceService persistenceService,
         IObservabilitySurface observabilitySurface,
+        ILineage lineage,
         IPipelineExecutionPlanCache executionPlanCache,
         IRuntimePipelineBinder runtimePipelineBinder)
     {
@@ -38,6 +40,7 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
         ArgumentNullException.ThrowIfNull(errorHandlingService);
         ArgumentNullException.ThrowIfNull(persistenceService);
         ArgumentNullException.ThrowIfNull(observabilitySurface);
+        ArgumentNullException.ThrowIfNull(lineage);
         ArgumentNullException.ThrowIfNull(executionPlanCache);
         ArgumentNullException.ThrowIfNull(runtimePipelineBinder);
 
@@ -57,7 +60,7 @@ internal sealed class PipelineExecutionOrchestrator : IPipelineExecutionOrchestr
             persistenceService,
             observabilitySurface);
 
-        _lineageRecordingStage = new PipelineLineageRecordingStage();
+        _lineageRecordingStage = new PipelineLineageRecordingStage(lineage);
         _failureStage = new PipelineExecutionFailureStage(observabilitySurface);
         _cleanupStage = new PipelineExecutionCleanupStage(observabilitySurface);
     }

@@ -34,7 +34,7 @@ public sealed partial class PipelineBuilder
         if (NodeState.Nodes.Count == 0)
             throw new InvalidOperationException(ErrorMessages.PipelineRequiresAtLeastOneNode());
 
-        if (_config.ItemLevelLineageEnabled && LineageAdapterBuilder is NullLineageAdapterBuilder)
+        if (_config.ItemLevelLineageEnabled && !Lineage.SupportsItemLevelLineage)
             throw new InvalidOperationException(
                 "Item-level lineage requires NPipeline.Extensions.Lineage. " +
                 "Install the NPipeline.Extensions.Lineage package and call services.AddNPipelineLineage() " +
@@ -117,7 +117,7 @@ public sealed partial class PipelineBuilder
             return false;
         }
 
-        if (_config.ItemLevelLineageEnabled && LineageAdapterBuilder is NullLineageAdapterBuilder)
+        if (_config.ItemLevelLineageEnabled && !Lineage.SupportsItemLevelLineage)
         {
             validationResult = new PipelineValidationResult(
                 ImmutableList.Create(new ValidationIssue(ValidationSeverity.Error,
