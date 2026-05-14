@@ -5,8 +5,10 @@ using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
+using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 using NPipeline.Tests.Common;
 
 namespace NPipeline.Extensions.Parallelism.Tests;
@@ -20,12 +22,10 @@ public class ParallelRetryTests
         // Arrange
         var services = new ServiceCollection();
         services.AddNPipeline(Assembly.GetExecutingAssembly());
-        services.AddSingleton<RetryAllHandler>();
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
-        var ctx = new PipelineContext(
-            PipelineContextConfiguration.Default with { ErrorHandlerFactory = new DefaultErrorHandlerFactory() });
+        var ctx = new PipelineContext();
 
         // Set source data on the context
         ctx.SetSourceData([1]);
@@ -43,12 +43,10 @@ public class ParallelRetryTests
         // Arrange
         var services = new ServiceCollection();
         services.AddNPipeline(Assembly.GetExecutingAssembly());
-        services.AddSingleton<RetryAllHandler>();
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
-        var ctx = new PipelineContext(
-            PipelineContextConfiguration.Default with { ErrorHandlerFactory = new DefaultErrorHandlerFactory() });
+        var ctx = new PipelineContext();
 
         // Set source data on the context
         ctx.SetSourceData([1]);
@@ -69,12 +67,47 @@ public class ParallelRetryTests
         }
     }
 
-    private sealed class RetryAllHandler : INodeErrorHandler<ITransformNode<int, int>, int>
+    private sealed class RetryAllHandler : IResiliencePolicy
     {
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int failedItem, NodeFailureContext failure,
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception exception,
+            PipelineContext context,
             CancellationToken cancellationToken)
         {
-            return Task.FromResult(NodeErrorDecision.Retry);
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
+            string nodeId,
+            Exception exception,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Retry);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 
@@ -87,7 +120,7 @@ public class ParallelRetryTests
             var k = builder.AddInMemorySink<int>("pk");
 
             _ = builder.WithExecutionStrategy(t, new ParallelExecutionStrategy(2))
-                .WithErrorHandler(t, typeof(RetryAllHandler))
+                .SetNodeResiliencePolicy(t, new RetryAllHandler())
                 .WithRetryOptions(o => o.With(1)) // allow only 1 retry => attempt > 1 should throw
                 .Connect(s, t).Connect(t, k);
         }
@@ -102,7 +135,7 @@ public class ParallelRetryTests
             var k = builder.AddInMemorySink<int>("ok");
 
             builder.WithExecutionStrategy(t, new ParallelExecutionStrategy(4))
-                .WithErrorHandler(t, typeof(RetryAllHandler))
+                .SetNodeResiliencePolicy(t, new RetryAllHandler())
                 .WithRetryOptions(o => o.With(5)) // global high
                 .WithRetryOptions(t, PipelineRetryOptions.Default.With(2)) // node override lower
                 .Connect(s, t).Connect(t, k);

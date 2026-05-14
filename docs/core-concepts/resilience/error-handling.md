@@ -8,6 +8,14 @@ order: 1
 
 Robust error handling is critical for building reliable data streamlines. NPipeline provides mechanisms to manage errors at two complementary levels.
 
+## Unified Runtime Entry Point
+
+At runtime, NPipeline now routes resilience behavior through [`IResiliencePolicy`](./resilience-policy.md).
+
+- Use `builder.AddResiliencePolicy(...)` to configure one policy for retry decisions, delay behavior, dead-letter routing, and circuit breaker integration.
+- `DefaultResiliencePolicy` provides a fail-fast baseline with centralized runtime routing.
+- Use `builder.SetNodeResiliencePolicy(...)` for node-specific behavior instead of a single large switch.
+
 ## The Two Levels
 
 ### Node-Level Error Handling

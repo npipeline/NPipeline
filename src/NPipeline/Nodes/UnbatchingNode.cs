@@ -1,6 +1,5 @@
 using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
-using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Execution.Strategies;
 using NPipeline.Pipeline;
@@ -14,27 +13,8 @@ namespace NPipeline.Nodes;
 /// <typeparam name="T">The type of item in the batches.</typeparam>
 public sealed class UnbatchingNode<T> : IStreamTransformNode<IEnumerable<T>, T>
 {
-    private INodeErrorHandler? _errorHandler;
-
     /// <inheritdoc />
     public IExecutionStrategy ExecutionStrategy { get; set; } = new UnbatchingExecutionStrategy();
-
-    /// <inheritdoc />
-    public INodeErrorHandler? ErrorHandler
-    {
-        get => _errorHandler;
-        set
-        {
-            if (value is not null and not INodeErrorHandler<IStreamTransformNode<IEnumerable<T>, T>, IEnumerable<T>>)
-            {
-                throw new ArgumentException(
-                    $"The provided error handler is not of the expected type INodeErrorHandler<IStreamTransformNode<IEnumerable<T>, T>, IEnumerable<T>> for node {GetType().Name}.",
-                    nameof(value));
-            }
-
-            _errorHandler = value;
-        }
-    }
 
     /// <summary>
     ///     Transforms an input stream of batches into a stream of individual items asynchronously.

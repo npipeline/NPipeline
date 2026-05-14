@@ -429,7 +429,7 @@ These unsafe patterns can cause:
 public async Task ProcessContext(PipelineContext context)
 {
     // NP9302: Direct access to nullable property
-    var handler = context.PipelineErrorHandler;
+    var policy = context.ResiliencePolicy;
     
     // NP9302: Dictionary access without null check
     var configValue = context.Parameters["retryCount"];
@@ -447,7 +447,7 @@ public async Task ProcessContext(PipelineContext context)
 public async Task ProcessContext(PipelineContext context)
 {
     // Use null-conditional operator
-    await context.PipelineErrorHandler?.HandleNodeFailureAsync("nodeId", new Exception(), context, CancellationToken.None);
+    await context.ResiliencePolicy?.DecidePipelineFailureAsync("nodeId", new Exception(), context, CancellationToken.None);
     
     // Use TryGetValue pattern for dictionary access
     if (context.Parameters?.TryGetValue("retryCount", out var configValue) == true)
@@ -467,10 +467,10 @@ public async Task ProcessContext(PipelineContext context)
 
 | Pattern | Example | When to Use |
 |---------|---------|-------------|
-| Null-conditional operator | `context.PipelineErrorHandler?.HandleError()` | When you can safely continue if property is null |
-| Explicit null check | `if (context.PipelineErrorHandler != null)` | When you need to handle null case explicitly |
+| Null-conditional operator | `context.ResiliencePolicy?.DecidePipelineFailureAsync(...)` | When you can safely continue if property is null |
+| Explicit null check | `if (context.ResiliencePolicy != null)` | When you need to handle null case explicitly |
 | TryGetValue pattern | `context.Parameters?.TryGetValue("key", out var value)` | For dictionary access with null safety |
-| Pattern matching | `if (context.PipelineErrorHandler is { } handler)` | For type-safe access with null checking |
+| Pattern matching | `if (context.ResiliencePolicy is { } policy)` | For type-safe access with null checking |
 
 ---
 
@@ -478,13 +478,13 @@ public async Task ProcessContext(PipelineContext context)
 
 ### NP9001: Incomplete Resilient Configuration
 
-**Message:** `[NP9001] Error handler can return PipelineErrorDecision.RestartNode but may not have all three mandatory prerequisites configured. The system validates configuration at runtime and throws InvalidOperationException if prerequisites are missing.`
+**Message:** `[NP9001] Resilience policy can return ResilienceDecision.RestartNode but may not have all three mandatory prerequisites configured. The system validates configuration at runtime and throws InvalidOperationException if prerequisites are missing.`
 
 **Category:** Configuration Error
 
 **Severity:** Warning
 
-**Cause:** Your error handler can return `PipelineErrorDecision.RestartNode`, but the configuration is incomplete. Restart functionality requires **all three** of the following mandatory prerequisites:
+**Cause:** Your resilience policy can return `ResilienceDecision.RestartNode`, but the configuration is incomplete. Restart functionality requires **all three** of the following mandatory prerequisites:
 
 1. **ResilientExecutionStrategy** must wrap the node
 2. **MaxNodeRestartAttempts** must be > 0 in PipelineRetryOptions
@@ -497,14 +497,14 @@ public async Task ProcessContext(PipelineContext context)
 ```csharp
 // PROBLEM: RestartNode is possible, but prerequisites are missing
 
-var myErrorHandler = new MyErrorHandler();
+builder.AddResiliencePolicy<MyResiliencePolicy>();
 
 var pipeline = builder
     .AddTransform<MyTransform>("myNode")
     // Missing: .WithExecutionStrategy(builder, new ResilientExecutionStrategy(...))
     .Build();
 
-// If MyErrorHandler.HandleNodeFailureAsync() returns RestartNode,
+// If MyResiliencePolicy.DecidePipelineFailureAsync() returns RestartNode,
 // the system will throw InvalidOperationException at runtime indicating
 // which prerequisite is missing.
 ```

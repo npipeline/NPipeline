@@ -1,5 +1,4 @@
 using NPipeline.Configuration;
-using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Graph;
 
@@ -15,7 +14,6 @@ namespace NPipeline.Pipeline;
 /// var builder = new PipelineBuilder();
 /// var transform = builder.AddTransform&lt;MyTransform, int, string&gt;("transform")
 ///     .WithRetries(3)
-///     .WithErrorHandler&lt;int, string, MyErrorHandler&gt;()
 ///     .WithParallelism(4);
 /// </code>
 ///     Note: These extension methods must be used within the context of the builder's fluent API.
@@ -130,91 +128,6 @@ public static class NodeConfigurationExtensions
 
         var retryOptions = PipelineRetryOptions.Default.With(maxRetries);
         builder.WithRetryOptions(handle, retryOptions);
-        return handle;
-    }
-
-    /// <summary>
-    ///     Configures error handling for a transform node.
-    /// </summary>
-    /// <typeparam name="TIn">The input type of the transform node.</typeparam>
-    /// <typeparam name="TOut">The output type of the transform node.</typeparam>
-    /// <param name="handle">The transform node handle.</param>
-    /// <param name="builder">The pipeline builder.</param>
-    /// <param name="errorHandlerType">The type of the error handler. Must implement INodeErrorHandler.</param>
-    /// <returns>The same transform node handle for method chaining.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when builder or errorHandlerType is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when errorHandlerType does not implement INodeErrorHandler.</exception>
-    public static TransformNodeHandle<TIn, TOut> WithErrorHandler<TIn, TOut>(
-        this TransformNodeHandle<TIn, TOut> handle,
-        PipelineBuilder builder,
-        Type errorHandlerType)
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-        ArgumentNullException.ThrowIfNull(errorHandlerType);
-
-        builder.WithErrorHandler(handle, errorHandlerType);
-        return handle;
-    }
-
-    /// <summary>
-    ///     Configures error handling for a transform node using a generic type parameter.
-    /// </summary>
-    /// <typeparam name="TIn">The input type of the transform node.</typeparam>
-    /// <typeparam name="TOut">The output type of the transform node.</typeparam>
-    /// <typeparam name="TErrorHandler">The type of the error handler.</typeparam>
-    /// <param name="handle">The transform node handle.</param>
-    /// <param name="builder">The pipeline builder.</param>
-    /// <returns>The same transform node handle for method chaining.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when builder is null.</exception>
-    public static TransformNodeHandle<TIn, TOut> WithErrorHandler<TIn, TOut, TErrorHandler>(
-        this TransformNodeHandle<TIn, TOut> handle,
-        PipelineBuilder builder)
-        where TErrorHandler : INodeErrorHandler
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-
-        builder.WithErrorHandler(handle, typeof(TErrorHandler));
-        return handle;
-    }
-
-    /// <summary>
-    ///     Configures error handling for a sink node using a generic type parameter.
-    /// </summary>
-    /// <typeparam name="TIn">The input type of the sink node.</typeparam>
-    /// <typeparam name="TErrorHandler">The type of the error handler.</typeparam>
-    /// <param name="handle">The sink node handle.</param>
-    /// <param name="builder">The pipeline builder.</param>
-    /// <returns>The same sink node handle for method chaining.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when builder is null.</exception>
-    public static SinkNodeHandle<TIn> WithErrorHandler<TIn, TErrorHandler>(
-        this SinkNodeHandle<TIn> handle,
-        PipelineBuilder builder)
-        where TErrorHandler : INodeErrorHandler
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-
-        builder.WithErrorHandler(handle, typeof(TErrorHandler));
-        return handle;
-    }
-
-    /// <summary>
-    ///     Configures error handling for an aggregate node using a generic type parameter.
-    /// </summary>
-    /// <typeparam name="TIn">The input type of the aggregate node.</typeparam>
-    /// <typeparam name="TOut">The output type of the aggregate node.</typeparam>
-    /// <typeparam name="TErrorHandler">The type of the error handler.</typeparam>
-    /// <param name="handle">The aggregate node handle.</param>
-    /// <param name="builder">The pipeline builder.</param>
-    /// <returns>The same aggregate node handle for method chaining.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when builder is null.</exception>
-    public static AggregateNodeHandle<TIn, TOut> WithErrorHandler<TIn, TOut, TErrorHandler>(
-        this AggregateNodeHandle<TIn, TOut> handle,
-        PipelineBuilder builder)
-        where TErrorHandler : INodeErrorHandler
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-
-        builder.WithErrorHandler(handle, typeof(TErrorHandler));
         return handle;
     }
 

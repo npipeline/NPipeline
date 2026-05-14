@@ -3,6 +3,7 @@ using FakeItEasy;
 using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Extensions.Nodes.Tests;
 
@@ -11,119 +12,97 @@ public sealed class DefaultErrorHandlersTests
     [Fact]
     public async Task DefaultValidationErrorHandler_WithValidationException_ShouldReturnConfiguredDecision()
     {
-        // Arrange
         var handler = new DefaultValidationErrorHandler<string>();
         var node = A.Fake<ITransformNode<string, string>>();
         var exception = new ValidationException("Name", "NotEmpty", "", "Name cannot be empty");
         var context = PipelineContext.Default;
 
-        // Act
-        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), CancellationToken.None);
+        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
 
-        // Assert
-        decision.Should().Be(NodeErrorDecision.Skip);
+        decision.Should().Be(ResilienceDecision.Skip);
     }
 
     [Fact]
     public async Task DefaultValidationErrorHandler_WithOtherException_ShouldReturnFail()
     {
-        // Arrange
         var handler = new DefaultValidationErrorHandler<string>();
         var node = A.Fake<ITransformNode<string, string>>();
         var exception = new InvalidOperationException("Unexpected error");
         var context = PipelineContext.Default;
 
-        // Act
-        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), CancellationToken.None);
+        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
 
-        // Assert
-        decision.Should().Be(NodeErrorDecision.Fail);
+        decision.Should().Be(ResilienceDecision.Fail);
     }
 
     [Fact]
     public async Task DefaultValidationErrorHandler_WithRetryDecision_ShouldReturnRetry()
     {
-        // Arrange
-        var handler = new DefaultValidationErrorHandler<string>(NodeErrorDecision.Retry);
+        var handler = new DefaultValidationErrorHandler<string>(ResilienceDecision.Retry);
         var node = A.Fake<ITransformNode<string, string>>();
         var exception = new ValidationException("Age", "Range", 150, "Age out of range");
         var context = PipelineContext.Default;
 
-        // Act
-        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), CancellationToken.None);
+        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
 
-        // Assert
-        decision.Should().Be(NodeErrorDecision.Retry);
+        decision.Should().Be(ResilienceDecision.Retry);
     }
 
     [Fact]
     public async Task DefaultFilteringErrorHandler_WithFilteringException_ShouldReturnConfiguredDecision()
     {
-        // Arrange
         var handler = new DefaultFilteringErrorHandler<string>();
         var node = A.Fake<ITransformNode<string, string>>();
         var exception = new FilteringException("Item does not meet criteria");
         var context = PipelineContext.Default;
 
-        // Act
-        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), CancellationToken.None);
+        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
 
-        // Assert
-        decision.Should().Be(NodeErrorDecision.Skip);
+        decision.Should().Be(ResilienceDecision.Skip);
     }
 
     [Fact]
     public async Task DefaultFilteringErrorHandler_WithOtherException_ShouldReturnFail()
     {
-        // Arrange
         var handler = new DefaultFilteringErrorHandler<string>();
         var node = A.Fake<ITransformNode<string, string>>();
         var exception = new InvalidOperationException("Unexpected error");
         var context = PipelineContext.Default;
 
-        // Act
-        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), CancellationToken.None);
+        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
 
-        // Assert
-        decision.Should().Be(NodeErrorDecision.Fail);
+        decision.Should().Be(ResilienceDecision.Fail);
     }
 
     [Fact]
     public async Task DefaultTypeConversionErrorHandler_WithTypeConversionException_ShouldReturnConfiguredDecision()
     {
-        // Arrange
         var handler = new DefaultTypeConversionErrorHandler<string, int>();
         var node = A.Fake<ITransformNode<string, int>>();
         var exception = new TypeConversionException(typeof(string), typeof(int), "abc", "Cannot convert");
         var context = PipelineContext.Default;
 
-        // Act
-        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), CancellationToken.None);
+        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
 
-        // Assert
-        decision.Should().Be(NodeErrorDecision.Skip);
+        decision.Should().Be(ResilienceDecision.Skip);
     }
 
     [Fact]
     public async Task DefaultTypeConversionErrorHandler_WithOtherException_ShouldReturnFail()
     {
-        // Arrange
         var handler = new DefaultTypeConversionErrorHandler<string, int>();
         var node = A.Fake<ITransformNode<string, int>>();
         var exception = new InvalidOperationException("Unexpected error");
         var context = PipelineContext.Default;
 
-        // Act
-        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), CancellationToken.None);
+        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
 
-        // Assert
-        decision.Should().Be(NodeErrorDecision.Fail);
+        decision.Should().Be(ResilienceDecision.Fail);
     }
 
     [Fact]
     public async Task DefaultValidationErrorHandler_WithCancellation_ShouldComplete()
     {
-        // Arrange
         var handler = new DefaultValidationErrorHandler<string>();
         var node = A.Fake<ITransformNode<string, string>>();
         var exception = new ValidationException("Field", "Rule", "value", "message");
@@ -131,17 +110,14 @@ public sealed class DefaultErrorHandlersTests
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        // Act - Should not throw despite cancellation
-        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), cts.Token);
+        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, cts.Token);
 
-        // Assert
-        decision.Should().Be(NodeErrorDecision.Skip);
+        decision.Should().Be(ResilienceDecision.Skip);
     }
 
     [Fact]
     public async Task DefaultFilteringErrorHandler_WithCancellation_ShouldComplete()
     {
-        // Arrange
         var handler = new DefaultFilteringErrorHandler<string>();
         var node = A.Fake<ITransformNode<string, string>>();
         var exception = new FilteringException("Filtered");
@@ -149,17 +125,14 @@ public sealed class DefaultErrorHandlersTests
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        // Act - Should not throw despite cancellation
-        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), cts.Token);
+        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, cts.Token);
 
-        // Assert
-        decision.Should().Be(NodeErrorDecision.Skip);
+        decision.Should().Be(ResilienceDecision.Skip);
     }
 
     [Fact]
     public async Task DefaultTypeConversionErrorHandler_WithCancellation_ShouldComplete()
     {
-        // Arrange
         var handler = new DefaultTypeConversionErrorHandler<string, int>();
         var node = A.Fake<ITransformNode<string, int>>();
         var exception = new TypeConversionException(typeof(string), typeof(int), "test", "error");
@@ -167,10 +140,8 @@ public sealed class DefaultErrorHandlersTests
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        // Act - Should not throw despite cancellation
-        var decision = await handler.HandleAsync(node, "test", new NodeFailureContext(exception, context, new NodeFailureAttribution("test-node", "test-node", Guid.Empty, Guid.Empty), 0), cts.Token);
+        var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, cts.Token);
 
-        // Assert
-        decision.Should().Be(NodeErrorDecision.Skip);
+        decision.Should().Be(ResilienceDecision.Skip);
     }
 }

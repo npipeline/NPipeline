@@ -3,8 +3,10 @@ using System.Diagnostics;
 using AwesomeAssertions;
 using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
+using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Tests.Nodes.Branch;
 
@@ -54,29 +56,93 @@ public sealed class BranchNodeTests
         public string Name { get; set; } = string.Empty;
     }
 
-    private sealed class ContinueErrorHandler(Action onCalled) : IPipelineErrorHandler
+    private sealed class ContinueResiliencePolicy(Action onCalled) : IResiliencePolicy
     {
-        public Task<PipelineErrorDecision> HandleNodeFailureAsync(
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception error,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
             string nodeId,
             Exception error,
             PipelineContext context,
             CancellationToken cancellationToken)
         {
             onCalled();
-            return Task.FromResult(PipelineErrorDecision.ContinueWithoutNode);
+            return Task.FromResult(ResilienceDecision.ContinueWithoutNode);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 
-    private sealed class FailErrorHandler(Action onCalled) : IPipelineErrorHandler
+    private sealed class FailResiliencePolicy(Action onCalled) : IResiliencePolicy
     {
-        public Task<PipelineErrorDecision> HandleNodeFailureAsync(
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception error,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
             string nodeId,
             Exception error,
             PipelineContext context,
             CancellationToken cancellationToken)
         {
             onCalled();
-            return Task.FromResult(PipelineErrorDecision.FailPipeline);
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 
@@ -374,7 +440,7 @@ public sealed class BranchNodeTests
         });
 
         var config = new PipelineContextConfiguration(
-            PipelineErrorHandler: new ContinueErrorHandler(() => errorHandlerCalled = true));
+            ResiliencePolicy: new ContinueResiliencePolicy(() => errorHandlerCalled = true));
 
         var ctx = new PipelineContext(config);
 
@@ -400,7 +466,7 @@ public sealed class BranchNodeTests
         });
 
         var config = new PipelineContextConfiguration(
-            PipelineErrorHandler: new FailErrorHandler(() => errorHandlerCalled = true));
+            ResiliencePolicy: new FailResiliencePolicy(() => errorHandlerCalled = true));
 
         var ctx = new PipelineContext(config);
 

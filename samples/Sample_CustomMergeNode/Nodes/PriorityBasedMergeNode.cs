@@ -6,7 +6,6 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using NPipeline.DataFlow;
-using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Execution.Strategies;
 using NPipeline.Nodes;
@@ -48,8 +47,6 @@ public class PriorityBasedMergeNode : CustomMergeNode<MarketDataTick>, ITransfor
         get => _executionStrategy ??= new SequentialExecutionStrategy();
         set => _executionStrategy = value;
     }
-
-    public INodeErrorHandler? ErrorHandler { get; set; }
 
     // ITransformNode implementation (required for pipeline builder compatibility)
     public async Task<MarketDataTick> TransformAsync(MarketDataTick input, PipelineContext context, CancellationToken cancellationToken)

@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using NPipeline.Configuration;
-using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Extensions.Testing;
 
@@ -37,7 +37,7 @@ public sealed class PipelineTestHarness<TPipeline> where TPipeline : IPipelineDe
     private readonly List<Exception> _capturedErrors = new();
     private readonly IPipelineRunner _pipelineRunner;
     private bool _captureErrors;
-    private PipelineErrorDecision _errorHandlingDecision = PipelineErrorDecision.ContinueWithoutNode;
+    private ResilienceDecision _errorHandlingDecision = ResilienceDecision.Skip;
 
     /// <summary>
     ///     Creates a new test harness for the specified pipeline definition.
@@ -120,9 +120,9 @@ public sealed class PipelineTestHarness<TPipeline> where TPipeline : IPipelineDe
     ///     Configures the harness to capture errors that occur during execution instead of throwing them.
     ///     Captured errors will be available in <see cref="PipelineExecutionResult.Errors" />.
     /// </summary>
-    /// <param name="decision">The error decision to apply when errors are captured. Defaults to <see cref="PipelineErrorDecision.ContinueWithoutNode" />.</param>
+    /// <param name="decision">The resilience decision to apply when errors are captured. Defaults to <see cref="ResilienceDecision.Skip" />.</param>
     /// <returns>This harness for fluent chaining.</returns>
-    public PipelineTestHarness<TPipeline> CaptureErrors(PipelineErrorDecision decision = PipelineErrorDecision.ContinueWithoutNode)
+    public PipelineTestHarness<TPipeline> CaptureErrors(ResilienceDecision decision = ResilienceDecision.Skip)
     {
         _captureErrors = true;
         _errorHandlingDecision = decision;
@@ -144,26 +144,15 @@ public sealed class PipelineTestHarness<TPipeline> where TPipeline : IPipelineDe
         // If error capturing is enabled or a cancellation token was provided, create a new context
         if (_captureErrors || cancellationToken != default)
         {
-            IPipelineErrorHandler? errorHandler;
+            IResiliencePolicy resiliencePolicy;
 
             if (_captureErrors)
             {
-                // Create the capturing handler
-                CapturingPipelineErrorHandler capturingHandler = new(_capturedErrors, _errorHandlingDecision);
-
-                // If there's an original handler, chain them together so both execute
-                if (Context.PipelineErrorHandler is not null)
-                    errorHandler = new CompositePipelineErrorHandler(Context.PipelineErrorHandler, capturingHandler);
-                else
-                {
-                    // No original handler, just use the capturing handler
-                    errorHandler = capturingHandler;
-                }
+                resiliencePolicy = new CapturingResiliencePolicy(Context.ResiliencePolicy, _capturedErrors, _errorHandlingDecision);
             }
             else
             {
-                // Not capturing, preserve the original handler
-                errorHandler = Context.PipelineErrorHandler;
+                resiliencePolicy = Context.ResiliencePolicy;
             }
 
             executionContext = new PipelineContext(
@@ -174,7 +163,7 @@ public sealed class PipelineTestHarness<TPipeline> where TPipeline : IPipelineDe
                     Parameters: Context.Parameters,
                     Items: Context.Items,
                     Properties: Context.Properties,
-                    PipelineErrorHandler: errorHandler,
+                    ResiliencePolicy: resiliencePolicy,
                     DeadLetterSink: Context.DeadLetterSink, // Preserve the dead-letter sink
                     ErrorHandlerFactory: Context.ErrorHandlerFactory,
                     LineageFactory: Context.LineageFactory,

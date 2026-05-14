@@ -2,7 +2,6 @@ using System.Reflection;
 using AwesomeAssertions;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
-using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Execution.Strategies;
 using NPipeline.Graph;
@@ -121,7 +120,6 @@ public sealed class BuiltInRulesTests
     private sealed class IntToString : ITransformNode<int, string>
     {
         public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
-        public INodeErrorHandler? ErrorHandler { get; set; }
 
         public Task<string> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {

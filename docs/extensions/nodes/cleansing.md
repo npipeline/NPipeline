@@ -314,12 +314,10 @@ Cleansing nodes are optimized for performance:
 
 ## Error Handling
 
-Cleansing nodes integrate with NPipeline's error handling:
+Cleansing nodes integrate with NPipeline's resilience model. Override the default behaviour by setting a node-scoped resilience policy:
 
 ```csharp
-// Custom error handler for cleansing failures
-builder.WithErrorHandler(cleanseHandle, new CleansingErrorHandler());
-
-// Continue processing even if cleansing fails
-builder.WithErrorDecision(cleanseHandle, NodeErrorDecision.Skip);
+// Skip items where cleansing fails
+builder.SetNodeResiliencePolicy(cleanseHandle,
+    new DefaultValidationErrorHandler<MyType>(ResilienceDecision.Skip));
 ```

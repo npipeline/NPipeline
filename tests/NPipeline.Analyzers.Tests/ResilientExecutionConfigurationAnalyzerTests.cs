@@ -15,21 +15,39 @@ public sealed class ResilientExecutionConfigurationAnalyzerTests
     public void ShouldDetectRestartNodeInErrorHandler()
     {
         var code = """
-                   using NPipeline.ErrorHandling;
+                   using NPipeline.Graph;
+                   using NPipeline.Nodes;
                    using NPipeline.Pipeline;
+                   using NPipeline.Resilience;
                    using System.Threading;
                    using System.Threading.Tasks;
 
-                   public class MyErrorHandler : IPipelineErrorHandler
+                   public class MyPolicy : IResiliencePolicy
                    {
-                       public async Task<PipelineErrorDecision> HandleNodeFailureAsync(
-                           string nodeId,
-                           Exception error,
-                           PipelineContext context,
+                       public Task<ResilienceDecision> DecideNodeFailureAsync(
+                           NodeDefinition nodeDefinition, INode node, Exception exception,
+                           PipelineContext context, CancellationToken cancellationToken)
+                           => Task.FromResult(ResilienceDecision.Fail);
+
+                       public async Task<ResilienceDecision> DecidePipelineFailureAsync(
+                           string nodeId, Exception error, PipelineContext context,
                            CancellationToken cancellationToken)
                        {
-                           return PipelineErrorDecision.RestartNode;
+                           return ResilienceDecision.RestartNode;
                        }
+
+                       public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+                           ITransformNode<TIn, TOut> node, TIn failedItem, Exception exception,
+                           PipelineContext context, string nodeId, int retryAttempt,
+                           CancellationToken cancellationToken)
+                           => Task.FromResult(ResilienceDecision.Fail);
+
+                       public System.ValueTask<System.TimeSpan> GetRetryDelayAsync(
+                           PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+                           => new(System.TimeSpan.Zero);
+
+                       public IResilienceCircuitBreaker GetCircuitBreaker(PipelineContext context, string nodeId)
+                           => null;
                    }
                    """;
 
@@ -41,53 +59,89 @@ public sealed class ResilientExecutionConfigurationAnalyzerTests
     }
 
     [Fact]
-    public void ShouldIgnoreFailPipelineDecision()
+    public void ShouldIgnoreFailDecision()
     {
         var code = """
-                   using NPipeline.ErrorHandling;
+                   using NPipeline.Graph;
+                   using NPipeline.Nodes;
                    using NPipeline.Pipeline;
+                   using NPipeline.Resilience;
                    using System.Threading;
                    using System.Threading.Tasks;
 
-                   public class MyErrorHandler : IPipelineErrorHandler
+                   public class MyPolicy : IResiliencePolicy
                    {
-                       public async Task<PipelineErrorDecision> HandleNodeFailureAsync(
-                           string nodeId,
-                           Exception error,
-                           PipelineContext context,
+                       public Task<ResilienceDecision> DecideNodeFailureAsync(
+                           NodeDefinition nodeDefinition, INode node, Exception exception,
+                           PipelineContext context, CancellationToken cancellationToken)
+                           => Task.FromResult(ResilienceDecision.Fail);
+
+                       public async Task<ResilienceDecision> DecidePipelineFailureAsync(
+                           string nodeId, Exception error, PipelineContext context,
                            CancellationToken cancellationToken)
                        {
-                           return PipelineErrorDecision.FailPipeline;
+                           return ResilienceDecision.Fail;
                        }
+
+                       public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+                           ITransformNode<TIn, TOut> node, TIn failedItem, Exception exception,
+                           PipelineContext context, string nodeId, int retryAttempt,
+                           CancellationToken cancellationToken)
+                           => Task.FromResult(ResilienceDecision.Fail);
+
+                       public System.ValueTask<System.TimeSpan> GetRetryDelayAsync(
+                           PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+                           => new(System.TimeSpan.Zero);
+
+                       public IResilienceCircuitBreaker GetCircuitBreaker(PipelineContext context, string nodeId)
+                           => null;
                    }
                    """;
 
         var diagnostics = GetDiagnostics(code);
 
-        // The analyzer should NOT report a diagnostic for FailPipeline
+        // The analyzer should NOT report a diagnostic for Fail
         var hasDiagnostic = diagnostics.Any(d => d.Id == ResilientExecutionConfigurationAnalyzer.IncompleteResilientConfigurationId);
-        Assert.False(hasDiagnostic, "Analyzer should not report for FailPipeline decision");
+        Assert.False(hasDiagnostic, "Analyzer should not report for Fail decision");
     }
 
     [Fact]
     public void ShouldIgnoreContinueWithoutNodeDecision()
     {
         var code = """
-                   using NPipeline.ErrorHandling;
+                   using NPipeline.Graph;
+                   using NPipeline.Nodes;
                    using NPipeline.Pipeline;
+                   using NPipeline.Resilience;
                    using System.Threading;
                    using System.Threading.Tasks;
 
-                   public class MyErrorHandler : IPipelineErrorHandler
+                   public class MyPolicy : IResiliencePolicy
                    {
-                       public async Task<PipelineErrorDecision> HandleNodeFailureAsync(
-                           string nodeId,
-                           Exception error,
-                           PipelineContext context,
+                       public Task<ResilienceDecision> DecideNodeFailureAsync(
+                           NodeDefinition nodeDefinition, INode node, Exception exception,
+                           PipelineContext context, CancellationToken cancellationToken)
+                           => Task.FromResult(ResilienceDecision.Fail);
+
+                       public async Task<ResilienceDecision> DecidePipelineFailureAsync(
+                           string nodeId, Exception error, PipelineContext context,
                            CancellationToken cancellationToken)
                        {
-                           return PipelineErrorDecision.ContinueWithoutNode;
+                           return ResilienceDecision.ContinueWithoutNode;
                        }
+
+                       public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+                           ITransformNode<TIn, TOut> node, TIn failedItem, Exception exception,
+                           PipelineContext context, string nodeId, int retryAttempt,
+                           CancellationToken cancellationToken)
+                           => Task.FromResult(ResilienceDecision.Fail);
+
+                       public System.ValueTask<System.TimeSpan> GetRetryDelayAsync(
+                           PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+                           => new(System.TimeSpan.Zero);
+
+                       public IResilienceCircuitBreaker GetCircuitBreaker(PipelineContext context, string nodeId)
+                           => null;
                    }
                    """;
 
@@ -102,25 +156,43 @@ public sealed class ResilientExecutionConfigurationAnalyzerTests
     public void ShouldDetectRestartNodeInSwitchExpression()
     {
         var code = """
-                   using NPipeline.ErrorHandling;
+                   using NPipeline.Graph;
+                   using NPipeline.Nodes;
                    using NPipeline.Pipeline;
+                   using NPipeline.Resilience;
                    using System.Threading;
                    using System.Threading.Tasks;
 
-                   public class MyErrorHandler : IPipelineErrorHandler
+                   public class MyPolicy : IResiliencePolicy
                    {
-                       public async Task<PipelineErrorDecision> HandleNodeFailureAsync(
-                           string nodeId,
-                           Exception error,
-                           PipelineContext context,
+                       public Task<ResilienceDecision> DecideNodeFailureAsync(
+                           NodeDefinition nodeDefinition, INode node, Exception exception,
+                           PipelineContext context, CancellationToken cancellationToken)
+                           => Task.FromResult(ResilienceDecision.Fail);
+
+                       public async Task<ResilienceDecision> DecidePipelineFailureAsync(
+                           string nodeId, Exception error, PipelineContext context,
                            CancellationToken cancellationToken)
                        {
                            return error switch
                            {
-                               TimeoutException => PipelineErrorDecision.RestartNode,
-                               _ => PipelineErrorDecision.FailPipeline
+                               TimeoutException => ResilienceDecision.RestartNode,
+                               _ => ResilienceDecision.Fail
                            };
                        }
+
+                       public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+                           ITransformNode<TIn, TOut> node, TIn failedItem, Exception exception,
+                           PipelineContext context, string nodeId, int retryAttempt,
+                           CancellationToken cancellationToken)
+                           => Task.FromResult(ResilienceDecision.Fail);
+
+                       public System.ValueTask<System.TimeSpan> GetRetryDelayAsync(
+                           PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+                           => new(System.TimeSpan.Zero);
+
+                       public IResilienceCircuitBreaker GetCircuitBreaker(PipelineContext context, string nodeId)
+                           => null;
                    }
                    """;
 
@@ -134,21 +206,39 @@ public sealed class ResilientExecutionConfigurationAnalyzerTests
     public void ShouldDetectRestartNodeInConditionalExpression()
     {
         var code = """
-                   using NPipeline.ErrorHandling;
+                   using NPipeline.Graph;
+                   using NPipeline.Nodes;
                    using NPipeline.Pipeline;
+                   using NPipeline.Resilience;
                    using System.Threading;
                    using System.Threading.Tasks;
 
-                   public class MyErrorHandler : IPipelineErrorHandler
+                   public class MyPolicy : IResiliencePolicy
                    {
-                       public async Task<PipelineErrorDecision> HandleNodeFailureAsync(
-                           string nodeId,
-                           Exception error,
-                           PipelineContext context,
+                       public Task<ResilienceDecision> DecideNodeFailureAsync(
+                           NodeDefinition nodeDefinition, INode node, Exception exception,
+                           PipelineContext context, CancellationToken cancellationToken)
+                           => Task.FromResult(ResilienceDecision.Fail);
+
+                       public async Task<ResilienceDecision> DecidePipelineFailureAsync(
+                           string nodeId, Exception error, PipelineContext context,
                            CancellationToken cancellationToken)
                        {
-                           return error is TimeoutException ? PipelineErrorDecision.RestartNode : PipelineErrorDecision.FailPipeline;
+                           return error is TimeoutException ? ResilienceDecision.RestartNode : ResilienceDecision.Fail;
                        }
+
+                       public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+                           ITransformNode<TIn, TOut> node, TIn failedItem, Exception exception,
+                           PipelineContext context, string nodeId, int retryAttempt,
+                           CancellationToken cancellationToken)
+                           => Task.FromResult(ResilienceDecision.Fail);
+
+                       public System.ValueTask<System.TimeSpan> GetRetryDelayAsync(
+                           PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+                           => new(System.TimeSpan.Zero);
+
+                       public IResilienceCircuitBreaker GetCircuitBreaker(PipelineContext context, string nodeId)
+                           => null;
                    }
                    """;
 

@@ -137,19 +137,22 @@ catch (FilteringException ex)
 }
 ```
 
-## Node Error Decisions
+## Node-Scoped Resilience
 
-Control what happens when an item is filtered:
+Control what happens when an item is filtered out by setting a node-scoped resilience policy:
 
 ```csharp
-// Skip filtered items (default - no exception)
-builder.WithErrorDecision(filterHandle, NodeErrorDecision.Skip);
+// Skip filtered items (default — no exception)
+builder.SetNodeResiliencePolicy(filterHandle,
+    new DefaultFilteringErrorHandler<Order>(ResilienceDecision.Skip));
 
-// Throw exception on first filtered item
-builder.WithErrorDecision(filterHandle, NodeErrorDecision.Fail);
+// Fail on first filtered item
+builder.SetNodeResiliencePolicy(filterHandle,
+    new DefaultFilteringErrorHandler<Order>(ResilienceDecision.Fail));
 
-// Retry with different criteria
-builder.WithErrorDecision(filterHandle, NodeErrorDecision.Retry);
+// Dead-letter filtered items for review
+builder.SetNodeResiliencePolicy(filterHandle,
+    new DefaultFilteringErrorHandler<Order>(ResilienceDecision.DeadLetter));
 ```
 
 ## Filtering Pipeline Example

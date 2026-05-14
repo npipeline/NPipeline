@@ -36,7 +36,6 @@ Use `IStreamTransformNode` when your node needs to:
 public interface IStreamTransformNode<TIn, TOut> : INode
 {
     IExecutionStrategy ExecutionStrategy { get; set; }
-    INodeErrorHandler? ErrorHandler { get; set; }
 
     IAsyncEnumerable<TOut> TransformAsync(
         IAsyncEnumerable<TIn> items,
@@ -82,7 +81,6 @@ public sealed class BatchingTransform<T> : IStreamTransformNode<T, IReadOnlyColl
     }
 
     public IExecutionStrategy ExecutionStrategy { get; set; } = new BatchingExecutionStrategy();
-    public INodeErrorHandler? ErrorHandler { get; set; }
 
     public IAsyncEnumerable<IReadOnlyCollection<T>> TransformAsync(
         IAsyncEnumerable<T> items,
@@ -109,7 +107,6 @@ using NPipeline.Pipeline;
 public sealed class UnbatchingTransform<T> : IStreamTransformNode<IEnumerable<T>, T>
 {
     public IExecutionStrategy ExecutionStrategy { get; set; } = new UnbatchingExecutionStrategy();
-    public INodeErrorHandler? ErrorHandler { get; set; }
 
     public IAsyncEnumerable<T> TransformAsync(
         IAsyncEnumerable<IEnumerable<T>> batches,

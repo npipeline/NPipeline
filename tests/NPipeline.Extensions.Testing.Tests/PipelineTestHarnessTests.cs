@@ -31,9 +31,9 @@ public class PipelineTestHarnessTests
             .RunAsync();
 
         // Assert - the error is captured and allows execution to continue
-        // When ContinueWithoutNode decision is used, the error from the failed node is captured,
-        // then the downstream sink also fails when it tries to process the failed connection
-        result.Errors.Should().HaveCount(2);
+        // With ResilienceDecision.Skip (default), the failed item is skipped at the item level,
+        // the node completes successfully, and the downstream sink receives an empty stream.
+        result.Errors.Should().HaveCount(1);
     }
 
     [Fact]

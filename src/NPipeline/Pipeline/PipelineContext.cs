@@ -11,6 +11,7 @@ using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
+using NPipeline.Resilience;
 using NPipeline.State;
 
 namespace NPipeline.Pipeline;
@@ -80,7 +81,7 @@ public sealed class PipelineContext
     ///     Components not provided will use defaults:
     ///     <list type="bullet">
     ///         <item>
-    ///             <description>ErrorHandlerFactory: <see cref="DefaultErrorHandlerFactory" /></description>
+    ///             <description>ErrorHandlerFactory: <see cref="DefaultErrorHandlerFactory" /> (dead-letter sink activation only)</description>
     ///         </item>
     ///         <item>
     ///             <description>LineageFactory: <see cref="DefaultLineageFactory" /></description>
@@ -150,12 +151,13 @@ public sealed class PipelineContext
         var lineageFactory = config.LineageFactory ?? new DefaultLineageFactory(loggerFactory);
 
         CancellationToken = config.CancellationToken;
-        PipelineErrorHandler = config.PipelineErrorHandler;
         DeadLetterSink = config.DeadLetterSink;
         ErrorHandlerFactory = config.ErrorHandlerFactory ?? new DefaultErrorHandlerFactory(loggerFactory);
 
         RunIdentity = new PipelineRunIdentityContext(DateTime.UtcNow);
         ExecutionConfiguration = new PipelineExecutionConfigurationContext(retryOptions);
+        if (config.ResiliencePolicy is not null)
+            ExecutionConfiguration.ResiliencePolicy = config.ResiliencePolicy;
         Observability = new PipelineObservabilityContext(loggerFactory, tracer, observabilityFactory);
         NodeEnvironment = new PipelineNodeEnvironmentContext();
         Lineage = new PipelineLineageContext(lineageFactory);
@@ -240,6 +242,15 @@ public sealed class PipelineContext
     ///     Per-node retry option overrides indexed by node id.
     /// </summary>
     public Dictionary<string, PipelineRetryOptions> NodeRetryOverrides => ExecutionConfiguration.NodeRetryOverrides;
+
+    /// <summary>
+    ///     Unified resilience policy used by runtime execution.
+    /// </summary>
+    public IResiliencePolicy ResiliencePolicy
+    {
+        get => ExecutionConfiguration.ResiliencePolicy;
+        internal set => ExecutionConfiguration.ResiliencePolicy = value;
+    }
 
     /// <summary>
     ///     Registry for node execution annotations, observability scopes, and runtime annotations.
@@ -404,17 +415,12 @@ public sealed class PipelineContext
     public IPipelineTracer Tracer => Observability.Tracer;
 
     /// <summary>
-    ///     The error handler for the entire pipeline.
-    /// </summary>
-    public IPipelineErrorHandler? PipelineErrorHandler { get; internal set; }
-
-    /// <summary>
     ///     The sink for items that have failed processing and have been redirected.
     /// </summary>
     public IDeadLetterSink? DeadLetterSink { get; internal set; }
 
     /// <summary>
-    ///     The factory for creating error handlers and dead-letter sinks.
+    ///     The factory for creating dead-letter sinks.
     /// </summary>
     public IErrorHandlerFactory ErrorHandlerFactory { get; }
 

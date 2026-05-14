@@ -5,7 +5,6 @@ using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
-using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Parallelism;
@@ -13,6 +12,7 @@ using NPipeline.Extensions.Testing;
 using NPipeline.Nodes;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Tests.Observability;
 
@@ -192,7 +192,6 @@ public sealed class ExecutionObserverTests
     {
         private int _count;
         public IExecutionStrategy ExecutionStrategy { get; set; } = new ParallelExecutionStrategy(1);
-        public INodeErrorHandler? ErrorHandler { get; set; } = new TestItemRetryHandler();
 
         public Task<int> TransformAsync(int item, PipelineContext context, CancellationToken ct)
         {
@@ -230,12 +229,47 @@ public sealed class ExecutionObserverTests
         }
     }
 
-    private sealed class TestItemRetryHandler : INodeErrorHandler<ITransformNode<int, int>, int>
+    private sealed class RetryOnItemFailurePolicy : IResiliencePolicy
     {
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int item, NodeFailureContext failure,
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NPipeline.Graph.NodeDefinition nodeDefinition,
+            INode node,
+            Exception exception,
+            PipelineContext context,
             CancellationToken cancellationToken)
         {
-            return Task.FromResult(NodeErrorDecision.Retry);
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
+            string nodeId,
+            Exception exception,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Retry);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 
@@ -278,6 +312,7 @@ public sealed class ExecutionObserverTests
             b.Connect(src, t);
             var sink = b.AddSink<InMemorySinkNode<int>, int>("k");
             b.Connect(t, sink);
+            b.AddResiliencePolicy<RetryOnItemFailurePolicy>();
             b.WithRetryOptions(o => o.With(1));
         }
     }

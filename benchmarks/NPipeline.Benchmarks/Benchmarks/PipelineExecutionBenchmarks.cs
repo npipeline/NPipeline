@@ -8,10 +8,11 @@ using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow.Windowing;
-using NPipeline.ErrorHandling;
 using NPipeline.Execution;
+using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Benchmarks.Benchmarks;
 
@@ -340,7 +341,7 @@ public class PipelineExecutionBenchmarks : IDisposable
             var sink = b.AddSink<BlackHoleSink, int>("sink");
 
             // Add error handling
-            b.WithErrorHandler(t, typeof(TestErrorHandler));
+            b.SetNodeResiliencePolicy(t, new TestErrorHandler());
 
             b.Connect(src, t).Connect(t, sink);
         }
@@ -628,15 +629,47 @@ public class PipelineExecutionBenchmarks : IDisposable
         }
     }
 
-    private sealed class TestErrorHandler : INodeErrorHandler<ITransformNode<int, int>, int>
+    private sealed class TestErrorHandler : IResiliencePolicy
     {
-        public Task<NodeErrorDecision> HandleAsync(
-            ITransformNode<int, int> node,
-            int failedItem,
-            NodeFailureContext failure,
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception exception,
+            PipelineContext context,
             CancellationToken cancellationToken)
         {
-            return Task.FromResult(NodeErrorDecision.Skip); // Skip the error item and continue
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
+            string nodeId,
+            Exception exception,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Skip); // Skip the error item and continue
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 }

@@ -9,6 +9,7 @@ using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Tests.Core.Execution;
 
@@ -58,20 +59,16 @@ public sealed class RuntimePipelineBinderTests
     }
 
     [Fact]
-    public async Task BindAsync_ErrorHandlerAndDeadLetterConfiguredByType_ResolvesAndDecoratesDeadLetterSink()
+    public async Task BindAsync_ResiliencePolicyAndDeadLetterConfiguredByType_ResolvesAndDecoratesDeadLetterSink()
     {
         // Arrange
         var graph = CreateGraph(
-            pipelineErrorHandlerType: typeof(TestPipelineErrorHandler),
+            resiliencePolicyType: typeof(TestPipelineErrorHandler),
             deadLetterSinkType: typeof(TestDeadLetterSink));
 
         var errorHandlerFactory = A.Fake<IErrorHandlerFactory>();
-        var resolvedErrorHandler = A.Fake<IPipelineErrorHandler>();
         var resolvedDeadLetterSink = A.Fake<IDeadLetterSink>();
         var decoratedDeadLetterSink = A.Fake<IDeadLetterSink>();
-
-        _ = A.CallTo(() => errorHandlerFactory.CreateErrorHandler(typeof(TestPipelineErrorHandler)))
-            .Returns(resolvedErrorHandler);
 
         _ = A.CallTo(() => errorHandlerFactory.CreateDeadLetterSink(typeof(TestDeadLetterSink)))
             .Returns(resolvedDeadLetterSink);
@@ -86,11 +83,8 @@ public sealed class RuntimePipelineBinderTests
         var result = await _binder.BindAsync(graph, context);
 
         // Assert
-        _ = result.PipelineErrorHandler.Should().BeSameAs(resolvedErrorHandler);
+        _ = result.ResiliencePolicy.Should().BeOfType<TestPipelineErrorHandler>();
         _ = result.DeadLetterSink.Should().BeSameAs(decoratedDeadLetterSink);
-
-        _ = A.CallTo(() => errorHandlerFactory.CreateErrorHandler(typeof(TestPipelineErrorHandler)))
-            .MustHaveHappenedOnceExactly();
 
         _ = A.CallTo(() => errorHandlerFactory.CreateDeadLetterSink(typeof(TestDeadLetterSink)))
             .MustHaveHappenedOnceExactly();
@@ -211,7 +205,7 @@ public sealed class RuntimePipelineBinderTests
     private static PipelineGraph CreateGraph(
         bool itemLevelLineageEnabled = false,
         LineageOptions? lineageOptions = null,
-        Type? pipelineErrorHandlerType = null,
+        Type? resiliencePolicyType = null,
         Type? deadLetterSinkType = null,
         Type? lineageSinkType = null,
         Type? pipelineLineageSinkType = null)
@@ -220,7 +214,7 @@ public sealed class RuntimePipelineBinderTests
             .WithNodes(ImmutableArray<NodeDefinition>.Empty)
             .WithEdges(ImmutableArray<Edge>.Empty)
             .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
-            .WithPipelineErrorHandlerType(pipelineErrorHandlerType)
+            .WithResiliencePolicyType(resiliencePolicyType)
             .WithDeadLetterSinkType(deadLetterSinkType)
             .WithItemLevelLineageEnabled(itemLevelLineageEnabled)
             .WithLineageSinkType(lineageSinkType)
@@ -229,12 +223,44 @@ public sealed class RuntimePipelineBinderTests
             .Build();
     }
 
-    private sealed class TestPipelineErrorHandler : IPipelineErrorHandler
+    private sealed class TestPipelineErrorHandler : IResiliencePolicy
     {
-        public Task<PipelineErrorDecision> HandleNodeFailureAsync(string nodeId, Exception error, PipelineContext context,
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception exception,
+            PipelineContext context,
             CancellationToken cancellationToken)
         {
-            return Task.FromResult(PipelineErrorDecision.FailPipeline);
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(string nodeId, Exception error, PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 

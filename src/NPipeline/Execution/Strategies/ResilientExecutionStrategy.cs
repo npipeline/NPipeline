@@ -3,17 +3,17 @@ using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
-using NPipeline.Execution.CircuitBreaking;
 using NPipeline.Nodes;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Execution.Strategies;
 
 /// <summary>
 ///     An execution strategy that wraps another strategy to provide resilience against stream failures.
 ///     <para>
-///         If the underlying stream fails, this strategy will consult the <see cref="IPipelineErrorHandler" />
+///         If the underlying stream fails, this strategy consults the configured <see cref="IResiliencePolicy" />
 ///         to decide whether to restart the node, continue without it, or fail the pipeline.
 ///     </para>
 ///     <para>
@@ -114,11 +114,11 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
 
         // Runtime validation: Check for missing prerequisites
         // This provides a safety net for issues that analyzers might miss
-        if (context.PipelineErrorHandler is null)
+        if (context.ResiliencePolicy is DefaultResiliencePolicy)
         {
             throw new InvalidOperationException(
-                $"Node '{context.CurrentNodeId}' is using ResilientExecutionStrategy but no IPipelineErrorHandler is configured. " +
-                "Node restarts require an error handler. Configure: builder.AddPipelineErrorHandler<T>()");
+            $"Node '{context.CurrentNodeId}' is using ResilientExecutionStrategy but no custom IResiliencePolicy is configured. " +
+            "Node restarts require a policy that can return RestartNode. Configure: builder.AddResiliencePolicy<T>()");
         }
 
         var effectiveRetries = RetryOptionsResolver.Resolve(context, context.CurrentNodeId);
@@ -137,8 +137,6 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                 $"Node '{context.CurrentNodeId}' has streaming inputs but MaxMaterializedItems is {effectiveRetries.MaxMaterializedItems} (must be > 0). " +
                 "Restart functionality is disabled for streaming inputs. Configure: builder.WithRetryOptions(o => o.WithMaxMaterializedItems(1000))");
         }
-
-        EnsureCircuitBreakerManagerIsAvailable(context);
 
         // If the input is a streaming pipe, we must materialize it to support restarts.
         // This is a performance trade-off for resiliency.
@@ -240,22 +238,16 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         // consecutiveFailures == number of consecutive failures without a successful item production
         var consecutiveFailures = 0;
         Exception? lastFailure = null;
-        ICircuitBreaker? circuitBreaker = null;
+        IResilienceCircuitBreaker? circuitBreaker = null;
 
         // Get or create a resilience activity for recording exceptions
         var resilientActivity = context.Tracer.CurrentActivity;
 
-        // Resolve circuit breaker instance for this node if enabled
-        if (context.CircuitBreakerOptions is { Enabled: true } cbr)
-        {
-            if (context.CircuitBreakerManager is ICircuitBreakerManager manager)
-            {
-                circuitBreaker = manager.GetCircuitBreaker(nodeId, cbr);
-                ResilientExecutionStrategyLogMessages.CircuitBreakerResolved(logger, nodeId, circuitBreaker.State.ToString());
-            }
-            else
-                ResilientExecutionStrategyLogMessages.CircuitBreakerManagerUnavailable(logger, nodeId);
-        }
+        // Resolve circuit breaker instance for this node through the policy.
+        circuitBreaker = context.ResiliencePolicy.GetCircuitBreaker(context, nodeId);
+
+        if (circuitBreaker is not null)
+            ResilientExecutionStrategyLogMessages.CircuitBreakerResolved(logger, nodeId, circuitBreaker.GetSnapshot().State);
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -353,7 +345,9 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                         throw retryEx;
                     }
 
-                    var decision = await context.PipelineErrorHandler!.HandleNodeFailureAsync(nodeId, ex, context, cancellationToken).ConfigureAwait(false);
+                    var decision = await context.ResiliencePolicy
+                        .DecidePipelineFailureAsync(nodeId, ex, context, cancellationToken)
+                        .ConfigureAwait(false);
 
                     // Log the decision from the error handler
                     ResilientExecutionStrategyLogMessages.ErrorHandlerDecision(logger, decision.ToString(), nodeId, failures, consecutiveFailures);
@@ -361,9 +355,9 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                     // Pattern matching for error decision handling - this is a key enhancement using C# switch expressions
                     var shouldContinue = decision switch
                     {
-                        PipelineErrorDecision.RestartNode when failures < effectiveRetries.MaxNodeRestartAttempts => true,
-                        PipelineErrorDecision.ContinueWithoutNode => false,
-                        PipelineErrorDecision.FailPipeline => false,
+                        ResilienceDecision.RestartNode when failures < effectiveRetries.MaxNodeRestartAttempts => true,
+                        ResilienceDecision.ContinueWithoutNode => false,
+                        ResilienceDecision.Fail => false,
                         _ => false,
                     };
 
@@ -374,11 +368,10 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                         failures++;
 
                         // Apply retry delay before restarting the node
-                        var delayStrategy = context.GetRetryDelayStrategy();
-
                         try
                         {
-                            var delay = await delayStrategy.GetDelayAsync(failures, cancellationToken).ConfigureAwait(false);
+                            var delay = await context.ResiliencePolicy.GetRetryDelayAsync(context, failures, cancellationToken)
+                                .ConfigureAwait(false);
 
                             if (delay > TimeSpan.Zero)
                             {
@@ -402,7 +395,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                     }
 
                     // Either ContinueWithoutNode or FailPipeline
-                    if (decision == PipelineErrorDecision.ContinueWithoutNode)
+                    if (decision == ResilienceDecision.ContinueWithoutNode)
                         yield break;
 
                     // FailPipeline or default
@@ -413,7 +406,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                 consecutiveFailures = 0;
 
                 if (circuitBreaker is not null)
-                    _ = circuitBreaker.RecordSuccess();
+                    circuitBreaker.RecordSuccess();
 
                 yield return current;
             }
@@ -429,36 +422,18 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         }
     }
 
-    private static void EnsureCircuitBreakerManagerIsAvailable(PipelineContext context)
-    {
-        if (context.CircuitBreakerOptions is not { Enabled: true })
-            return;
-
-        if (context.CircuitBreakerManager is ICircuitBreakerManager)
-            return;
-
-        var logger = context.LoggerFactory.CreateLogger(nameof(CircuitBreakerManager));
-        var memoryOptions = context.CircuitBreakerMemoryOptions;
-
-        var manager = context.CreateAndRegister(new CircuitBreakerManager(logger, memoryOptions));
-        context.CircuitBreakerManager = manager;
-    }
-
-    private static NodeExecutionException CreateCircuitBreakerOpenException(string nodeId, ICircuitBreaker circuitBreaker, string? reason)
+    private static NodeExecutionException CreateCircuitBreakerOpenException(string nodeId, IResilienceCircuitBreaker circuitBreaker, string? reason)
     {
         var detail = reason;
 
         if (string.IsNullOrWhiteSpace(detail))
             detail = "Circuit breaker is open and blocking execution.";
 
-        WindowStatistics? statistics = null;
-
-        if (circuitBreaker.Options.TrackOperationsInWindow)
-            statistics = circuitBreaker.GetStatistics();
-
-        var telemetrySuffix = statistics is null
-            ? $"(state: {circuitBreaker.State}, threshold: {circuitBreaker.Options.FailureThreshold})"
-            : $"(state: {circuitBreaker.State}, failures: {statistics.FailureCount}, total: {statistics.TotalOperations}, threshold: {circuitBreaker.Options.FailureThreshold})";
+        var snapshot = circuitBreaker.GetSnapshot();
+        var telemetrySuffix = snapshot.TotalOperations <= 0
+            ? $"(state: {snapshot.State}, threshold: {snapshot.FailureThreshold})"
+            :
+            $"(state: {snapshot.State}, failures: {snapshot.FailureCount}, total: {snapshot.TotalOperations}, threshold: {snapshot.FailureThreshold})";
 
         var innerMessage = $"{detail} {telemetrySuffix}";
         var inner = new CircuitBreakerOpenException(innerMessage.Trim());

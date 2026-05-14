@@ -1,148 +1,155 @@
 ---
 title: Error Handling Overview
-description: Understand the two levels of error handling in NPipeline and choose the right approach for your pipeline
+description: Understand the resilience model in NPipeline and choose the right approach for your pipeline
 order: 1
 ---
 
 # Error Handling Overview
 
-Robust error handling is critical for building reliable data streamlines. NPipeline provides several mechanisms to manage errors that occur during data processing, allowing you to gracefully recover, retry operations, or isolate problematic data.
+Robust error handling is critical for building reliable data pipelines. NPipeline provides a unified resilience model that lets you recover from errors, retry operations, or isolate problematic data — without halting the entire pipeline.
 
 ## Why Error Handling Matters
 
-By default, if an unhandled exception occurs within a node during pipeline execution, the exception will propagate up the call stack, potentially halting the entire pipeline. While this behavior is suitable for critical errors that should stop processing immediately, it's often desirable to handle errors more selectively without bringing down the entire system.
+By default, if an unhandled exception occurs during pipeline execution, it propagates up the call stack and halts the pipeline. This is appropriate for critical errors, but for many scenarios you want to handle failures selectively and keep processing.
 
 ## Types of Errors in NPipeline
 
-Errors can generally be categorized by their source and impact:
+Errors fall into three categories:
 
-- **Node-Specific Errors**: Exceptions originating from logic within a specific `ISourceNode`, `ITransformNode`, or `ISinkNode`.
-- **Data-Related Errors**: Issues caused by the data itself (e.g., invalid format, missing values) that a node attempts to process.
-- **Infrastructure Errors**: Problems related to external dependencies like databases, APIs, or network connectivity.
-- **Cancellation**: While not strictly an "error," a [`CancellationToken`](https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtoken) can signal an intentional halt to processing, which nodes should handle gracefully.
+- **Item-Level Errors**: An exception occurs while processing a single item in a transform node. Other items in the stream are unaffected unless you choose to propagate.
+- **Stream-Level Errors**: An entire node's execution stream fails — typically due to infrastructure issues like a database connection dropping or an external service going down.
+- **Node-Level Errors**: Errors raised from a node outside of item processing, e.g. from initialization or finalization logic.
 
-## Two Levels of Error Handling
+## The Unified Resilience Entry Point
 
-NPipeline distinguishes between two complementary levels of error handling:
+All error routing in NPipeline flows through a single interface: [`IResiliencePolicy`](resilience-policy.md).
 
-### 1. Node-Level Error Handling
-
-Deals with errors that occur while processing an individual item within a specific node. You define what happens to that item:
-
-- Skip it and continue
-- Retry the operation
-- Redirect it to a dead-letter queue
-- Fail the entire pipeline
-
-**Use this when:** Individual items fail during processing and you want to handle them without affecting other items.
-
-### 2. Pipeline-Level Error Handling
-
-Deals with more severe errors that might affect an entire node's stream or the pipeline's execution flow:
-
-- Restart the failing node
-- Continue without the failing node
-- Fail the entire pipeline
-
-**Use this when:** An entire node's stream fails (e.g., external service goes down) and you need to decide how the pipeline should recover.
-
-## Decision Tree: Choosing Your Approach
-
-```mermaid
-graph TD
-    A[I need to handle errors] --> B{What type of errors?}
-    B -->|Individual item failures| C[Use NODE-LEVEL ERROR HANDLING]
-    B -->|Entire stream/node failures| D[Use PIPELINE-LEVEL ERROR HANDLING]
-    B -->|Both types of errors| E[Implement BOTH LEVELS]
-    
-    C --> F{What should happen to failed items?}
-    F -->|Retry and continue| G[NodeErrorDecision.Retry<br>Configure MaxItemRetries]
-    F -->|Skip and continue| H[NodeErrorDecision.Skip<br>Log and continue]
-    F -->|Redirect for review| I[NodeErrorDecision.DeadLetter<br>Configure dead-letter sink]
-    F -->|Stop processing| J[NodeErrorDecision.Fail<br>Terminate pipeline]
-    
-    D --> K{What should happen to failed nodes?}
-    K -->|Restart and retry| L[PipelineErrorDecision.RestartNode<br>Configure MaxNodeRestartAttempts]
-    K -->|Continue without node| M[PipelineErrorDecision.ContinueWithoutNode<br>Bypass failed component]
-    K -->|Stop entire pipeline| N[PipelineErrorDecision.FailPipeline<br>Terminate all processing]
-    
-    E --> O[Combine node and pipeline error handling]
-    O --> P[Implement INodeErrorHandler<br>for item-level errors]
-    O --> Q[Implement IPipelineErrorHandler<br>for stream-level errors]
-    P --> R[Configure ResilientExecutionStrategy]
-    Q --> R
+```csharp
+public interface IResiliencePolicy
+{
+    Task<ResilienceDecision> DecideNodeFailureAsync(...);
+    Task<ResilienceDecision> DecidePipelineFailureAsync(...);
+    Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(...);
+    ValueTask<TimeSpan> GetRetryDelayAsync(...);
+    IResilienceCircuitBreaker? GetCircuitBreaker(...);
+}
 ```
 
-## Error Handling Strategies
+| Method | When called |
+|---|---|
+| `DecideItemFailureAsync` | An individual item fails inside a transform node |
+| `DecidePipelineFailureAsync` | An entire node stream fails (used by `ResilientExecutionStrategy`) |
+| `DecideNodeFailureAsync` | A node fails outside of item/stream processing |
+| `GetRetryDelayAsync` | Before each retry to obtain the delay interval |
+| `GetCircuitBreaker` | At node startup when circuit breaking is configured |
 
-### For Individual Item Failures (Node-Level)
+Configure a policy pipeline-wide:
 
-- **Retry**: Transient errors (network issues, temporary resource constraints)
-- **Skip**: Non-critical errors or malformed data
-- **Dead Letter**: Problematic items for later analysis
-- **Fail**: When errors indicate critical system issues
+```csharp
+builder.AddResiliencePolicy<MyResiliencePolicy>();
+// or
+builder.AddResiliencePolicy(new MyResiliencePolicy());
+```
 
-### For Entire Stream Failures (Pipeline-Level)
+Override for a specific node (item-level decisions only):
 
-- **Restart Node**: When failures are transient and recoverable
-- **Continue Without Node**: When the node is non-critical to overall operation
-- **Fail Pipeline**: When errors indicate system-wide problems
+```csharp
+builder.SetNodeResiliencePolicy(transformHandle, new MyNodePolicy());
+```
 
-## Error Flow Visualization
+## ResilienceDecision Values
+
+All three decision methods return a `ResilienceDecision` enum:
+
+| Value | Meaning |
+|---|---|
+| `Fail` | Stop execution and surface the exception (default) |
+| `Retry` | Retry the current item or operation |
+| `Skip` | Skip the failing item and continue with the next |
+| `DeadLetter` | Route item to the dead-letter sink and continue |
+| `RestartNode` | Restart the failed node's entire stream |
+| `ContinueWithoutNode` | Remove the node from the pipeline and continue |
+
+## Choosing the Right Decision
+
+### For item-level failures (`DecideItemFailureAsync`)
+
+- **`Retry`** — transient errors: network timeouts, temporary lock contention
+- **`Skip`** — non-critical data quality issues where losing the item is acceptable
+- **`DeadLetter`** — items that need manual review or reprocessing later
+- **`Fail`** — when the error indicates a critical system problem
+
+### For stream-level failures (`DecidePipelineFailureAsync`)
+
+- **`RestartNode`** — transient infrastructure failures where restarting from buffered input makes sense
+- **`ContinueWithoutNode`** — non-critical enrichment or optional transformation nodes
+- **`Fail`** — when the node is required for correctness
+
+## Implementing a Policy
+
+Extend `ResiliencePolicyBase` and override only the methods you need. All base implementations return `Fail`.
+
+```csharp
+public sealed class MyPolicy : ResiliencePolicyBase
+{
+    // Handle item failures: retry timeouts, skip validation errors
+    public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+        ITransformNode<TIn, TOut> node, TIn failedItem, Exception exception,
+        PipelineContext context, string nodeId, int retryAttempt, CancellationToken ct)
+    {
+        return Task.FromResult(exception switch
+        {
+            TimeoutException => ResilienceDecision.Retry,
+            ValidationException => ResilienceDecision.Skip,
+            _ => ResilienceDecision.Fail
+        });
+    }
+
+    // Handle stream failures: restart on transient infrastructure errors
+    public override Task<ResilienceDecision> DecidePipelineFailureAsync(
+        string nodeId, Exception exception, PipelineContext context, CancellationToken ct)
+    {
+        return Task.FromResult(exception is TimeoutException or HttpRequestException
+            ? ResilienceDecision.RestartNode
+            : ResilienceDecision.Fail);
+    }
+}
+```
+
+## Error Flow
 
 ```mermaid
 flowchart TD
     A[Item Processing Starts] --> B{Error Occurs?}
     B -->|No| C[Continue Processing]
-    B -->|Yes| D[Error Handler Invoked]
+    B -->|Yes| D[IResiliencePolicy Consulted]
 
-    D --> E{Error Type}
-    E -->|Node-level<br>&#40;Item Error&#41;| F[INodeErrorHandler]
-    E -->|Pipeline-level<br>&#40;Stream Error&#41;| G[IPipelineErrorHandler]
+    D --> E{ResilienceDecision}
+    E -->|Retry| F[Retry Item]
+    E -->|Skip| G[Discard Item]
+    E -->|DeadLetter| H[Send to Dead-Letter Sink]
+    E -->|Fail| I[Pipeline Failure]
 
-    %% Node-level Error Handling
-    F --> H{NodeErrorDecision}
-    H -->|Retry| I[Retry Item]
-    H -->|Skip| J[Discard Item]
-    H -->|Redirect| K[Send to Dead Letter]
-    H -->|Fail| L[Pipeline Failure]
+    F --> J{Max Retries Reached?}
+    J -->|No| B
+    J -->|Yes| K[Exhaustion Decision]
 
-    I --> M{Max Retries Reached?}
-    M -->|No| B
-    M -->|Yes| O[Proceed with Decision]
+    C --> L[Next Item]
+    G --> L
+    H --> M[Log and Store Failed Item]
+    M --> L
+    I --> N[Pipeline Terminates]
 
-    %% Pipeline-level Error Handling
-    G --> R{PipelineErrorDecision}
-    R -->|Restart Node| S[Restart Node Stream]
-    R -->|Continue Without Node| T[Bypass Node]
-    R -->|Fail Pipeline| L
-
-    S --> Z[Restart Processing]
-    Z --> B
-
-    %% Outcomes
-    C --> AD[Next Item]
-    J --> AD
-    T --> AE[Continue Pipeline<br>Without Node]
-    L --> AF[Pipeline Terminates]
-    K --> AC[Log and Store<br>Failed Item]
-    AC --> C
-
-    classDef nodeError fill:#ffe6e6,stroke:#ff6666,stroke-width:2px
-    classDef pipelineError fill:#e6f3ff,stroke:#66aaff,stroke-width:2px
     classDef decision fill:#fff2cc,stroke:#ffcc00,stroke-width:2px
     classDef outcome fill:#e6ffe6,stroke:#66cc66,stroke-width:2px
-
-    class F,H,I,J,K,L nodeError
-    class G,R,S,T pipelineError
-    class B,E,M decision
-    class C,AD,AE,AF outcome
+    class B,E,J decision
+    class C,L,N outcome
 ```
 
 ## Related Documentation
 
-- [Node-Level Error Handling](node-error-handling.md) - Implement custom error handlers for individual items
-- [Pipeline-Level Error Handling](pipeline-error-handling.md) - Manage errors affecting entire node streams
-- [Getting Started with Resilience](getting-started.md) - Quick guide to common error handling patterns
-- [Retries](retries.md) - Configure retry policies and strategies
-- [Circuit Breakers](circuit-breakers.md) - Prevent cascading failures with circuit breaker patterns
+- [Resilience Policy](resilience-policy.md) — Configure and implement `IResiliencePolicy`
+- [Getting Started with Resilience](getting-started.md) — Quick guide for node restarts and retry delays
+- [Retries](retries.md) — Configure retry options and delay strategies
+- [Dead Letter Queues](dead-letter-queues.md) — Route failed items for later processing
+- [Circuit Breakers](circuit-breakers.md) — Prevent cascading failures

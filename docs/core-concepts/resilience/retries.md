@@ -40,8 +40,8 @@ public sealed record PipelineRetryOptions(
 }
 ```
 
-* **`MaxItemRetries`**: The maximum number of times an individual item will be re-processed by a node's execution strategy if its `INodeErrorHandler` returns `NodeErrorDecision.Retry`.
-* **`MaxNodeRestartAttempts`**: The maximum number of times a node's entire stream will be re-executed by `ResilientExecutionStrategy` if `IPipelineErrorHandler` returns `PipelineErrorDecision.RestartNode`.
+* **`MaxItemRetries`**: The maximum number of times an individual item will be re-processed by a node's execution strategy if `DecideItemFailureAsync` returns `ResilienceDecision.Retry`.
+* **`MaxNodeRestartAttempts`**: The maximum number of times a node's entire stream will be re-executed by `ResilientExecutionStrategy` if `DecidePipelineFailureAsync` returns `ResilienceDecision.RestartNode`.
 * **`MaxSequentialNodeAttempts`**: (Used by `SequentialExecutionStrategy` for node restarts) The maximum number of attempts for a node in a sequential pipeline.
 * **`MaxMaterializedItems`**: An optional cap on the number of items to materialize (buffer) for replay when using `ResilientExecutionStrategy`.
   * When `null` (default): Unbounded materialization - all items are buffered
@@ -216,11 +216,11 @@ For delay strategies and advanced configuration patterns, see [Retry Delay Strat
 2. **Consider resource impact**: Each retry consumes resources. Set reasonable limits.
 3. **Use per-node configuration**: Different nodes often need different retry strategies.
 4. **Monitor retry metrics**: Track how often retries occur to identify persistent issues.
-5. **Combine with error handlers**: Use retry options with error handlers for comprehensive resilience.
+5. **Combine with resilience policies**: Use retry options with `IResiliencePolicy` for comprehensive resilience.
 
 ## See Also
 
-* [Error Handling](error-handling.md) - Configure what happens on errors (retry, skip, dead-letter)
+* [Error Handling Overview](error-handling-overview.md) - Configure what happens on errors (retry, skip, dead-letter)
 * [Retry Delay Strategies](retry-delays.md) - Configure delays between retry attempts
 * [Circuit Breakers](circuit-breakers.md) - Prevent cascading failures
 * [Getting Started with Resilience](getting-started.md) - Quick guide to resilience features
@@ -258,6 +258,7 @@ var exponentialBackoff = BackoffStrategies.ExponentialBackoff(
 **Delay progression:** 1s → 2s → 4s → 8s → 16s → 32s → 60s (capped)
 
 **Use cases:**
+
 * Web API calls with transient network failures
 * Database connections during temporary overload
 * Microservice communication during partial outages
@@ -289,6 +290,7 @@ var linearBackoff = BackoffStrategies.LinearBackoff(
 **Delay progression:** 1s → 3s → 5s → 7s → 9s → ... → 30s (capped)
 
 **Use cases:**
+
 * File processing with temporary resource contention
 * Batch operations with predictable recovery patterns
 
@@ -313,6 +315,7 @@ var fixedBackoff = BackoffStrategies.FixedDelay(
 **Delay progression:** 5s → 5s → 5s → 5s → ...
 
 **Use cases:**
+
 * Testing and debugging scenarios
 * Known recovery times
 
@@ -423,19 +426,19 @@ For delay strategies and advanced configuration patterns, see [Retry Delay Strat
 2. **Consider resource impact**: Each retry consumes resources. Set reasonable limits.
 3. **Use per-node configuration**: Different nodes often need different retry strategies.
 4. **Monitor retry metrics**: Track how often retries occur to identify persistent issues.
-5. **Combine with error handlers**: Use retry options with error handlers for comprehensive resilience.
+5. **Combine with resilience policies**: Use retry options with `IResiliencePolicy` for comprehensive resilience.
 
 ## See Also
 
 * **[Resilience Overview](../resilience/index.md)**: Comprehensive guide to building fault-tolerant pipelines
 * **[Materialization and Buffering](materialization.md)**: Understanding buffer requirements for resilience
-* **[Error Handling Guide](error-handling.md)**: Comprehensive error handling patterns and practical implementation guidance
+* **[Error Handling Overview](error-handling-overview.md)**: Understand all error levels and resilience decisions
 * **[Troubleshooting](troubleshooting.md)**: Diagnose and resolve common resilience issues
 
 ## Related Topics
 
-* **[Node-level Error Handling](error-handling.md)**: Learn about handling errors for individual items.
-* **[Pipeline-level Error Handling](error-handling.md)**: Learn about handling errors that affect entire node streams.
+* **[Node-level Error Handling](node-error-handling.md)**: Handle errors for individual items.
+* **[Pipeline-level Error Handling](pipeline-error-handling.md)**: Handle errors that affect entire node streams.
 * **[Circuit Breakers](circuit-breakers.md)**: Configure circuit breaker patterns.
 * **[Dead-Letter Queues](dead-letter-queues.md)**: Implement dead-letter queues for problematic items.
-* **[Error Handling Overview](error-handling.md)**: Return to the error handling overview.
+* **[Error Handling Overview](error-handling-overview.md)**: Return to the error handling overview.

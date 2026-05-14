@@ -1,10 +1,10 @@
 using AwesomeAssertions;
-using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Execution.Strategies;
 using NPipeline.Extensions.Testing;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 using ParallelOptions = NPipeline.Extensions.Parallelism.ParallelOptions;
 using BoundedQueuePolicy = NPipeline.Extensions.Parallelism.BoundedQueuePolicy;
 
@@ -33,7 +33,7 @@ public sealed class ResilienceConfigurationRuleTests
         ok.Should().BeTrue("Build should succeed, validation issues are warnings");
 
         result.Issues.Should()
-            .Contain(i => i.Category == "Resilience" && i.Message.Contains("no IPipelineErrorHandler"));
+            .Contain(i => i.Category == "Resilience" && i.Message.Contains("no custom IResiliencePolicy"));
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public sealed class ResilienceConfigurationRuleTests
         builder.Connect(transform, sink);
 
         // Add error handler but no retry options - this will use context default which has null MaxMaterializedItems
-        builder.AddPipelineErrorHandler<DummyErrorHandler>();
+        builder.AddResiliencePolicy<DummyResiliencePolicy>();
         builder.WithResilience(transform);
 
         var ok = builder.TryBuild(out _, out var result);
@@ -77,7 +77,7 @@ public sealed class ResilienceConfigurationRuleTests
 
         // Configure retry options with zero restart attempts
         builder.WithRetryOptions(opts => opts.With(maxNodeRestartAttempts: 0, maxMaterializedItems: 1000));
-        builder.AddPipelineErrorHandler<DummyErrorHandler>();
+        builder.AddResiliencePolicy<DummyResiliencePolicy>();
         builder.WithResilience(transform);
 
         var ok = builder.TryBuild(out _, out var result);
@@ -103,7 +103,7 @@ public sealed class ResilienceConfigurationRuleTests
 
         // Configure retry options with null MaxMaterializedItems
         builder.WithRetryOptions(opts => opts.With(maxNodeRestartAttempts: 3, maxMaterializedItems: null));
-        builder.AddPipelineErrorHandler<DummyErrorHandler>();
+        builder.AddResiliencePolicy<DummyResiliencePolicy>();
         builder.WithResilience(transform);
 
         var ok = builder.TryBuild(out _, out var result);
@@ -129,7 +129,7 @@ public sealed class ResilienceConfigurationRuleTests
 
         // Configure retry options with zero MaxMaterializedItems
         builder.WithRetryOptions(opts => opts.With(maxNodeRestartAttempts: 3, maxMaterializedItems: 0));
-        builder.AddPipelineErrorHandler<DummyErrorHandler>();
+        builder.AddResiliencePolicy<DummyResiliencePolicy>();
         builder.WithResilience(transform);
 
         var ok = builder.TryBuild(out _, out var result);
@@ -154,14 +154,14 @@ public sealed class ResilienceConfigurationRuleTests
         builder.Connect(transform, sink);
 
         // Configure everything properly
-        builder.AddPipelineErrorHandler<DummyErrorHandler>();
+        builder.AddResiliencePolicy<DummyResiliencePolicy>();
         builder.WithRetryOptions(opts => opts.With(maxNodeRestartAttempts: 3, maxMaterializedItems: 1000));
         builder.WithResilience(transform);
 
         var ok = builder.TryBuild(out _, out var result);
 
         ok.Should().BeTrue();
-        result.Issues.Should().NotContain(i => i.Category == "Resilience" && i.Message.Contains("no IPipelineErrorHandler"));
+        result.Issues.Should().NotContain(i => i.Category == "Resilience" && i.Message.Contains("no custom IResiliencePolicy"));
         result.Issues.Should().NotContain(i => i.Category == "Resilience" && i.Message.Contains("MaxNodeRestartAttempts"));
         result.Issues.Should().NotContain(i => i.Category == "Resilience" && i.Message.Contains("MaxMaterializedItems"));
     }
@@ -189,7 +189,6 @@ public sealed class ResilienceConfigurationRuleTests
     private sealed class ResilientTransform : ITransformNode<int, int>
     {
         public IExecutionStrategy ExecutionStrategy { get; set; } = new ResilientExecutionStrategy(new SequentialExecutionStrategy());
-        public INodeErrorHandler? ErrorHandler { get; set; }
 
         public Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
@@ -205,7 +204,6 @@ public sealed class ResilienceConfigurationRuleTests
     private sealed class RegularTransform : ITransformNode<int, int>
     {
         public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
-        public INodeErrorHandler? ErrorHandler { get; set; }
 
         public Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
@@ -218,12 +216,47 @@ public sealed class ResilienceConfigurationRuleTests
         }
     }
 
-    private sealed class DummyErrorHandler : IPipelineErrorHandler
+    private sealed class DummyResiliencePolicy : IResiliencePolicy
     {
-        public Task<PipelineErrorDecision> HandleNodeFailureAsync(
-            string nodeId, Exception error, PipelineContext context, CancellationToken cancellationToken)
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NPipeline.Graph.NodeDefinition nodeDefinition,
+            INode node,
+            Exception exception,
+            PipelineContext context,
+            CancellationToken cancellationToken)
         {
-            return Task.FromResult(PipelineErrorDecision.FailPipeline);
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
+            string nodeId,
+            Exception exception,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 }
@@ -397,7 +430,6 @@ public sealed class ParallelConfigurationRuleTests
     private sealed class ParallelTransform : ITransformNode<int, int>
     {
         public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
-        public INodeErrorHandler? ErrorHandler { get; set; }
 
         public Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {

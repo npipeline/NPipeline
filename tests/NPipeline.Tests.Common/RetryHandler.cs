@@ -1,13 +1,20 @@
-using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
+using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Tests.Common;
 
-public sealed class RetryHandler : INodeErrorHandler<ITransformNode<int, int>, int>
+public sealed class RetryHandler : ResiliencePolicyBase
 {
-    public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int failedItem, NodeFailureContext failure,
+    public override Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+        ITransformNode<TIn, TOut> node,
+        TIn failedItem,
+        Exception exception,
+        PipelineContext context,
+        string nodeId,
+        int retryAttempt,
         CancellationToken cancellationToken)
     {
-        return Task.FromResult(NodeErrorDecision.Retry);
+        return Task.FromResult(ResilienceDecision.Retry);
     }
 }

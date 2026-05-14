@@ -77,17 +77,17 @@ if (retryOptions.MaxMaterializedItems == null)
     Console.WriteLine("ERROR: No materialization configured for streaming inputs");
 }
 
-// 3. Add logging to error handler
-public class DebuggingErrorHandler : IPipelineErrorHandler
+// 3. Add logging to resilience policy
+public class DebuggingResiliencePolicy : ResiliencePolicyBase
 {
-    public async Task<PipelineErrorDecision> HandleNodeFailureAsync(
-        string nodeId, Exception error, PipelineContext context, CancellationToken ct)
+    public override async Task<ResilienceDecision> DecidePipelineFailureAsync(
+        string nodeId, Exception exception, PipelineContext context, CancellationToken ct)
     {
-        Console.WriteLine($"Error handler called for node: {nodeId}");
-        Console.WriteLine($"Exception type: {error.GetType().Name}");
-        Console.WriteLine($"Exception message: {error.Message}");
+        Console.WriteLine($"DecidePipelineFailureAsync called for node: {nodeId}");
+        Console.WriteLine($"Exception type: {exception.GetType().Name}");
+        Console.WriteLine($"Exception message: {exception.Message}");
         
-        var decision = await HandleError(nodeId, error, context, ct);
+        var decision = await base.DecidePipelineFailureAsync(nodeId, exception, context, ct);
         Console.WriteLine($"Decision: {decision}");
         
         return decision;
@@ -117,17 +117,17 @@ var options = new PipelineRetryOptions(
     MaxSequentialNodeAttempts: 5
 );
 
-// Solution 3: Fix error handler
-public class FixedErrorHandler : IPipelineErrorHandler
+// Solution 3: Fix resilience policy
+public class FixedResiliencePolicy : ResiliencePolicyBase
 {
-    public Task<PipelineErrorDecision> HandleNodeFailureAsync(
-        string nodeId, Exception error, PipelineContext context, CancellationToken ct)
+    public override Task<ResilienceDecision> DecidePipelineFailureAsync(
+        string nodeId, Exception exception, PipelineContext context, CancellationToken ct)
     {
-        return error switch
+        return exception switch
         {
-            TimeoutException => Task.FromResult(PipelineErrorDecision.RestartNode),
-            NetworkException => Task.FromResult(PipelineErrorDecision.RestartNode),
-            _ => Task.FromResult(PipelineErrorDecision.FailPipeline)
+            TimeoutException => Task.FromResult(ResilienceDecision.RestartNode),
+            NetworkException => Task.FromResult(ResilienceDecision.RestartNode),
+            _ => Task.FromResult(ResilienceDecision.Fail)
         };
     }
 }
@@ -199,21 +199,21 @@ private static int CalculateOptimalBufferSize()
     return (memoryBudgetMB * 1024) / estimatedItemSizeKB;
 }
 
-// Solution 2: Implement memory-aware error handling
-public class MemoryAwareErrorHandler : IPipelineErrorHandler
+// Solution 2: Implement memory-aware resilience policy
+public class MemoryAwareResiliencePolicy : ResiliencePolicyBase
 {
-    public Task<PipelineErrorDecision> HandleNodeFailureAsync(
-        string nodeId, Exception error, PipelineContext context, CancellationToken ct)
+    public override Task<ResilienceDecision> DecidePipelineFailureAsync(
+        string nodeId, Exception exception, PipelineContext context, CancellationToken ct)
     {
         // Check memory pressure
         var memoryMB = GC.GetTotalMemory(false) / (1024 * 1024);
         if (memoryMB > 2000) // 2GB threshold
         {
             Console.WriteLine("High memory pressure - avoiding restart");
-            return Task.FromResult(PipelineErrorDecision.ContinueWithoutNode);
+            return Task.FromResult(ResilienceDecision.ContinueWithoutNode);
         }
         
-        return Task.FromResult(PipelineErrorDecision.RestartNode);
+        return Task.FromResult(ResilienceDecision.RestartNode);
     }
 }
 ```
@@ -307,18 +307,18 @@ public class AdaptiveRetryOptions : PipelineRetryOptions
 }
 
 // Solution 3: Add circuit breaker for buffer overflow
-public class BufferOverflowAwareErrorHandler : IPipelineErrorHandler
+public class BufferOverflowAwareResiliencePolicy : ResiliencePolicyBase
 {
-    public Task<PipelineErrorDecision> HandleNodeFailureAsync(
-        string nodeId, Exception error, PipelineContext context, CancellationToken ct)
+    public override Task<ResilienceDecision> DecidePipelineFailureAsync(
+        string nodeId, Exception exception, PipelineContext context, CancellationToken ct)
     {
-        if (error.Message.Contains("Resilience materialization exceeded MaxMaterializedItems"))
+        if (exception.Message.Contains("Resilience materialization exceeded MaxMaterializedItems"))
         {
             Console.WriteLine($"Buffer overflow for node {nodeId} - skipping restart");
-            return Task.FromResult(PipelineErrorDecision.ContinueWithoutNode);
+            return Task.FromResult(ResilienceDecision.ContinueWithoutNode);
         }
         
-        return Task.FromResult(PipelineErrorDecision.RestartNode);
+        return Task.FromResult(ResilienceDecision.RestartNode);
     }
 }
 ```
@@ -405,24 +405,24 @@ var circuitBreakerOptions = new PipelineCircuitBreakerOptions
 };
 
 // Solution 2: Implement smart error classification
-public class SmartErrorHandler : IPipelineErrorHandler
+public class SmartResiliencePolicyV2 : ResiliencePolicyBase
 {
-    public Task<PipelineErrorDecision> HandleNodeFailureAsync(
-        string nodeId, Exception error, PipelineContext context, CancellationToken ct)
+    public override Task<ResilienceDecision> DecidePipelineFailureAsync(
+        string nodeId, Exception exception, PipelineContext context, CancellationToken ct)
     {
         // Don't restart for permanent failures
-        if (IsPermanentFailure(error))
+        if (IsPermanentFailure(exception))
         {
-            return Task.FromResult(PipelineErrorDecision.ContinueWithoutNode);
+            return Task.FromResult(ResilienceDecision.ContinueWithoutNode);
         }
         
         // Only restart for transient failures
-        if (IsTransientFailure(error))
+        if (IsTransientFailure(exception))
         {
-            return Task.FromResult(PipelineErrorDecision.RestartNode);
+            return Task.FromResult(ResilienceDecision.RestartNode);
         }
         
-        return Task.FromResult(PipelineErrorDecision.FailPipeline);
+        return Task.FromResult(ResilienceDecision.Fail);
     }
     
     private bool IsPermanentFailure(Exception ex)
@@ -576,36 +576,36 @@ public class ResilienceTestHarness
 
 ```csharp
 // WRONG: Retry everything, including permanent failures
-public class BlindRetryHandler : IPipelineErrorHandler
+public class BlindResiliencePolicy : ResiliencePolicyBase
 {
-    public Task<PipelineErrorDecision> HandleNodeFailureAsync(
-        string nodeId, Exception error, PipelineContext context, CancellationToken ct)
+    public override Task<ResilienceDecision> DecidePipelineFailureAsync(
+        string nodeId, Exception exception, PipelineContext context, CancellationToken ct)
     {
-        return Task.FromResult(PipelineErrorDecision.RestartNode); // Always restarts!
+        return Task.FromResult(ResilienceDecision.RestartNode); // Always restarts!
     }
 }
 
 // CORRECT: Smart error classification
-public class SmartRetryHandler : IPipelineErrorHandler
+public class SmartResiliencePolicy : ResiliencePolicyBase
 {
-    public Task<PipelineErrorDecision> HandleNodeFailureAsync(
-        string nodeId, Exception error, PipelineContext context, CancellationToken ct)
+    public override Task<ResilienceDecision> DecidePipelineFailureAsync(
+        string nodeId, Exception exception, PipelineContext context, CancellationToken ct)
     {
-        return error switch
+        return exception switch
         {
             // Transient failures - retry
-            TimeoutException => Task.FromResult(PipelineErrorDecision.RestartNode),
-            NetworkException => Task.FromResult(PipelineErrorDecision.RestartNode),
+            TimeoutException => Task.FromResult(ResilienceDecision.RestartNode),
+            NetworkException => Task.FromResult(ResilienceDecision.RestartNode),
             HttpRequestException http when IsTransientHttpError(http) => 
-                Task.FromResult(PipelineErrorDecision.RestartNode),
+                Task.FromResult(ResilienceDecision.RestartNode),
             
             // Permanent failures - don't retry
-            AuthenticationException => Task.FromResult(PipelineErrorDecision.FailPipeline),
-            ValidationException => Task.FromResult(PipelineErrorDecision.Skip),
-            NotFoundException => Task.FromResult(PipelineErrorDecision.ContinueWithoutNode),
+            AuthenticationException => Task.FromResult(ResilienceDecision.Fail),
+            ValidationException => Task.FromResult(ResilienceDecision.Skip),
+            NotFoundException => Task.FromResult(ResilienceDecision.ContinueWithoutNode),
             
             // Unknown failures - fail safe
-            _ => Task.FromResult(PipelineErrorDecision.FailPipeline)
+            _ => Task.FromResult(ResilienceDecision.Fail)
         };
     }
     
@@ -650,33 +650,33 @@ private static int CalculateSafeBufferLimit()
 
 ```csharp
 // WRONG: No memory awareness
-public class MemoryObliviousHandler : IPipelineErrorHandler
+public class MemoryObliviousResiliencePolicy : ResiliencePolicyBase
 {
-    public Task<PipelineErrorDecision> HandleNodeFailureAsync(
-        string nodeId, Exception error, PipelineContext context, CancellationToken ct)
+    public override Task<ResilienceDecision> DecidePipelineFailureAsync(
+        string nodeId, Exception exception, PipelineContext context, CancellationToken ct)
     {
-        return Task.FromResult(PipelineErrorDecision.RestartNode); // Always restarts
+        return Task.FromResult(ResilienceDecision.RestartNode); // Always restarts
     }
 }
 
-// CORRECT: Memory-aware error handling
-public class MemoryAwareHandler : IPipelineErrorHandler
+// CORRECT: Memory-aware resilience policy
+public class MemoryAwareResiliencePolicyV2 : ResiliencePolicyBase
 {
-    public Task<PipelineErrorDecision> HandleNodeFailureAsync(
-        string nodeId, Exception error, PipelineContext context, CancellationToken ct)
+    public override Task<ResilienceDecision> DecidePipelineFailureAsync(
+        string nodeId, Exception exception, PipelineContext context, CancellationToken ct)
     {
         // Check memory pressure
         var memoryMB = GC.GetTotalMemory(false) / (1024 * 1024);
         if (memoryMB > 2000) // 2GB threshold
         {
             Console.WriteLine($"High memory usage ({memoryMB}MB) - avoiding restart");
-            return Task.FromResult(PipelineErrorDecision.ContinueWithoutNode);
+            return Task.FromResult(ResilienceDecision.ContinueWithoutNode);
         }
         
-        return error switch
+        return exception switch
         {
-            TimeoutException => Task.FromResult(PipelineErrorDecision.RestartNode),
-            _ => Task.FromResult(PipelineErrorDecision.FailPipeline)
+            TimeoutException => Task.FromResult(ResilienceDecision.RestartNode),
+            _ => Task.FromResult(ResilienceDecision.Fail)
         };
     }
 }

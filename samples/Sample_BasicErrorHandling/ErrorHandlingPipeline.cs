@@ -120,8 +120,8 @@ public class ErrorHandlingPipeline : IPipelineDefinition
 
         Console.WriteLine($"DIAGNOSTIC: Graph.ErrorHandling.RetryOptions: {graph.ErrorHandling.RetryOptions}");
         Console.WriteLine($"DIAGNOSTIC: Graph.ErrorHandling.CircuitBreakerOptions: {graph.ErrorHandling.CircuitBreakerOptions}");
-        Console.WriteLine($"DIAGNOSTIC: Graph.ErrorHandling.PipelineErrorHandler: {graph.ErrorHandling.PipelineErrorHandler}");
-        Console.WriteLine($"DIAGNOSTIC: Graph.ErrorHandling.PipelineErrorHandlerType: {graph.ErrorHandling.PipelineErrorHandlerType}");
+        Console.WriteLine($"DIAGNOSTIC: Graph.ErrorHandling.ResiliencePolicy: {graph.ErrorHandling.ResiliencePolicy}");
+        Console.WriteLine($"DIAGNOSTIC: Graph.ErrorHandling.ResiliencePolicyType: {graph.ErrorHandling.ResiliencePolicyType}");
         Console.WriteLine($"DIAGNOSTIC: Graph.ErrorHandling.DeadLetterSink: {graph.ErrorHandling.DeadLetterSink}");
         Console.WriteLine($"DIAGNOSTIC: Graph.ErrorHandling.DeadLetterSinkType: {graph.ErrorHandling.DeadLetterSinkType}");
 

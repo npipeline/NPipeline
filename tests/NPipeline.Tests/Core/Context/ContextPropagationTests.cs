@@ -9,8 +9,10 @@ using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
+using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Tests.Core.Context;
 
@@ -43,20 +45,16 @@ public sealed class ContextPropagationTests
     }
 
     [Fact]
-    public async Task PipelineHandler_FromBuilder_ShouldBeAvailableInContext()
+    public async Task ResiliencePolicy_FromBuilder_ShouldBeAvailableInContext()
     {
         var services = new ServiceCollection();
         services.AddNPipeline(Assembly.GetExecutingAssembly());
-        services.AddSingleton<CapturingPipelineHandler>();
         var serviceProvider = services.BuildServiceProvider();
-        var diHandlerFactory = new DiHandlerFactory(serviceProvider);
-
-        var context = new PipelineContext(
-            PipelineContextConfiguration.Default with { ErrorHandlerFactory = diHandlerFactory });
+        var context = new PipelineContext();
 
         var runner = serviceProvider.GetRequiredService<IPipelineRunner>();
         await runner.RunAsync<PipelineWithHandler>(context);
-        context.PipelineErrorHandler.Should().NotBeNull();
+        context.ResiliencePolicy.Should().BeOfType<CapturingPipelinePolicy>();
     }
 
     [Fact]
@@ -67,7 +65,6 @@ public sealed class ContextPropagationTests
 
         // Override failing transform & handlers / sink to be singletons for inspection
         services.AddSingleton<CapturingDeadLetterSink>();
-        services.AddSingleton<RedirectingNodeHandler>();
         var serviceProvider = services.BuildServiceProvider();
         var diHandlerFactory = new DiHandlerFactory(serviceProvider);
 
@@ -93,23 +90,96 @@ public sealed class ContextPropagationTests
         }
     }
 
-    private sealed class CapturingPipelineHandler : IPipelineErrorHandler
+    private sealed class CapturingPipelinePolicy : IResiliencePolicy
     {
         public bool Called { get; private set; }
 
-        public Task<PipelineErrorDecision> HandleNodeFailureAsync(string nodeId, Exception error, PipelineContext context, CancellationToken cancellationToken)
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception exception,
+            PipelineContext context,
+            CancellationToken cancellationToken)
         {
             Called = true;
-            return Task.FromResult(PipelineErrorDecision.FailPipeline);
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
+            string nodeId,
+            Exception exception,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            Called = true;
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            Called = true;
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 
-    private sealed class RedirectingNodeHandler : INodeErrorHandler<ITransformNode<int, int>, int>
+    private sealed class RedirectingNodePolicy : IResiliencePolicy
     {
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int failedItem, NodeFailureContext failure,
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception exception,
+            PipelineContext context,
             CancellationToken cancellationToken)
         {
-            return Task.FromResult(NodeErrorDecision.DeadLetter);
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
+            string nodeId,
+            Exception exception,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.DeadLetter);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 
@@ -154,7 +224,7 @@ public sealed class ContextPropagationTests
             var t = builder.AddPassThroughTransform<int, int>("t");
             var sink = builder.AddInMemorySink<int>("sink");
             builder.Connect(source, t).Connect(t, sink);
-            builder.AddPipelineErrorHandler<CapturingPipelineHandler>();
+            builder.AddResiliencePolicy<CapturingPipelinePolicy>();
         }
     }
 
@@ -166,7 +236,7 @@ public sealed class ContextPropagationTests
             var fail = builder.AddTransform<FailingTransform, int, int>("fail");
             var sink = builder.AddInMemorySink<int>("snk");
             builder.Connect(source, fail).Connect(fail, sink);
-            builder.WithErrorHandler(fail, typeof(RedirectingNodeHandler));
+            builder.SetNodeResiliencePolicy(fail, new RedirectingNodePolicy());
             builder.AddDeadLetterSink<CapturingDeadLetterSink>();
         }
     }

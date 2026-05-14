@@ -4,12 +4,14 @@ using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
+using NPipeline.Execution.Annotations;
 using NPipeline.Execution.Lineage;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 using NPipeline.Sampling;
 
 namespace NPipeline.Extensions.Parallelism
@@ -131,33 +133,24 @@ namespace NPipeline.Extensions.Parallelism
                         ParallelExecutionStrategyLogMessages.NodeFailure(logger, ex, cached.NodeId, attempt + 1);
                     }
 
-                    if (node.ErrorHandler is null)
-                    {
-                        PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, ex, attempt, correlationId, ancestryInputIndices);
-                        RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, LineageOutcomeReason.Error, attempt);
-                        throw;
-                    }
+                    var policy = ResolveResiliencePolicy(context, cached.NodeId);
 
-                    if (node.ErrorHandler is not INodeErrorHandler<ITransformNode<TIn, TOut>, TIn> typedHandler)
-                    {
-                        PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, ex, attempt, correlationId, ancestryInputIndices);
-                        RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, LineageOutcomeReason.Error, attempt);
-                        throw;
-                    }
-
-                    var attribution = FailureAttributionResolver.Resolve(ex, context, cached.NodeId, attempt, correlationId);
-                    var decision = await HandleNodeErrorAsync(node, cached.NodeId, item, ex, context, typedHandler, attribution, attempt, cached.CancellationToken).ConfigureAwait(false);
+                    var decision = await policy
+                        .DecideItemFailureAsync(node, item, ex, context, cached.NodeId, attempt, cached.CancellationToken)
+                        .ConfigureAwait(false);
 
                     switch (decision)
                     {
-                        case NodeErrorDecision.Skip:
+                        case ResilienceDecision.Skip:
                             RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, LineageOutcomeReason.FilteredOut, attempt);
                             return default;
-                        case NodeErrorDecision.DeadLetter:
+                        case ResilienceDecision.DeadLetter:
+                            await TryDispatchDeadLetterAsync(item, ex, context, cached.NodeId, attempt, cached.CancellationToken)
+                                .ConfigureAwait(false);
                             RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, LineageOutcomeReason.DeadLettered,
                                 attempt);
                             return default;
-                        case NodeErrorDecision.Retry:
+                        case ResilienceDecision.Retry:
                             if (attempt >= cached.RetryOptions.MaxItemRetries)
                             {
                                 PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, ex, cached.RetryOptions.MaxItemRetries,
@@ -171,14 +164,12 @@ namespace NPipeline.Extensions.Parallelism
                             itemActivity?.SetTag("retry.attempt", attempt.ToString());
                             PublishRetryInstrumentation(metrics, observer, context, cached.NodeId, attempt, ex);
                             continue;
-                        case NodeErrorDecision.Fail:
+                        case ResilienceDecision.Fail:
                             PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, ex, attempt, correlationId, ancestryInputIndices);
                             RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, LineageOutcomeReason.Error, attempt);
                             throw;
                         default:
-                            PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, ex, attempt, correlationId, ancestryInputIndices);
-                            RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, LineageOutcomeReason.Error, attempt);
-                            throw;
+                            throw new InvalidOperationException($"Error handling failed for node {cached.NodeId} with decision {decision}.", ex);
                     }
                 }
             }
@@ -192,26 +183,21 @@ namespace NPipeline.Extensions.Parallelism
                 : new ValueTask<TOut>(node.TransformAsync(item, context, cancellationToken));
         }
 
-        private static async Task<NodeErrorDecision> HandleNodeErrorAsync<TIn, TOut>(ITransformNode<TIn, TOut> node, string nodeId, TIn item, Exception exception,
-            PipelineContext context, INodeErrorHandler<ITransformNode<TIn, TOut>, TIn> handler, NodeFailureAttribution attribution, int attempt, CancellationToken cancellationToken)
-        {
-            var failureContext = new NodeFailureContext(exception, context, attribution, attempt);
-            var decision = await handler.HandleAsync(node, item, failureContext, cancellationToken).ConfigureAwait(false);
-
-            if (decision == NodeErrorDecision.DeadLetter && context.DeadLetterSink is not null)
-            {
-                var envelope = new DeadLetterEnvelope(item!, exception, attribution);
-                await context.DeadLetterSink.HandleAsync(envelope, context, cancellationToken).ConfigureAwait(false);
-            }
-
-            return decision;
-        }
-
         private static void PublishRetryInstrumentation(ParallelExecutionMetrics? metrics, IExecutionObserver? observer, PipelineContext context,
             string nodeId, int attempt, Exception exception)
         {
             metrics?.RecordRetry(attempt);
             observer?.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, attempt, exception, context.PipelineId, context.PipelineName));
+        }
+
+        private static IResiliencePolicy ResolveResiliencePolicy(PipelineContext context, string nodeId)
+        {
+            var key = ExecutionAnnotationKeys.NodeResiliencePolicyForNode(nodeId);
+
+            if (context.NodeExecutionScopeRegistry.TryGetRuntimeAnnotation(key, out var annotation) && annotation is IResiliencePolicy nodePolicy)
+                return nodePolicy;
+
+            return context.ResiliencePolicy;
         }
 
         private static void RecordLineageOutcome(long? lineageInputIndex, PipelineContext context, string nodeId,
@@ -224,6 +210,24 @@ namespace NPipeline.Extensions.Parallelism
 
             var normalizedRetryCount = Math.Max(0, retryCount);
             LineageNodeOutcomeRegistry.Record(context.PipelineId, nodeId, lineageInputIndex.Value, outcomeReason, normalizedRetryCount);
+        }
+
+        private static async Task TryDispatchDeadLetterAsync<TIn>(
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            if (context.DeadLetterSink is null)
+            {
+                return;
+            }
+
+            var attribution = FailureAttributionResolver.Resolve(exception, context, nodeId, retryAttempt);
+            var envelope = new DeadLetterEnvelope(failedItem!, exception, attribution);
+            await context.DeadLetterSink.HandleAsync(envelope, context, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>

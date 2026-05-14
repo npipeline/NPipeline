@@ -193,7 +193,7 @@ var definition = new MyPipelineDefinition();
 definition.Define(builder, context);
 
 // In MyPipelineDefinition.Define():
-// 
+//
 //   Step 1: Wrap node with ResilientExecutionStrategy
 //   var nodeHandle = builder
 //       .AddTransform<MyTransform, Input, Output>("risky")
@@ -204,16 +204,19 @@ definition.Define(builder, context);
 //           )
 //       );
 //
-//   Add error handler that returns RestartNode
-//   builder.AddPipelineErrorHandler<MyErrorHandler>();
+//   Step 2: Register a resilience policy that returns RestartNode
+//   builder.AddResiliencePolicy<MyResiliencePolicy>();
 //
-// In MyErrorHandler.HandleNodeFailureAsync():
+// In MyResiliencePolicy (extends ResiliencePolicyBase):
 //
-//   return error switch
+//   public override Task<ResilienceDecision> DecidePipelineFailureAsync(
+//       string nodeId, Exception exception, PipelineContext context,
+//       CancellationToken ct)
 //   {
-//       TimeoutException => PipelineErrorDecision.RestartNode,
-//       _ => PipelineErrorDecision.FailPipeline
-//   };
+//       return Task.FromResult(exception is TimeoutException
+//           ? ResilienceDecision.RestartNode
+//           : ResilienceDecision.Fail);
+//   }
 ```
 
 ---
@@ -377,7 +380,8 @@ public void Define(PipelineBuilder builder, PipelineContext context)
 
 ## Next Steps
 
-- **[Error Handling](./error-handling.md)** - Comprehensive error handling strategies
-- **[Retry Configuration](./retries.md)** - Detailed configuration options and advanced patterns
-- **[Circuit Breakers](./circuit-breakers.md)** - Preventing cascading failures
-- **[Troubleshooting](./troubleshooting.md)** - Common issues and solutions
+- [Error Handling Overview](./error-handling-overview.md) - Understand all resilience levels
+- [Resilience Policy](./resilience-policy.md) - Implement `IResiliencePolicy`
+- [Retry Configuration](./retries.md) - Detailed configuration options and advanced patterns
+- [Circuit Breakers](./circuit-breakers.md) - Preventing cascading failures
+- [Troubleshooting](./troubleshooting.md) - Common issues and solutions

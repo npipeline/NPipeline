@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
-using NPipeline.ErrorHandling;
 using NPipeline.Execution.Strategies;
 using NPipeline.Graph;
 using NPipeline.Nodes;
@@ -13,11 +12,10 @@ namespace NPipeline.Execution.Factories;
 ///     Falls back to Activator.CreateInstance for types without parameterless constructors.
 ///     For complex dependency injection scenarios, use DIContainerNodeFactory or pre-configured instances.
 /// </summary>
-public sealed class DefaultNodeFactory(IErrorHandlerFactory? errorHandlerFactory = null) : INodeFactory
+public sealed class DefaultNodeFactory : INodeFactory
 {
     // Cache of compiled factory delegates for fast instantiation
     private readonly ConcurrentDictionary<Type, Func<INode>?> _compiledFactories = new();
-    private readonly IErrorHandlerFactory _errorHandlerFactory = errorHandlerFactory ?? new DefaultErrorHandlerFactory();
 
     /// <inheritdoc />
     public INode Create(NodeDefinition nodeDefinition, PipelineGraph graph)
@@ -99,10 +97,6 @@ public sealed class DefaultNodeFactory(IErrorHandlerFactory? errorHandlerFactory
         {
             // Apply execution strategy if specified, falling back to SequentialExecutionStrategy.
             transformNode.ExecutionStrategy = nodeDefinition.ExecutionStrategy ?? new SequentialExecutionStrategy();
-
-            // Apply error handler if specified.
-            if (nodeDefinition.ErrorHandlerType is not null)
-                transformNode.ErrorHandler = _errorHandlerFactory.CreateNodeErrorHandler(nodeDefinition.ErrorHandlerType);
         }
 
         return instance;

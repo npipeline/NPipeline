@@ -1,9 +1,11 @@
-using NPipeline.ErrorHandling;
 using NPipeline.Execution.Lineage;
+using NPipeline.Execution.Annotations;
+using NPipeline.ErrorHandling;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 using NPipeline.Sampling;
 
 namespace NPipeline.Execution.Services;
@@ -49,34 +51,24 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
             {
                 itemActivity?.RecordException(ex);
 
-                if (node.ErrorHandler is not INodeErrorHandler<ITransformNode<TIn, TOut>, TIn> typedHandler)
-                {
-                    PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, ex, attempt);
-                    RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, LineageOutcomeReason.Error, attempt);
-                    throw;
-                }
+                var policy = ResolveResiliencePolicy(context, nodeId);
 
-                var attribution = FailureAttributionResolver.Resolve(ex, context, nodeId, attempt);
-                var failureContext = new NodeFailureContext(ex, context, attribution, attempt);
-                var decision = await typedHandler.HandleAsync(node, item, failureContext, cancellationToken).ConfigureAwait(false);
+                var decision = await policy
+                    .DecideItemFailureAsync(node, item, ex, context, nodeId, attempt, cancellationToken)
+                    .ConfigureAwait(false);
 
                 switch (decision)
                 {
-                    case NodeErrorDecision.Skip:
+                    case ResilienceDecision.Skip:
                         RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, LineageOutcomeReason.FilteredOut, attempt);
                         return ItemExecutionResult<TOut>.Skipped(attempt);
 
-                    case NodeErrorDecision.DeadLetter:
-                        if (context.DeadLetterSink is not null)
-                        {
-                            var envelope = new DeadLetterEnvelope(item!, ex, attribution);
-                            await context.DeadLetterSink.HandleAsync(envelope, context, cancellationToken).ConfigureAwait(false);
-                        }
-
+                    case ResilienceDecision.DeadLetter:
+                        await TryDispatchDeadLetterAsync(item, ex, context, nodeId, attempt, cancellationToken).ConfigureAwait(false);
                         RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, LineageOutcomeReason.DeadLettered, attempt);
                         return ItemExecutionResult<TOut>.DeadLettered(attempt);
 
-                    case NodeErrorDecision.Retry:
+                    case ResilienceDecision.Retry:
                         attempt++;
 
                         if (attempt > maxItemRetries)
@@ -93,16 +85,26 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                         itemActivity?.SetTag("retry.attempt", attempt.ToString());
                         continue;
 
-                    case NodeErrorDecision.Fail:
+                    case ResilienceDecision.Fail:
                         PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, ex, attempt);
                         RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, LineageOutcomeReason.Error, attempt);
                         throw;
 
                     default:
-                        throw new InvalidOperationException($"Error handling failed for node {nodeId}", ex);
+                        throw new InvalidOperationException($"Error handling failed for node {nodeId} with decision {decision}.", ex);
                 }
             }
         }
+    }
+
+    private static IResiliencePolicy ResolveResiliencePolicy(PipelineContext context, string nodeId)
+    {
+        var key = ExecutionAnnotationKeys.NodeResiliencePolicyForNode(nodeId);
+
+        if (context.NodeExecutionScopeRegistry.TryGetRuntimeAnnotation(key, out var annotation) && annotation is IResiliencePolicy nodePolicy)
+            return nodePolicy;
+
+        return context.ResiliencePolicy;
     }
 
     private static void RecordLineageOutcome(
@@ -118,5 +120,21 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
 
         var normalizedRetryCount = Math.Max(0, retryCount);
         LineageNodeOutcomeRegistry.Record(context.PipelineId, nodeId, lineageInputIndex, outcomeReason, normalizedRetryCount);
+    }
+
+    private static async Task TryDispatchDeadLetterAsync<TIn>(
+        TIn failedItem,
+        Exception exception,
+        PipelineContext context,
+        string nodeId,
+        int retryAttempt,
+        CancellationToken cancellationToken)
+    {
+        if (context.DeadLetterSink is null)
+            return;
+
+        var attribution = FailureAttributionResolver.Resolve(exception, context, nodeId, retryAttempt);
+        var envelope = new DeadLetterEnvelope(failedItem!, exception, attribution);
+        await context.DeadLetterSink.HandleAsync(envelope, context, cancellationToken).ConfigureAwait(false);
     }
 }

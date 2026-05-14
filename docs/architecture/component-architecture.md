@@ -94,7 +94,7 @@ public class PipelineContext
     public ILineageFactory LineageFactory { get; }
     public IObservabilityFactory ObservabilityFactory { get; }
     public IDeadLetterSink? DeadLetterSink { get; }
-    public IPipelineErrorHandler? PipelineErrorHandler { get; }
+    public IResiliencePolicy? ResiliencePolicy { get; }
     public PipelineRetryOptions RetryOptions { get; }
 }
 ```
@@ -112,7 +112,7 @@ public class PipelineContext
 - **LineageFactory** - Factory for creating lineage sinks and resolving lineage collectors
 - **ObservabilityFactory** - Factory for resolving observability collectors
 - **DeadLetterSink** - Sink for handling failed items
-- **PipelineErrorHandler** - Error handler for pipeline-level errors
+- **ResiliencePolicy** - Resilience policy for pipeline and item-level errors
 - **RetryOptions** - Configuration for retry behavior
 
 **Usage Example:**

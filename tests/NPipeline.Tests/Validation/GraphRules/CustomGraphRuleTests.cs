@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Execution.Strategies;
 using NPipeline.Extensions.Testing;
@@ -51,7 +50,6 @@ public sealed class CustomGraphRuleTests
     private sealed class Passthrough : ITransformNode<int, int>
     {
         public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
-        public INodeErrorHandler? ErrorHandler { get; set; }
 
         public Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {

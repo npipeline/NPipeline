@@ -121,9 +121,7 @@ internal sealed class PipelineExecutionSetupStage(
 
         lineage.LineageSink = runtimeBinding.LineageSink;
         lineage.PipelineLineageSink = runtimeBinding.PipelineLineageSink;
-
-        if (runtimeBinding.PipelineErrorHandler is not null)
-            context.PipelineErrorHandler = runtimeBinding.PipelineErrorHandler;
+        context.ResiliencePolicy = runtimeBinding.ResiliencePolicy;
 
         if (runtimeBinding.DeadLetterSink is not null)
             context.DeadLetterSink = runtimeBinding.DeadLetterSink;

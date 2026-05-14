@@ -2,270 +2,239 @@ using AwesomeAssertions;
 using NPipeline.ErrorHandling;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Tests.ErrorHandling;
 
 /// <summary>
-///     Tests for the fluent error handler builder API.
+///     Tests for the fluent resilience policy builder API.
 /// </summary>
 public sealed class FluentErrorHandlerTests
 {
-    private static readonly NodeFailureAttribution TestAttribution = new("test-node", "test-node", Guid.Empty, Guid.Empty);
-    private static NodeFailureContext Failure(Exception ex, int attempt = 0) => new(ex, PipelineContext.Default, TestAttribution, attempt);
-
     [Fact]
-    public async Task RetryAlways_CreatesHandlerThatRetriesUpToMaxAttempts()
+    public async Task RetryAlways_CreatesPolicyThatRetriesUpToMaxAttempts()
     {
         // Arrange
-        var handler = ErrorHandler.RetryAlways<TestTransformNode, string>();
+        var policy = ResiliencePolicyBuilder.RetryAlways<TestTransformNode, string>();
 
-        // Act & Assert
-        var node = new TestTransformNode();
-        var exception = new InvalidOperationException();
-        var context = new PipelineContext();
-
-        // First 3 attempts should retry
+        // Act & Assert - first 3 attempts should retry
         for (var i = 0; i < 3; i++)
         {
-            var decision = await handler.As<INodeErrorHandler<TestTransformNode, string>>()
-                .HandleAsync(node, "test", Failure(exception), CancellationToken.None);
-
-            decision.Should().Be(NodeErrorDecision.Retry, $"attempt {i + 1} should retry");
+            var decision = await DecideAsync(policy, new InvalidOperationException(), i);
+            decision.Should().Be(ResilienceDecision.Retry, $"attempt {i + 1} should retry");
         }
 
         // 4th attempt should dead-letter
-        var finalDecision = await handler.As<INodeErrorHandler<TestTransformNode, string>>()
-            .HandleAsync(node, "test", Failure(exception), CancellationToken.None);
-
-        finalDecision.Should().Be(NodeErrorDecision.DeadLetter, "after max retries, should dead-letter");
+        var finalDecision = await DecideAsync(policy, new InvalidOperationException(), 3);
+        finalDecision.Should().Be(ResilienceDecision.DeadLetter, "after max retries, should dead-letter");
     }
 
     [Fact]
-    public async Task SkipAlways_CreatesHandlerThatSkipsAllErrors()
+    public async Task RetryOn_CreatesPolicyThatTargetsSingleExceptionType()
     {
         // Arrange
-        var handler = ErrorHandler.SkipAlways<TestTransformNode, string>();
+        var policy = ResiliencePolicyBuilder.RetryOn<TestTransformNode, string, TimeoutException>(
+            maxRetries: 2,
+            exhaustedDecision: ResilienceDecision.Skip);
 
-        // Act
-        var node = new TestTransformNode();
+        // Act & Assert - matching exception retries then transitions to configured exhaustion decision
+        (await DecideAsync(policy, new TimeoutException(), 0)).Should().Be(ResilienceDecision.Retry);
+        (await DecideAsync(policy, new TimeoutException(), 1)).Should().Be(ResilienceDecision.Retry);
+        (await DecideAsync(policy, new TimeoutException(), 2)).Should().Be(ResilienceDecision.Skip);
 
-        var decision = await handler.As<INodeErrorHandler<TestTransformNode, string>>()
-            .HandleAsync(node, "test", Failure(new Exception()), CancellationToken.None);
-
-        // Assert
-        decision.Should().Be(NodeErrorDecision.Skip);
+        // Non-matching exception falls back to default behavior (Fail)
+        (await DecideAsync(policy, new InvalidOperationException())).Should().Be(ResilienceDecision.Fail);
     }
 
     [Fact]
-    public async Task DeadLetterAlways_CreatesHandlerThatDeadLettersAllErrors()
+    public async Task SkipAlways_CreatesPolicyThatSkipsAllErrors()
     {
         // Arrange
-        var handler = ErrorHandler.DeadLetterAlways<TestTransformNode, string>();
+        var policy = ResiliencePolicyBuilder.SkipAlways<TestTransformNode, string>();
 
         // Act
-        var node = new TestTransformNode();
-
-        var decision = await handler.As<INodeErrorHandler<TestTransformNode, string>>()
-            .HandleAsync(node, "test", Failure(new Exception()), CancellationToken.None);
+        var decision = await DecideAsync(policy, new Exception());
 
         // Assert
-        decision.Should().Be(NodeErrorDecision.DeadLetter);
+        decision.Should().Be(ResilienceDecision.Skip);
+    }
+
+    [Fact]
+    public async Task DeadLetterAlways_CreatesPolicyThatDeadLettersAllErrors()
+    {
+        // Arrange
+        var policy = ResiliencePolicyBuilder.DeadLetterAlways<TestTransformNode, string>();
+
+        // Act
+        var decision = await DecideAsync(policy, new Exception());
+
+        // Assert
+        decision.Should().Be(ResilienceDecision.DeadLetter);
     }
 
     [Fact]
     public async Task FluentBuilder_OnSpecificException_MatchesCorrectly()
     {
         // Arrange
-        var handler = ErrorHandler.ForNode<TestTransformNode, string>()
+        var policy = ResiliencePolicyBuilder.ForNode<TestTransformNode, string>()
             .On<TimeoutException>().Retry()
             .On<ArgumentException>().Skip()
             .OnAny().DeadLetter()
             .Build();
 
-        var node = new TestTransformNode();
-        var context = new PipelineContext();
-        var typedHandler = handler.As<INodeErrorHandler<TestTransformNode, string>>();
-
         // Act & Assert - TimeoutException should retry
-        var timeoutDecision = await typedHandler
-            .HandleAsync(node, "test", Failure(new TimeoutException()), CancellationToken.None);
-
-        timeoutDecision.Should().Be(NodeErrorDecision.Retry);
+        (await DecideAsync(policy, new TimeoutException())).Should().Be(ResilienceDecision.Retry);
 
         // ArgumentException should skip
-        var argDecision = await typedHandler
-            .HandleAsync(node, "test", Failure(new ArgumentException()), CancellationToken.None);
-
-        argDecision.Should().Be(NodeErrorDecision.Skip);
+        (await DecideAsync(policy, new ArgumentException())).Should().Be(ResilienceDecision.Skip);
 
         // InvalidOperationException should dead-letter (catch-all)
-        var invalidDecision = await typedHandler
-            .HandleAsync(node, "test", Failure(new InvalidOperationException()), CancellationToken.None);
-
-        invalidDecision.Should().Be(NodeErrorDecision.DeadLetter);
+        (await DecideAsync(policy, new InvalidOperationException())).Should().Be(ResilienceDecision.DeadLetter);
     }
 
     [Fact]
     public async Task FluentBuilder_WhenPredicate_MatchesBasedOnCustomLogic()
     {
         // Arrange
-        var handler = ErrorHandler.ForNode<TestTransformNode, string>()
+        var policy = ResiliencePolicyBuilder.ForNode<TestTransformNode, string>()
             .When(ex => ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase)).Retry(2)
             .When(ex => ex.Message.Contains("invalid", StringComparison.OrdinalIgnoreCase)).Skip()
             .OnAny().Fail()
             .Build();
 
-        var node = new TestTransformNode();
-        var context = new PipelineContext();
-        var typedHandler = handler.As<INodeErrorHandler<TestTransformNode, string>>();
-
         // Act & Assert - Message with "timeout" should retry
-        var timeoutDecision = await typedHandler
-            .HandleAsync(node, "test", Failure(new Exception("Connection timeout")), CancellationToken.None);
-
-        timeoutDecision.Should().Be(NodeErrorDecision.Retry);
+        (await DecideAsync(policy, new Exception("Connection timeout"))).Should().Be(ResilienceDecision.Retry);
 
         // Message with "invalid" should skip
-        var invalidDecision = await typedHandler
-            .HandleAsync(node, "test", Failure(new Exception("Invalid data")), CancellationToken.None);
-
-        invalidDecision.Should().Be(NodeErrorDecision.Skip);
+        (await DecideAsync(policy, new Exception("Invalid data"))).Should().Be(ResilienceDecision.Skip);
 
         // Other messages should fail
-        var otherDecision = await typedHandler
-            .HandleAsync(node, "test", Failure(new Exception("Something else")), CancellationToken.None);
-
-        otherDecision.Should().Be(NodeErrorDecision.Fail);
+        (await DecideAsync(policy, new Exception("Something else"))).Should().Be(ResilienceDecision.Fail);
     }
 
     [Fact]
     public async Task FluentBuilder_Otherwise_SetsDefaultBehavior()
     {
         // Arrange
-        var handler = ErrorHandler.ForNode<TestTransformNode, string>()
+        var policy = ResiliencePolicyBuilder.ForNode<TestTransformNode, string>()
             .On<TimeoutException>().Retry(2)
-            .Otherwise(NodeErrorDecision.Skip)
+            .Otherwise(ResilienceDecision.Skip)
             .Build();
 
-        var node = new TestTransformNode();
-        var context = new PipelineContext();
-        var typedHandler = handler.As<INodeErrorHandler<TestTransformNode, string>>();
-
         // Act & Assert - TimeoutException should retry
-        var timeoutDecision = await typedHandler
-            .HandleAsync(node, "test", Failure(new TimeoutException()), CancellationToken.None);
-
-        timeoutDecision.Should().Be(NodeErrorDecision.Retry);
+        (await DecideAsync(policy, new TimeoutException())).Should().Be(ResilienceDecision.Retry);
 
         // Other exceptions should skip (Otherwise behavior)
-        var otherDecision = await typedHandler
-            .HandleAsync(node, "test", Failure(new Exception()), CancellationToken.None);
+        (await DecideAsync(policy, new Exception())).Should().Be(ResilienceDecision.Skip);
+    }
 
-        otherDecision.Should().Be(NodeErrorDecision.Skip);
+    [Fact]
+    public async Task FluentBuilder_RetryOnShortcut_ReducesBoilerplate()
+    {
+        // Arrange
+        var policy = ResiliencePolicyBuilder.ForNode<TestTransformNode, string>()
+            .RetryOn<TimeoutException>(1, ResilienceDecision.Skip)
+            .OnAny().Fail()
+            .Build();
+
+        // Act & Assert - typed shortcut retries once then returns custom exhaustion decision
+        (await DecideAsync(policy, new TimeoutException(), 0)).Should().Be(ResilienceDecision.Retry);
+        (await DecideAsync(policy, new TimeoutException(), 1)).Should().Be(ResilienceDecision.Skip);
+
+        // Catch-all remains available for other exceptions
+        (await DecideAsync(policy, new InvalidOperationException())).Should().Be(ResilienceDecision.Fail);
+    }
+
+    [Fact]
+    public async Task FluentBuilder_RetryWhenShortcut_UsesPredicate()
+    {
+        // Arrange
+        var policy = ResiliencePolicyBuilder.ForNode<TestTransformNode, string>()
+            .RetryWhen(ex => ex.Message.Contains("transient", StringComparison.OrdinalIgnoreCase),
+                maxRetries: 1,
+                exhaustedDecision: ResilienceDecision.DeadLetter)
+            .Otherwise(ResilienceDecision.Fail)
+            .Build();
+
+        // Act & Assert - predicate match retries then dead-letters
+        (await DecideAsync(policy, new Exception("transient network"), 0)).Should().Be(ResilienceDecision.Retry);
+        (await DecideAsync(policy, new Exception("transient network"), 1)).Should().Be(ResilienceDecision.DeadLetter);
+
+        // Predicate miss follows otherwise decision
+        (await DecideAsync(policy, new Exception("permanent failure"))).Should().Be(ResilienceDecision.Fail);
     }
 
     [Fact]
     public async Task FluentBuilder_MultipleRules_EvaluatesInOrder()
     {
         // Arrange - More specific rules should come before more general ones
-        var handler = ErrorHandler.ForNode<TestTransformNode, string>()
+        var policy = ResiliencePolicyBuilder.ForNode<TestTransformNode, string>()
             .On<TimeoutException>().Retry() // More specific - checked first
             .On<InvalidOperationException>().Skip() // More specific - checked second
             .OnAny().DeadLetter() // Catch-all - checked last
             .Build();
 
-        var node = new TestTransformNode();
-        var context = new PipelineContext();
-        var typedHandler = handler.As<INodeErrorHandler<TestTransformNode, string>>();
-
         // Act & Assert - TimeoutException should match the first rule (Retry)
-        var timeoutDecision = await typedHandler
-            .HandleAsync(node, "test", Failure(new TimeoutException()), CancellationToken.None);
-
-        timeoutDecision.Should().Be(NodeErrorDecision.Retry);
+        (await DecideAsync(policy, new TimeoutException())).Should().Be(ResilienceDecision.Retry);
 
         // InvalidOperationException should match the second rule (Skip)
-        var invalidOpDecision = await typedHandler
-            .HandleAsync(node, "test2", Failure(new InvalidOperationException()), CancellationToken.None);
-
-        invalidOpDecision.Should().Be(NodeErrorDecision.Skip);
+        (await DecideAsync(policy, new InvalidOperationException(), item: "test2")).Should().Be(ResilienceDecision.Skip);
 
         // ArgumentException should match the catch-all (DeadLetter)
-        var argDecision = await typedHandler
-            .HandleAsync(node, "test3", Failure(new ArgumentException()), CancellationToken.None);
-
-        argDecision.Should().Be(NodeErrorDecision.DeadLetter);
+        (await DecideAsync(policy, new ArgumentException(), item: "test3")).Should().Be(ResilienceDecision.DeadLetter);
     }
 
     [Fact]
     public async Task FluentBuilder_RetryWithExhaustion_TransitionsToDeadLetter()
     {
         // Arrange
-        var handler = ErrorHandler.ForNode<TestTransformNode, string>()
+        var policy = ResiliencePolicyBuilder.ForNode<TestTransformNode, string>()
             .OnAny().Retry(2)
             .Build();
 
-        var node = new TestTransformNode();
-        var context = new PipelineContext();
         var exception = new Exception();
-        var typedHandler = handler.As<INodeErrorHandler<TestTransformNode, string>>();
 
         // Act & Assert - First 2 attempts should retry
-        var decision1 = await typedHandler.HandleAsync(node, "test", Failure(exception), CancellationToken.None);
-        decision1.Should().Be(NodeErrorDecision.Retry);
-
-        var decision2 = await typedHandler.HandleAsync(node, "test", Failure(exception), CancellationToken.None);
-        decision2.Should().Be(NodeErrorDecision.Retry);
+        (await DecideAsync(policy, exception, 0)).Should().Be(ResilienceDecision.Retry);
+        (await DecideAsync(policy, exception, 1)).Should().Be(ResilienceDecision.Retry);
 
         // 3rd attempt should dead-letter
-        var decision3 = await typedHandler.HandleAsync(node, "test", Failure(exception), CancellationToken.None);
-        decision3.Should().Be(NodeErrorDecision.DeadLetter);
+        (await DecideAsync(policy, exception, 2)).Should().Be(ResilienceDecision.DeadLetter);
     }
 
     [Fact]
     public async Task FluentBuilder_DerivedExceptionTypes_AreMatched()
     {
         // Arrange
-        var handler = ErrorHandler.ForNode<TestTransformNode, string>()
+        var policy = ResiliencePolicyBuilder.ForNode<TestTransformNode, string>()
             .On<ArgumentException>().Skip()
             .OnAny().Fail()
             .Build();
 
-        var node = new TestTransformNode();
-        var context = new PipelineContext();
-        var typedHandler = handler.As<INodeErrorHandler<TestTransformNode, string>>();
-
         // Act & Assert - ArgumentNullException derives from ArgumentException
-        var decision = await typedHandler
-            .HandleAsync(node, "test", Failure(new ArgumentNullException()), CancellationToken.None);
-
-        decision.Should().Be(NodeErrorDecision.Skip, "derived exception types should match parent type rules");
+        var decision = await DecideAsync(policy, new ArgumentNullException());
+        decision.Should().Be(ResilienceDecision.Skip, "derived exception types should match parent type rules");
     }
 
     [Fact]
     public async Task FluentBuilder_NoRules_DefaultsToFail()
     {
         // Arrange
-        var handler = ErrorHandler.ForNode<TestTransformNode, string>()
+        var policy = ResiliencePolicyBuilder.ForNode<TestTransformNode, string>()
             .Build();
 
-        var node = new TestTransformNode();
-        var context = new PipelineContext();
-        var typedHandler = handler.As<INodeErrorHandler<TestTransformNode, string>>();
-
         // Act
-        var decision = await typedHandler
-            .HandleAsync(node, "test", Failure(new Exception()), CancellationToken.None);
+        var decision = await DecideAsync(policy, new Exception());
 
         // Assert
-        decision.Should().Be(NodeErrorDecision.Fail, "default behavior when no rules match is Fail");
+        decision.Should().Be(ResilienceDecision.Fail, "default behavior when no rules match is Fail");
     }
 
     [Fact]
     public async Task FluentBuilder_ComplexScenario_HandlesMultipleExceptionTypes()
     {
         // Arrange
-        var handler = ErrorHandler.ForNode<TestTransformNode, string>()
+        var policy = ResiliencePolicyBuilder.ForNode<TestTransformNode, string>()
             .On<TimeoutException>().Retry()
             .On<IOException>().Retry(5)
             .On<ArgumentException>().Skip()
@@ -273,80 +242,50 @@ public sealed class FluentErrorHandlerTests
             .OnAny().DeadLetter()
             .Build();
 
-        var node = new TestTransformNode();
-        var context = new PipelineContext();
-        var typedHandler = handler.As<INodeErrorHandler<TestTransformNode, string>>();
-
         // Act & Assert
-        (await typedHandler.HandleAsync(node, "test", Failure(new TimeoutException()), CancellationToken.None))
-            .Should().Be(NodeErrorDecision.Retry);
-
-        (await typedHandler.HandleAsync(node, "test", Failure(new IOException()), CancellationToken.None))
-            .Should().Be(NodeErrorDecision.Retry);
-
-        (await typedHandler.HandleAsync(node, "test", Failure(new ArgumentException()), CancellationToken.None))
-            .Should().Be(NodeErrorDecision.Skip);
-
-        (await typedHandler.HandleAsync(node, "test", Failure(new InvalidOperationException()), CancellationToken.None))
-            .Should().Be(NodeErrorDecision.Fail);
-
-        (await typedHandler.HandleAsync(node, "test", Failure(new NotSupportedException()), CancellationToken.None))
-            .Should().Be(NodeErrorDecision.DeadLetter);
+        (await DecideAsync(policy, new TimeoutException())).Should().Be(ResilienceDecision.Retry);
+        (await DecideAsync(policy, new IOException())).Should().Be(ResilienceDecision.Retry);
+        (await DecideAsync(policy, new ArgumentException())).Should().Be(ResilienceDecision.Skip);
+        (await DecideAsync(policy, new InvalidOperationException())).Should().Be(ResilienceDecision.Fail);
+        (await DecideAsync(policy, new NotSupportedException())).Should().Be(ResilienceDecision.DeadLetter);
     }
 
     [Fact]
     public async Task FluentBuilder_FailDecision_StopsPipeline()
     {
         // Arrange
-        var handler = ErrorHandler.ForNode<TestTransformNode, string>()
+        var policy = ResiliencePolicyBuilder.ForNode<TestTransformNode, string>()
             .On<InvalidOperationException>().Fail()
             .Build();
 
-        var node = new TestTransformNode();
-        var context = new PipelineContext();
-        var typedHandler = handler.As<INodeErrorHandler<TestTransformNode, string>>();
-
         // Act
-        var decision = await typedHandler
-            .HandleAsync(node, "test", Failure(new InvalidOperationException()), CancellationToken.None);
+        var decision = await DecideAsync(policy, new InvalidOperationException());
 
         // Assert
-        decision.Should().Be(NodeErrorDecision.Fail);
+        decision.Should().Be(ResilienceDecision.Fail);
     }
 
     [Fact]
-    public async Task FluentBuilder_RetryCountResetsAfterNonRetryDecision()
+    public async Task FluentBuilder_RetryDecision_UsesFailureRetryAttempt()
     {
         // Arrange
-        var handler = ErrorHandler.ForNode<TestTransformNode, string>()
+        var policy = ResiliencePolicyBuilder.ForNode<TestTransformNode, string>()
             .OnAny().Retry(2)
             .Build();
 
-        var node = new TestTransformNode();
-        var context = new PipelineContext();
-        var typedHandler = handler.As<INodeErrorHandler<TestTransformNode, string>>();
+        // Act & Assert - Retry twice based on retry attempt.
+        (await DecideAsync(policy, new Exception(), 0, "item1")).Should().Be(ResilienceDecision.Retry);
+        (await DecideAsync(policy, new Exception(), 1, "item1")).Should().Be(ResilienceDecision.Retry);
 
-        // Act & Assert - Retry twice
-        (await typedHandler.HandleAsync(node, "item1", Failure(new Exception()), CancellationToken.None))
-            .Should().Be(NodeErrorDecision.Retry);
-
-        (await typedHandler.HandleAsync(node, "item1", Failure(new Exception()), CancellationToken.None))
-            .Should().Be(NodeErrorDecision.Retry);
-
-        // Third call exhausts retries and dead-letters
-        (await typedHandler.HandleAsync(node, "item1", Failure(new Exception()), CancellationToken.None))
-            .Should().Be(NodeErrorDecision.DeadLetter);
-
-        // For a new item (simulated by dead-letter resetting the counter), should retry again
-        // Note: In the actual implementation, the counter resets after non-retry decisions
-        // This test verifies that behavior is maintained
+        // Third attempt exhausts retries and dead-letters.
+        (await DecideAsync(policy, new Exception(), 2, "item1")).Should().Be(ResilienceDecision.DeadLetter);
     }
 
     [Fact]
     public void Build_WithCatchAllRuleNotLast_ThrowsInvalidOperationException()
     {
         // Arrange - Create a builder with OnAny() before other rules (incorrect pattern)
-        var builder = ErrorHandler.ForNode<TestTransformNode, string>()
+        var builder = ResiliencePolicyBuilder.ForNode<TestTransformNode, string>()
             .OnAny().DeadLetter() // Catch-all placed first
             .On<TimeoutException>().Retry(); // This rule becomes unreachable
 
@@ -354,7 +293,7 @@ public sealed class FluentErrorHandlerTests
         var ex = Assert.Throws<InvalidOperationException>(() => builder.Build());
 
         ex.Message.Should().Contain("catch-all")
-            .And.Contain("should be placed last")
+            .And.Contain("must be last")
             .And.Contain("position 1");
     }
 
@@ -362,33 +301,50 @@ public sealed class FluentErrorHandlerTests
     public void Build_WithCatchAllRuleLastIsValid()
     {
         // Arrange - Create a builder with OnAny() as the last rule (correct pattern)
-        var builder = ErrorHandler.ForNode<TestTransformNode, string>()
+        var builder = ResiliencePolicyBuilder.ForNode<TestTransformNode, string>()
             .On<TimeoutException>().Retry()
             .On<ArgumentException>().Skip()
             .OnAny().DeadLetter();
 
         // Act & Assert - Should not throw
-        var handler = builder.Build();
-        handler.Should().NotBeNull();
+        var policy = builder.Build();
+        policy.Should().NotBeNull();
     }
 
     [Fact]
     public void Build_WithMultipleCatchAllRules_ThrowsForEarliestIncorrectPosition()
     {
         // Arrange - Create a builder with multiple OnAny() rules (only the last is valid)
-        var builder = ErrorHandler.ForNode<TestTransformNode, string>()
+        var builder = ResiliencePolicyBuilder.ForNode<TestTransformNode, string>()
             .OnAny().DeadLetter() // First catch-all at position 1 (incorrect)
             .On<TimeoutException>().Retry()
             .OnAny().Fail(); // Second catch-all at position 3 (would be correct if first weren't there)
 
         // Act & Assert - Should throw for the first incorrect OnAny()
         var ex = Assert.Throws<InvalidOperationException>(() => builder.Build());
-
         ex.Message.Should().Contain("position 1");
     }
 
+    private static Task<ResilienceDecision> DecideAsync(
+        IResiliencePolicy policy,
+        Exception exception,
+        int retryAttempt = 0,
+        string item = "test")
+    {
+        var context = PipelineContext.Default;
+
+        return policy.DecideItemFailureAsync<string, string>(
+            new TestTransformNode(),
+            item,
+            exception,
+            context,
+            "test-node",
+            retryAttempt,
+            CancellationToken.None);
+    }
+
     /// <summary>
-    ///     Simple test transform node for testing error handlers.
+    ///     Simple test transform node for testing resilience policies.
     /// </summary>
     private sealed class TestTransformNode : TransformNode<string, string>
     {

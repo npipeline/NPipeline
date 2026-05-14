@@ -18,7 +18,7 @@ namespace NPipeline.ErrorHandling;
 ///         - Logging/alerting systems
 ///     </para>
 ///     <para>
-///         When an error handler returns <see cref="NodeErrorDecision.DeadLetter" />,
+///         When a resilience policy returns <see cref="Resilience.ResilienceDecision.DeadLetter" />,
 ///         the framework constructs a <see cref="DeadLetterEnvelope" /> and passes it to this sink.
 ///     </para>
 /// </remarks>

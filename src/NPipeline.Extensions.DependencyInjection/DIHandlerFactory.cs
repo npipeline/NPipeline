@@ -14,51 +14,6 @@ namespace NPipeline.Extensions.DependencyInjection;
 public sealed class DiHandlerFactory(IServiceProvider serviceProvider) : IErrorHandlerFactory, ILineageFactory, IObservabilityFactory
 {
     /// <summary>
-    ///     Creates an instance of the specified error handler type.
-    /// </summary>
-    /// <param name="handlerType">The type of the error handler to create.</param>
-    /// <returns>An instance of <see cref="IPipelineErrorHandler" />, or null if it cannot be created.</returns>
-    public IPipelineErrorHandler? CreateErrorHandler(Type handlerType)
-    {
-        // Prefer registered instance; fallback to DI construction for better DX.
-        var instance = serviceProvider.GetService(handlerType);
-
-        if (instance is IPipelineErrorHandler eh)
-            return eh;
-
-        try
-        {
-            return ActivatorUtilities.CreateInstance(serviceProvider, handlerType) as IPipelineErrorHandler;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    /// <summary>
-    ///     Creates an instance of the specified node error handler type.
-    /// </summary>
-    /// <param name="handlerType">The type of the error handler to create.</param>
-    /// <returns>An instance of <see cref="INodeErrorHandler" />, or null if it cannot be created.</returns>
-    public INodeErrorHandler? CreateNodeErrorHandler(Type handlerType)
-    {
-        var instance = serviceProvider.GetService(handlerType);
-
-        if (instance is INodeErrorHandler neh)
-            return neh;
-
-        try
-        {
-            return ActivatorUtilities.CreateInstance(serviceProvider, handlerType) as INodeErrorHandler;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    /// <summary>
     ///     Creates an instance of the specified dead-letter sink type.
     /// </summary>
     /// <param name="sinkType">The type of the dead-letter sink to create.</param>

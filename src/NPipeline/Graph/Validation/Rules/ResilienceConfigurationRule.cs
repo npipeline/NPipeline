@@ -14,7 +14,7 @@ namespace NPipeline.Graph.Validation.Rules;
 ///             <item>The node is wrapped with ResilientExecutionStrategy</item>
 ///             <item>MaxNodeRestartAttempts > 0 is configured</item>
 ///             <item>MaxMaterializedItems is set to a positive number (not null)</item>
-///             <item>A PipelineErrorHandler is registered (pipeline-level or node-level)</item>
+///             <item>A custom IResiliencePolicy is registered</item>
 ///         </list>
 ///     </para>
 ///     <para>
@@ -44,21 +44,18 @@ internal sealed class ResilienceConfigurationRule : IGraphRule
         if (nodesWithResilience.Count == 0)
             return issues.ToImmutable();
 
-        // Check if any error handler is configured
-        var hasPipelineErrorHandler = graph.ErrorHandling.PipelineErrorHandler is not null
-                                      || graph.ErrorHandling.PipelineErrorHandlerType is not null;
+        var hasCustomPolicy = graph.ErrorHandling.ResiliencePolicy is not null
+                      || graph.ErrorHandling.ResiliencePolicyType is not null;
 
         foreach (var node in nodesWithResilience)
         {
-            // Check for error handler
-            if (!hasPipelineErrorHandler)
+            if (!hasCustomPolicy)
             {
                 issues.Add(new ValidationIssue(
                     ValidationSeverity.Warning,
-                    $"Node '{node.Name}' uses ResilientExecutionStrategy but no IPipelineErrorHandler is configured. " +
-                    $"Node restarts will not work without an error handler to make restart decisions. " +
-                    $"Configure: builder.AddPipelineErrorHandler<YourHandler>() or use " +
-                    $"builder.WithStandardResilience() for automatic configuration.",
+                    $"Node '{node.Name}' uses ResilientExecutionStrategy but no custom IResiliencePolicy is configured. " +
+                    $"Node restarts will not work with DefaultResiliencePolicy because it fail-fasts by design. " +
+                    $"Configure: builder.AddResiliencePolicy<YourPolicy>().",
                     "Resilience"));
             }
 

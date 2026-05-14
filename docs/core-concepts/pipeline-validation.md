@@ -240,9 +240,9 @@ Extended rules are **enabled by default** to provide additional guidance on best
 
 For nodes with `ResilientExecutionStrategy`, validates:
 
-- **Error Handler** - `IPipelineErrorHandler` is registered (required for restart decisions)
-  - Error handler makes the decision to restart, retry, skip, or fail on exceptions
-  - Missing error handler means restarts can never be triggered
+- **Resilience Policy** - An `IResiliencePolicy` is registered (required for restart decisions)
+  - The resilience policy makes the decision to restart, retry, skip, or fail on exceptions
+  - Without a policy, restarts can never be triggered
   
 - **Restart Attempts** - `MaxNodeRestartAttempts > 0` is configured
   - Controls how many times a node can be restarted
@@ -266,14 +266,14 @@ For nodes with `ResilientExecutionStrategy`, validates:
 **Example Problems and Solutions:**
 
 ```csharp
-// PROBLEM: ResilientExecutionStrategy without error handler
+// PROBLEM: ResilientExecutionStrategy without resilience policy
 var resilientTransform = builder.AddTransform<MyTransform, int, string>("transform")
     .WithExecutionStrategy(builder, new ResilientExecutionStrategy(...));
-// Missing: builder.AddPipelineErrorHandler<MyErrorHandler>();
-builder.Validate(); // WARNING: Error handler not configured
+// Missing: builder.AddResiliencePolicy<MyResiliencePolicy>();
+builder.Validate(); // WARNING: Resilience policy not configured
 
 // SOLUTION: Configure all three prerequisites
-builder.AddPipelineErrorHandler<MyErrorHandler>();
+builder.AddResiliencePolicy<MyResiliencePolicy>();
 builder.WithRetryOptions(opts => opts.With(
     maxNodeRestartAttempts: 3,
     maxMaterializedItems: 1000));
@@ -285,7 +285,7 @@ builder.Validate(); // OK: All prerequisites configured
 **Quick Fix Checklist:**
 
 - [ ] Apply `ResilientExecutionStrategy` to nodes that need restart capability
-- [ ] Register an `IPipelineErrorHandler` implementation
+- [ ] Register an `IResiliencePolicy` implementation
 - [ ] Set `MaxNodeRestartAttempts > 0` (typically 2-3)
 - [ ] Set `MaxMaterializedItems` to a positive value based on item size (typically 100-10000)
 
@@ -480,7 +480,7 @@ public void BuildPipelineWithAdvancedFeatures()
     builder.SetNodeExecutionOption(parallelTransform.Id, parallelOptions);
     
     // Configure resilience
-    builder.AddPipelineErrorHandler<MyErrorHandler>();
+    builder.AddResiliencePolicy<MyResiliencePolicy>();
     builder.WithRetryOptions(opts => opts.With(
         maxNodeRestartAttempts: 3,
         maxMaterializedItems: 1000));

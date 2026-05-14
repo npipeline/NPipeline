@@ -9,6 +9,7 @@ using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Extensions.DependencyInjection;
 
@@ -67,8 +68,7 @@ public static class ServiceCollectionExtensions
             .Where(t => t is { IsClass: true, IsAbstract: false } &&
                         (typeof(INode).IsAssignableFrom(t) ||
                          typeof(IPipelineDefinition).IsAssignableFrom(t) ||
-                         typeof(INodeErrorHandler).IsAssignableFrom(t) ||
-                         typeof(IPipelineErrorHandler).IsAssignableFrom(t) ||
+                         typeof(IResiliencePolicy).IsAssignableFrom(t) ||
                          typeof(IDeadLetterSink).IsAssignableFrom(t) ||
                          typeof(ILineageSink).IsAssignableFrom(t) ||
                          typeof(IPipelineLineageSink).IsAssignableFrom(t) ||

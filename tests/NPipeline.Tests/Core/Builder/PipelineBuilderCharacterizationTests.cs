@@ -7,7 +7,6 @@ using NPipeline.Configuration;
 using NPipeline.Execution;
 using NPipeline.Execution.Annotations;
 using NPipeline.Execution.Strategies;
-using NPipeline.ErrorHandling;
 using NPipeline.Extensions.Testing;
 using NPipeline.Graph;
 using NPipeline.Graph.Validation;
@@ -336,7 +335,6 @@ public sealed class PipelineBuilderCharacterizationTests
     private sealed class PassthroughStreamTransform : IStreamTransformNode<int, int>
     {
         public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
-        public INodeErrorHandler? ErrorHandler { get; set; }
 
         public async IAsyncEnumerable<int> TransformAsync(IAsyncEnumerable<int> items, PipelineContext context,
             [EnumeratorCancellation] CancellationToken cancellationToken)

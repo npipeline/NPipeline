@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
-using NPipeline.ErrorHandling;
 using NPipeline.Execution;
 using NPipeline.Graph;
 using NPipeline.Nodes;
@@ -14,8 +13,7 @@ namespace NPipeline.Extensions.DependencyInjection;
 ///     Uses compiled expression trees for efficient instance creation in hot paths.
 /// </summary>
 /// <param name="serviceProvider">The service provider to resolve nodes from.</param>
-/// <param name="errorHandlerFactory">The factory to create error handlers.</param>
-internal sealed class DiContainerNodeFactory(IServiceProvider serviceProvider, IErrorHandlerFactory errorHandlerFactory) : INodeFactory
+internal sealed class DiContainerNodeFactory(IServiceProvider serviceProvider) : INodeFactory
 {
     private static readonly ConcurrentDictionary<Type, Func<IServiceProvider, object?>> _constructorCache = new();
 
@@ -50,9 +48,6 @@ internal sealed class DiContainerNodeFactory(IServiceProvider serviceProvider, I
         {
             if (nodeDefinition.ExecutionStrategy is not null)
                 transformNode.ExecutionStrategy = nodeDefinition.ExecutionStrategy;
-
-            if (nodeDefinition.ErrorHandlerType is not null)
-                transformNode.ErrorHandler = errorHandlerFactory.CreateNodeErrorHandler(nodeDefinition.ErrorHandlerType);
         }
 
         return (INode)node;

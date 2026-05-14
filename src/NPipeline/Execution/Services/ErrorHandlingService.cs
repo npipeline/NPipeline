@@ -3,6 +3,7 @@ using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Execution.Services;
 
@@ -221,7 +222,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
             // Call error handler to decide whether to retry
             var errorDecision = await HandleNodeErrorAsync(nodeDefinition, node, lastException!, context, cancellationToken);
 
-            if (errorDecision != NodeErrorDecision.Retry)
+            if (errorDecision != ResilienceDecision.Retry)
             {
                 // If the last exception was a cancellation, rethrow it rather than wrapping it.
                 if (lastException is OperationCanceledException)
@@ -247,11 +248,9 @@ public sealed class ErrorHandlingService : IErrorHandlingService
             retryCount++;
 
             // Apply retry delay before retry attempt
-            var delayStrategy = context.GetRetryDelayStrategy();
-
             try
             {
-                var delay = await delayStrategy.GetDelayAsync(retryCount, cancellationToken).ConfigureAwait(false);
+                var delay = await context.ResiliencePolicy.GetRetryDelayAsync(context, retryCount, cancellationToken).ConfigureAwait(false);
 
                 if (delay > TimeSpan.Zero)
                 {
@@ -337,88 +336,14 @@ public sealed class ErrorHandlingService : IErrorHandlingService
     /// <param name="exception">The exception that occurred.</param>
     /// <param name="context">The pipeline context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The error decision.</returns>
-    private static async Task<NodeErrorDecision> HandleNodeErrorAsync(
+    /// <returns>The resilience decision.</returns>
+    private static Task<ResilienceDecision> HandleNodeErrorAsync(
         NodeDefinition nodeDefinition,
         INode node,
         Exception exception,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
-        // First check if there's a pipeline error handler
-        if (context.PipelineErrorHandler is not null)
-        {
-            try
-            {
-                var pipelineDecision = await context.PipelineErrorHandler.HandleNodeFailureAsync(
-                    nodeDefinition.Id,
-                    exception,
-                    context,
-                    cancellationToken);
-
-                // If the error handler returned RestartNode, verify the node is using ResilientExecutionStrategy
-                if (pipelineDecision == PipelineErrorDecision.RestartNode)
-                {
-                    if (nodeDefinition.ExecutionStrategy?.GetType().Name != "ResilientExecutionStrategy")
-                    {
-                        throw new InvalidOperationException(
-                            $"Node '{nodeDefinition.Id}' error handler returned RestartNode, but the node is not using ResilientExecutionStrategy. " +
-                            "Node restart functionality requires wrapping the node with ResilientExecutionStrategy. " +
-                            "Fix: Add .WithResilience() to the node configuration, e.g., " +
-                            $"builder.AddNode(\"{nodeDefinition.Id}\", ...).WithResilience()");
-                    }
-                }
-
-                // Convert PipelineErrorDecision to NodeErrorDecision
-                return pipelineDecision switch
-                {
-                    PipelineErrorDecision.RestartNode => NodeErrorDecision.Retry,
-                    PipelineErrorDecision.ContinueWithoutNode => NodeErrorDecision.Skip,
-                    PipelineErrorDecision.FailPipeline => NodeErrorDecision.Fail,
-                    _ => NodeErrorDecision.Fail,
-                };
-            }
-            catch
-            {
-                // If pipeline error handler fails, fall back to node error handler
-            }
-        }
-
-        // Check if node has an error handler
-        if (nodeDefinition.ErrorHandlerType is null)
-            return NodeErrorDecision.Fail;
-
-        var errorHandlerType = nodeDefinition.ErrorHandlerType;
-
-        var handleAsyncMethod = errorHandlerType.GetMethods()
-            .FirstOrDefault(m => m.Name == "HandleAsync" && m.GetParameters().Length == 5);
-
-        if (handleAsyncMethod is null)
-            return NodeErrorDecision.Fail;
-
-        try
-        {
-            // Create an instance of the error handler
-            var errorHandler = context.ErrorHandlerFactory.CreateErrorHandler(errorHandlerType);
-
-            if (errorHandler is null)
-                return NodeErrorDecision.Fail;
-
-            var invokeResult = handleAsyncMethod.Invoke(
-                errorHandler,
-                [node, null, exception, context, cancellationToken]);
-
-            if (invokeResult is Task<NodeErrorDecision> task)
-            {
-                var result = await task.ConfigureAwait(false);
-                return result;
-            }
-
-            return NodeErrorDecision.Fail;
-        }
-        catch
-        {
-            return NodeErrorDecision.Fail;
-        }
+        return context.ResiliencePolicy.DecideNodeFailureAsync(nodeDefinition, node, exception, context, cancellationToken);
     }
 }

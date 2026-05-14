@@ -54,7 +54,7 @@ public PipelineContext(PipelineContextConfiguration? config = null)
 
 1. **Runtime Data Dictionaries**: `Parameters`, `Items`, `Properties`
 2. **Resilience Options**: `RetryOptions`
-3. **Error Handling Components**: `ErrorHandlerFactory`, `PipelineErrorHandler`, `DeadLetterSink`
+3. **Error Handling Components**: `ErrorHandlerFactory`, `ResiliencePolicy`, `DeadLetterSink`
 4. **Observability Components**: `LoggerFactory`, `Tracer`, `ObservabilityFactory`
 5. **Lineage Components**: `LineageFactory`
 6. **Cancellation Token**: `CancellationToken`
@@ -207,7 +207,7 @@ The [`PipelineContext`](https://github.com/npipeline/NPipeline/blob/main/docs/co
 ### Error Handling and Diagnostics
 
 * **`LastRetryExhaustedException`**: The last retry-exhausted exception observed in the pipeline, if any.
-* **`PipelineErrorHandler`**: The error handler for the entire pipeline.
+* **`ResiliencePolicy`**: The resilience policy for the entire pipeline.
 * **`DeadLetterSink`**: The sink for items that have failed processing and have been redirected.
 * **`ErrorHandlerFactory`**: The factory for creating error handlers and dead-letter sinks.
 

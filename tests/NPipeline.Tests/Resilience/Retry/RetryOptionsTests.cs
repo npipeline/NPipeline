@@ -5,8 +5,10 @@ using NPipeline.Configuration;
 using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
 using NPipeline.Extensions.Testing;
+using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Tests.Resilience.Retry;
 
@@ -18,12 +20,10 @@ public sealed class RetryOptionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddNPipeline(Assembly.GetExecutingAssembly());
-        services.AddSingleton<FlakyNodeErrorHandler>();
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
-        var ctx = new PipelineContext(
-            PipelineContextConfiguration.Default with { ErrorHandlerFactory = new DefaultErrorHandlerFactory() });
+        var ctx = new PipelineContext();
 
         // Set source data on the context
         ctx.SetSourceData([1]);
@@ -40,12 +40,10 @@ public sealed class RetryOptionsTests
     {
         var services = new ServiceCollection();
         services.AddNPipeline(Assembly.GetExecutingAssembly());
-        services.AddSingleton<NodeRestartingErrorHandler>();
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
-        var ctx = new PipelineContext(
-            PipelineContextConfiguration.Default with { ErrorHandlerFactory = new DefaultErrorHandlerFactory() });
+        var ctx = new PipelineContext();
 
         // Set source data on the context
         ctx.SetSourceData([1]);
@@ -61,12 +59,10 @@ public sealed class RetryOptionsTests
     {
         var services = new ServiceCollection();
         services.AddNPipeline(Assembly.GetExecutingAssembly());
-        services.AddSingleton<FlakyNodeErrorHandler>();
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
-        var ctx = new PipelineContext(
-            PipelineContextConfiguration.Default with { ErrorHandlerFactory = new DefaultErrorHandlerFactory() });
+        var ctx = new PipelineContext();
 
         // Set source data on the context
         ctx.SetSourceData([1]);
@@ -88,12 +84,47 @@ public sealed class RetryOptionsTests
         }
     }
 
-    private sealed class FlakyNodeErrorHandler : INodeErrorHandler<ITransformNode<int, int>, int>
+    private sealed class FlakyNodeErrorHandler : IResiliencePolicy
     {
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int failedItem, NodeFailureContext failure,
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception exception,
+            PipelineContext context,
             CancellationToken cancellationToken)
         {
-            return Task.FromResult(NodeErrorDecision.Retry);
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
+            string nodeId,
+            Exception exception,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Retry);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 
@@ -105,7 +136,7 @@ public sealed class RetryOptionsTests
             var t = builder.AddTransform<FlakyTransform, int, int>("t");
             var k = builder.AddInMemorySink<int>("k");
             builder.Connect(s, t).Connect(t, k);
-            builder.WithErrorHandler(t, typeof(FlakyNodeErrorHandler));
+            builder.SetNodeResiliencePolicy(t, new FlakyNodeErrorHandler());
             builder.WithRetryOptions(o => o.With(2));
         }
     }
@@ -125,18 +156,50 @@ public sealed class RetryOptionsTests
         }
     }
 
-    private sealed class NodeRestartingErrorHandler : IPipelineErrorHandler
+    private sealed class NodeRestartingErrorHandler : IResiliencePolicy
     {
         private int _fails;
 
-        public Task<PipelineErrorDecision> HandleNodeFailureAsync(string nodeId, Exception exception, PipelineContext context,
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception exception,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(string nodeId, Exception exception, PipelineContext context,
             CancellationToken cancellationToken)
         {
             _fails++;
 
             return Task.FromResult(_fails < 3
-                ? PipelineErrorDecision.RestartNode
-                : PipelineErrorDecision.FailPipeline);
+                ? ResilienceDecision.RestartNode
+                : ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 
@@ -148,9 +211,9 @@ public sealed class RetryOptionsTests
             var t = builder.AddTransform<FailingTransform, int, int>("ft");
             var k = builder.AddInMemorySink<int>("k2");
             builder.Connect(s, t).Connect(t, k);
-            builder.AddPipelineErrorHandler<NodeRestartingErrorHandler>();
+            builder.AddResiliencePolicy<NodeRestartingErrorHandler>();
             builder.WithResilience(t);
-            builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 2));
+            builder.WithRetryOptions(o => o.With(maxNodeRestartAttempts: 2, maxMaterializedItems: 128));
         }
     }
 
@@ -162,7 +225,7 @@ public sealed class RetryOptionsTests
             var t = builder.AddTransform<FlakyTransform, int, int>("ot");
             var k = builder.AddInMemorySink<int>("k3");
             builder.Connect(s, t).Connect(t, k);
-            builder.WithErrorHandler(t, typeof(FlakyNodeErrorHandler));
+            builder.SetNodeResiliencePolicy(t, new FlakyNodeErrorHandler());
             builder.WithRetryOptions(o => o.With(5)); // global
             builder.WithRetryOptions(t, PipelineRetryOptions.Default.With(1)); // override
         }

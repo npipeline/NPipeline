@@ -71,6 +71,7 @@ Comprehensive framework for building fault-tolerant pipelines that can recover f
 | Concept | Description |
 | :--- | :--- |
 | **[Resilience Overview](resilience/index.md)** | Introduction to NPipeline's resilience features. |
+| **[Resilience Policy](resilience/resilience-policy.md)** | Configure retry, dead-letter, and circuit behavior through one entry point. |
 | **[Error Handling](resilience/error-handling.md)** | Building fault-tolerant pipelines with error handlers and retries. |
 | **[Circuit Breakers](resilience/circuit-breakers.md)** | Preventing cascading failures with circuit breaker patterns. |
 | **[Dead Letter Queues](resilience/dead-letter-queues.md)** | Handling failed items with dead letter sinks. |

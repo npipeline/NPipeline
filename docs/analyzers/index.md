@@ -47,19 +47,19 @@ Without these analyzers, developers could:
 
 ```csharp
 // Looks correct but will fail silently at runtime
-public class MyErrorHandler : IPipelineErrorHandler
+public class MyResiliencePolicy : ResiliencePolicyBase
 {
-    public async Task<PipelineErrorDecision> HandleNodeFailureAsync(
+    public override Task<ResilienceDecision> DecidePipelineFailureAsync(
         string nodeId,
-        Exception error,
+        Exception exception,
         PipelineContext context,
         CancellationToken cancellationToken)
     {
-        return error switch
+        return Task.FromResult(exception switch
         {
-            TimeoutException => PipelineErrorDecision.RestartNode,  // Intent is clear
-            _ => PipelineErrorDecision.FailPipeline
-        };
+            TimeoutException => ResilienceDecision.RestartNode,  // Intent is clear
+            _ => ResilienceDecision.Fail
+        });
     }
 }
 
@@ -70,7 +70,7 @@ public class MyErrorHandler : IPipelineErrorHandler
 ### Solution: Build-Time Enforcement
 
 ```text
-CSC : warning NP9001: Error handler can return PipelineErrorDecision.RestartNode
+CSC : warning NP9001: Resilience policy can return ResilienceDecision.RestartNode
 but the node may not have all three mandatory prerequisites configured...
 ```
 

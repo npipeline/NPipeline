@@ -371,7 +371,7 @@ public static class Program
         );
 
         var context = PipelineContext.WithRetry(retryOptions);
-        context.AddPipelineErrorHandler<DefaultPipelineErrorHandler>();
+        builder.AddResiliencePolicy<DefaultResiliencePolicy>();
 
         await runner.RunAsync<ResilientPipelineDefinition>(context);
     }

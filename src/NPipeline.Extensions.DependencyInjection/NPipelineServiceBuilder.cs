@@ -5,6 +5,7 @@ using NPipeline.ErrorHandling;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Extensions.DependencyInjection;
 
@@ -94,51 +95,26 @@ public sealed class NPipelineServiceBuilder
     }
 
     /// <summary>
-    ///     Registers an error handler type for dependency injection.
+    ///     Registers a resilience policy type for dependency injection.
     /// </summary>
-    /// <typeparam name="THandler">The error handler type to register.</typeparam>
+    /// <typeparam name="TPolicy">The policy type to register.</typeparam>
     /// <returns>The current builder instance for fluent chaining.</returns>
-    public NPipelineServiceBuilder AddErrorHandler<THandler>() where THandler : class, INodeErrorHandler
+    public NPipelineServiceBuilder AddResiliencePolicy<TPolicy>() where TPolicy : class, IResiliencePolicy
     {
-        _services.TryAddTransient<THandler>();
+        _services.TryAddTransient<TPolicy>();
         return this;
     }
 
     /// <summary>
-    ///     Registers an error handler type with a specific service lifetime.
+    ///     Registers a resilience policy type with a specific service lifetime.
     /// </summary>
-    /// <typeparam name="THandler">The error handler type to register.</typeparam>
+    /// <typeparam name="TPolicy">The policy type to register.</typeparam>
     /// <param name="lifetime">The lifetime of the service.</param>
     /// <returns>The current builder instance for fluent chaining.</returns>
-    public NPipelineServiceBuilder AddErrorHandler<THandler>(ServiceLifetime lifetime)
-        where THandler : class, INodeErrorHandler
+    public NPipelineServiceBuilder AddResiliencePolicy<TPolicy>(ServiceLifetime lifetime)
+        where TPolicy : class, IResiliencePolicy
     {
-        var descriptor = new ServiceDescriptor(typeof(THandler), typeof(THandler), lifetime);
-        _services.TryAdd(descriptor);
-        return this;
-    }
-
-    /// <summary>
-    ///     Registers a pipeline error handler type for dependency injection.
-    /// </summary>
-    /// <typeparam name="THandler">The pipeline error handler type to register.</typeparam>
-    /// <returns>The current builder instance for fluent chaining.</returns>
-    public NPipelineServiceBuilder AddPipelineErrorHandler<THandler>() where THandler : class, IPipelineErrorHandler
-    {
-        _services.TryAddTransient<THandler>();
-        return this;
-    }
-
-    /// <summary>
-    ///     Registers a pipeline error handler type with a specific service lifetime.
-    /// </summary>
-    /// <typeparam name="THandler">The pipeline error handler type to register.</typeparam>
-    /// <param name="lifetime">The lifetime of the service.</param>
-    /// <returns>The current builder instance for fluent chaining.</returns>
-    public NPipelineServiceBuilder AddPipelineErrorHandler<THandler>(ServiceLifetime lifetime)
-        where THandler : class, IPipelineErrorHandler
-    {
-        var descriptor = new ServiceDescriptor(typeof(THandler), typeof(THandler), lifetime);
+        var descriptor = new ServiceDescriptor(typeof(TPolicy), typeof(TPolicy), lifetime);
         _services.TryAdd(descriptor);
         return this;
     }
@@ -265,8 +241,7 @@ public sealed class NPipelineServiceBuilder
             .Where(t => t is { IsClass: true, IsAbstract: false } &&
                         (typeof(INode).IsAssignableFrom(t) ||
                          typeof(IPipelineDefinition).IsAssignableFrom(t) ||
-                         typeof(INodeErrorHandler).IsAssignableFrom(t) ||
-                         typeof(IPipelineErrorHandler).IsAssignableFrom(t) ||
+                         typeof(IResiliencePolicy).IsAssignableFrom(t) ||
                          typeof(IDeadLetterSink).IsAssignableFrom(t) ||
                          typeof(ILineageSink).IsAssignableFrom(t) ||
                          typeof(IPipelineLineageSink).IsAssignableFrom(t) ||

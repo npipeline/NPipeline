@@ -12,7 +12,7 @@ namespace NPipeline.Analyzers.Tests;
 public sealed class PipelineContextAccessAnalyzerTests
 {
     [Fact]
-    public void ShouldDetectUnsafePipelineErrorHandlerAccess()
+    public void ShouldDetectUnsafeDeadLetterSinkPropertyAccess()
     {
         var code = """
                    using NPipeline.Pipeline;
@@ -25,8 +25,8 @@ public sealed class PipelineContextAccessAnalyzerTests
                        public async Task TestMethod(PipelineContext context)
                        {
                            // Direct access without null check - should trigger diagnostic
-                           var handler = context.PipelineErrorHandler;
-                           await handler.HandleNodeFailureAsync("nodeId", new Exception(), context, CancellationToken.None);
+                           var sink = context.DeadLetterSink;
+                           await sink.HandleAsync(null, context, CancellationToken.None);
                        }
                    }
                    """;
@@ -34,7 +34,7 @@ public sealed class PipelineContextAccessAnalyzerTests
         var diagnostics = GetDiagnostics(code);
 
         var hasDiagnostic = diagnostics.Any(d => d.Id == PipelineContextAccessAnalyzer.UnsafePipelineContextAccessId);
-        Assert.True(hasDiagnostic, "Analyzer should detect unsafe PipelineErrorHandler access");
+        Assert.True(hasDiagnostic, "Analyzer should detect unsafe DeadLetterSink property access");
     }
 
     [Fact]
@@ -221,7 +221,7 @@ public sealed class PipelineContextAccessAnalyzerTests
                        public async Task TestMethod(PipelineContext context)
                        {
                            // Method call on nullable property without null check - should trigger diagnostic
-                           await context.PipelineErrorHandler.HandleNodeFailureAsync("nodeId", new Exception(), context, CancellationToken.None);
+                           await context.DeadLetterSink.HandleAsync(null, context, CancellationToken.None);
                        }
                    }
                    """;
@@ -246,8 +246,7 @@ public sealed class PipelineContextAccessAnalyzerTests
                        public async Task TestMethod(PipelineContext context)
                        {
                            // Nested member access without null check - should trigger diagnostic
-                           var decision = await context.PipelineErrorHandler.HandleNodeFailureAsync("nodeId", new Exception(), context, CancellationToken.None);
-                           var result = decision.ToString();
+                           await context.DeadLetterSink.HandleAsync(null, context, CancellationToken.None);
                        }
                    }
                    """;
@@ -272,10 +271,10 @@ public sealed class PipelineContextAccessAnalyzerTests
                        public async Task TestMethod(PipelineContext context)
                        {
                            // Safe access with null-conditional operator - should NOT trigger diagnostic
-                           var handler = context.PipelineErrorHandler;
-                           if (handler != null)
+                           var sink = context.DeadLetterSink;
+                           if (sink != null)
                            {
-                               await handler.HandleNodeFailureAsync("nodeId", new Exception(), context, CancellationToken.None);
+                               await sink.HandleAsync(null, context, CancellationToken.None);
                            }
                        }
                    }
@@ -351,10 +350,10 @@ public sealed class PipelineContextAccessAnalyzerTests
                        public void TestMethod(PipelineContext context)
                        {
                            // Safe access with is pattern - should NOT trigger diagnostic
-                           if (context.PipelineErrorHandler is { } handler)
+                           if (context.DeadLetterSink is { } sink)
                            {
-                               // Use handler safely
-                               var type = handler.GetType();
+                               // Use sink safely
+                               var type = sink.GetType();
                            }
                        }
                    }
@@ -537,9 +536,9 @@ public sealed class PipelineContextAccessAnalyzerTests
                        public async Task TestMethod(PipelineContext context)
                        {
                            // Safe access with null check - should NOT trigger diagnostic
-                           if (context.PipelineErrorHandler != null)
+                           if (context.DeadLetterSink != null)
                            {
-                               await context.PipelineErrorHandler.HandleNodeFailureAsync("nodeId", new Exception(), context, CancellationToken.None);
+                               await context.DeadLetterSink.HandleAsync(null, context, CancellationToken.None);
                            }
                        }
                    }
@@ -568,9 +567,9 @@ public sealed class PipelineContextAccessAnalyzerTests
                        public async Task TestMethod(PipelineContext context)
                        {
                            // Safe access with pattern matching - should NOT trigger diagnostic
-                           if (context.PipelineErrorHandler is var handler && handler != null)
+                           if (context.DeadLetterSink is var sink && sink != null)
                            {
-                               await handler.HandleNodeFailureAsync("nodeId", new Exception(), context, CancellationToken.None);
+                               await sink.HandleAsync(null, context, CancellationToken.None);
                            }
                        }
                    }

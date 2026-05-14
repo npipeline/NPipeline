@@ -3,10 +3,11 @@ using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
-using NPipeline.ErrorHandling;
 using NPipeline.Extensions.DependencyInjection;
+using NPipeline.Graph;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Tests.ErrorHandling;
 
@@ -20,7 +21,6 @@ public sealed class ErrorAndContextTests
         // Arrange
         var services = new ServiceCollection();
         services.AddNPipeline(Assembly.GetExecutingAssembly());
-        services.AddSingleton<INodeErrorHandler<ITransformNode<int, int>, int>, TestErrorHandler>();
 
         // Replace the transient registration with a singleton to access the node's state.
         var descriptor = services.Single(d => d.ServiceType == typeof(FinalSinkNode));
@@ -81,14 +81,49 @@ public sealed class ErrorAndContextTests
         }
     }
 
-    // Test Error Handler
-    private sealed class TestErrorHandler : INodeErrorHandler<ITransformNode<int, int>, int>
+    // Test resilience policy
+    private sealed class TestResiliencePolicy : IResiliencePolicy
     {
-        public Task<NodeErrorDecision> HandleAsync(ITransformNode<int, int> node, int item, NodeFailureContext failure,
+        public Task<ResilienceDecision> DecideNodeFailureAsync(
+            NodeDefinition nodeDefinition,
+            INode node,
+            Exception error,
+            PipelineContext context,
             CancellationToken cancellationToken)
         {
-            failure.PipelineContext.Items[ContextKey] = true;
-            return Task.FromResult(NodeErrorDecision.Skip);
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecidePipelineFailureAsync(
+            string nodeId,
+            Exception error,
+            PipelineContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ResilienceDecision.Fail);
+        }
+
+        public Task<ResilienceDecision> DecideItemFailureAsync<TIn, TOut>(
+            ITransformNode<TIn, TOut> node,
+            TIn failedItem,
+            Exception exception,
+            PipelineContext context,
+            string nodeId,
+            int retryAttempt,
+            CancellationToken cancellationToken)
+        {
+            context.Items[ContextKey] = true;
+            return Task.FromResult(ResilienceDecision.Skip);
+        }
+
+        public ValueTask<TimeSpan> GetRetryDelayAsync(PipelineContext context, int attemptNumber, CancellationToken cancellationToken)
+        {
+            return context.GetRetryDelayStrategy().GetDelayAsync(attemptNumber, cancellationToken);
+        }
+
+        public IResilienceCircuitBreaker? GetCircuitBreaker(PipelineContext context, string nodeId)
+        {
+            return DefaultResiliencePolicy.Instance.GetCircuitBreaker(context, nodeId);
         }
     }
 
@@ -101,7 +136,7 @@ public sealed class ErrorAndContextTests
             var crash = builder.AddTransform<CrashingNode, int, int>("crash");
             var sink = builder.AddSink<FinalSinkNode, int>("sink");
 
-            crash.WithErrorHandler<int, int, TestErrorHandler>(builder);
+            builder.SetNodeResiliencePolicy(crash, new TestResiliencePolicy());
 
             builder.Connect(source, crash);
             builder.Connect(crash, sink);

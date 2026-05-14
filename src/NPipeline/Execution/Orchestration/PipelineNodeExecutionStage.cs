@@ -7,6 +7,7 @@ using NPipeline.Nodes;
 using NPipeline.Observability;
 using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Execution.Orchestration;
 
@@ -66,6 +67,11 @@ internal sealed class PipelineNodeExecutionStage(
             context.NodeExecutionScopeRegistry.SetNodeExecutionAnnotation(nodeId, annotation);
         else
             _ = context.NodeExecutionScopeRegistry.RemoveNodeExecutionAnnotation(nodeId);
+
+        if (graph.ExecutionOptions.NodeExecutionAnnotations != null &&
+            graph.ExecutionOptions.NodeExecutionAnnotations.TryGetValue(ExecutionAnnotationKeys.NodeResiliencePolicyForNode(nodeId), out var policyAnnotation) &&
+            policyAnnotation is IResiliencePolicy nodePolicy)
+            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(ExecutionAnnotationKeys.NodeResiliencePolicyForNode(nodeId), nodePolicy);
     }
 
     private async Task ExecuteNodeWithRetriesAsync(
@@ -107,7 +113,8 @@ internal sealed class PipelineNodeExecutionStage(
         var logger = context.LoggerFactory.CreateLogger(nameof(PipelineRunner));
         PipelineRunnerLogMessages.NodeFailed(logger, nodeDef.Id, ex.GetType().Name, ex.Message);
 
-        if (context.PipelineErrorHandler != null && nodeDef.ExecutionStrategy?.GetType().Name == "ResilientExecutionStrategy")
+        if (context.ResiliencePolicy is not DefaultResiliencePolicy &&
+            nodeDef.ExecutionStrategy?.GetType().Name == "ResilientExecutionStrategy")
         {
             var effectiveRetries = RetryOptionsResolver.Resolve(context, nodeDef.Id);
 

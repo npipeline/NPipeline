@@ -302,11 +302,13 @@ catch (ValidationException ex)
     Console.WriteLine($"Message: {ex.Message}");
 }
 
-// Custom error handler
-builder.WithErrorHandler(validationHandle, new CustomValidationHandler());
+// Configure a node-scoped resilience policy
+builder.SetNodeResiliencePolicy(validationHandle,
+    new DefaultValidationErrorHandler<MyType>(ResilienceDecision.Skip));
 
 // Skip invalid items instead of throwing
-builder.WithErrorDecision(validationHandle, NodeErrorDecision.Skip);
+builder.SetNodeResiliencePolicy(validationHandle,
+    new DefaultValidationErrorHandler<MyType>(ResilienceDecision.Skip));
 ```
 
 ## Thread Safety

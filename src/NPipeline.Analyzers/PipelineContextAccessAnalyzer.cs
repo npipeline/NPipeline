@@ -9,7 +9,7 @@ namespace NPipeline.Analyzers;
 /// <summary>
 ///     Analyzer that detects unsafe access patterns on PipelineContext properties and dictionaries.
 ///     This analyzer checks for:
-///     1. Unsafe property access on nullable context features (PipelineErrorHandler, DeadLetterSink, StateManager, StatefulRegistry)
+///     1. Unsafe property access on nullable context features (DeadLetterSink, StateManager, StatefulRegistry)
 ///     2. Dictionary access without type checking (Items, Parameters, Properties dictionaries)
 ///     3. Unsafe casting from dictionary values
 ///     4. Direct access to computed properties that might be null
@@ -112,7 +112,7 @@ public sealed class PipelineContextAccessAnalyzer : DiagnosticAnalyzer
         // Check if this is a method call on a nullable PipelineContext property
         if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
         {
-            // Handle calls like: context.PipelineErrorHandler.Handle... => nestedAccess is context.PipelineErrorHandler
+            // Handle calls like: context.DeadLetterSink.Handle... => nestedAccess is context.DeadLetterSink
             var nestedAccess = memberAccess.Expression as MemberAccessExpressionSyntax;
 
             if (nestedAccess != null)
@@ -190,7 +190,7 @@ public sealed class PipelineContextAccessAnalyzer : DiagnosticAnalyzer
     private static bool IsNullableProperty(string propertyName)
     {
         // Check for direct access to nullable properties
-        return propertyName is "PipelineErrorHandler" or "DeadLetterSink" or "StateManager" or "StatefulRegistry";
+        return propertyName is "DeadLetterSink" or "StateManager" or "StatefulRegistry";
     }
 
     /// <summary>

@@ -3,6 +3,7 @@ using NPipeline.ErrorHandling;
 using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Pipeline;
+using NPipeline.Resilience;
 
 namespace NPipeline.Execution.Services;
 
@@ -25,9 +26,9 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
         var overriddenGraph = ApplyRuntimeItemLevelLineageOverride(graph, context);
         overriddenGraph = ApplyRuntimeLineageOptionsOverride(overriddenGraph, context);
 
-        var errorHandler = ResolvePipelineErrorHandler(overriddenGraph, context.ErrorHandlerFactory);
         var deadLetterSink = ResolveDeadLetterSink(overriddenGraph, context.ErrorHandlerFactory);
         deadLetterSink = ApplyDeadLetterSinkDecorator(context, deadLetterSink);
+        var resiliencePolicy = ResolveResiliencePolicy(overriddenGraph);
 
         var lineageSink = overriddenGraph.Lineage.ItemLevelLineageEnabled
             ? ResolveLineageSink(overriddenGraph, context.LineageFactory, context)
@@ -39,10 +40,31 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
 
         return Task.FromResult(new RuntimePipelineBindingResult(
             overriddenGraph,
-            errorHandler,
             deadLetterSink,
             lineageSink,
-            pipelineLineageSink));
+            pipelineLineageSink,
+            resiliencePolicy));
+    }
+
+    private static IResiliencePolicy ResolveResiliencePolicy(PipelineGraph graph)
+    {
+        if (graph.ErrorHandling.ResiliencePolicy is not null)
+            return graph.ErrorHandling.ResiliencePolicy;
+
+        if (graph.ErrorHandling.ResiliencePolicyType is null)
+            return DefaultResiliencePolicy.Instance;
+
+        if (!typeof(IResiliencePolicy).IsAssignableFrom(graph.ErrorHandling.ResiliencePolicyType))
+        {
+            throw new InvalidOperationException(
+                $"Configured resilience policy type '{graph.ErrorHandling.ResiliencePolicyType.FullName}' does not implement IResiliencePolicy.");
+        }
+
+        if (Activator.CreateInstance(graph.ErrorHandling.ResiliencePolicyType) is IResiliencePolicy policy)
+            return policy;
+
+        throw new InvalidOperationException(
+            $"Unable to create resilience policy instance for type '{graph.ErrorHandling.ResiliencePolicyType.FullName}'.");
     }
 
     private static PipelineGraph ApplyRuntimeLineageOptionsOverride(PipelineGraph graph, PipelineContext context)
@@ -106,17 +128,6 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
             return decorator(lineageSink);
 
         return lineageSink;
-    }
-
-    private static IPipelineErrorHandler? ResolvePipelineErrorHandler(PipelineGraph graph, IErrorHandlerFactory errorHandlerFactory)
-    {
-        if (graph.ErrorHandling.PipelineErrorHandler is not null)
-            return graph.ErrorHandling.PipelineErrorHandler;
-
-        if (graph.ErrorHandling.PipelineErrorHandlerType is not null)
-            return errorHandlerFactory.CreateErrorHandler(graph.ErrorHandling.PipelineErrorHandlerType);
-
-        return null;
     }
 
     private static IDeadLetterSink? ResolveDeadLetterSink(PipelineGraph graph, IErrorHandlerFactory errorHandlerFactory)
