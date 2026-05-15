@@ -93,7 +93,7 @@ All packages target **.NET 8, 9, and 10**. Tests run against all target framewor
 2. Make your changes with tests.
 3. Ensure `./build.sh` passes with no warnings.
 4. Submit a PR with a clear title and description.
-5. See the root [CONTRIBUTING.md](../../CONTRIBUTING.md) for full PR guidelines.
+5. See the root [CONTRIBUTING.md](https://github.com/NPipeline/NPipeline/blob/main/CONTRIBUTING.md) for full PR guidelines.
 
 ## In This Section
 
