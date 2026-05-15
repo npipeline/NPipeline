@@ -60,8 +60,8 @@ services.AddNPipeline(builder =>
     builder.AddPipeline<OrderPipeline>();
     builder.AddPipeline<OrderPipeline>(ServiceLifetime.Transient);
 
-    // Resilience policies
-    builder.AddResiliencePolicy<RetryPolicy>();
+    // Resilience policies (resolved via DI)
+    builder.AddResiliencePolicy<MyRetryPolicy>();
 
     // Dead letter sinks
     builder.AddDeadLetterSink<FileDeadLetterSink>();

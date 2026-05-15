@@ -135,8 +135,8 @@ public void Define(PipelineBuilder builder, PipelineContext context)
     builder.Connect(transform, sink);
 
     // Enable resilient execution on a specific node
-    builder.WithResilience(transform);
-    builder.WithRetryOptions(transform, new PipelineRetryOptions { MaxRetries = 3 });
+    transform.WithResilience(builder);
+    builder.WithRetryOptions(transform, new PipelineRetryOptions { MaxItemRetries = 3 });
 
     // Pipeline-wide circuit breaker
     builder.WithCircuitBreaker(failureThreshold: 10, openDuration: TimeSpan.FromSeconds(30));

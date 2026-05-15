@@ -46,35 +46,37 @@ Your pipeline graph contains a cycle. NPipeline pipelines must be directed acycl
 
 An unhandled exception occurred in a node's `TransformAsync`, `ConsumeAsync`, or `OpenStream` method. Check the `InnerException` for the root cause and the `NodeId` property to identify which node failed.
 
-**Fix:** Add resilience policies to handle transient errors:
+**Fix:** Add a resilience policy and enable resilient execution to handle transient errors:
 
 ```csharp
-handle.WithResilience(builder, new PipelineRetryOptions
-{
-    MaxRetries = 3,
-    ErrorAction = ErrorAction.DeadLetter
-});
+// Configure a resilience policy that retries then dead-letters
+var policy = ResiliencePolicyBuilder
+    .ForNode<MyTransform, MyData>()
+    .OnAny().Retry(maxRetries: 3)
+    .Build();
+
+builder.AddResiliencePolicy(policy);
+builder.AddDeadLetterSink(new BoundedInMemoryDeadLetterSink());
+transform.WithResilience(builder);
 ```
 
 ### CircuitBreakerTrippedException (NP0310)
 
 Too many consecutive failures triggered the circuit breaker. Check the `FailureThreshold` property.
 
-**Fix:** Investigate the underlying error causing repeated failures. Increase the threshold or reset interval if failures are expected:
+**Fix:** Investigate the underlying error causing repeated failures. Increase the threshold or open duration if failures are expected:
 
 ```csharp
-handle.WithCircuitBreaker(builder, new CircuitBreakerOptions
-{
-    FailureThreshold = 10,
-    ResetTimeoutMs = 30000
-});
+builder.WithCircuitBreaker(
+    failureThreshold: 10,
+    openDuration: TimeSpan.FromSeconds(30));
 ```
 
 ### RetryExhaustedException (NP0311)
 
 All retry attempts failed. The `AttemptCount` property shows how many attempts were made.
 
-**Fix:** Either increase `MaxRetries` or route failed items to a dead letter queue for manual review.
+**Fix:** Either increase `MaxItemRetries` or route failed items to a dead letter queue for manual review.
 
 ### MaterializationCapExceeded (NP0503)
 

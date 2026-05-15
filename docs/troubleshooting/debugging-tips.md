@@ -132,16 +132,26 @@ foreach (var error in result.Errors)
 When items fail processing and are routed to the dead letter queue, inspect them:
 
 ```csharp
-handle.WithResilience(builder, new PipelineRetryOptions
+// Configure a policy that dead-letters failed items
+var policy = ResiliencePolicyBuilder
+    .ForNode<MyTransform, MyData>()
+    .OnAny().DeadLetter()
+    .Build();
+
+builder.AddResiliencePolicy(policy);
+
+// Use a custom dead letter sink to inspect failures
+var deadLetterSink = new BoundedInMemoryDeadLetterSink();
+builder.AddDeadLetterSink(deadLetterSink);
+
+transform.WithResilience(builder);
+
+// After pipeline execution, inspect dead-lettered items
+foreach (var entry in deadLetterSink.Items)
 {
-    ErrorAction = ErrorAction.DeadLetter,
-    OnDeadLetter = (item, exception, context) =>
-    {
-        Console.WriteLine($"Dead letter: {item}");
-        Console.WriteLine($"Reason: {exception.Message}");
-        return Task.CompletedTask;
-    }
-});
+    Console.WriteLine($"Dead letter: {entry.Item}");
+    Console.WriteLine($"Reason: {entry.Exception.Message}");
+}
 ```
 
 ## Common Debugging Workflow

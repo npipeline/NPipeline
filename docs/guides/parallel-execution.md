@@ -179,8 +179,8 @@ Parallel execution and resilience work together. The `ResilientExecutionStrategy
 ```csharp
 var transform = builder.AddTransform<MyTransform, In, Out>("transform");
 transform.RunParallel(builder, ParallelWorkloadType.IoBound);
-builder.WithResilience(transform);
-builder.WithRetryOptions(transform, new PipelineRetryOptions { MaxRetries = 3 });
+transform.WithResilience(builder);
+builder.WithRetryOptions(transform, new PipelineRetryOptions { MaxItemRetries = 3 });
 ```
 
 ## Next Steps

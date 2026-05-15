@@ -184,10 +184,12 @@ The default retry strategy uses exponential backoff with jitter for transient HT
 ```csharp
 var config = new HttpSourceConfiguration
 {
-    RetryStrategy = new ExponentialBackoffRetryStrategy(
-        maxRetries: 3,
-        baseDelay: TimeSpan.FromSeconds(1),
-        maxDelay: TimeSpan.FromSeconds(30))
+    RetryStrategy = new ExponentialBackoffHttpRetryStrategy
+    {
+        MaxRetries = 3,
+        BaseDelayMs = 1000,
+        MaxDelayMs = 30_000
+    }
 };
 ```
 

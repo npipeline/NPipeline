@@ -180,7 +180,13 @@ public class EnrichmentPipeline : IPipelineDefinition
         builder.Connect(enrich, output);
 
         // Handle API failures within the sub-pipeline
-        builder.WithResiliencePolicy(enrich, new RetryPolicy(maxRetries: 3));
+        var policy = ResiliencePolicyBuilder
+            .ForNode<EnrichNode, RawOrder>()
+            .OnAny().Retry(maxRetries: 3)
+            .Build();
+
+        builder.SetNodeResiliencePolicy(enrich, policy);
+        enrich.WithResilience(builder);
     }
 }
 ```
@@ -188,8 +194,14 @@ public class EnrichmentPipeline : IPipelineDefinition
 **Let errors propagate** — parent handles all errors:
 
 ```csharp
-// Parent pipeline catches sub-pipeline failures
-builder.WithResiliencePolicy(compositeNode, new RetryPolicy(maxRetries: 2));
+// Parent pipeline catches sub-pipeline failures via its own resilience policy
+var parentPolicy = ResiliencePolicyBuilder
+    .ForNode<CompositeNode, RawOrder>()
+    .OnAny().Retry(maxRetries: 2)
+    .Build();
+
+builder.SetNodeResiliencePolicy(compositeNode, parentPolicy);
+compositeNode.WithResilience(builder);
 ```
 
 **Hybrid** — handle expected errors in sub-pipeline, let critical ones propagate.

@@ -18,7 +18,7 @@ The analyzers are included automatically when you reference `NPipeline`. Connect
 
 | Rule | Severity | Title | Fix |
 |------|----------|-------|-----|
-| NP9001 | Warning | Resilient execution requires complete configuration | Ensure `MaxRetries`, `ErrorAction`, and `MaxMaterializedItems` are all configured when using `RestartNode`. |
+| NP9001 | Warning | Resilient execution requires complete configuration | Ensure `MaxItemRetries`, `MaxNodeRestartAttempts`, and `MaxMaterializedItems` are all configured when using `RestartNode`. |
 | NP9002 | **Error** | Unbounded materialization configuration | Set `MaxMaterializedItems` on `PipelineRetryOptions` to prevent out-of-memory crashes. |
 | NP9003 | Warning | Inappropriate parallelism configuration | Reduce `DegreeOfParallelism` or disable `PreserveOrdering` when parallelism is high. |
 | NP9004 | Warning | Batching configuration mismatch | Verify `BatchSize` and `BatchTimeout` are consistent with the node's expected throughput. |
@@ -78,10 +78,10 @@ Most analyzer rules include automatic code fix providers. Apply fixes individual
 
 ```csharp
 // Before
-new PipelineRetryOptions { MaxRetries = 3, ErrorAction = ErrorAction.RestartNode }
+new PipelineRetryOptions { MaxItemRetries = 3, MaxNodeRestartAttempts = 3 }
 
 // After (code fix applied)
-new PipelineRetryOptions { MaxRetries = 3, ErrorAction = ErrorAction.RestartNode, MaxMaterializedItems = 10000 }
+new PipelineRetryOptions { MaxItemRetries = 3, MaxNodeRestartAttempts = 3, MaxMaterializedItems = 10000 }
 ```
 
 **NP9101 — Replace blocking call with await:**

@@ -91,7 +91,7 @@ NPipeline provides several stream types, each with different memory characterist
 ```csharp
 builder.WithRetryOptions(handle, new PipelineRetryOptions
 {
-    MaxRetries = 3,
+    MaxItemRetries = 3,
     MaxMaterializedItems = 10_000  // cap buffer at 10,000 items
 });
 ```
