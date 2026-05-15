@@ -1,15 +1,12 @@
 ---
-title: RabbitMQ Connector
-description: Consume from and publish to RabbitMQ with NPipeline using the RabbitMQ connector with support for quorum queues, publisher confirms, dead-letter handling, and topology auto-declaration.
-order: 11
+title: "RabbitMQ Connector"
+description: "Consume from and publish to RabbitMQ with quorum queues, publisher confirms, and dead-letter handling."
+order: 16
 ---
 
 # RabbitMQ Connector
 
-
-The `NPipeline.Connectors.RabbitMQ` package provides specialized source and sink nodes for working with RabbitMQ. This allows you to integrate RabbitMQ message queues into your pipelines as an input source, an output destination, or both.
-
-This connector uses the official [RabbitMQ.Client 7.x](https://github.com/rabbitmq/rabbitmq-dotnet-client) library, providing fully asynchronous operations with `IChannel`, push-based consumers with backpressure, publisher confirms, quorum queue support, automatic topology declaration, and comprehensive dead-letter handling.
+The `NPipeline.Connectors.RabbitMQ` package provides source and sink nodes for [RabbitMQ](https://www.rabbitmq.com/). Supports quorum queues, QoS prefetch, publisher confirms, batch publishing, TLS, automatic topology declaration, dead-letter exchanges, and poison message detection.
 
 ## Installation
 
@@ -17,395 +14,259 @@ This connector uses the official [RabbitMQ.Client 7.x](https://github.com/rabbit
 dotnet add package NPipeline.Connectors.RabbitMQ
 ```
 
-For the core NPipeline package and other available extensions, see the [Installation Guide](../getting-started/installation.md).
+**Dependencies:** [RabbitMQ.Client](https://www.nuget.org/packages/RabbitMQ.Client) 7.x
 
-## Quick Start
+## Source Node — `RabbitMqSourceNode<T>`
 
-Here's a minimal pipeline that consumes messages from a RabbitMQ queue, processes them, and publishes results to another exchange:
+### Constructor
 
 ```csharp
-using NPipeline.Connectors.RabbitMQ.Configuration;
-using NPipeline.Connectors.RabbitMQ.DependencyInjection;
-using NPipeline.Extensions.DependencyInjection;
+public RabbitMqSourceNode(
+    RabbitMqSourceOptions options,
+    IRabbitMqConnectionManager connectionManager,
+    IMessageSerializer serializer,
+    IRabbitMqMetrics? metrics = null,
+    ILogger<RabbitMqSourceNode<T>>? logger = null)
+```
 
-services.AddNPipeline(Assembly.GetExecutingAssembly());
+### Example
 
-// Register RabbitMQ connection
-services.AddRabbitMq(o =>
+```csharp
+var sourceOptions = new RabbitMqSourceOptions("order-queue")
 {
-    o.HostName = "localhost";
-    o.Port = 5672;
-    o.UserName = "guest";
-    o.Password = "guest";
-});
-
-// Register source and sink
-services.AddRabbitMqSource<OrderEvent>(new RabbitMqSourceOptions
-{
-    QueueName = "orders",
     PrefetchCount = 100,
-});
-services.AddRabbitMqSink<EnrichedOrder>(new RabbitMqSinkOptions
+    AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess,
+    MaxDeliveryAttempts = 5,
+    Topology = new RabbitMqTopologyOptions
+    {
+        AutoDeclare = true,
+        QueueType = QueueType.Quorum,
+        DeadLetterExchange = "dlx"
+    }
+};
+```
+
+## Sink Node — `RabbitMqSinkNode<T>`
+
+### Constructor
+
+```csharp
+public RabbitMqSinkNode(
+    RabbitMqSinkOptions options,
+    IRabbitMqConnectionManager connectionManager,
+    IMessageSerializer serializer,
+    IRabbitMqMetrics? metrics = null,
+    ILogger<RabbitMqSinkNode<T>>? logger = null)
+```
+
+### Example
+
+```csharp
+var sinkOptions = new RabbitMqSinkOptions("order-exchange")
 {
-    ExchangeName = "enriched-orders",
-    RoutingKey = "order.enriched",
-});
+    RoutingKey = "processed",
+    EnablePublisherConfirms = true,
+    Persistent = true,
+    Batching = new BatchPublishOptions
+    {
+        BatchSize = 100,
+        LingerTime = TimeSpan.FromMilliseconds(50)
+    }
+};
 ```
 
 ## Configuration
 
-### Connection Options
+### Connection — `RabbitMqConnectionOptions`
 
-The `RabbitMqConnectionOptions` class configures the connection to the RabbitMQ broker:
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `HostName` | `string` | `"localhost"` | RabbitMQ server hostname |
+| `Port` | `int` | `5672` | AMQP port |
+| `VirtualHost` | `string` | `"/"` | Virtual host |
+| `UserName` | `string` | `"guest"` | Username |
+| `Password` | `string` | `"guest"` | Password |
+| `Uri` | `Uri?` | `null` | Full AMQP URI (overrides individual settings) |
+| `AutomaticRecoveryEnabled` | `bool` | `true` | Auto-reconnect on failure |
+| `RequestedHeartbeat` | `TimeSpan` | `60s` | Heartbeat interval |
+| `MaxChannelPoolSize` | `int` | `4` | Max pooled channels |
 
-```csharp
-services.AddRabbitMq(o =>
-{
-    o.HostName = "rabbitmq.example.com";
-    o.Port = 5672;
-    o.VirtualHost = "/production";
-    o.UserName = "app-user";
-    o.Password = "secret";
-    o.ClientProvidedName = "my-service"; // Visible in RabbitMQ Management UI
-    o.AutomaticRecoveryEnabled = true;   // Default: true
-    o.TopologyRecoveryEnabled = true;    // Default: true
-    o.RequestedHeartbeat = TimeSpan.FromSeconds(60);
-    o.MaxChannelPoolSize = 4;            // Default: 4
-});
-```
-
-#### AMQP URI
-
-You can use an AMQP URI instead of individual connection properties:
+### TLS — `RabbitMqTlsOptions`
 
 ```csharp
-services.AddRabbitMq(o =>
+var connection = new RabbitMqConnectionOptions
 {
-    o.Uri = new Uri("amqp://user:pass@host:5672/vhost");
-});
-```
-
-#### TLS
-
-```csharp
-services.AddRabbitMq(o =>
-{
-    o.HostName = "rabbitmq.example.com";
-    o.Port = 5671;
-    o.Tls = new RabbitMqTlsOptions
+    HostName = "rabbitmq.example.com",
+    Port = 5671,
+    Tls = new RabbitMqTlsOptions
     {
         Enabled = true,
         ServerName = "rabbitmq.example.com",
         CertificatePath = "/path/to/client.pfx",
-        CertificatePassphrase = "cert-password",
-    };
-});
+        SslProtocols = SslProtocols.Tls12
+    }
+};
 ```
 
-### Source Options
+### Source — `RabbitMqSourceOptions`
 
-The `RabbitMqSourceOptions` configures the consumer node:
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `QueueName` | `string` | (required) | Queue to consume from |
+| `PrefetchCount` | `ushort` | `100` | QoS prefetch count |
+| `AcknowledgmentStrategy` | `AcknowledgmentStrategy` | `AutoOnSinkSuccess` | When to ACK messages |
+| `RequeueOnNack` | `bool` | `true` | Requeue rejected messages |
+| `MaxDeliveryAttempts` | `int?` | `5` | Poison message threshold |
+| `RejectOnMaxDeliveryAttempts` | `bool` | `true` | Reject after max attempts |
+| `ConsumerDispatchConcurrency` | `int` | `1` | Concurrent dispatch |
+| `InternalBufferCapacity` | `int` | `1000` | Internal buffer size |
+
+### Sink — `RabbitMqSinkOptions`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `ExchangeName` | `string` | (required) | Exchange to publish to |
+| `RoutingKey` | `string` | `""` | Default routing key |
+| `RoutingKeySelector` | `Func<object, string>?` | `null` | Per-message routing key |
+| `EnablePublisherConfirms` | `bool` | `true` | Wait for broker confirmation |
+| `Persistent` | `bool` | `true` | Mark messages as persistent |
+| `Mandatory` | `bool` | `false` | Require at least one queue binding |
+
+### Batch Publishing — `BatchPublishOptions`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `BatchSize` | `int` | `100` | Messages per batch |
+| `LingerTime` | `TimeSpan` | `50ms` | Time to wait before sending partial batch |
+
+### Topology — `RabbitMqTopologyOptions`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `AutoDeclare` | `bool` | `true` | Auto-declare exchanges, queues, and bindings |
+| `QueueType` | `QueueType` | `Quorum` | `Classic`, `Quorum` (recommended), or `Stream` |
+| `Durable` | `bool` | `true` | Durable queue/exchange |
+| `DeadLetterExchange` | `string?` | `null` | Dead-letter exchange name |
+| `DeadLetterRoutingKey` | `string?` | `null` | Dead-letter routing key |
+| `MessageTtlMs` | `int?` | `null` | Message TTL in milliseconds |
+| `MaxLength` | `int?` | `null` | Max queue length (messages) |
+| `MaxLengthBytes` | `int?` | `null` | Max queue size (bytes) |
+
+## Dependency Injection
 
 ```csharp
-services.AddRabbitMqSource<MyMessage>(new RabbitMqSourceOptions
+services.AddRabbitMq(connection =>
 {
-    QueueName = "my-queue",                    // Required
-    PrefetchCount = 100,                       // QoS prefetch (default: 100)
-    InternalBufferCapacity = 1000,             // Backpressure buffer (default: 1000)
-    ConsumerDispatchConcurrency = 1,           // Preserves ordering (default: 1)
-    MaxDeliveryAttempts = 5,                   // Poison message rejection (default: 5)
-    RejectOnMaxDeliveryAttempts = true,        // Reject without requeue (default: true)
-    ContinueOnDeserializationError = false,    // Reject bad messages (default: false)
-    RequeueOnNack = true,                      // Requeue nack'd messages (default: true)
+    connection.HostName = "rabbitmq.example.com";
+    connection.UserName = "app";
+    connection.Password = "secret";
+});
+
+services.AddRabbitMqSource<Order>(new RabbitMqSourceOptions("order-queue")
+{
+    PrefetchCount = 200,
+    AcknowledgmentStrategy = AcknowledgmentStrategy.AutoOnSinkSuccess
+});
+
+services.AddRabbitMqSink<ProcessedOrder>(new RabbitMqSinkOptions("processed-exchange")
+{
+    RoutingKey = "orders.processed",
+    EnablePublisherConfirms = true
 });
 ```
 
-### Sink Options
+## Next Steps
 
-The `RabbitMqSinkOptions` configures the publisher node:
-
-```csharp
-services.AddRabbitMqSink<MyMessage>(new RabbitMqSinkOptions
-{
-    ExchangeName = "my-exchange",              // Required (use "" for default exchange)
-    RoutingKey = "my.routing.key",             // Default routing key
-    EnablePublisherConfirms = true,            // Wait for broker confirms (default: true)
-    Persistent = true,                         // Durable messages (default: true)
-    Mandatory = false,                         // Return unroutable messages (default: false)
-    MaxRetries = 3,                            // Retry on transient failure (default: 3)
-    RetryBaseDelayMs = 100,                    // Exponential backoff base (default: 100)
-    ContinueOnError = false,                   // Stop pipeline on publish error (default: false)
-});
-```
-
-#### Dynamic Routing Keys
-
-```csharp
-services.AddRabbitMqSink<MyMessage>(new RabbitMqSinkOptions
-{
-    ExchangeName = "events",
-    RoutingKeySelector = obj =>
-    {
-        if (obj is MyMessage msg)
-            return $"events.{msg.Type.ToLowerInvariant()}";
-        return "events.unknown";
-    },
-});
-```
-
-#### Batch Publishing
-
-```csharp
-services.AddRabbitMqSink<MyMessage>(new RabbitMqSinkOptions
-{
-    ExchangeName = "my-exchange",
-    Batching = new BatchPublishOptions
-    {
-        BatchSize = 100,
-        LingerTime = TimeSpan.FromMilliseconds(50),
-    },
-});
-```
+- [Kafka Connector](kafka.md) — distributed streaming platform
+- [Azure Service Bus Connector](azure-service-bus.md) — managed cloud messaging
+- [AWS SQS Connector](aws-sqs.md) — managed cloud queuing
 
 ## Topology Auto-Declaration
 
-Both source and sink nodes can automatically declare exchanges, queues, and bindings at startup. This is useful for development and testing but can be disabled in production where topology is managed externally.
-
-### Source Topology
+When `AutoDeclare = true` (default), the connector creates exchanges, queues, and bindings on startup:
 
 ```csharp
-services.AddRabbitMqSource<MyMessage>(new RabbitMqSourceOptions
+var topology = new RabbitMqTopologyOptions
 {
-    QueueName = "orders",
-    Topology = new RabbitMqTopologyOptions
-    {
-        AutoDeclare = true,
-        Durable = true,
-        QueueType = QueueType.Quorum,          // Classic, Quorum, or Stream
-        DeadLetterExchange = "orders-dlx",     // Broker-level dead-letter exchange
-        DeadLetterRoutingKey = "orders.dead",
-        MessageTtlMs = 60_000,                 // Per-queue message TTL
-        MaxLength = 100_000,                   // Max queue length
-        Bindings =
-        [
-            new BindingOptions("orders-exchange", "order.created"),
-            new BindingOptions("orders-exchange", "order.updated"),
-        ],
-        ExchangeType = "topic",
-    },
+    AutoDeclare = true,
+    QueueType = QueueType.Quorum,
+    Durable = true,
+    DeadLetterExchange = "dlx",
+    DeadLetterRoutingKey = "dead-letter"
+};
+```
+
+### Queue Types
+
+| Type | Description |
+|------|-------------|
+| `Classic` | Traditional RabbitMQ queues |
+| `Quorum` (default) | Replicated, fault-tolerant — recommended for production |
+| `Stream` | Append-only log — for replay scenarios |
+
+## Dynamic Routing Keys
+
+Route messages per-item using `RoutingKeySelector`:
+
+```csharp
+var sink = new RabbitMqSinkNode<Order>(new RabbitMqSinkOptions("order-exchange")
+{
+    RoutingKeySelector = order => $"orders.{order.Region.ToLower()}"
 });
 ```
-
-### Sink Topology
-
-```csharp
-services.AddRabbitMqSink<MyMessage>(new RabbitMqSinkOptions
-{
-    ExchangeName = "enriched-orders",
-    Topology = new RabbitMqTopologyOptions
-    {
-        AutoDeclare = true,
-        Durable = true,
-        ExchangeType = "topic",
-    },
-});
-```
-
-## Message Model
-
-The `RabbitMqMessage<T>` class wraps consumed messages with RabbitMQ-specific metadata and ack/nack capabilities:
-
-```csharp
-public class OrderProcessor : TransformNode<RabbitMqMessage<OrderEvent>, EnrichedOrder>
-{
-    public override async Task<EnrichedOrder> TransformAsync(
-        RabbitMqMessage<OrderEvent> input,
-        PipelineContext context,
-        CancellationToken cancellationToken)
-    {
-        // Access the deserialized body
-        var order = input.Body;
-
-        // Access RabbitMQ metadata
-        Console.WriteLine($"Exchange: {input.Exchange}");
-        Console.WriteLine($"Routing Key: {input.RoutingKey}");
-        Console.WriteLine($"Delivery Tag: {input.DeliveryTag}");
-        Console.WriteLine($"Redelivered: {input.Redelivered}");
-        Console.WriteLine($"Correlation ID: {input.CorrelationId}");
-
-        // Manual acknowledgment (if not using AutoOnSinkSuccess)
-        await input.AcknowledgeAsync(cancellationToken);
-
-        // Or negative acknowledgment with requeue
-        // await input.NegativeAcknowledgeAsync(requeue: true, cancellationToken);
-
-        return new EnrichedOrder(order, DateTime.UtcNow);
-    }
-}
-```
-
-### Acknowledgment Strategies
-
-| Strategy | Description |
-|----------|-------------|
-| `AutoOnSinkSuccess` | Messages are acknowledged after the sink node successfully publishes them. This is the default and provides at-least-once delivery. |
-| `Manual` | Your code must call `AcknowledgeAsync()` or `NegativeAcknowledgeAsync()` explicitly. |
-
-### Thread-Safe Ack State Machine
-
-The `RabbitMqMessage<T>` uses atomic `Interlocked.CompareExchange` for ack state transitions:
-
-- **Pending** → **Acknowledged** (via `AcknowledgeAsync`)
-- **Pending** → **Nacked** (via `NegativeAcknowledgeAsync`)
-- Double-ack is idempotent (no-op)
-- Ack after nack (or vice versa) throws `InvalidOperationException`
-
-## Dead-Letter Handling
-
-### Broker-Level Dead Lettering
-
-Configure DLX via topology options — the broker automatically routes rejected/expired messages:
-
-```csharp
-Topology = new RabbitMqTopologyOptions
-{
-    DeadLetterExchange = "my-dlx",
-    DeadLetterRoutingKey = "dead-letter",
-}
-```
-
-### Pipeline-Level Dead Lettering
-
-For transform/processing failures, use `RabbitMqDeadLetterSink`:
-
-```csharp
-var deadLetterSink = new RabbitMqDeadLetterSink(
-    connectionManager,
-    deadLetterExchange: "pipeline-dlx",
-    routingKey: "pipeline.errors");
-```
-
-Dead-lettered messages include enriched headers:
-
-| Header | Description |
-|--------|-------------|
-| `x-death-reason` | The exception message |
-| `x-death-node` | The pipeline node ID that failed |
-| `x-death-timestamp` | ISO 8601 timestamp of the failure |
-| `x-death-exception-type` | The .NET exception type name |
-| `x-death-stack-trace` | Truncated stack trace (max 2048 chars) |
-| `x-original-exchange` | Original exchange (if from RabbitMQ source) |
-| `x-original-routing-key` | Original routing key |
-| `x-original-message-id` | Original message ID |
 
 ## Connection Management
 
-The `RabbitMqConnectionManager` provides:
+- **Lazy connection**: Connections are created on first use
+- **Automatic recovery**: The underlying RabbitMQ client reconnects on failure
+- **Channel pooling**: Channels are pooled and reused across operations
 
-- **Lazy connection creation** — connects on first use
-- **Automatic recovery** — reconnects on connection loss
-- **Channel pooling** — bounded pool with configurable size for publisher channels
-- **Publisher confirms** — pooled channels have confirms enabled automatically
+## Push-to-Pull Bridge
 
-Consumer channels are created separately (not pooled) since they are long-lived.
-
-## Metrics
-
-Implement `IRabbitMqMetrics` to capture connector metrics. The default `NullRabbitMqMetrics` is a no-op:
+`RabbitMqSourceNode<T>` internally bridges RabbitMQ's push-based consumer to NPipeline's pull-based model using a bounded `Channel<T>`:
 
 ```csharp
-public class PrometheusRabbitMqMetrics : IRabbitMqMetrics
+var source = new RabbitMqSourceNode<Order>(new RabbitMqSourceOptions("order-queue")
 {
-    // Source metrics
-    public void RecordConsumed(string queue, int count) { /* ... */ }
-    public void RecordConsumeLatency(string queue, double milliseconds) { /* ... */ }
-    public void RecordDeserializationError(string queue) { /* ... */ }
-    public void RecordAck(string queue, int count) { /* ... */ }
-    public void RecordNack(string queue, int count, bool requeued) { /* ... */ }
-
-    // Sink metrics
-    public void RecordPublished(string exchange, string routingKey, int count) { /* ... */ }
-    public void RecordPublishLatency(string exchange, double milliseconds) { /* ... */ }
-    public void RecordConfirmLatency(string exchange, double milliseconds) { /* ... */ }
-    // ... and more
-}
-
-// Register before AddRabbitMq to override the default no-op
-services.AddSingleton<IRabbitMqMetrics, PrometheusRabbitMqMetrics>();
+    InternalBufferCapacity = 1000,  // bounded channel capacity
+    PrefetchCount = 200             // QoS prefetch
+});
 ```
 
-## Serialization
+If the buffer fills, RabbitMQ backpressure kicks in (broker stops delivering until space is available).
 
-The connector uses `IMessageSerializer` for message serialization. The default `RabbitMqJsonSerializer` uses `System.Text.Json` with camelCase naming.
+## Acknowledgment Strategies
 
-Override with a custom serializer:
+| Strategy | Description |
+|----------|-------------|
+| `AutoOnSinkSuccess` (default) | ACK after sink processing completes |
+| `Manual` | Call `message.AcknowledgeAsync()` explicitly |
+
+### Poison Message Handling
 
 ```csharp
-services.AddSingleton<IMessageSerializer, MyCustomSerializer>();
-services.AddRabbitMq(o => { /* ... */ });
+var source = new RabbitMqSourceNode<Order>(new RabbitMqSourceOptions("order-queue")
+{
+    MaxDeliveryAttempts = 5,
+    RejectOnMaxDeliveryAttempts = true,  // NACK without requeue → goes to DLX
+    RequeueOnNack = true                 // requeue on failure (before max attempts)
+});
 ```
 
-## Architecture
+## Observability
 
-```
-                    ┌──────────────────────────────────┐
-                    │    RabbitMQ Broker                │
-                    │                                  │
-                    │  ┌──────────┐   ┌─────────────┐ │
-                    │  │ Exchange │──▶│    Queue     │ │
-                    │  └──────────┘   └──────┬──────┘ │
-                    └────────────────────────┼────────┘
-                                             │ Push (BasicDeliver)
-                    ┌────────────────────────▼────────┐
-                    │  AsyncEventingBasicConsumer      │
-                    │  (prefetch QoS controls rate)    │
-                    └────────────────────────┬────────┘
-                                             │ Write
-                    ┌────────────────────────▼────────┐
-                    │  Bounded Channel<T>              │
-                    │  (backpressure buffer)           │
-                    └────────────────────────┬────────┘
-                                             │ ReadAllAsync
-                    ┌────────────────────────▼────────┐
-                    │  IAsyncEnumerable<T> / DataStream  │
-                    │  (NPipeline streaming surface)   │
-                    └────────────────────────┬────────┘
-                                             │
-                    ┌────────────────────────▼────────┐
-                    │  Transform Nodes                 │
-                    │  (enrichment, filtering, etc.)   │
-                    └────────────────────────┬────────┘
-                                             │
-                    ┌────────────────────────▼────────┐
-                    │  RabbitMqSinkNode<T>             │
-                    │  (BasicPublishAsync + confirms)  │
-                    └────────────────────────┬────────┘
-                                             │ Publish
-                    ┌────────────────────────▼────────┐
-                    │  RabbitMQ Broker (output)        │
-                    └─────────────────────────────────┘
+Implement `IRabbitMqMetrics` to collect connection, channel, publish, and consume metrics:
+
+```csharp
+services.AddSingleton<IRabbitMqMetrics, MyRabbitMqMetrics>();
 ```
 
-## Sample
+## Best Practices
 
-See the [Sample_RabbitMqConnector](https://github.com/your-org/NPipeline/tree/main/samples/Sample_RabbitMqConnector) for a complete working example with docker-compose.
-
-## Troubleshooting
-
-### Consumer stops receiving messages
-
-- Check that `PrefetchCount` is not set to 0 (minimum is 1)
-- Verify the queue exists and has messages using `rabbitmqctl list_queues`
-- Check consumer tag in RabbitMQ Management UI under Connections/Channels
-
-### Publisher confirms timeout
-
-- Ensure the channel was created with `PublisherConfirmationsEnabled` (automatic with DI)
-- Check broker health and disk space (alarms block publishing)
-- Increase `ConfirmTimeout` if the broker is under heavy load
-
-### Messages not routed
-
-- Verify exchange type matches the routing key pattern
-- Check bindings in RabbitMQ Management UI
-- Enable `Mandatory = true` on the sink to get unroutable message notifications
+1. **Use quorum queues** — fault-tolerant and recommended for production
+2. **Enable publisher confirms** — ensures messages reach the broker
+3. **Configure DLX** for poison message handling
+4. **Set `PrefetchCount`** proportional to consumer throughput
+5. **Use TLS** in production (`Tls.Enabled = true`)
+6. **Tune `InternalBufferCapacity`** — too small causes backpressure, too large wastes memory
+7. **Use batch publishing** for high-throughput sinks (`BatchSize`, `LingerTime`)

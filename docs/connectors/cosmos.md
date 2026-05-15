@@ -1,414 +1,256 @@
 ---
-title: Azure Cosmos DB Connector
-description: Read from and write to Azure Cosmos DB with NPipeline using the CosmosDB connector with support for SQL, Mongo, and Cassandra APIs.
-order: 1
+title: "Cosmos DB Connector"
+description: "Read from and write to Azure Cosmos DB with multi-API support (SQL, MongoDB, Cassandra)."
+order: 12
 ---
 
-# Azure Cosmos DB Connector
+# Cosmos DB Connector
 
-
-The `NPipeline.Connectors.Azure.CosmosDb` package provides specialized source and sink nodes for working with Azure Cosmos DB. This allows you to easily integrate Cosmos DB data into your pipelines as an input source or an output destination across multiple API types.
-
-This connector supports the **SQL API** with native change feed capabilities, plus **Mongo API** and **Cassandra API** adapters for multi-model support. It uses the [Azure.Cosmos](https://learn.microsoft.com/en-us/dotnet/api/overview/azure/cosmosdb) SDK for reliable operations.
+The `NPipeline.Connectors.Azure.CosmosDb` package provides source and sink nodes for Azure Cosmos DB. Supports all three Cosmos DB APIs: **SQL (Core)**, **MongoDB**, and **Cassandra**. Features include connection pooling, transactional batches, change feed processing, and multiple authentication modes.
 
 ## Installation
-
-To use the Cosmos DB connector, install the `NPipeline.Connectors.Azure.CosmosDb` NuGet package:
 
 ```bash
 dotnet add package NPipeline.Connectors.Azure.CosmosDb
 ```
 
-For the core NPipeline package and other available extensions, see the [Installation Guide](../getting-started/installation.md).
+**Dependencies:** [Microsoft.Azure.Cosmos](https://www.nuget.org/packages/Microsoft.Azure.Cosmos) 3.x, [Azure.Identity](https://www.nuget.org/packages/Azure.Identity) 1.x, [MongoDB.Driver](https://www.nuget.org/packages/MongoDB.Driver) 3.x, [CassandraCSharpDriver](https://www.nuget.org/packages/CassandraCSharpDriver) 3.x
 
-## Features
+## API Types
 
-The Cosmos DB connector provides the following capabilities:
+| API | Node Classes | When to Use |
+|-----|-------------|-------------|
+| **SQL** (default) | `CosmosSourceNode<T>`, `CosmosSinkNode<T>` | Standard Cosmos DB with SQL queries |
+| **MongoDB** | `CosmosMongoSourceNode<T>`, `CosmosMongoSinkNode<T>` | Cosmos DB with MongoDB wire protocol |
+| **Cassandra** | `CosmosCassandraSourceNode<T>`, `CosmosCassandraSinkNode<T>` | Cosmos DB with Cassandra wire protocol |
 
-- **SQL API Source Node**: Read data using Cosmos DB SQL queries with parameterization
-- **Change Feed Source Node**: Real-time streaming from Cosmos DB Change Feed
-- **Sink Node**: Write data with multiple strategies for different use cases
-- **Write Strategies**: PerRow, Batch, TransactionalBatch, and Bulk execution modes
-- **Partition Key Handling**: Attribute-based, explicit selector, or automatic detection
-- **Azure AD Authentication**: Connection strings and managed identity support via `DefaultAzureCredential`
-- **Multi-API Support**: SQL, Mongo API, and Cassandra API with dedicated nodes
-- **StorageUri Configuration**: Environment-aware setup via URI schemes
-- **Connection Pooling**: Efficient resource management through dependency injection
+## Source Node — `CosmosSourceNode<T>` (SQL API)
 
-## Dependency Injection
-
-The Cosmos DB connector supports dependency injection for managing connections. This is the recommended approach for production applications.
-
-### Registering the Connector
-
-Use `AddCosmosDbConnector` to register connection management:
+### Constructors
 
 ```csharp
-using Microsoft.Extensions.DependencyInjection;
-using NPipeline.Connectors.Azure.CosmosDb.DependencyInjection;
+// Connection string
+public CosmosSourceNode(
+    string connectionString,
+    string databaseId, string containerId,
+    string query,
+    Func<CosmosRow, T>? mapper = null,
+    CosmosConfiguration? configuration = null,
+    DatabaseParameter[]? parameters = null,
+    bool continueOnError = false)
 
-var services = new ServiceCollection()
-    .AddCosmosDbConnector(options =>
-    {
-        // Using connection string
-        options.DefaultConnectionString = "AccountEndpoint=https://your-account.documents.azure.com:443/;AccountKey=your-key;";
-        
-        // Or using Azure AD
-        // options.DefaultEndpoint = new Uri("https://your-account.documents.azure.com:443/");
-        // options.DefaultCredential = new DefaultAzureCredential();
-        
-        // Add named connections
-        options.AddOrUpdateConnection("secondary", "secondary-connection-string");
-    })
-    .BuildServiceProvider();
-
-// Access the connection pool to create nodes
-var connectionPool = services.GetRequiredService<ICosmosConnectionPool>();
+// Connection pool (recommended for DI)
+public CosmosSourceNode(
+    ICosmosConnectionPool connectionPool,
+    string databaseId, string containerId,
+    string query,
+    Func<CosmosRow, T>? mapper = null,
+    CosmosConfiguration? configuration = null,
+    DatabaseParameter[]? parameters = null,
+    bool continueOnError = false,
+    string? connectionName = null)
 ```
 
-### Using the Connection Pool with Nodes
-
-After registering the connector, use the connection pool when constructing nodes:
+### Example
 
 ```csharp
-// Create source node using the connection pool
-var sourceNode = new CosmosSourceNode<Customer>(
-    connectionPool: connectionPool,
-    databaseId: "MyDatabase",
-    containerId: "Customers",
-    query: "SELECT * FROM c WHERE c.Status = @status",
-    parameters: [new DatabaseParameter("status", "Active")]);
-
-// Create sink node using the connection pool
-var sinkNode = new CosmosSinkNode<Customer>(
-    connectionPool: connectionPool,
-    databaseId: "MyDatabase",
-    containerId: "Customers",
-    writeStrategy: CosmosWriteStrategy.Batch,
-    idSelector: c => c.Id,
-    partitionKeySelector: c => new PartitionKey(c.Region));
+var source = new CosmosSourceNode<Order>(
+    "AccountEndpoint=https://mydb.documents.azure.com:443/;AccountKey=...",
+    "orders-db", "orders",
+    "SELECT * FROM c WHERE c.status = 'pending'");
 ```
 
-### Why Use Dependency Injection?
+## Sink Node — `CosmosSinkNode<T>` (SQL API)
 
-Using dependency injection provides several benefits:
+| Strategy | Description | Best For |
+|----------|-------------|----------|
+| `Upsert` (default) | Per-item upsert | Idempotent writes |
+| `Insert` | Per-item insert | Append-only |
+| `Batch` | Batched operations | Related items in same partition |
+| `TransactionalBatch` | Transactional batch | Atomicity within a partition |
+| `Bulk` | Bulk execution | Maximum throughput |
 
-- **Connection Pooling**: Efficiently reuses connections across multiple nodes
-- **Configuration Centralization**: All Cosmos DB connections configured in one place
-- **Testability**: Easy to mock or replace dependencies in unit tests
-- **Lifetime Management**: Services properly disposed when the application shuts down
-
-## Common Attributes
-
-The Cosmos DB connector supports common attributes from `NPipeline.Connectors.Attributes` for consistent data mapping across all connectors.
-
-### `[Column]` Attribute
-
-The `[Column]` attribute allows you to specify property names and control mapping:
+### Constructors
 
 ```csharp
-using NPipeline.Connectors.Attributes;
+// Connection string
+public CosmosSinkNode(
+    string connectionString,
+    string databaseId, string containerId,
+    CosmosWriteStrategy writeStrategy = CosmosWriteStrategy.Batch,
+    Func<T, string>? idSelector = null,
+    Func<T, PartitionKey>? partitionKeySelector = null,
+    CosmosConfiguration? configuration = null)
 
-public class Customer
+// Connection pool (recommended for DI)
+public CosmosSinkNode(
+    ICosmosConnectionPool connectionPool,
+    string databaseId, string containerId,
+    CosmosWriteStrategy writeStrategy = CosmosWriteStrategy.Batch,
+    Func<T, string>? idSelector = null,
+    Func<T, PartitionKey>? partitionKeySelector = null,
+    CosmosConfiguration? configuration = null,
+    string? connectionName = null)
+```
+
+## Authentication
+
+| Mode | Description |
+|------|-------------|
+| `ConnectionString` (default) | Standard Cosmos DB connection string |
+| `AccountEndpointAndKey` | Explicit endpoint + key |
+| `AzureAdCredential` | Azure AD / Managed Identity (recommended for production) |
+
+```csharp
+// Azure AD authentication
+var config = new CosmosConfiguration
 {
-    [Column("customer_id")]
-    public string Id { get; set; } = string.Empty;
-
-    [Column("customer_type")]
-    public string CustomerType { get; set; } = string.Empty;
-
-    public string Name { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-}
-```
-
-### `[IgnoreColumn]` Attribute
-
-The `[IgnoreColumn]` attribute excludes properties from mapping. Useful for computed properties:
-
-```csharp
-using NPipeline.Connectors.Attributes;
-
-public class Order
-{
-    public string Id { get; set; } = string.Empty;
-    public decimal Subtotal { get; set; }
-    public decimal Tax { get; set; }
-
-    [IgnoreColumn]
-    public decimal Total => Subtotal + Tax;
-}
-```
-
-### `[CosmosPartitionKey]` Attribute
-
-Cosmos DB-specific attribute to mark partition key properties:
-
-```csharp
-using NPipeline.Connectors.Azure.CosmosDb.Mapping;
-
-public class Customer
-{
-    public string Id { get; set; } = string.Empty;
-    
-    [CosmosPartitionKey]
-    public string Region { get; set; } = string.Empty;
-    
-    public string Name { get; set; } = string.Empty;
-}
-```
-
-## SQL API: Query Source Node
-
-The `CosmosSourceNode<T>` reads data using Cosmos DB SQL queries.
-
-### Basic Example
-
-```csharp
-using NPipeline.Connectors.Azure.CosmosDb.Nodes;
-
-var sourceNode = new CosmosSourceNode<Customer>(
-    connectionString: "your-connection-string",
-    databaseId: "MyDatabase",
-    containerId: "Customers",
-    query: "SELECT * FROM c WHERE c.Status = @status",
-    parameters: [new DatabaseParameter("status", "Active")]);
-
-var pipeline = PipelineBuilder.Create<Customer>()
-    .Source(sourceNode)
-    .Transform(customer => new CustomerDto { /* ... */ })
-    .Sink(consoleSink)
-    .Build();
-```
-
-### Using StorageUri
-
-Configure connections using environment-aware URIs:
-
-```csharp
-var uri = StorageUri.Parse("cosmosdb://account.documents.azure.com:443/MyDatabase/Customers?key=account-key");
-
-var sourceNode = new CosmosSourceNode<Customer>(
-    uri: uri,
-    query: "SELECT * FROM c WHERE c.Region = @region",
-    parameters: [new DatabaseParameter("region", "US")]);
-```
-
-## Change Feed Source Node
-
-The `CosmosChangeFeedSourceNode<T>` enables real-time streaming from the Cosmos DB Change Feed.
-
-```csharp
-using NPipeline.Connectors.Azure.CosmosDb.ChangeFeed;
-using NPipeline.Connectors.Azure.CosmosDb.Configuration;
-
-var changeFeedConfig = new ChangeFeedConfiguration
-{
-    StartFrom = ChangeFeedStartFrom.Beginning,
-    PollingInterval = TimeSpan.FromSeconds(1),
-    MaxItemCount = 100
+    AuthenticationMode = CosmosAuthenticationMode.AzureAdCredential,
+    AccountEndpoint = "https://mydb.documents.azure.com:443/"
 };
-
-var changeFeedSource = new CosmosChangeFeedSourceNode<Order>(
-    connectionString: "your-connection-string",
-    databaseId: "MyDatabase",
-    containerId: "Orders",
-    configuration: changeFeedConfig);
-
-var pipeline = PipelineBuilder.Create<Order>()
-    .Source(changeFeedSource)
-    .Transform(order => ProcessOrder(order))
-    .Sink(orderSink)
-    .Build();
 ```
-
-## Sink Node
-
-The `CosmosSinkNode<T>` writes data to Cosmos DB with configurable strategies.
-
-```csharp
-using NPipeline.Connectors.Azure.CosmosDb.Nodes;
-using NPipeline.Connectors.Azure.CosmosDb.Configuration;
-
-var sinkNode = new CosmosSinkNode<Customer>(
-    connectionString: "your-connection-string",
-    databaseId: "MyDatabase",
-    containerId: "Customers",
-    writeStrategy: CosmosWriteStrategy.Batch,
-    idSelector: c => c.Id,
-    partitionKeySelector: c => new PartitionKey(c.Region));
-
-var pipeline = PipelineBuilder.Create<CustomerDto>()
-    .Source(customerSource)
-    .Transform(dto => new Customer { /* ... */ })
-    .Sink(sinkNode)
-    .Build();
-```
-
-## Write Strategies
-
-Choose the write strategy that matches your requirements:
-
-### PerRow
-
-Writes items one at a time. Best for:
-
-- Small data volumes
-- When immediate consistency is required
-- Individual error handling per item
-
-### Batch
-
-Writes items in parallel batches. Best for:
-
-- High-throughput scenarios
-- Items distributed across partitions
-- When some failures are acceptable
-
-### TransactionalBatch
-
-Writes items atomically within the same partition. Best for:
-
-- When you need ACID guarantees
-- Related items in the same partition
-- Financial or critical data
-
-### Bulk
-
-Uses Cosmos DB bulk execution mode. Best for:
-
-- Maximum throughput
-- Large data migrations
-- When operation order doesn't matter
-
-## Partition Key Handling
-
-Cosmos DB requires proper partition key configuration for scalable operations.
-
-### Attribute-Based
-
-Use `[CosmosPartitionKey]` to automatically detect the partition key:
-
-```csharp
-public class Customer
-{
-    public string Id { get; set; } = string.Empty;
-    
-    [CosmosPartitionKey]
-    public string Region { get; set; } = string.Empty;
-}
-```
-
-### Explicit Selector
-
-Specify partition key selection in the sink node:
-
-```csharp
-var sinkNode = new CosmosSinkNode<Customer>(
-    /* ... */
-    partitionKeySelector: c => new PartitionKey(c.Region));
-```
-
-### No Partition Key
-
-For containers without partition key requirements, `PartitionKey.None` is used automatically.
-
-## Mongo API
-
-Access Cosmos DB Mongo API with dedicated nodes.
-
-```csharp
-using NPipeline.Connectors.Azure.CosmosDb.Nodes;
-
-var mongoSource = new CosmosMongoSourceNode<BsonDocument>(
-    connectionString: "mongodb://user:pass@account.mongo.cosmos.azure.com:10255/?ssl=true",
-    databaseId: "MyDatabase",
-    containerId: "Customers",
-    query: "{ \"status\": \"active\" }");
-
-var mongoSink = new CosmosMongoSinkNode<BsonDocument>(
-    connectionString: "mongodb://user:pass@account.mongo.cosmos.azure.com:10255/?ssl=true",
-    databaseId: "MyDatabase",
-    containerId: "Customers",
-    writeStrategy: CosmosWriteStrategy.Bulk);
-```
-
-## Cassandra API
-
-Access Cosmos DB Cassandra API with dedicated nodes.
-
-```csharp
-using NPipeline.Connectors.Azure.CosmosDb.Api.Cassandra;
-using NPipeline.Connectors.Azure.CosmosDb.Nodes;
-
-var cassandraSource = new CosmosCassandraSourceNode<Dictionary<string, object?>>(
-    contactPoint: "account.cassandra.cosmos.azure.com",
-    keyspace: "my_keyspace",
-    query: "SELECT id, status FROM orders WHERE status = 'open';");
-
-var cassandraSink = new CosmosCassandraSinkNode<Dictionary<string, object?>>(
-    contactPoint: "account.cassandra.cosmos.azure.com",
-    keyspace: "my_keyspace",
-    writeStrategy: CosmosWriteStrategy.Batch);
-```
-
-> **Note:** Cassandra change feed is not supported as a native Cosmos DB feature. Use polling or external change data capture (CDC) for streaming requirements.
 
 ## Configuration
 
-### CosmosConfiguration
+### Connection
 
 | Property | Type | Default | Description |
-| -------- | ---- | ------- | ----------- |
-| `CommandTimeout` | `int` | `60` | Command timeout in seconds |
-| `FetchSize` | `int` | `1000` | Number of items per request |
-| `StreamResults` | `bool` | `true` | Stream results vs. buffer |
-| `WriteBatchSize` | `int` | `100` | Batch size for writes |
-| `MaxConcurrency` | `int?` | `32` | Max concurrent operations |
-| `ContinueOnError` | `bool` | `false` | Continue on row-level errors |
+|----------|------|---------|-------------|
+| `ApiType` | `CosmosApiType` | `Sql` | `Sql`, `Mongo`, or `Cassandra` |
+| `ConnectionString` | `string` | `""` | Connection string |
+| `AccountEndpoint` | `string` | `""` | Account endpoint URL |
+| `DatabaseId` | `string` | `""` | Database ID (required) |
+| `ContainerId` | `string?` | `null` | Container/collection ID |
+| `AuthenticationMode` | `CosmosAuthenticationMode` | `ConnectionString` | Authentication mode |
+| `ConsistencyLevel` | `ConsistencyLevel?` | `null` | Consistency level override |
+| `PreferredRegions` | `List<string>` | `[]` | Preferred regions for geo-replicated accounts |
+| `UseGatewayMode` | `bool` | `false` | Use gateway mode (vs direct) |
 
-### ChangeFeedConfiguration
+### Write
 
 | Property | Type | Default | Description |
-| -------- | ---- | ------- | ----------- |
-| `StartFrom` | `ChangeFeedStartFrom` | `Beginning` | Start position (Beginning, Now, Time) |
-| `StartTime` | `DateTime?` | `null` | Start time for time-based start |
-| `PollingInterval` | `TimeSpan` | `1 second` | Interval between polls |
-| `MaxItemCount` | `int` | `100` | Max items per poll |
-| `ContinueOnError` | `bool` | `false` | Continue on errors |
+|----------|------|---------|-------------|
+| `WriteStrategy` | `CosmosWriteStrategy` | `Upsert` | Write strategy |
+| `BatchSize` | `int` | `100` | Batch size |
+| `UseTransactionalBatch` | `bool` | `true` | Use transactional batches |
+| `AllowBulkExecution` | `bool` | `false` | Enable bulk execution mode |
+| `MaxConcurrentOperations` | `int` | `500` | Max concurrent operations |
+| `PartitionKeyPath` | `string` | `"/id"` | Partition key path |
+| `AutoCreateContainer` | `bool` | `false` | Auto-create container if missing |
+| `Throughput` | `int?` | `null` | Provisioned RU/s for auto-created containers |
 
-## Error Handling
+### Read
 
-Configure error handling to match your resilience requirements:
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `MaxItemCount` | `int` | `-1` | Max items per page (-1 = server default) |
+| `EnableCrossPartitionQuery` | `bool` | `true` | Allow cross-partition queries |
+| `StreamResults` | `bool` | `false` | Stream results |
+
+## Dependency Injection
 
 ```csharp
-var config = new CosmosConfiguration
+// Connection string
+services.AddCosmosDbConnector("AccountEndpoint=...;AccountKey=...");
+
+// Azure AD with endpoint
+services.AddCosmosDbConnector(
+    new Uri("https://mydb.documents.azure.com:443/"),
+    new DefaultAzureCredential());
+
+// Full options
+services.AddCosmosDbConnector(options =>
 {
-    ContinueOnError = true,        // Continue processing on errors
-    ThrowOnMappingError = false    // Don't throw on mapping issues
-};
-```
-
-## Custom Mapping
-
-Provide custom mapping logic for complex transformations:
-
-```csharp
-var sourceNode = new CosmosSourceNode<Customer>(
-    connectionString: "your-connection-string",
-    databaseId: "MyDatabase",
-    containerId: "Customers",
-    query: "SELECT * FROM c",
-    mapper: row => new Customer
+    options.DefaultConnectionString = "AccountEndpoint=...;AccountKey=...";
+    options.DefaultConfiguration = new CosmosConfiguration
     {
-        Id = row.Get<string>("id") ?? string.Empty,
-        Name = row.Get<string>("name") ?? string.Empty,
-        Email = row.GetValue("email")?.ToString() ?? string.Empty
-    });
+        WriteStrategy = CosmosWriteStrategy.Bulk,
+        AllowBulkExecution = true
+    };
+});
 ```
 
 ## Next Steps
 
-- **[Storage Providers](../storage-providers/storage-provider.md)**: Learn about the abstraction layer
-- **[Dependency Injection](../extensions/dependency-injection.md)**: Configure services for your pipelines
-- **[Error Handling](../core-concepts/resilience/error-handling.md)**: Handle failures gracefully
+- [MongoDB Connector](mongodb.md) — standalone MongoDB (non-Cosmos)
+- [Storage Providers](../storage-providers/index.md) — Azure Blob and ADLS Gen2 storage
+
+## API Types
+
+| API | Description |
+|-----|-------------|
+| `Sql` (default) | Cosmos DB SQL (Core) API |
+| `Mongo` | MongoDB API compatibility |
+| `Cassandra` | Cassandra API compatibility |
+
+## Partition Keys
+
+Partition key selection is critical for Cosmos DB performance:
+
+```csharp
+var config = new CosmosConfiguration
+{
+    PartitionKeyPath = "/customerId",
+    EnableCrossPartitionQuery = true  // required for queries without partition key filter
+};
+```
+
+Cross-partition queries fan out to all partitions — use partition key filters when possible.
+
+## Consistency Levels
+
+| Level | Latency | Consistency | RU Cost |
+|-------|---------|-------------|---------|
+| `Strong` | High | Linearizable | High |
+| `BoundedStaleness` | Medium | Bounded lag | Medium |
+| `Session` (default) | Low | Read-your-writes | Low |
+| `ConsistentPrefix` | Low | Ordered | Low |
+| `Eventual` | Lowest | No ordering guarantee | Lowest |
+
+```csharp
+config.ConsistencyLevel = ConsistencyLevel.Session;
+```
+
+## RU/Throughput Management
+
+```csharp
+var config = new CosmosConfiguration
+{
+    AutoCreateContainer = true,
+    Throughput = 4000,                  // provisioned RU/s
+    AllowBulkExecution = true,          // enable SDK bulk mode
+    MaxConcurrentOperations = 500       // concurrent operations limit
+};
+```
+
+### Bulk Execution
+
+Enable `AllowBulkExecution = true` for high-throughput writes. The Cosmos SDK automatically batches operations by partition key and parallelizes across partitions.
+
+## Change Feed
+
+Read the Cosmos DB change feed for CDC-style processing:
+
+```csharp
+var source = new CosmosChangeFeedSourceNode<Order>(new CosmosConfiguration
+{
+    ConnectionString = "...",
+    DatabaseId = "sales",
+    ContainerId = "orders",
+    ChangeFeedLeaseContainerId = "leases",
+    ChangeFeedStartFrom = ChangeFeedStartFrom.Beginning()
+});
+```
+
+The change feed provides an ordered stream of changes within each partition.
+
+## Best Practices
+
+1. **Use Azure AD auth** in production — avoid connection strings with keys
+2. **Choose partition keys** that distribute load evenly and match query patterns
+3. **Avoid cross-partition queries** in hot paths — filter by partition key
+4. **Use bulk execution** for high-throughput writes
+5. **Use `Session` consistency** unless you need stronger guarantees
+6. **Set `MaxConcurrentOperations`** to avoid throttling (429 responses)
+7. **Use direct mode** (default) — gateway mode adds a network hop
+8. **Configure `PreferredRegions`** for geo-replicated accounts

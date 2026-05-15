@@ -1,259 +1,141 @@
 ---
-title: Kafka Connector
-description: Read from and write to Apache Kafka with NPipeline using the Kafka connector with support for multiple serialization formats and delivery semantics.
-order: 8
+title: "Kafka Connector"
+description: "Consume from and produce to Apache Kafka with consumer groups, exactly-once semantics, and Schema Registry."
+order: 15
 ---
 
 # Kafka Connector
 
-
-The `NPipeline.Connectors.Kafka` package provides specialized source and sink nodes for working with Apache Kafka. This allows you to easily integrate Kafka message streams into your pipelines as an input source or an output destination.
-
-This connector uses the robust [Confluent.Kafka](https://github.com/confluentinc/confluent-kafka-dotnet) library, providing high-throughput streaming with support for Avro and Protocol Buffer serialization formats, Schema Registry integration, flexible delivery semantics, and comprehensive error handling.
+The `NPipeline.Connectors.Kafka` package provides source and sink nodes for [Apache Kafka](https://kafka.apache.org/). Supports consumer groups, exactly-once transactional semantics, multiple serialization formats (JSON, Avro, Protobuf) with Schema Registry integration, configurable acknowledgment strategies, and parallel processing.
 
 ## Installation
-
-To use the Kafka connector, install the `NPipeline.Connectors.Kafka` NuGet package:
 
 ```bash
 dotnet add package NPipeline.Connectors.Kafka
 ```
 
-For the core NPipeline package and other available extensions, see the [Installation Guide](../getting-started/installation.md).
+**Dependencies:** [Confluent.Kafka](https://www.nuget.org/packages/Confluent.Kafka) 2.x, [Confluent.SchemaRegistry](https://www.nuget.org/packages/Confluent.SchemaRegistry) 2.x (optional: Avro and Protobuf serializers)
 
-## Configuration
+## Source Node — `KafkaSourceNode<T>`
 
-The Kafka connector uses a `KafkaConfiguration` object to configure both source and sink nodes. This centralized configuration simplifies setup and ensures consistency across your pipeline.
-
-### Connection Settings
-
-Every Kafka configuration requires a **bootstrap server** to establish the initial connection to your Kafka cluster:
+### Constructors
 
 ```csharp
-var config = new KafkaConfiguration
-{
-    BootstrapServers = "localhost:9092",  // or comma-separated list: "broker1:9092,broker2:9092"
-    ClientId = "my-app-client",           // Optional: identifies your client to the broker
-};
+public KafkaSourceNode(KafkaConfiguration configuration)
+
+public KafkaSourceNode(
+    KafkaConfiguration configuration,
+    IKafkaMetrics metrics,
+    IRetryStrategy retryStrategy)
+
+// Bring your own consumer
+public KafkaSourceNode(
+    IConsumer<string, T> consumer,
+    KafkaConfiguration configuration,
+    IKafkaMetrics metrics,
+    IRetryStrategy retryStrategy)
 ```
 
-### Authentication
-
-The connector supports SASL authentication for secure connections to managed Kafka services:
-
-```csharp
-var config = new KafkaConfiguration
-{
-    BootstrapServers = "kafka.example.com:9092",
-    SecurityProtocol = SecurityProtocol.SaslSsl,
-    SaslMechanism = SaslMechanism.Plain,
-    SaslUsername = "username",
-    SaslPassword = "password",
-};
-```
-
-**Supported authentication methods:**
-
-- **PLAINTEXT**: No authentication (development only)
-- **SASL_PLAINTEXT**: SASL with plain text (not recommended for production)
-- **SASL_SSL**: SASL with TLS encryption (recommended for production)
-- **SSL**: TLS encryption without SASL
-
-## `KafkaSourceNode<T>`
-
-The `KafkaSourceNode<T>` continuously consumes messages from a Kafka topic and emits each deserialized message as a `KafkaMessage<T>`.
-
-### Source Configuration
-
-A source requires a topic to consume from and a consumer group ID:
+### Example
 
 ```csharp
 var config = new KafkaConfiguration
 {
     BootstrapServers = "localhost:9092",
     SourceTopic = "orders",
-    ConsumerGroupId = "order-processing-group",
-    AutoOffsetReset = AutoOffsetReset.Latest,  // Start from latest for new consumers
-    MaxPollRecords = 500,                       // Batch size
+    ConsumerGroupId = "order-processor",
+    AutoOffsetReset = AutoOffsetReset.Earliest,
+    SerializationFormat = SerializationFormat.Json
 };
+
+var source = new KafkaSourceNode<Order>(config);
 ```
 
-### Configuration Options for Consumption
+## Sink Node — `KafkaSinkNode<T>`
 
-- **`SourceTopic`**: The Kafka topic to consume from (required)
-- **`ConsumerGroupId`**: Consumer group for offset management and parallel processing (required)
-- **`AutoOffsetReset`**: Behavior when no committed offset exists:
-  - `Latest`: Start from the most recent message (default)
-  - `Earliest`: Start from the beginning of the topic
-- **`EnableAutoCommit`**: Automatically commit offsets (default: `false` - use manual acknowledgment)
-- **`MaxPollRecords`**: Maximum messages to fetch per poll (default: 500)
-- **`PollTimeoutMs`**: Consumer poll timeout in milliseconds (default: 100)
-- **`FetchMinBytes`**: Minimum bytes to accumulate before responding (default: 1)
-- **`FetchMaxBytes`**: Maximum bytes to fetch per request (default: 50MB)
-- **`MaxPartitionFetchBytes`**: Maximum bytes per partition (default: 1MB)
-- **`GroupInstanceId`**: Enable static group membership (optional, for development)
-
-### Message Acknowledgment
-
-For **at-least-once** delivery, calling `AcknowledgeAsync()` commits the offset. For **exactly-once**, `AcknowledgeAsync()` is a no-op (offsets are sent to the transaction by the sink).
-
-You can acknowledge manually in a sink, or let `KafkaSinkNode<T>` acknowledge automatically when `AcknowledgmentStrategy` is `AutoOnSinkSuccess` (the default).
+### Constructors
 
 ```csharp
-var source = builder.AddSource(new KafkaSourceNode<Order>(config), "kafka-source");
+public KafkaSinkNode(KafkaConfiguration configuration)
 
-var sink = builder.AddSink(async (KafkaMessage<Order> message, CancellationToken ct) =>
-{
-    await ProcessOrderAsync(message.Body, ct);
-    await message.AcknowledgeAsync(ct); // At-least-once: commits offset
-}, "process-order");
-
-builder.Connect(source, sink);
+public KafkaSinkNode(
+    KafkaConfiguration configuration,
+    IKafkaMetrics metrics,
+    IRetryStrategy retryStrategy,
+    IPartitionKeyProvider<T>? partitionKeyProvider = null)
 ```
 
-### Example: Reading from a Kafka Topic
-
-```csharp
-using NPipeline.Connectors.Kafka.Configuration;
-using NPipeline.Connectors.Kafka.Nodes;
-using NPipeline.DataFlow.DataStreams;
-using NPipeline.DataFlow;
-using NPipeline.Execution;
-using NPipeline.Nodes;
-using NPipeline.Pipeline;
-
-public sealed record Order(string OrderId, string CustomerId, decimal Amount, DateTime CreatedAt);
-
-public sealed class KafkaConsumerPipeline : IPipelineDefinition
-{
-    public void Define(PipelineBuilder builder, PipelineContext context)
-    {
-        var config = new KafkaConfiguration
-        {
-            BootstrapServers = "localhost:9092",
-            SourceTopic = "orders",
-            ConsumerGroupId = "order-processing-group",
-            AutoOffsetReset = AutoOffsetReset.Latest,
-        };
-
-        var source = new KafkaSourceNode<Order>(config);
-
-        var sourceHandle = builder.AddSource(source, "kafka-source");
-        var sinkHandle = builder.AddSink(async (KafkaMessage<Order> message, CancellationToken ct) =>
-        {
-            Console.WriteLine($"Processing order: {message.Body.OrderId} for {message.Body.CustomerId}");
-            await message.AcknowledgeAsync(ct);
-        }, "process-order");
-
-        builder.Connect(sourceHandle, sinkHandle);
-    }
-}
-```
-
-## `KafkaSinkNode<T>`
-
-The `KafkaSinkNode<T>` produces messages to a Kafka topic. It supports batching, idempotent production, and transactional delivery for exactly-once semantics.
-
-### Sink Configuration
-
-A sink requires a topic to produce to:
+### Example
 
 ```csharp
 var config = new KafkaConfiguration
 {
     BootstrapServers = "localhost:9092",
-    SinkTopic = "order-events",
-    EnableIdempotence = true,      // Prevent duplicate messages
-    Acks = Acks.All,               // Wait for all replicas to acknowledge
-    BatchSize = 100,               // Messages per batch
-    LingerMs = 5,                  // Time to wait for batching (ms)
-    BatchLingerMs = 100,           // Pipeline batching delay (ms)
+    SinkTopic = "processed-orders",
+    EnableIdempotence = true,
+    Acks = Acks.All,
+    SerializationFormat = SerializationFormat.Json
 };
+
+var sink = new KafkaSinkNode<ProcessedOrder>(config);
 ```
 
-### Configuration Options for Production
+## Configuration
 
-- **`SinkTopic`**: The Kafka topic to produce to (required)
-- **`EnableIdempotence`**: Ensure messages aren't duplicated (default: `true`)
-- **`Acks`**: Acknowledgment mode:
-  - `None`: No acknowledgment (fastest, least safe)
-  - `Leader`: Leader acknowledged (faster, good durability)
-  - `All`: All in-sync replicas acknowledged (slowest, most durable)
-- **`BatchSize`**: Maximum messages per batch (default: 16384)
-- **`LingerMs`**: Time to wait for batch accumulation (default: 5ms)
-- **`BatchLingerMs`**: Pipeline batch linger time (default: 100ms)
-- **`CompressionType`**: Message compression (`None`, `Gzip`, `Snappy`, `Lz4`, `Zstd`)
-- **`MessageMaxBytes`**: Maximum message size (default: 1MB)
-- **`AcknowledgmentStrategy`**: Controls auto-acknowledgment for `IAcknowledgableMessage` items
-- **`EnableTransactions`**: Enables transactional production (required for exactly-once)
-- **`TransactionalId`**: Transactional ID required when `EnableTransactions` is `true`
-- **`TransactionInitTimeoutMs`**: Transaction initialization timeout in milliseconds (default: 30000)
+### Connection & Security
 
-### Example: Writing to a Kafka Topic
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `BootstrapServers` | `string` | — | Broker addresses (comma-separated) |
+| `ClientId` | `string?` | `null` | Client identifier |
+| `SecurityProtocol` | `SecurityProtocol` | `Plaintext` | `Plaintext`, `Ssl`, `SaslPlaintext`, `SaslSsl` |
+| `SaslMechanism` | `SaslMechanism` | `Plain` | `Plain`, `ScramSha256`, `ScramSha512`, `OAuthBearer` |
+| `SaslUsername` | `string?` | `null` | SASL username |
+| `SaslPassword` | `string?` | `null` | SASL password |
 
-```csharp
-using NPipeline.Connectors.Kafka.Configuration;
-using NPipeline.Connectors.Kafka.Nodes;
-using NPipeline.DataFlow;
-using NPipeline.Execution;
-using NPipeline.Nodes;
-using NPipeline.Pipeline;
+### Consumer (Source)
 
-public sealed record OrderEvent(string OrderId, string EventType, DateTime Timestamp);
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `SourceTopic` | `string` | — | Topic to consume from |
+| `ConsumerGroupId` | `string` | — | Consumer group ID |
+| `GroupInstanceId` | `string?` | `null` | Static group membership ID |
+| `AutoOffsetReset` | `AutoOffsetReset` | `Latest` | `Earliest`, `Latest`, or `Error` |
+| `EnableAutoCommit` | `bool` | — | Enable auto-commit |
+| `MaxPollRecords` | `int` | `500` | Max records per poll |
+| `PollTimeoutMs` | `int` | `100` | Poll timeout (ms) |
+| `FetchMinBytes` | `int` | `1` | Min bytes to fetch |
+| `FetchMaxBytes` | `int` | `52428800` | Max bytes to fetch |
 
-public sealed class KafkaProducerPipeline : IPipelineDefinition
-{
-    public void Define(PipelineBuilder builder, PipelineContext context)
-    {
-        var orders = new[]
-        {
-            new OrderEvent("ORD-001", "Created", DateTime.UtcNow),
-            new OrderEvent("ORD-002", "Shipped", DateTime.UtcNow),
-        };
+### Producer (Sink)
 
-        var config = new KafkaConfiguration
-        {
-            BootstrapServers = "localhost:9092",
-            SinkTopic = "order-events",
-            Acks = Acks.All,
-        };
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `SinkTopic` | `string` | — | Topic to produce to |
+| `EnableIdempotence` | `bool` | `true` | Idempotent producer |
+| `Acks` | `Acks` | `All` | `None`, `Leader`, or `All` |
+| `BatchSize` | `int` | `16384` | Producer batch size (bytes) |
+| `LingerMs` | `int` | `5` | Time to wait before sending a batch |
+| `CompressionType` | `CompressionType` | `None` | `None`, `Gzip`, `Snappy`, `Lz4`, `Zstd` |
+| `MessageMaxBytes` | `int` | `1000000` | Max message size |
 
-        var sink = new KafkaSinkNode<OrderEvent>(config);
+### Serialization
 
-        var sourceHandle = builder.AddSource(() => orders, "orders-source");
-        var sinkHandle = builder.AddSink(sink, "kafka-sink");
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `SerializationFormat` | `SerializationFormat` | `Json` | `Json`, `Avro`, or `Protobuf` |
+| `SchemaRegistry` | `SchemaRegistryConfiguration?` | `null` | Schema Registry settings (required for Avro/Protobuf) |
 
-        builder.Connect(sourceHandle, sinkHandle);
-    }
-}
-```
+### Delivery Semantics
 
-## Serialization Formats
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `DeliverySemantic` | `DeliverySemantic` | `AtLeastOnce` | `AtLeastOnce` or `ExactlyOnce` |
+| `AcknowledgmentStrategy` | `AcknowledgmentStrategy` | `AutoOnSinkSuccess` | When to acknowledge messages |
+| `EnableTransactions` | `bool` | — | Enable transactional producer |
+| `TransactionalId` | `string?` | `null` | Transactional ID (required for exactly-once) |
 
-The Kafka connector supports multiple serialization formats to match your data models and infrastructure:
-
-### JSON Serialization (Default)
-
-JSON is the default format, requiring no Schema Registry configuration:
-
-```csharp
-var config = new KafkaConfiguration
-{
-    BootstrapServers = "localhost:9092",
-    SerializationFormat = SerializationFormat.Json,
-    // No Schema Registry configuration needed
-};
-```
-
-JSON is ideal for:
-
-- Development and testing
-- Simple data structures
-- When schema evolution is not critical
-
-### Apache Avro
-
-Avro provides schema evolution and compact serialization. Requires Schema Registry:
+### Schema Registry
 
 ```csharp
 var config = new KafkaConfiguration
@@ -263,68 +145,13 @@ var config = new KafkaConfiguration
     SchemaRegistry = new SchemaRegistryConfiguration
     {
         Url = "http://localhost:8081",
-        BasicAuthUsername = "username",      // Optional
-        BasicAuthPassword = "password",      // Optional
-        RequestTimeoutMs = 30000,
-        SchemaCacheCapacity = 1000,
         AutoRegisterSchemas = true,
-    },
+        SchemaCacheCapacity = 1000
+    }
 };
 ```
 
-Avro is ideal for:
-
-- Enterprise environments with Schema Registry
-- Strong schema validation requirements
-- Maximum binary efficiency
-
-### Protocol Buffers
-
-Protocol Buffers offer efficient serialization with Schema Registry support:
-
-```csharp
-var config = new KafkaConfiguration
-{
-    BootstrapServers = "localhost:9092",
-    SerializationFormat = SerializationFormat.Protobuf,
-    SchemaRegistry = new SchemaRegistryConfiguration
-    {
-        Url = "http://localhost:8081",
-    },
-};
-```
-
-Protocol Buffers are ideal for:
-
-- Polyglot systems (Python, Java, Go, etc.)
-- Performance-critical applications
-- Schema versioning with backward compatibility
-
-## Delivery Semantics
-
-The connector supports different delivery guarantees to balance consistency and performance:
-
-### At-Least-Once (Default)
-
-Messages are delivered at least once; duplicates are possible:
-
-```csharp
-var config = new KafkaConfiguration
-{
-    BootstrapServers = "localhost:9092",
-    DeliverySemantic = DeliverySemantic.AtLeastOnce,
-};
-```
-
-**When to use:**
-
-- Most applications where idempotency can be handled downstream
-- Higher throughput is important
-- Duplicate processing is acceptable or idempotent
-
-### Exactly-Once
-
-Guaranteed exactly-once delivery using Kafka transactions:
+### Exactly-Once Semantics
 
 ```csharp
 var config = new KafkaConfiguration
@@ -333,242 +160,122 @@ var config = new KafkaConfiguration
     DeliverySemantic = DeliverySemantic.ExactlyOnce,
     EnableTransactions = true,
     TransactionalId = "order-processor-1",
-    EnableIdempotence = true,  // Required for exactly-once
-    Acks = Acks.All,           // Required for exactly-once
+    EnableIdempotence = true,
+    Acks = Acks.All,
+    IsolationLevel = IsolationLevel.ReadCommitted
 };
 ```
 
-**When to use:**
+## Serialization Formats
 
-- Financial transactions
-- Inventory management
-- Any scenario where duplicates are unacceptable
-- **Note:** Exactly-once semantics require `EnableTransactions = true` and a `TransactionalId`. Offsets are sent to the transaction only when the sink processes `KafkaMessage<T>` items from the Kafka source.
+| Format | Dependency | Schema | Best For |
+|--------|-----------|--------|----------|
+| `Json` (default) | — | None | Simple messages, debugging |
+| `Avro` | `Confluent.SchemaRegistry.Serdes.Avro` | Schema Registry | Schema evolution, compact encoding |
+| `Protobuf` | `Confluent.SchemaRegistry.Serdes.Protobuf` | Schema Registry | Cross-language, compact encoding |
+
+### Schema Registry
+
+```csharp
+var config = new KafkaConfiguration
+{
+    SerializationFormat = SerializationFormat.Avro,
+    SchemaRegistry = new SchemaRegistryConfiguration
+    {
+        Url = "http://localhost:8081",
+        AutoRegisterSchemas = true,
+        SchemaCacheCapacity = 1000
+    }
+};
+```
+
+## Delivery Semantics
+
+| Semantic | Description | Configuration |
+|----------|-------------|--------------|
+| `AtLeastOnce` (default) | No data loss, possible duplicates | Default — `AcknowledgeAsync()` commits offset |
+| `ExactlyOnce` | No data loss, no duplicates | Requires transactional producer |
+
+### At-Least-Once
+
+```csharp
+// Default: offset committed on AcknowledgeAsync()
+await message.AcknowledgeAsync(ct);
+```
+
+### Exactly-Once (Transactional)
+
+```csharp
+var config = new KafkaConfiguration
+{
+    DeliverySemantic = DeliverySemantic.ExactlyOnce,
+    EnableTransactions = true,
+    TransactionalId = "order-processor-1",
+    EnableIdempotence = true,
+    Acks = Acks.All,
+    IsolationLevel = IsolationLevel.ReadCommitted
+};
+```
+
+With exactly-once, `AcknowledgeAsync()` is a no-op — offsets are committed as part of the transaction by the sink.
+
+## Acknowledgment Strategies
+
+| Strategy | Description |
+|----------|-------------|
+| `AutoOnSinkSuccess` (default) | Offset committed after successful sink processing |
+| `Manual` | Call `message.AcknowledgeAsync()` explicitly |
+
+## Message Metadata
+
+`KafkaMessage<T>` exposes:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `Body` | `T` | Deserialized message value |
+| `Key` | `string?` | Message key |
+| `Topic` | `string` | Source topic |
+| `Partition` | `int` | Partition number |
+| `Offset` | `long` | Message offset |
+| `Timestamp` | `DateTimeOffset` | Message timestamp |
+| `Headers` | `Headers` | Kafka headers |
 
 ## Partitioning
 
-For sink nodes, messages can be distributed across partitions using a partition key provider. By default, the key provider uses `ToString()` on the message and lets the Kafka client choose the partition based on the key.
+Implement `IPartitionKeyProvider<T>` for custom partition routing:
 
 ```csharp
-public record Order(string OrderId, string CustomerId, decimal Amount);
-
-// Custom partition key provider based on CustomerId
-public sealed class CustomerPartitionKeyProvider : IPartitionKeyProvider<Order>
+public class OrderPartitionProvider : IPartitionKeyProvider<Order>
 {
-    public string GetPartitionKey(Order item)
-    {
-        return item.CustomerId;  // Orders from same customer go to same partition
-    }
+    public string GetPartitionKey(Order item) => item.CustomerId.ToString();
 }
-
-var config = new KafkaConfiguration { /* ... */ };
-var sink = new KafkaSinkNode<Order>(
-    config,
-    metrics: NullKafkaMetrics.Instance,
-    retryStrategy: new ExponentialBackoffRetryStrategy(),
-    partitionKeyProvider: new CustomerPartitionKeyProvider()
-);
-
-// To target a specific partition directly, implement IPartitionKeyProvider.GetPartition.
 ```
 
-## Metadata and Message Properties
+## Dead-Letter Handling
 
-Both source and sink nodes track Kafka-specific metadata through `KafkaMessage<T>`:
-
-```csharp
-var sourceHandle = builder.AddSource(source, "kafka-source");
-var sinkHandle = builder.AddSink(async (KafkaMessage<Order> message, CancellationToken ct) =>
-{
-    var topic = message.Topic;           // Topic name
-    var partition = message.Partition;   // Partition number
-    var offset = message.Offset;         // Message offset
-    var key = message.Key;               // Message key
-    var timestamp = message.Timestamp;   // Message timestamp
-    var headers = message.Headers;       // Message headers
-
-    Console.WriteLine($"Message: {topic}[{partition}] offset={offset}");
-
-    await message.AcknowledgeAsync(ct);
-}, "inspect-message");
-
-builder.Connect(sourceHandle, sinkHandle);
-```
-
-## Dead Letter Handling
-
-You can model dead-letter messages with `DeadLetterEnvelope` and send them to a dedicated topic using `KafkaSinkNode<T>`:
+Failed messages can be routed to a dead-letter topic via NPipeline's dead-letter mechanism:
 
 ```csharp
-var deadLetterEnvelope = new DeadLetterEnvelope
+var config = new KafkaConfiguration
 {
-    OriginalTopic = message.Topic,
-    Partition = message.Partition,
-    Offset = message.Offset,
-    OriginalItem = message.Body,
-    ExceptionType = exception.GetType().FullName,
-    ExceptionMessage = exception.Message,
-    StackTrace = exception.StackTrace,
-    Timestamp = DateTime.UtcNow,
-    CorrelationId = context.CorrelationId,
+    DeadLetterTopic = "orders-dlq",
+    MaxDeliveryAttempts = 3
 };
-
-// Produce to dead letter topic
-var deadLetterSink = new KafkaSinkNode<DeadLetterEnvelope>(
-    new KafkaConfiguration
-    {
-        BootstrapServers = "localhost:9092",
-        SinkTopic = "order-processing-dead-letters",
-    }
-);
 ```
-
-## Error Handling and Retries
-
-The connector includes built-in retry strategies for transient errors:
-
-```csharp
-var retryStrategy = new ExponentialBackoffRetryStrategy
-{
-    BaseDelayMs = 100,
-    MaxDelayMs = 5000,
-    MaxRetries = 5,
-    JitterFactor = 0.2,
-};
-
-var source = new KafkaSourceNode<Order>(
-    config,
-    metrics: NullKafkaMetrics.Instance,
-    retryStrategy: retryStrategy
-);
-```
-
-Common transient errors (broker temporarily unavailable, network issues) are automatically retried with exponential backoff.
 
 ## Best Practices
 
-### Consumer Groups
+1. **Use `Acks.All` + `EnableIdempotence`** for durability
+2. **Set `ConsumerGroupId`** per logical consumer — enables parallel processing
+3. **Use Avro/Protobuf** with Schema Registry for schema evolution
+4. **Tune `MaxPollRecords`** to control batch sizes (default 500)
+5. **Monitor via `IKafkaMetrics`** — tracks consume/produce rates, lag, errors
+6. **Use `CompressionType.Lz4`** for high-throughput topics
+7. **Set `LingerMs = 5–50`** to batch small messages for better throughput
+8. **Use exactly-once semantics** only when needed — higher overhead
 
-Always specify a unique `ConsumerGroupId` for parallel processing:
+## Next Steps
 
-```csharp
-var config = new KafkaConfiguration
-{
-    BootstrapServers = "localhost:9092",
-    SourceTopic = "orders",
-    ConsumerGroupId = "order-processing-v1",  // Increment version on breaking changes
-};
-```
-
-### Offset Management
-
-Prefer manual acknowledgment for precise control:
-
-```csharp
-config.EnableAutoCommit = false;  // Default: manual acknowledgment
-
-// Commit only after successful processing
-await message.AcknowledgeAsync();
-```
-
-### Batch Tuning
-
-Adjust batch settings based on your throughput requirements:
-
-```csharp
-// High-throughput scenario
-var config = new KafkaConfiguration
-{
-    MaxPollRecords = 1000,
-    BatchLingerMs = 100,         // Wait up to 100ms to accumulate messages
-};
-
-// Low-latency scenario
-var config = new KafkaConfiguration
-{
-    MaxPollRecords = 10,
-    BatchLingerMs = 10,          // Process quickly
-};
-```
-
-### Monitoring and Metrics
-
-Implement `IKafkaMetrics` to track performance:
-
-```csharp
-public sealed class PrometheusKafkaMetrics : IKafkaMetrics
-{
-    public void RecordConsumed(string topic, int count) { /* ... */ }
-    public void RecordProduced(string topic, int count) { /* ... */ }
-    public void RecordProduceError(string topic, Exception ex) { /* ... */ }
-    public void RecordPollLatency(string topic, TimeSpan latency) { /* ... */ }
-    public void RecordCommitLatency(string topic, TimeSpan latency) { /* ... */ }
-    public void RecordSerializeLatency(Type type, TimeSpan latency) { /* ... */ }
-    public void RecordDeserializeLatency(Type type, TimeSpan latency) { /* ... */ }
-    public void RecordSerializeError(Type type, Exception ex) { /* ... */ }
-    public void RecordDeserializeError(Type type, Exception ex) { /* ... */ }
-    public void RecordBatchSize(string topic, int size) { /* ... */ }
-    public void RecordLag(string topic, int partition, long lag) { /* ... */ }
-    public void RecordTransactionCommit(TimeSpan latency) { /* ... */ }
-    public void RecordTransactionAbort(TimeSpan latency) { /* ... */ }
-    public void RecordTransactionError(Exception ex) { /* ... */ }
-}
-
-var source = new KafkaSourceNode<Order>(
-    config,
-    metrics: new PrometheusKafkaMetrics(),
-    retryStrategy: new ExponentialBackoffRetryStrategy()
-);
-```
-
-## Complete Example: End-to-End Pipeline
-
-```csharp
-using NPipeline.Connectors.Kafka.Configuration;
-using NPipeline.Connectors.Kafka.Nodes;
-using NPipeline.DataFlow;
-using NPipeline.Execution;
-using NPipeline.Nodes;
-using NPipeline.Pipeline;
-
-public sealed record OrderIn(string OrderId, string CustomerId, decimal Amount);
-public sealed record OrderProcessed(string OrderId, string CustomerId, decimal Amount, decimal Tax);
-
-public sealed class OrderProcessingPipeline : IPipelineDefinition
-{
-    public void Define(PipelineBuilder builder, PipelineContext context)
-    {
-        var sourceConfig = new KafkaConfiguration
-        {
-            BootstrapServers = "localhost:9092",
-            SourceTopic = "orders",
-            ConsumerGroupId = "order-processor",
-            AutoOffsetReset = AutoOffsetReset.Latest,
-        };
-
-        var sinkConfig = new KafkaConfiguration
-        {
-            BootstrapServers = "localhost:9092",
-            SinkTopic = "orders-processed",
-            Acks = Acks.All,
-        };
-
-        var source = new KafkaSourceNode<OrderIn>(sourceConfig);
-        var sink = new KafkaSinkNode<OrderProcessed>(sinkConfig);
-
-        var sourceHandle = builder.AddSource(source, "orders-source");
-        var transformHandle = builder.AddTransform((KafkaMessage<OrderIn> message) =>
-        {
-            var order = message.Body;
-            var tax = order.Amount * 0.1m;
-            return new OrderProcessed(order.OrderId, order.CustomerId, order.Amount, tax);
-        }, "calculate-tax");
-        var sinkHandle = builder.AddSink(sink, "orders-sink");
-
-        builder.Connect(sourceHandle, transformHandle);
-        builder.Connect(transformHandle, sinkHandle);
-    }
-}
-```
-
-For more information on building pipelines, see the [Core Concepts](../core-concepts/index.md) and [Getting Started](../getting-started/index.md) guides.
+- [RabbitMQ Connector](rabbitmq.md) — alternative message broker
+- [Azure Service Bus Connector](azure-service-bus.md) — managed messaging
+- [Error Handling](../error-handling/index.md) — resilience for message processing

@@ -1,222 +1,200 @@
 ---
-title: Azure Data Lake Storage Gen2 Provider
-description: Read from and write to Azure Data Lake Storage Gen2 using the ADLS Gen2 storage provider.
+title: "ADLS Gen2 Storage Provider"
+description: "Read and write files in Azure Data Lake Storage Gen2 with hierarchical namespace, atomic rename, and directory-level ACLs."
 order: 4
 ---
 
-# Azure Data Lake Storage Gen2 Provider
+# ADLS Gen2 Storage Provider
 
+> **Prerequisites:** [Storage Providers Overview](index.md)
 
-The ADLS Gen2 provider enables NPipeline applications to read, write, list, move, and delete data in Azure Data Lake Storage Gen2 using the `adls://` URI scheme. Unlike the Azure Blob Storage provider, this provider targets the `Azure.Storage.Files.DataLake` SDK and exposes ADLS Gen2's true hierarchical namespace and O(1) atomic rename operations.
+The `NPipeline.StorageProviders.Adls` package implements `IStorageProvider` for [Azure Data Lake Storage Gen2](https://learn.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-introduction). In addition to standard read/write, it implements `IDeletableStorageProvider` and `IMoveableStorageProvider` for atomic rename/move operations — critical for partitioned table writes.
 
-### When to Use This Provider vs Azure Blob Storage
+## When to Use ADLS Gen2 vs Azure Blob
 
-| Concern | Azure Blob (`azure://`) | ADLS Gen2 (`adls://`) |
-|---|---|---|
-| SDK package | `Azure.Storage.Blobs` | `Azure.Storage.Files.DataLake` |
-| Directory model | Flat (virtual `/` delimiter) | True POSIX-like directory tree |
-| Atomic move/rename | Not natively supported | `RenameAsync` — O(1) atomic |
-| Per-path ACLs | RBAC / container-level only | POSIX-style per-file and per-directory |
-| `SupportsHierarchy` | `false` | `true` |
+| Feature | Azure Blob | ADLS Gen2 |
+|---------|------------|----------|
+| Flat namespace | Yes | Yes |
+| Hierarchical namespace | No | Yes |
+| Directory-level ACLs | No | Yes |
+| Atomic rename/move | No | Yes |
+| Data Lake connector | Limited | Full support |
 
-Use this provider when you require **true hierarchical namespace**, **atomic rename/move**, or **POSIX ACLs** (ACL support is planned for a future release).
+Use ADLS Gen2 when you need hierarchical namespaces, directory-level ACLs, or the [Data Lake connector's](../connectors/datalake.md) partitioned table features.
 
-## Dependencies
+## Installation
 
-```xml
-<PackageReference Include="NPipeline.StorageProviders.Adls" Version="*" />
+```bash
+dotnet add package NPipeline.StorageProviders.Adls
 ```
 
-Transitive dependencies pulled in automatically:
+**Dependencies:** [Azure.Storage.Blobs](https://www.nuget.org/packages/Azure.Storage.Blobs) 12.x, [Azure.Storage.Files.DataLake](https://www.nuget.org/packages/Azure.Storage.Files.DataLake) 12.x, [Azure.Identity](https://www.nuget.org/packages/Azure.Identity) 1.x
 
-| Package | Purpose |
-|---|---|
-| `Azure.Storage.Files.DataLake` | ADLS Gen2 SDK |
-| `Azure.Identity` | `DefaultAzureCredential` and token credential support |
-| `NPipeline.StorageProviders` | Core storage abstractions |
+## Quick Start
+
+```csharp
+var options = new AdlsGen2StorageProviderOptions
+{
+    DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=mydatalake;AccountKey=..."
+};
+var factory = new AdlsGen2ClientFactory(options);
+var provider = new AdlsGen2StorageProvider(factory, options);
+
+var stream = await provider.OpenReadAsync(
+    StorageUri.Parse("adls://my-filesystem/data/orders.parquet"));
+```
 
 ## URI Format
 
 ```
-adls://<filesystem>/<path/to/file.ext>[?param=value&...]
+adls://filesystem-name/path/to/file
 ```
 
-| URI component | Maps to |
-|---|---|
-| `Host` | Data Lake **filesystem** name (equivalent of a Blob container) |
-| `Path` | File or directory path within the filesystem |
+| Component | Description |
+|-----------|-------------|
+| `filesystem-name` | ADLS Gen2 filesystem (URI host) |
+| `path/to/file` | File path within the filesystem |
 
-### Naming constraints
+## Authentication
 
-- **Filesystem name**: 3–63 characters; lowercase letters, digits, and hyphens; no leading or trailing hyphen.
-- **Path**: 1–2,048 characters; no backslash (`\`); no `?`.
+Same precedence as the Azure Blob provider:
 
-### Supported query parameters
+1. **Connection string** — `DefaultConnectionString` (takes precedence)
+2. **Explicit credential** — `DefaultCredential` (any `TokenCredential`)
+3. **Default credential chain** — `DefaultAzureCredential`
+
+```csharp
+// Managed identity (recommended)
+var options = new AdlsGen2StorageProviderOptions
+{
+    UseDefaultCredentialChain = true
+};
+
+// Connection string
+var options = new AdlsGen2StorageProviderOptions
+{
+    DefaultConnectionString = "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=..."
+};
+```
+
+## Configuration
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `DefaultConnectionString` | `string?` | `null` | ADLS connection string |
+| `DefaultCredential` | `TokenCredential?` | `null` | Azure `TokenCredential` |
+| `UseDefaultCredentialChain` | `bool` | `true` | Use `DefaultAzureCredential` |
+| `ServiceUrl` | `Uri?` | `null` | Custom service URL (Azurite) |
+| `ServiceVersion` | `DataLakeClientOptions.ServiceVersion?` | `null` | API version override |
+| `UploadThresholdBytes` | `long` | `64 MB` | Staged upload threshold |
+| `UploadMaximumConcurrency` | `int?` | `null` | Parallel upload threads |
+| `UploadMaximumTransferSizeBytes` | `int?` | `null` | Block size for staged uploads |
+| `ClientCacheSizeLimit` | `int` | `100` | Max cached client instances |
+
+## Dependency Injection
+
+```csharp
+services.AddAdlsGen2StorageProvider();
+
+services.AddAdlsGen2StorageProvider(options =>
+{
+    options.UseDefaultCredentialChain = true;
+});
+```
+
+Registers: `IStorageProvider`, `IDeletableStorageProvider`, `IMoveableStorageProvider`, `IStorageProviderMetadataProvider`
+
+## Features
+
+- **Atomic rename/move** — `IMoveableStorageProvider` uses the Data Lake rename API; falls back to copy + delete on failure
+- **Idempotent delete** — `IDeletableStorageProvider` treats 404 as success
+- **Dual client caches** — separate LRU caches for Blob and DataLake clients
+- **Metadata** — `Size`, `LastModified`, `ContentType`, `ETag`
+
+## URI Parameters
 
 | Parameter | Description |
-|---|---|
+|-----------|-------------|
 | `accountName` | Storage account name (overrides default) |
 | `accountKey` | Shared-key credential (base64-encoded) |
 | `sasToken` | SAS token |
 | `connectionString` | Full connection string |
 | `contentType` | MIME type set on write |
 
-## Authentication
+### Naming Constraints
 
-Credential resolution follows this priority order (first match wins):
+- **Filesystem name**: 3–63 characters; lowercase letters, digits, and hyphens; no leading/trailing hyphen
+- **Path**: 1–2,048 characters; no backslash (`\`); no `?`
 
-1. Per-URI `connectionString` query parameter
-2. Per-URI `accountKey` query parameter → `StorageSharedKeyCredential`
-3. Per-URI `sasToken` query parameter → `AzureSasCredential`
-4. `AdlsGen2StorageProviderOptions.DefaultConnectionString`
-5. `AdlsGen2StorageProviderOptions.DefaultCredential`
-6. `AdlsGen2StorageProviderOptions.DefaultCredentialChain` (lazy `DefaultAzureCredential`) when `UseDefaultCredentialChain = true`
+## Examples
 
-## Registration
-
-### With a configuration delegate
-
-```csharp
-services.AddAdlsGen2StorageProvider(options =>
-{
-    // Managed identity / DefaultAzureCredential (recommended for production)
-    options.ServiceUrl = new Uri("https://<account>.dfs.core.windows.net/");
-    options.UseDefaultCredentialChain = true;
-
-    // OR explicit connection string
-    // options.DefaultConnectionString = "<connection-string>";
-});
-```
-
-### With a pre-built options instance
-
-```csharp
-var options = new AdlsGen2StorageProviderOptions
-{
-    ServiceUrl = new Uri("https://<account>.dfs.core.windows.net/"),
-    UseDefaultCredentialChain = true,
-    UploadThresholdBytes = 128 * 1024 * 1024,
-};
-
-services.AddAdlsGen2StorageProvider(options);
-```
-
-### Azurite (local development)
-
-```csharp
-services.AddAdlsGen2StorageProvider(options =>
-{
-    options.DefaultConnectionString = "UseDevelopmentStorage=true";
-    options.ServiceUrl = new Uri("http://127.0.0.1:10000/devstoreaccount1/");
-});
-```
-
-```bash
-# Start Azurite with ADLS Gen2 support
-docker run -p 10000:10000 \
-    mcr.microsoft.com/azure-storage/azurite \
-    azurite --blobHost 0.0.0.0 --skipApiVersionCheck --inMemoryPersistence
-```
-
-## Configuration Reference
-
-All properties are on `AdlsGen2StorageProviderOptions`:
-
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `DefaultCredential` | `TokenCredential?` | `null` | Explicit token credential |
-| `DefaultConnectionString` | `string?` | `null` | Connection string (takes priority over token credentials) |
-| `UseDefaultCredentialChain` | `bool` | `true` | Fall back to `DefaultAzureCredential` when no other credential is configured |
-| `ServiceUrl` | `Uri?` | `null` | Custom DFS service URL (e.g., Azurite or sovereign clouds) |
-| `ServiceVersion` | `DataLakeClientOptions.ServiceVersion?` | `null` | REST API version override |
-| `UploadThresholdBytes` | `long` | `67,108,864` (64 MB) | Files at or above this size use chunked transfer options |
-| `UploadMaximumConcurrency` | `int?` | `null` | Max parallel upload connections for large files |
-| `UploadMaximumTransferSizeBytes` | `int?` | `null` | Max bytes per upload chunk |
-| `ClientCacheSizeLimit` | `int` | `100` | Max cached `DataLakeServiceClient` instances |
-
-## Usage Examples
-
-### Reading a file
+### Reading
 
 ```csharp
 var uri = StorageUri.Parse("adls://my-filesystem/data/records.csv");
 await using var stream = await provider.OpenReadAsync(uri);
 ```
 
-### Writing a file
+### Writing
 
 ```csharp
 var uri = StorageUri.Parse("adls://my-filesystem/data/output.csv?contentType=text/csv");
 await using var stream = await provider.OpenWriteAsync(uri);
-await csvWriter.WriteToAsync(stream);
 ```
 
 Data is buffered to a local temporary file and uploaded atomically when the stream is disposed.
 
-### Checking existence
-
-```csharp
-var exists = await provider.ExistsAsync(uri);
-```
-
-### Listing (non-recursive)
+### Listing
 
 ```csharp
 var dirUri = StorageUri.Parse("adls://my-filesystem/data/");
+
+// Non-recursive (immediate children only)
 await foreach (var item in provider.ListAsync(dirUri, recursive: false))
 {
     var type = item.IsDirectory ? "[dir]" : $"{item.Size,12} bytes";
     Console.WriteLine($"  {type}  {item.Uri}");
 }
-```
 
-### Listing (recursive)
-
-```csharp
+// Recursive
 await foreach (var item in provider.ListAsync(dirUri, recursive: true))
     Console.WriteLine(item.Uri);
 ```
 
-### Retrieving metadata
+### Metadata
 
 ```csharp
 var metadata = await provider.GetMetadataAsync(uri);
 if (metadata is not null)
-{
-    Console.WriteLine($"Size: {metadata.Size}");
-    Console.WriteLine($"ContentType: {metadata.ContentType}");
-    Console.WriteLine($"IsDirectory: {metadata.IsDirectory}");
-}
+    Console.WriteLine($"Size: {metadata.Size}, ContentType: {metadata.ContentType}, IsDirectory: {metadata.IsDirectory}");
 ```
 
-### Deleting a file (idempotent)
+### Deleting (Idempotent)
 
 ```csharp
 if (provider is IDeletableStorageProvider del)
-    await del.DeleteAsync(uri);   // silently succeeds even if the path does not exist
+    await del.DeleteAsync(uri);   // succeeds even if path doesn't exist
 ```
 
-### Moving / renaming a file (atomic)
+### Moving / Renaming (Atomic)
 
-ADLS Gen2's O(1) server-side rename is the primary differentiator over Azure Blob Storage:
+ADLS Gen2's O(1) server-side rename is the primary differentiator over Azure Blob:
 
 ```csharp
 if (provider is IMoveableStorageProvider mov)
 {
-    var src  = StorageUri.Parse("adls://my-filesystem/staging/records.csv");
+    var src = StorageUri.Parse("adls://my-filesystem/staging/records.csv");
     var dest = StorageUri.Parse("adls://my-filesystem/processed/records.csv");
     await mov.MoveAsync(src, dest);
 }
 ```
 
-> **Note:** Cross-account moves are not supported in v1. Both source and destination must be within the same storage account. A `NotSupportedException` is thrown otherwise.
+> Cross-account moves are not supported. Both source and destination must be within the same storage account.
 
-## Exception Handling
+## Error Handling
 
-`RequestFailedException` errors from the Azure SDK are translated to standard .NET exceptions:
-
-| HTTP status / error code | Thrown exception |
-|---|---|
+| HTTP Status / Error | .NET Exception |
+|---------------------|----------------|
 | `AuthenticationFailed`, `AuthorizationFailed`, 401, 403 | `UnauthorizedAccessException` |
 | `FilesystemNotFound`, `PathNotFound`, 404 | `FileNotFoundException` |
 | `InvalidResourceName`, 400 | `ArgumentException` |
@@ -227,49 +205,46 @@ if (provider is IMoveableStorageProvider mov)
 
 ## Provider Capabilities
 
-This provider reports the following capabilities via `IStorageProviderMetadataProvider.GetMetadata()`:
+Via `IStorageProviderMetadataProvider.GetMetadata()`:
+
+| Capability | Value |
+|------------|-------|
+| `SupportsRead` | `true` |
+| `SupportsWrite` | `true` |
+| `SupportsListing` | `true` |
+| `SupportsMetadata` | `true` |
+| `SupportsHierarchy` | `true` |
+| `supportsAtomicMove` | `true` |
+| `supportsNativeDelete` | `true` |
+
+## Azurite (Local Development)
 
 ```csharp
-new StorageProviderMetadata
+services.AddAdlsGen2StorageProvider(options =>
 {
-    Name              = "Azure Data Lake Storage Gen2",
-    SupportedSchemes  = ["adls"],
-    SupportsRead      = true,
-    SupportsWrite     = true,
-    SupportsListing   = true,
-    SupportsMetadata  = true,
-    SupportsHierarchy = true,   // ← key differentiator from Azure Blob
-    Capabilities = {
-        ["supportsAtomicMove"]              = true,
-        ["supportsNativeDelete"]            = true,
-        ["supportsHierarchicalListing"]     = true,
-        ["supportsServiceUrl"]              = true,
-        ["supportsConnectionString"]        = true,
-        ["supportsSasToken"]                = true,
-        ["supportsAccountKey"]              = true,
-        ["supportsDefaultCredentialChain"]  = true,
-    }
-}
+    options.DefaultConnectionString = "UseDevelopmentStorage=true";
+    options.ServiceUrl = new Uri("http://127.0.0.1:10000/devstoreaccount1/");
+});
 ```
+
+```bash
+docker run -p 10000:10000 \
+    mcr.microsoft.com/azure-storage/azurite \
+    azurite --blobHost 0.0.0.0 --skipApiVersionCheck --inMemoryPersistence
+```
+
+> Azurite has partial ADLS Gen2 fidelity — ACL and some HNS behaviors may differ. Validate against a real ADLS Gen2 account for production.
 
 ## Troubleshooting
 
-### `InvalidOperationException: Account name must be provided`
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `InvalidOperationException: Account name must be provided` | No credential resolved | Provide `connectionString`, `accountName + accountKey`, or `DefaultConnectionString` |
+| `FileNotFoundException` on write | Filesystem doesn't exist | Ensure filesystem exists; `UploadAsync` calls `CreateIfNotExistsAsync` automatically |
+| `UnauthorizedAccessException` | Missing permissions | Assign `Storage Blob Data Contributor` (or equivalent ADLS Gen2 role) |
 
-No credential resolved to an account. Provide one of: `connectionString`, `accountName + accountKey`, `accountName + sasToken`, or `DefaultConnectionString`.
+## Next Steps
 
-### `FileNotFoundException` on write
-
-Ensure the filesystem exists or that the provider has permissions to create it. `UploadAsync` calls `CreateIfNotExistsAsync` on the target filesystem automatically.
-
-### `UnauthorizedAccessException`
-
-Verify the identity has at minimum `Storage Blob Data Contributor` (or equivalent ADLS Gen2 role) on the storage account. For Azurite, use the default dev credentials directly.
-
-### Azurite partial ADLS Gen2 fidelity
-
-Azurite supports the ADLS Gen2 Data Lake API at partial fidelity. ACL operations and some advanced HNS behaviors may behave differently from the real service. Run nightly tests against a real ADLS Gen2 account for full validation.
-
-## ACL Support (future roadmap)
-
-POSIX ACLs (`SetAccessControlListAsync`, `GetAccessControlAsync`) are **not in scope for v1**. They will be exposed via a dedicated `IAdlsAclProvider` interface extension in a future release.
+- [Azure Blob Provider](azure-blob.md) — flat namespace alternative
+- [Data Lake Connector](../connectors/datalake.md) — partitioned tables on ADLS
+- [Storage Providers Overview](index.md) — choosing between providers

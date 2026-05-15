@@ -1,295 +1,217 @@
 ---
-title: SFTP Storage Provider
-description: Read from and write to SFTP servers using the SFTP storage provider.
+title: "SFTP Storage Provider"
+description: "Read and write files over SFTP with connection pooling, key-based authentication, and server fingerprint validation."
 order: 6
 ---
 
 # SFTP Storage Provider
 
+> **Prerequisites:** [Storage Providers Overview](index.md)
 
-The SFTP storage provider enables NPipeline applications to read from and write to SFTP servers using a unified storage abstraction. This provider implements the `IStorageProvider` interface and supports the `sftp://` URI scheme.
-
-### Overview
-
-The SFTP provider offers:
-
-- **Stream-based I/O** for efficient handling of large files
-- **Async-first API** for scalable, non-blocking operations
-- **Flexible authentication** via password or private key (with optional passphrase)
-- **Connection pooling** with configurable pool size for high performance
-- **Keep-alive support** to reduce latency and maintain connection health
-- **Comprehensive error handling** with proper exception translation
-- **Metadata support** for retrieving file metadata
-- **Listing operations** with recursive and non-recursive modes
-- **Server fingerprint validation** for enhanced security
-
-### When to Use This Provider
-
-Use the SFTP provider when your application needs to:
-
-- Store and retrieve data from SFTP servers
-- Integrate SFTP storage into NPipeline data streamlines
-- Work with on-premises or managed SFTP storage systems
-- Handle large files through streaming and connection pooling
-- Support both password and key-based SSH authentication
-
-## Dependencies
-
-The SFTP provider depends on the following packages:
-
-- `SSH.NET` - SSH and SFTP client library
-- `NPipeline.StorageProviders` - Core storage abstractions (IStorageProvider, StorageUri, StorageItem, StorageMetadata, StorageProviderMetadata, StorageResolverOptions, StorageProviderFactory)
-- `NPipeline.Connectors` - Core connectors for using storage providers with connectors
-
-### Key Storage Types
-
-> **Note:** Shared storage types (IStorageProvider, StorageUri, StorageItem, StorageMetadata, etc.) are common across all NPipeline storage providers. Refer to the [Storage Provider Interface](./storage-provider.md) documentation for details.
-
-SFTP-specific configuration type:
-
-- **`SftpStorageProviderOptions`** - Configuration options for the SFTP provider (host, port, username, password, key path, connection pooling, keep-alive settings)
+The `NPipeline.StorageProviders.Sftp` package implements `IStorageProvider` for SFTP servers. Supports connection pooling, password and private key authentication (including encrypted keys), keep-alive, server fingerprint validation, and health checks on pool acquire.
 
 ## Installation
 
-### Prerequisites
-
-- .NET 8.0 or later
-- Access to an SFTP server
-- Appropriate permissions for read/write operations
-
-### Package Installation
-
-Add the project reference to your solution:
-
 ```bash
-dotnet add src/NPipeline.StorageProviders.Sftp/NPipeline.StorageProviders.Sftp.csproj
+dotnet add package NPipeline.StorageProviders.Sftp
 ```
+
+**Dependencies:** [SSH.NET](https://www.nuget.org/packages/SSH.NET) 2025.x
 
 ## Quick Start
-
-### Basic Usage with Connectors
-
-The SFTP provider works seamlessly with all NPipeline connectors. Here's a quick example using the CSV connector:
-
-```csharp
-using NPipeline;
-using NPipeline.Connectors;
-using NPipeline.Connectors.Csv;
-using NPipeline.StorageProviders.Sftp;
-
-// Create a resolver with SFTP support
-var sftpOptions = new SftpStorageProviderOptions
-{
-    DefaultHost = "sftp.example.com",
-    DefaultUsername = "user",
-    DefaultPassword = "password",
-};
-
-var resolver = StorageProviderFactory.CreateResolver(
-    new StorageResolverOptions
-    {
-        IncludeFileSystem = true,
-        AdditionalProviders = new[] { new SftpStorageProvider(
-            new SftpClientFactory(sftpOptions),
-            sftpOptions) }
-    }
-);
-
-public sealed record User(int Id, string Name, string Email);
-
-public sealed class SftpCsvPipeline : IPipelineDefinition
-{
-    public void Define(PipelineBuilder builder, PipelineContext context)
-    {
-        // Read CSV from SFTP
-        var sourceNode = new CsvSourceNode<User>(
-            StorageUri.Parse("sftp://server.example.com:22/data/users.csv"),
-            row => new User(
-                row.Get<int>("Id") ?? 0,
-                row.Get<string>("Name") ?? string.Empty,
-                row.Get<string>("Email") ?? string.Empty),
-            resolver: resolver);
-        var source = builder.AddSource(sourceNode, "sftp_csv_source");
-        
-        // ... add transforms ...
-        
-        // Write CSV to SFTP
-        var sinkNode = new CsvSinkNode<UserSummary>(
-            StorageUri.Parse("sftp://server.example.com:22/output/summaries.csv"),
-            resolver: resolver);
-        var sink = builder.AddSink(sinkNode, "sftp_csv_sink");
-        
-        builder.Connect(source, sink);
-    }
-}
-```
-
-## Configuration
-
-### Using Dependency Injection
-
-The recommended way to configure the SFTP provider is through dependency injection:
-
-```csharp
-using Microsoft.Extensions.DependencyInjection;
-using NPipeline.StorageProviders.Sftp;
-
-var services = new ServiceCollection();
-
-services.AddSftpStorageProvider(options =>
-{
-    options.DefaultHost = "sftp.example.com";
-    options.DefaultPort = 22;
-    options.DefaultUsername = "username";
-    options.DefaultPassword = "password"; // or use DefaultKeyPath
-    options.MaxPoolSize = 10;
-    options.KeepAliveInterval = TimeSpan.FromSeconds(30);
-    options.ConnectionTimeout = TimeSpan.FromSeconds(30);
-});
-```
-
-### URI Format
-
-SFTP URIs follow the standard format:
-
-```
-sftp://[host]:[port]/path/to/file
-```
-
-Examples:
-
-```
-sftp://server.example.com:22/data/users.csv
-sftp://192.168.1.100/home/user/documents/report.csv
-```
-
-If port is omitted, the default port 22 is used.
-
-### Authentication
-
-The SFTP provider supports two authentication methods:
-
-#### Password Authentication
-
-```csharp
-services.AddSftpStorageProvider(options =>
-{
-    options.DefaultHost = "sftp.example.com";
-    options.DefaultUsername = "username";
-    options.DefaultPassword = "password";
-});
-```
-
-#### Private Key Authentication
-
-```csharp
-services.AddSftpStorageProvider(options =>
-{
-    options.DefaultHost = "sftp.example.com";
-    options.DefaultUsername = "username";
-    options.DefaultKeyPath = "/path/to/private/key"; // e.g., ~/.ssh/id_rsa
-    options.DefaultKeyPassphrase = "passphrase"; // if key is encrypted
-});
-```
-
-### Connection Pooling
-
-The SFTP provider maintains a connection pool to improve performance. Configure pool settings:
-
-```csharp
-services.AddSftpStorageProvider(options =>
-{
-    options.MaxPoolSize = 10;                                // Maximum connections in pool
-    options.ConnectionIdleTimeout = TimeSpan.FromMinutes(5); // Timeout before returning to pool
-    options.KeepAliveInterval = TimeSpan.FromSeconds(30);    // Keep-alive ping interval
-    options.ConnectionTimeout = TimeSpan.FromSeconds(30);    // Connection timeout
-});
-```
-
-### Security
-
-#### Server Fingerprint Validation
-
-By default, the SFTP provider validates the server's SSH fingerprint:
-
-```csharp
-services.AddSftpStorageProvider(options =>
-{
-    options.ValidateServerFingerprint = true;
-    // options.ExpectedFingerprint = "expected-fingerprint-here"; // Optional: set known fingerprint
-});
-```
-
-On first connection without a known fingerprint, the server's fingerprint is accepted. For production, specify the expected fingerprint to prevent man-in-the-middle attacks.
-
-#### Connection Health Validation
-
-The provider validates connection health before returning connections from the pool:
-
-```csharp
-services.AddSftpStorageProvider(options =>
-{
-    options.ValidateOnAcquire = true; // Validate connection is still alive when acquiring from pool
-});
-```
-
-## Advanced Topics
-
-### Pre-configured Options
-
-You can create an options object and pass it directly:
 
 ```csharp
 var options = new SftpStorageProviderOptions
 {
     DefaultHost = "sftp.example.com",
-    DefaultUsername = "user",
-    DefaultPassword = "pass",
-    MaxPoolSize = 20
+    DefaultUsername = "etl-user",
+    DefaultKeyPath = "/path/to/private_key"
 };
+var factory = new SftpClientFactory(options);
+var provider = new SftpStorageProvider(factory, options);
 
-services.AddSftpStorageProvider(options);
+var stream = await provider.OpenReadAsync(
+    StorageUri.Parse("sftp://sftp.example.com/data/orders.csv"));
 ```
 
-### Using Different SFTP Servers
+## URI Format
 
-If your pipeline needs to access multiple SFTP servers, you can create multiple resolver instances or handle different hosts through connection pooling based on the URI:
+Credentials in the URI override defaults from configuration:
+
+```
+sftp://[user[:password]@]host[:port]/path/to/file
+```
+
+| Component | Description |
+|-----------|-------------|
+| `user` | Optional — override `DefaultUsername` |
+| `password` | Optional — override `DefaultPassword` |
+| `host` | SFTP hostname |
+| `port` | Optional — override `DefaultPort` (default: 22) |
+| `path/to/file` | File path on the server |
+
+## Authentication
+
+### Password
 
 ```csharp
-// The URI determines which host is used
+var options = new SftpStorageProviderOptions
+{
+    DefaultHost = "sftp.example.com",
+    DefaultUsername = "etl-user",
+    DefaultPassword = "secret"
+};
+```
+
+### Private Key
+
+```csharp
+var options = new SftpStorageProviderOptions
+{
+    DefaultHost = "sftp.example.com",
+    DefaultUsername = "etl-user",
+    DefaultKeyPath = "/path/to/id_rsa"
+};
+```
+
+### Encrypted Private Key
+
+```csharp
+var options = new SftpStorageProviderOptions
+{
+    DefaultHost = "sftp.example.com",
+    DefaultUsername = "etl-user",
+    DefaultKeyPath = "/path/to/id_rsa",
+    DefaultKeyPassphrase = "key-passphrase"
+};
+```
+
+## Configuration
+
+### Connection
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `DefaultHost` | `string?` | `null` | SFTP hostname |
+| `DefaultPort` | `int` | `22` | SSH port |
+| `DefaultUsername` | `string?` | `null` | SSH username |
+| `DefaultPassword` | `string?` | `null` | Password auth |
+| `DefaultKeyPath` | `string?` | `null` | Path to SSH private key |
+| `DefaultKeyPassphrase` | `string?` | `null` | Encrypted key passphrase |
+
+### Connection Pool
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `MaxPoolSize` | `int` | `10` | Maximum pooled connections |
+| `ConnectionIdleTimeout` | `TimeSpan` | `5 min` | Evict idle connections after this duration |
+| `KeepAliveInterval` | `TimeSpan` | `30s` | SSH keepalive interval |
+| `ConnectionTimeout` | `TimeSpan` | `30s` | Connection timeout |
+| `ValidateOnAcquire` | `bool` | `true` | Health-check connections when borrowed from pool |
+
+### Security
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `ValidateServerFingerprint` | `bool` | `true` | Verify the server host key |
+| `ExpectedFingerprint` | `string?` | `null` | Expected fingerprint (auto-accepts on first connect if `null`) |
+
+## Dependency Injection
+
+```csharp
+services.AddSftpStorageProvider();
+
+services.AddSftpStorageProvider(options =>
+{
+    options.DefaultHost = "sftp.example.com";
+    options.DefaultUsername = "etl-user";
+    options.DefaultKeyPath = "/path/to/id_rsa";
+    options.MaxPoolSize = 20;
+});
+```
+
+Registers: `IStorageProvider`, `IStorageProviderMetadataProvider`
+
+## Features
+
+- **Connection pooling** — reuse SSH connections across operations (default pool size: 10)
+- **Keep-alive** — prevents server-side idle timeouts (30s default)
+- **Health checks** — validates connections on acquire; dead connections are replaced automatically
+- **Fingerprint validation** — prevents MITM attacks; auto-accepts on first connect when `ExpectedFingerprint` is `null`
+- **Idempotent delete** — treats 404 as success
+
+## Examples
+
+### Reading
+
+```csharp
+var uri = StorageUri.Parse("sftp://sftp.example.com/data/orders.csv");
+
+using var stream = await provider.OpenReadAsync(uri);
+using var reader = new StreamReader(stream);
+var content = await reader.ReadToEndAsync();
+```
+
+### Writing
+
+```csharp
+var uri = StorageUri.Parse("sftp://sftp.example.com/output/results.csv");
+
+using var stream = await provider.OpenWriteAsync(uri);
+using var writer = new StreamWriter(stream);
+await writer.WriteLineAsync("id,name,value");
+```
+
+### Listing
+
+```csharp
+var prefix = StorageUri.Parse("sftp://sftp.example.com/data/");
+
+await foreach (var item in provider.ListAsync(prefix, recursive: true))
+{
+    var type = item.IsDirectory ? "[DIR]" : "[FILE]";
+    Console.WriteLine($"{type} {item.Uri} — {item.Size} bytes");
+}
+```
+
+### Multiple SFTP Servers
+
+The URI determines which host is used; authentication from configuration applies to all:
+
+```csharp
 var uri1 = StorageUri.Parse("sftp://server1.example.com/path/file1.csv");
 var uri2 = StorageUri.Parse("sftp://server2.example.com/path/file2.csv");
-
-// Both use the same authentication configured in options
-var stream1 = await provider.OpenReadAsync(uri1);
-var stream2 = await provider.OpenReadAsync(uri2);
 ```
 
 ## Error Handling
 
-The SFTP provider translates common SFTP exceptions into `SftpStorageException`:
+The provider translates common SFTP exceptions into `SftpStorageException`:
 
-```csharp
-try
-{
-    var stream = await provider.OpenReadAsync(uri);
-}
-catch (SftpStorageException ex)
-{
-    // Handle SFTP-specific errors
-    Console.WriteLine($"SFTP error: {ex.Message}");
-}
-catch (IOException ex)
-{
-    // Handle general I/O errors
-    Console.WriteLine($"I/O error: {ex.Message}");
-}
-```
+| Scenario | Exception |
+|----------|-----------|
+| File not found | `FileNotFoundException` |
+| Permission denied | `UnauthorizedAccessException` |
+| Connection refused | `IOException` |
+| Authentication failed | `UnauthorizedAccessException` |
+| Timeout | `IOException` (timeout context preserved) |
 
-Common error scenarios and their causes:
+## Connection Pool Tuning
 
-- **File not found** - The specified file does not exist on the server
-- **Permission denied** - Insufficient permissions for the requested operation
-- **Connection refused** - Unable to connect to the SFTP server
-- **Authentication failed** - Invalid credentials or authentication method
-- **Timeout** - Connection or transfer timed out
+| Scenario | Recommended Settings |
+|----------|---------------------|
+| Low-volume, single server | `MaxPoolSize = 3`, `KeepAliveInterval = 60s` |
+| High-volume, single server | `MaxPoolSize = 20`, `KeepAliveInterval = 15s` |
+| Flaky network | `ValidateOnAcquire = true`, `ConnectionTimeout = 60s` |
+
+## Best Practices
+
+1. **Use key-based auth** in production — avoid passwords
+2. **Set `ExpectedFingerprint`** in production to prevent MITM
+3. **Enable `ValidateOnAcquire`** (default) — catches dead connections before use
+4. **Tune `MaxPoolSize`** to match concurrency needs — too many connections may overwhelm the SFTP server
+5. **Use `KeepAliveInterval`** to prevent server idle disconnects
+
+## Next Steps
+
+- [Custom Provider](custom-provider.md) — implement your own storage provider
+- [Storage Providers Overview](index.md) — choosing between providers

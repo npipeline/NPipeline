@@ -1,113 +1,173 @@
 ---
-title: SQL Server Connector
-description: Read from and write to Microsoft SQL Server databases with NPipeline using the SQL Server connector.
-order: 13
+title: "SQL Server Connector"
+description: "Read from and write to SQL Server databases with bulk copy, batch inserts, and MERGE upserts."
+order: 9
 ---
 
 # SQL Server Connector
 
-
-The `NPipeline.Connectors.SqlServer` package provides specialized source and sink nodes for working with Microsoft SQL Server databases. This allows you to easily integrate SQL Server data into your pipelines as an input source or an output destination.
-
-This connector uses the [Microsoft.Data.SqlClient](https://learn.microsoft.com/en-us/dotnet/api/microsoft.data.sqlclient) library under the hood, providing reliable streaming reads, per-row and batched writes, and in-memory checkpointing for transient recovery.
+The `NPipeline.Connectors.SqlServer` package provides source and sink nodes for SQL Server. Supports connection pooling, parameterized queries, batch inserts, high-performance `SqlBulkCopy`, and `MERGE` upserts.
 
 ## Installation
-
-To use the SQL Server connector, install the `NPipeline.Connectors.SqlServer` NuGet package:
 
 ```bash
 dotnet add package NPipeline.Connectors.SqlServer
 ```
 
-For the core NPipeline package and other available extensions, see the [Installation Guide](../getting-started/installation.md).
+**Dependencies:** [Microsoft.Data.SqlClient](https://www.nuget.org/packages/Microsoft.Data.SqlClient) 7.x
 
-## Features
+## Source Node — `SqlServerSourceNode<T>`
 
-The SQL Server connector provides the following capabilities:
+### Constructors
 
-- **Source Node**: Read data from SQL Server tables and views
-- **Sink Node**: Write data to SQL Server tables
-- **Write Strategies**: Support for PerRow, Batch, and BulkCopy (SqlBulkCopy API) write strategies
-- **Upsert Support**: MERGE-based insert-or-update semantics with configurable key columns
-- **Delivery Semantics**: AtLeastOnce, AtMostOnce, and ExactlyOnce delivery guarantees
-- **Checkpointing Strategies**: None, InMemory, Offset, KeyBased, Cursor, and CDC for resumable pipelines
-- **Connection Pooling**: Efficient connection management with named connections
-- **Attribute Mapping**: Support for `[Column]`, `[IgnoreColumn]`, and `[SqlServerColumn]` attributes
-- **Common Attributes**: Cross-connector `ColumnAttribute` and `IgnoreColumnAttribute` support
-- **Convention Mapping**: Automatic PascalCase mapping (no conversion needed)
-- **Custom Mappers**: `Func<T, IEnumerable<DatabaseParameter>>` for complete control
-- **Error Handling**: Retry logic for transient SQL Server errors
-- **Streaming Results**: Fetch data in streams to reduce memory usage
-- **MARS Support**: Multiple Active Result Sets for improved concurrency
-- **Authentication**: Both Windows Authentication and SQL Server Authentication support
+```csharp
+// Connection string + query
+public SqlServerSourceNode(
+    string connectionString, string query,
+    SqlServerConfiguration? configuration = null)
+
+// With custom mapper
+public SqlServerSourceNode(
+    string connectionString, string query,
+    Func<SqlServerRow, T>? customMapper = null,
+    SqlServerConfiguration? configuration = null)
+
+// Connection pool (recommended for DI)
+public SqlServerSourceNode(
+    ISqlServerConnectionPool connectionPool, string query,
+    SqlServerConfiguration? configuration = null,
+    DatabaseParameter[]? parameters = null,
+    bool continueOnError = false,
+    string? connectionName = null)
+```
+
+### Example
+
+```csharp
+var source = new SqlServerSourceNode<Order>(
+    "Server=localhost;Database=Sales;Trusted_Connection=true;",
+    "SELECT Id, Customer, Amount FROM dbo.Orders WHERE Status = @status",
+    configuration: new SqlServerConfiguration
+    {
+        StreamResults = true,
+        FetchSize = 5000
+    });
+```
+
+## Sink Node — `SqlServerSinkNode<T>`
+
+| Strategy | Description | Best For |
+|----------|-------------|----------|
+| `PerRow` | Individual `INSERT` per item | Small volumes |
+| `Batch` (default) | Batched `INSERT` statements | Most workloads |
+| `BulkCopy` | `SqlBulkCopy` | Maximum throughput |
+
+### Constructors
+
+```csharp
+// Connection string
+public SqlServerSinkNode(
+    string connectionString, string tableName,
+    SqlServerConfiguration? configuration = null,
+    Func<T, IEnumerable<DatabaseParameter>>? customMapper = null)
+
+// Connection pool (recommended for DI)
+public SqlServerSinkNode(
+    ISqlServerConnectionPool connectionPool, string tableName,
+    SqlServerConfiguration? configuration = null,
+    Func<T, IEnumerable<DatabaseParameter>>? customMapper = null,
+    string? connectionName = null)
+```
+
+### Example: Bulk Copy
+
+```csharp
+var config = new SqlServerConfiguration
+{
+    ConnectionString = "Server=localhost;Database=Sales;...",
+    WriteStrategy = SqlServerWriteStrategy.BulkCopy,
+    BulkCopyBatchSize = 5000,
+    EnableStreaming = true
+};
+
+var sink = new SqlServerSinkNode<Order>("connection-string", "dbo.Orders", configuration: config);
+```
+
+## Configuration
+
+### Connection
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `ConnectionString` | `string` | `""` | SQL Server connection string |
+| `Schema` | `string` | `"dbo"` | Default schema |
+| `CommandTimeout` | `int` | `30` | Command timeout (seconds) |
+| `ConnectionTimeout` | `int` | `15` | Connection timeout (seconds) |
+| `MinPoolSize` | `int` | `1` | Minimum connection pool size |
+| `MaxPoolSize` | `int` | `100` | Maximum connection pool size |
+
+### Write
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `WriteStrategy` | `SqlServerWriteStrategy` | `Batch` | `PerRow`, `Batch`, or `BulkCopy` |
+| `BatchSize` | `int` | `100` | Items per batch |
+| `MaxBatchSize` | `int` | `1000` | Maximum batch size |
+| `UseTransaction` | `bool` | `true` | Wrap writes in a transaction |
+| `UsePreparedStatements` | `bool` | `true` | Use prepared statements |
+
+### Bulk Copy
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `BulkCopyBatchSize` | `int` | `5000` | Rows per bulk copy batch |
+| `BulkCopyTimeout` | `int` | `300` | Bulk copy timeout (seconds) |
+| `BulkCopyNotifyAfter` | `int` | `1000` | Progress notification interval (rows) |
+| `EnableStreaming` | `bool` | `true` | Stream bulk copy data |
+
+### Upsert (MERGE)
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `UseUpsert` | `bool` | `false` | Enable `MERGE` upserts |
+| `UpsertKeyColumns` | `string[]?` | `null` | Key columns for MERGE matching |
+| `OnMergeAction` | `OnMergeAction` | `Update` | `Update`, `Ignore`, or `Delete` |
+
+### Error Handling
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `ContinueOnError` | `bool` | `false` | Continue on row-level errors |
+| `MaxRetryAttempts` | `int` | `3` | Retry attempts for transient errors |
+| `RetryDelay` | `TimeSpan` | — | Delay between retries |
 
 ## Dependency Injection
 
-The SQL Server connector supports dependency injection for managing connection pools and node factories. This is the recommended approach for production applications.
-
-### Registering the Connector
-
-Use `AddSqlServerConnector` to register a shared connection pool and factories for creating nodes:
-
 ```csharp
-using Microsoft.Extensions.DependencyInjection;
-using NPipeline.Connectors.SqlServer.DependencyInjection;
-
-var services = new ServiceCollection()
-    .AddSqlServerConnector(options =>
+services.AddSqlServerConnector(options =>
+{
+    options.DefaultConnectionString = "Server=localhost;Database=Sales;...";
+    options.DefaultConfiguration = new SqlServerConfiguration
     {
-        // Set a default connection string (optional if using only named connections)
-        options.DefaultConnectionString = "Server=localhost;Database=npipeline;Integrated Security=True;";
+        WriteStrategy = SqlServerWriteStrategy.BulkCopy,
+        BulkCopyBatchSize = 5000
+    };
+});
 
-        // Add named connections for different databases
-        options.AddOrUpdateConnection("analytics", "Server=localhost;Database=analytics;Integrated Security=True;");
-        options.AddOrUpdateConnection("warehouse", "Server=localhost;Database=warehouse;Integrated Security=True;");
-
-        // Configure default connection-level settings
-        options.DefaultConfiguration = new SqlServerConfiguration
-        {
-            StreamResults = true,
-            FetchSize = 1_000,
-            MaxRetryAttempts = 3,
-            RetryDelay = TimeSpan.FromSeconds(2)
-        };
-    })
-    .BuildServiceProvider();
-
-// Resolve services from the container
-var pool = services.GetRequiredService<ISqlServerConnectionPool>();
-var sourceFactory = services.GetRequiredService<SqlServerSourceNodeFactory>();
-var sinkFactory = services.GetRequiredService<SqlServerSinkNodeFactory>();
+// Named connections for multi-database scenarios
+services.AddSqlServerConnection("reporting", "Server=reporting-db;...");
+services.AddSqlServerConnection("warehouse", "Server=warehouse-db;...");
 ```
 
-### Configuration Options
+Registers `ISqlServerConnectionPool`, `SqlServerSourceNodeFactory`, and `SqlServerSinkNodeFactory`.
 
-- **`DefaultConnectionString`**: Optional connection string used when no named connection is specified. Can be omitted if you only use named connections.
-- **`DefaultConfiguration`**: Controls connection-level settings (timeouts, pool sizing, MARS) applied when the pool builds `SqlConnection` instances.
-- **`AddOrUpdateConnection(name, connectionString)`**: Adds or updates a named connection. Multiple connections can be configured for different databases.
-- **`AddSqlServerConnection`/`AddDefaultSqlServerConnection`**: Configure the same `SqlServerOptions` and do not replace previously configured values.
+## Attribute Mapping
 
-### Why Use Dependency Injection?
+### Convention-Based
 
-Using dependency injection provides several benefits:
+C# `PascalCase` property names map directly to SQL Server `PascalCase` column names (no conversion).
 
-- **Connection Pool Management**: The shared connection pool efficiently manages database connections across multiple nodes
-- **Configuration Centralization**: All SQL Server connections are configured in one place
-- **Testability**: Easy to mock or replace dependencies in unit tests
-- **Lifetime Management**: Services are properly disposed when the application shuts down
-
-## Common Attributes
-
-The SQL Server connector supports common attributes from `NPipeline.Connectors.Attributes` that work across all connectors, as well as SQL Server-specific attributes that extend the common attributes with database-specific features.
-
-### `[Column]` Attribute
-
-The `[Column]` attribute (from `NPipeline.Connectors.Attributes`) is a common attribute that allows you to specify column names and control property mapping across all connectors. It provides:
-
-- **`Name`**: The column name in the database
-- **`Ignore`**: When `true`, skips mapping this property
-
-This attribute is recommended for simple scenarios where you only need basic column mapping.
+### `[Column]` / `[IgnoreColumn]` (Cross-Connector)
 
 ```csharp
 using NPipeline.Connectors.Attributes;
@@ -117,57 +177,17 @@ public class Customer
     [Column("CustomerID")]
     public int CustomerId { get; set; }
 
-    [Column("FirstName")]
-    public string FirstName { get; set; } = string.Empty;
-
-    [Column("LastName")]
-    public string LastName { get; set; } = string.Empty;
-
     [IgnoreColumn]
     public string FullName => $"{FirstName} {LastName}";
 }
 ```
 
-### `[IgnoreColumn]` Attribute
+### `[SqlServerColumn]` (Connector-Specific)
 
-The `[IgnoreColumn]` attribute (from `NPipeline.Connectors.Attributes`) is a marker attribute that excludes a property from mapping entirely. This is useful for computed properties or fields that should not be persisted.
-
-```csharp
-using NPipeline.Connectors.Attributes;
-
-public class Order
-{
-    public int OrderId { get; set; }
-    public decimal Subtotal { get; set; }
-    public decimal TaxAmount { get; set; }
-    public decimal ShippingAmount { get; set; }
-
-    [IgnoreColumn]
-    public decimal TotalAmount => Subtotal + TaxAmount + ShippingAmount;
-
-    [IgnoreColumn]
-    public bool IsTaxable => TaxAmount > 0;
-}
-```
-
-### SQL Server-Specific Attributes
-
-The SQL Server connector provides `[SqlServerColumn]` attribute that extends the common attributes with database-specific functionality:
-
-- **`[SqlServerColumn]`**: Extends `[Column]` with additional properties:
-  - **`DbType`**: Specifies the SQL Server data type for the column
-  - **`Size`**: Sets the size/length for character and numeric types
-  - **`PrimaryKey`**: Indicates whether the column is a primary key (used for checkpointing)
-  - **`Identity`**: Indicates whether the column is an auto-increment identity column
-
-The `[IgnoreColumn]` attribute from `NPipeline.Connectors.Attributes` covers all ignore requirements and works identically to a SQL Server-specific ignore attribute.
-
-These attributes are useful when you need database-specific features like type specification, primary key marking, or identity column handling.
+Extends `[Column]` with SQL Server features:
 
 ```csharp
 using NPipeline.Connectors.SqlServer.Mapping;
-using NPipeline.Connectors.Attributes;
-using System.Data;
 
 public class Customer
 {
@@ -175,709 +195,34 @@ public class Customer
     public int CustomerId { get; set; }
 
     [SqlServerColumn("FirstName", DbType = SqlDbType.NVarChar, Size = 100)]
-    public string FirstName { get; set; } = string.Empty;
-
-    [SqlServerColumn("LastName", DbType = SqlDbType.NVarChar, Size = 100)]
-    public string LastName { get; set; } = string.Empty;
+    public string FirstName { get; set; } = "";
 
     [SqlServerColumn("Email", DbType = SqlDbType.NVarChar, Size = 255)]
-    public string Email { get; set; } = string.Empty;
-
-    [IgnoreColumn]
-    public string FullName => $"{FirstName} {LastName}";
+    public string Email { get; set; } = "";
 }
 ```
 
-### Choosing Between Common and SQL Server-Specific Attributes
-
-**Use common attributes (`[Column]`, `[IgnoreColumn]`) when:**
-
-- You want code that works across multiple connectors
-- You only need basic column mapping functionality
-- You prefer using standard attributes provided by the core library
-- Your database schema follows standard conventions
-
-**Use SQL Server-specific attributes (`[SqlServerColumn]`) when:**
-
-- You need to specify database types explicitly (e.g., `NVARCHAR(255)`, `DECIMAL(10,2)`)
-- You need to mark primary key columns for checkpointing
-- You need to mark identity columns for auto-increment
-- You want to leverage SQL Server-specific features
-- You're maintaining existing code that already uses these attributes
-
-Both attribute types are fully supported and will continue to work in future versions. The common attributes are recommended for new code when you don't need database-specific features, while SQL Server-specific attributes provide additional control when needed.
-
-## `SqlServerSourceNode<T>`
-
-The `SqlServerSourceNode<T>` reads data from a SQL Server database and emits each row as an item of type `T`.
-
-### Source Configuration
-
-The constructor for `SqlServerSourceNode<T>` provides multiple overloads for flexibility:
-
-```csharp
-// Using connection string
-public SqlServerSourceNode<T>(
-    string connectionString,
-    string query,
-    SqlServerConfiguration? configuration = null)
-
-// Using connection string with custom row mapper
-public SqlServerSourceNode<T>(
-    string connectionString,
-    string query,
-    Func<SqlServerRow, T> rowMapper,
-    SqlServerConfiguration? configuration = null)
-
-// Using connection pool
-public SqlServerSourceNode<T>(
-    ISqlServerConnectionPool pool,
-    string query,
-    SqlServerConfiguration? configuration = null,
-    DatabaseParameter[]? parameters = null,
-    bool continueOnError = false,
-    string? connectionName = null)
-
-// Using connection pool with custom row mapper
-public SqlServerSourceNode<T>(
-    ISqlServerConnectionPool pool,
-    string query,
-    Func<SqlServerRow, T> rowMapper,
-    SqlServerConfiguration? configuration = null,
-    DatabaseParameter[]? parameters = null,
-    bool continueOnError = false,
-    string? connectionName = null)
-```
-
-- **`connectionString`**: SQL Server connection string (e.g., `"Server=localhost;Database=mydb;Integrated Security=True;"`)
-- **`pool`**: Shared connection pool from dependency injection
-- **`query`**: SQL query to execute
-- **`rowMapper`**: Custom function to map a `SqlServerRow` to type `T`. When omitted, uses convention-based mapping
-- **`parameters`**: Optional parameters for the SQL query
-- **`continueOnError`**: Whether to skip row-level mapping errors
-- **`connectionName`**: Name of a configured connection from the pool
-- **`configuration`**: Optional configuration object for customizing behavior
-
-> **Tip:** When you need to provide custom configuration or a row mapper, instantiate `SqlServerSourceNode<T>` yourself and register it via `builder.AddSource(new SqlServerSourceNode<Order>(...), "sqlserver_source")`. The builder handles registration and disposal for you automatically.
-
-### Example: Reading from SQL Server
-
-Let's assume you have a SQL Server table named `Orders` with the following structure:
-
-| OrderId | CustomerId | Total | Status |
-| --- | --- | --- | --- |
-| 1 | 100 | 150.00 | completed |
-| 2 | 101 | 75.50 | pending |
-| 3 | 102 | 200.00 | shipped |
-
-And a corresponding C# record:
-
-```csharp
-public sealed record Order(int OrderId, int CustomerId, decimal Total, string Status);
-```
-
-You can read this data into your pipeline as follows:
-
-```csharp
-using NPipeline;
-using NPipeline.Connectors.SqlServer;
-using NPipeline.DataFlow.DataStreams;
-using NPipeline.DataFlow;
-using NPipeline.Execution;
-using NPipeline.Nodes;
-using NPipeline.Pipeline;
-using NPipeline.Tracing;
-
-public sealed record Order(int OrderId, int CustomerId, decimal Total, string Status);
-
-public sealed class SqlServerReaderPipeline : IPipelineDefinition
-{
-    public void Define(PipelineBuilder builder, PipelineContext context)
-    {
-        // Create the SQL Server source node
-        var sourceNode = new SqlServerSourceNode<Order>(
-            connectionString: "Server=localhost;Database=npipeline;Integrated Security=True;",
-            query: "SELECT OrderId, CustomerId, Total, Status FROM Orders ORDER BY OrderId",
-            configuration: new SqlServerConfiguration
-            {
-                StreamResults = true,
-                FetchSize = 1_000
-            });
-        var source = builder.AddSource(sourceNode, "sqlserver_source");
-        var sink = builder.AddSink<ConsoleSinkNode, Order>("console_sink");
-
-        builder.Connect(source, sink);
-    }
-}
-
-public sealed class ConsoleSinkNode : SinkNode<Order>
-{
-    public override async Task ConsumeAsync(
-        IDataStream<Order> input,
-        PipelineContext context,
-        IPipelineActivity parentActivity,
-        CancellationToken cancellationToken)
-    {
-        await foreach (var order in input.WithCancellation(cancellationToken))
-        {
-            Console.WriteLine($"Received: {order}");
-        }
-    }
-}
-
-public static class Program
-{
-    public static async Task Main(string[] args)
-    {
-        // Create and run the pipeline
-        var runner = PipelineRunner.Create();
-        await runner.RunAsync<SqlServerReaderPipeline>();
-
-        Console.WriteLine("SQL Server reading completed");
-    }
-}
-```
-
-**Expected Output:**
-
-```text
-Received: Order { OrderId = 1, CustomerId = 100, Total = 150.00, Status = completed }
-Received: Order { OrderId = 2, CustomerId = 101, Total = 75.50, Status = pending }
-Received: Order { OrderId = 3, CustomerId = 102, Total = 200.00, Status = shipped }
-SQL Server reading completed
-```
-
-### Example: Using a Connection Pool
-
-When using dependency injection, you can leverage the shared connection pool:
-
-```csharp
-public sealed class PooledSqlServerReaderPipeline : IPipelineDefinition
-{
-    private readonly ISqlServerConnectionPool _pool;
-
-    public PooledSqlServerReaderPipeline(ISqlServerConnectionPool pool)
-    {
-        _pool = pool;
-    }
-
-    public void Define(PipelineBuilder builder, PipelineContext context)
-    {
-        // Use a named connection from the pool
-        var sourceNode = new SqlServerSourceNode<Order>(
-            pool: _pool,
-            query: "SELECT OrderId, CustomerId, Total, Status FROM Orders ORDER BY OrderId",
-            connectionName: "analytics");
-        var source = builder.AddSource(sourceNode, "sqlserver_source");
-        var sink = builder.AddSink<ConsoleSinkNode, Order>("console_sink");
-
-        builder.Connect(source, sink);
-    }
-}
-```
-
-### Example: Using a Custom Row Mapper
-
-For complete control over mapping, provide a custom row mapper function:
-
-```csharp
-public sealed record Order(
-    int OrderId,
-    int CustomerId,
-    decimal Total,
-    string Status,
-    DateTime CreatedAt);
-
-public sealed class CustomMapperPipeline : IPipelineDefinition
-{
-    public void Define(PipelineBuilder builder, PipelineContext context)
-    {
-        var sourceNode = new SqlServerSourceNode<Order>(
-            connectionString: "Server=localhost;Database=npipeline;Integrated Security=True;",
-            query: "SELECT OrderId, CustomerId, Total, Status, CreatedAt FROM Orders",
-            rowMapper: row => new Order(
-                row.Get<int>("OrderId"),
-                row.Get<int>("CustomerId"),
-                row.Get<decimal>("Total"),
-                row.Get<string>("Status"),
-                row.Get<DateTime>("CreatedAt")));
-        var source = builder.AddSource(sourceNode, "sqlserver_source");
-        var sink = builder.AddSink<ConsoleSinkNode, Order>("console_sink");
-
-        builder.Connect(source, sink);
-    }
-}
-```
-
-## `SqlServerSinkNode<T>`
-
-The `SqlServerSinkNode<T>` writes items from the pipeline to a SQL Server database table.
-
-### Sink Configuration
-
-The constructor for `SqlServerSinkNode<T>` provides multiple overloads:
-
-```csharp
-// Using connection string
-public SqlServerSinkNode<T>(
-    string connectionString,
-    string tableName,
-    SqlServerConfiguration? configuration = null,
-    Func<T, IEnumerable<DatabaseParameter>>? customMapper = null)
-
-// Using connection pool
-public SqlServerSinkNode<T>(
-    ISqlServerConnectionPool pool,
-    string tableName,
-    SqlServerConfiguration? configuration = null,
-    Func<T, IEnumerable<DatabaseParameter>>? customMapper = null,
-    string? connectionName = null)
-```
-
-- **`connectionString`**: SQL Server connection string
-- **`pool`**: Shared connection pool from dependency injection
-- **`tableName`**: Name of the target table (unqualified)
-- **`customMapper`**: Custom function to map type `T` to database parameters
-- **`connectionName`**: Name of a configured connection from the pool
-- **`configuration`**: Optional configuration object for customizing behavior
-
-> **Note:** Provide the schema via `SqlServerConfiguration.Schema` and pass the unqualified table name.
-
-> **Tip:** When you need to pass a custom parameter mapper or configuration, instantiate `SqlServerSinkNode<T>` yourself and register it via `builder.AddSink(new SqlServerSinkNode<Order>(...), "sqlserver_sink")`. The builder handles registration and disposal for you automatically.
-
-### Write Strategies
-
-The connector supports three write strategies:
-
-#### PerRow Strategy
-
-Writes each row individually with a separate `INSERT` statement. This provides:
-
-- Immediate visibility of each row
-- Better error isolation (one failed insert doesn't affect others)
-- Higher overhead for large datasets
-
-#### Batch Strategy
-
-Buffers multiple rows and issues a single multi-row `INSERT` statement. This provides:
-
-- Better performance for large datasets
-- Reduced database round-trips
-- All-or-nothing semantics within a batch
-
-#### BulkCopy Strategy
-
-Uses SQL Server's native `SqlBulkCopy` API for maximum throughput. This provides:
-
-- Highest performance for bulk loading
-- Support for batch size and notification callbacks
-- Table lock options for reduced contention
-
-```csharp
-var configuration = new SqlServerConfiguration
-{
-    WriteStrategy = SqlServerWriteStrategy.BulkCopy,
-    BulkCopyBatchSize = 5_000,
-    BulkCopyTimeout = 300,  // 5 minutes
-    BulkCopyNotifyAfter = 1_000,  // Progress notifications
-    EnableStreaming = true,
-    Schema = "dbo"
-};
-
-var sink = new SqlServerSinkNode<Order>(
-    pool,
-    "orders",
-    configuration: configuration);
-```
-
-**BulkCopy Configuration Options:**
-
-- **`BulkCopyBatchSize`**: Number of rows per batch (default: 5,000)
-- **`BulkCopyTimeout`**: Timeout in seconds (default: 300)
-- **`BulkCopyNotifyAfter`**: Rows to process before progress notification (default: 1,000)
-- **`EnableStreaming`**: Enable streaming for bulk copy operations (default: true)
-
-### Write Strategy Comparison
-
-| Strategy | Throughput | Latency | Error Isolation | Use Case |
-|----------|------------|---------|-----------------|----------|
-| PerRow | Low | Low | High | Real-time, small batches |
-| Batch | High | Medium | Medium | Bulk loading, ETL |
-| BulkCopy | Very High | High | Low | Large bulk loads, data warehouse |
-
-### Example: Writing to SQL Server
-
-Let's take processed order data and write it to an `OrderSummary` table:
-
-```csharp
-using NPipeline.Connectors.SqlServer;
-using NPipeline.Execution;
-using NPipeline.Extensions.Testing;
-using NPipeline.Nodes;
-using NPipeline.Pipeline;
-
-public sealed record OrderSummary(int Id, string CustomerName, decimal Total, string Status);
-
-public sealed class SqlServerWriterPipeline : IPipelineDefinition
-{
-    public void Define(PipelineBuilder builder, PipelineContext context)
-    {
-        var source = builder.AddSource<InMemorySourceNode<OrderSummary>, OrderSummary>("source");
-
-        // Create the SQL Server sink node with batch strategy
-        var sinkNode = new SqlServerSinkNode<OrderSummary>(
-            connectionString: "Server=localhost;Database=npipeline;Integrated Security=True;",
-            tableName: "OrderSummary",
-            configuration: new SqlServerConfiguration
-            {
-                WriteStrategy = SqlServerWriteStrategy.Batch,
-                BatchSize = 1_000,
-                MaxBatchSize = 5_000,
-                UseTransaction = true,
-                Schema = "dbo"
-            });
-        var sink = builder.AddSink(sinkNode, "sqlserver_sink");
-
-        builder.Connect(source, sink);
-    }
-}
-
-public static class Program
-{
-    public static async Task Main(string[] args)
-    {
-        var orders = new List<OrderSummary>
-        {
-            new(1, "Alice Smith", 150.00m, "completed"),
-            new(2, "Bob Johnson", 75.50m, "pending"),
-            new(3, "Carol Williams", 200.00m, "shipped")
-        };
-
-        // Set up test data
-        var context = PipelineContext.Default;
-        context.Items[typeof(InMemorySourceNode<OrderSummary>).FullName!] = orders.ToArray();
-
-        var runner = PipelineRunner.Create();
-        await runner.RunAsync<SqlServerWriterPipeline>(context);
-
-        Console.WriteLine("SQL Server write completed");
-    }
-}
-```
-
-**Expected Database Content:**
-
-| Id | CustomerName | Total | Status |
-| --- | --- | --- | --- |
-| 1 | Alice Smith | 150.00 | completed |
-| 2 | Bob Johnson | 75.50 | pending |
-| 3 | Carol Williams | 200.00 | shipped |
-
-### Example: Using a Custom Parameter Mapper
-
-For complete control over parameter mapping, provide a custom parameter mapper function:
-
-```csharp
-public sealed record Order(int OrderId, int CustomerId, decimal Total, string Status);
-
-public sealed class CustomMapperWriterPipeline : IPipelineDefinition
-{
-    public void Define(PipelineBuilder builder, PipelineContext context)
-    {
-        var source = builder.AddSource<InMemorySourceNode<Order>, Order>("source");
-
-        // Custom parameter mapper: return values in the same order as mapped columns
-        Func<Order, IEnumerable<DatabaseParameter>> mapper = order => new[]
-        {
-            new DatabaseParameter("@OrderId", order.OrderId),
-            new DatabaseParameter("@CustomerId", order.CustomerId),
-            new DatabaseParameter("@Total", order.Total),
-            new DatabaseParameter("@Status", order.Status)
-        };
-
-        var sinkNode = new SqlServerSinkNode<Order>(
-            connectionString: "Server=localhost;Database=npipeline;Integrated Security=True;",
-            tableName: "Orders",
-            configuration: new SqlServerConfiguration
-            {
-                WriteStrategy = SqlServerWriteStrategy.PerRow,
-                UseTransaction = true,
-                Schema = "dbo"
-            },
-            customMapper: mapper);
-        var sink = builder.AddSink(sinkNode, "sqlserver_sink");
-
-        builder.Connect(source, sink);
-    }
-}
-```
-
-## Configuration Reference
-
-### SqlServerConfiguration
-
-The `SqlServerConfiguration` class provides comprehensive options for configuring SQL Server read and write operations.
-
-#### Properties
-
-| Property | Type | Default | Description |
-| --- | --- | --- | --- |
-| `ConnectionString` | `string` | `""` | SQL Server connection string. Not required when using a connection pool. |
-| `Schema` | `string` | `"dbo"` | Default schema name for table operations. |
-| `StreamResults` | `bool` | `true` | Enables streaming of results to reduce memory usage for large result sets. |
-| `FetchSize` | `int` | `1,000` | Number of rows to fetch per round-trip when streaming. Larger values reduce round-trips but use more memory. |
-| `WriteStrategy` | `SqlServerWriteStrategy` | `Batch` | Write strategy for sink operations (PerRow, Batch, BulkCopy). |
-| `BatchSize` | `int` | `100` | Target batch size for batch write operations. |
-| `MaxBatchSize` | `int` | `1,000` | Maximum batch size to prevent runaway buffers. `BatchSize` is clamped to this value. |
-| `UseTransaction` | `bool` | `true` | Wraps write operations in a transaction for atomicity. |
-| `UsePreparedStatements` | `bool` | `true` | Uses prepared statements for improved performance. |
-| `UseUpsert` | `bool` | `false` | Enables MERGE-based upsert semantics. |
-| `UpsertKeyColumns` | `string[]?` | `null` | Columns that form the merge key for upsert. Required when UseUpsert is true. |
-| `OnMergeAction` | `OnMergeAction` | `Update` | Merge resolution action (`Update`, `Ignore`, or `Delete`). |
-| `BulkCopyBatchSize` | `int` | `5,000` | Number of rows per bulk copy batch. |
-| `BulkCopyTimeout` | `int` | `300` | Bulk copy operation timeout in seconds. |
-| `BulkCopyNotifyAfter` | `int` | `1,000` | Number of rows to process before generating a notification event. |
-| `EnableStreaming` | `bool` | `true` | Enable streaming for bulk copy operations. |
-| `DeliverySemantic` | `DeliverySemantic` | `AtLeastOnce` | Delivery guarantee semantic. |
-| `CheckpointStrategy` | `CheckpointStrategy` | `None` | Strategy for checkpointing to recover from failures. |
-| `CheckpointStorage` | `ICheckpointStorage?` | `null` | Storage backend for checkpoints. Required for persistent checkpoint strategies. |
-| `CheckpointInterval` | `CheckpointIntervalConfiguration` | `new()` | Controls how often checkpoints are saved. |
-| `CheckpointOffsetColumn` | `string?` | `null` | Column name for offset-based checkpointing. |
-| `CheckpointKeyColumns` | `string[]?` | `null` | Key columns for key-based checkpointing. |
-| `CdcCaptureInstance` | `string?` | `null` | CDC capture instance name for CDC checkpointing. |
-| `MaxRetryAttempts` | `int` | `3` | Maximum number of retry attempts for transient failures. Only applies before the first row is yielded. |
-| `RetryDelay` | `TimeSpan` | `TimeSpan.FromSeconds(1)` | Delay between retry attempts. |
-| `CaseInsensitiveMapping` | `bool` | `true` | Enables case-insensitive column name mapping. Useful when database column names have inconsistent casing. |
-| `CacheMappingMetadata` | `bool` | `true` | Caches mapping metadata per type to improve performance. Disable if mapping changes at runtime. |
-| `ValidateIdentifiers` | `bool` | `true` | Validates SQL identifiers (schema, table, column names) to prevent SQL injection. |
-| `ContinueOnError` | `bool` | `false` | Continues processing when per-property mapping errors occur. Properties with errors are set to default values. |
-| `RowErrorHandler` | `Func<Exception, Mapping.SqlServerRow?, bool>?` | `null` | Custom row error handler for row-level error handling and filtering. Return `true` to skip the row, `false` to re-throw the exception. |
-| `CommandTimeout` | `int` | `30` | Command timeout in seconds. |
-| `ConnectionTimeout` | `int` | `15` | Connection timeout in seconds. |
-| `MinPoolSize` | `int` | `1` | Minimum connection pool size. |
-| `MaxPoolSize` | `int` | `100` | Maximum connection pool size. |
-| `EnableMARS` | `bool` | `false` | Enables Multiple Active Result Sets for improved concurrency. |
-| `ApplicationName` | `string?` | `null` | Application name for monitoring in SQL Server. |
-
-### SqlServerWriteStrategy
-
-Enum defining write strategies for the sink node.
-
-| Value | Description |
-| --- | --- |
-| `PerRow` | Writes each row individually with a separate `INSERT` statement. Best for real-time processing and per-row error handling. |
-| `Batch` | Buffers multiple rows and issues a single multi-value `INSERT` statement. Best for bulk operations and high throughput. |
-| `BulkCopy` | Uses SQL Server's native `SqlBulkCopy` API. Best for maximum throughput bulk loading of very large datasets. |
-
-### OnMergeAction
-
-Enum defining actions to take when a MERGE statement encounters a match.
-
-| Value | Description |
-| --- | --- |
-| `Update` | Updates non-key columns using values from the incoming row. Generates `WHEN MATCHED THEN UPDATE SET ...`. |
-| `Ignore` | Leaves the existing row unchanged when a match is found. Omits the `WHEN MATCHED` clause entirely — only new rows are inserted. |
-| `Delete` | Removes the existing row when a match is found. Generates `WHEN MATCHED THEN DELETE`. |
-
-### DeliverySemantic
-
-Enum defining delivery guarantees for database operations.
-
-| Value | Description |
-| --- | --- |
-| `AtLeastOnce` | Items may be delivered multiple times but never lost. Best for idempotent operations. |
-| `AtMostOnce` | Items may be lost but never delivered multiple times. Best for telemetry and metrics. |
-| `ExactlyOnce` | Items are delivered exactly once. Requires checkpointing. Best for financial transactions. |
-
-### CheckpointStrategy
-
-Enum defining checkpointing strategies for recovery.
-
-| Value | Description |
-| --- | --- |
-| `None` | No checkpointing. Failures require restarting from the beginning. |
-| `InMemory` | Stores checkpoint state in memory. Enables recovery from transient failures during a single process execution. |
-| `Offset` | Persists numeric offset checkpoints. Tracks position using a monotonically increasing column. |
-| `KeyBased` | Tracks processed items using composite keys. Useful for tables without a single monotonic column. |
-| `Cursor` | Tracks cursor position for cursor-based iteration. |
-| `CDC` | Tracks LSN for SQL Server Change Data Capture. Enables capturing changes from the transaction log. |
-
-## Upsert Operations
-
-The connector supports SQL Server's `MERGE` statement for upsert operations, allowing you to insert rows or update them if they already exist.
-
-### Basic Upsert Configuration
-
-Enable upsert by setting `UseUpsert = true` and specifying the key columns:
-
-```csharp
-var configuration = new SqlServerConfiguration
-{
-    UseUpsert = true,
-    UpsertKeyColumns = new[] { "CustomerId" },  // Primary key or unique constraint columns
-    OnMergeAction = OnMergeAction.Update,  // Update on match
-    WriteStrategy = SqlServerWriteStrategy.Batch,
-    Schema = "dbo"
-};
-
-var sink = new SqlServerSinkNode<Customer>(
-    connectionString,
-    "customers",
-    configuration: configuration
-);
-```
-
-### Merge Actions
-
-#### OnMergeAction.Update
-
-Updates non-key columns with values from the incoming row when a match is found:
-
-```sql
-MERGE INTO dbo.Customers AS target
-USING (VALUES (@CustomerId, @Name, @Email)) AS source (CustomerId, Name, Email)
-ON target.CustomerId = source.CustomerId
-WHEN MATCHED THEN
-    UPDATE SET Name = source.Name, Email = source.Email
-WHEN NOT MATCHED THEN
-    INSERT (CustomerId, Name, Email) VALUES (source.CustomerId, source.Name, source.Email);
-```
-
-```csharp
-var configuration = new SqlServerConfiguration
-{
-    UseUpsert = true,
-    UpsertKeyColumns = new[] { "CustomerId" },
-    OnMergeAction = OnMergeAction.Update
-};
-```
-
-#### OnMergeAction.Ignore
-
-Leaves the existing row unchanged. Only new (unmatched) rows are inserted:
-
-```csharp
-var configuration = new SqlServerConfiguration
-{
-    UseUpsert = true,
-    UpsertKeyColumns = new[] { "CustomerId" },
-    OnMergeAction = OnMergeAction.Ignore  // Leave existing rows as-is
-};
-```
-
-#### OnMergeAction.Delete
-
-Deletes the matching row when the source row is present:
-
-```sql
-MERGE INTO dbo.Customers AS target
-USING (VALUES (@CustomerId)) AS source (CustomerId)
-ON target.CustomerId = source.CustomerId
-WHEN MATCHED THEN
-    DELETE
-WHEN NOT MATCHED THEN
-    INSERT (CustomerId, Name, Email) VALUES (source.CustomerId, source.Name, source.Email);
-```
-
-```csharp
-var configuration = new SqlServerConfiguration
-{
-    UseUpsert = true,
-    UpsertKeyColumns = new[] { "CustomerId" },
-    OnMergeAction = OnMergeAction.Delete  // Remove existing rows on match
-};
-```
-
-### Composite Key Upsert
-
-For tables with composite unique constraints:
-
-```csharp
-public record OrderItem(int OrderId, int ProductId, int Quantity, decimal UnitPrice);
-
-var configuration = new SqlServerConfiguration
-{
-    UseUpsert = true,
-    UpsertKeyColumns = new[] { "OrderId", "ProductId" },  // Composite key
-    OnMergeAction = OnMergeAction.Update,
-    WriteStrategy = SqlServerWriteStrategy.Batch,
-    Schema = "dbo"
-};
-
-var sink = new SqlServerSinkNode<OrderItem>(
-    connectionString,
-    "order_items",
-    configuration: configuration
-);
-```
-
-### Upsert with Write Strategies
-
-Upsert works with all write strategies:
-
-- **PerRow**: Each row is processed individually with upsert semantics
-- **Batch**: Multi-value INSERT with MERGE logic
-- **BulkCopy**: Not supported for upsert operations (falls back to Batch)
-
-**Why use upsert:** Upsert eliminates the need for separate insert/update logic and handles race conditions where a row might be inserted between your check and insert operations.
+| Property | Description |
+|----------|-------------|
+| `Name` | Column name in the database |
+| `DbType` | SQL Server data type (`SqlDbType`) |
+| `Size` | Size/length for character and numeric types |
+| `PrimaryKey` | Primary key (used for checkpointing) |
+| `Identity` | Auto-increment identity column |
+| `Ignore` | Skip mapping this property |
+
+Use common attributes for portable code; use `[SqlServerColumn]` when you need type, PK, or identity control.
 
 ## Delivery Semantics
 
-The connector supports three delivery semantics to control data consistency guarantees during failures.
-
-### AtLeastOnce (Default)
-
-Guarantees that every item is delivered at least once. Items may be duplicated on retry after a failure.
-
-```csharp
-var configuration = new SqlServerConfiguration
-{
-    DeliverySemantic = DeliverySemantic.AtLeastOnce,
-    UseTransaction = true
-};
-```
-
-**Characteristics:**
-
-- No data loss
-- Possible duplicates on retry
-- Best for idempotent operations or when duplicates can be tolerated
-
-**Use when:**
-
-- Processing idempotent operations
-- Duplicates can be filtered downstream
-- Data loss is unacceptable
-
-### AtMostOnce
-
-Guarantees that every item is delivered at most once. Items may be lost on failure, but never duplicated.
+| Semantic | Data Loss | Duplicates | Overhead | Use Case |
+|----------|-----------|------------|----------|----------|
+| `AtLeastOnce` (default) | No | Possible | Low | Idempotent operations |
+| `AtMostOnce` | Possible | No | Low | Telemetry, metrics |
+| `ExactlyOnce` | No | No | High | Financial transactions |
 
 ```csharp
-var configuration = new SqlServerConfiguration
-{
-    DeliverySemantic = DeliverySemantic.AtMostOnce
-};
-```
-
-**Characteristics:**
-
-- No duplicates
-- Possible data loss on failure
-- Best for high-throughput scenarios where occasional data loss is acceptable
-
-**Use when:**
-
-- Processing telemetry or metrics data
-- High throughput is critical
-- Occasional data loss is acceptable
-
-### ExactlyOnce
-
-Guarantees that every item is delivered exactly once. Uses transactional semantics to prevent both data loss and duplication.
-
-```csharp
-var configuration = new SqlServerConfiguration
+var config = new SqlServerConfiguration
 {
     DeliverySemantic = DeliverySemantic.ExactlyOnce,
     UseTransaction = true,
@@ -886,123 +231,38 @@ var configuration = new SqlServerConfiguration
 };
 ```
 
-**Characteristics:**
+## Checkpointing
 
-- No data loss
-- No duplicates
-- Higher overhead due to transaction coordination
-- Requires checkpoint storage
+Checkpointing enables pipelines to resume from where they left off after a failure.
 
-**Use when:**
+| Strategy | Persistence | Description |
+|----------|-------------|-------------|
+| `None` (default) | — | No checkpointing; restart from beginning on failure |
+| `InMemory` | Process lifetime | Recover from transient failures within a single run |
+| `Offset` | External storage | Track position via monotonically increasing column |
+| `KeyBased` | External storage | Track processed items by composite keys |
+| `Cursor` | External storage | Track cursor position for iteration |
+| `CDC` | External storage | Track LSN for SQL Server Change Data Capture |
 
-- Financial transactions
-- Audit logging
-- Any scenario requiring strict exactly-once guarantees
-
-### Delivery Semantic Comparison
-
-| Semantic | Data Loss | Duplicates | Overhead | Use Case |
-|----------|-----------|------------|----------|----------|
-| AtLeastOnce | No | Possible | Low | General purpose, idempotent ops |
-| AtMostOnce | Possible | No | Low | Telemetry, metrics |
-| ExactlyOnce | No | No | High | Financial, audit |
-
-## Checkpointing Strategies
-
-Checkpointing enables pipelines to resume from where they left off after a failure, rather than restarting from the beginning.
-
-### None (Default)
-
-No checkpointing is performed. Failures require restarting from the beginning.
+### Offset Example
 
 ```csharp
-var configuration = new SqlServerConfiguration
-{
-    CheckpointStrategy = CheckpointStrategy.None
-};
-```
-
-### InMemory
-
-Stores checkpoint state in memory. Enables recovery from transient failures during a single process execution.
-
-```csharp
-var configuration = new SqlServerConfiguration
-{
-    CheckpointStrategy = CheckpointStrategy.InMemory,
-    StreamResults = true
-};
-
-var source = new SqlServerSourceNode<Order>(
-    connectionString,
-    "SELECT * FROM orders ORDER BY OrderId",  // ORDER BY is required for checkpointing
-    configuration: configuration
-);
-```
-
-**Limitations:** Checkpoint state is lost when the process terminates.
-
-### Offset
-
-Persists numeric offset checkpoints to external storage. Tracks position using a monotonically increasing column (e.g., identity column).
-
-```csharp
-var configuration = new SqlServerConfiguration
+var config = new SqlServerConfiguration
 {
     CheckpointStrategy = CheckpointStrategy.Offset,
     CheckpointOffsetColumn = "OrderId",
-    CheckpointStorage = new FileCheckpointStorage("checkpoints/order_offset.json")
+    CheckpointStorage = new FileCheckpointStorage("checkpoints/orders.json")
 };
 
-var source = new SqlServerSourceNode<Order>(
-    connectionString,
-    "SELECT * FROM orders WHERE OrderId > @lastCheckpoint ORDER BY OrderId",
-    configuration: configuration
-);
+var source = new SqlServerSourceNode<Order>(connectionString,
+    "SELECT * FROM Orders WHERE OrderId > @lastCheckpoint ORDER BY OrderId",
+    configuration: config);
 ```
 
-**Requirements:**
-
-- Requires `CheckpointOffsetColumn` to be specified
-- Requires `CheckpointStorage` to persist checkpoints
-- Query must include `ORDER BY` on the offset column
-
-### KeyBased
-
-Tracks processed items using composite keys. Useful for tables without a single monotonic column.
+### CDC Example
 
 ```csharp
-var configuration = new SqlServerConfiguration
-{
-    CheckpointStrategy = CheckpointStrategy.KeyBased,
-    CheckpointKeyColumns = new[] { "CustomerId", "OrderDate" },
-    CheckpointStorage = new FileCheckpointStorage("checkpoints/order_keys.json")
-};
-```
-
-**Requirements:**
-
-- Requires `CheckpointKeyColumns` to be specified
-- Requires `CheckpointStorage` to persist checkpoints
-
-### Cursor
-
-Tracks cursor position for cursor-based iteration.
-
-```csharp
-var configuration = new SqlServerConfiguration
-{
-    CheckpointStrategy = CheckpointStrategy.Cursor,
-    CheckpointStorage = new FileCheckpointStorage("checkpoints/cursor.json")
-};
-```
-
-### CDC (Change Data Capture)
-
-Tracks LSN (Log Sequence Number) for SQL Server Change Data Capture. Enables capturing changes from the database transaction log.
-
-```csharp
-var configuration = new SqlServerConfiguration
+var config = new SqlServerConfiguration
 {
     CheckpointStrategy = CheckpointStrategy.CDC,
     CdcCaptureInstance = "dbo_orders",
@@ -1010,1169 +270,96 @@ var configuration = new SqlServerConfiguration
 };
 ```
 
-**Requirements:**
-
-- Requires `CdcCaptureInstance` to be specified
-- Requires SQL Server CDC to be enabled on the database and table
-- Requires appropriate SQL Server permissions
-
-**Enabling CDC on SQL Server:**
+Requires CDC enabled on the database and table:
 
 ```sql
--- Enable CDC on the database
 EXEC sys.sp_cdc_enable_db;
-
--- Enable CDC on a specific table
-EXEC sys.sp_cdc_enable_table
-    @source_schema = 'dbo',
-    @source_name = 'orders',
-    @role_name = NULL;
+EXEC sys.sp_cdc_enable_table @source_schema = 'dbo', @source_name = 'orders', @role_name = NULL;
 ```
-
-### Checkpoint Storage
-
-Implement `ICheckpointStorage` to persist checkpoints to your preferred backend:
-
-```csharp
-public interface ICheckpointStorage
-{
-    Task<Checkpoint?> LoadAsync(string pipelineId, string nodeId, CancellationToken cancellationToken = default);
-    Task SaveAsync(string pipelineId, string nodeId, Checkpoint checkpoint, CancellationToken cancellationToken = default);
-    Task DeleteAsync(string pipelineId, string nodeId, CancellationToken cancellationToken = default);
-    Task<bool> ExistsAsync(string pipelineId, string nodeId, CancellationToken cancellationToken = default);
-}
-```
-
-**Built-in implementations:**
-
-- `FileCheckpointStorage` - Stores checkpoints in a JSON file
-- `InMemoryCheckpointStorage` - Stores checkpoints in memory (for testing)
 
 ### Checkpoint Intervals
 
-Configure how frequently checkpoints are saved:
-
 ```csharp
-var configuration = new SqlServerConfiguration
+config.CheckpointInterval = new CheckpointIntervalConfiguration
 {
-    CheckpointStrategy = CheckpointStrategy.Offset,
-    CheckpointInterval = new CheckpointIntervalConfiguration
-    {
-        RowCountInterval = 10_000,  // Save every 10,000 rows
-        TimeInterval = TimeSpan.FromMinutes(5)  // Or every 5 minutes, whichever comes first
-    }
+    RowCountInterval = 10_000,
+    TimeInterval = TimeSpan.FromMinutes(5)
 };
 ```
 
-## Advanced Configuration
+## Mapping
 
-### BulkCopy Configuration
+| Property | Default | Description |
+|----------|---------|-------------|
+| `CaseInsensitiveMapping` | `true` | Match `OrderId`, `orderid`, `ORDERID` to same property |
+| `CacheMappingMetadata` | `true` | Cache mapping delegates per type (avoid repeated reflection) |
+| `ValidateIdentifiers` | `true` | Validate SQL identifiers to prevent injection |
 
-For maximum throughput with the BulkCopy strategy:
+## Performance
 
-```csharp
-var config = new SqlServerConfiguration
-{
-    WriteStrategy = SqlServerWriteStrategy.BulkCopy,
-    BulkCopyBatchSize = 5_000,  // Rows per batch
-    BulkCopyTimeout = 600,      // 10 minutes for large loads
-    BulkCopyNotifyAfter = 1_000, // Progress notifications
-    EnableStreaming = true,
-    Schema = "dbo"
-};
-
-var sink = new SqlServerSinkNode<Order>(
-    pool,
-    "orders",
-    configuration: config);
-```
-
-**BulkCopy Options:**
-
-- **`BulkCopyBatchSize`**: Number of rows per batch. Larger batches reduce round-trips but use more memory.
-- **`BulkCopyTimeout`**: Timeout in seconds. Increase for very large datasets.
-- **`BulkCopyNotifyAfter`**: Generate progress notifications after this many rows.
-- **`EnableStreaming`**: Stream data to the server instead of buffering in memory.
-
-### Streaming Large Result Sets
-
-When reading large result sets, enable streaming to keep memory usage low:
+### Streaming
 
 ```csharp
-var config = new SqlServerConfiguration
-{
-    StreamResults = true,
-    FetchSize = 1_000  // Adjust based on your data and memory constraints
-};
-
-var source = new SqlServerSourceNode<Order>(
-    connectionString,
-    "SELECT * FROM LargeTable",
-    configuration: config);
+var config = new SqlServerConfiguration { StreamResults = true, FetchSize = 1_000 };
 ```
 
-**Why Streaming Matters:**
+Without streaming, the entire result set is loaded into memory. With streaming, rows are fetched in batches of `FetchSize`.
 
-Without streaming (`StreamResults = false`), SqlClient loads the entire result set into memory. For tables with millions of rows, this can cause out-of-memory exceptions. Streaming fetches rows in batches, allowing you to process data without loading everything at once.
+| FetchSize | Best For |
+|-----------|----------|
+| 100–500 | Memory-constrained, wide rows |
+| 1,000–5,000 | Most workloads |
+| 5,000–10,000 | Maximum throughput, high-bandwidth |
 
-### Batch Writing Configuration
+### Write Strategy Comparison
 
-Optimize batch writing based on your workload:
+| Strategy | Throughput | Latency | Error Isolation | Use Case |
+|----------|-----------|---------|-----------------|----------|
+| `PerRow` | Low | Low | High | Real-time, per-row errors |
+| `Batch` | High | Medium | Medium | ETL, balanced |
+| `BulkCopy` | Very High | High | Low | Bulk loads, data warehouse |
 
-```csharp
-var config = new SqlServerConfiguration
-{
-    BatchSize = 500,        // Target batch size
-    MaxBatchSize = 5_000,   // Maximum to prevent runaway buffers
-    UseTransaction = true,  // Wrap in transaction for atomicity
-    WriteStrategy = SqlServerWriteStrategy.Batch,
-    Schema = "dbo"
-};
+### Batch Size Guidelines
 
-var sink = new SqlServerSinkNode<Order>(
-    pool,
-    "Orders",
-    configuration: config);
-```
+| Range | Best For |
+|-------|----------|
+| 100–500 | Real-time processing, low latency |
+| 500–1,000 | Balanced throughput and latency |
+| 1,000–5,000 | Bulk loading |
 
-**Batch Size Guidelines:**
+**Note:** Effective batch size is capped by SQL Server's 2,100 parameter limit divided by the number of mapped columns.
 
-- **Small batches (100-500)**: Better for real-time processing and lower latency
-- **Medium batches (500-1,000)**: Good balance between throughput and latency
-- **Large batches (1,000-5,000)**: Maximum throughput for bulk loading
-- **Very large batches (>5,000)**: May cause memory pressure and longer transaction times
+### Prepared Statements
 
-### Retry Configuration
+Enabled by default (`UsePreparedStatements = true`). Reduces query parsing overhead by 10–30% for repeated inserts.
 
-Configure retries to handle transient failures:
-
-```csharp
-var config = new SqlServerConfiguration
-{
-    MaxRetryAttempts = 3,
-    RetryDelay = TimeSpan.FromSeconds(2)
-};
-
-var source = new SqlServerSourceNode<Order>(
-    connectionString,
-    "SELECT * FROM Orders",
-    configuration: config);
-```
-
-**Important:** Retries only occur before the first row is yielded. Once streaming begins, failures are propagated to the pipeline.
-
-### Case-Insensitive Mapping
-
-Enable case-insensitive mapping when database column names have inconsistent casing:
-
-```csharp
-var config = new SqlServerConfiguration
-{
-    CaseInsensitiveMapping = true,
-    CacheMappingMetadata = true
-};
-
-var source = new SqlServerSourceNode<Order>(
-    connectionString,
-    "SELECT OrderId, CustomerId, Total, Status FROM Orders",
-    configuration: config);
-```
-
-This maps columns like `OrderId`, `orderid`, and `ORDERID` to the same property.
-
-### Checkpointing for Transient Recovery
-
-Enable in-memory checkpointing to recover from transient failures:
-
-```csharp
-var config = new SqlServerConfiguration
-{
-    CheckpointStrategy = CheckpointStrategy.InMemory,
-    StreamResults = true
-};
-
-var source = new SqlServerSourceNode<Order>(
-    connectionString,
-    "SELECT * FROM Orders ORDER BY OrderId",
-    configuration: config);
-```
-
-**How Checkpointing Works:**
-
-The source node tracks the last successfully processed row ID. If a transient failure occurs (e.g., network timeout), the node can resume from the last checkpoint rather than restarting from the beginning.
-
-**Limitations:**
-
-- Only works for queries with an ordering column (typically an ID)
-- Checkpoint state is lost if the process terminates
-- Requires `StreamResults = true` to work correctly
-
-### Multiple Active Result Sets (MARS)
-
-Enable MARS for improved concurrency when you need to execute multiple commands on a single connection:
-
-```csharp
-var config = new SqlServerConfiguration
-{
-    EnableMARS = true
-};
-
-// MARS is enabled via connection string: MultipleActiveResultSets=True
-```
-
-**Benefits of MARS:**
-
-- Execute multiple commands on a single connection simultaneously
-- Read while writing
-- Improved concurrency in complex pipelines
-
-### Row-Level Error Handling
-
-For granular control over row-level mapping errors, use the `RowErrorHandler` property to intercept exceptions and decide whether to skip rows or propagate errors:
+## Row-Level Error Handling
 
 ```csharp
 var config = new SqlServerConfiguration
 {
     RowErrorHandler = (exception, row) =>
     {
-        // Log the error with row information
-        Console.WriteLine($"Error processing row ID {row?.Get<int>("OrderId")}: {exception.Message}");
-        
-        // Return true to skip this row, false to re-throw the exception
-        return exception is FormatException; // Skip format errors, fail on others
+        Console.WriteLine($"Error on row {row?.Get<int>("OrderId")}: {exception.Message}");
+        return exception is FormatException; // true = skip row, false = re-throw
     }
-};
-
-var source = new SqlServerSourceNode<Order>(
-    connectionString,
-    "SELECT OrderId, CustomerId, Total, Status FROM Orders",
-    configuration: config);
-```
-
-**Key Behaviors:**
-
-- **Return `true`**: Skips the row and continues processing
-- **Return `false`**: Re-throws the exception, which may be caught by `ContinueOnError`
-- **Null row**: Occurs if the error happens before the row is fully populated
-
-This provides fine-grained control for scenarios like:
-
-- Logging problematic rows separately
-- Skipping rows with specific data issues
-- Collecting statistics on failed rows
-- Implementing custom retry logic per row
-
-### Example: Transforming and Writing to SQL Server
-
-This pipeline reads order data, transforms it, and writes the result to a summary table:
-
-```csharp
-using NPipeline.Connectors.SqlServer;
-using NPipeline.Execution;
-using NPipeline.Nodes;
-using NPipeline.Pipeline;
-
-public sealed record Order(int OrderId, int CustomerId, decimal Total, string Status);
-public sealed record OrderSummary(int OrderId, string StatusCategory, decimal Total);
-
-public sealed class OrderTransformer : TransformNode<Order, OrderSummary>
-{
-    public override Task<OrderSummary> TransformAsync(
-        Order item,
-        PipelineContext context,
-        CancellationToken cancellationToken)
-    {
-        var statusCategory = item.Status switch
-        {
-            "completed" or "shipped" => "fulfilled",
-            "pending" or "processing" => "in_progress",
-            _ => "other"
-        };
-        return Task.FromResult(new OrderSummary(item.OrderId, statusCategory, item.Total));
-    }
-}
-
-public sealed class SqlServerTransformPipeline : IPipelineDefinition
-{
-    public void Define(PipelineBuilder builder, PipelineContext context)
-    {
-        // Read from Orders table
-        var source = builder.AddSource(
-            new SqlServerSourceNode<Order>(
-                "Server=localhost;Database=npipeline;Integrated Security=True;",
-                "SELECT OrderId, CustomerId, Total, Status FROM Orders",
-                configuration: new SqlServerConfiguration { StreamResults = true, FetchSize = 1_000 }),
-            "sqlserver_source");
-
-        // Transform data
-        var transform = builder.AddTransform<OrderTransformer, Order, OrderSummary>("transformer");
-
-        // Write to OrderSummary table
-        var sink = builder.AddSink(
-            new SqlServerSinkNode<OrderSummary>(
-                "Server=localhost;Database=npipeline;Integrated Security=True;",
-                "OrderSummary",
-                configuration: new SqlServerConfiguration
-                {
-                    WriteStrategy = SqlServerWriteStrategy.Batch,
-                    BatchSize = 1_000,
-                    UseTransaction = true,
-                    Schema = "dbo"
-                }),
-            "sqlserver_sink");
-
-        builder.Connect(source, transform);
-        builder.Connect(transform, sink);
-    }
-}
-
-public class Program
-{
-    public static async Task Main(string[] args)
-    {
-        var runner = PipelineRunner.Create();
-        await runner.RunAsync<SqlServerTransformPipeline>();
-    }
-}
-```
-
-## Mapping
-
-The SQL Server connector provides flexible mapping between database columns and C# properties.
-
-### Convention-Based Mapping
-
-By default, the connector uses convention-based mapping:
-
-- C# property names in `PascalCase` map directly to SQL Server column names in `PascalCase`
-- No conversion needed by default (unlike PostgreSQL which uses snake_case)
-- Example: `CustomerId` → `CustomerId`, `TotalAmount` → `TotalAmount`
-
-### Attribute-Based Mapping
-
-Override default mapping using attributes:
-
-#### `[SqlServerColumn]`
-
-Specifies the column name for a property with optional SQL Server-specific features:
-
-```csharp
-using NPipeline.Connectors.SqlServer.Mapping;
-using System.Data;
-
-public record Order(
-    [SqlServerColumn("OrderID", PrimaryKey = true, Identity = true)] int OrderId,
-    [SqlServerColumn("CustomerID")] int CustomerId,
-    [SqlServerColumn("OrderTotal", DbType = SqlDbType.Decimal)] decimal Total,
-    [SqlServerColumn("OrderStatus")] string Status);
-```
-
-Parameters:
-
-- **`Name`**: Column name in the database
-- **`DbType`**: SQL Server data type for the column
-- **`Size`**: Size for character and numeric types
-- **`PrimaryKey`**: Indicates whether the column is a primary key (used for checkpointing)
-- **`Identity`**: Indicates whether the column is an auto-increment identity column
-- **`Ignore`**: When `true`, skips mapping this property
-
-#### `[IgnoreColumn]`
-
-Skips a property entirely during mapping:
-
-```csharp
-using NPipeline.Connectors.Attributes;
-
-public record Order(
-    int OrderId,
-    int CustomerId,
-    decimal Total,
-    [IgnoreColumn] string? InternalNotes,
-    [IgnoreColumn] DateTime? ComputedFields);
-```
-
-### Mapping Metadata Caching
-
-Mapping metadata is cached per type when `CacheMappingMetadata` is enabled (default). This improves performance by avoiding reflection on every row.
-
-**When to Disable Caching:**
-
-- When mapping changes at runtime (rare)
-- When memory is extremely constrained
-- When debugging mapping issues
-
-### Example: Complete Mapping Configuration
-
-```csharp
-using NPipeline.Connectors.SqlServer.Mapping;
-using NPipeline.Connectors.Attributes;
-using System.Data;
-
-[SqlServerTable("Orders", Schema = "Sales")]
-public record Order(
-    [SqlServerColumn("OrderID", PrimaryKey = true, Identity = true)] int OrderId,
-    [SqlServerColumn("CustomerID")] int CustomerId,
-    [SqlServerColumn("OrderTotal", DbType = SqlDbType.Decimal)] decimal Total,
-    [SqlServerColumn("OrderStatus")] string Status,
-    [IgnoreColumn] string? InternalNotes,
-    [IgnoreColumn] DateTime? ComputedFields);
-
-public sealed class MappingPipeline : IPipelineDefinition
-{
-    public void Define(PipelineBuilder builder, PipelineContext context)
-    {
-        var sourceNode = new SqlServerSourceNode<Order>(
-            "Server=localhost;Database=npipeline;Integrated Security=True;",
-            "SELECT OrderID, CustomerID, OrderTotal, OrderStatus FROM Sales.Orders",
-            configuration: new SqlServerConfiguration
-            {
-                CacheMappingMetadata = true,
-                CaseInsensitiveMapping = true
-            });
-        var source = builder.AddSource(sourceNode, "sqlserver_source");
-        var sink = builder.AddSink<ConsoleSinkNode, Order>("console_sink");
-
-        builder.Connect(source, sink);
-    }
-}
-```
-
-## Performance Considerations
-
-### Reading Performance
-
-#### Streaming vs. Buffering
-
-- **Streaming (`StreamResults = true`)**: Recommended for large result sets. Fetches rows in batches, keeping memory usage low.
-- **Buffering (`StreamResults = false`)**: Loads entire result set into memory. Faster for small result sets but causes memory issues with large datasets.
-
-#### Fetch Size Tuning
-
-Adjust `FetchSize` based on your workload:
-
-```csharp
-// Small fetch size: Lower memory usage, more round-trips
-var smallFetchConfig = new SqlServerConfiguration
-{
-    StreamResults = true,
-    FetchSize = 100
-};
-
-// Large fetch size: Fewer round-trips, higher memory usage
-var largeFetchConfig = new SqlServerConfiguration
-{
-    StreamResults = true,
-    FetchSize = 10_000
-};
-```
-
-**Guidelines:**
-
-- **100-500**: Good for memory-constrained environments or very wide rows
-- **1,000-5,000**: Balanced approach for most workloads
-- **5,000-10,000**: Maximum throughput for high-bandwidth networks
-
-#### Mapping Metadata Caching
-
-Enable `CacheMappingMetadata` (default) to avoid reflection overhead:
-
-```csharp
-var config = new SqlServerConfiguration
-{
-    CacheMappingMetadata = true  // Default, but explicit for clarity
-};
-```
-
-### Writing Performance
-
-#### Write Strategy Selection
-
-Choose the appropriate write strategy based on your requirements:
-
-| Strategy | Throughput | Latency | Best For |
-|----------|------------|---------|----------|
-| PerRow | Low | Low | Real-time processing, per-row error handling |
-| Batch | High | Medium | Bulk operations, ETL workloads |
-| BulkCopy | Very High | High | Large bulk loads, data warehouse ingestion |
-
-```csharp
-// PerRow: Low latency, individual error handling
-var perRowSink = new SqlServerSinkNode<Order>(
-    pool,
-    "Orders",
-    configuration: new SqlServerConfiguration
-    {
-        WriteStrategy = SqlServerWriteStrategy.PerRow,
-        Schema = "dbo"
-    });
-
-// Batch: Balanced throughput and reliability
-var batchSink = new SqlServerSinkNode<Order>(
-    pool,
-    "Orders",
-    configuration: new SqlServerConfiguration
-    {
-        WriteStrategy = SqlServerWriteStrategy.Batch,
-        BatchSize = 1_000,
-        UseTransaction = true,
-        Schema = "dbo"
-    });
-
-// BulkCopy: Maximum throughput for large datasets
-var bulkCopySink = new SqlServerSinkNode<Order>(
-    pool,
-    "Orders",
-    configuration: new SqlServerConfiguration
-    {
-        WriteStrategy = SqlServerWriteStrategy.BulkCopy,
-        BulkCopyBatchSize = 5_000,
-        BulkCopyTimeout = 600,
-        EnableStreaming = true,
-        Schema = "dbo"
-    });
-```
-
-#### Batch Size Tuning
-
-Choose batch size based on your requirements:
-
-```csharp
-// Small batches: Lower latency, more round-trips
-var smallBatchConfig = new SqlServerConfiguration
-{
-    BatchSize = 100,
-    MaxBatchSize = 1_000
-};
-
-// Large batches: Higher throughput, more memory
-var largeBatchConfig = new SqlServerConfiguration
-{
-    BatchSize = 2_000,
-    MaxBatchSize = 10_000
-};
-```
-
-**Guidelines:**
-
-- **100-500**: Near real-time processing
-- **500-1,000**: Balanced throughput and latency
-- **1,000-5,000**: Bulk loading scenarios
-- **Note**: Effective batch size is capped by SQL Server's 2,100 parameter limit and the number of mapped columns
-
-#### Transaction Management
-
-Use transactions (`UseTransaction = true`) for:
-
-- Data integrity (all or nothing)
-- Better performance (single commit vs. multiple)
-
-Disable transactions for:
-
-- Very large datasets where transaction log size is a concern
-- Scenarios where partial failure is acceptable
-
-### Connection Pool Management
-
-When using dependency injection, the connection pool efficiently manages connections:
-
-- **Default pool size**: Configured via `DefaultConfiguration`
-- **Connection reuse**: Connections are reused across operations
-- **Automatic cleanup**: Connections are properly disposed
-
-```csharp
-services.AddSqlServerConnector(options =>
-{
-    options.DefaultConfiguration = new SqlServerConfiguration
-    {
-        MinPoolSize = 5,
-        MaxPoolSize = 100,
-        ConnectionTimeout = 15
-    };
-});
-```
-
-## Limitations
-
-### Checkpointing Limitations
-
-- **InMemory**: Checkpoint state is lost if the process terminates
-- **Offset**: Requires a monotonically increasing column and ORDER BY clause
-- **KeyBased**: Memory usage grows with the number of unique keys processed
-- **CDC**: Requires SQL Server CDC to be enabled on the database and table
-
-### Write Strategy Limitations
-
-- **Batch strategy**: All rows in a batch succeed or fail together
-- **Per-row strategy**: Higher overhead for large datasets
-- **BulkCopy strategy**: Limited error granularity; not compatible with upsert
-
-### Mapping Limitations
-
-- **No complex type mapping**: Complex types must be handled via custom mappers
-- **No XML mapping**: XML columns require custom mapping
-- **Limited enum support**: Enums require explicit configuration
-
-### Connection Limitations
-
-- **No connection string encryption**: Connection strings are stored in plain text
-- **No automatic failover**: Requires additional configuration for high availability
-- **No read replica support**: All operations go to the primary database
-
-## Prepared Statements
-
-The connector uses prepared statements by default (`UsePreparedStatements = true`). Prepared statements:
-
-- Reduce query parsing overhead on the database server
-- Improve performance for repeated query patterns (same query, different parameters)
-- Provide automatic SQL injection protection
-
-### When to Disable Prepared Statements
-
-Consider disabling `UsePreparedStatements` only for:
-
-- Ad-hoc queries that are dynamically generated and never repeated
-- Very complex queries that may not benefit from preparation
-- Testing scenarios where you need to debug query generation
-
-### Performance Impact
-
-| Scenario | Prepared Statements | Performance Impact |
-|----------|-------------------|-------------------|
-| Repeated inserts (same query pattern) | Enabled | 10-30% faster |
-| Ad-hoc queries (different each time) | Enabled | 5-10% overhead |
-| One-time bulk operations | Disabled | No impact |
-
-### Configuration
-
-```csharp
-var config = new SqlServerConfiguration
-{
-    UsePreparedStatements = true  // Default, keep enabled for production
 };
 ```
 
 ## Best Practices
 
-### Configuration
-
-1. **Use dependency injection**: Leverage `AddSqlServerConnector` for production applications
-2. **Enable streaming for large datasets**: Set `StreamResults = true` to avoid memory issues
-3. **Tune fetch size**: Adjust `FetchSize` based on your data size and memory constraints
-4. **Choose the right write strategy**: Use BulkCopy for bulk loading, Batch for balanced workloads, PerRow for real-time
-5. **Use upsert for idempotent writes**: Enable `UseUpsert` when loading data that may already exist
-6. **Select appropriate delivery semantics**: Use ExactlyOnce for critical data, AtLeastOnce for general workloads
-7. **Configure checkpointing for long-running pipelines**: Use Offset or KeyBased checkpointing for recovery
-8. **Validate identifiers**: Keep `ValidateIdentifiers = true` to prevent SQL injection
-9. **Cache mapping metadata**: Enable `CacheMappingMetadata` for better performance
-10. **Use prepared statements**: Keep `UsePreparedStatements = true` for repeated query patterns
-
-### Data Modeling
-
-1. **Use convention-based mapping**: Leverage PascalCase to PascalCase mapping (no conversion needed)
-2. **Override with attributes**: Use `[Column]` for non-standard column names
-3. **Skip internal properties**: Use `[IgnoreColumn]` for properties that shouldn't be persisted
-4. **Design for checkpointing**: Order queries by an ID column to enable checkpointing
-5. **Mark primary keys**: Use `PrimaryKey = true` in `[SqlServerColumn]` for checkpoint columns
-
-### Error Handling
-
-1. **Configure retries**: Set `MaxRetryAttempts` and `RetryDelay` for transient failures
-2. **Use transactions**: Enable `UseTransaction = true` for atomic writes
-3. **Handle mapping errors**: Consider `ContinueOnError = true` for partial results
-4. **Log failures**: Implement logging to track connection and query failures
-5. **Choose delivery semantics wisely**: AtLeastOnce for idempotent operations, ExactlyOnce for critical data
-
-### Performance
-
-1. **Profile your workload**: Test with representative data to identify bottlenecks
-2. **Monitor memory usage**: Watch memory consumption with large result sets
-3. **Optimize batch size**: Tune `BatchSize` based on your latency and throughput requirements
-4. **Use connection pooling**: Leverage the shared connection pool for multiple operations
-5. **Index appropriately**: Ensure database indexes support your queries
-6. **Use BulkCopy for bulk loading**: Enable `SqlServerWriteStrategy.BulkCopy` for maximum throughput
-
-### Security
-
-1. **Use connection string parameters**: Configure SSL, timeouts, and other security settings
-2. **Validate identifiers**: Never disable `ValidateIdentifiers` in production
-3. **Limit permissions**: Use database accounts with minimal required permissions
-4. **Encrypt at rest**: Ensure database encryption is configured
-5. **Use SSL**: Enable SSL for database connections in production
-
-## Advanced Scenarios
-
-### Reading Multiple Tables
-
-Read from multiple tables and merge the data:
-
-```csharp
-public sealed class MultiTablePipeline : IPipelineDefinition
-{
-    public void Define(PipelineBuilder builder, PipelineContext context)
-    {
-        var pool = context.GetRequiredService<ISqlServerConnectionPool>();
-
-        // Read from Orders table
-        var ordersSource = builder.AddSource(
-            new SqlServerSourceNode<Order>(
-                pool,
-                "SELECT * FROM Orders",
-                connectionName: "analytics"),
-            "orders_source");
-
-        // Read from Customers table
-        var customersSource = builder.AddSource(
-            new SqlServerSourceNode<Customer>(
-                pool,
-                "SELECT * FROM Customers",
-                connectionName: "analytics"),
-            "customers_source");
-
-        // Join data using a merge node
-        var join = builder.AddMerge<Order, Customer, OrderCustomerSummary>(
-            (orders, customers) => orders.Join(
-                customers,
-                o => o.CustomerId,
-                c => c.Id,
-                (o, c) => new OrderCustomerSummary(o.OrderId, c.Name, o.Total, o.Status)),
-            "join");
-
-        var sink = builder.AddSink<ConsoleSinkNode, OrderCustomerSummary>("console_sink");
-
-        builder.Connect(ordersSource, join);
-        builder.Connect(customersSource, join);
-        builder.Connect(join, sink);
-    }
-}
-```
-
-### Round-Trip Processing
-
-Read from SQL Server, process the data, and write back to a different table:
-
-```csharp
-public sealed class RoundTripPipeline : IPipelineDefinition
-{
-    public void Define(PipelineBuilder builder, PipelineContext context)
-    {
-        var pool = context.GetRequiredService<ISqlServerConnectionPool>();
-
-        // Read from RawOrders table
-        var source = builder.AddSource(
-            new SqlServerSourceNode<RawOrder>(
-                pool,
-                "SELECT * FROM RawOrders WHERE Processed = 0",
-                connectionName: "warehouse"),
-            "raw_source");
-
-        // Process and validate data
-        var transform = builder.AddTransform<OrderProcessor, RawOrder, ProcessedOrder>("processor");
-
-        // Write to ProcessedOrders table
-        var sink = builder.AddSink(
-            new SqlServerSinkNode<ProcessedOrder>(
-                pool,
-                "ProcessedOrders",
-                configuration: new SqlServerConfiguration
-                {
-                    WriteStrategy = SqlServerWriteStrategy.Batch,
-                    BatchSize = 1_000,
-                    UseTransaction = true,
-                    Schema = "dbo"
-                },
-                connectionName: "warehouse"),
-            "processed_sink");
-
-        builder.Connect(source, transform);
-        builder.Connect(transform, sink);
-    }
-}
-```
-
-### Handling Large Transactions
-
-For very large datasets, consider splitting into multiple transactions:
-
-```csharp
-public sealed class LargeDatasetPipeline : IPipelineDefinition
-{
-    public void Define(PipelineBuilder builder, PipelineContext context)
-    {
-        var pool = context.GetRequiredService<ISqlServerConnectionPool>();
-
-        var source = builder.AddSource(
-            new SqlServerSourceNode<LargeRecord>(
-                pool,
-                "SELECT * FROM LargeTable",
-                connectionName: "warehouse",
-                configuration: new SqlServerConfiguration { StreamResults = true, FetchSize = 5_000 }),
-            "source");
-
-        var sink = builder.AddSink(
-            new SqlServerSinkNode<LargeRecord>(
-                pool,
-                "TargetTable",
-                configuration: new SqlServerConfiguration
-                {
-                    WriteStrategy = SqlServerWriteStrategy.Batch,
-                    BatchSize = 1_000,
-                    MaxBatchSize = 5_000,
-                    UseTransaction = true,  // Each batch is its own transaction
-                    Schema = "dbo"
-                },
-                connectionName: "warehouse"),
-            "sink");
-
-        builder.Connect(source, sink);
-    }
-}
-```
-
-### Custom Error Handling
-
-Implement custom error handling for database operations:
-
-```csharp
-public sealed class ResilientSqlServerSourceNode<T> : SqlServerSourceNode<T>
-{
-    private readonly ILogger<ResilientSqlServerSourceNode<T>> _logger;
-
-    public ResilientSqlServerSourceNode(
-        string connectionString,
-        string query,
-        SqlServerConfiguration? configuration = null,
-        ILogger<ResilientSqlServerSourceNode<T>>? logger = null)
-        : base(connectionString, query, configuration)
-    {
-        _logger = logger;
-    }
-
-    public override async IAsyncEnumerable<T> TransformAsync(
-        PipelineContext context,
-        IPipelineActivity parentActivity,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        try
-        {
-            await foreach (var item in base.ExecuteAsync(context, parentActivity, cancellationToken))
-            {
-                yield return item;
-            }
-        }
-        catch (SqlException ex) when (IsTransientError(ex))
-        {
-            _logger.LogWarning(ex, "Transient database error occurred");
-            throw; // Re-throw to allow retry logic
-        }
-        catch (SqlException ex)
-        {
-            _logger.LogError(ex, "Fatal database error occurred");
-            throw;
-        }
-    }
-
-    private bool IsTransientError(SqlException ex)
-    {
-        // SQL Server transient error codes
-        int[] transientErrorCodes = { -2, 53, 64, 1205, 40501 };
-        return transientErrorCodes.Contains(ex.Number);
-    }
-}
-```
-
-## Migration from PostgreSQL
-
-Migrating from the PostgreSQL connector to the SQL Server connector is straightforward. Both connectors follow the same architectural patterns and support common attributes.
-
-### Namespace Changes
-
-```csharp
-// PostgreSQL
-using NPipeline.Connectors.Postgres;
-using NPipeline.Connectors.Postgres.Configuration;
-using NPipeline.Connectors.Postgres.Mapping;
-using NPipeline.Connectors.Attributes;  // Common attributes
-
-// SQL Server
-using NPipeline.Connectors.SqlServer;
-using NPipeline.Connectors.SqlServer.Configuration;
-using NPipeline.Connectors.SqlServer.Mapping;
-using NPipeline.Connectors.Attributes;  // Common attributes (same!)
-```
-
-### Type Changes
-
-```csharp
-// PostgreSQL
-PostgresSourceNode<T>
-PostgresSinkNode<T>
-PostgresConfiguration
-PostgresWriteStrategy
-PostgresColumnAttribute         // DB-specific extension
-PostgresTableAttribute
-PostgresRow
-
-// SQL Server
-SqlServerSourceNode<T>
-SqlServerSinkNode<T>
-SqlServerConfiguration
-SqlServerWriteStrategy
-SqlServerColumnAttribute        // DB-specific extension
-SqlServerTableAttribute
-SqlServerRow
-
-// Common Attributes (Both Connectors)
-ColumnAttribute                 // Replace PostgresColumn/SqlServerColumn for basic mappings
-IgnoreColumnAttribute           // Common ignore attribute works for all connectors
-```
-
-### Attribute Changes
-
-```csharp
-// PostgreSQL - snake_case convention
-[PostgresColumn("customer_id")]
-public int CustomerId { get; set; }
-[PostgresIgnore]
-public string ComputedValue { get; set; }
-
-// SQL Server - PascalCase convention (simpler mappings use common attributes)
-[Column("CustomerId")]  // For basic mappings - use common attribute
-public int CustomerId { get; set; }
-[IgnoreColumn]          // Common ignore attribute
-public string ComputedValue { get; set; }
-
-// SQL Server - DB-specific features still use SqlServerColumnAttribute
-[SqlServerColumn("CustomerId", DbType = SqlDbType.Int, PrimaryKey = true)]
-public int CustomerId { get; set; }
-```
-
-### Configuration Changes
-
-```csharp
-// PostgreSQL
-var config = new PostgresConfiguration
-{
-    Schema = "public",
-    WriteStrategy = PostgresWriteStrategy.Batch,
-    StreamResults = true,
-    FetchSize = 1_000
-};
-
-// SQL Server
-var config = new SqlServerConfiguration
-{
-    Schema = "Sales",              // Default schema is dbo instead of public
-    WriteStrategy = SqlServerWriteStrategy.Batch,
-    StreamResults = true,
-    FetchSize = 1_000
-};
-```
-
-### Write Strategy Mapping
-
-| PostgreSQL | SQL Server | Notes |
-|-----------|-------------|-------|
-| `PostgresWriteStrategy.PerRow` | `SqlServerWriteStrategy.PerRow` | Direct mapping |
-| `PostgresWriteStrategy.Batch` | `SqlServerWriteStrategy.Batch` | Direct mapping |
-| `PostgresWriteStrategy.Copy` | `SqlServerWriteStrategy.BulkCopy` | Similar high-throughput semantics |
-
-### Naming Convention Differences
-
-**PostgreSQL:**
-
-- Uses snake_case by default
-- Property `CustomerId` maps to column `customer_id`
-- Uses double quotes for identifier quoting: `"customer_id"`
-
-**SQL Server:**
-
-- Uses PascalCase by default
-- Property `CustomerId` maps to column `CustomerId`
-- Uses square brackets for identifier quoting: `[CustomerId]`
-
-This means SQL Server mappings are often simpler since no case conversion is needed.
-
-### Connection String Differences
-
-```csharp
-// PostgreSQL
-var postgresConnectionString = "Host=localhost;Database=npipeline;Username=postgres;Password=postgres;";
-
-// SQL Server - Windows Authentication
-var sqlServerConnectionString = "Server=localhost;Database=npipeline;Integrated Security=True;";
-
-// SQL Server - SQL Server Authentication
-var sqlServerConnectionString = "Server=localhost;Database=npipeline;User Id=sa;Password=yourPassword;";
-```
-
-### Example Migration
-
-**Before (PostgreSQL):**
-
-```csharp
-using NPipeline.Connectors.Postgres;
-using NPipeline.Connectors.Postgres.Mapping;
-
-[PostgresTable("customers")]
-public class Customer
-{
-    [PostgresColumn("customer_id", PrimaryKey = true)]
-    public int CustomerId { get; set; }
-    
-    [PostgresColumn("first_name")]
-    public string FirstName { get; set; }
-    
-    [PostgresColumn("last_name")]
-    public string LastName { get; set; }
-}
-
-var config = new PostgresConfiguration
-{
-    Schema = "public",
-    WriteStrategy = PostgresWriteStrategy.Batch
-};
-
-var source = new PostgresSourceNode<Customer>(
-    "Host=localhost;Database=npipeline;Username=postgres;Password=postgres;",
-    "SELECT * FROM customers",
-    configuration: config);
-```
-
-**After (SQL Server):**
-
-```csharp
-using NPipeline.Connectors.SqlServer;
-using NPipeline.Connectors.SqlServer.Mapping;
-using NPipeline.Connectors.Attributes;  // Common attributes
-
-[SqlServerTable("Customers", Schema = "Sales")]
-public class Customer
-{
-    [Column("CustomerId")]  // Use common attribute for basic mappings
-    public int CustomerId { get; set; }
-    
-    [Column("FirstName")]
-    public string FirstName { get; set; }
-    
-    [Column("LastName")]
-    public string LastName { get; set; }
-}
-
-var config = new SqlServerConfiguration
-{
-    Schema = "Sales",
-    WriteStrategy = SqlServerWriteStrategy.Batch
-};
-
-var source = new SqlServerSourceNode<Customer>(
-    "Server=localhost;Database=npipeline;Integrated Security=True;",
-    "SELECT * FROM Sales.Customers",
-    configuration: config);
-```
-
-## Troubleshooting
-
-### Common Issues
-
-#### Connection Timeouts
-
-**Symptom:** `SqlException: Timeout expired. The timeout period elapsed prior to completion of the operation or the server is not responding.`
-
-**Solutions:**
-
-1. Increase `ConnectionTimeout` in configuration
-2. Increase `CommandTimeout` for long-running queries
-3. Check network connectivity to SQL Server
-4. Verify SQL Server is running and accepting connections
-
-```csharp
-var config = new SqlServerConfiguration
-{
-    ConnectionTimeout = 30,  // Increase from default 15
-    CommandTimeout = 60       // Increase from default 30
-};
-```
-
-#### Memory Issues with Large Result Sets
-
-**Symptom:** Out of memory exceptions when reading large tables
-
-**Solutions:**
-
-1. Enable streaming: `StreamResults = true`
-2. Reduce fetch size: `FetchSize = 500`
-3. Process data in batches using checkpointing
-
-```csharp
-var config = new SqlServerConfiguration
-{
-    StreamResults = true,
-    FetchSize = 500,
-    CheckpointStrategy = CheckpointStrategy.InMemory
-};
-```
-
-#### Batch Insert Failures
-
-**Symptom:** Some rows fail to insert in batch mode, but succeed in per-row mode
-
-**Solutions:**
-
-1. Reduce batch size: `BatchSize = 100`
-2. Enable `ContinueOnError` to skip problematic rows
-3. Check for constraint violations or data type mismatches
-4. Review error logs for specific failure reasons
-
-```csharp
-var config = new SqlServerConfiguration
-{
-    BatchSize = 100,
-    ContinueOnError = true
-};
-```
-
-#### Mapping Errors
-
-**Symptom:** `SqlServerMappingException: Unable to map column 'ColumnName' to property 'PropertyName'`
-
-**Solutions:**
-
-1. Verify column names match (case-insensitive by default)
-2. Use `[Column]` attribute to specify correct column name
-3. Enable `CaseInsensitiveMapping = true`
-4. Check for ignored properties with `[IgnoreColumn]`
-
-```csharp
-public class Order
-{
-    [Column("OrderID")]  // Specify exact column name
-    public int OrderId { get; set; }
-}
-```
-
-#### Deadlocks
-
-**Symptom:** `SqlException: Transaction (Process ID) was deadlocked on lock resources with another process and has been chosen as the deadlock victim.`
-
-**Solutions:**
-
-1. Configure retry logic: `MaxRetryAttempts = 3`
-2. Reduce transaction scope (smaller batches)
-3. Review database indexes and query plans
-4. Consider using `READ COMMITTED SNAPSHOT` isolation level
-
-```csharp
-var config = new SqlServerConfiguration
-{
-    MaxRetryAttempts = 3,
-    RetryDelay = TimeSpan.FromSeconds(2)
-};
-```
-
-### Debugging Tips
-
-1. **Enable Logging**: Use `ILogger` to capture detailed error information
-2. **Test Queries First**: Run queries in SQL Server Management Studio to verify syntax
-3. **Check Connection String**: Verify all parameters are correct
-4. **Monitor SQL Server**: Use SQL Server Profiler or Extended Events to trace queries
-5. **Validate Schema**: Ensure table and column names exist in the database
+1. **Use DI** with `AddSqlServerConnector` for production — centralizes connection management
+2. **Enable streaming** (`StreamResults = true`) for large result sets
+3. **Use BulkCopy** for bulk loading — significantly faster than Batch
+4. **Enable upsert** for idempotent writes to avoid duplicate handling
+5. **Validate identifiers** — never disable `ValidateIdentifiers` in production
+6. **Use prepared statements** for repeated query patterns
+7. **Configure checkpointing** for long-running pipelines
+8. **Tune batch size** based on latency/throughput requirements
+9. **Set `ApplicationName`** for monitoring in SQL Server Activity Monitor
+
+## Next Steps
+
+- [PostgreSQL Connector](postgres.md) — similar patterns for PostgreSQL
+- [MySQL Connector](mysql.md) — similar patterns for MySQL/MariaDB
+- [Dependency Injection](../guides/dependency-injection.md) — full DI integration guide
