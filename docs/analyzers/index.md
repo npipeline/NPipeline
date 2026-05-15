@@ -1,180 +1,163 @@
 ---
-title: Build-Time Analyzers
-description: NPipeline's comprehensive build-time analyzers enforce the framework's fundamental design contract through automated performance and resilience hygiene checks.
-order: 9
+title: "Build-Time Analyzers"
+description: "Roslyn analyzers that catch pipeline bugs, performance issues, and configuration mistakes before your code runs."
+order: 100
 ---
 
 # Build-Time Analyzers
 
-## Build-Time Guardrails: Automated Enforcement of Best Practices
+NPipeline ships with Roslyn analyzers that catch bugs **at build time** — before your pipeline ever runs. Misconfigured retry policies, blocking calls in async nodes, LINQ in hot paths, sinks that silently drop data — the analyzers flag all of these as compiler warnings or errors with automatic code fixes.
 
-The **NPipeline.Analyzers** package provides a comprehensive suite of build-time Roslyn analyzers that act as **automated guardrails for code quality**. Rather than treating them as just another error reference, these analyzers are the **framework's proactive enforcement mechanism** for ensuring your pipeline implementations follow the design principles that make NPipeline fast, safe, and reliable.
-
-### What Are Build-Time Analyzers?
-
-Build-time analyzers are diagnostic tools that scan your code at compile time—before it ever runs—to detect violations of the framework's fundamental design contract. They catch issues that would otherwise surface as runtime failures, silent data loss, performance bottlenecks, or maintenance headaches.
-
-Think of them as **automated code review** by experts who understand how high-performance streaming systems should work.
-
-## The NP9000 Series: Performance and Resilience Hygiene Toolkit
-
-The NP9000 series (NP9XXX) diagnostics represent a curated set of enforcement rules that protect you from most common—and most dangerous—mistakes when building streaming data streamlines:
-
-| Code Range | Category | Purpose |
-|-----------|----------|---------|
-| **NP90XX** | **Configuration & Setup** | Enforces proper pipeline configuration for resilience, parallelism, batching, and timeouts |
-| **NP91XX** | **Performance & Optimization** | Catches blocking operations, non-streaming patterns, and async/await anti-patterns |
-| **NP92XX** | **Reliability & Error Handling** | Ensures proper error handling, cancellation propagation, and exception management |
-| **NP93XX** | **Data Integrity & Correctness** | Detects unsafe access patterns and ensures proper data consumption |
-| **NP94XX** | **Design & Architecture** | Validates dependency injection, node design, and framework contract compliance |
-
-### Why This Matters
-
-Without these analyzers, developers could:
-
-- ✗ Configure error handlers to restart nodes without the required prerequisites, causing silent failures
-- ✗ Block on async code, causing deadlocks and thread pool starvation
-- ✗ Build non-streaming SourceNodes that allocate gigabytes of memory for large datasets
-- ✗ Inject dependencies unsafely, creating tightly coupled code that's hard to test
-- ✗ Forget to consume input in SinkNodes, silently dropping data
-- ✗ Access PipelineContext unsafely, causing null reference exceptions at runtime
-
-**With these analyzers**, all of these issues are caught at build time, not at 3 AM in production.
-
-## The Problem These Analyzers Solve
-
-### Problematic Code: Silent Failures at Runtime
-
-```csharp
-// Looks correct but will fail silently at runtime
-public class MyResiliencePolicy : ResiliencePolicyBase
-{
-    public override Task<ResilienceDecision> DecidePipelineFailureAsync(
-        string nodeId,
-        Exception exception,
-        PipelineContext context,
-        CancellationToken cancellationToken)
-    {
-        return Task.FromResult(exception switch
-        {
-            TimeoutException => ResilienceDecision.RestartNode,  // Intent is clear
-            _ => ResilienceDecision.Fail
-        });
-    }
-}
-
-// But at runtime, restart silently fails because prerequisites are missing!
-// The entire pipeline crashes instead of gracefully restarting the node.
-```
-
-### Solution: Build-Time Enforcement
-
-```text
-CSC : warning NP9001: Resilience policy can return ResilienceDecision.RestartNode
-but the node may not have all three mandatory prerequisites configured...
-```
-
-You fix it during development, not during a production incident.
-
-## Analyzer Categories
-
-The analyzers are organized into focused sections based on what they protect:
-
-- **[Resilience Analyzers](./resilience.md)** - Detect incomplete resilience configuration that could lead to silent failures
-- **[Reliability Analyzers](./reliability.md)** - Identify inefficient exception handling patterns and unsafe access patterns
-- **[Performance Analyzers](./performance.md)** - Identify blocking operations, non-streaming patterns, and async/await anti-patterns
-- **[Best Practice Analyzers](./best-practices.md)** - Flag dependency injection anti-patterns, unsafe context access, and framework contract violations
-- **[Data Processing Analyzers](./data-processing.md)** - Ensure proper input consumption and streaming patterns in pipeline nodes
-- **[Configuration Analyzers](./configuration.md)** - Detect configuration issues that can cause performance problems, resource leaks, or silent failures
-- **[Code Fix Providers](./code-fixes.md)** - Automated code fixes for common analyzer issues
+This is a key differentiator: most data pipeline libraries only fail at runtime. NPipeline catches entire categories of mistakes during `dotnet build`.
 
 ## Installation
 
-The analyzer is included with the main NPipeline package:
+The analyzers are included automatically when you reference `NPipeline`. Connector-specific analyzers ship with their respective packages.
 
-```bash
-dotnet add package NPipeline
+## NP90xx — Configuration and Setup
+
+| Rule | Severity | Title | Fix |
+|------|----------|-------|-----|
+| NP9001 | Warning | Resilient execution requires complete configuration | Ensure `MaxRetries`, `ErrorAction`, and `MaxMaterializedItems` are all configured when using `RestartNode`. |
+| NP9002 | **Error** | Unbounded materialization configuration | Set `MaxMaterializedItems` on `PipelineRetryOptions` to prevent out-of-memory crashes. |
+| NP9003 | Warning | Inappropriate parallelism configuration | Reduce `DegreeOfParallelism` or disable `PreserveOrdering` when parallelism is high. |
+| NP9004 | Warning | Batching configuration mismatch | Verify `BatchSize` and `BatchTimeout` are consistent with the node's expected throughput. |
+| NP9005 | Warning | Inappropriate timeout configuration | Fix negative, zero, or excessively low timeout values. |
+
+## NP91xx — Performance and Optimization
+
+| Rule | Severity | Title | Fix |
+|------|----------|-------|-----|
+| NP9101 | Warning | Blocking calls in async methods | Replace `.Result`, `.Wait()`, `GetAwaiter().GetResult()`, `Thread.Sleep()` with async equivalents. |
+| NP9102 | Warning | Synchronous over async anti-patterns | Avoid wrapping synchronous code in `Task.Run()` inside nodes. Use `ValueTask` fast paths instead. |
+| NP9103 | Warning | LINQ in hot paths | Replace LINQ (`Where`, `Select`, `ToList`) in `TransformAsync` with `foreach` loops to avoid allocations. |
+| NP9104 | Warning | Inefficient string operations | Replace string concatenation with `+` in loops with `StringBuilder`. |
+| NP9105 | Warning | Anonymous object allocation in hot path | Replace anonymous objects in `TransformAsync` with records or structs. |
+| NP9106 | Info | Missing ValueTask fast path | Override `ExecuteValueTaskAsync` when `TransformAsync` uses `Task.FromResult`. See [Synchronous Fast Paths](../performance/synchronous-fast-paths.md). |
+| NP9107 | Warning | Non-streaming source node | Use `DataStream.FromAsyncEnumerable` instead of materializing all items in `OpenStream`. |
+| NP9108 | Info | Missing parameterless constructor | Add a parameterless constructor for faster node activation. |
+
+## NP92xx — Reliability and Error Handling
+
+| Rule | Severity | Title | Fix |
+|------|----------|-------|-----|
+| NP9201 | Warning | Swallowing OperationCanceledException | Don't catch and suppress `OperationCanceledException`; let it propagate for proper cancellation handling. |
+| NP9202 | Warning | Inefficient exception handling | Avoid `catch (Exception)` with rethrow in tight loops. Use specific exception types. |
+| NP9203 | Warning | Ignoring CancellationToken | Pass `CancellationToken` to async methods that accept it. |
+
+## NP93xx — Data Integrity and Correctness
+
+| Rule | Severity | Title | Fix |
+|------|----------|-------|-----|
+| NP9301 | **Error** | SinkNode not consuming input | The `ConsumeAsync` method must use its `input` parameter. A sink that ignores its input is always a bug. |
+| NP9302 | Warning | Unsafe PipelineContext access | Avoid concurrent writes to `PipelineContext.Items` from parallel nodes. Use thread-safe patterns. |
+
+## NP94xx — Design and Architecture
+
+| Rule | Severity | Title | Fix |
+|------|----------|-------|-----|
+| NP9401 | Info | Consider IStreamTransformNode | For transforms that operate on entire streams rather than individual items, implement `IStreamTransformNode<TIn, TOut>`. |
+| NP9402 | Warning | Wrong execution strategy for IStreamTransformNode | `IStreamTransformNode` requires `IStreamExecutionStrategy`. Don't combine with per-item strategies. |
+| NP9403 | Warning | Missing public parameterless constructor | Node types resolved by the framework need a public parameterless constructor or DI registration. |
+| NP9404 | Warning | Dependency injection anti-pattern | Avoid service locator patterns; use constructor injection instead. |
+
+## NP95xx — Connector-Specific
+
+| Rule | Severity | Package | Title | Fix |
+|------|----------|---------|-------|-----|
+| NP9501 | Warning | Postgres | Missing ORDER BY with checkpointing | PostgreSQL sources using checkpointing must include an `ORDER BY` clause for deterministic replay. |
+| NP9502 | Warning | SQL Server | Missing ORDER BY with checkpointing | SQL Server sources using checkpointing must include an `ORDER BY` clause for deterministic replay. |
+
+## Automatic Code Fixes
+
+Most analyzer rules include automatic code fix providers. Apply fixes individually via the lightbulb menu, or use **Fix All** to batch-apply across a project.
+
+### Key Code Fix Examples
+
+**NP9002 — Add `MaxMaterializedItems`:**
+
+```csharp
+// Before
+new PipelineRetryOptions { MaxRetries = 3, ErrorAction = ErrorAction.RestartNode }
+
+// After (code fix applied)
+new PipelineRetryOptions { MaxRetries = 3, ErrorAction = ErrorAction.RestartNode, MaxMaterializedItems = 10000 }
 ```
 
-Or install it separately:
+**NP9101 — Replace blocking call with await:**
 
-```bash
-dotnet add package NPipeline.Analyzers
+```csharp
+// Before
+var data = httpClient.GetAsync(url).Result;
+
+// After
+var data = await httpClient.GetAsync(url);
 ```
 
-For all available NPipeline packages and installation options, see the [Installation Guide](../getting-started/installation.md).
+**NP9107 — Use streaming source:**
 
-## Quick Reference: All Analyzer Codes
+```csharp
+// Before
+public override DataStream<Record> OpenStream(PipelineContext ctx, CancellationToken ct)
+    => DataStream.FromEnumerable(db.GetAll().ToList());
 
-| Code | Category | Problem | Fix |
-|------|----------|---------|-----|
-| **NP9001** | Configuration & Setup | Incomplete resilience configuration | Add missing prerequisites |
-| **NP9002** | Configuration & Setup | Unbounded materialization configuration | Set MaxMaterializedItems value |
-| **NP9003** | Configuration & Setup | Inappropriate parallelism configuration | Match parallelism to workload |
-| **NP9004** | Configuration & Setup | Batching configuration mismatch | Align batch size and timeout |
-| **NP9005** | Configuration & Setup | Timeout configuration issues | Set appropriate timeouts |
-| **NP9101** | Performance & Optimization | Blocking operations in async methods | Use await instead of .Result/.Wait() |
-| **NP9102** | Performance & Optimization | Synchronous over async (fire-and-forget) | Await the async call |
-| **NP9103** | Performance & Optimization | LINQ operations in hot paths | Use imperative alternatives |
-| **NP9104** | Performance & Optimization | Inefficient string operations | Use StringBuilder, interpolation, or spans |
-| **NP9105** | Performance & Optimization | Anonymous object allocation in hot paths | Use named types or value types |
-| **NP9106** | Performance & Optimization | Missing ValueTask optimization | Use ValueTask for sync-heavy paths |
-| **NP9107** | Performance & Optimization | Non-streaming patterns in SourceNode | Use IAsyncEnumerable with yield |
-| **NP9108** | Performance & Optimization | Parameterless constructor performance suggestion | Add parameterless constructor |
-| **NP9201** | Reliability & Error Handling | Swallowed OperationCanceledException | Re-throw or handle explicitly |
-| **NP9202** | Reliability & Error Handling | Inefficient exception handling patterns | Use specific exception handling |
-| **NP9203** | Reliability & Error Handling | Disrespecting cancellation token | Check token and propagate |
-| **NP9301** | Data Integrity & Correctness | SinkNode input not consumed | Iterate through input pipe |
-| **NP9302** | Data Integrity & Correctness | Unsafe PipelineContext access | Use null-safe patterns |
-| **NP9401** | Design & Architecture | ITransformNode returning IAsyncEnumerable | Use IStreamTransformNode instead |
-| **NP9402** | Design & Architecture | IStreamTransformNode with non-stream strategy | Use IStreamExecutionStrategy |
-| **NP9403** | Design & Architecture | Missing parameterless constructor | Add parameterless constructor |
-| **NP9404** | Design & Architecture | Direct dependency instantiation | Use constructor injection |
+// After
+public override DataStream<Record> OpenStream(PipelineContext ctx, CancellationToken ct)
+    => DataStream.FromAsyncEnumerable(db.GetAllAsync(ct));
+```
 
-## Philosophy
+**NP9301 — Consume sink input:**
 
-These analyzers embody a core principle: **Getting it right before you compile is infinitely better than fixing it after it breaks in production.**
+```csharp
+// Before
+public override async Task ConsumeAsync(DataStream<Order> input, PipelineContext ctx, CancellationToken ct)
+{
+    await db.SaveAsync(ct); // input never consumed — silent data loss!
+}
 
-They enforce the framework's fundamental design contract:
+// After
+public override async Task ConsumeAsync(DataStream<Order> input, PipelineContext ctx, CancellationToken ct)
+{
+    await foreach (var item in input.WithCancellation(ct))
+        await db.InsertAsync(item, ct);
+}
+```
 
-- **Resilience**: Error handling must be configured completely or not at all
-- **Performance**: Streaming operations must never block or materialize unnecessarily
-- **Safety**: Dependencies must be explicit and context access must be protected
-- **Correctness**: Data flow must be complete and cancellation must be respected
+**NP9404 — Replace service locator with constructor injection:**
 
-## Best Practices
+```csharp
+// Before
+public override Task<Out> TransformAsync(In item, PipelineContext ctx, CancellationToken ct)
+{
+    var service = ctx.Properties["ServiceProvider"] as IServiceProvider;
+    var dep = service.GetRequiredService<IMyService>();
+    ...
+}
 
-1. **Never suppress warnings without understanding why** - The analyzer is protecting you from real problems
-2. **Treat warnings as errors** - Consider configuring `.editorconfig` to make violations errors instead of warnings
-3. **Use the analyzers as a learning tool** - Each warning teaches you something about building safe, fast pipelines
-4. **Apply fixes during development** - It's always cheaper to fix issues at compile time
+// After
+private readonly IMyService _dep;
+public MyNode(IMyService dep) => _dep = dep;
+```
 
-## Configuration
+## Suppressing Rules
 
-You can adjust analyzer severity in your `.editorconfig`:
+Suppress individual diagnostics when needed:
+
+```csharp
+#pragma warning disable NP9103 // LINQ is acceptable here — called once, not per-item
+var lookup = items.ToDictionary(x => x.Id);
+#pragma warning restore NP9103
+```
+
+Or in `.editorconfig`:
 
 ```ini
-# Treat all analyzer warnings as errors
-dotnet_diagnostic.NP9001.severity = error
-dotnet_diagnostic.NP9002.severity = error
-dotnet_diagnostic.NP9101.severity = error
-dotnet_diagnostic.NP9102.severity = error
-dotnet_diagnostic.NP9103.severity = error
-dotnet_diagnostic.NP9107.severity = error
-dotnet_diagnostic.NP9201.severity = error
-dotnet_diagnostic.NP9202.severity = error
-dotnet_diagnostic.NP9301.severity = error
-dotnet_diagnostic.NP9302.severity = error
-dotnet_diagnostic.NP9401.severity = error
-dotnet_diagnostic.NP9404.severity = error
+[*.cs]
+dotnet_diagnostic.NP9106.severity = none  # disable ValueTask suggestion
 ```
 
-## See Also
+## Next Steps
 
-- [Resilience Analyzers](./resilience.md) - Build resilient error handling
-- [Reliability Analyzers](./reliability.md) - Improve exception handling and access patterns
-- [Performance Analyzers](./performance.md) - Write fast, non-blocking code
-- [Best Practice Analyzers](./best-practices.md) - Follow framework design principles
-- [Data Processing Analyzers](./data-processing.md) - Ensure data flows correctly
-- [Configuration Analyzers](./configuration.md) - Optimize pipeline configuration for performance and reliability
-- [Code Fix Providers](./code-fixes.md) - Automated code fixes for common analyzer issues
+- [Error Codes](../reference/error-codes.md) — runtime error code catalog
+- [Performance Best Practices](../performance/best-practices.md) — optimization guidance
+- [Coding Conventions](../contributing/coding-conventions.md) — project coding standards
