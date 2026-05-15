@@ -128,5 +128,5 @@ dotnet run
 
 ## Next Steps
 
-- [Your First Pipeline](getting-started/your-first-pipeline.md) — step-by-step tutorial
-- [Key Concepts](getting-started/key-concepts.md) — understand the core model
+- [Your First Pipeline](../getting-started/your-first-pipeline.md) — step-by-step tutorial
+- [Key Concepts](../getting-started/key-concepts.md) — understand the core model

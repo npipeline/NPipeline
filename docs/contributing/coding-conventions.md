@@ -155,6 +155,6 @@ public sealed class MyNodeTests
 
 ## Next Steps
 
-- [Adding a Node Type](../advanced-topics/adding-a-node-type.md) — apply these conventions in practice
-- [Adding a Connector](../advanced-topics/adding-a-connector.md) — packaging conventions
+- [Adding a Node Type](./adding-a-node-type.md) — apply these conventions in practice
+- [Adding a Connector](./adding-a-connector.md) — packaging conventions
 - [Contributor Guide](index.md) — build commands and PR process

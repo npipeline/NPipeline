@@ -179,6 +179,6 @@ if (cancellationToken.IsCancellationRequested)
 
 ## Next Steps
 
-- [Adding a Node Type](adding-a-node-type.md) — implement nodes that properly handle cancellation
+- [Adding a Node Type](../contributing/adding-a-node-type.md) — implement nodes that properly handle cancellation
 - [Execution Model](execution-model.md) — how the orchestrator coordinates cancellation
 - [Coding Conventions](../contributing/coding-conventions.md) — analyzer rules that enforce cancellation patterns

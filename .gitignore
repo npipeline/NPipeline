@@ -53,6 +53,9 @@ CodeCoverage/
 TestResult.xml
 xunit-*.xml
 
+# VS Code
+*.lscache
+
 # Jetbrains Rider
 .idea/
 .idea/**

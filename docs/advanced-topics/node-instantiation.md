@@ -112,5 +112,5 @@ All nodes implement `INode : IAsyncDisposable`. The base classes (`SourceNode<T>
 ## Next Steps
 
 - [Cancellation](cancellation.md) — how cancellation tokens reach instantiated nodes
-- [Adding a Node Type](adding-a-node-type.md) — step-by-step guide to adding a new node kind
+- [Adding a Node Type](../contributing/adding-a-node-type.md) — step-by-step guide to adding a new node kind
 - [Data Flow Internals](data-flow-internals.md) — streams that nodes produce and consume
