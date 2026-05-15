@@ -1,7 +1,7 @@
 ---
 title: Observability
 description: Monitor pipelines with metrics, distributed tracing, and data lineage tracking.
-order: 1
+order: 7
 ---
 
 # Observability

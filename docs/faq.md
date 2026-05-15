@@ -1,7 +1,7 @@
 ---
-title: "FAQ"
+title: "Frequently Asked Questions"
 description: "Frequently asked questions about NPipeline design, deployment, and usage."
-order: 15
+order: 102
 ---
 
 # Frequently Asked Questions

@@ -1,7 +1,7 @@
 ---
 title: "Storage Providers"
 description: "Abstract file storage so connectors work with local files, S3, Azure Blob, GCS, and SFTP."
-order: 1
+order: 5
 ---
 
 # Storage Providers

@@ -1,7 +1,7 @@
 ---
 title: "Connectors"
 description: "Choose the right connector for your data source or destination."
-order: 1
+order: 4
 ---
 
 # Connectors

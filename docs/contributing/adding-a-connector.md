@@ -1,7 +1,7 @@
 ---
 title: "Adding a Connector"
 description: "How to create, package, and test a new NPipeline connector."
-order: 9
+order: 3
 ---
 
 # Adding a Connector
@@ -201,5 +201,5 @@ Use `TestData/` for sample files and `FakeItEasy` for mocking external dependenc
 ## Next Steps
 
 - [Adding a Node Type](adding-a-node-type.md) — node implementation fundamentals
-- [Coding Conventions](../contributing/coding-conventions.md) — style and analyzer rules to follow
-- [Contributor Guide](../contributing/index.md) — build commands and PR process
+- [Coding Conventions](coding-conventions.md) — style and analyzer rules to follow
+- [Contributor Guide](index.md) — build commands and PR process

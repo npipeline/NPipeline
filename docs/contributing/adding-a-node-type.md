@@ -1,7 +1,7 @@
 ---
 title: "Adding a Node Type"
 description: "Step-by-step guide to implementing, registering, and testing a new node."
-order: 8
+order: 2
 ---
 
 # Adding a Node Type
@@ -174,5 +174,5 @@ Use `AwesomeAssertions` (`.Should()`) for assertions and `FakeItEasy` (`A.Fake<T
 ## Next Steps
 
 - [Adding a Connector](adding-a-connector.md) — package a node pair as a connector
-- [Cancellation](cancellation.md) — cancellation token rules
-- [Coding Conventions](../contributing/coding-conventions.md) — style and analyzer compliance
+- [Cancellation](../advanced-topics/cancellation.md) — cancellation token rules
+- [Coding Conventions](coding-conventions.md) — style and analyzer compliance

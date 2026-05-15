@@ -1,7 +1,7 @@
 ---
 title: "Contributing"
 description: "How to set up the NPipeline development environment, build, test, and submit changes."
-order: 1
+order: 13
 ---
 
 # Contributing

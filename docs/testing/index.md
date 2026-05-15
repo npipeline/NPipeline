@@ -1,7 +1,7 @@
 ---
 title: Testing
 description: Test pipelines and individual nodes with in-memory harnesses and assertion helpers.
-order: 1
+order: 9
 ---
 
 # Testing

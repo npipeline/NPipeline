@@ -1,7 +1,7 @@
 ---
 title: "Build-Time Analyzers"
 description: "Roslyn analyzers that catch pipeline bugs, performance issues, and configuration mistakes before your code runs."
-order: 1
+order: 100
 ---
 
 # Build-Time Analyzers

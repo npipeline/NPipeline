@@ -1,7 +1,7 @@
 ---
 title: "Utility Nodes"
 description: "Pre-built nodes for common data operations: cleansing, validation, filtering, conversion, and enrichment."
-order: 2
+order: 10
 ---
 
 # Utility Nodes

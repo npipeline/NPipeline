@@ -1,7 +1,7 @@
 ---
 title: "Extensions"
 description: "All NPipeline packages at a glance — extensions, connectors, storage providers, and tools."
-order: 1
+order: 6
 ---
 
 # Extensions

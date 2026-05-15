@@ -1,7 +1,7 @@
 ---
 title: Guides
 description: Practical how-to guides for building and configuring NPipeline data pipelines.
-order: 3
+order: 2
 ---
 
 # Guides

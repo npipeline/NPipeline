@@ -1,7 +1,7 @@
 ---
 title: Performance
 description: Optimization techniques for high-throughput NPipeline data pipelines.
-order: 1
+order: 8
 ---
 
 # Performance

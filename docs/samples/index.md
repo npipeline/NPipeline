@@ -1,7 +1,7 @@
 ---
 title: "Samples"
 description: "Categorized index of all sample projects with descriptions and complexity ratings."
-order: 1
+order: 101
 ---
 
 # Samples

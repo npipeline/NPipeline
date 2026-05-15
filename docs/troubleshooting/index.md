@@ -1,7 +1,7 @@
 ---
 title: Troubleshooting
 description: Diagnose and fix common NPipeline issues with symptom-based guides.
-order: 1
+order: 12
 ---
 
 # Troubleshooting

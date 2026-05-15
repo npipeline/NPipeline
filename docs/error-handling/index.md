@@ -1,7 +1,7 @@
 ---
 title: Error Handling
 description: Configure resilience policies, retries, circuit breakers, and dead letter queues.
-order: 1
+order: 3
 ---
 
 # Error Handling
