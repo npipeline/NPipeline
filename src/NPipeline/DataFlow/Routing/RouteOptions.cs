@@ -48,6 +48,11 @@ public static class RouteOutputNames
 /// </summary>
 public sealed class RouteRule<T>
 {
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="RouteRule{T}" /> class.
+    /// </summary>
+    /// <param name="outputName">The name of the output route for items matching this rule.</param>
+    /// <param name="predicate">The condition to evaluate for each item.</param>
     public RouteRule(string outputName, Func<T, bool> predicate)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(outputName);
@@ -57,8 +62,14 @@ public sealed class RouteRule<T>
         Predicate = predicate;
     }
 
+    /// <summary>
+    ///     Gets the name of the output route for items matching this rule.
+    /// </summary>
     public string OutputName { get; }
 
+    /// <summary>
+    ///     Gets the condition to evaluate for each item.
+    /// </summary>
     public Func<T, bool> Predicate { get; }
 }
 
