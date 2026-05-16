@@ -30,6 +30,8 @@ public void Define(PipelineBuilder builder, PipelineContext context)
 
 Each downstream node receives its own independent copy of the [stream](../reference/glossary.md#stream). Items flow to all branches concurrently.
 
+> 🔀 **Need conditional fan-out?** Use [Routing with RouteNode](routing-with-route-node.md) when items should be sent to specific named outputs based on predicates.
+
 ## Tap Nodes
 
 A tap sends each [item](../reference/glossary.md#item) to a side-channel sink without affecting the main flow. The item passes through unchanged:
@@ -140,6 +142,7 @@ builder.Connect(nasdaq, merge);
 
 ## Next Steps
 
+- [Routing with RouteNode](routing-with-route-node.md) — conditional fan-out with named route outputs
 - [Joins and Lookups](joins-and-lookups.md) — combine data from different stream types
 - [Batching and Windowing](batching-and-windowing.md) — group items by count or time
 - [Pipeline Composition](pipeline-composition.md) — embed sub-pipelines as reusable units

@@ -98,6 +98,15 @@ public static class ExecutionAnnotationKeys
     }
 
     /// <summary>
+    ///     Node-scoped annotation key for route options (value: RouteOptions&lt;T&gt;),
+    ///     stored as "route::{nodeId}".
+    /// </summary>
+    public static string RouteOptionsForNode(string nodeId)
+    {
+        return $"route::{nodeId}";
+    }
+
+    /// <summary>
     ///     Node-scoped annotation key for join/merge interleave capacity (value: int),
     ///     stored as "merge.capacity::{nodeId}".
     /// </summary>

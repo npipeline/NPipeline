@@ -29,6 +29,7 @@ All samples are in the [`samples/`](https://github.com/user/npipeline/tree/main/
 | `Sample_BatchingNode` | Grouping items into fixed-size batches | Intermediate |
 | `Sample_UnbatchingNode` | Expanding batches into individual items | Intermediate |
 | `Sample_BranchNode` | Fan-out to multiple downstream paths | Intermediate |
+| `Sample_RouteNode` | Conditional fan-out with named route outputs | Intermediate |
 | `Sample_TapNode` | Side-effect observation without modifying data | Beginner |
 | `Sample_LookupNode` | Enrichment via in-memory lookup table | Intermediate |
 | `Sample_KeyedJoinNode` | Inner join of two streams by key | Intermediate |

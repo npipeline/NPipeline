@@ -295,6 +295,65 @@ public sealed class PipelineBuilderExtensionsTests
 
     #endregion
 
+    #region AddRoute Tests
+
+    [Fact]
+    public void AddRoute_ReturnsTransformNodeHandle()
+    {
+        // Arrange
+        PipelineBuilder builder = new();
+
+        // Act
+        var handle = builder.AddRoute<int>();
+
+        // Assert
+        _ = handle.Should().NotBeNull();
+        _ = handle.Should().BeOfType<TransformNodeHandle<int, int>>();
+        _ = handle.Id.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void AddRoute_WithProvidedName_UsesProvidedName()
+    {
+        // Arrange
+        PipelineBuilder builder = new();
+
+        // Act
+        var handle = builder.AddRoute<int>("DecisionPoint");
+
+        // Assert
+        _ = handle.Id.Should().Be("decisionpoint");
+    }
+
+    [Fact]
+    public void AddRoute_WithoutName_UsesDefaultRouteName()
+    {
+        // Arrange
+        PipelineBuilder builder = new();
+
+        // Act
+        var handle = builder.AddRoute<int>();
+
+        // Assert
+        _ = handle.Id.Should().Be("route");
+    }
+
+    [Fact]
+    public void AddRoute_WithConfiguration_CreatesHandle()
+    {
+        // Arrange
+        PipelineBuilder builder = new();
+
+        // Act
+        var handle = builder.AddRoute<int>(opts => opts.When("positive", x => x > 0));
+
+        // Assert
+        _ = handle.Should().NotBeNull();
+        _ = handle.Id.Should().NotBeNullOrEmpty();
+    }
+
+    #endregion
+
     #region AddBatcher Tests
 
     [Fact]

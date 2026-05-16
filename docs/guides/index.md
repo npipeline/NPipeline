@@ -22,6 +22,7 @@ These guides cover every major feature of NPipeline with practical code examples
 ## Data Flow Patterns
 
 - [Branching and Merging](branching-and-merging.md) — fan-out, taps, and fan-in
+- [Routing with RouteNode](routing-with-route-node.md) — conditional fan-out with named route outputs
 - [Batching and Windowing](batching-and-windowing.md) — group items by size, time, or intent
 - [Joins and Lookups](joins-and-lookups.md) — keyed joins, time-windowed joins, and lookup enrichment
 - [Aggregation](aggregation.md) — reduce streams with aggregate and advanced aggregate nodes

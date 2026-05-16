@@ -1,6 +1,7 @@
 using NPipeline.Attributes.Lineage;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
+using NPipeline.DataFlow.Routing;
 using NPipeline.Execution.Plans;
 using NPipeline.Graph;
 using NPipeline.Lineage;
@@ -44,6 +45,8 @@ public sealed class NodeExecutor(
             NodeKind.Tap when plan.ExecuteTransform is not null =>
                 ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
             NodeKind.Branch when plan.ExecuteTransform is not null =>
+                ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
+            NodeKind.Route when plan.ExecuteTransform is not null =>
                 ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
             NodeKind.Lookup when plan.ExecuteTransform is not null =>
                 ExecuteTransformPlanAsync(plan, graph, context, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, nodeDef, instance),
@@ -293,7 +296,12 @@ public sealed class NodeExecutor(
         var inputPipes = inputEdges.Select(edge =>
         {
             if (nodeOutputs.TryGetValue(edge.SourceNodeId, out var inputData) && inputData is not null)
+            {
+                if (inputData is IEdgeRoutedDataStream edgeRouted)
+                    return edgeRouted.GetEdgeView(edge);
+
                 return inputData;
+            }
 
             throw new InvalidOperationException(ErrorMessages.OutputNotFoundForSourceNode(edge.SourceNodeId) + $" when processing node '{nodeId}'.");
         }).ToList();

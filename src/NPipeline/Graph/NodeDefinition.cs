@@ -25,6 +25,9 @@ public enum NodeKind
     /// <summary>A branch node that fans out data to multiple downstream pathways.</summary>
     Branch,
 
+    /// <summary>A route node that conditionally directs data to named downstream outputs.</summary>
+    Route,
+
     /// <summary>A lookup node that enriches data using an in-memory dictionary.</summary>
     Lookup,
 

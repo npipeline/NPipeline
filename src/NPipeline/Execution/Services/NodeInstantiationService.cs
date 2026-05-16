@@ -120,6 +120,20 @@ public sealed class NodeInstantiationService : INodeInstantiationService
                     def.OutputType,
                     ExecuteTransform: BuildTransformDelegate(def, branchNode)),
 
+                NodeKind.Route when instance is ITransformNode routeNode => new NodeExecutionPlan(
+                    def.Id,
+                    def.Kind,
+                    def.InputType,
+                    def.OutputType,
+                    ExecuteTransform: BuildTransformDelegate(def, routeNode)),
+
+                NodeKind.Route when instance is IStreamTransformNode routeStreamNode => new NodeExecutionPlan(
+                    def.Id,
+                    def.Kind,
+                    def.InputType,
+                    def.OutputType,
+                    ExecuteTransform: BuildStreamTransformDelegate(def, routeStreamNode)),
+
                 NodeKind.Lookup when instance is ITransformNode lookupNode => new NodeExecutionPlan(
                     def.Id,
                     def.Kind,
