@@ -1,5 +1,9 @@
+using System.Collections.Immutable;
+using System.Reflection;
 using NPipeline.Configuration;
+using NPipeline.DataFlow.Routing;
 using NPipeline.ErrorHandling;
+using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
 using NPipeline.Lineage;
 using NPipeline.Pipeline;
@@ -12,6 +16,10 @@ namespace NPipeline.Execution.Services;
 /// </summary>
 public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
 {
+    private static readonly MethodInfo AdaptLineageRouteOptionsMethod = typeof(RuntimePipelineBinder)
+        .GetMethod(nameof(AdaptLineageRouteOptionsGeneric), BindingFlags.NonPublic | BindingFlags.Static)
+        ?? throw new InvalidOperationException($"Method '{nameof(AdaptLineageRouteOptionsGeneric)}' not found.");
+
     /// <summary>
     ///     Shared singleton instance for the stateless runtime binder.
     /// </summary>
@@ -25,6 +33,7 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
 
         var overriddenGraph = ApplyRuntimeItemLevelLineageOverride(graph, context);
         overriddenGraph = ApplyRuntimeLineageOptionsOverride(overriddenGraph, context);
+        overriddenGraph = NormalizeRuntimeExecutionAnnotations(overriddenGraph);
 
         var deadLetterSink = ResolveDeadLetterSink(overriddenGraph, context.ErrorHandlerFactory);
         deadLetterSink = ApplyDeadLetterSinkDecorator(context, deadLetterSink);
@@ -111,6 +120,145 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
             },
         };
     }
+
+    private static PipelineGraph NormalizeRuntimeExecutionAnnotations(PipelineGraph graph)
+    {
+        var normalizedAnnotations =
+            (graph.ExecutionOptions.NodeExecutionAnnotations ?? ImmutableDictionary<string, object>.Empty).ToBuilder();
+
+        foreach (var nodeDef in graph.Nodes)
+        {
+            var contract = BuildRuntimeStreamContract(nodeDef, graph.Lineage.ItemLevelLineageEnabled);
+            normalizedAnnotations[ExecutionAnnotationKeys.RuntimeStreamContractForNode(nodeDef.Id)] = contract;
+
+            if (nodeDef.Kind != NodeKind.Route)
+                continue;
+
+            var routeKey = ExecutionAnnotationKeys.RouteOptionsForNode(nodeDef.Id);
+
+            if (!normalizedAnnotations.TryGetValue(routeKey, out var routeOptions) || routeOptions is null)
+                continue;
+
+            normalizedAnnotations[routeKey] = NormalizeRouteOptions(nodeDef, contract, routeOptions);
+        }
+
+        return graph with
+        {
+            ExecutionOptions = graph.ExecutionOptions with
+            {
+                NodeExecutionAnnotations = normalizedAnnotations.ToImmutable(),
+            },
+        };
+    }
+
+    private static RuntimeNodeStreamContract BuildRuntimeStreamContract(NodeDefinition nodeDef, bool lineageEnabled)
+    {
+        var effectiveInputItemType = ResolveEffectiveInputItemType(nodeDef, lineageEnabled);
+        var effectiveOutputItemType = ResolveEffectiveOutputItemType(nodeDef, lineageEnabled);
+
+        return new RuntimeNodeStreamContract(effectiveInputItemType, effectiveOutputItemType, lineageEnabled);
+    }
+
+    private static Type? ResolveEffectiveInputItemType(NodeDefinition nodeDef, bool lineageEnabled)
+    {
+        return nodeDef.Kind switch
+        {
+            NodeKind.Source or NodeKind.CompositeInput => null,
+            NodeKind.Join => typeof(object),
+            _ => WrapWithLineageIfEnabled(nodeDef.InputType, lineageEnabled),
+        };
+    }
+
+    private static Type? ResolveEffectiveOutputItemType(NodeDefinition nodeDef, bool lineageEnabled)
+    {
+        return nodeDef.Kind switch
+        {
+            NodeKind.Sink or NodeKind.CompositeOutput => null,
+            _ => WrapWithLineageIfEnabled(nodeDef.OutputType, lineageEnabled),
+        };
+    }
+
+    private static Type? WrapWithLineageIfEnabled(Type? payloadType, bool lineageEnabled)
+    {
+        if (payloadType is null)
+            return null;
+
+        return lineageEnabled
+            ? typeof(LineagePacket<>).MakeGenericType(payloadType)
+            : payloadType;
+    }
+
+    private static object NormalizeRouteOptions(NodeDefinition nodeDef, RuntimeNodeStreamContract contract, object routeOptions)
+    {
+        var expectedItemType = contract.EffectiveOutputItemType
+            ?? throw new InvalidOperationException($"Route node '{nodeDef.Id}' has no effective runtime output item type.");
+
+        var expectedRouteOptionsType = typeof(RouteOptions<>).MakeGenericType(expectedItemType);
+        var actualRouteOptionsType = routeOptions.GetType();
+
+        if (actualRouteOptionsType == expectedRouteOptionsType)
+            return routeOptions;
+
+        // Breaking change: route options must match effective runtime stream type.
+        // Compatibility bridge: when lineage is enabled and options are payload-typed, normalize once at bind-time.
+        if (contract.ItemLevelLineageEnabled)
+        {
+            var payloadType = nodeDef.OutputType
+                              ?? nodeDef.InputType
+                              ?? throw new InvalidOperationException(
+                                  $"Unable to normalize route options for node '{nodeDef.Id}' without payload type metadata.");
+
+            var payloadRouteOptionsType = typeof(RouteOptions<>).MakeGenericType(payloadType);
+
+            if (actualRouteOptionsType == payloadRouteOptionsType)
+            {
+                var expectedLineageItemType = typeof(LineagePacket<>).MakeGenericType(payloadType);
+
+                if (expectedItemType != expectedLineageItemType)
+                {
+                    throw new InvalidOperationException(
+                        $"Route options normalization mismatch for node '{nodeDef.Id}'. " +
+                        $"Expected runtime route item type '{GetAssemblyQualifiedTypeName(expectedLineageItemType)}' " +
+                        $"but resolved '{GetAssemblyQualifiedTypeName(expectedItemType)}'.");
+                }
+
+                return AdaptLineageRouteOptions(payloadType, routeOptions);
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Route options type mismatch for route node '{nodeDef.Id}'. " +
+            $"Expected '{GetAssemblyQualifiedTypeName(expectedRouteOptionsType)}' " +
+            $"but got '{GetAssemblyQualifiedTypeName(actualRouteOptionsType)}'.");
+    }
+
+    private static object AdaptLineageRouteOptions(Type payloadType, object routeOptions)
+    {
+        var genericMethod = AdaptLineageRouteOptionsMethod.MakeGenericMethod(payloadType);
+        return genericMethod.Invoke(null, [routeOptions])!;
+    }
+
+    private static object AdaptLineageRouteOptionsGeneric<TPayload>(object routeOptions)
+    {
+        var payloadRouteOptions = (RouteOptions<TPayload>)routeOptions;
+
+        var adapted = new RouteOptions<LineagePacket<TPayload>>()
+            .WithMatchMode(payloadRouteOptions.MatchMode)
+            .WithNoMatchBehavior(payloadRouteOptions.NoMatchBehavior);
+
+        if (payloadRouteOptions.OtherwiseOutputName is { } otherwiseOutputName)
+            adapted.Otherwise(otherwiseOutputName);
+
+        foreach (var rule in payloadRouteOptions.Rules)
+        {
+            adapted.When(rule.OutputName, packet => rule.Predicate(packet.Data));
+        }
+
+        return adapted;
+    }
+
+    private static string GetAssemblyQualifiedTypeName(Type type)
+        => type.AssemblyQualifiedName ?? type.FullName ?? type.Name;
 
     private static IDeadLetterSink? ApplyDeadLetterSinkDecorator(PipelineContext context, IDeadLetterSink? deadLetterSink)
     {

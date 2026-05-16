@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using NPipeline.Attributes.Lineage;
@@ -175,29 +174,18 @@ internal sealed class DefaultLineageAdapterBuilder
     {
         return (lineageInput, lineageSink, sinkNodeId, pipelineId, pipelineName, options, ct) =>
         {
-            var lineageInputType = lineageInput.GetType();
-            IAsyncEnumerable<TIn> stream;
-
-            if (lineageInput is IDataStream<LineagePacket<TIn>> stronglyTyped)
+            if (lineageInput is not IDataStream<LineagePacket<TIn>> stronglyTyped)
             {
-                stream = Project(stronglyTyped, ct);
-            }
-            else
-            {
-                var candidateInterface = lineageInputType.GetInterfaces().FirstOrDefault(i =>
-                    i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IDataStream<>) && i.GetGenericArguments()[0].IsGenericType &&
-                    i.GetGenericArguments()[0].GetGenericTypeDefinition() == typeof(LineagePacket<>));
+                var expectedType = typeof(IDataStream<LineagePacket<TIn>>);
+                var actualType = lineageInput.GetType();
 
-                if (candidateInterface is not null)
-                {
-                    stream = ProjectDynamic(lineageInput, ct);
-                }
-                else
-                {
-                    throw new InvalidCastException(
-                        $"Unable to treat sink lineage input as lineage stream for expected type '{typeof(TIn).Name}'. Actual: {lineageInputType.FullName}");
-                }
+                throw new InvalidCastException(
+                    $"Sink lineage input contract mismatch for expected payload '{typeof(TIn).Name}'. " +
+                    $"Expected '{expectedType.AssemblyQualifiedName ?? expectedType.FullName ?? expectedType.Name}' " +
+                    $"but got '{actualType.AssemblyQualifiedName ?? actualType.FullName ?? actualType.Name}'.");
             }
+
+            var stream = Project(stronglyTyped, ct);
 
             return new DataStream<TIn>(stream, $"Unwrapped_{lineageInput.StreamName}");
 
@@ -265,127 +253,6 @@ internal sealed class DefaultLineageAdapterBuilder
                     }
 
                     yield return packet.Data;
-                }
-
-                HashSet<LineageRecord> GetOrCreateEmittedSet(Guid correlationId)
-                {
-                    if (!emittedRecordsByCorrelation.TryGetValue(correlationId, out var emittedForCorrelation))
-                    {
-                        emittedForCorrelation = new HashSet<LineageRecord>(ReferenceEqualityComparer.Instance);
-                        emittedRecordsByCorrelation[correlationId] = emittedForCorrelation;
-                    }
-
-                    return emittedForCorrelation;
-                }
-            }
-
-            async IAsyncEnumerable<TIn> ProjectDynamic(IDataStream dynamicPipe, [EnumeratorCancellation] CancellationToken token)
-            {
-                PropertyInfo? dataProp = null;
-                PropertyInfo? collectProp = null;
-                PropertyInfo? correlationIdProp = null;
-                PropertyInfo? pathProp = null;
-                PropertyInfo? recordsProp = null;
-
-                Type? lastObservedType = null;
-                var terminalCorrelations = new HashSet<Guid>();
-                var emittedRecordsByCorrelation = new Dictionary<Guid, HashSet<LineageRecord>>();
-
-                await foreach (var obj in dynamicPipe.ToAsyncEnumerable(token).WithCancellation(token).ConfigureAwait(false))
-                {
-                    if (obj is null)
-                    {
-                        continue;
-                    }
-
-                    var objType = obj.GetType();
-
-                    if (!objType.IsGenericType || objType.GetGenericTypeDefinition() != typeof(LineagePacket<>))
-                    {
-                        continue;
-                    }
-
-                    if (!ReferenceEquals(objType, lastObservedType))
-                    {
-                        dataProp = objType.GetProperty("Data");
-                        collectProp = objType.GetProperty("Collect");
-                        correlationIdProp = objType.GetProperty("CorrelationId");
-                        pathProp = objType.GetProperty("TraversalPath");
-                        recordsProp = objType.GetProperty("LineageRecords");
-                        lastObservedType = objType;
-
-                        if (dataProp is null || collectProp is null || correlationIdProp is null || pathProp is null || recordsProp is null)
-                        {
-                            continue;
-                        }
-                    }
-
-                    var dataVal = dataProp!.GetValue(obj);
-
-                    if (dataVal is TIn typedVal)
-                    {
-                        if (lineageSink is not null && (bool)collectProp!.GetValue(obj)!)
-                        {
-                            var correlationId = (Guid)correlationIdProp!.GetValue(obj)!;
-                            var packetPath = (IImmutableList<string>)pathProp!.GetValue(obj)!;
-                            var packetRecords = (IReadOnlyList<LineageRecord>)recordsProp!.GetValue(obj)!;
-
-                            if (options?.EmitIntermediateNodeRecords != false)
-                            {
-                                var emittedForCorrelation = GetOrCreateEmittedSet(correlationId);
-
-                                foreach (var record in packetRecords)
-                                {
-                                    if (emittedForCorrelation.Add(record))
-                                    {
-                                        await lineageSink.RecordAsync(record, token).ConfigureAwait(false);
-                                    }
-                                }
-                            }
-
-                            if (options?.EnsurePerInputTerminalRecord != false &&
-                                !packetRecords.Any(static r => r.IsTerminal) &&
-                                terminalCorrelations.Add(correlationId))
-                            {
-                                var finalPath = packetPath.Add($"{pipelineId:N}::{sinkNodeId}");
-                                var latestRecord = packetRecords.Count > 0
-                                    ? packetRecords[packetRecords.Count - 1]
-                                    : null;
-
-                                var terminalRecord = new LineageRecord(
-                                    correlationId,
-                                    sinkNodeId,
-                                    pipelineId,
-                                    LineageOutcomeReason.ConsumedWithoutEmission,
-                                    true,
-                                    finalPath,
-                                    pipelineName,
-                                    DateTimeOffset.UtcNow,
-                                    latestRecord?.RetryCount,
-                                    options?.IncludeContributorCorrelationIds == true
-                                        ? latestRecord?.ContributorCorrelationIds ?? [correlationId]
-                                        : null,
-                                    latestRecord?.ContributorInputIndices,
-                                    latestRecord?.InputContributorCount ?? 1,
-                                    null,
-                                    latestRecord?.Cardinality ?? ObservedCardinality.One,
-                                    null,
-                                    null,
-                                    options?.RedactData == true
-                                        ? null
-                                        : typedVal).Normalize();
-
-                                await lineageSink.RecordAsync(terminalRecord, token).ConfigureAwait(false);
-                            }
-
-                            if (packetRecords.Any(static r => r.IsTerminal) || terminalCorrelations.Contains(correlationId))
-                            {
-                                _ = emittedRecordsByCorrelation.Remove(correlationId);
-                            }
-                        }
-
-                        yield return typedVal;
-                    }
                 }
 
                 HashSet<LineageRecord> GetOrCreateEmittedSet(Guid correlationId)

@@ -1,12 +1,10 @@
 using System.Collections.Concurrent;
-using System.Reflection;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.Branching;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow.Routing;
 using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
-using NPipeline.Lineage;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Execution.Services;
@@ -19,9 +17,6 @@ public sealed class DataStreamWrapperService
 {
     // Cache of per-T multicast wrappers (single reflection on miss, zero reflection on hot path).
     private static readonly ConcurrentDictionary<Type, IOptimizedWrapper> WrapperCache = new();
-
-    // Cache of route-options adapters for lineage-wrapped stream compatibility.
-    private static readonly ConcurrentDictionary<(Type StreamType, Type RouteOptionsType), Func<object, object>?> RouteOptionsAdapterCache = new();
 
     /// <summary>
     ///     Wraps a data pipe with counting and optional multicasting in a single optimized layer.
@@ -88,42 +83,6 @@ public sealed class DataStreamWrapperService
         return type.AssemblyQualifiedName ?? type.FullName ?? type.Name;
     }
 
-    private static Func<object, object>? CreateRouteOptionsAdapter(Type streamType, Type routeOptionsType)
-    {
-        if (!streamType.IsGenericType || streamType.GetGenericTypeDefinition() != typeof(LineagePacket<>))
-            return null;
-
-        var payloadType = streamType.GetGenericArguments()[0];
-        var payloadRouteOptionsType = typeof(RouteOptions<>).MakeGenericType(payloadType);
-
-        if (routeOptionsType != payloadRouteOptionsType)
-            return null;
-
-        var method = typeof(DataStreamWrapperService)
-            .GetMethod(nameof(AdaptLineageRouteOptions), BindingFlags.NonPublic | BindingFlags.Static)!
-            .MakeGenericMethod(payloadType);
-
-        return method.CreateDelegate<Func<object, object>>();
-    }
-
-    private static object AdaptLineageRouteOptions<TPayload>(object routeOptions)
-    {
-        var payloadRouteOptions = (RouteOptions<TPayload>)routeOptions;
-        var adapted = new RouteOptions<LineagePacket<TPayload>>()
-            .WithMatchMode(payloadRouteOptions.MatchMode)
-            .WithNoMatchBehavior(payloadRouteOptions.NoMatchBehavior);
-
-        if (payloadRouteOptions.OtherwiseOutputName is { } otherwiseOutputName)
-            adapted.Otherwise(otherwiseOutputName);
-
-        foreach (var rule in payloadRouteOptions.Rules)
-        {
-            adapted.When(rule.OutputName, packet => rule.Predicate(packet.Data));
-        }
-
-        return adapted;
-    }
-
     // Internal wrapper abstraction avoids per-call reflection.
     private interface IOptimizedWrapper
     {
@@ -172,19 +131,10 @@ public sealed class DataStreamWrapperService
 
             if (typedRouteOptions is null)
             {
-                var adapter = RouteOptionsAdapterCache.GetOrAdd(
-                    (typeof(T), routeOptions.GetType()),
-                    static key => CreateRouteOptionsAdapter(key.StreamType, key.RouteOptionsType));
-
-                if (adapter is not null)
-                    typedRouteOptions = (RouteOptions<T>)adapter(routeOptions);
-            }
-
-            if (typedRouteOptions is null)
-            {
                 throw new InvalidOperationException(
                     $"Route options type mismatch for routed stream '{typed.StreamName}'. " +
-                    $"Expected {GetAssemblyQualifiedTypeName(typeof(RouteOptions<T>))} but got {GetAssemblyQualifiedTypeName(routeOptions.GetType())}.");
+                    $"Expected {GetAssemblyQualifiedTypeName(typeof(RouteOptions<T>))} but got {GetAssemblyQualifiedTypeName(routeOptions.GetType())}. " +
+                    "Route options must be normalized to runtime stream item type by RuntimePipelineBinder.");
             }
 
             return new CountingConditionalMulticastDataStream<T>(

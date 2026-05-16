@@ -2,7 +2,6 @@ using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
-using NPipeline.Lineage;
 
 namespace NPipeline.Execution.Services;
 
@@ -14,57 +13,9 @@ public sealed class InterleaveMergeStrategy<T> : IMergeStrategy<T>
     /// <inheritdoc />
     public IDataStream<T> Merge(IEnumerable<IDataStream<T>> pipes, CancellationToken cancellationToken)
     {
-        var typedPipes = pipes.ToList();
-
-        // Detect lineage packet wrapping (IDataStream<LineagePacket<TActual>>) erroneously typed as IDataStream<T> via covariance misuse downstream.
-        // If any pipe item type is LineagePacket<Something> and Something == typeof(T), adapt enumeration to yield inner Data.
-        var adapted = typedPipes.Select(p => AdaptIfLineage(p));
-        var mergedStream = InterleaveBounded(adapted.ToList(), null, cancellationToken);
+        var typedPipes = pipes as IReadOnlyList<IDataStream<T>> ?? pipes.ToList();
+        var mergedStream = InterleaveBounded(typedPipes, null, cancellationToken);
         return new DataStream<T>(mergedStream, "InterleavedStream");
-    }
-
-    private static IDataStream<T> AdaptIfLineage(IDataStream<T> pipe)
-    {
-        var innerType = pipe.GetType().GetInterfaces()
-            .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IDataStream<>))?
-            .GetGenericArguments()[0];
-
-        if (innerType is { IsGenericType: true } && innerType.GetGenericTypeDefinition() == typeof(LineagePacket<>))
-        {
-            var payloadType = innerType.GetGenericArguments()[0];
-
-            if (payloadType == typeof(T))
-
-                // Wrap into a streaming pipe that projects packet.Data
-                return new DataStream<T>(Project(pipe), $"Projected_{pipe.StreamName}");
-        }
-
-        return pipe;
-
-        static async IAsyncEnumerable<T> Project(IDataStream<T> original, [EnumeratorCancellation] CancellationToken token = default)
-        {
-            await foreach (var o in original.WithCancellation(token).ConfigureAwait(false))
-            {
-                if (o is null)
-                    continue;
-
-                // When original is actually LineagePacket<T> but erased via cast, reflectively obtain Data prop.
-                var t = o.GetType();
-
-                if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(LineagePacket<>))
-                {
-                    var dataProp = t.GetProperty("Data")!;
-                    var dataVal = dataProp.GetValue(o);
-
-                    if (dataVal is T tv)
-                        yield return tv;
-                    else if (dataVal is not null)
-                        yield return (T)dataVal; // last resort cast
-                }
-                else if (o is { } direct)
-                    yield return direct;
-            }
-        }
     }
 
     private static async IAsyncEnumerable<T> InterleaveBounded(

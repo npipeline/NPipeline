@@ -109,6 +109,10 @@ builder.Connect(nyse, processor);
 builder.Connect(nasdaq, processor);
 ```
 
+All inbound streams must share a single runtime item type. When item-level lineage is enabled, the runtime item type is `LineagePacket<T>` — the merge operates on `LineagePacket<Trade>` streams and produces a merged `LineagePacket<Trade>` stream, preserving lineage context. No conversion or reflection is involved.
+
+A mismatch between inbound stream types for a non-join node is a hard error.
+
 ### Custom Merge
 
 For control over how streams are combined, extend `CustomMergeNode<T>`:
@@ -126,6 +130,8 @@ public class PriorityMerge : CustomMergeNode<Trade>
     }
 }
 ```
+
+> **Lineage note:** When item-level lineage is enabled, the streams passed to `MergeAsync` are `IDataStream<LineagePacket<Trade>>`, not `IDataStream<Trade>`. If you write a custom merge node that operates on lineage-enabled pipelines, cast to `IDataStream<LineagePacket<Trade>>` or use the non-generic `pipes` parameter and handle both cases. The simplest approach is to use the default interleave merge unless you have a specific ordering requirement.
 
 Register the merge node as a preconfigured instance:
 

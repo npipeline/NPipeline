@@ -17,7 +17,7 @@ namespace NPipeline.Tests.Execution.Services;
 public sealed class DataStreamWrapperServiceRouteOptionsTests
 {
     [Fact]
-    public async Task WrapWithCountingAndBranching_LineageWrappedStream_AdaptsPayloadRouteOptions()
+    public async Task WrapWithCountingAndBranching_LineageWrappedStream_ThrowsWithoutBindNormalization()
     {
         const string routeNodeId = "route";
 
@@ -37,7 +37,49 @@ public sealed class DataStreamWrapperServiceRouteOptionsTests
         var evenEdge = new Edge(routeNodeId, "even-sink", "even");
         var oddEdge = new Edge(routeNodeId, "odd-sink", "odd");
 
-        var graph = CreateRouteGraph(routeNodeId, routeOptions, evenEdge, oddEdge);
+        var graph = CreateRouteGraph(routeNodeId, routeOptions, false, evenEdge, oddEdge);
+        var counter = new StatsCounter();
+        var service = new DataStreamWrapperService();
+
+        Action act = () =>
+        {
+            _ = service.WrapWithCountingAndBranching(
+                source,
+                counter,
+                PipelineContext.Default,
+                graph,
+                routeNodeId);
+        };
+
+        var thrown = act.Should().Throw<InvalidOperationException>();
+        _ = thrown.Which.Message.Should().Contain("Route options type mismatch");
+        _ = thrown.Which.Message.Should().Contain("RuntimePipelineBinder");
+    }
+
+    [Fact]
+    public async Task WrapWithCountingAndBranching_LineageWrappedStream_UsesBindNormalizedRouteOptions()
+    {
+        const string routeNodeId = "route";
+
+        var source = new NPipeline.DataFlow.DataStreams.InMemoryDataStream<LineagePacket<int>>(
+        [
+            CreatePacket(1),
+            CreatePacket(2),
+            CreatePacket(3),
+            CreatePacket(4),
+        ],
+            "Rewrapped_DefaultStream");
+
+        var routeOptions = new RouteOptions<int>()
+            .When("even", value => value % 2 == 0)
+            .Otherwise("odd");
+
+        var evenEdge = new Edge(routeNodeId, "even-sink", "even");
+        var oddEdge = new Edge(routeNodeId, "odd-sink", "odd");
+
+        var graph = CreateRouteGraph(routeNodeId, routeOptions, true, evenEdge, oddEdge);
+        var bound = await RuntimePipelineBinder.Instance.BindAsync(graph, PipelineContext.Default);
+
         var counter = new StatsCounter();
         var service = new DataStreamWrapperService();
 
@@ -45,7 +87,7 @@ public sealed class DataStreamWrapperServiceRouteOptionsTests
             source,
             counter,
             PipelineContext.Default,
-            graph,
+            bound.Graph,
             routeNodeId);
 
         var edgeRouted = wrapped.Should().BeAssignableTo<IEdgeRoutedDataStream>().Subject;
@@ -69,6 +111,7 @@ public sealed class DataStreamWrapperServiceRouteOptionsTests
     private static PipelineGraph CreateRouteGraph<TPayload>(
         string nodeId,
         RouteOptions<TPayload> routeOptions,
+        bool itemLevelLineageEnabled,
         params Edge[] edges)
     {
         var routeNode = new NodeDefinition(
@@ -89,6 +132,10 @@ public sealed class DataStreamWrapperServiceRouteOptionsTests
             {
                 NodeExecutionAnnotations = ImmutableDictionary<string, object>.Empty
                     .Add(ExecutionAnnotationKeys.RouteOptionsForNode(nodeId), routeOptions),
+            },
+            Lineage = new LineageConfiguration
+            {
+                ItemLevelLineageEnabled = itemLevelLineageEnabled,
             },
         };
     }

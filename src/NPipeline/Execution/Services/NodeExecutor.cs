@@ -2,6 +2,8 @@ using NPipeline.Attributes.Lineage;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow.Routing;
+using NPipeline.Execution;
+using NPipeline.Execution.Annotations;
 using NPipeline.Execution.Plans;
 using NPipeline.Graph;
 using NPipeline.Lineage;
@@ -94,7 +96,7 @@ public sealed class NodeExecutor(
         NodeDefinition nodeDef,
         INode instance)
     {
-        var input = await GetNodeInputAsync(plan.NodeId, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken);
+        var input = await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken);
         IDataStream transformed;
 
         if (graph.Lineage.ItemLevelLineageEnabled)
@@ -208,7 +210,7 @@ public sealed class NodeExecutor(
         IReadOnlyDictionary<string, NodeDefinition> nodeDefinitionMap,
         NodeDefinition nodeDef)
     {
-        var input = await GetNodeInputAsync(plan.NodeId, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken);
+        var input = await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken);
         IDataStream output;
 
         if (graph.Lineage.ItemLevelLineageEnabled)
@@ -269,7 +271,7 @@ public sealed class NodeExecutor(
         IReadOnlyDictionary<string, NodeDefinition> nodeDefinitionMap,
         NodeDefinition nodeDef)
     {
-        var input = await GetNodeInputAsync(plan.NodeId, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken);
+        var input = await GetNodeInputAsync(plan.NodeId, graph, inputLookup, nodeOutputs, nodeInstances, nodeDefinitionMap, context.CancellationToken);
         var effectiveInput = input;
 
         if (graph.Lineage.ItemLevelLineageEnabled)
@@ -285,7 +287,8 @@ public sealed class NodeExecutor(
         nodeOutputs[plan.NodeId] = null; // sinks produce no downstream pipe
     }
 
-    private async Task<IDataStream> GetNodeInputAsync(string nodeId, ILookup<string, Edge> inputLookup, IDictionary<string, IDataStream?> nodeOutputs,
+    private async Task<IDataStream> GetNodeInputAsync(string nodeId, PipelineGraph graph, ILookup<string, Edge> inputLookup,
+        IDictionary<string, IDataStream?> nodeOutputs,
         IReadOnlyDictionary<string, INode> nodeInstances, IReadOnlyDictionary<string, NodeDefinition> nodeDefinitions, CancellationToken cancellationToken)
     {
         var inputEdges = inputLookup[nodeId].ToList();
@@ -306,13 +309,43 @@ public sealed class NodeExecutor(
             throw new InvalidOperationException(ErrorMessages.OutputNotFoundForSourceNode(edge.SourceNodeId) + $" when processing node '{nodeId}'.");
         }).ToList();
 
+        var nodeDef = nodeDefinitions[nodeId];
+
+        if (nodeDef.Kind != NodeKind.Join)
+            ValidateRuntimeInputContract(graph, nodeId, inputPipes);
+
         if (inputPipes.Count == 1)
             return inputPipes[0];
 
-        var nodeDef = nodeDefinitions[nodeId];
         var targetNode = nodeInstances[nodeId];
         return await pipeMergeService.MergeAsync(nodeDef, targetNode, inputPipes, cancellationToken);
     }
+
+    private static void ValidateRuntimeInputContract(PipelineGraph graph, string nodeId, IReadOnlyList<IDataStream> inputPipes)
+    {
+        if (graph.ExecutionOptions.NodeExecutionAnnotations?.TryGetValue(
+                ExecutionAnnotationKeys.RuntimeStreamContractForNode(nodeId),
+                out var contractObj) != true ||
+            contractObj is not RuntimeNodeStreamContract { EffectiveInputItemType: { } expectedType })
+        {
+            return;
+        }
+
+        foreach (var pipe in inputPipes)
+        {
+            var actualType = pipe.GetDataType();
+
+            if (actualType != expectedType)
+            {
+                throw new InvalidOperationException(
+                    $"Runtime stream contract mismatch for node '{nodeId}'. " +
+                    $"Expected input item type '{GetAssemblyQualifiedTypeName(expectedType)}' but got '{GetAssemblyQualifiedTypeName(actualType)}'.");
+            }
+        }
+    }
+
+    private static string GetAssemblyQualifiedTypeName(Type type)
+        => type.AssemblyQualifiedName ?? type.FullName ?? type.Name;
 
     private static IDataStream AdaptOutput(NodeExecutionPlan plan, IDataStream output, Type expectedType, string streamName)
     {

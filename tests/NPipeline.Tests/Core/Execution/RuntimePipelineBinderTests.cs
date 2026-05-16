@@ -2,8 +2,10 @@ using System.Collections.Immutable;
 using AwesomeAssertions;
 using FakeItEasy;
 using NPipeline.Configuration;
+using NPipeline.DataFlow.Routing;
 using NPipeline.ErrorHandling;
 using NPipeline.Execution;
+using NPipeline.Execution.Annotations;
 using NPipeline.Execution.Services;
 using NPipeline.Graph;
 using NPipeline.Lineage;
@@ -200,6 +202,90 @@ public sealed class RuntimePipelineBinderTests
 
         A.CallTo(() => lineageFactory.ResolvePipelineLineageSinkProvider())
             .MustNotHaveHappened();
+    }
+
+    [Fact]
+    public async Task BindAsync_LineageRouteOptions_NormalizesToRuntimeRouteOptionsAndAddsContract()
+    {
+        // Arrange
+        const string nodeId = "route";
+        var routeNode = new NodeDefinition(
+            Id: nodeId,
+            Name: nodeId,
+            NodeType: typeof(object),
+            Kind: NodeKind.Route,
+            InputType: typeof(int),
+            OutputType: typeof(int));
+
+        var graph = PipelineGraphBuilder.Create()
+            .WithNodes([routeNode])
+            .WithEdges(ImmutableArray<Edge>.Empty)
+            .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
+            .WithItemLevelLineageEnabled(true)
+            .WithNodeExecutionAnnotations(new Dictionary<string, object>
+            {
+                [ExecutionAnnotationKeys.RouteOptionsForNode(nodeId)] = new RouteOptions<int>()
+                    .When("even", value => value % 2 == 0)
+                    .Otherwise("odd"),
+            })
+            .Build();
+
+        var context = new PipelineContext();
+
+        // Act
+        var result = await _binder.BindAsync(graph, context);
+
+        // Assert
+        var routeKey = ExecutionAnnotationKeys.RouteOptionsForNode(nodeId);
+        var contractKey = ExecutionAnnotationKeys.RuntimeStreamContractForNode(nodeId);
+        var annotations = result.Graph.ExecutionOptions.NodeExecutionAnnotations!;
+
+        _ = annotations[routeKey].Should().BeOfType<RouteOptions<LineagePacket<int>>>();
+
+        var normalized = (RouteOptions<LineagePacket<int>>)annotations[routeKey];
+        _ = normalized.Rules.Should().HaveCount(1);
+        _ = normalized.Rules[0].Predicate(new LineagePacket<int>(2, Guid.NewGuid(), ImmutableList<string>.Empty)).Should().BeTrue();
+        _ = normalized.Rules[0].Predicate(new LineagePacket<int>(3, Guid.NewGuid(), ImmutableList<string>.Empty)).Should().BeFalse();
+
+        _ = annotations[contractKey].Should().BeOfType<RuntimeNodeStreamContract>();
+        var contract = (RuntimeNodeStreamContract)annotations[contractKey];
+        _ = contract.ItemLevelLineageEnabled.Should().BeTrue();
+        _ = contract.EffectiveInputItemType.Should().Be<LineagePacket<int>>();
+        _ = contract.EffectiveOutputItemType.Should().Be<LineagePacket<int>>();
+    }
+
+    [Fact]
+    public async Task BindAsync_JoinNode_RuntimeContractUsesObjectInputType()
+    {
+        // Arrange
+        const string nodeId = "join";
+        var joinNode = new NodeDefinition(
+            Id: nodeId,
+            Name: nodeId,
+            NodeType: typeof(object),
+            Kind: NodeKind.Join,
+            InputType: typeof(int),
+            OutputType: typeof(int));
+
+        var graph = PipelineGraphBuilder.Create()
+            .WithNodes([joinNode])
+            .WithEdges(ImmutableArray<Edge>.Empty)
+            .WithPreconfiguredNodeInstances(ImmutableDictionary<string, INode>.Empty)
+            .WithItemLevelLineageEnabled(false)
+            .Build();
+
+        // Act
+        var result = await _binder.BindAsync(graph, new PipelineContext());
+
+        // Assert
+        var contractKey = ExecutionAnnotationKeys.RuntimeStreamContractForNode(nodeId);
+        var annotations = result.Graph.ExecutionOptions.NodeExecutionAnnotations!;
+
+        _ = annotations[contractKey].Should().BeOfType<RuntimeNodeStreamContract>();
+        var contract = (RuntimeNodeStreamContract)annotations[contractKey];
+        _ = contract.EffectiveInputItemType.Should().Be<object>();
+        _ = contract.EffectiveOutputItemType.Should().Be<int>();
+        _ = contract.ItemLevelLineageEnabled.Should().BeFalse();
     }
 
     private static PipelineGraph CreateGraph(
