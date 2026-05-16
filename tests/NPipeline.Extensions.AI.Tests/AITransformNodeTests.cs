@@ -116,6 +116,58 @@ public class AITransformNodeTests
     }
 
     [Fact]
+    public async Task TransformAsync_ItemTemplateThrows_WrapsInAITransformException()
+    {
+        var client = FakeChatClient.ThatReturns("""{"category":"X","confidence":0.5}""");
+
+        var node = new AITransformNode<TestDomain.Comment, TestDomain.ClassificationResult>(client)
+        {
+            Options = new AITransformOptions<TestDomain.Comment, TestDomain.ClassificationResult>(
+                "You are a classifier.",
+                _ => throw new InvalidOperationException("template failed")),
+        };
+
+        var ex = await Assert.ThrowsAsync<AITransformException>(() =>
+            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None));
+
+        Assert.Contains("ItemTemplate delegate failed", ex.Message);
+        Assert.IsType<InvalidOperationException>(ex.InnerException, exactMatch: false);
+    }
+
+    [Fact]
+    public async Task TransformAsync_ConfigureOptionsThrows_WrapsInAITransformException()
+    {
+        var client = FakeChatClient.ThatReturns("""{"category":"X","confidence":0.5}""");
+
+        var node = new AITransformNode<TestDomain.Comment, TestDomain.ClassificationResult>(client)
+        {
+            Options = new AITransformOptions<TestDomain.Comment, TestDomain.ClassificationResult>(
+                "You are a classifier.",
+                c => $"Classify: {c.Text}",
+                ConfigureOptions: _ => throw new InvalidOperationException("configure failed")),
+        };
+
+        var ex = await Assert.ThrowsAsync<AITransformException>(() =>
+            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None));
+
+        Assert.Contains("ConfigureOptions delegate failed", ex.Message);
+        Assert.Equal("Classify: hello", ex.PromptSent);
+        Assert.IsType<InvalidOperationException>(ex.InnerException, exactMatch: false);
+    }
+
+    [Fact]
+    public async Task TransformAsync_MissingRequiredOptions_ThrowsInvalidOperationException()
+    {
+        var client = FakeChatClient.ThatReturns("""{"category":"X","confidence":0.5}""");
+        var node = new AITransformNode<TestDomain.Comment, TestDomain.ClassificationResult>(client);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None));
+
+        Assert.Contains("SystemPrompt", ex.Message);
+    }
+
+    [Fact]
     public async Task TransformAsync_ConstructorNullGuard()
     {
         Assert.Throws<ArgumentNullException>(() => new AITransformNode<TestDomain.Comment, TestDomain.ClassificationResult>(null!));

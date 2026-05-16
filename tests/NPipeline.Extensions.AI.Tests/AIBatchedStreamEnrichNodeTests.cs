@@ -1,5 +1,6 @@
 using Microsoft.Extensions.AI;
 using NPipeline.Extensions.AI.Configuration;
+using NPipeline.Extensions.AI.Exceptions;
 using NPipeline.Extensions.AI.Nodes;
 using NPipeline.Pipeline;
 
@@ -44,6 +45,29 @@ public class AIBatchedStreamEnrichNodeTests
         }
 
         Assert.Equal(3, results.Count);
+    }
+
+    [Fact]
+    public async Task TransformAsync_ResultMapperThrows_WrapsInAITransformException()
+    {
+        var client = FakeChatClient.ThatReturns("""[{"label":"Positive","score":0.9}]""");
+
+        var node = new AIBatchedStreamEnrichNode<TestDomain.Comment, TestDomain.SentimentResult>(client)
+        {
+            Options = new AIBatchedStreamEnrichOptions<TestDomain.Comment, TestDomain.SentimentResult>(
+                "Analyze.",
+                _ => "analyze",
+                (_, _) => throw new InvalidOperationException("mapper failed"),
+                BatchSize: 1),
+        };
+
+        await Assert.ThrowsAsync<AITransformException>(async () =>
+        {
+            await foreach (var _ in node.TransformAsync(new[] { new TestDomain.Comment("hello", "alice") }.ToAsyncEnumerable(), Context(),
+                               CancellationToken.None))
+            {
+            }
+        });
     }
 
     private static PipelineContext Context()

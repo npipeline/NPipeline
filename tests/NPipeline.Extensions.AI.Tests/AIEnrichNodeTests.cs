@@ -44,6 +44,26 @@ public class AIEnrichNodeTests
             node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None));
     }
 
+    [Fact]
+    public async Task TransformAsync_ResultMapperThrows_WrapsInAITransformException()
+    {
+        var client = FakeChatClient.ThatReturns("""{"label":"Positive","score":0.92}""");
+
+        var node = new AIEnrichNode<TestDomain.Comment, TestDomain.SentimentResult>(client)
+        {
+            Options = new AIEnrichOptions<TestDomain.Comment, TestDomain.SentimentResult>(
+                "Analyze sentiment.",
+                c => $"Analyze: {c.Text}",
+                (_, _) => throw new InvalidOperationException("mapper failed")),
+        };
+
+        var ex = await Assert.ThrowsAsync<AITransformException>(() =>
+            node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None));
+
+        Assert.Contains("ResultMapper delegate failed", ex.Message);
+        Assert.IsType<InvalidOperationException>(ex.InnerException, exactMatch: false);
+    }
+
     private static PipelineContext Context()
     {
         return new PipelineContext();

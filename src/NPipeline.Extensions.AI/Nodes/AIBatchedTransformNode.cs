@@ -26,15 +26,17 @@ public sealed class AIBatchedTransformNode<TIn, TOut> : TransformNode<IReadOnlyC
     public override async Task<IReadOnlyCollection<TOut>> TransformAsync(IReadOnlyCollection<TIn> item, PipelineContext context,
         CancellationToken cancellationToken)
     {
+        var options = AIOptionGuards.Validate(Options);
+
         return await AIInvoker.InvokeBatchedTransformAsync<TIn, TOut>(
             _chatClient,
             item,
-            Options.SystemPrompt!,
-            Options.BatchTemplate!,
-            Options.Temperature,
-            Options.MaxOutputTokens,
-            Options.UseNativeStructuredOutput,
-            Options.ConfigureOptions,
+            options.SystemPrompt!,
+            options.BatchTemplate!,
+            options.Temperature,
+            options.MaxOutputTokens,
+            options.UseNativeStructuredOutput,
+            options.ConfigureOptions,
             cancellationToken).ConfigureAwait(false);
     }
 }

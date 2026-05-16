@@ -26,9 +26,9 @@ internal static class AIInvoker
         ArgumentException.ThrowIfNullOrWhiteSpace(systemPrompt);
         ArgumentNullException.ThrowIfNull(itemTemplate);
 
-        var userMessage = itemTemplate(item) ?? throw new InvalidOperationException("ItemTemplate returned null.");
+        var userMessage = BuildUserMessage(item, itemTemplate, "ItemTemplate");
         var messages = BuildMessages(systemPrompt, userMessage);
-        var options = BuildChatOptions(temperature, maxOutputTokens, useNativeStructuredOutput, configureOptions);
+        var options = BuildChatOptions(item, userMessage, temperature, maxOutputTokens, useNativeStructuredOutput, configureOptions);
 
         return await InvokeAndDeserializeAsync<TOut>(chatClient, item, userMessage, messages, options, cancellationToken).ConfigureAwait(false);
     }
@@ -49,9 +49,9 @@ internal static class AIInvoker
         ArgumentException.ThrowIfNullOrWhiteSpace(systemPrompt);
         ArgumentNullException.ThrowIfNull(batchTemplate);
 
-        var userMessage = batchTemplate(batch) ?? throw new InvalidOperationException("BatchTemplate returned null.");
+        var userMessage = BuildUserMessage(batch, batchTemplate, "BatchTemplate");
         var messages = BuildMessages(systemPrompt, userMessage);
-        var options = BuildChatOptions(temperature, maxOutputTokens, useNativeStructuredOutput, configureOptions);
+        var options = BuildChatOptions(batch, userMessage, temperature, maxOutputTokens, useNativeStructuredOutput, configureOptions);
 
         var results = await InvokeAndDeserializeAsync<IReadOnlyCollection<TOut>>(chatClient, batch, userMessage, messages, options, cancellationToken)
             .ConfigureAwait(false);
@@ -85,9 +85,9 @@ internal static class AIInvoker
         ArgumentException.ThrowIfNullOrWhiteSpace(systemPrompt);
         ArgumentNullException.ThrowIfNull(itemTemplate);
 
-        var userMessage = itemTemplate(item) ?? throw new InvalidOperationException("ItemTemplate returned null.");
+        var userMessage = BuildUserMessage(item, itemTemplate, "ItemTemplate");
         var messages = BuildMessages(systemPrompt, userMessage);
-        var options = BuildChatOptions(temperature, maxOutputTokens, useNativeStructuredOutput, configureOptions);
+        var options = BuildChatOptions(item, userMessage, temperature, maxOutputTokens, useNativeStructuredOutput, configureOptions);
 
         return await InvokeAndDeserializeAsync<TField>(chatClient, item, userMessage, messages, options, cancellationToken).ConfigureAwait(false);
     }
@@ -108,9 +108,9 @@ internal static class AIInvoker
         ArgumentException.ThrowIfNullOrWhiteSpace(systemPrompt);
         ArgumentNullException.ThrowIfNull(batchTemplate);
 
-        var userMessage = batchTemplate(batch) ?? throw new InvalidOperationException("BatchTemplate returned null.");
+        var userMessage = BuildUserMessage(batch, batchTemplate, "BatchTemplate");
         var messages = BuildMessages(systemPrompt, userMessage);
-        var options = BuildChatOptions(temperature, maxOutputTokens, useNativeStructuredOutput, configureOptions);
+        var options = BuildChatOptions(batch, userMessage, temperature, maxOutputTokens, useNativeStructuredOutput, configureOptions);
 
         var results = await InvokeAndDeserializeAsync<IReadOnlyCollection<TField>>(chatClient, batch, userMessage, messages, options, cancellationToken)
             .ConfigureAwait(false);
@@ -145,6 +145,9 @@ internal static class AIInvoker
         }
         catch (Exception ex)
         {
+            if (ex is AITransformException)
+                throw;
+
             if (IsInfrastructureException(ex))
                 throw;
 
@@ -183,7 +186,7 @@ internal static class AIInvoker
 
             return result;
         }
-        catch (JsonException ex)
+        catch (Exception ex) when (ex is JsonException or NotSupportedException)
         {
             throw new AITransformException("Failed to deserialize LLM response.", ex)
             {
@@ -212,6 +215,8 @@ internal static class AIInvoker
     }
 
     private static ChatOptions BuildChatOptions(
+        object? item,
+        string userMessage,
         float? temperature,
         int? maxOutputTokens,
         bool useNativeStructuredOutput,
@@ -228,9 +233,56 @@ internal static class AIInvoker
         if (useNativeStructuredOutput)
             options.ResponseFormat = ChatResponseFormat.Json;
 
-        configureOptions?.Invoke(options);
+        if (configureOptions is not null)
+        {
+            try
+            {
+                configureOptions(options);
+            }
+            catch (Exception ex)
+            {
+                if (ex is AITransformException)
+                    throw;
+
+                throw new AITransformException("ConfigureOptions delegate failed.", ex)
+                {
+                    OriginalItem = item,
+                    PromptSent = userMessage,
+                };
+            }
+        }
 
         return options;
+    }
+
+    private static string BuildUserMessage<T>(T item, Func<T, string> template, string templateName)
+    {
+        try
+        {
+            var userMessage = template(item);
+
+            if (string.IsNullOrWhiteSpace(userMessage))
+            {
+                throw new AITransformException(
+                    $"{templateName} returned null or whitespace.",
+                    new InvalidOperationException($"{templateName} returned null or whitespace."))
+                {
+                    OriginalItem = item,
+                };
+            }
+
+            return userMessage;
+        }
+        catch (Exception ex)
+        {
+            if (ex is AITransformException)
+                throw;
+
+            throw new AITransformException($"{templateName} delegate failed.", ex)
+            {
+                OriginalItem = item,
+            };
+        }
     }
 
     private static AITransformException WrapException(object? item, string userMessage, Exception inner, string? modelId)

@@ -13,7 +13,7 @@ namespace NPipeline.Extensions.AI.Configuration;
 /// <param name="UseNativeStructuredOutput">When true, requests JSON response format from the model.</param>
 /// <param name="ConfigureOptions">Optional callback for advanced <see cref="ChatOptions" /> configuration. Fires last.</param>
 /// <param name="BatchSize">Number of items to buffer before sending to the LLM. Required.</param>
-/// <param name="BatchTimeout">Optional timeout for incomplete batches.</param>
+/// <param name="BatchTimeout">Optional timeout for incomplete batches. Defaults to 5 seconds when not set.</param>
 public sealed record AIBatchedStreamEnrichOptions<TIn, TField>(
     string? SystemPrompt = null,
     Func<IReadOnlyCollection<TIn>, string>? BatchTemplate = null,

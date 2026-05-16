@@ -38,12 +38,13 @@ public sealed class AIBatchedStreamTransformNode<TIn, TOut> : IStreamTransformNo
         PipelineContext context,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var batchSize = Options.BatchSize!.Value;
-        var timeout = Options.BatchTimeout ?? TimeSpan.FromSeconds(5);
+        var options = AIOptionGuards.Validate(Options);
+        var batchSize = options.BatchSize!.Value;
+        var timeout = options.BatchTimeout ?? TimeSpan.FromSeconds(5);
 
         await foreach (var batch in items.BatchAsync(batchSize, timeout, cancellationToken).ConfigureAwait(false))
         {
-            var results = await ProcessBatchAsync(batch, cancellationToken).ConfigureAwait(false);
+            var results = await ProcessBatchAsync(batch, options, cancellationToken).ConfigureAwait(false);
 
             foreach (var result in results)
             {
@@ -61,17 +62,18 @@ public sealed class AIBatchedStreamTransformNode<TIn, TOut> : IStreamTransformNo
 
     private async Task<IReadOnlyCollection<TOut>> ProcessBatchAsync(
         IReadOnlyCollection<TIn> batch,
+        AIBatchedStreamTransformOptions<TIn, TOut> options,
         CancellationToken cancellationToken)
     {
         return await AIInvoker.InvokeBatchedTransformAsync<TIn, TOut>(
             _chatClient,
             batch,
-            Options.SystemPrompt!,
-            Options.BatchTemplate!,
-            Options.Temperature,
-            Options.MaxOutputTokens,
-            Options.UseNativeStructuredOutput,
-            Options.ConfigureOptions,
+            options.SystemPrompt!,
+            options.BatchTemplate!,
+            options.Temperature,
+            options.MaxOutputTokens,
+            options.UseNativeStructuredOutput,
+            options.ConfigureOptions,
             cancellationToken).ConfigureAwait(false);
     }
 }

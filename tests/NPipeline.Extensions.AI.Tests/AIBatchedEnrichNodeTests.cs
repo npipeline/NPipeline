@@ -63,6 +63,32 @@ public class AIBatchedEnrichNodeTests
         Assert.Contains("1", ex.Message);
     }
 
+    [Fact]
+    public async Task TransformAsync_ResultMapperThrows_WrapsInAITransformException()
+    {
+        var client = FakeChatClient.ThatReturns(
+            """[{"label":"Positive","score":0.9}]""");
+
+        var node = new AIBatchedEnrichNode<TestDomain.Comment, TestDomain.SentimentResult>(client)
+        {
+            Options = new AIBatchedEnrichOptions<TestDomain.Comment, TestDomain.SentimentResult>(
+                "Analyze.",
+                _ => "analyze",
+                (_, _) => throw new InvalidOperationException("mapper failed")),
+        };
+
+        var batch = new List<TestDomain.Comment>
+        {
+            new("love it", "alice"),
+        };
+
+        var ex = await Assert.ThrowsAsync<AITransformException>(() =>
+            node.TransformAsync(batch, Context(), CancellationToken.None));
+
+        Assert.Contains("ResultMapper delegate failed", ex.Message);
+        Assert.IsType<InvalidOperationException>(ex.InnerException, exactMatch: false);
+    }
+
     private static PipelineContext Context()
     {
         return new PipelineContext();

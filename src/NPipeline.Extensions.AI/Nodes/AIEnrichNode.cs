@@ -1,5 +1,6 @@
 using Microsoft.Extensions.AI;
 using NPipeline.Extensions.AI.Configuration;
+using NPipeline.Extensions.AI.Exceptions;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -25,17 +26,37 @@ public sealed class AIEnrichNode<TIn, TField> : TransformNode<TIn, TIn>
     /// <inheritdoc />
     public override async Task<TIn> TransformAsync(TIn item, PipelineContext context, CancellationToken cancellationToken)
     {
+        var options = AIOptionGuards.Validate(Options);
+
         var aiResult = await AIInvoker.InvokeEnrichAsync<TIn, TField>(
             _chatClient,
             item,
-            Options.SystemPrompt!,
-            Options.ItemTemplate!,
-            Options.Temperature,
-            Options.MaxOutputTokens,
-            Options.UseNativeStructuredOutput,
-            Options.ConfigureOptions,
+            options.SystemPrompt!,
+            options.ItemTemplate!,
+            options.Temperature,
+            options.MaxOutputTokens,
+            options.UseNativeStructuredOutput,
+            options.ConfigureOptions,
             cancellationToken).ConfigureAwait(false);
 
-        return Options.ResultMapper!(item, aiResult);
+        return MapResult(options.ResultMapper!, item, aiResult);
+    }
+
+    private static TIn MapResult(ResultMapper<TIn, TField> resultMapper, TIn item, TField aiResult)
+    {
+        try
+        {
+            return resultMapper(item, aiResult);
+        }
+        catch (Exception ex)
+        {
+            if (ex is AITransformException)
+                throw;
+
+            throw new AITransformException("ResultMapper delegate failed.", ex)
+            {
+                OriginalItem = item,
+            };
+        }
     }
 }
