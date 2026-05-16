@@ -335,7 +335,8 @@ public sealed class NodeExecutor(
         {
             var actualType = pipe.GetDataType();
 
-            if (actualType != expectedType)
+            // Allow interface/base-type compatibility (e.g., IReadOnlyCollection<T> for IEnumerable<T> inputs).
+            if (!expectedType.IsAssignableFrom(actualType))
             {
                 throw new InvalidOperationException(
                     $"Runtime stream contract mismatch for node '{nodeId}'. " +
