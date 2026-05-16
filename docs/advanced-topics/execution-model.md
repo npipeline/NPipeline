@@ -175,4 +175,3 @@ This normalization happens once per run. No per-item route adaptation occurs dur
 - [Data Flow Internals](data-flow-internals.md) — how streams connect nodes
 - [Node Instantiation](node-instantiation.md) — how INodeFactory creates node instances
 - [Cancellation](cancellation.md) — how cancellation tokens propagate through execution
-- [Runtime Stream Contracts](runtime-stream-contracts-phase-2.md) — design rationale and breaking change details
