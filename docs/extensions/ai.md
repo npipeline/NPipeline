@@ -167,6 +167,118 @@ builder.AddAIBatchedStreamEnrich<Article, SummaryResult>(chatClient, options => 
 
 Returns a `TransformNodeHandle<TIn, TIn>`.
 
+## AI Routing
+
+AI routing combines an enrich node with a conditional route node. The item is enriched by the LLM first, then dispatched to a downstream node based on predicates that test the enriched item. This lets the model make the branching decision rather than hard-coded logic.
+
+### How AI Routing Works
+
+Internally `AddAIRoute` registers two nodes and wires them together:
+
+1. An `AIEnrichNode<TIn, TField>` that calls the LLM and splices the result onto the item via `ResultMapper`.
+2. A `RouteNode<TIn>` that evaluates `When` predicates against the enriched item and dispatches to the first matching branch.
+
+The `ResultMapper` runs **before** any predicate is tested, so your predicates always see the AI-classified item. Connect your upstream node to `AIRouteBuilder.EnrichHandle`.
+
+### `AddAIRoute<TIn, TField>`
+
+One LLM call per item. Use when throughput demands are modest or items arrive individually.
+
+```csharp
+public record Comment(string Text, string Author, string? Sentiment = null);
+public record SentimentResult(string Label, float Score);
+
+var route = builder.AddAIRoute<Comment, SentimentResult>(chatClient, opts => opts
+    .WithSystemPrompt("Classify the sentiment of each comment. Return JSON with 'label' (Positive/Negative/Neutral) and 'score' (0.0–1.0).")
+    .WithItemTemplate(c => $"Comment: {c.Text}")
+    .WithResultMapper((c, r) => c with { Sentiment = r.Label }));
+
+// Define branches — predicates test the enriched item (Sentiment is already set)
+var positiveHandle = builder.AddSink<PositiveSink, Comment>("positive");
+var negativeSink   = builder.AddSink<NegativeSink, Comment>("negative");
+var reviewHandle   = builder.AddSink<ReviewSink, Comment>("review");
+
+route
+    .When(c => c.Sentiment == "Positive", positiveHandle)
+    .When(c => c.Sentiment == "Negative", negativeSink)
+    .Otherwise(reviewHandle);
+
+// Connect your upstream node to EnrichHandle — this is the entry point of the composite
+builder.Connect(source, route.EnrichHandle);
+```
+
+### `AddAIBatchedStreamRoute<TIn, TField>`
+
+Stream-level version. Items are buffered into batches, each batch is sent to the LLM in a single call, and the enriched items are dispatched through the route node. Use for high-throughput pipelines where per-item LLM calls are too expensive.
+
+```csharp
+var route = builder.AddAIBatchedStreamRoute<Comment, SentimentResult>(chatClient, opts => opts
+    .WithSystemPrompt("Classify the sentiment of each comment. Return a JSON array, one object per comment, with 'label' and 'score'.")
+    .WithBatchTemplate(batch => string.Join("\n", batch.Select((c, i) => $"{i + 1}. {c.Text}")))
+    .WithResultMapper((c, r) => c with { Sentiment = r.Label })
+    .WithBatchSize(32)
+    .WithBatchTimeout(TimeSpan.FromSeconds(2)));
+
+route
+    .When(c => c.Sentiment == "Positive", positiveHandle)
+    .When(c => c.Sentiment == "Negative", negativeHandle)
+    .Otherwise(reviewHandle);
+
+builder.Connect(source, route.EnrichHandle);
+```
+
+### `AIRouteBuilder<T>` API
+
+`AddAIRoute` and `AddAIBatchedStreamRoute` both return an `AIRouteBuilder<T>`. It has a fluent API for wiring branches and two handle properties for pipeline connections.
+
+#### `.When(predicate, target)`
+
+Routes items where `predicate` returns `true` to `target`. Evaluated in declaration order — the item goes to the **first** matching branch only.
+
+```csharp
+route
+    .When(c => c.Sentiment == "Positive", positiveHandle)
+    .When(c => c.Sentiment == "Negative", negativeHandle);
+```
+
+#### `.Otherwise(target)`
+
+Routes items that did not match any `When` predicate. If omitted, unmatched items are dropped (standard route node behaviour).
+
+```csharp
+route.Otherwise(reviewHandle);
+```
+
+#### `.EnrichHandle`
+
+The handle of the internal enrich node. **This is the upstream connection point** — pass it to `builder.Connect(upstream, route.EnrichHandle)`.
+
+#### `.RouteHandle`
+
+The handle of the internal route node. Use this when you need to attach the route node as a source (for example, to inspect or replace the outgoing connections manually) rather than connecting downstream of it.
+
+### Routing Branch Semantics
+
+| Behaviour | Detail |
+|-----------|--------|
+| **First-match** | Only the first `When` predicate that returns `true` receives the item |
+| **Otherwise** | Catches all items that matched no `When`; optional |
+| **No match, no `Otherwise`** | Item is dropped — standard route node behaviour |
+| **Predicate input** | Predicates always receive the enriched item, after `ResultMapper` has run |
+
+### Named Route Nodes
+
+Pass `name` to control the internal node names (useful for observability and debugging). The enrich and route nodes are registered as `{name}_enrich` and `{name}_route`:
+
+```csharp
+builder.AddAIRoute<Comment, SentimentResult>(chatClient, opts => opts
+    .WithSystemPrompt("...")
+    .WithItemTemplate(c => c.Text)
+    .WithResultMapper((c, r) => c with { Sentiment = r.Label }),
+    name: "sentiment-route");
+// Internal nodes: "sentiment-route_enrich", "sentiment-route_route"
+```
+
 ## Choosing the Right Node
 
 | Scenario | Node |
@@ -177,6 +289,8 @@ Returns a `TransformNodeHandle<TIn, TIn>`.
 | One item at a time, add a field | `AddAIEnrich` |
 | Pre-batched items arrive as a collection, add a field | `AddAIBatchedEnrich` |
 | Stream of items, batch internally, add a field | `AddAIBatchedStreamEnrich` |
+| LLM classifies each item, route to different branches | `AddAIRoute` |
+| LLM classifies a stream in batches, route to different branches | `AddAIBatchedStreamRoute` |
 
 ## Configuration Reference
 
@@ -282,6 +396,9 @@ The nodes apply different behaviour depending on the exception type:
 | Model returns JSON that deserializes to `null` | Wrapped in `AITransformException` |
 | Model returns malformed JSON | `JsonException` wrapped in `AITransformException` |
 | Batch and enrich count mismatch | Wrapped in `AITransformException` |
+| `ItemTemplate` or `BatchTemplate` delegate throws | Wrapped in `AITransformException` with `OriginalItem` set |
+| `ResultMapper` delegate throws | Wrapped in `AITransformException` with `OriginalItem` set |
+| `ConfigureOptions` callback throws | Wrapped in `AITransformException` with `PromptSent` set |
 | `HttpRequestException`, `TimeoutException` | **Propagated as-is** — handle via resilience policy |
 | `OperationCanceledException` | **Propagated as-is** |
 | Any other unexpected exception from the client | Wrapped in `AITransformException` |
@@ -460,5 +577,6 @@ For batch nodes, the LLM must return a JSON array (`[...]`) with one element per
 
 - [Error Handling](../error-handling/resilience-policies.md) — configure retry, skip, and dead-letter policies
 - [Batching and Windowing](../guides/batching-and-windowing.md) — use `AddBatcher` with `AddAIBatchedTransform` for explicit batch control
+- [Routing](../guides/routing.md) — understand first-match, multi-match, and otherwise route node semantics
 - [Parallelism](parallelism.md) — run multiple AI nodes in parallel for higher throughput
 - [Observability](observability.md) — add pipeline-level metrics alongside LLM-level tracing
