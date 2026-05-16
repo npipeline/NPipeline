@@ -58,6 +58,8 @@ Randomization added to retry delays to prevent the [thundering herd problem](#th
 
 Data provenance tracking that records how each item was transformed as it passed through the pipeline. Captures hop timestamps, decision outcomes (emitted, filtered, joined), and cardinality. Requires the `NPipeline.Extensions.Lineage` package.
 
+When item-level lineage is enabled, items are wrapped in `LineagePacket<T>` at the source. The effective runtime [stream](#stream) item type throughout execution is `LineagePacket<T>`. Route predicates and merge strategies are normalized to operate on this wrapped type during bind time; node implementations still receive unwrapped `T` values.
+
 ### Materialization
 
 Buffering consumed stream items in memory so the stream can be replayed during node restart. Required for resilience on forward-only streams. Controlled by `MaxMaterializedItems` in `PipelineRetryOptions`. See [Materialization](../error-handling/materialization.md).
@@ -93,6 +95,8 @@ An `IStorageProvider` implementation that abstracts file system operations (read
 ### Stream
 
 A typed, asynchronous, lazy sequence of [items](#item) flowing between nodes. Represented by `IDataStream<T>`, which implements `IAsyncEnumerable<T>`. Streams are consumed item-by-item — data is not buffered in memory unless explicitly [materialized](#materialization).
+
+At runtime, when item-level lineage is enabled, the stream item type `T` is `LineagePacket<TPayload>` rather than the raw payload type `TPayload`. The effective runtime item type is captured in each node's `RuntimeNodeStreamContract` by `RuntimePipelineBinder` before execution starts.
 
 ### Thundering Herd Problem
 

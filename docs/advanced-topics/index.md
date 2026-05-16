@@ -18,3 +18,4 @@ These pages explain how NPipeline works under the hood. You don't need them to u
 | [Data Flow Internals](data-flow-internals.md) | `IDataStream<T>`, async enumeration, and how streams connect nodes |
 | [Node Instantiation](node-instantiation.md) | Compiled expression factories, DI fallback, and caching |
 | [Cancellation](cancellation.md) | Cooperative cancellation propagation through the entire execution stack |
+| [Runtime Stream Contracts](runtime-stream-contracts-phase-2.md) | How NPipeline resolves and enforces runtime stream item types per node |

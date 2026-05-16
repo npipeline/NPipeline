@@ -82,16 +82,20 @@ Key types:
 
 `PipelineRunner` is the main entry point. It delegates to `PipelineExecutionOrchestrator`, which coordinates the full execution lifecycle:
 
-1. **Setup** — instantiate nodes via `INodeFactory`, resolve execution plans
-2. **Topology** — `ITopologyService` computes topological order from the graph
-3. **Node execution** — `INodeExecutor` executes each node in order, using `IExecutionStrategy` for transforms
-4. **Lineage** — `ILineage` records data provenance if enabled
-5. **Cleanup** — dispose nodes, streams, and context resources
+1. **Binding** — `IRuntimePipelineBinder` normalizes the graph before execution: applies option overrides and writes a `RuntimeNodeStreamContract` for every node into the execution annotation bag
+2. **Setup** — instantiate nodes via `INodeFactory`, resolve execution plans
+3. **Topology** — `ITopologyService` computes topological order from the graph
+4. **Node execution** — `INodeExecutor` executes each node in order, using `IExecutionStrategy` for transforms; before passing input streams to a non-join node, it validates stream item types against the node's `RuntimeNodeStreamContract`
+5. **Lineage** — `ILineage` records data provenance if enabled
+6. **Cleanup** — dispose nodes, streams, and context resources
 
 Key types:
 
 - `PipelineRunner` / `PipelineRunnerBuilder` — public entry points
 - `PipelineExecutionOrchestrator` — internal orchestration
+- `IRuntimePipelineBinder` / `RuntimePipelineBinder` — bind-time graph normalization and contract annotation
+- `RuntimeNodeStreamContract` — per-node record of effective input/output item types and lineage state
+- `ExecutionAnnotationKeys` — registry of annotation bag keys used across the execution layer
 - `IExecutionStrategy` — controls how a transform processes its input stream
 - `NodeExecutionPlan` — pre-built execution plan for optimized dispatch
 

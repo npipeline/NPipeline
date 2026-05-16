@@ -44,6 +44,8 @@ Source → wraps items in LineagePacket<T> (assigns CorrelationId)
 | `IPipelineLineageSink` | Pipeline-level export (called once at end of run) |
 | `LineagePacket<T>` | Wraps items with `Data`, `CorrelationId`, `TraversalPath`, `LineageRecords`, `Collect` |
 
+> **Runtime stream contract:** When item-level lineage is enabled, streams throughout execution carry `LineagePacket<T>` items, not `T` items directly. The `RuntimePipelineBinder` normalizes execution options (such as route predicates) to operate on `LineagePacket<T>` before execution starts. Sinks receive an `IDataStream<LineagePacket<T>>` input; the lineage adapter unwraps each packet to expose the inner `T` to your `ISinkNode<T>.ConsumeAsync` implementation. This unwrapping is strictly typed — the input stream must be `IDataStream<LineagePacket<T>>` or the build fails.
+
 ### LineageRecord Fields
 
 | Field | Description |

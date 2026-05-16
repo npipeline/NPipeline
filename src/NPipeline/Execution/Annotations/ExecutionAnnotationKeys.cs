@@ -84,6 +84,12 @@ public static class ExecutionAnnotationKeys
     /// </summary>
     public const string NodeResiliencePolicyPrefix = "resilience.policy::";
 
+    /// <summary>
+    ///     Prefix used to store and retrieve runtime-normalized stream contracts, keyed as
+    ///     "runtime.stream.contract::{nodeId}".
+    /// </summary>
+    public const string RuntimeStreamContractPrefix = "runtime.stream.contract::";
+
     // ============================
     // Node-scoped annotations
     // ============================
@@ -130,5 +136,13 @@ public static class ExecutionAnnotationKeys
     public static string NodeResiliencePolicyForNode(string nodeId)
     {
         return NodeResiliencePolicyPrefix + nodeId;
+    }
+
+    /// <summary>
+    ///     Builds the runtime stream contract key for a given <paramref name="nodeId" />.
+    /// </summary>
+    public static string RuntimeStreamContractForNode(string nodeId)
+    {
+        return RuntimeStreamContractPrefix + nodeId;
     }
 }

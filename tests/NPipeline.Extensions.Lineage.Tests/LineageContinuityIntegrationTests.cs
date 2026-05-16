@@ -17,6 +17,7 @@ namespace NPipeline.Extensions.Lineage.Tests;
 public sealed class LineageContinuityIntegrationTests
 {
     private const string LineageSinkContextKey = "testing.lineage.sink";
+    private const string FanInValuesContextKey = "testing.fanin.values";
 
     [Fact]
     public async Task AggregateLineage_ShouldRemainContinuousAcrossTransformAndAggregate()
@@ -147,6 +148,19 @@ public sealed class LineageContinuityIntegrationTests
             !record.TraversalPath.Contains(sourceSegment));
     }
 
+    [Fact]
+    public async Task FanInIntoSink_WithItemLevelLineage_ShouldConsumeAllItems()
+    {
+        var (context, sink) = CreateContext();
+        var consumedValues = new List<int>();
+        context.Items[FanInValuesContextKey] = consumedValues;
+
+        await RunPipelineAsync<FanInSinkPipeline>(context);
+
+        consumedValues.Should().BeEquivalentTo([1, 2, 3, 4]);
+        sink.Records.Should().NotBeEmpty();
+    }
+
     private static (PipelineContext Context, CollectingLineageSink Sink) CreateContext(LineageOptions? optionsOverride = null)
     {
         var sink = new CollectingLineageSink();
@@ -224,6 +238,22 @@ public sealed class LineageContinuityIntegrationTests
         public override IDataStream<long> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<long>([10L, 20L], "right");
+        }
+    }
+
+    private sealed class FanInLeftSourceNode : SourceNode<int>
+    {
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
+        {
+            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([1, 2], "fanin-left");
+        }
+    }
+
+    private sealed class FanInRightSourceNode : SourceNode<int>
+    {
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
+        {
+            return new NPipeline.DataFlow.DataStreams.InMemoryDataStream<int>([3, 4], "fanin-right");
         }
     }
 
@@ -442,6 +472,20 @@ public sealed class LineageContinuityIntegrationTests
         }
     }
 
+    private sealed class CollectingFanInSinkNode : SinkNode<int>
+    {
+        public override async Task ConsumeAsync(IDataStream<int> input, PipelineContext context, CancellationToken cancellationToken)
+        {
+            if (!context.Items.TryGetValue(FanInValuesContextKey, out var listObj) || listObj is not List<int> values)
+                throw new InvalidOperationException($"Context item '{FanInValuesContextKey}' is required for fan-in sink collection.");
+
+            await foreach (var value in input.WithCancellation(cancellationToken))
+            {
+                values.Add(value);
+            }
+        }
+    }
+
     private abstract class BaseLineagePipeline : IPipelineDefinition
     {
         protected static void EnableLineage(PipelineBuilder builder, PipelineContext context)
@@ -558,6 +602,21 @@ public sealed class LineageContinuityIntegrationTests
             builder.Connect(source, transform)
                 .Connect(transform, aggregate)
                 .Connect(aggregate, sink);
+        }
+    }
+
+    private sealed class FanInSinkPipeline : BaseLineagePipeline
+    {
+        public override void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            EnableLineage(builder, context);
+
+            var left = builder.AddSource<FanInLeftSourceNode, int>("fanin_left");
+            var right = builder.AddSource<FanInRightSourceNode, int>("fanin_right");
+            var sink = builder.AddSink<CollectingFanInSinkNode, int>("fanin_sink");
+
+            builder.Connect(left, sink)
+                .Connect(right, sink);
         }
     }
 }
