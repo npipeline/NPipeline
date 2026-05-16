@@ -397,6 +397,7 @@ public sealed partial class PipelineBuilder
             case NodeKind.StreamTransform:
             case NodeKind.Tap:
             case NodeKind.Branch:
+            case NodeKind.Route:
             case NodeKind.Lookup:
             case NodeKind.Batch:
                 lineageAdapter = BuildLineageAdapter(inType, outType, meta.LineageMapperType);

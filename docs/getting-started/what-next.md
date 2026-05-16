@@ -40,11 +40,12 @@ The parallelism extension lets you process items concurrently with configurable 
 
 → [Parallel Execution](../guides/parallel-execution.md)
 
-### Split data into multiple paths (branching)
+### Split data into multiple paths (branching or conditional routing)
 
-Branch and tap nodes let you send data to multiple destinations.
+Use branch/tap for unconditional fan-out, and RouteNode for predicate-based routing.
 
 → [Branching and Merging](../guides/branching-and-merging.md)
+→ [Routing with RouteNode](../guides/routing-with-route-node.md)
 
 ### Combine data from multiple sources (joins)
 

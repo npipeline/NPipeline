@@ -110,6 +110,19 @@ public sealed class PipelineBuilderCharacterizationTests
     }
 
     [Fact]
+    public void AddRoute_RegistersNodeWithRouteKind()
+    {
+        var b = new PipelineBuilder().WithoutExtendedValidation();
+        var s = b.AddSource<InMemorySourceNode<int>, int>("s");
+        var route = b.AddRoute<int>("myRoute");
+        var k = b.AddSink<InMemorySinkNode<int>, int>("k");
+        b.Connect(s, route).Connect(route, k);
+
+        var p = b.Build();
+        p.Graph.Nodes.Should().Contain(n => n.Id == route.Id && n.Kind == NodeKind.Route);
+    }
+
+    [Fact]
     public void AddStreamTransform_RegistersNodeWithStreamTransformKind()
     {
         var b = new PipelineBuilder().WithoutExtendedValidation();

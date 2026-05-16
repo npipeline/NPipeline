@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.Branching;
 using NPipeline.DataFlow.DataStreams;
+using NPipeline.DataFlow.Routing;
 using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
 using NPipeline.Pipeline;
@@ -33,21 +34,28 @@ public sealed class DataStreamWrapperService
         PipelineGraph graph,
         string nodeId)
     {
-        var branchCount = graph.Edges.Count(e => e.SourceNodeId == nodeId);
+        var outgoingEdges = graph.Edges.Where(e => e.SourceNodeId == nodeId).ToArray();
+        var branchCount = outgoingEdges.Length;
+        var routeOptions = GetRouteOptions(graph, nodeId);
+        var isRouteNode = graph.NodeDefinitionMap.TryGetValue(nodeId, out var nodeDef) && nodeDef.Kind == NodeKind.Route;
+        var useConditionalRouting = isRouteNode && routeOptions is not null;
         var dataType = pipe.GetDataType();
 
         var wrapper = WrapperCache.GetOrAdd(dataType, static t => IOptimizedWrapper.Create(t));
 
-        if (branchCount <= 1)
+        if (!useConditionalRouting && branchCount <= 1)
         {
             // No branching needed - use simple counting passthrough
             return wrapper.WrapPassthrough(pipe, counter, context);
         }
 
-        // Branching needed - use combined counting + multicast
+        // Branching or conditional routing needed - use combined counting + multicast wrappers
         var options = GetBranchOptions(graph, nodeId);
         var metrics = new BranchMetrics();
         context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(ExecutionAnnotationKeys.BranchMetricsForNode(nodeId), metrics);
+
+        if (useConditionalRouting)
+            return wrapper.WrapConditionalMulticast(pipe, counter, outgoingEdges, options, routeOptions!, metrics);
 
         return wrapper.WrapMulticast(pipe, counter, branchCount, options, metrics);
     }
@@ -63,11 +71,25 @@ public sealed class DataStreamWrapperService
                 : null;
     }
 
+    private static object? GetRouteOptions(PipelineGraph graph, string nodeId)
+    {
+        return graph.ExecutionOptions.NodeExecutionAnnotations?.TryGetValue(ExecutionAnnotationKeys.RouteOptionsForNode(nodeId), out var routeOptions) == true
+            ? routeOptions
+            : null;
+    }
+
     // Internal wrapper abstraction avoids per-call reflection.
     private interface IOptimizedWrapper
     {
         IDataStream WrapPassthrough(IDataStream pipe, StatsCounter counter, PipelineContext? context);
         IDataStream WrapMulticast(IDataStream pipe, StatsCounter counter, int subscribers, BranchOptions? options, BranchMetrics metrics);
+        IDataStream WrapConditionalMulticast(
+            IDataStream pipe,
+            StatsCounter counter,
+            IReadOnlyList<Edge> outgoingEdges,
+            BranchOptions? options,
+            object routeOptions,
+            BranchMetrics metrics);
 
         static IOptimizedWrapper Create(Type t)
         {
@@ -88,6 +110,31 @@ public sealed class DataStreamWrapperService
         {
             var typed = (IDataStream<T>)pipe;
             return new CountingMulticastDataStream<T>(typed, counter, subscribers, options?.PerSubscriberBufferCapacity, metrics);
+        }
+
+        public IDataStream WrapConditionalMulticast(
+            IDataStream pipe,
+            StatsCounter counter,
+            IReadOnlyList<Edge> outgoingEdges,
+            BranchOptions? options,
+            object routeOptions,
+            BranchMetrics metrics)
+        {
+            var typed = (IDataStream<T>)pipe;
+
+            if (routeOptions is not RouteOptions<T> typedRouteOptions)
+            {
+                throw new InvalidOperationException(
+                    $"Route options type mismatch for routed stream '{typed.StreamName}'. Expected {typeof(RouteOptions<T>).Name} but got {routeOptions.GetType().Name}.");
+            }
+
+            return new CountingConditionalMulticastDataStream<T>(
+                typed,
+                counter,
+                outgoingEdges,
+                options?.PerSubscriberBufferCapacity,
+                typedRouteOptions,
+                metrics);
         }
     }
 }
