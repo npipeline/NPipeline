@@ -2,8 +2,8 @@
 
 **High-performance, streaming data pipelines for .NET**
 
-NPipeline is a modern .NET library that makes building complex data processing workflows simple and efficient. Whether you're creating ETL pipelines, processing
-real-time data streams, or building sophisticated data transformation workflows, NPipeline provides the tools you need with minimal ceremony.
+NPipeline is a modern .NET library that makes building complex data processing workflows simple and efficient. Whether you're building AI-driven data pipelines, ETL workflows, processing
+real-time data streams, or crafting sophisticated data transformation workflows, NPipeline provides the tools you need with minimal ceremony.
 
 ## Why Choose NPipeline?
 
@@ -40,6 +40,7 @@ intelligent backoff and jitter patterns to prevent thundering herd problems.
 NPipeline excels in scenarios where you need to process data efficiently and reliably:
 
 - **ETL Pipelines** - Extract data from databases, APIs, or files; transform it; load it into data warehouses
+- **AI Data Enrichment & Intelligent Routing** — Augment records with LLM-generated classifications, summaries, or entity extractions, then route to the right downstream system based on content, confidence scores, or business rules
 - **Data Migration** - Move and transform data between systems with validation and error handling
 - **Real-time Processing** - Process streaming data from message queues, IoT devices, or APIs
 - **File Processing** - Parse, validate, and transform large CSV, JSON, or XML files

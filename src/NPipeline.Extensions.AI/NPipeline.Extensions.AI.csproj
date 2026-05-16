@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <WarningsNotAsErrors>$(WarningsNotAsErrors);CS1591</WarningsNotAsErrors>
+
+        <!-- NuGet Packaging Metadata -->
+        <PackageId>NPipeline.Extensions.AI</PackageId>
+        <Description>AI-powered data processing nodes for NPipeline. Provides transformative and enrichment nodes using Microsoft.Extensions.AI.Abstractions. Supports any IChatClient provider — OpenAI, Azure OpenAI, Anthropic, Ollama, OpenRouter, and local models.</Description>
+        <PackageTags>npipeline;extensions;ai;llm;openai;ollama;anthropic;classification;sentiment;etl;pipeline;streaming</PackageTags>
+        <Authors>NPipeline contributors</Authors>
+        <RepositoryUrl>https://github.com/NPipeline/NPipeline.git</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/NPipeline/NPipeline</PackageProjectUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <PackageIcon>icon.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\NPipeline\NPipeline.csproj"/>
+        <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.6.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="..\..\icon.png" Pack="true" PackagePath="\"/>
+        <None Include="README.md" Pack="true" PackagePath="\"/>
+    </ItemGroup>
+
+</Project>
