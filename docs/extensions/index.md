@@ -21,6 +21,7 @@ These packages add capabilities to the core pipeline runtime.
 
 | Package | Description | Docs |
 |---------|-------------|------|
+| `NPipeline.Extensions.AI` | AI-powered transform and enrichment nodes using any `IChatClient` provider | [Reference](ai.md) |
 | `NPipeline.Extensions.DependencyInjection` | Microsoft.Extensions.DependencyInjection integration for automatic node resolution | [Reference](dependency-injection.md) · [Guide](../guides/dependency-injection.md) |
 | `NPipeline.Extensions.Nodes` | Pre-built utility nodes: cleansing, validation, filtering, conversion, enrichment | [Reference](utility-nodes.md) |
 | `NPipeline.Extensions.Composition` | Treat entire pipelines as nodes within larger pipelines | [Reference](composition.md) · [Guide](../guides/pipeline-composition.md) |
