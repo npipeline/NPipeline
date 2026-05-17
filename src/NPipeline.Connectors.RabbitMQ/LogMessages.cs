@@ -28,7 +28,7 @@ internal static partial class LogMessages
     public static partial void ConsumerShutdown(ILogger logger, string queueName, string reason);
 
     [LoggerMessage(5, LogLevel.Warning,
-        "Poison message detected (delivery tag {DeliveryTag}, attempt {AttemptCount}/{MaxAttempts}) — rejecting without requeue")]
+        "Poison message detected (delivery tag {DeliveryTag}, attempt {AttemptCount}/{MaxAttempts}) - rejecting without requeue")]
     public static partial void PoisonMessageRejected(ILogger logger, ulong deliveryTag, int attemptCount, int maxAttempts);
 
     // Sink

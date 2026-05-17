@@ -268,7 +268,7 @@ internal sealed class SqlServerBatchWriter<T> : IDatabaseWriter<T>
                 break;
             case OnMergeAction.Ignore:
             default:
-                // Do nothing on match — no WHEN MATCHED clause added
+                // Do nothing on match - no WHEN MATCHED clause added
                 break;
         }
 

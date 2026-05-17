@@ -109,7 +109,7 @@ builder.Connect(nyse, processor);
 builder.Connect(nasdaq, processor);
 ```
 
-All inbound streams must share a single runtime item type. When item-level lineage is enabled, the runtime item type is `LineagePacket<T>` — the merge operates on `LineagePacket<Trade>` streams and produces a merged `LineagePacket<Trade>` stream, preserving lineage context. No conversion or reflection is involved.
+All inbound streams must share a single runtime item type. When item-level lineage is enabled, the runtime item type is `LineagePacket<T>` - the merge operates on `LineagePacket<Trade>` streams and produces a merged `LineagePacket<Trade>` stream, preserving lineage context. No conversion or reflection is involved.
 
 A mismatch between inbound stream types for a non-join node is a hard error.
 
@@ -123,7 +123,7 @@ public class PriorityMerge : CustomMergeNode<Trade>
     public override async Task<IDataStream<Trade>> MergeAsync(
         IEnumerable<IDataStream> pipes, CancellationToken ct)
     {
-        // Custom merge logic — e.g., priority-based interleaving
+        // Custom merge logic - e.g., priority-based interleaving
         var typedPipes = pipes.Cast<IDataStream<Trade>>();
         return new DataStream<Trade>(
             MergeByPriorityAsync(typedPipes, ct), "priority-merged");
@@ -148,7 +148,7 @@ builder.Connect(nasdaq, merge);
 
 ## Next Steps
 
-- [Routing with RouteNode](routing-with-route-node.md) — conditional fan-out with named route outputs
-- [Joins and Lookups](joins-and-lookups.md) — combine data from different stream types
-- [Batching and Windowing](batching-and-windowing.md) — group items by count or time
-- [Pipeline Composition](pipeline-composition.md) — embed sub-pipelines as reusable units
+- [Routing with RouteNode](routing-with-route-node.md) - conditional fan-out with named route outputs
+- [Joins and Lookups](joins-and-lookups.md) - combine data from different stream types
+- [Batching and Windowing](batching-and-windowing.md) - group items by count or time
+- [Pipeline Composition](pipeline-composition.md) - embed sub-pipelines as reusable units

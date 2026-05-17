@@ -16,7 +16,7 @@ dotnet add package NPipeline.Connectors.MongoDB
 
 **Dependencies:** [MongoDB.Driver](https://www.nuget.org/packages/MongoDB.Driver) 3.x
 
-## Source Node — `MongoSourceNode<T>`
+## Source Node - `MongoSourceNode<T>`
 
 Reads documents from a collection with optional filter, sort, and projection.
 
@@ -59,7 +59,7 @@ var source = new MongoSourceNode<Order>(
     sort: Builders<BsonDocument>.Sort.Descending("created_at"));
 ```
 
-## Change Stream Source — `MongoChangeStreamSourceNode<T>`
+## Change Stream Source - `MongoChangeStreamSourceNode<T>`
 
 Listens to real-time changes on a collection (requires a MongoDB replica set).
 
@@ -70,7 +70,7 @@ var changeSource = new MongoChangeStreamSourceNode<Order>(
     operationTypes: new[] { ChangeStreamOperationType.Insert, ChangeStreamOperationType.Update });
 ```
 
-## Sink Node — `MongoSinkNode<T>`
+## Sink Node - `MongoSinkNode<T>`
 
 | Strategy | Description | Best For |
 |----------|-------------|----------|
@@ -127,7 +127,7 @@ var sink = new MongoSinkNode<ProcessedOrder>(
 | `NoCursorTimeout` | `bool` | `false` | Disable cursor timeout for long reads |
 | `ReadPreference` | `ReadPreferenceMode?` | `null` | Read preference (Primary, Secondary, etc.) |
 | `WriteStrategy` | `MongoWriteStrategy` | `BulkWrite` | `InsertMany`, `BulkWrite`, or `Upsert` |
-| `WriteBatchSize` | `int` | — | Write batch size |
+| `WriteBatchSize` | `int` | - | Write batch size |
 | `UseUpsert` | `bool` | `false` | Enable upsert semantics |
 | `UpsertKeyFields` | `string[]` | `[]` | Key fields for upsert matching |
 | `OnDuplicate` | `OnDuplicateAction` | `Ignore` | `Ignore`, `Overwrite`, or `Fail` |
@@ -197,7 +197,7 @@ var source = new MongoSourceNode<Order>(config.ConnectionString, config,
 
 | Property | Default | Description |
 |----------|---------|-------------|
-| `BatchSize` | 1000 | Cursor batch size — rows fetched per round-trip |
+| `BatchSize` | 1000 | Cursor batch size - rows fetched per round-trip |
 | `NoCursorTimeout` | `false` | Disable cursor timeout for long-running reads |
 | `ReadPreference` | `null` | `Primary`, `Secondary`, `PrimaryPreferred`, etc. |
 
@@ -211,12 +211,12 @@ var source = new MongoSourceNode<Order>(config.ConnectionString, config,
 
 ### Best Practices
 
-1. **Use `BulkWrite`** as the default — handles mixed operations efficiently
+1. **Use `BulkWrite`** as the default - handles mixed operations efficiently
 2. **Use `Upsert`** for idempotent pipelines with natural keys
 3. **Set `NoCursorTimeout = true`** for long-running reads
 4. **Use `ReadPreference.Secondary`** to offload reads from the primary
 5. **Index `UpsertKeyFields`** columns for efficient conflict detection
-6. **Use `IMongoClient` via DI** — the driver manages connection pooling internally
+6. **Use `IMongoClient` via DI** - the driver manages connection pooling internally
 
 ## Testing with Testcontainers
 
@@ -234,5 +234,5 @@ var config = new MongoConfiguration
 
 ## Next Steps
 
-- [Cosmos DB Connector](cosmos.md) — Azure Cosmos DB with MongoDB API support
-- [Error Handling](../error-handling/index.md) — retry strategies for database errors
+- [Cosmos DB Connector](cosmos.md) - Azure Cosmos DB with MongoDB API support
+- [Error Handling](../error-handling/index.md) - retry strategies for database errors

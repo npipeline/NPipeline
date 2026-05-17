@@ -45,7 +45,7 @@ The builder passed to `AddNPipeline` exposes the following registration methods:
 | `AddLineageSink<T>()` | Scoped | Register a lineage sink |
 | `AddPipelineLineageSink<T>()` | Scoped | Register a pipeline lineage sink |
 | `AddLineageSinkProvider<T>()` | Scoped | Register a lineage sink provider |
-| `ScanAssemblies(params Assembly[])` | — | Discover and register all implementations |
+| `ScanAssemblies(params Assembly[])` | - | Discover and register all implementations |
 
 ### Fluent Registration
 
@@ -77,12 +77,12 @@ services.AddNPipeline(builder =>
 
 Automatically discovers and registers implementations of:
 
-- `IPipelineDefinition` — pipeline definitions
-- `INode` derivatives — source, transform, sink, and custom nodes
-- `IResiliencePolicy` — resilience policies
-- `IErrorHandler` — error handlers
-- `IDeadLetterSink` — dead letter sinks
-- `ILineageSink` / `IPipelineLineageSink` — lineage sinks
+- `IPipelineDefinition` - pipeline definitions
+- `INode` derivatives - source, transform, sink, and custom nodes
+- `IResiliencePolicy` - resilience policies
+- `IErrorHandler` - error handlers
+- `IDeadLetterSink` - dead letter sinks
+- `ILineageSink` / `IPipelineLineageSink` - lineage sinks
 
 ```csharp
 services.AddNPipeline(typeof(Program).Assembly);
@@ -93,7 +93,7 @@ services.AddNPipeline(
     typeof(SharedNodes).Assembly);
 ```
 
-Assembly scanning handles `ReflectionTypeLoadException` gracefully — types that fail to load are skipped.
+Assembly scanning handles `ReflectionTypeLoadException` gracefully - types that fail to load are skipped.
 
 ### Mixed Registration
 
@@ -102,10 +102,10 @@ Combine explicit registration with assembly scanning:
 ```csharp
 services.AddNPipeline(builder =>
 {
-    // Explicit — use specific lifetime or override defaults
+    // Explicit - use specific lifetime or override defaults
     builder.AddNode<CustomTransformNode>(ServiceLifetime.Singleton);
 
-    // Scan — discover everything else
+    // Scan - discover everything else
     builder.ScanAssemblies(typeof(Program).Assembly);
 });
 ```
@@ -128,7 +128,7 @@ await provider.RunPipelineAsync<OrderPipeline>(new Dictionary<string, object>
 
 ## Resolving Services in Nodes
 
-Nodes participate in DI — inject dependencies via constructor:
+Nodes participate in DI - inject dependencies via constructor:
 
 ```csharp
 public class EmailNotificationNode : TransformNode<Order, Order>
@@ -163,14 +163,14 @@ public class EmailNotificationNode : TransformNode<Order, Order>
 
 ## Node Factory
 
-`DiContainerNodeFactory` creates node instances using **compiled expression trees** for constructor invocation — no runtime reflection in the hot path. This provides near-native constructor performance.
+`DiContainerNodeFactory` creates node instances using **compiled expression trees** for constructor invocation - no runtime reflection in the hot path. This provides near-native constructor performance.
 
 Falls back to `ActivatorUtilities.CreateInstance` when:
 
 - The constructor has complex parameter patterns
 - Expression compilation fails at startup
 
-The fallback is transparent and functionally identical — only performance differs slightly.
+The fallback is transparent and functionally identical - only performance differs slightly.
 
 ## Registered Services
 
@@ -179,14 +179,14 @@ The fallback is transparent and functionally identical — only performance diff
 | Service | Implementation | Lifetime |
 |---------|---------------|----------|
 | `IPipelineFactory` | `PipelineFactory` | Singleton |
-| `PipelineBuilder` | — | Transient |
+| `PipelineBuilder` | - | Transient |
 | `INodeFactory` | `DiContainerNodeFactory` | Scoped |
 | `IPipelineRunner` | `PipelineRunner` | Scoped |
 | `IErrorHandlerFactory` | `DiHandlerFactory` | Scoped |
 | `ILineageFactory` | `DiHandlerFactory` | Scoped |
 | `IObservabilityFactory` | `DiHandlerFactory` | Scoped |
 | `ILineage` | `NullLineage` | Scoped |
-| `PipelineDefinitionRegistry` | — | Singleton |
+| `PipelineDefinitionRegistry` | - | Singleton |
 
 ## Pipeline Definition Registry
 
@@ -215,5 +215,5 @@ Later registrations replace earlier ones for the same service type.
 
 ## See Also
 
-- [Dependency Injection Guide](../guides/dependency-injection.md) — step-by-step walkthrough with examples
+- [Dependency Injection Guide](../guides/dependency-injection.md) - step-by-step walkthrough with examples
 - [Extensions Overview](index.md)

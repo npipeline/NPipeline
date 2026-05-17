@@ -1,6 +1,6 @@
 # NPipeline Azure Service Bus Connector
 
-Azure Service Bus connector for NPipeline — integrate with Microsoft Azure Service Bus for
+Azure Service Bus connector for NPipeline - integrate with Microsoft Azure Service Bus for
 enterprise-grade message queuing and pub/sub messaging.
 
 ## Features
@@ -11,7 +11,7 @@ enterprise-grade message queuing and pub/sub messaging.
 - **Explicit Settlement**: Full access to Complete, Abandon, Dead-Letter, and Defer operations via `ServiceBusMessage<T>`
 - **Message Lock Renewal**: Automatic lock renewal during long-running processing
 - **Multiple Auth Modes**: Connection string, Azure AD (Managed Identity / DefaultAzureCredential), and named connections
-- **Acknowledgment Strategies**: `AutoOnSinkSuccess`, `Manual`, and `None` — with idempotent settlement
+- **Acknowledgment Strategies**: `AutoOnSinkSuccess`, `Manual`, and `None` - with idempotent settlement
 - **Dead-Letter Routing**: Automatic dead-lettering of deserialization failures
 - **Retry Configuration**: Exponential and fixed-mode retry with configurable delay/timeout
 - **Channel Bridge**: Push-to-pull bridge using `System.Threading.Channels` for backpressure-aware processing
@@ -105,7 +105,7 @@ await message.NegativeAcknowledgeAsync();     // → AbandonAsync() (requeue=tru
 await message.NegativeAcknowledgeAsync(false); // → DeadLetterAsync()
 ```
 
-Settlement is **idempotent** — calling any settlement method multiple times is safe, only the first call takes effect.
+Settlement is **idempotent** - calling any settlement method multiple times is safe, only the first call takes effect.
 
 ## Dependency Injection
 

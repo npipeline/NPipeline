@@ -35,7 +35,7 @@ namespace NPipeline.Pipeline;
 ///     <para>
 ///         <strong>Parallel Node Execution:</strong>
 ///         When using parallel execution strategies (e.g. ParallelExecutionStrategy),
-///         each worker thread processes independent data items through the pipeline. The context itself is not shared across threads—
+///         each worker thread processes independent data items through the pipeline. The context itself is not shared across threads-
 ///         only the node instances and their configuration are shared. State updates during parallel execution should use:
 ///         <list type="bullet">
 ///             <item>

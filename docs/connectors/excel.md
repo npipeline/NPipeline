@@ -18,7 +18,7 @@ dotnet add package NPipeline.Connectors.Excel
 
 ## Storage Abstraction
 
-The Excel connector uses NPipeline's storage abstraction layer. See the [CSV Connector — Storage Abstraction](csv.md#storage-abstraction) section for full details on `StorageUri`, `IStorageResolver`, and when you need an explicit resolver.
+The Excel connector uses NPipeline's storage abstraction layer. See the [CSV Connector - Storage Abstraction](csv.md#storage-abstraction) section for full details on `StorageUri`, `IStorageResolver`, and when you need an explicit resolver.
 
 ```csharp
 // Local file (no resolver needed)
@@ -67,7 +67,7 @@ var source = new ExcelSourceNode<Product>(
     });
 ```
 
-## Source Node — `ExcelSourceNode<T>`
+## Source Node - `ExcelSourceNode<T>`
 
 Reads an Excel file and emits each row as an item of type `T`.
 
@@ -113,7 +113,7 @@ var source = new ExcelSourceNode<Order>(
     configuration: config);
 ```
 
-## Sink Node — `ExcelSinkNode<T>`
+## Sink Node - `ExcelSinkNode<T>`
 
 Writes items to an XLSX file using attribute-based mapping.
 
@@ -201,9 +201,9 @@ public sealed class ExcelToParquetPipeline : IPipelineDefinition
 
 ## Next Steps
 
-- [CSV Connector](csv.md) — streaming alternative for tabular data
-- [Parquet Connector](parquet.md) — efficient columnar format for large datasets
-- [Storage Providers](../storage-providers/index.md) — read Excel from cloud storage
+- [CSV Connector](csv.md) - streaming alternative for tabular data
+- [Parquet Connector](parquet.md) - efficient columnar format for large datasets
+- [Storage Providers](../storage-providers/index.md) - read Excel from cloud storage
 
 ## Storage Abstraction
 
@@ -223,8 +223,8 @@ var source = new ExcelSourceNode<Order>(
 
 | Format | Extension | Library | Notes |
 |--------|-----------|---------|-------|
-| XLSX (Open XML) | `.xlsx` | ExcelDataReader | Full support — recommended |
-| XLS (BIFF) | `.xls` | ExcelDataReader | Legacy — may need encoding config |
+| XLSX (Open XML) | `.xlsx` | ExcelDataReader | Full support - recommended |
+| XLS (BIFF) | `.xls` | ExcelDataReader | Legacy - may need encoding config |
 
 The connector auto-detects the format from the file content.
 
@@ -247,14 +247,14 @@ When `SheetName` is `null`, the source reads the first sheet and the sink writes
 ## Limitations
 
 - **Read-only streaming**: Excel files are fully loaded into memory (ExcelDataReader reads the entire stream)
-- **No formula evaluation**: Formulas are not evaluated — only cached values are read
+- **No formula evaluation**: Formulas are not evaluated - only cached values are read
 - **No cell formatting**: Styles, colors, and formatting are not preserved through the sink
-- **Type detection**: Based on cell value sampling — mixed-type columns may produce unexpected results
+- **Type detection**: Based on cell value sampling - mixed-type columns may produce unexpected results
 
 ## Best Practices
 
-1. **Use XLSX** format — XLS is legacy and has row limits (65,536)
+1. **Use XLSX** format - XLS is legacy and has row limits (65,536)
 2. **Set `AnalyzeInitialRowCount`** appropriately for mixed-type columns
 3. **Specify `SheetName`** explicitly in multi-sheet workbooks
 4. **Configure `Encoding`** for legacy XLS files with non-UTF-8 text
-5. **Prefer CSV or Parquet** for large datasets — Excel has a 1,048,576 row limit
+5. **Prefer CSV or Parquet** for large datasets - Excel has a 1,048,576 row limit

@@ -50,7 +50,7 @@ public class EnrichmentPipeline : IPipelineDefinition
 
 ### CompositeTransformNode\<TIn, TOut, TDefinition>
 
-The core type — wraps a sub-pipeline as a `TransformNode<TIn, TOut>`. For each input item, it:
+The core type - wraps a sub-pipeline as a `TransformNode<TIn, TOut>`. For each input item, it:
 
 1. Creates an isolated child `PipelineContext`
 2. Passes the input via `PipelineInputSource<TIn>`
@@ -85,7 +85,7 @@ builder.AddCompositeOutput<T>(name?)    // sink that sends output to parent
 
 ## Context Inheritance
 
-`CompositeContextConfiguration` controls what the child pipeline inherits from its parent. By default, sub-pipelines are **fully isolated** — they share observability but not data.
+`CompositeContextConfiguration` controls what the child pipeline inherits from its parent. By default, sub-pipelines are **fully isolated** - they share observability but not data.
 
 ### Context Components
 
@@ -114,7 +114,7 @@ builder.AddCompositeOutput<T>(name?)    // sink that sends output to parent
 ### Presets
 
 ```csharp
-// Default — inherits observability only (recommended)
+// Default - inherits observability only (recommended)
 builder.AddComposite<TIn, TOut, TDef>(
     contextConfiguration: CompositeContextConfiguration.Default);
 
@@ -122,7 +122,7 @@ builder.AddComposite<TIn, TOut, TDef>(
 builder.AddComposite<TIn, TOut, TDef>(
     contextConfiguration: CompositeContextConfiguration.InheritAll);
 
-// Custom — selective inheritance
+// Custom - selective inheritance
 builder.AddComposite<TIn, TOut, TDef>(config =>
 {
     config.InheritParentParameters = true;   // pass config down
@@ -133,18 +133,18 @@ builder.AddComposite<TIn, TOut, TDef>(config =>
 ### Isolation Guarantees
 
 - The **parent context is never modified** by sub-pipeline execution
-- When inheritance is enabled, the child receives **copies** — changes to child context don't affect the parent
+- When inheritance is enabled, the child receives **copies** - changes to child context don't affect the parent
 - Context copying occurs at sub-pipeline creation time (before execution)
 
 ### Common Patterns
 
-**Configuration inheritance** — pass connection strings and settings:
+**Configuration inheritance** - pass connection strings and settings:
 
 ```csharp
 config.InheritParentParameters = true;
 ```
 
-**Isolated testing** — test sub-pipelines independently with no shared state:
+**Isolated testing** - test sub-pipelines independently with no shared state:
 
 ```csharp
 CompositeContextConfiguration.Default  // no data inheritance
@@ -164,7 +164,7 @@ Unhandled exceptions in a sub-pipeline propagate to the composite node in the pa
 
 ### Strategies
 
-**Catch in sub-pipeline** — handle expected errors internally:
+**Catch in sub-pipeline** - handle expected errors internally:
 
 ```csharp
 // Sub-pipeline with its own resilience policy
@@ -191,7 +191,7 @@ public class EnrichmentPipeline : IPipelineDefinition
 }
 ```
 
-**Let errors propagate** — parent handles all errors:
+**Let errors propagate** - parent handles all errors:
 
 ```csharp
 // Parent pipeline catches sub-pipeline failures via its own resilience policy
@@ -204,7 +204,7 @@ builder.SetNodeResiliencePolicy(compositeNode, parentPolicy);
 compositeNode.WithResilience(builder);
 ```
 
-**Hybrid** — handle expected errors in sub-pipeline, let critical ones propagate.
+**Hybrid** - handle expected errors in sub-pipeline, let critical ones propagate.
 
 ### Cancellation
 
@@ -252,7 +252,7 @@ public class ProcessingPipeline : IPipelineDefinition
 | 2 levels | ~4–6 μs | Good for layered architectures |
 | 3+ levels | ~6+ μs | Consider flattening |
 
-Context inheritance is configurable at each level — inner levels don't automatically inherit from outer levels.
+Context inheritance is configurable at each level - inner levels don't automatically inherit from outer levels.
 
 ## Performance
 
@@ -277,10 +277,10 @@ Context inheritance is configurable at each level — inner levels don't automat
 
 ### Optimization Tips
 
-1. **Minimize context inheritance** — `Default` (no data inheritance) is fastest
+1. **Minimize context inheritance** - `Default` (no data inheritance) is fastest
 2. **Limit nesting depth** to 2–3 levels
-3. **Reuse pipeline definitions** — avoid recreating definitions per item
-4. **Use async operations** — non-blocking I/O in sub-pipelines
+3. **Reuse pipeline definitions** - avoid recreating definitions per item
+4. **Use async operations** - non-blocking I/O in sub-pipelines
 
 ## Testing
 
@@ -346,11 +346,11 @@ When using DI, sub-pipeline definitions are resolved from the container. Set `fa
 | Problem | Cause | Fix |
 |---------|-------|-----|
 | Sub-pipeline missing parameters | Context inheritance disabled | Enable `InheritParentParameters` |
-| Parent context modified by child | Bug — should not happen | File an issue |
+| Parent context modified by child | Bug - should not happen | File an issue |
 | High overhead per item | Deep nesting or heavy inheritance | Reduce nesting, use `Default` config |
 | Sub-pipeline errors not handled | No resilience policy | Add policy on composite node or inside sub-pipeline |
 
 ## See Also
 
-- [Pipeline Composition Guide](../guides/pipeline-composition.md) — step-by-step walkthrough
+- [Pipeline Composition Guide](../guides/pipeline-composition.md) - step-by-step walkthrough
 - [Extensions Overview](index.md)

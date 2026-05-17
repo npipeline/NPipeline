@@ -91,7 +91,7 @@ public sealed class DuckDBSourceNode<T> : SourceNode<T>
         if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("File path cannot be empty.", nameof(filePath));
 
-        // Determine the file extension — for glob patterns, strip the glob chars
+        // Determine the file extension - for glob patterns, strip the glob chars
         var extensionSource = filePath.Replace("*", "").Replace("?", "");
         var extension = Path.GetExtension(extensionSource).ToLowerInvariant();
 

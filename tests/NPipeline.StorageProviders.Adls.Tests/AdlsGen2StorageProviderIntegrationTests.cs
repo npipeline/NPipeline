@@ -803,7 +803,7 @@ public sealed class AdlsGen2StorageProviderIntegrationTests : IClassFixture<Azur
     [Fact]
     public async Task InvalidCredentials_ThrowsUnauthorizedAccessException()
     {
-        // Arrange — create a provider with NO DefaultConnectionString so the per-URI accountKey is
+        // Arrange - create a provider with NO DefaultConnectionString so the per-URI accountKey is
         // actually sent to Azurite.  A provider that has DefaultConnectionString will use valid auth
         // regardless of what key the URI carries.
         var filesystemName = GetUniqueFilesystemName();

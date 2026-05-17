@@ -131,6 +131,6 @@ Available factory methods:
 
 ## Next Steps
 
-- [Dependency Injection](dependency-injection.md) — context setup via DI
-- [Parallel Execution](parallel-execution.md) — thread safety for shared state
-- [Pipeline Composition](pipeline-composition.md) — how context flows to sub-pipelines
+- [Dependency Injection](dependency-injection.md) - context setup via DI
+- [Parallel Execution](parallel-execution.md) - thread safety for shared state
+- [Pipeline Composition](pipeline-composition.md) - how context flows to sub-pipelines

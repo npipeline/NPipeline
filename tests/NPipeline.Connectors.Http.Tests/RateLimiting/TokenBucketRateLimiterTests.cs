@@ -34,7 +34,7 @@ public class TokenBucketRateLimiterTests
         // Drain the bucket
         await limiter.WaitAsync();
 
-        // Next call should block — cancel immediately
+        // Next call should block - cancel immediately
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
         var act = async () => await limiter.WaitAsync(cts.Token);
 

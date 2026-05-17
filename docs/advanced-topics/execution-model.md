@@ -64,13 +64,13 @@ await runner.RunAsync(definition, context, cancellationToken);
 ### 1. Setup
 
 - `IPipelineFactory.Create<T>(context)` calls `IPipelineDefinition.Define(builder, context)`, then `builder.Build()` to produce a `Pipeline` containing the `PipelineGraph`.
-- `IRuntimePipelineBinder.BindAsync(graph, context)` runs **before** node instantiation. It applies runtime overrides (lineage enable/disable, option decorators) and performs **runtime contract normalization** — computing a `RuntimeNodeStreamContract` for each node and normalizing any stream-sensitive execution options such as route options.
+- `IRuntimePipelineBinder.BindAsync(graph, context)` runs **before** node instantiation. It applies runtime overrides (lineage enable/disable, option decorators) and performs **runtime contract normalization** - computing a `RuntimeNodeStreamContract` for each node and normalizing any stream-sensitive execution options such as route options.
 - `INodeInstantiationService` creates node instances using `INodeFactory`. Nodes with pre-configured instances (DI) skip factory creation.
 - `IPipelineExecutionPlanCache` checks for a cached `NodeExecutionPlan`. On cache miss, the orchestrator builds a new plan.
 
 ### 2. Node Execution
 
-Nodes execute in **topological order** — sources first, then transforms (respecting edge dependencies), then sinks.
+Nodes execute in **topological order** - sources first, then transforms (respecting edge dependencies), then sinks.
 
 For each node, the executor calls the appropriate method based on `NodeKind`:
 
@@ -87,7 +87,7 @@ Transform nodes are always executed through an `IExecutionStrategy`, not directl
 
 If lineage is enabled (`builder.EnableItemLevelLineage()`), the `ILineage` service records provenance events for each item as it passes through nodes. Lineage adapters are built at construction time and invoked during execution.
 
-When lineage is enabled, stream items are wrapped in `LineagePacket<T>` at the source and unwrapped at the sink. Runtime contract normalization (run during binding before node instantiation) ensures every node operates on `IDataStream<LineagePacket<T>>` consistently — route options and merge strategies receive the correct wrapped type without any per-item reflection.
+When lineage is enabled, stream items are wrapped in `LineagePacket<T>` at the source and unwrapped at the sink. Runtime contract normalization (run during binding before node instantiation) ensures every node operates on `IDataStream<LineagePacket<T>>` consistently - route options and merge strategies receive the correct wrapped type without any per-item reflection.
 
 ### 4. Cleanup
 
@@ -158,20 +158,20 @@ Use `WithoutExecutionPlanCache()` to disable caching for testing or debugging.
 | `EffectiveOutputItemType` | The actual stream item type flowing out (`LineagePacket<T>` when lineage is enabled; `null` for sinks). |
 | `ItemLevelLineageEnabled` | Whether item-level lineage is active for this run. |
 
-The contract is stored under the annotation key `runtime.stream.contract::{nodeId}` and is consumed by `NodeExecutor` to validate inputs before execution. For non-join nodes, all inbound input streams must match `EffectiveInputItemType` — a mismatch is a hard error with assembly-qualified type diagnostics.
+The contract is stored under the annotation key `runtime.stream.contract::{nodeId}` and is consumed by `NodeExecutor` to validate inputs before execution. For non-join nodes, all inbound input streams must match `EffectiveInputItemType` - a mismatch is a hard error with assembly-qualified type diagnostics.
 
 ### Route Option Normalization
 
 Route predicates configured on the pipeline builder operate on the payload type `T`. When lineage is enabled, the runtime stream item type is `LineagePacket<T>`. The binder normalizes route options once at bind time:
 
 1. If options already match the effective runtime item type, they are used as-is.
-2. If lineage is enabled and options are payload-typed `RouteOptions<T>`, they are lifted to `RouteOptions<LineagePacket<T>>` — predicates are re-wrapped to delegate to `packet.Data`.
+2. If lineage is enabled and options are payload-typed `RouteOptions<T>`, they are lifted to `RouteOptions<LineagePacket<T>>` - predicates are re-wrapped to delegate to `packet.Data`.
 3. Any other mismatch is a hard error at bind time with type diagnostics.
 
 This normalization happens once per run. No per-item route adaptation occurs during execution.
 
 ## Next Steps
 
-- [Data Flow Internals](data-flow-internals.md) — how streams connect nodes
-- [Node Instantiation](node-instantiation.md) — how INodeFactory creates node instances
-- [Cancellation](cancellation.md) — how cancellation tokens propagate through execution
+- [Data Flow Internals](data-flow-internals.md) - how streams connect nodes
+- [Node Instantiation](node-instantiation.md) - how INodeFactory creates node instances
+- [Cancellation](cancellation.md) - how cancellation tokens propagate through execution

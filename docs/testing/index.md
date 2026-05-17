@@ -17,5 +17,5 @@ dotnet add package NPipeline.Extensions.Testing.AwesomeAssertions  # or FluentAs
 
 ## In This Section
 
-- [Testing Pipelines](testing-pipelines.md) — test harness, in-memory nodes, and integration testing patterns
-- [Test Utilities](test-utilities.md) — reference for all test helpers, mocks, and assertion extensions
+- [Testing Pipelines](testing-pipelines.md) - test harness, in-memory nodes, and integration testing patterns
+- [Test Utilities](test-utilities.md) - reference for all test helpers, mocks, and assertion extensions

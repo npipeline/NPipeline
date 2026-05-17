@@ -11,7 +11,7 @@ namespace NPipeline.Connectors.Azure.ServiceBus.Models;
 /// <remarks>
 ///     <para>
 ///         Settlement methods are idempotent: calling <see cref="CompleteAsync" /> (or any other settlement
-///         method) more than once is safe — only the first call takes effect.
+///         method) more than once is safe - only the first call takes effect.
 ///     </para>
 ///     <para>
 ///         <see cref="AcknowledgeAsync" /> delegates to <see cref="CompleteAsync" />.
@@ -75,7 +75,7 @@ public sealed class ServiceBusMessage<T> : IAcknowledgableMessage<T>, IServiceBu
     }
 
     /// <summary>
-    ///     Testing / manual construction — all settlement callbacks are optional delegates.
+    ///     Testing / manual construction - all settlement callbacks are optional delegates.
     /// </summary>
     public ServiceBusMessage(
         T body,

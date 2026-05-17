@@ -117,7 +117,7 @@ internal sealed class CosmosBatchWriter<T> : IDatabaseWriter<T>
         }
         catch (Exception ex) when (_configuration.ContinueOnError && ex is not OperationCanceledException)
         {
-            // await Task.WhenAll unwraps AggregateException — catch Exception to reliably handle any failure
+            // await Task.WhenAll unwraps AggregateException - catch Exception to reliably handle any failure
             var failureCount = tasks.Count(t => t.IsFaulted);
 
             var actualFailureCount = failureCount > 0

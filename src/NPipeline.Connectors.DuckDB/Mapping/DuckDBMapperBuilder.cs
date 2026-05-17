@@ -127,7 +127,7 @@ internal static class DuckDBMapperBuilder
             if (readerColumns.Contains(snakeName))
                 mappings.Add((prop, snakeName));
 
-            // Property not found in result set — skip (use default value)
+            // Property not found in result set - skip (use default value)
         }
 
         // Build compiled delegate using expression trees

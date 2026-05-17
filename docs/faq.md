@@ -36,7 +36,7 @@ Choose NPipeline when you build .NET applications, need lightweight in-process p
 
 ### Can I use NPipeline in Azure Functions?
 
-Yes, but consider startup time and memory constraints. Works well for moderate data volumes. Cold starts may be slow for large pipelines — pre-warm functions for production.
+Yes, but consider startup time and memory constraints. Works well for moderate data volumes. Cold starts may be slow for large pipelines - pre-warm functions for production.
 
 ### Can I use NPipeline in AWS Lambda?
 
@@ -86,7 +86,7 @@ builder.Connect(transform, sink2);
 
 ### Should transforms be stateless?
 
-**Stateless is preferred** — easier to test, thread-safe, and compatible with parallel execution. Stateful transforms (running totals, caches) are allowed but require synchronization if used with parallel execution. See [Thread Safety](guides/parallel-execution.md#thread-safety).
+**Stateless is preferred** - easier to test, thread-safe, and compatible with parallel execution. Stateful transforms (running totals, caches) are allowed but require synchronization if used with parallel execution. See [Thread Safety](guides/parallel-execution.md#thread-safety).
 
 ### When should I use composition vs a flat pipeline?
 
@@ -105,12 +105,12 @@ Use a flat pipeline when:
 
 ### How do I make my pipeline faster?
 
-1. **Profile first** — enable [observability](observability/metrics-and-monitoring.md) to find the bottleneck
-2. **Use parallel execution** for CPU-bound transforms — see [Parallel Execution](guides/parallel-execution.md)
-3. **Stream data** — use `DataStream<T>` instead of materializing entire datasets
-4. **Override `ExecuteValueTaskAsync`** — avoid Task allocations for synchronous transforms (see [Synchronous Fast Paths](performance/synchronous-fast-paths.md))
-5. **Batch I/O operations** — use [batching](guides/batching-and-windowing.md) for database writes and API calls
-6. **Avoid LINQ in hot paths** — analyzer NP9103 catches this
+1. **Profile first** - enable [observability](observability/metrics-and-monitoring.md) to find the bottleneck
+2. **Use parallel execution** for CPU-bound transforms - see [Parallel Execution](guides/parallel-execution.md)
+3. **Stream data** - use `DataStream<T>` instead of materializing entire datasets
+4. **Override `ExecuteValueTaskAsync`** - avoid Task allocations for synchronous transforms (see [Synchronous Fast Paths](performance/synchronous-fast-paths.md))
+5. **Batch I/O operations** - use [batching](guides/batching-and-windowing.md) for database writes and API calls
+6. **Avoid LINQ in hot paths** - analyzer NP9103 catches this
 
 ### How many pipelines can run concurrently?
 
@@ -118,7 +118,7 @@ Depends on resource usage per pipeline. Lightweight in-memory pipelines can run 
 
 ### What if I only need to process data once?
 
-Use a console app — no background service or long-lived host needed:
+Use a console app - no background service or long-lived host needed:
 
 ```csharp
 var services = new ServiceCollection();
@@ -129,6 +129,6 @@ await runner.RunAsync<MyPipeline>(new PipelineContext());
 
 ## Next Steps
 
-- [Your First Pipeline](getting-started/your-first-pipeline.md) — hands-on tutorial
-- [Key Concepts](getting-started/key-concepts.md) — core model
-- [Samples](samples/index.md) — runnable examples
+- [Your First Pipeline](getting-started/your-first-pipeline.md) - hands-on tutorial
+- [Key Concepts](getting-started/key-concepts.md) - core model
+- [Samples](samples/index.md) - runnable examples

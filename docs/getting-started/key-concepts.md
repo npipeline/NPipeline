@@ -6,7 +6,7 @@ order: 4
 
 # Key Concepts
 
-This page explains the three ideas you need to understand before building pipelines. No code — just the mental model.
+This page explains the three ideas you need to understand before building pipelines. No code - just the mental model.
 
 ## Nodes: The Building Blocks
 
@@ -93,5 +93,5 @@ You write the nodes and declare the graph. NPipeline does the rest.
 
 ## Next Steps
 
-- [Your First Pipeline](your-first-pipeline.md) — if you haven't built one yet, start here
-- [What Next?](what-next.md) — find the right guide for what you want to build
+- [Your First Pipeline](your-first-pipeline.md) - if you haven't built one yet, start here
+- [What Next?](what-next.md) - find the right guide for what you want to build

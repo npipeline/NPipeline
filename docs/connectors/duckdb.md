@@ -26,7 +26,7 @@ dotnet add package NPipeline.Connectors.DuckDB
 | **Parquet/CSV queries** | Native (`read_parquet()`) | No | Via extensions |
 | **Concurrent writers** | No | Limited | Yes |
 
-## Source Node — `DuckDBSourceNode<T>`
+## Source Node - `DuckDBSourceNode<T>`
 
 ### Constructors
 
@@ -61,7 +61,7 @@ var source = new DuckDBSourceNode<SalesRecord>(
     "SELECT region, SUM(amount) as total FROM read_parquet('sales/*.parquet') GROUP BY region");
 ```
 
-## Sink Node — `DuckDBSinkNode<T>`
+## Sink Node - `DuckDBSinkNode<T>`
 
 | Strategy | Description | Best For |
 |----------|-------------|----------|
@@ -162,7 +162,7 @@ services.AddDuckDBDatabase("reporting", "reporting.duckdb", config =>
 
 | Strategy | Description | Best For |
 |----------|-------------|----------|
-| `Appender` (default) | DuckDB native appender — fastest path | Bulk loads, ETL |
+| `Appender` (default) | DuckDB native appender - fastest path | Bulk loads, ETL |
 | `Sql` | Standard SQL `INSERT` statements | Small volumes, complex logic |
 
 The `Appender` strategy bypasses SQL parsing entirely and writes directly to DuckDB's storage engine.
@@ -220,14 +220,14 @@ var sink = new DuckDBSinkNode<SalesRecord>(
 
 ## Best Practices
 
-1. **Use `Appender` strategy** (default) — significantly faster than SQL inserts
+1. **Use `Appender` strategy** (default) - significantly faster than SQL inserts
 2. **Set `MemoryLimit`** to prevent unbounded memory growth
 3. **Configure `TempDirectory`** for large datasets that exceed memory
 4. **Use `ReadOnly` access mode** for concurrent read pipelines
 5. **Use in-memory mode** (`DatabasePath = null`) for ephemeral analytical pipelines
-6. **Load extensions** at configuration time — not mid-pipeline
+6. **Load extensions** at configuration time - not mid-pipeline
 
 ## Next Steps
 
-- [Parquet Connector](parquet.md) — read/write Parquet files directly
-- [Data Lake Connector](datalake.md) — partitioned Parquet tables with time travel
+- [Parquet Connector](parquet.md) - read/write Parquet files directly
+- [Data Lake Connector](datalake.md) - partitioned Parquet tables with time travel

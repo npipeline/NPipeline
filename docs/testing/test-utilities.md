@@ -89,7 +89,7 @@ var mock = new MockNode<Order, Result>(
 
 ### ExceptionThrowingNode\<TIn\>
 
-Always throws — use for testing error handling:
+Always throws - use for testing error handling:
 
 ```csharp
 var node = new ExceptionThrowingNode<Order>(new InvalidOperationException("test"));
@@ -144,6 +144,6 @@ result.ShouldHaveNoErrors();
 
 ## Next Steps
 
-- [Testing Extension Reference](../extensions/testing.md) — test harness, in-memory nodes, and assertions API
-- [Testing Pipelines](testing-pipelines.md) — practical testing guide
-- [Error Handling](../error-handling/index.md) — test resilience behavior
+- [Testing Extension Reference](../extensions/testing.md) - test harness, in-memory nodes, and assertions API
+- [Testing Pipelines](testing-pipelines.md) - practical testing guide
+- [Error Handling](../error-handling/index.md) - test resilience behavior

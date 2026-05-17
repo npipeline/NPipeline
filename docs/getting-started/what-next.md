@@ -14,19 +14,19 @@ You've installed NPipeline, built your first pipeline, and understand the mental
 
 Install a connector package and use its pre-built source/sink nodes.
 
-→ [Connectors](../connectors/index.md) — choose the right connector for your file format
+→ [Connectors](../connectors/index.md) - choose the right connector for your file format
 
 ### Connect to a database (PostgreSQL, SQL Server, MongoDB, etc.)
 
 Database connectors provide source and sink nodes for reading/writing directly.
 
-→ [Connectors](../connectors/index.md) — database connectors section
+→ [Connectors](../connectors/index.md) - database connectors section
 
 ### Process messages from Kafka, RabbitMQ, or Azure Service Bus
 
 Message queue connectors give you streaming sources that consume messages in real time.
 
-→ [Connectors](../connectors/index.md) — messaging connectors section
+→ [Connectors](../connectors/index.md) - messaging connectors section
 
 ### Handle errors without crashing the pipeline
 
@@ -91,7 +91,7 @@ Techniques for reducing allocations, caching execution plans, and choosing the r
 
 ## Next Steps
 
-- [Defining Pipelines](../guides/defining-pipelines.md) — fluent builder vs class-based approaches
-- [Lambda Nodes](../guides/lambda-nodes.md) — inline nodes without separate classes
-- [Custom Nodes](../guides/custom-nodes.md) — writing your own source, transform, and sink nodes
-- [Reference: Glossary](../reference/glossary.md) — definitions for all NPipeline terminology
+- [Defining Pipelines](../guides/defining-pipelines.md) - fluent builder vs class-based approaches
+- [Lambda Nodes](../guides/lambda-nodes.md) - inline nodes without separate classes
+- [Custom Nodes](../guides/custom-nodes.md) - writing your own source, transform, and sink nodes
+- [Reference: Glossary](../reference/glossary.md) - definitions for all NPipeline terminology

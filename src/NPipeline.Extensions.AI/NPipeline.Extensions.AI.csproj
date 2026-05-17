@@ -13,7 +13,7 @@
 
         <!-- NuGet Packaging Metadata -->
         <PackageId>NPipeline.Extensions.AI</PackageId>
-        <Description>AI-powered data processing nodes for NPipeline. Provides transformative and enrichment nodes using Microsoft.Extensions.AI.Abstractions. Supports any IChatClient provider — OpenAI, Azure OpenAI, Anthropic, Ollama, OpenRouter, and local models.</Description>
+        <Description>AI-powered data processing nodes for NPipeline. Provides transformative and enrichment nodes using Microsoft.Extensions.AI.Abstractions. Supports any IChatClient provider - OpenAI, Azure OpenAI, Anthropic, Ollama, OpenRouter, and local models.</Description>
         <PackageTags>npipeline;extensions;ai;llm;openai;ollama;anthropic;classification;sentiment;etl;pipeline;streaming</PackageTags>
         <Authors>NPipeline contributors</Authors>
         <RepositoryUrl>https://github.com/NPipeline/NPipeline.git</RepositoryUrl>

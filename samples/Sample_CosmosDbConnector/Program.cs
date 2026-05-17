@@ -81,7 +81,7 @@ public sealed class Program
             return args[0];
         }
 
-        Console.WriteLine("No connection string provided — using Azure Cosmos DB Emulator defaults:");
+        Console.WriteLine("No connection string provided - using Azure Cosmos DB Emulator defaults:");
         Console.WriteLine("  Endpoint : https://localhost:8081/");
         Console.WriteLine();
         Console.WriteLine("To use a real account, run:");

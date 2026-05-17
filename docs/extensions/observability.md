@@ -21,14 +21,14 @@ services.AddNPipeline(builder => { ... });
 services.AddNPipelineObservability();
 ```
 
-This enables automatic metrics collection for every pipeline run — node execution times, throughput, retry counts, and pipeline lifecycle events.
+This enables automatic metrics collection for every pipeline run - node execution times, throughput, retry counts, and pipeline lifecycle events.
 
 ### Using the Observable Context Factory
 
 ```csharp
 var contextFactory = serviceProvider.GetRequiredService<IObservablePipelineContextFactory>();
 await using var context = contextFactory.Create();
-// ExecutionObserver is already attached — metrics are collected automatically
+// ExecutionObserver is already attached - metrics are collected automatically
 ```
 
 ## Node Metrics
@@ -263,14 +263,14 @@ public sealed class EnrichedLoggingSink : IMetricsSink
 
 ## Best Practices
 
-1. Use **scoped lifetimes** for collectors — one per pipeline run
+1. Use **scoped lifetimes** for collectors - one per pipeline run
 2. **Handle cancellation** in async sinks
-3. **Buffer writes** in custom sinks — avoid per-record I/O to external systems
+3. **Buffer writes** in custom sinks - avoid per-record I/O to external systems
 4. **Batch persistence** for high-volume pipelines
-5. **Use `EnableMemoryMetrics` sparingly** — GC-based measurement adds overhead
+5. **Use `EnableMemoryMetrics` sparingly** - GC-based measurement adds overhead
 
 ## See Also
 
-- [OpenTelemetry](opentelemetry.md) — distributed tracing
-- [Metrics & Monitoring Guide](../observability/metrics-and-monitoring.md) — step-by-step walkthrough
+- [OpenTelemetry](opentelemetry.md) - distributed tracing
+- [Metrics & Monitoring Guide](../observability/metrics-and-monitoring.md) - step-by-step walkthrough
 - [Extensions Overview](index.md)

@@ -47,9 +47,9 @@ azure://container-name/blob/path
 
 Credentials are resolved in this order:
 
-1. **Connection string** — `DefaultConnectionString` (takes precedence when set)
-2. **Explicit credential** — `DefaultCredential` (any `TokenCredential`)
-3. **Default credential chain** — `DefaultAzureCredential` (environment → managed identity → Azure CLI)
+1. **Connection string** - `DefaultConnectionString` (takes precedence when set)
+2. **Explicit credential** - `DefaultCredential` (any `TokenCredential`)
+3. **Default credential chain** - `DefaultAzureCredential` (environment → managed identity → Azure CLI)
 
 ```csharp
 // Connection string
@@ -102,10 +102,10 @@ Registers: `IStorageProvider`, `IStorageProviderMetadataProvider`
 
 ## Features
 
-- **Chunked uploads** — files above `BlockBlobUploadThresholdBytes` use the staged block upload API
-- **Client caching** — `BlobContainerClient` instances are cached per container; LRU eviction when `ClientCacheSizeLimit` is reached
-- **Azurite emulator** — set `ServiceUrl` for local development
-- **Metadata** — implements `IStorageProviderMetadataProvider` for `Size`, `LastModified`, `ContentType`, `ETag`
+- **Chunked uploads** - files above `BlockBlobUploadThresholdBytes` use the staged block upload API
+- **Client caching** - `BlobContainerClient` instances are cached per container; LRU eviction when `ClientCacheSizeLimit` is reached
+- **Azurite emulator** - set `ServiceUrl` for local development
+- **Metadata** - implements `IStorageProviderMetadataProvider` for `Size`, `LastModified`, `ContentType`, `ETag`
 
 ## URI Parameters
 
@@ -180,7 +180,7 @@ var prefix = StorageUri.Parse("azure://my-container/data/");
 
 await foreach (var item in provider.ListAsync(prefix, recursive: true))
 {
-    Console.WriteLine($"{item.Uri} — {item.Size} bytes");
+    Console.WriteLine($"{item.Uri} - {item.Size} bytes");
 }
 ```
 
@@ -218,12 +218,12 @@ Assign `Storage Blob Data Contributor` for full read/write/delete access. For re
 
 ## Limitations
 
-- **Flat storage** — Blob Storage has no directories; prefix-based hierarchy is simulated
-- **Concurrent writes** — writing to the same blob from multiple threads may race; use locking or versioning
-- **Block blob size** — maximum 190.7 TiB per blob; each block max 4,000 MiB
+- **Flat storage** - Blob Storage has no directories; prefix-based hierarchy is simulated
+- **Concurrent writes** - writing to the same blob from multiple threads may race; use locking or versioning
+- **Block blob size** - maximum 190.7 TiB per blob; each block max 4,000 MiB
 
 ## Next Steps
 
-- [ADLS Gen2 Provider](adls-gen2.md) — hierarchical namespace on Azure
-- [AWS S3 Provider](aws-s3.md) — Amazon alternative
-- [Storage Providers Overview](index.md) — choosing between providers
+- [ADLS Gen2 Provider](adls-gen2.md) - hierarchical namespace on Azure
+- [AWS S3 Provider](aws-s3.md) - Amazon alternative
+- [Storage Providers Overview](index.md) - choosing between providers

@@ -101,11 +101,11 @@ All providers (built-in and custom) share these conventions:
 
 ## Implementation Best Practices
 
-1. **Normalize exceptions** — translate provider-specific errors to standard .NET exceptions (`FileNotFoundException`, `UnauthorizedAccessException`, `IOException`)
-2. **Support cancellation** — pass `CancellationToken` to all async operations
-3. **Report capabilities accurately** — implement `IStorageProviderMetadataProvider` so the resolver and connectors know what your provider supports
-4. **Handle recursion consistently** — when `recursive: false`, list only immediate children; when `true`, traverse all descendants
-5. **Stream responsibly** — return streams that can be disposed safely; avoid loading entire files into memory
+1. **Normalize exceptions** - translate provider-specific errors to standard .NET exceptions (`FileNotFoundException`, `UnauthorizedAccessException`, `IOException`)
+2. **Support cancellation** - pass `CancellationToken` to all async operations
+3. **Report capabilities accurately** - implement `IStorageProviderMetadataProvider` so the resolver and connectors know what your provider supports
+4. **Handle recursion consistently** - when `recursive: false`, list only immediate children; when `true`, traverse all descendants
+5. **Stream responsibly** - return streams that can be disposed safely; avoid loading entire files into memory
 
 ## Capability Discovery
 
@@ -157,5 +157,5 @@ services.AddSingleton<IStorageProvider, FtpStorageProvider>();
 
 ## Next Steps
 
-- [Storage Providers Overview](index.md) — built-in providers
-- [Connectors](../connectors/index.md) — use your provider with file-based connectors
+- [Storage Providers Overview](index.md) - built-in providers
+- [Connectors](../connectors/index.md) - use your provider with file-based connectors

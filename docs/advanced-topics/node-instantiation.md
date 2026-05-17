@@ -30,7 +30,7 @@ var expression = Expression.New(constructor);
 var factory = Expression.Lambda<Func<INode>>(expression).Compile();
 ```
 
-The compiled delegate is cached in a `ConcurrentDictionary<Type, Func<INode>?>`. After the first call, creating a node is as fast as calling `new MyNode()` directly — no reflection overhead.
+The compiled delegate is cached in a `ConcurrentDictionary<Type, Func<INode>?>`. After the first call, creating a node is as fast as calling `new MyNode()` directly - no reflection overhead.
 
 ### Why Not Just Use `new()`?
 
@@ -52,7 +52,7 @@ When the DI extension resolves nodes, it creates instances from the container an
 
 ### Activator Fallback
 
-If no compiled factory is possible and no pre-configured instance exists, the factory falls back to `Activator.CreateInstance()`. This is intentionally slow — it's a safety net, not a recommended path.
+If no compiled factory is possible and no pre-configured instance exists, the factory falls back to `Activator.CreateInstance()`. This is intentionally slow - it's a safety net, not a recommended path.
 
 ## The Parameterless Constructor Requirement
 
@@ -87,9 +87,9 @@ public sealed record NodeDefinition(
 
 Key properties for instantiation:
 
-- `NodeType` — the concrete `Type` to instantiate
-- `Kind` — determines which interface (`ISourceNode`, `ITransformNode`, `ISinkNode`, etc.) the runtime expects
-- `ExecutionStrategy` — attached strategy for transform nodes (null = default sequential)
+- `NodeType` - the concrete `Type` to instantiate
+- `Kind` - determines which interface (`ISourceNode`, `ITransformNode`, `ISinkNode`, etc.) the runtime expects
+- `ExecutionStrategy` - attached strategy for transform nodes (null = default sequential)
 
 ## Execution Strategy Assignment
 
@@ -102,15 +102,15 @@ The strategy is stored on the `NodeDefinition` and set on the `ITransformNode.Ex
 
 ## Node Lifecycle
 
-1. **Instantiation** — `INodeFactory.Create(definition)` during orchestration setup.
-2. **Strategy assignment** — `node.ExecutionStrategy = definition.ExecutionStrategy` for transform nodes.
-3. **Execution** — `OpenStream()`, `TransformAsync()`, or `ConsumeAsync()` called by the executor.
-4. **Disposal** — `IAsyncDisposable.DisposeAsync()` called during cleanup.
+1. **Instantiation** - `INodeFactory.Create(definition)` during orchestration setup.
+2. **Strategy assignment** - `node.ExecutionStrategy = definition.ExecutionStrategy` for transform nodes.
+3. **Execution** - `OpenStream()`, `TransformAsync()`, or `ConsumeAsync()` called by the executor.
+4. **Disposal** - `IAsyncDisposable.DisposeAsync()` called during cleanup.
 
 All nodes implement `INode : IAsyncDisposable`. The base classes (`SourceNode<T>`, `TransformNode<TIn, TOut>`, `SinkNode<T>`) provide default no-op disposal. Override `DisposeAsync()` if your node holds resources (database connections, file handles, etc.).
 
 ## Next Steps
 
-- [Cancellation](cancellation.md) — how cancellation tokens reach instantiated nodes
-- [Adding a Node Type](../contributing/adding-a-node-type.md) — step-by-step guide to adding a new node kind
-- [Data Flow Internals](data-flow-internals.md) — streams that nodes produce and consume
+- [Cancellation](cancellation.md) - how cancellation tokens reach instantiated nodes
+- [Adding a Node Type](../contributing/adding-a-node-type.md) - step-by-step guide to adding a new node kind
+- [Data Flow Internals](data-flow-internals.md) - streams that nodes produce and consume

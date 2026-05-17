@@ -188,6 +188,6 @@ When the API starts failing consistently, the circuit breaker trips after 5 fail
 
 ## Next Steps
 
-- [Dead-Letter Queues](dead-letter-queues.md) — capture items that fail even after circuit recovery
-- [Materialization](materialization.md) — buffer items so nodes can restart after recovery
-- [Retry Strategies](retry-strategies.md) — control the delay between retry attempts
+- [Dead-Letter Queues](dead-letter-queues.md) - capture items that fail even after circuit recovery
+- [Materialization](materialization.md) - buffer items so nodes can restart after recovery
+- [Retry Strategies](retry-strategies.md) - control the delay between retry attempts

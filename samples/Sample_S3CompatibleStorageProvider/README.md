@@ -231,9 +231,9 @@ new S3CompatibleStorageProviderOptions
 
 | Property                        | Type     | Required | Default     | Description                                                        |
 |---------------------------------|----------|----------|-------------|--------------------------------------------------------------------|
-| `ServiceUrl`                    | `Uri`    | ✓        | —           | Base URL of the S3-compatible endpoint                             |
-| `AccessKey`                     | `string` | ✓        | —           | Static access key (equivalent to AWS access key ID)                |
-| `SecretKey`                     | `string` | ✓        | —           | Static secret key (equivalent to AWS secret access key)            |
+| `ServiceUrl`                    | `Uri`    | ✓        | -           | Base URL of the S3-compatible endpoint                             |
+| `AccessKey`                     | `string` | ✓        | -           | Static access key (equivalent to AWS access key ID)                |
+| `SecretKey`                     | `string` | ✓        | -           | Static secret key (equivalent to AWS secret access key)            |
 | `SigningRegion`                 | `string` | ✗        | `us-east-1` | Region used for request signing. Use `"auto"` for Cloudflare R2    |
 | `ForcePathStyle`                | `bool`   | ✗        | `true`      | Force path-style addressing (required by most compatible services) |
 | `MultipartUploadThresholdBytes` | `long`   | ✗        | `67108864`  | File size threshold above which multipart upload is used (64 MB)   |

@@ -8,7 +8,7 @@ order: 4
 
 NPipeline error codes follow the pattern `NPxxxx` where the first two digits indicate the category.
 
-## NP01xx — Core Pipeline Errors
+## NP01xx - Core Pipeline Errors
 
 | Code | Name | Description |
 |------|------|-------------|
@@ -18,7 +18,7 @@ NPipeline error codes follow the pattern `NPxxxx` where the first two digits ind
 | NP0104 | NodeAlreadyAdded | A node with this ID has already been added to the builder. Use a unique ID. |
 | NP0105 | NodeNameNotUnique | A node with this name already exists. Choose a different name. |
 
-## NP02xx — Type System Errors
+## NP02xx - Type System Errors
 
 | Code | Name | Description |
 |------|------|-------------|
@@ -32,7 +32,7 @@ NPipeline error codes follow the pattern `NPxxxx` where the first two digits ind
 | NP0208 | ValueTupleConstructorNotFound | Could not find the expected ValueTuple constructor. |
 | NP0210 | CannotConcatenateStreamsTypeMismatch | Cannot concatenate data streams of different types. |
 
-## NP03xx — Node Execution Errors
+## NP03xx - Node Execution Errors
 
 | Code | Name | Description |
 |------|------|-------------|
@@ -47,7 +47,7 @@ NPipeline error codes follow the pattern `NPxxxx` where the first two digits ind
 | NP0310 | CircuitBreakerTripped | The circuit breaker tripped after the configured threshold of consecutive failures. |
 | NP0311 | RetryLimitExhausted | All retry attempts were exhausted. |
 
-## NP04xx — Configuration and Setup Errors
+## NP04xx - Configuration and Setup Errors
 
 | Code | Name | Description |
 |------|------|-------------|
@@ -70,7 +70,7 @@ NPipeline error codes follow the pattern `NPxxxx` where the first two digits ind
 | NP0419 | MissingTypeMetadata | Internal: node is missing type metadata. |
 | NP0420 | TimeWindowAssignerCannotBeNull | The time window assigner cannot be null for time-windowed operations. |
 
-## NP05xx — Resource Management Errors
+## NP05xx - Resource Management Errors
 
 | Code | Name | Description |
 |------|------|-------------|
@@ -81,5 +81,5 @@ NPipeline error codes follow the pattern `NPxxxx` where the first two digits ind
 
 ## Next Steps
 
-- [Build-Time Analyzers](../analyzers/index.md) — build-time diagnostic rules
-- [Common Issues](../troubleshooting/common-issues.md) — symptom-based troubleshooting
+- [Build-Time Analyzers](../analyzers/index.md) - build-time diagnostic rules
+- [Common Issues](../troubleshooting/common-issues.md) - symptom-based troubleshooting

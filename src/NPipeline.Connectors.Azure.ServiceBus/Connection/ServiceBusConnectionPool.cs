@@ -19,7 +19,7 @@ namespace NPipeline.Connectors.Azure.ServiceBus.Connection;
 ///     </para>
 ///     <para>
 ///         <strong>Note:</strong> <see cref="ServiceBusProcessor" /> instances are <em>not</em>
-///         pooled — they are lifecycle-bound to their source node and are created and disposed per node.
+///         pooled - they are lifecycle-bound to their source node and are created and disposed per node.
 ///     </para>
 /// </remarks>
 public sealed class ServiceBusConnectionPool : IServiceBusConnectionPool

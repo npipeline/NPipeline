@@ -38,12 +38,12 @@ public sealed class GithubToSlackPipeline : IPipelineDefinition
                and posts a formatted summary to a Slack incoming webhook.
 
                Required environment variables:
-                 GITHUB_TOKEN  — personal access token (or fine-grained PAT) with repo read access
-                 SLACK_WEBHOOK — Slack incoming webhook URL
+                 GITHUB_TOKEN  - personal access token (or fine-grained PAT) with repo read access
+                 SLACK_WEBHOOK - Slack incoming webhook URL
 
                Optional:
-                 GITHUB_OWNER  — repository owner    (default: dotnet)
-                 GITHUB_REPO   — repository name     (default: runtime)
+                 GITHUB_OWNER  - repository owner    (default: dotnet)
+                 GITHUB_REPO   - repository name     (default: runtime)
                """;
     }
 

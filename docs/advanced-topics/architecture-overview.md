@@ -69,55 +69,55 @@ flowchart TB
 
 ### Pipeline Construction (`NPipeline.Pipeline`, `NPipeline.Graph`)
 
-Users define pipelines by implementing `IPipelineDefinition.Define(PipelineBuilder, PipelineContext)`. The builder collects node registrations and connections, then `Build()` produces a `PipelineGraph` — an immutable directed acyclic graph of `NodeDefinition` records connected by typed `Edge` objects.
+Users define pipelines by implementing `IPipelineDefinition.Define(PipelineBuilder, PipelineContext)`. The builder collects node registrations and connections, then `Build()` produces a `PipelineGraph` - an immutable directed acyclic graph of `NodeDefinition` records connected by typed `Edge` objects.
 
 Key types:
 
-- `PipelineBuilder` — fluent API (split across partial classes: `.Build.cs`, `.Configuration.cs`, etc.)
-- `PipelineGraph` / `PipelineGraphBuilder` — immutable graph with validation
-- `NodeDefinition` — record holding node metadata (ID, type, kind, input/output types, execution strategy, merge strategy, lineage adapters)
-- `NodeKind` — enum: Source, Transform, StreamTransform, Tap, Branch, Lookup, Batch, Sink, Join, Aggregate, Composite, CompositeInput, CompositeOutput
+- `PipelineBuilder` - fluent API (split across partial classes: `.Build.cs`, `.Configuration.cs`, etc.)
+- `PipelineGraph` / `PipelineGraphBuilder` - immutable graph with validation
+- `NodeDefinition` - record holding node metadata (ID, type, kind, input/output types, execution strategy, merge strategy, lineage adapters)
+- `NodeKind` - enum: Source, Transform, StreamTransform, Tap, Branch, Lookup, Batch, Sink, Join, Aggregate, Composite, CompositeInput, CompositeOutput
 
 ### Execution (`NPipeline.Execution`)
 
 `PipelineRunner` is the main entry point. It delegates to `PipelineExecutionOrchestrator`, which coordinates the full execution lifecycle:
 
-1. **Binding** — `IRuntimePipelineBinder` normalizes the graph before execution: applies option overrides and writes a `RuntimeNodeStreamContract` for every node into the execution annotation bag
-2. **Setup** — instantiate nodes via `INodeFactory`, resolve execution plans
-3. **Topology** — `ITopologyService` computes topological order from the graph
-4. **Node execution** — `INodeExecutor` executes each node in order, using `IExecutionStrategy` for transforms; before passing input streams to a non-join node, it validates stream item types against the node's `RuntimeNodeStreamContract`
-5. **Lineage** — `ILineage` records data provenance if enabled
-6. **Cleanup** — dispose nodes, streams, and context resources
+1. **Binding** - `IRuntimePipelineBinder` normalizes the graph before execution: applies option overrides and writes a `RuntimeNodeStreamContract` for every node into the execution annotation bag
+2. **Setup** - instantiate nodes via `INodeFactory`, resolve execution plans
+3. **Topology** - `ITopologyService` computes topological order from the graph
+4. **Node execution** - `INodeExecutor` executes each node in order, using `IExecutionStrategy` for transforms; before passing input streams to a non-join node, it validates stream item types against the node's `RuntimeNodeStreamContract`
+5. **Lineage** - `ILineage` records data provenance if enabled
+6. **Cleanup** - dispose nodes, streams, and context resources
 
 Key types:
 
-- `PipelineRunner` / `PipelineRunnerBuilder` — public entry points
-- `PipelineExecutionOrchestrator` — internal orchestration
-- `IRuntimePipelineBinder` / `RuntimePipelineBinder` — bind-time graph normalization and contract annotation
-- `RuntimeNodeStreamContract` — per-node record of effective input/output item types and lineage state
-- `ExecutionAnnotationKeys` — registry of annotation bag keys used across the execution layer
-- `IExecutionStrategy` — controls how a transform processes its input stream
-- `NodeExecutionPlan` — pre-built execution plan for optimized dispatch
+- `PipelineRunner` / `PipelineRunnerBuilder` - public entry points
+- `PipelineExecutionOrchestrator` - internal orchestration
+- `IRuntimePipelineBinder` / `RuntimePipelineBinder` - bind-time graph normalization and contract annotation
+- `RuntimeNodeStreamContract` - per-node record of effective input/output item types and lineage state
+- `ExecutionAnnotationKeys` - registry of annotation bag keys used across the execution layer
+- `IExecutionStrategy` - controls how a transform processes its input stream
+- `NodeExecutionPlan` - pre-built execution plan for optimized dispatch
 
 ### Data Flow (`NPipeline.DataFlow`)
 
-Data flows between nodes as `IDataStream<T>`, which extends `IAsyncEnumerable<T>`. Streams are lazy by default — items are pulled on demand.
+Data flows between nodes as `IDataStream<T>`, which extends `IAsyncEnumerable<T>`. Streams are lazy by default - items are pulled on demand.
 
 Key types:
 
-- `IDataStream<T>` — typed async stream
-- `IForwardOnlyDataStream` — marker for streams that cannot be replayed
-- `InMemoryDataStream<T>` — buffered collection
-- `DataStream<T>` — wraps `IAsyncEnumerable<T>`
-- `CappedReplayableDataStream<T>` — bounded replay buffer for materialization
+- `IDataStream<T>` - typed async stream
+- `IForwardOnlyDataStream` - marker for streams that cannot be replayed
+- `InMemoryDataStream<T>` - buffered collection
+- `DataStream<T>` - wraps `IAsyncEnumerable<T>`
+- `CappedReplayableDataStream<T>` - bounded replay buffer for materialization
 
 ### Nodes (`NPipeline.Nodes`)
 
 All nodes implement `INode` (marker interface extending `IAsyncDisposable`). The three primary interfaces:
 
-- `ISourceNode<TOut>` — `OpenStream(context, ct)` → `IDataStream<TOut>`
-- `ITransformNode<TIn, TOut>` — `TransformAsync(item, context, ct)` → `Task<TOut>`
-- `ISinkNode<TIn>` — `ConsumeAsync(input, context, ct)` → `Task`
+- `ISourceNode<TOut>` - `OpenStream(context, ct)` → `IDataStream<TOut>`
+- `ITransformNode<TIn, TOut>` - `TransformAsync(item, context, ct)` → `Task<TOut>`
+- `ISinkNode<TIn>` - `ConsumeAsync(input, context, ct)` → `Task`
 
 Additional interfaces: `IStreamTransformNode<TIn, TOut>`, `IAggregateNode`, `IJoinNode`, `IBranchNode`, `ILookupNode`, `IBatchNode`, `ICompositeNode`.
 
@@ -151,6 +151,6 @@ The core is self-contained: pipeline construction, execution, data flow, resilie
 
 ## Next Steps
 
-- [Design Principles](design-principles.md) — why the architecture is shaped this way
-- [Execution Model](execution-model.md) — deep dive into how the runner works
-- [Data Flow Internals](data-flow-internals.md) — stream and pipe implementation details
+- [Design Principles](design-principles.md) - why the architecture is shaped this way
+- [Execution Model](execution-model.md) - deep dive into how the runner works
+- [Data Flow Internals](data-flow-internals.md) - stream and pipe implementation details

@@ -9,7 +9,7 @@ namespace NPipeline.StorageProviders.Sftp;
 ///     the lease is returned to the pool when the stream is disposed.
 /// </summary>
 /// <remarks>
-///     Do NOT buffer the entire payload in a <see cref="MemoryStream" /> — that would cause
+///     Do NOT buffer the entire payload in a <see cref="MemoryStream" /> - that would cause
 ///     OOM on large files. SSH.NET streams data over the wire as each Write/WriteAsync call is made.
 /// </remarks>
 public sealed class SftpWriteStream : Stream

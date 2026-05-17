@@ -21,7 +21,7 @@ public sealed record Product
     /// <summary>Gets or sets the document identifier (maps to Cosmos DB <c>id</c> field).</summary>
     public string id { get; set; } = string.Empty;
 
-    /// <summary>Gets or sets the product category — also serves as the partition key.</summary>
+    /// <summary>Gets or sets the product category - also serves as the partition key.</summary>
     [CosmosPartitionKey]
     public string Category { get; set; } = string.Empty;
 
@@ -42,7 +42,7 @@ public sealed record Product
 ///     A lightweight read-only projection returned by a SQL query over the products container.
 /// </summary>
 /// <remarks>
-///     Demonstrates that source queries can return arbitrary projections — the property
+///     Demonstrates that source queries can return arbitrary projections - the property
 ///     names just need to match the aliases used in the SELECT clause.
 /// </remarks>
 public sealed record ProductSummary

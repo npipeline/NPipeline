@@ -5,13 +5,13 @@
 
 ## Features
 
-- **Stream-based I/O** — Efficient read/write operations for large objects with streaming support
-- **Metadata & Existence** — Check if objects exist and retrieve detailed metadata
-- **Flexible Listing** — List objects by prefix with recursive and non-recursive options
-- **Built-in Retries** — Automatic retry handling for transient failures (HTTP 429/5xx errors)
-- **Multiple Auth Methods** — Support for default credentials, service account keys, access tokens, or emulator endpoints
-- **URI-based Configuration** — Override settings per-object through query parameters
-- **Emulator Support** — Full compatibility with Google Cloud Storage emulator for local development
+- **Stream-based I/O** - Efficient read/write operations for large objects with streaming support
+- **Metadata & Existence** - Check if objects exist and retrieve detailed metadata
+- **Flexible Listing** - List objects by prefix with recursive and non-recursive options
+- **Built-in Retries** - Automatic retry handling for transient failures (HTTP 429/5xx errors)
+- **Multiple Auth Methods** - Support for default credentials, service account keys, access tokens, or emulator endpoints
+- **URI-based Configuration** - Override settings per-object through query parameters
+- **Emulator Support** - Full compatibility with Google Cloud Storage emulator for local development
 
 ## Prerequisites
 
@@ -226,11 +226,11 @@ export STORAGE_EMULATOR_HOST="http://localhost:4443"
 
 ## Important Notes
 
-- **Upload Chunking** — For large objects, uploads are split into 256 KiB chunks. The chunk size parameter must be a positive multiple of 256 KiB.
-- **Transient Errors** — The provider automatically retries HTTP 429 (rate limit) and 5xx errors with exponential backoff when `RetrySettings` is configured.
-- **Streaming** — Use `OpenReadAsync` and `OpenWriteAsync` for efficient handling of large objects without loading them entirely into memory.
-- **Metadata Freshness** — Object metadata may be cached briefly. For critical operations requiring current state, consider adding a small delay between checks.
-- **Special Characters** — Object names with special characters must be URL-encoded in URIs.
+- **Upload Chunking** - For large objects, uploads are split into 256 KiB chunks. The chunk size parameter must be a positive multiple of 256 KiB.
+- **Transient Errors** - The provider automatically retries HTTP 429 (rate limit) and 5xx errors with exponential backoff when `RetrySettings` is configured.
+- **Streaming** - Use `OpenReadAsync` and `OpenWriteAsync` for efficient handling of large objects without loading them entirely into memory.
+- **Metadata Freshness** - Object metadata may be cached briefly. For critical operations requiring current state, consider adding a small delay between checks.
+- **Special Characters** - Object names with special characters must be URL-encoded in URIs.
 
 ## Troubleshooting
 
@@ -267,7 +267,7 @@ var uri = StorageUri.Parse("gs://bucket/file?projectId=your-project-id");
 
 ## More
 
-- **Full Documentation** — [GCS Storage Provider Guide](../../../docs/storage-providers/gcs-storage-provider.md)
-- **Working Example** — [Sample_GcsStorageProvider](../../../samples/Sample_GcsStorageProvider)
-- **NPipeline Architecture** — [Documentation](../../../docs/architecture/)
-- **Google Cloud Storage Docs** — <https://cloud.google.com/storage/docs>
+- **Full Documentation** - [GCS Storage Provider Guide](../../../docs/storage-providers/gcs-storage-provider.md)
+- **Working Example** - [Sample_GcsStorageProvider](../../../samples/Sample_GcsStorageProvider)
+- **NPipeline Architecture** - [Documentation](../../../docs/architecture/)
+- **Google Cloud Storage Docs** - <https://cloud.google.com/storage/docs>

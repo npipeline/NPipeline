@@ -191,6 +191,6 @@ Static members: `PipelineContextConfiguration.Default`, `PipelineContextConfigur
 
 ## Next Steps
 
-- [Error Handling](../error-handling/index.md) — how retry, circuit breaker, and dead-letter options work together
-- [Retry Strategies](../error-handling/retry-strategies.md) — configuring backoff and jitter
-- [Glossary](glossary.md) — definitions for terms used in configuration
+- [Error Handling](../error-handling/index.md) - how retry, circuit breaker, and dead-letter options work together
+- [Retry Strategies](../error-handling/retry-strategies.md) - configuring backoff and jitter
+- [Glossary](glossary.md) - definitions for terms used in configuration

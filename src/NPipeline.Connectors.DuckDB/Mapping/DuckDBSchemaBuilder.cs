@@ -146,7 +146,7 @@ internal static class DuckDBSchemaBuilder
         if (Nullable.GetUnderlyingType(property.PropertyType) is not null)
             return true;
 
-        // Reference types — check NRT annotations
+        // Reference types - check NRT annotations
         if (!property.PropertyType.IsValueType)
         {
             var nullabilityContext = new NullabilityInfoContext();

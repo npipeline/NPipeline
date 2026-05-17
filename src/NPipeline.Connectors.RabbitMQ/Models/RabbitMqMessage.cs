@@ -27,7 +27,7 @@ public sealed class RabbitMqMessage<T> : IAcknowledgableMessage<T>, IRabbitMqMes
     private int _ackState; // 0 = Pending, 1 = Acked, 2 = Nacked
 
     /// <summary>
-    ///     Production constructor — wraps a consumed message with channel-based ack/nack callbacks.
+    ///     Production constructor - wraps a consumed message with channel-based ack/nack callbacks.
     /// </summary>
     internal RabbitMqMessage(
         T body,
@@ -60,7 +60,7 @@ public sealed class RabbitMqMessage<T> : IAcknowledgableMessage<T>, IRabbitMqMes
     }
 
     /// <summary>
-    ///     Testing constructor — uses delegate callbacks.
+    ///     Testing constructor - uses delegate callbacks.
     /// </summary>
     public RabbitMqMessage(
         T body,
@@ -82,7 +82,7 @@ public sealed class RabbitMqMessage<T> : IAcknowledgableMessage<T>, IRabbitMqMes
     }
 
     /// <summary>
-    ///     Private constructor for WithBody projections — preserves all metadata and callbacks.
+    ///     Private constructor for WithBody projections - preserves all metadata and callbacks.
     /// </summary>
     private RabbitMqMessage(
         T body,

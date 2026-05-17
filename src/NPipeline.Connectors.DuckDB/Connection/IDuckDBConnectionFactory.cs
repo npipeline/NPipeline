@@ -10,7 +10,7 @@ public interface IDuckDBConnectionFactory
 {
     /// <summary>
     ///     Creates a new <see cref="DuckDBConnection" /> instance.
-    ///     The connection is not opened — call Open or OpenAsync before use.
+    ///     The connection is not opened - call Open or OpenAsync before use.
     /// </summary>
     /// <returns>A new DuckDB connection.</returns>
     DuckDBConnection CreateConnection();

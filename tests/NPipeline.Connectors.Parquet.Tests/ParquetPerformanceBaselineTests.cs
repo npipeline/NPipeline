@@ -11,7 +11,7 @@ namespace NPipeline.Connectors.Parquet.Tests;
 
 /// <summary>
 ///     Performance baseline tests for the Parquet connector.
-///     These are lightweight regression thresholds checked in CI — not full BenchmarkDotNet suites.
+///     These are lightweight regression thresholds checked in CI - not full BenchmarkDotNet suites.
 ///     Baselines are intentionally generous to remain pass/fail stable across agents.
 /// </summary>
 public sealed class ParquetPerformanceBaselineTests
@@ -312,7 +312,7 @@ public sealed class ParquetPerformanceBaselineTests
 
             // Snappy should not inflate the file relative to no compression.
             // Parquet's own column encoding (dictionary, RLE) already handles most entropy,
-            // so Snappy may produce an equal-sized file — that is acceptable.
+            // so Snappy may produce an equal-sized file - that is acceptable.
             snappySize.Should().BeLessThanOrEqualTo(noCompressionSize,
                 "Snappy-compressed file should not be larger than uncompressed file");
         }

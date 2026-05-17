@@ -6,7 +6,7 @@ order: 6
 
 # Dead-Letter Queues
 
-When a resilience policy returns `ResilienceDecision.DeadLetter`, the failed item is routed to a **dead-letter sink** rather than being discarded or crashing the pipeline. This preserves failed items for debugging, reprocessing, or alerting — without blocking the pipeline from continuing.
+When a resilience policy returns `ResilienceDecision.DeadLetter`, the failed item is routed to a **dead-letter sink** rather than being discarded or crashing the pipeline. This preserves failed items for debugging, reprocessing, or alerting - without blocking the pipeline from continuing.
 
 ## When Items Are Dead-Lettered
 
@@ -202,6 +202,6 @@ In this pipeline:
 
 ## Next Steps
 
-- [Materialization](materialization.md) — buffer items to enable node-level restart
-- [Retry Strategies](retry-strategies.md) — configure delays between retry attempts
-- [Resilience Policies](resilience-policies.md) — customize which items get dead-lettered
+- [Materialization](materialization.md) - buffer items to enable node-level restart
+- [Retry Strategies](retry-strategies.md) - configure delays between retry attempts
+- [Resilience Policies](resilience-policies.md) - customize which items get dead-lettered

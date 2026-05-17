@@ -146,6 +146,6 @@ builder.AddSelfJoin<Event, string, MatchedEvent>(
 
 ## Next Steps
 
-- [Aggregation](aggregation.md) — compute metrics over windowed data
-- [Batching and Windowing](batching-and-windowing.md) — window types and watermarks
-- [Branching and Merging](branching-and-merging.md) — fan-out and merge patterns
+- [Aggregation](aggregation.md) - compute metrics over windowed data
+- [Batching and Windowing](batching-and-windowing.md) - window types and watermarks
+- [Branching and Merging](branching-and-merging.md) - fan-out and merge patterns

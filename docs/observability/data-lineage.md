@@ -8,7 +8,7 @@ order: 4
 
 > **Prerequisites:** [Defining Pipelines](../guides/defining-pipelines.md), [Dependency Injection](../guides/dependency-injection.md)
 
-The `NPipeline.Extensions.Lineage` package tracks how data flows through your pipeline — which node produced each [item](../reference/glossary.md#item), what transforms it passed through, and where it ended up.
+The `NPipeline.Extensions.Lineage` package tracks how data flows through your pipeline - which node produced each [item](../reference/glossary.md#item), what transforms it passed through, and where it ended up.
 
 ## Installation
 
@@ -48,10 +48,10 @@ After each run, a `PipelineLineageReport` is generated containing:
 
 When enabled with `EnableItemLevelLineage()`, each item gets a unique correlation ID:
 
-- **Source record** — which node produced the item
-- **Transform records** — each transformation the item passed through
-- **Sink/terminal record** — where the item was consumed
-- **Error records** — if the item failed processing
+- **Source record** - which node produced the item
+- **Transform records** - each transformation the item passed through
+- **Sink/terminal record** - where the item was consumed
+- **Error records** - if the item failed processing
 
 ## Configuration
 
@@ -115,7 +115,7 @@ When the `MaterializationCap` is reached:
 
 | Policy | Behavior | Use When |
 |--------|----------|----------|
-| `Degrade` (default) | Switches to streaming positional mapping | Production — graceful degradation |
+| `Degrade` (default) | Switches to streaming positional mapping | Production - graceful degradation |
 | `Strict` | Throws immediately | Memory limits are critical |
 | `WarnContinue` | Logs a warning and continues | Development / debugging |
 
@@ -163,15 +163,15 @@ var allRecords = collector.GetAllRecords();
 
 Lineage adds per-item overhead proportional to the options enabled. To minimize impact:
 
-1. Increase `SampleEvery` — every 100th item is usually sufficient for monitoring
-2. Disable `CaptureHopSnapshots` — serialization is the most expensive operation
-3. Set `RedactData = true` — avoids storing large payloads
+1. Increase `SampleEvery` - every 100th item is usually sufficient for monitoring
+2. Disable `CaptureHopSnapshots` - serialization is the most expensive operation
+3. Set `RedactData = true` - avoids storing large payloads
 4. Use `LineageOptions.FastLineage` as a starting point
 5. Set a `MaterializationCap` to bound memory usage
 
 ## Next Steps
 
-- [Lineage Extension Reference](../extensions/lineage.md) — collector, service, sampling, and sink details
-- [Metrics and Monitoring](metrics-and-monitoring.md) — operational metrics
-- [OpenTelemetry](opentelemetry.md) — distributed tracing
-- [Pipeline Context](../guides/pipeline-context.md) — accessing lineage in nodes
+- [Lineage Extension Reference](../extensions/lineage.md) - collector, service, sampling, and sink details
+- [Metrics and Monitoring](metrics-and-monitoring.md) - operational metrics
+- [OpenTelemetry](opentelemetry.md) - distributed tracing
+- [Pipeline Context](../guides/pipeline-context.md) - accessing lineage in nodes

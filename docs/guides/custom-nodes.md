@@ -8,7 +8,7 @@ order: 4
 
 > **Prerequisites:** [Defining Pipelines](defining-pipelines.md), [Key Concepts](../getting-started/key-concepts.md)
 
-When lambda nodes aren't enough — you need state, dependency injection, or complex logic — write a custom [node](../reference/glossary.md#node) class. NPipeline provides base classes for each node type.
+When lambda nodes aren't enough - you need state, dependency injection, or complex logic - write a custom [node](../reference/glossary.md#node) class. NPipeline provides base classes for each node type.
 
 ## Source Nodes
 
@@ -79,7 +79,7 @@ The execution engine calls `ExecuteValueTaskAsync` when available, falling back 
 
 ## Stream Transform Nodes
 
-When you need access to the full [stream](../reference/glossary.md#stream) — for filtering, windowing, or reshaping — implement `IStreamTransformNode<TIn, TOut>`:
+When you need access to the full [stream](../reference/glossary.md#stream) - for filtering, windowing, or reshaping - implement `IStreamTransformNode<TIn, TOut>`:
 
 ```csharp
 public class DeduplicateNode : IStreamTransformNode<Order, Order>
@@ -163,6 +163,6 @@ public override async ValueTask DisposeAsync()
 
 ## Next Steps
 
-- [Lambda Nodes](lambda-nodes.md) — lightweight alternative for simple transforms
-- [Branching and Merging](branching-and-merging.md) — fan-out and merge patterns
-- [Joins and Lookups](joins-and-lookups.md) — combining data from multiple streams
+- [Lambda Nodes](lambda-nodes.md) - lightweight alternative for simple transforms
+- [Branching and Merging](branching-and-merging.md) - fan-out and merge patterns
+- [Joins and Lookups](joins-and-lookups.md) - combining data from multiple streams

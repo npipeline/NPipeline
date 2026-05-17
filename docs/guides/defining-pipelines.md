@@ -69,7 +69,7 @@ await runner.RunAsync(definition, context, cancellationToken);
 | `AddJoin<TNode, TIn1, TIn2, TOut>(name?)` | `JoinNodeHandle<TIn1, TIn2, TOut>` | Register a join node |
 | `AddAggregate<TNode, TIn, TKey, TResult>(name?)` | `AggregateNodeHandle<TIn, TResult>` | Register an aggregate node |
 
-Node names are optional but recommended — they appear in logs, metrics, and validation errors.
+Node names are optional but recommended - they appear in logs, metrics, and validation errors.
 
 ### Connecting Nodes
 
@@ -147,7 +147,7 @@ public void Define(PipelineBuilder builder, PipelineContext context)
 
 ## Next Steps
 
-- [Lambda Nodes](lambda-nodes.md) — define nodes inline without separate classes
-- [Custom Nodes](custom-nodes.md) — write your own source, transform, and sink nodes
-- [Pipeline Context](pipeline-context.md) — share state and configuration across nodes
-- [Dependency Injection](dependency-injection.md) — wire pipelines into a DI container
+- [Lambda Nodes](lambda-nodes.md) - define nodes inline without separate classes
+- [Custom Nodes](custom-nodes.md) - write your own source, transform, and sink nodes
+- [Pipeline Context](pipeline-context.md) - share state and configuration across nodes
+- [Dependency Injection](dependency-injection.md) - wire pipelines into a DI container

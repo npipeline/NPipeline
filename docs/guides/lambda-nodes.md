@@ -31,10 +31,10 @@ The synchronous overload accepts `Func<IEnumerable<T>>`. The async overload acce
 Map each input item to an output:
 
 ```csharp
-// Synchronous — no allocations via ValueTask fast path
+// Synchronous - no allocations via ValueTask fast path
 var doubled = builder.AddTransform((int x) => x * 2, "double");
 
-// Asynchronous — for I/O-bound work
+// Asynchronous - for I/O-bound work
 var enriched = builder.AddTransform(
     async (Order order, CancellationToken ct) =>
     {
@@ -121,6 +121,6 @@ public void Define(PipelineBuilder builder, PipelineContext context)
 
 ## Next Steps
 
-- [Custom Nodes](custom-nodes.md) — write full node classes for complex logic
-- [Defining Pipelines](defining-pipelines.md) — the builder API in detail
-- [Branching and Merging](branching-and-merging.md) — fan-out patterns
+- [Custom Nodes](custom-nodes.md) - write full node classes for complex logic
+- [Defining Pipelines](defining-pipelines.md) - the builder API in detail
+- [Branching and Merging](branching-and-merging.md) - fan-out patterns

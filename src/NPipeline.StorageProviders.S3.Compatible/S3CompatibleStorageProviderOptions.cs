@@ -33,7 +33,7 @@ public sealed class S3CompatibleStorageProviderOptions : S3CoreOptions
 
     /// <summary>
     ///     Gets or initializes whether to use path-style addressing instead of virtual-hosted-style.
-    ///     Default is true — required by most S3-compatible services.
+    ///     Default is true - required by most S3-compatible services.
     /// </summary>
     public bool ForcePathStyle { get; init; } = true;
 }

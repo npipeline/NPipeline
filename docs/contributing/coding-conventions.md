@@ -6,7 +6,7 @@ order: 10
 
 # Coding Conventions
 
-This page documents the enforced coding standards across the NPipeline codebase. All rules are checked at build time — `TreatWarningsAsErrors` means violations fail the build.
+This page documents the enforced coding standards across the NPipeline codebase. All rules are checked at build time - `TreatWarningsAsErrors` means violations fail the build.
 
 ## Language and Build Settings
 
@@ -57,7 +57,7 @@ NPipeline ships 20+ Roslyn analyzers in `NPipeline.Analyzers`. They run during e
 | ID | Severity | Rule |
 |----|----------|------|
 | NP9001 | Warning | `RestartNode` requires `ResilientExecutionStrategy`, `MaxNodeRestartAttempts > 0`, and `MaxMaterializedItems` to be set |
-| NP9002 | Error | `MaxMaterializedItems` must not be null — prevents unbounded memory growth |
+| NP9002 | Error | `MaxMaterializedItems` must not be null - prevents unbounded memory growth |
 | NP9003 | Warning | Inappropriate parallelism configuration (too high for CPU-bound, too low for I/O) |
 | NP9004 | Warning | Batch size / timeout mismatch (large batch + short timeout or vice versa) |
 | NP9005 | Warning | Inappropriate timeout values (zero, negative, too short for I/O, too long for CPU) |
@@ -94,7 +94,7 @@ NPipeline ships 20+ Roslyn analyzers in `NPipeline.Analyzers`. They run during e
 
 | ID | Severity | Rule |
 |----|----------|------|
-| NP9401 | Info | `TransformAsync` returns `IAsyncEnumerable` — consider `IStreamTransformNode` instead |
+| NP9401 | Info | `TransformAsync` returns `IAsyncEnumerable` - consider `IStreamTransformNode` instead |
 | NP9402 | Warning | `IStreamTransformNode` paired with a non-stream execution strategy |
 | NP9403 | Warning | Node missing public parameterless constructor (requires DI or pre-configured instance) |
 | NP9404 | Warning | DI anti-patterns in nodes (service locator, static singleton access) |
@@ -155,6 +155,6 @@ public sealed class MyNodeTests
 
 ## Next Steps
 
-- [Adding a Node Type](./adding-a-node-type.md) — apply these conventions in practice
-- [Adding a Connector](./adding-a-connector.md) — packaging conventions
-- [Contributor Guide](index.md) — build commands and PR process
+- [Adding a Node Type](./adding-a-node-type.md) - apply these conventions in practice
+- [Adding a Connector](./adding-a-connector.md) - packaging conventions
+- [Contributor Guide](index.md) - build commands and PR process

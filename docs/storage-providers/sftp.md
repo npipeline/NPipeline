@@ -44,10 +44,10 @@ sftp://[user[:password]@]host[:port]/path/to/file
 
 | Component | Description |
 |-----------|-------------|
-| `user` | Optional — override `DefaultUsername` |
-| `password` | Optional — override `DefaultPassword` |
+| `user` | Optional - override `DefaultUsername` |
+| `password` | Optional - override `DefaultPassword` |
 | `host` | SFTP hostname |
-| `port` | Optional — override `DefaultPort` (default: 22) |
+| `port` | Optional - override `DefaultPort` (default: 22) |
 | `path/to/file` | File path on the server |
 
 ## Authentication
@@ -134,11 +134,11 @@ Registers: `IStorageProvider`, `IStorageProviderMetadataProvider`
 
 ## Features
 
-- **Connection pooling** — reuse SSH connections across operations (default pool size: 10)
-- **Keep-alive** — prevents server-side idle timeouts (30s default)
-- **Health checks** — validates connections on acquire; dead connections are replaced automatically
-- **Fingerprint validation** — prevents MITM attacks; auto-accepts on first connect when `ExpectedFingerprint` is `null`
-- **Idempotent delete** — treats 404 as success
+- **Connection pooling** - reuse SSH connections across operations (default pool size: 10)
+- **Keep-alive** - prevents server-side idle timeouts (30s default)
+- **Health checks** - validates connections on acquire; dead connections are replaced automatically
+- **Fingerprint validation** - prevents MITM attacks; auto-accepts on first connect when `ExpectedFingerprint` is `null`
+- **Idempotent delete** - treats 404 as success
 
 ## Examples
 
@@ -170,7 +170,7 @@ var prefix = StorageUri.Parse("sftp://sftp.example.com/data/");
 await foreach (var item in provider.ListAsync(prefix, recursive: true))
 {
     var type = item.IsDirectory ? "[DIR]" : "[FILE]";
-    Console.WriteLine($"{type} {item.Uri} — {item.Size} bytes");
+    Console.WriteLine($"{type} {item.Uri} - {item.Size} bytes");
 }
 ```
 
@@ -205,13 +205,13 @@ The provider translates common SFTP exceptions into `SftpStorageException`:
 
 ## Best Practices
 
-1. **Use key-based auth** in production — avoid passwords
+1. **Use key-based auth** in production - avoid passwords
 2. **Set `ExpectedFingerprint`** in production to prevent MITM
-3. **Enable `ValidateOnAcquire`** (default) — catches dead connections before use
-4. **Tune `MaxPoolSize`** to match concurrency needs — too many connections may overwhelm the SFTP server
+3. **Enable `ValidateOnAcquire`** (default) - catches dead connections before use
+4. **Tune `MaxPoolSize`** to match concurrency needs - too many connections may overwhelm the SFTP server
 5. **Use `KeepAliveInterval`** to prevent server idle disconnects
 
 ## Next Steps
 
-- [Custom Provider](custom-provider.md) — implement your own storage provider
-- [Storage Providers Overview](index.md) — choosing between providers
+- [Custom Provider](custom-provider.md) - implement your own storage provider
+- [Storage Providers Overview](index.md) - choosing between providers

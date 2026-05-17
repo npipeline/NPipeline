@@ -114,7 +114,7 @@ docker-compose down
 ```
 === NPipeline Sample: MongoDB Connector ===
 
-No connection string provided — using local MongoDB defaults:
+No connection string provided - using local MongoDB defaults:
   Connection: mongodb://localhost:27017/?replicaSet=rs0
 
 ...
@@ -163,7 +163,7 @@ Pipeline execution completed successfully!
 
 | File                             | Purpose                                                            |
 |----------------------------------|--------------------------------------------------------------------|
-| `Program.cs`                     | Entry point — wires up the host and runs the pipeline              |
+| `Program.cs`                     | Entry point - wires up the host and runs the pipeline              |
 | `MongoDbConnectorPipeline.cs`    | Step-by-step pipeline demonstrations                               |
 | `Models.cs`                      | `Order` and `ProcessedOrder` model records with mapping attributes |
 | `docker-compose.yml`             | MongoDB 8 replica set service definition                           |

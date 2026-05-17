@@ -524,7 +524,7 @@ public sealed class Program
     }
 
     // ========================================================================
-    // EXAMPLE 7: S3-Compatible Endpoints — Dedicated Sample
+    // EXAMPLE 7: S3-Compatible Endpoints - Dedicated Sample
     // ========================================================================
 
     /// <summary>

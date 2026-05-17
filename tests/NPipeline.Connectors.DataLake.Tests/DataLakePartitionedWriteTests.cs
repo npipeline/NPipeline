@@ -54,7 +54,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
             await writer.AppendAsync(new InMemoryDataStream<OrderRecord>(records), CancellationToken.None);
         }
 
-        // Assert — no partition subdirectories created; file is at root or directly in tableUri path
+        // Assert - no partition subdirectories created; file is at root or directly in tableUri path
         var parquetFiles = Directory.GetFiles(_tempDir, "*.parquet", SearchOption.TopDirectoryOnly);
 
         parquetFiles.Should().NotBeEmpty(
@@ -81,7 +81,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         await using var writer = new DataLakeTableWriter<OrderRecord>(_provider, _tableUri, spec);
         await writer.AppendAsync(new InMemoryDataStream<OrderRecord>(records), CancellationToken.None);
 
-        // Assert — directory follows event_date=yyyy-MM-dd pattern
+        // Assert - directory follows event_date=yyyy-MM-dd pattern
         var expectedDir = Path.Combine(_tempDir, "event_date=2025-03-10");
 
         Directory.Exists(expectedDir).Should().BeTrue(
@@ -245,7 +245,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
             await writer.AppendAsync(new InMemoryDataStream<OrderRecord>(records), CancellationToken.None);
         }
 
-        // Assert — one manifest entry per partition
+        // Assert - one manifest entry per partition
         var reader = new ManifestReader(_provider, _tableUri);
         var entries = await reader.ReadAllAsync();
 
@@ -282,7 +282,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         // Act
         var path = PartitionPathBuilder.BuildPath(record, spec);
 
-        // Assert — spaces url-encoded
+        // Assert - spaces url-encoded
         path.Should().Be("region=North%20America/");
     }
 
@@ -313,7 +313,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
             await writer.AppendAsync(new InMemoryDataStream<OrderRecord>(records), CancellationToken.None);
         }
 
-        // Assert — files follow part-NNNNN-xxxxxxxx.parquet convention
+        // Assert - files follow part-NNNNN-xxxxxxxx.parquet convention
         var euDir = Path.Combine(_tempDir, "region=EU");
         var files = Directory.GetFiles(euDir, "*.parquet");
 
@@ -336,7 +336,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
     [Fact]
     public async Task Write_HighCardinalityPartitions_DoesNotExceedMaxBufferedRows()
     {
-        // Arrange — many distinct partition values to trigger buffer pressure
+        // Arrange - many distinct partition values to trigger buffer pressure
         const int distinctRegions = 50;
         const int rowsPerRegion = 100;
         const int maxBufferedRows = distinctRegions * 10; // force flush before all rows are accumulated
@@ -354,13 +354,13 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
                 .Select(j => CreateOrder(i * rowsPerRegion + j, "2025-01-01", $"Region_{i:D3}")))
             .ToList();
 
-        // Act — should complete without OOM or unbounded accumulation
+        // Act - should complete without OOM or unbounded accumulation
         await using (var writer = new DataLakeTableWriter<OrderRecord>(_provider, _tableUri, spec, config))
         {
             await writer.AppendAsync(new InMemoryDataStream<OrderRecord>(records), CancellationToken.None);
         }
 
-        // Assert — all rows were written
+        // Assert - all rows were written
         var source = new DataLakeTableSourceNode<OrderRecord>(_provider, _tableUri);
         var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 
@@ -385,7 +385,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
             await writer.AppendAsync(new InMemoryDataStream<OrderRecord>(records), CancellationToken.None);
         }
 
-        // Assert — each region has its own directory
+        // Assert - each region has its own directory
         for (var i = 0; i < distinctRegions; i++)
         {
             var partDir = Path.Combine(_tempDir, $"region=Region_{i:D3}");
@@ -398,7 +398,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
     [Fact]
     public async Task Write_WithSmallRowGroupAndManyPartitions_FlushesIncrementally()
     {
-        // Arrange — row group size much smaller than total records to force multiple flushes
+        // Arrange - row group size much smaller than total records to force multiple flushes
         var spec = PartitionSpec<OrderRecord>.By(x => x.Region);
         var config = new ParquetConfiguration { RowGroupSize = 5, MaxBufferedRows = 20 };
 
@@ -415,7 +415,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
             await writer.AppendAsync(new InMemoryDataStream<OrderRecord>(records), CancellationToken.None);
         }
 
-        // Assert — all records recoverable
+        // Assert - all records recoverable
         var source = new DataLakeTableSourceNode<OrderRecord>(_provider, _tableUri);
         var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
 

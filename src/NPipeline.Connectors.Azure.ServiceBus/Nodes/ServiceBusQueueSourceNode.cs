@@ -202,7 +202,7 @@ public sealed class ServiceBusQueueSourceNode<T> : SourceNode<ServiceBusMessage<
         await _messageChannel!.Writer.WriteAsync(message, ct).ConfigureAwait(false);
         ServiceBusLogMessages.MessageEnqueued(_logger, args.Message.MessageId);
 
-        // Block until settlement — keeps the message lock alive and prevents the SDK
+        // Block until settlement - keeps the message lock alive and prevents the SDK
         // from auto-completing / auto-abandoning when this handler returns.
         try
         {
@@ -219,7 +219,7 @@ public sealed class ServiceBusQueueSourceNode<T> : SourceNode<ServiceBusMessage<
                 }
                 catch
                 {
-                    /* swallow — shutdown path */
+                    /* swallow - shutdown path */
                 }
             }
         }

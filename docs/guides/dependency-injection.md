@@ -55,7 +55,7 @@ services.AddNPipeline(builder =>
 });
 ```
 
-Mix both approaches — scan assemblies, then add individual registrations:
+Mix both approaches - scan assemblies, then add individual registrations:
 
 ```csharp
 services.AddNPipeline(builder =>
@@ -156,7 +156,7 @@ public class EnrichOrder : TransformNode<Order, EnrichedOrder>
 
 ## Next Steps
 
-- [DI Extension Reference](../extensions/dependency-injection.md) — registered services, node factory, and registry details
-- [Pipeline Context](pipeline-context.md) — pass runtime parameters and state
-- [Defining Pipelines](defining-pipelines.md) — the builder API
-- [Parallel Execution](parallel-execution.md) — thread safety with DI-resolved nodes
+- [DI Extension Reference](../extensions/dependency-injection.md) - registered services, node factory, and registry details
+- [Pipeline Context](pipeline-context.md) - pass runtime parameters and state
+- [Defining Pipelines](defining-pipelines.md) - the builder API
+- [Parallel Execution](parallel-execution.md) - thread safety with DI-resolved nodes

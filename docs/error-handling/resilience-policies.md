@@ -6,7 +6,7 @@ order: 3
 
 # Resilience Policies
 
-A resilience policy tells NPipeline what to do when something goes wrong. It receives the failure context and returns a `ResilienceDecision` — retry, skip, dead-letter, fail, restart the node, or continue without it.
+A resilience policy tells NPipeline what to do when something goes wrong. It receives the failure context and returns a `ResilienceDecision` - retry, skip, dead-letter, fail, restart the node, or continue without it.
 
 ## The IResiliencePolicy Interface
 
@@ -119,7 +119,7 @@ builder.AddResiliencePolicy(policy);
 | Method | Effect |
 |--------|--------|
 | `.On<TException>()` | Match a specific exception type |
-| `.OnAny()` | Match any exception (catch-all — must be last) |
+| `.OnAny()` | Match any exception (catch-all - must be last) |
 | `.When(predicate)` | Match exceptions passing a custom predicate |
 | `.Retry(maxRetries)` | Retry up to N times, then dead-letter |
 | `.Skip()` | Discard the item and continue |
@@ -129,7 +129,7 @@ builder.AddResiliencePolicy(policy);
 
 ### Rule Ordering
 
-Rules are evaluated in order. The first matching rule wins. A catch-all rule (`.OnAny()`) must be last — placing it before other rules throws an `InvalidOperationException` at build time.
+Rules are evaluated in order. The first matching rule wins. A catch-all rule (`.OnAny()`) must be last - placing it before other rules throws an `InvalidOperationException` at build time.
 
 ```csharp
 // ✓ Correct: specific rules first, catch-all last
@@ -204,6 +204,6 @@ public void Define(PipelineBuilder builder, PipelineContext context)
 
 ## Next Steps
 
-- [Retry Strategies](retry-strategies.md) — configure the delay between retry attempts
-- [Circuit Breakers](circuit-breakers.md) — automatically stop retrying when a node is consistently failing
-- [Dead-Letter Queues](dead-letter-queues.md) — inspect items that exhausted their retries
+- [Retry Strategies](retry-strategies.md) - configure the delay between retry attempts
+- [Circuit Breakers](circuit-breakers.md) - automatically stop retrying when a node is consistently failing
+- [Dead-Letter Queues](dead-letter-queues.md) - inspect items that exhausted their retries

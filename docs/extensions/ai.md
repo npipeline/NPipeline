@@ -22,7 +22,7 @@ dotnet add package Microsoft.Extensions.AI.OpenAI
 dotnet add package OllamaSharp
 ```
 
-> 📝 **Provider-agnostic by design.** The extension depends only on the `IChatClient` interface. Any implementation works — OpenAI, Azure OpenAI, Anthropic, Ollama, OpenRouter, LM Studio, or your own.
+> 📝 **Provider-agnostic by design.** The extension depends only on the `IChatClient` interface. Any implementation works - OpenAI, Azure OpenAI, Anthropic, Ollama, OpenRouter, LM Studio, or your own.
 
 ## Quick Start
 
@@ -62,7 +62,7 @@ Every AI node follows the same execution model:
 3. The raw response text is deserialized with `System.Text.Json` into the target type.
 4. On success the typed result flows downstream. On failure an `AITransformException` is thrown.
 
-Each call is **stateless** — no conversation history is maintained between items. Every item or batch starts a fresh `[system, user]` session.
+Each call is **stateless** - no conversation history is maintained between items. Every item or batch starts a fresh `[system, user]` session.
 
 ## Node Reference
 
@@ -90,7 +90,7 @@ Returns a `TransformNodeHandle<TIn, TOut>`.
 
 One LLM call for the whole batch. The model receives all items in a single user message and must return an array of results in the same order.
 
-The node enforces a 1:1 count between input and output — if the model returns a different number of results, it throws `AITransformException` with a count mismatch message.
+The node enforces a 1:1 count between input and output - if the model returns a different number of results, it throws `AITransformException` with a count mismatch message.
 
 ```csharp
 builder.AddAIBatchedTransform<Comment, ClassificationResult>(chatClient, options => options
@@ -116,7 +116,7 @@ builder.AddAIBatchedStreamTransform<Comment, ClassificationResult>(chatClient, o
     .WithBatchTimeout(TimeSpan.FromSeconds(2)));
 ```
 
-Returns a `TransformNodeHandle<TIn, TOut>` — the batching is invisible to the rest of the pipeline. Use this when you want the throughput benefits of batching without changing the upstream/downstream node types.
+Returns a `TransformNodeHandle<TIn, TOut>` - the batching is invisible to the rest of the pipeline. Use this when you want the throughput benefits of batching without changing the upstream/downstream node types.
 
 ### Enrich Family
 
@@ -141,7 +141,7 @@ Returns a `TransformNodeHandle<TIn, TIn>`.
 
 #### `AIBatchedEnrichNode<TIn, TField>`
 
-One LLM call for the whole batch. The model returns one `TField` per input item; the `ResultMapper` is called once per pair to produce the enriched item. Count parity is enforced — a mismatch throws `AITransformException`.
+One LLM call for the whole batch. The model returns one `TField` per input item; the `ResultMapper` is called once per pair to produce the enriched item. Count parity is enforced - a mismatch throws `AITransformException`.
 
 ```csharp
 builder.AddAIBatchedEnrich<Article, SummaryResult>(chatClient, options => options
@@ -178,7 +178,7 @@ Internally `AddAIRoute` registers two nodes and wires them together:
 1. An `AIEnrichNode<TIn, TField>` that calls the LLM and splices the result onto the item via `ResultMapper`.
 2. A `RouteNode<TIn>` that evaluates `When` predicates against the enriched item and dispatches to the first matching branch.
 
-The `ResultMapper` runs **before** any predicate is tested, so your predicates always see the AI-classified item. Connect your upstream node directly to the `AIRouteBuilder` — it implements `IInputNodeHandle<T>` and forwards data to the internal enrich node.
+The `ResultMapper` runs **before** any predicate is tested, so your predicates always see the AI-classified item. Connect your upstream node directly to the `AIRouteBuilder` - it implements `IInputNodeHandle<T>` and forwards data to the internal enrich node.
 
 ### `AddAIRoute<TIn, TField>`
 
@@ -193,7 +193,7 @@ var route = builder.AddAIRoute<Comment, SentimentResult>(chatClient, opts => opt
     .WithItemTemplate(c => $"Comment: {c.Text}")
     .WithResultMapper((c, r) => c with { Sentiment = r.Label }));
 
-// Define branches — predicates test the enriched item (Sentiment is already set)
+// Define branches - predicates test the enriched item (Sentiment is already set)
 var positiveHandle = builder.AddSink<PositiveSink, Comment>("positive");
 var negativeSink   = builder.AddSink<NegativeSink, Comment>("negative");
 var reviewHandle   = builder.AddSink<ReviewSink, Comment>("review");
@@ -203,7 +203,7 @@ route
     .When(c => c.Sentiment == "Negative", negativeSink)
     .Otherwise(reviewHandle);
 
-// Connect your upstream node directly to the builder — it's an IInputNodeHandle<T>
+// Connect your upstream node directly to the builder - it's an IInputNodeHandle<T>
 builder.Connect(source, route);
 ```
 
@@ -271,9 +271,9 @@ The handle of the internal route node. Use this when you need to attach the rout
 | Behaviour | Detail |
 |-----------|--------|
 | **First-match** | Only the first `When` predicate that returns `true` receives the item (default) |
-| **All-matches** | Every `When` predicate that returns `true` receives the item — set via `.WithMatchMode(RouteMatchMode.AllMatches)` |
+| **All-matches** | Every `When` predicate that returns `true` receives the item - set via `.WithMatchMode(RouteMatchMode.AllMatches)` |
 | **Otherwise** | Catches all items that matched no `When`; never affected by match mode |
-| **No match, no `Otherwise`** | Item is dropped — standard route node behaviour |
+| **No match, no `Otherwise`** | Item is dropped - standard route node behaviour |
 | **Predicate input** | Predicates always receive the enriched item, after `ResultMapper` has run |
 
 ### Named Route Nodes
@@ -313,7 +313,7 @@ All six extension methods accept an options builder delegate. The options share 
 | `WithSystemPrompt(string)` | `string` | **Yes** | System prompt sent as the first message |
 | `WithItemTemplate(Func<TIn, string>)` | `Func<TIn, string>` | **Yes** *(per-item)* | Formats one item into the user message |
 | `WithBatchTemplate(Func<IReadOnlyCollection<TIn>, string>)` | `Func<IReadOnlyCollection<TIn>, string>` | **Yes** *(batch)* | Formats a whole batch into the user message |
-| `WithTemperature(float)` | `float?` | No | LLM temperature (not set by default — provider default applies) |
+| `WithTemperature(float)` | `float?` | No | LLM temperature (not set by default - provider default applies) |
 | `WithMaxOutputTokens(int)` | `int?` | No | Maximum tokens in the model's response; must be positive |
 | `WithNativeStructuredOutput(bool)` | `bool` | No | Sets `ChatOptions.ResponseFormat = ChatResponseFormat.Json`; defaults to `false` |
 | `WithConfigureOptions(Action<ChatOptions>)` | `Action<ChatOptions>?` | No | Advanced callback applied **after** all other options; use for anything not covered above |
@@ -331,11 +331,11 @@ All six extension methods accept an options builder delegate. The options share 
 | `WithBatchSize(int)` | `int` | **Yes** | Number of items to buffer before sending; must be positive |
 | `WithBatchTimeout(TimeSpan)` | `TimeSpan?` | No | Flush an incomplete batch after this interval; must be positive; defaults to 5 seconds when not set |
 
-All required properties are validated at `Build()` time — misconfigured nodes throw `InvalidOperationException` before the pipeline runs.
+All required properties are validated at `Build()` time - misconfigured nodes throw `InvalidOperationException` before the pipeline runs.
 
 ### Template Delegates
 
-Templates are plain C# lambdas — no template syntax to learn and no runtime reflection.
+Templates are plain C# lambdas - no template syntax to learn and no runtime reflection.
 
 ```csharp
 // Per-item template: include as much context as the model needs
@@ -369,7 +369,7 @@ Templates are plain C# lambdas — no template syntax to learn and no runtime re
 
 ### Advanced ChatOptions
 
-Use `WithConfigureOptions` to set anything not exposed directly — model identifiers, stop sequences, top-P, and so on. This callback fires **last**, after temperature, max tokens, and response format have been applied, so it can override any of them.
+Use `WithConfigureOptions` to set anything not exposed directly - model identifiers, stop sequences, top-P, and so on. This callback fires **last**, after temperature, max tokens, and response format have been applied, so it can override any of them.
 
 ```csharp
 .WithConfigureOptions(opts =>
@@ -409,7 +409,7 @@ The nodes apply different behaviour depending on the exception type:
 | `ItemTemplate` or `BatchTemplate` delegate throws | Wrapped in `AITransformException` with `OriginalItem` set |
 | `ResultMapper` delegate throws | Wrapped in `AITransformException` with `OriginalItem` set |
 | `ConfigureOptions` callback throws | Wrapped in `AITransformException` with `PromptSent` set |
-| `HttpRequestException`, `TimeoutException` | **Propagated as-is** — handle via resilience policy |
+| `HttpRequestException`, `TimeoutException` | **Propagated as-is** - handle via resilience policy |
 | `OperationCanceledException` | **Propagated as-is** |
 | Any other unexpected exception from the client | Wrapped in `AITransformException` |
 
@@ -435,7 +435,7 @@ For per-item error details, catch `AITransformException` in the policy and inspe
 
 ## Provider Setup
 
-The extension accepts any `IChatClient`. Credentials and model selection live entirely in how you construct the client — never in the extension itself.
+The extension accepts any `IChatClient`. Credentials and model selection live entirely in how you construct the client - never in the extension itself.
 
 ### OpenAI
 
@@ -538,7 +538,7 @@ Calling `.WithNativeStructuredOutput()` sets `ChatOptions.ResponseFormat = ChatR
 - **Ollama** passes the flag to the model; support varies by model.
 - **Other providers** may ignore it.
 
-When `UseNativeStructuredOutput` is `false` (default), the model can still return valid JSON — just instruct it in the system prompt.
+When `UseNativeStructuredOutput` is `false` (default), the model can still return valid JSON - just instruct it in the system prompt.
 
 ### Deserialization
 
@@ -563,7 +563,7 @@ For batch nodes, the LLM must return a JSON array (`[...]`) with one element per
 
 ### Prompts
 
-- Include the expected JSON schema or a concrete example in the system prompt — most models produce better results when the schema is explicit.
+- Include the expected JSON schema or a concrete example in the system prompt - most models produce better results when the schema is explicit.
 - Number batch items in the template (`1. ...\n2. ...`) so the model maps its responses to the correct input positions.
 - Keep prompts concise. Long prompts consume context window and increase cost; shorter prompts typically yield lower latency.
 
@@ -580,13 +580,13 @@ For batch nodes, the LLM must return a JSON array (`[...]`) with one element per
 
 ### MaxOutputTokens
 
-- Set `WithMaxOutputTokens` when you know the expected response size — for example, 64 for a short classification JSON, 256 for a summary sentence. This reduces latency and cost.
+- Set `WithMaxOutputTokens` when you know the expected response size - for example, 64 for a short classification JSON, 256 for a summary sentence. This reduces latency and cost.
 - Do not set it lower than the JSON overhead for your output type.
 
 ## Next Steps
 
-- [Error Handling](../error-handling/resilience-policies.md) — configure retry, skip, and dead-letter policies
-- [Batching and Windowing](../guides/batching-and-windowing.md) — use `AddBatcher` with `AddAIBatchedTransform` for explicit batch control
-- [Routing](../guides/routing-with-route-node.md) — understand first-match, multi-match, and otherwise route node semantics
-- [Parallelism](parallelism.md) — run multiple AI nodes in parallel for higher throughput
-- [Observability](observability.md) — add pipeline-level metrics alongside LLM-level tracing
+- [Error Handling](../error-handling/resilience-policies.md) - configure retry, skip, and dead-letter policies
+- [Batching and Windowing](../guides/batching-and-windowing.md) - use `AddBatcher` with `AddAIBatchedTransform` for explicit batch control
+- [Routing](../guides/routing-with-route-node.md) - understand first-match, multi-match, and otherwise route node semantics
+- [Parallelism](parallelism.md) - run multiple AI nodes in parallel for higher throughput
+- [Observability](observability.md) - add pipeline-level metrics alongside LLM-level tracing

@@ -16,7 +16,7 @@ dotnet add package NPipeline.Connectors.Kafka
 
 **Dependencies:** [Confluent.Kafka](https://www.nuget.org/packages/Confluent.Kafka) 2.x, [Confluent.SchemaRegistry](https://www.nuget.org/packages/Confluent.SchemaRegistry) 2.x (optional: Avro and Protobuf serializers)
 
-## Source Node — `KafkaSourceNode<T>`
+## Source Node - `KafkaSourceNode<T>`
 
 ### Constructors
 
@@ -51,7 +51,7 @@ var config = new KafkaConfiguration
 var source = new KafkaSourceNode<Order>(config);
 ```
 
-## Sink Node — `KafkaSinkNode<T>`
+## Sink Node - `KafkaSinkNode<T>`
 
 ### Constructors
 
@@ -86,7 +86,7 @@ var sink = new KafkaSinkNode<ProcessedOrder>(config);
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `BootstrapServers` | `string` | — | Broker addresses (comma-separated) |
+| `BootstrapServers` | `string` | - | Broker addresses (comma-separated) |
 | `ClientId` | `string?` | `null` | Client identifier |
 | `SecurityProtocol` | `SecurityProtocol` | `Plaintext` | `Plaintext`, `Ssl`, `SaslPlaintext`, `SaslSsl` |
 | `SaslMechanism` | `SaslMechanism` | `Plain` | `Plain`, `ScramSha256`, `ScramSha512`, `OAuthBearer` |
@@ -97,11 +97,11 @@ var sink = new KafkaSinkNode<ProcessedOrder>(config);
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `SourceTopic` | `string` | — | Topic to consume from |
-| `ConsumerGroupId` | `string` | — | Consumer group ID |
+| `SourceTopic` | `string` | - | Topic to consume from |
+| `ConsumerGroupId` | `string` | - | Consumer group ID |
 | `GroupInstanceId` | `string?` | `null` | Static group membership ID |
 | `AutoOffsetReset` | `AutoOffsetReset` | `Latest` | `Earliest`, `Latest`, or `Error` |
-| `EnableAutoCommit` | `bool` | — | Enable auto-commit |
+| `EnableAutoCommit` | `bool` | - | Enable auto-commit |
 | `MaxPollRecords` | `int` | `500` | Max records per poll |
 | `PollTimeoutMs` | `int` | `100` | Poll timeout (ms) |
 | `FetchMinBytes` | `int` | `1` | Min bytes to fetch |
@@ -111,7 +111,7 @@ var sink = new KafkaSinkNode<ProcessedOrder>(config);
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `SinkTopic` | `string` | — | Topic to produce to |
+| `SinkTopic` | `string` | - | Topic to produce to |
 | `EnableIdempotence` | `bool` | `true` | Idempotent producer |
 | `Acks` | `Acks` | `All` | `None`, `Leader`, or `All` |
 | `BatchSize` | `int` | `16384` | Producer batch size (bytes) |
@@ -132,7 +132,7 @@ var sink = new KafkaSinkNode<ProcessedOrder>(config);
 |----------|------|---------|-------------|
 | `DeliverySemantic` | `DeliverySemantic` | `AtLeastOnce` | `AtLeastOnce` or `ExactlyOnce` |
 | `AcknowledgmentStrategy` | `AcknowledgmentStrategy` | `AutoOnSinkSuccess` | When to acknowledge messages |
-| `EnableTransactions` | `bool` | — | Enable transactional producer |
+| `EnableTransactions` | `bool` | - | Enable transactional producer |
 | `TransactionalId` | `string?` | `null` | Transactional ID (required for exactly-once) |
 
 ### Schema Registry
@@ -170,7 +170,7 @@ var config = new KafkaConfiguration
 
 | Format | Dependency | Schema | Best For |
 |--------|-----------|--------|----------|
-| `Json` (default) | — | None | Simple messages, debugging |
+| `Json` (default) | - | None | Simple messages, debugging |
 | `Avro` | `Confluent.SchemaRegistry.Serdes.Avro` | Schema Registry | Schema evolution, compact encoding |
 | `Protobuf` | `Confluent.SchemaRegistry.Serdes.Protobuf` | Schema Registry | Cross-language, compact encoding |
 
@@ -193,7 +193,7 @@ var config = new KafkaConfiguration
 
 | Semantic | Description | Configuration |
 |----------|-------------|--------------|
-| `AtLeastOnce` (default) | No data loss, possible duplicates | Default — `AcknowledgeAsync()` commits offset |
+| `AtLeastOnce` (default) | No data loss, possible duplicates | Default - `AcknowledgeAsync()` commits offset |
 | `ExactlyOnce` | No data loss, no duplicates | Requires transactional producer |
 
 ### At-Least-Once
@@ -217,7 +217,7 @@ var config = new KafkaConfiguration
 };
 ```
 
-With exactly-once, `AcknowledgeAsync()` is a no-op — offsets are committed as part of the transaction by the sink.
+With exactly-once, `AcknowledgeAsync()` is a no-op - offsets are committed as part of the transaction by the sink.
 
 ## Acknowledgment Strategies
 
@@ -266,16 +266,16 @@ var config = new KafkaConfiguration
 ## Best Practices
 
 1. **Use `Acks.All` + `EnableIdempotence`** for durability
-2. **Set `ConsumerGroupId`** per logical consumer — enables parallel processing
+2. **Set `ConsumerGroupId`** per logical consumer - enables parallel processing
 3. **Use Avro/Protobuf** with Schema Registry for schema evolution
 4. **Tune `MaxPollRecords`** to control batch sizes (default 500)
-5. **Monitor via `IKafkaMetrics`** — tracks consume/produce rates, lag, errors
+5. **Monitor via `IKafkaMetrics`** - tracks consume/produce rates, lag, errors
 6. **Use `CompressionType.Lz4`** for high-throughput topics
 7. **Set `LingerMs = 5–50`** to batch small messages for better throughput
-8. **Use exactly-once semantics** only when needed — higher overhead
+8. **Use exactly-once semantics** only when needed - higher overhead
 
 ## Next Steps
 
-- [RabbitMQ Connector](rabbitmq.md) — alternative message broker
-- [Azure Service Bus Connector](azure-service-bus.md) — managed messaging
-- [Error Handling](../error-handling/index.md) — resilience for message processing
+- [RabbitMQ Connector](rabbitmq.md) - alternative message broker
+- [Azure Service Bus Connector](azure-service-bus.md) - managed messaging
+- [Error Handling](../error-handling/index.md) - resilience for message processing

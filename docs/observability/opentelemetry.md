@@ -46,9 +46,9 @@ builder.AddNPipelineSources(new[] { "OrderService", "AnalyticsService" });
 
 `OpenTelemetryPipelineTracer` implements `IPipelineTracer` and creates `Activity` instances from an `ActivitySource`:
 
-- **Pipeline span** — wraps the entire `RunAsync` call
-- **Node spans** — one per node execution, nested under the pipeline span
-- **Error annotations** — exceptions are recorded on the relevant span
+- **Pipeline span** - wraps the entire `RunAsync` call
+- **Node spans** - one per node execution, nested under the pipeline span
+- **Error annotations** - exceptions are recorded on the relevant span
 
 Spans include tags for pipeline ID, run ID, node name, and item counts.
 
@@ -70,6 +70,6 @@ builder.WithTracing(tracing =>
 
 ## Next Steps
 
-- [OpenTelemetry Extension Reference](../extensions/opentelemetry.md) — tracer, activity, and exporter details
-- [Metrics and Monitoring](metrics-and-monitoring.md) — per-node metrics collection
-- [Data Lineage](data-lineage.md) — item-level data provenance
+- [OpenTelemetry Extension Reference](../extensions/opentelemetry.md) - tracer, activity, and exporter details
+- [Metrics and Monitoring](metrics-and-monitoring.md) - per-node metrics collection
+- [Data Lineage](data-lineage.md) - item-level data provenance

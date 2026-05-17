@@ -6,7 +6,7 @@ order: 100
 
 # Build-Time Analyzers
 
-NPipeline ships with Roslyn analyzers that catch bugs **at build time** — before your pipeline ever runs. Misconfigured retry policies, blocking calls in async nodes, LINQ in hot paths, sinks that silently drop data — the analyzers flag all of these as compiler warnings or errors with automatic code fixes.
+NPipeline ships with Roslyn analyzers that catch bugs **at build time** - before your pipeline ever runs. Misconfigured retry policies, blocking calls in async nodes, LINQ in hot paths, sinks that silently drop data - the analyzers flag all of these as compiler warnings or errors with automatic code fixes.
 
 This is a key differentiator: most data pipeline libraries only fail at runtime. NPipeline catches entire categories of mistakes during `dotnet build`.
 
@@ -14,7 +14,7 @@ This is a key differentiator: most data pipeline libraries only fail at runtime.
 
 The analyzers are included automatically when you reference `NPipeline`. Connector-specific analyzers ship with their respective packages.
 
-## NP90xx — Configuration and Setup
+## NP90xx - Configuration and Setup
 
 | Rule | Severity | Title | Fix |
 |------|----------|-------|-----|
@@ -24,7 +24,7 @@ The analyzers are included automatically when you reference `NPipeline`. Connect
 | NP9004 | Warning | Batching configuration mismatch | Verify `BatchSize` and `BatchTimeout` are consistent with the node's expected throughput. |
 | NP9005 | Warning | Inappropriate timeout configuration | Fix negative, zero, or excessively low timeout values. |
 
-## NP91xx — Performance and Optimization
+## NP91xx - Performance and Optimization
 
 | Rule | Severity | Title | Fix |
 |------|----------|-------|-----|
@@ -37,7 +37,7 @@ The analyzers are included automatically when you reference `NPipeline`. Connect
 | NP9107 | Warning | Non-streaming source node | Use `DataStream.FromAsyncEnumerable` instead of materializing all items in `OpenStream`. |
 | NP9108 | Info | Missing parameterless constructor | Add a parameterless constructor for faster node activation. |
 
-## NP92xx — Reliability and Error Handling
+## NP92xx - Reliability and Error Handling
 
 | Rule | Severity | Title | Fix |
 |------|----------|-------|-----|
@@ -45,14 +45,14 @@ The analyzers are included automatically when you reference `NPipeline`. Connect
 | NP9202 | Warning | Inefficient exception handling | Avoid `catch (Exception)` with rethrow in tight loops. Use specific exception types. |
 | NP9203 | Warning | Ignoring CancellationToken | Pass `CancellationToken` to async methods that accept it. |
 
-## NP93xx — Data Integrity and Correctness
+## NP93xx - Data Integrity and Correctness
 
 | Rule | Severity | Title | Fix |
 |------|----------|-------|-----|
 | NP9301 | **Error** | SinkNode not consuming input | The `ConsumeAsync` method must use its `input` parameter. A sink that ignores its input is always a bug. |
 | NP9302 | Warning | Unsafe PipelineContext access | Avoid concurrent writes to `PipelineContext.Items` from parallel nodes. Use thread-safe patterns. |
 
-## NP94xx — Design and Architecture
+## NP94xx - Design and Architecture
 
 | Rule | Severity | Title | Fix |
 |------|----------|-------|-----|
@@ -61,7 +61,7 @@ The analyzers are included automatically when you reference `NPipeline`. Connect
 | NP9403 | Warning | Missing public parameterless constructor | Node types resolved by the framework need a public parameterless constructor or DI registration. |
 | NP9404 | Warning | Dependency injection anti-pattern | Avoid service locator patterns; use constructor injection instead. |
 
-## NP95xx — Connector-Specific
+## NP95xx - Connector-Specific
 
 | Rule | Severity | Package | Title | Fix |
 |------|----------|---------|-------|-----|
@@ -74,7 +74,7 @@ Most analyzer rules include automatic code fix providers. Apply fixes individual
 
 ### Key Code Fix Examples
 
-**NP9002 — Add `MaxMaterializedItems`:**
+**NP9002 - Add `MaxMaterializedItems`:**
 
 ```csharp
 // Before
@@ -84,7 +84,7 @@ new PipelineRetryOptions { MaxItemRetries = 3, MaxNodeRestartAttempts = 3 }
 new PipelineRetryOptions { MaxItemRetries = 3, MaxNodeRestartAttempts = 3, MaxMaterializedItems = 10000 }
 ```
 
-**NP9101 — Replace blocking call with await:**
+**NP9101 - Replace blocking call with await:**
 
 ```csharp
 // Before
@@ -94,7 +94,7 @@ var data = httpClient.GetAsync(url).Result;
 var data = await httpClient.GetAsync(url);
 ```
 
-**NP9107 — Use streaming source:**
+**NP9107 - Use streaming source:**
 
 ```csharp
 // Before
@@ -106,13 +106,13 @@ public override DataStream<Record> OpenStream(PipelineContext ctx, CancellationT
     => DataStream.FromAsyncEnumerable(db.GetAllAsync(ct));
 ```
 
-**NP9301 — Consume sink input:**
+**NP9301 - Consume sink input:**
 
 ```csharp
 // Before
 public override async Task ConsumeAsync(DataStream<Order> input, PipelineContext ctx, CancellationToken ct)
 {
-    await db.SaveAsync(ct); // input never consumed — silent data loss!
+    await db.SaveAsync(ct); // input never consumed - silent data loss!
 }
 
 // After
@@ -123,7 +123,7 @@ public override async Task ConsumeAsync(DataStream<Order> input, PipelineContext
 }
 ```
 
-**NP9404 — Replace service locator with constructor injection:**
+**NP9404 - Replace service locator with constructor injection:**
 
 ```csharp
 // Before
@@ -144,7 +144,7 @@ public MyNode(IMyService dep) => _dep = dep;
 Suppress individual diagnostics when needed:
 
 ```csharp
-#pragma warning disable NP9103 // LINQ is acceptable here — called once, not per-item
+#pragma warning disable NP9103 // LINQ is acceptable here - called once, not per-item
 var lookup = items.ToDictionary(x => x.Id);
 #pragma warning restore NP9103
 ```
@@ -158,6 +158,6 @@ dotnet_diagnostic.NP9106.severity = none  # disable ValueTask suggestion
 
 ## Next Steps
 
-- [Error Codes](../reference/error-codes.md) — runtime error code catalog
-- [Performance Best Practices](../performance/best-practices.md) — optimization guidance
-- [Coding Conventions](../contributing/coding-conventions.md) — project coding standards
+- [Error Codes](../reference/error-codes.md) - runtime error code catalog
+- [Performance Best Practices](../performance/best-practices.md) - optimization guidance
+- [Coding Conventions](../contributing/coding-conventions.md) - project coding standards

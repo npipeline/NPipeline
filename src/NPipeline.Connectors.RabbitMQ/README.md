@@ -1,18 +1,18 @@
 # NPipeline.Connectors.RabbitMQ
 
-RabbitMQ connector for [NPipeline](https://github.com/your-org/NPipeline) — consume from and publish to RabbitMQ queues with integrated backpressure, publisher
+RabbitMQ connector for [NPipeline](https://github.com/your-org/NPipeline) - consume from and publish to RabbitMQ queues with integrated backpressure, publisher
 confirms, and dead-letter handling.
 
 ## Features
 
-- **Source node** — Push-based `AsyncEventingBasicConsumer` with bounded channel backpressure
-- **Sink node** — Sequential and batched publishing with publisher confirms
-- **Quorum queues** — First-class support for Classic, Quorum, and Stream queue types
-- **Topology auto-declaration** — Exchanges, queues, and bindings declared at startup
-- **Dead-letter handling** — Both broker-level (DLX) and pipeline-level with enriched headers
-- **Thread-safe acknowledgment** — Atomic ack/nack state machine
-- **Pluggable metrics** — Implement `IRabbitMqMetrics` for observability
-- **Pluggable serialization** — Default `System.Text.Json`, override with `IMessageSerializer`
+- **Source node** - Push-based `AsyncEventingBasicConsumer` with bounded channel backpressure
+- **Sink node** - Sequential and batched publishing with publisher confirms
+- **Quorum queues** - First-class support for Classic, Quorum, and Stream queue types
+- **Topology auto-declaration** - Exchanges, queues, and bindings declared at startup
+- **Dead-letter handling** - Both broker-level (DLX) and pipeline-level with enriched headers
+- **Thread-safe acknowledgment** - Atomic ack/nack state machine
+- **Pluggable metrics** - Implement `IRabbitMqMetrics` for observability
+- **Pluggable serialization** - Default `System.Text.Json`, override with `IMessageSerializer`
 
 ## Quick Start
 

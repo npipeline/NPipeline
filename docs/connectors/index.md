@@ -94,5 +94,5 @@ var source = new JsonSourceNode<Order>(config, storageProvider, new StorageUri("
 ## Next Steps
 
 - Pick a connector from the tables above to see configuration details
-- [Storage Providers](../storage-providers/index.md) — configure where file-based connectors read/write
-- [Custom Nodes](../guides/custom-nodes.md) — build your own source or sink
+- [Storage Providers](../storage-providers/index.md) - configure where file-based connectors read/write
+- [Custom Nodes](../guides/custom-nodes.md) - build your own source or sink

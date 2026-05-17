@@ -6,7 +6,7 @@ using NPipeline.Connectors.MongoDB.Mapping;
 namespace NPipeline.Connectors.MongoDB.Tests.Mapping;
 
 /// <summary>
-///     Unit tests for <see cref="MongoMapperBuilder" /> — compiled mapper caching.
+///     Unit tests for <see cref="MongoMapperBuilder" /> - compiled mapper caching.
 /// </summary>
 public sealed class MongoMapperBuilderTests
 {
@@ -35,7 +35,7 @@ public sealed class MongoMapperBuilderTests
     [Fact]
     public void Build_IgnoresMissingFieldsGracefully()
     {
-        // Only 'qty' supplied, 'name' is missing — should leave it as default ("")
+        // Only 'qty' supplied, 'name' is missing - should leave it as default ("")
         var doc = new BsonDocument { { "qty", 5 } };
         var mapper = MongoMapperBuilder.Build<SimpleModel>();
 
@@ -48,7 +48,7 @@ public sealed class MongoMapperBuilderTests
     [Fact]
     public void Build_ThrowsMongoMappingExceptionOnTypeMismatch()
     {
-        // "qty" is a nested document, not an int — should throw MongoMappingException
+        // "qty" is a nested document, not an int - should throw MongoMappingException
         var doc = new BsonDocument { { "qty", new BsonDocument { { "x", 1 } } } };
         var mapper = MongoMapperBuilder.Build<SimpleModel>();
 
@@ -121,7 +121,7 @@ public sealed class MongoMapperBuilderTests
 
     private sealed class ReadOnlyPropertyModel
     {
-        // Read-only — should be skipped
+        // Read-only - should be skipped
         public string ReadOnly => "always";
 
         [MongoField("writable")]

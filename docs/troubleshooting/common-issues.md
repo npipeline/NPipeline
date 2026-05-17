@@ -15,11 +15,11 @@ This page covers frequently encountered issues, organized by symptom.
 Two nodes share the same name. Names must be unique within a pipeline:
 
 ```csharp
-// Bad — duplicate name
+// Bad - duplicate name
 builder.AddTransform<NodeA, In, Out>("process");
 builder.AddTransform<NodeB, In, Out>("process"); // NP0105
 
-// Good — unique names
+// Good - unique names
 builder.AddTransform<NodeA, In, Out>("process-a");
 builder.AddTransform<NodeB, In, Out>("process-b");
 ```
@@ -31,7 +31,7 @@ The output type of the source node doesn't match the input type of the target no
 ```csharp
 var source = builder.AddSource<MySource, string>("source");
 var transform = builder.AddTransform<MyTransform, int, int>("transform");
-builder.Connect(source, transform); // NP0201 — string ≠ int
+builder.Connect(source, transform); // NP0201 - string ≠ int
 ```
 
 Use `CanConnect()` to check compatibility before connecting.
@@ -98,19 +98,19 @@ The dead letter queue is full. Process or drain the dead letter queue, or increa
 
 ### High Memory Usage
 
-- Check for unbounded materialization — set `MaxMaterializedItems` on retry options
+- Check for unbounded materialization - set `MaxMaterializedItems` on retry options
 - Verify you're using `DataStream<T>` streaming rather than materializing entire datasets
 - Enable memory metrics to identify the culprit node: `AddNPipelineObservability(new ObservabilityExtensionOptions { EnableMemoryMetrics = true })`
 
 ### Slow Throughput
 
-- Check for blocking calls — analyzer NP9101 detects `.Result`, `.Wait()`
-- Check for LINQ in hot paths — analyzer NP9103
-- Override `ExecuteValueTaskAsync` for synchronous transforms — analyzer NP9106
+- Check for blocking calls - analyzer NP9101 detects `.Result`, `.Wait()`
+- Check for LINQ in hot paths - analyzer NP9103
+- Override `ExecuteValueTaskAsync` for synchronous transforms - analyzer NP9106
 - Use parallel execution for CPU-bound transforms
 
 ## Next Steps
 
-- [Debugging Tips](debugging-tips.md) — visualization and logging
-- [Error Handling](../error-handling/index.md) — configure resilience
-- [Error Codes](../reference/error-codes.md) — full error code catalog
+- [Debugging Tips](debugging-tips.md) - visualization and logging
+- [Error Handling](../error-handling/index.md) - configure resilience
+- [Error Codes](../reference/error-codes.md) - full error code catalog

@@ -8,7 +8,7 @@ order: 4
 
 > **Prerequisites:** [Storage Providers Overview](index.md)
 
-The `NPipeline.StorageProviders.Adls` package implements `IStorageProvider` for [Azure Data Lake Storage Gen2](https://learn.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-introduction). In addition to standard read/write, it implements `IDeletableStorageProvider` and `IMoveableStorageProvider` for atomic rename/move operations — critical for partitioned table writes.
+The `NPipeline.StorageProviders.Adls` package implements `IStorageProvider` for [Azure Data Lake Storage Gen2](https://learn.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-introduction). In addition to standard read/write, it implements `IDeletableStorageProvider` and `IMoveableStorageProvider` for atomic rename/move operations - critical for partitioned table writes.
 
 ## When to Use ADLS Gen2 vs Azure Blob
 
@@ -59,9 +59,9 @@ adls://filesystem-name/path/to/file
 
 Same precedence as the Azure Blob provider:
 
-1. **Connection string** — `DefaultConnectionString` (takes precedence)
-2. **Explicit credential** — `DefaultCredential` (any `TokenCredential`)
-3. **Default credential chain** — `DefaultAzureCredential`
+1. **Connection string** - `DefaultConnectionString` (takes precedence)
+2. **Explicit credential** - `DefaultCredential` (any `TokenCredential`)
+3. **Default credential chain** - `DefaultAzureCredential`
 
 ```csharp
 // Managed identity (recommended)
@@ -106,10 +106,10 @@ Registers: `IStorageProvider`, `IDeletableStorageProvider`, `IMoveableStoragePro
 
 ## Features
 
-- **Atomic rename/move** — `IMoveableStorageProvider` uses the Data Lake rename API; falls back to copy + delete on failure
-- **Idempotent delete** — `IDeletableStorageProvider` treats 404 as success
-- **Dual client caches** — separate LRU caches for Blob and DataLake clients
-- **Metadata** — `Size`, `LastModified`, `ContentType`, `ETag`
+- **Atomic rename/move** - `IMoveableStorageProvider` uses the Data Lake rename API; falls back to copy + delete on failure
+- **Idempotent delete** - `IDeletableStorageProvider` treats 404 as success
+- **Dual client caches** - separate LRU caches for Blob and DataLake clients
+- **Metadata** - `Size`, `LastModified`, `ContentType`, `ETag`
 
 ## URI Parameters
 
@@ -233,7 +233,7 @@ docker run -p 10000:10000 \
     azurite --blobHost 0.0.0.0 --skipApiVersionCheck --inMemoryPersistence
 ```
 
-> Azurite has partial ADLS Gen2 fidelity — ACL and some HNS behaviors may differ. Validate against a real ADLS Gen2 account for production.
+> Azurite has partial ADLS Gen2 fidelity - ACL and some HNS behaviors may differ. Validate against a real ADLS Gen2 account for production.
 
 ## Troubleshooting
 
@@ -245,6 +245,6 @@ docker run -p 10000:10000 \
 
 ## Next Steps
 
-- [Azure Blob Provider](azure-blob.md) — flat namespace alternative
-- [Data Lake Connector](../connectors/datalake.md) — partitioned tables on ADLS
-- [Storage Providers Overview](index.md) — choosing between providers
+- [Azure Blob Provider](azure-blob.md) - flat namespace alternative
+- [Data Lake Connector](../connectors/datalake.md) - partitioned tables on ADLS
+- [Storage Providers Overview](index.md) - choosing between providers

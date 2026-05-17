@@ -155,7 +155,7 @@ public sealed class RabbitMqSourceNode<T> : SourceNode<RabbitMqMessage<T>>
 
                 LogMessages.MessageConsumed(_logger, args.DeliveryTag, _options.QueueName);
 
-                // Write to bounded channel — blocks if buffer is full (backpressure)
+                // Write to bounded channel - blocks if buffer is full (backpressure)
                 await bufferChannel.Writer.WriteAsync(message, cancellationToken).ConfigureAwait(false);
 
                 _metrics.RecordConsumed(_options.QueueName, 1);
@@ -199,7 +199,7 @@ public sealed class RabbitMqSourceNode<T> : SourceNode<RabbitMqMessage<T>>
 
         LogMessages.ConsumerStarted(_logger, _options.QueueName, _options.PrefetchCount);
 
-        // Read from the bounded channel — this is the IAsyncEnumerable surface
+        // Read from the bounded channel - this is the IAsyncEnumerable surface
         await foreach (var message in bufferChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
         {
             yield return message;

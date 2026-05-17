@@ -18,7 +18,7 @@ Data flows item-by-item through `IAsyncEnumerable<T>`. Nothing is buffered in me
 
 ## Lazy Evaluation
 
-Source nodes don't produce items until the downstream consumer requests them. Transforms don't execute until enumerated. This is the natural behavior of `IAsyncEnumerable<T>` — items are pulled, not pushed.
+Source nodes don't produce items until the downstream consumer requests them. Transforms don't execute until enumerated. This is the natural behavior of `IAsyncEnumerable<T>` - items are pulled, not pushed.
 
 **Why:** Lazy evaluation enables backpressure for free. A slow sink automatically slows down the source without explicit flow control logic.
 
@@ -50,7 +50,7 @@ The default resilience policy returns `Fail` for all failure types. No items are
 
 ## Zero-Allocation Hot Paths
 
-The item processing loop — the code path that runs once per item per node — avoids heap allocations. This means no LINQ in hot paths, no closures that capture variables, no boxing of value types, and `ValueTask<T>` where appropriate.
+The item processing loop - the code path that runs once per item per node - avoids heap allocations. This means no LINQ in hot paths, no closures that capture variables, no boxing of value types, and `ValueTask<T>` where appropriate.
 
 **Why:** Pipeline throughput is directly limited by GC pressure. At millions of items per second, even one allocation per item causes significant GC overhead.
 
@@ -82,6 +82,6 @@ Pipeline definition (`PipelineBuilder`) is separate from pipeline execution (`Pi
 
 ## Next Steps
 
-- [Execution Model](execution-model.md) — how these principles manifest in the runner
-- [Node Instantiation](node-instantiation.md) — compiled factories in detail
-- [Coding Conventions](../contributing/coding-conventions.md) — practical rules derived from these principles
+- [Execution Model](execution-model.md) - how these principles manifest in the runner
+- [Node Instantiation](node-instantiation.md) - compiled factories in detail
+- [Coding Conventions](../contributing/coding-conventions.md) - practical rules derived from these principles

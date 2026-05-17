@@ -50,7 +50,7 @@ public class DatabaseSourceNodeTests
     [Fact]
     public async Task Initialize_WithInMemoryCheckpoint_SkipsAlreadyProcessedRows()
     {
-        // Arrange — pre-seed checkpoint: 2 rows already processed.
+        // Arrange - pre-seed checkpoint: 2 rows already processed.
         // PipelineContext.CurrentNodeId defaults to string.Empty (not null),
         // so DatabaseSourceNode uses "" as pipelineId (not "default").
         const string checkpointId = "TestCheckpoint";
@@ -68,7 +68,7 @@ public class DatabaseSourceNodeTests
         // Act
         var result = node.OpenStream(new PipelineContext(), CancellationToken.None);
 
-        // Assert — only rows 3 and 4 should be emitted
+        // Assert - only rows 3 and 4 should be emitted
         var dataStream = result.Should().BeOfType<InMemoryDataStream<int>>().Subject;
         dataStream.Items.Should().Equal(3, 4);
 

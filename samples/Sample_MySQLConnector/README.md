@@ -1,6 +1,6 @@
 # NPipeline MySQL Connector Sample
 
-This sample demonstrates the **NPipeline MySQL Connector** — a fully-async MySQL/MariaDB connector built on top
+This sample demonstrates the **NPipeline MySQL Connector** - a fully-async MySQL/MariaDB connector built on top
 of [MySqlConnector](https://mysqlconnector.net/) (MIT).
 
 ## Prerequisites
@@ -36,7 +36,7 @@ dotnet run -- --connection-string "Server=myhost;Port=3306;Database=mydb;User=my
 
 | Feature               | Description                                                                 |
 |-----------------------|-----------------------------------------------------------------------------|
-| **PerRow strategy**   | Inserts one row at a time — useful for small writes with rich error control |
+| **PerRow strategy**   | Inserts one row at a time - useful for small writes with rich error control |
 | **Batch strategy**    | Builds multi-row `INSERT VALUES (…),(…)` for high throughput                |
 | **Upsert**            | `INSERT … ON DUPLICATE KEY UPDATE`, `INSERT IGNORE`, `REPLACE INTO`         |
 | **Attribute mapping** | `[MySqlTable]`, `[MySqlColumn]`, `[Column]`, `[IgnoreColumn]`               |
@@ -45,9 +45,9 @@ dotnet run -- --connection-string "Server=myhost;Port=3306;Database=mydb;User=my
 
 ## Models
 
-- **`Product`** — uses `[MySqlTable]` + `[MySqlColumn]` / `[Column]` with `AutoIncrement`
-- **`OrderEvent`** — demonstrates upsert on `event_id` primary key
-- **`ProductSummary`** — shows convention-based mapping (no attributes required)
+- **`Product`** - uses `[MySqlTable]` + `[MySqlColumn]` / `[Column]` with `AutoIncrement`
+- **`OrderEvent`** - demonstrates upsert on `event_id` primary key
+- **`ProductSummary`** - shows convention-based mapping (no attributes required)
 
 ## Key NPipeline APIs Used
 

@@ -16,7 +16,7 @@ dotnet add package NPipeline.Connectors.Aws.Sqs
 
 **Dependencies:** [AWSSDK.SQS](https://www.nuget.org/packages/AWSSDK.SQS) 4.x, [AWSSDK.Extensions.NETCore.Setup](https://www.nuget.org/packages/AWSSDK.Extensions.NETCore.Setup) 4.x
 
-## Source Node — `SqsSourceNode<T>`
+## Source Node - `SqsSourceNode<T>`
 
 ### Constructors
 
@@ -43,7 +43,7 @@ var config = new SqsConfiguration
 var source = new SqsSourceNode<Order>(config);
 ```
 
-## Sink Node — `SqsSinkNode<T>`
+## Sink Node - `SqsSinkNode<T>`
 
 ### Constructors
 
@@ -72,12 +72,12 @@ var sink = new SqsSinkNode<ProcessedOrder>(config);
 
 The connector resolves credentials in this order:
 
-1. **Explicit credentials** — `AccessKeyId` + `SecretAccessKey` in configuration
-2. **Named profile** — `ProfileName` in configuration
-3. **Default credential chain** — environment variables, instance profile, etc.
+1. **Explicit credentials** - `AccessKeyId` + `SecretAccessKey` in configuration
+2. **Named profile** - `ProfileName` in configuration
+3. **Default credential chain** - environment variables, instance profile, etc.
 
 ```csharp
-// Explicit credentials (development only — use IAM roles in production)
+// Explicit credentials (development only - use IAM roles in production)
 var config = new SqsConfiguration
 {
     AccessKeyId = "AKIA...",
@@ -94,7 +94,7 @@ var config = new SqsConfiguration
     SourceQueueUrl = "..."
 };
 
-// Default chain (recommended for production — EC2 instance role, ECS task role, etc.)
+// Default chain (recommended for production - EC2 instance role, ECS task role, etc.)
 var config = new SqsConfiguration
 {
     Region = "us-east-1",
@@ -117,8 +117,8 @@ var config = new SqsConfiguration
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `SourceQueueUrl` | `string` | — | Source queue URL |
-| `SinkQueueUrl` | `string` | — | Sink queue URL |
+| `SourceQueueUrl` | `string` | - | Source queue URL |
+| `SinkQueueUrl` | `string` | - | Sink queue URL |
 
 ### Polling (Source)
 
@@ -161,9 +161,9 @@ var config = new SqsConfiguration
 
 ## Next Steps
 
-- [Azure Service Bus Connector](azure-service-bus.md) — Azure managed messaging
-- [Kafka Connector](kafka.md) — distributed streaming platform
-- [RabbitMQ Connector](rabbitmq.md) — self-managed message broker
+- [Azure Service Bus Connector](azure-service-bus.md) - Azure managed messaging
+- [Kafka Connector](kafka.md) - distributed streaming platform
+- [RabbitMQ Connector](rabbitmq.md) - self-managed message broker
 
 ## Acknowledgment Strategies
 
@@ -172,7 +172,7 @@ var config = new SqsConfiguration
 | `AutoOnSinkSuccess` (default) | Message deleted after successful sink processing |
 | `Manual` | Call `message.AcknowledgeAsync()` explicitly |
 | `Delayed` | Delete after `AcknowledgmentDelayMs` (allows downstream confirmation) |
-| `None` | No acknowledgment — message reappears after `VisibilityTimeout` |
+| `None` | No acknowledgment - message reappears after `VisibilityTimeout` |
 
 ### Manual Acknowledgment
 
@@ -216,10 +216,10 @@ var dlqSource = new SqsSourceNode<SqsMessage<Order>>(new SqsConfiguration
 
 ## Best Practices
 
-1. **Use long polling** (`WaitTimeSeconds = 20`) — reduces empty responses and cost
-2. **Set `VisibilityTimeout` > processing time** — prevents duplicate processing
+1. **Use long polling** (`WaitTimeSeconds = 20`) - reduces empty responses and cost
+2. **Set `VisibilityTimeout` > processing time** - prevents duplicate processing
 3. **Use IAM roles** for credentials in production (EC2 instance role, ECS task role)
-4. **Batch operations** — SQS charges per request, batching reduces cost
+4. **Batch operations** - SQS charges per request, batching reduces cost
 5. **Configure a DLQ** on the SQS queue for poison messages
 6. **Monitor `ApproximateReceiveCount`** to detect stuck messages
 7. **Use FIFO queues** when message ordering matters (set `MessageGroupId`)

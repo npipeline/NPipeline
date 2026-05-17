@@ -23,7 +23,7 @@ public class ToUpper : TransformNode<string, string>
         string item, PipelineContext ctx, CancellationToken ct)
         => Task.FromResult(item.ToUpperInvariant());
 
-    // Fast path — avoids Task allocation
+    // Fast path - avoids Task allocation
     protected internal override ValueTask<string> ExecuteValueTaskAsync(
         string item, PipelineContext ctx, CancellationToken ct)
         => new(item.ToUpperInvariant());
@@ -37,11 +37,11 @@ See [Synchronous Fast Paths](synchronous-fast-paths.md) for details.
 Use `DataStream<T>` lazy streaming rather than materializing entire datasets:
 
 ```csharp
-// Good — streams one item at a time
+// Good - streams one item at a time
 public override DataStream<Record> OpenStream(PipelineContext ctx, CancellationToken ct)
     => DataStream.FromAsyncEnumerable(ReadRecordsAsync(ct));
 
-// Bad — loads everything into memory
+// Bad - loads everything into memory
 public override DataStream<Record> OpenStream(PipelineContext ctx, CancellationToken ct)
     => DataStream.FromEnumerable(ReadAllRecords()); // OOM risk
 ```
@@ -68,10 +68,10 @@ handle.WithParallelExecution(builder, options =>
 LINQ allocates enumerator objects and delegates on every call. In `TransformAsync` methods that run per-item, use loops instead:
 
 ```csharp
-// Bad — allocates on every item (NP9103)
+// Bad - allocates on every item (NP9103)
 var filtered = items.Where(x => x.IsValid).ToList();
 
-// Good — no allocations
+// Good - no allocations
 foreach (var item in items)
 {
     if (item.IsValid) results.Add(item);
@@ -83,7 +83,7 @@ foreach (var item in items)
 Never use `.Result`, `.Wait()`, or `.GetAwaiter().GetResult()` in nodes (NP9101):
 
 ```csharp
-// Bad — deadlock risk and thread pool starvation
+// Bad - deadlock risk and thread pool starvation
 var data = httpClient.GetAsync(url).Result;
 
 // Good
@@ -95,7 +95,7 @@ var data = await httpClient.GetAsync(url, ct);
 Use `StringBuilder` instead of `+` in hot paths (NP9104):
 
 ```csharp
-// Bad — O(n²) allocations
+// Bad - O(n²) allocations
 foreach (var item in items) result += item.ToString();
 
 // Good
@@ -134,7 +134,7 @@ Streaming (default):
 
 Eager (.ToList()):
   [All N items in memory] → Process → [GC]
-  Memory: O(N) — entire dataset
+  Memory: O(N) - entire dataset
 ```
 
 For a 1 million row CSV at 500 bytes per row: streaming uses ~1–2 MB; `.ToList()` requires ~500 MB.
@@ -168,6 +168,6 @@ For a 1 million row CSV at 500 bytes per row: streaming uses ~1–2 MB; `.ToList
 
 ## Next Steps
 
-- [Synchronous Fast Paths](synchronous-fast-paths.md) — eliminate Task allocations
-- [Execution Plan Caching](execution-plan-caching.md) — avoid reflection on repeated runs
-- [Parallel Execution](../guides/parallel-execution.md) — scale CPU-bound work
+- [Synchronous Fast Paths](synchronous-fast-paths.md) - eliminate Task allocations
+- [Execution Plan Caching](execution-plan-caching.md) - avoid reflection on repeated runs
+- [Parallel Execution](../guides/parallel-execution.md) - scale CPU-bound work

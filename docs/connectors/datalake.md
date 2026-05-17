@@ -26,7 +26,7 @@ dotnet add package NPipeline.Connectors.DataLake
 | **Time travel** | None | Read historical snapshots with `asOf` |
 | **Use case** | Simple file I/O | Analytical data lake tables |
 
-## Source Node — `DataLakeTableSourceNode<T>`
+## Source Node - `DataLakeTableSourceNode<T>`
 
 Reads all Parquet files in a table, following the manifest to resolve the current (or historical) snapshot.
 
@@ -70,7 +70,7 @@ var source = new DataLakeTableSourceNode<SalesRecord>(
     resolver: myResolver);
 ```
 
-## Sink Node — `DataLakePartitionedSinkNode<T>`
+## Sink Node - `DataLakePartitionedSinkNode<T>`
 
 Writes items to a partitioned table, routing each item to the appropriate partition directory based on a `PartitionSpec`.
 
@@ -123,7 +123,7 @@ s3://data-lake/sales/
 
 ## Configuration
 
-The Data Lake connector uses `ParquetConfiguration` for all Parquet-specific settings (compression, row group size, etc.). See [Parquet Connector — Configuration](parquet.md#configuration) for the full property reference.
+The Data Lake connector uses `ParquetConfiguration` for all Parquet-specific settings (compression, row group size, etc.). See [Parquet Connector - Configuration](parquet.md#configuration) for the full property reference.
 
 Key options for data lake use:
 
@@ -163,9 +163,9 @@ public sealed class SalesIngestionPipeline : IPipelineDefinition
 
 ## Next Steps
 
-- [Parquet Connector](parquet.md) — single-file Parquet I/O
-- [Storage Providers](../storage-providers/index.md) — configure S3, Azure Blob, or GCS
-- [DuckDB Connector](duckdb.md) — query data lake files with SQL
+- [Parquet Connector](parquet.md) - single-file Parquet I/O
+- [Storage Providers](../storage-providers/index.md) - configure S3, Azure Blob, or GCS
+- [DuckDB Connector](duckdb.md) - query data lake files with SQL
 
 ## Partitioning
 
@@ -224,9 +224,9 @@ var config = new ParquetConfiguration
 
 ## Best Practices
 
-1. **Choose partition keys carefully** — high-cardinality keys create too many small files
-2. **Use `UseAtomicWrite = true`** — prevents partial files on failure
-3. **Use `Snappy` compression** — fast and widely supported by query engines
+1. **Choose partition keys carefully** - high-cardinality keys create too many small files
+2. **Use `UseAtomicWrite = true`** - prevents partial files on failure
+3. **Use `Snappy` compression** - fast and widely supported by query engines
 4. **Set `MaxBufferedRows`** to control memory across partition buffers
-5. **Use `RecursiveDiscovery`** for reading — handles partition subdirectories automatically
-6. **Query with DuckDB** — use the DuckDB connector to query data lake files with SQL
+5. **Use `RecursiveDiscovery`** for reading - handles partition subdirectories automatically
+6. **Query with DuckDB** - use the DuckDB connector to query data lake files with SQL

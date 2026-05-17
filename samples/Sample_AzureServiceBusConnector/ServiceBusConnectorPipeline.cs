@@ -126,7 +126,7 @@ public sealed class ServiceBusConnectorPipeline : IPipelineDefinition
                • Automatic message lock renewal during processing
                • Order processing with status tracking
                • Reconnect behavior using channel-based push-to-pull bridging
-               • AutoOnSinkSuccess acknowledgment — source message Completed only after successful publish
+               • AutoOnSinkSuccess acknowledgment - source message Completed only after successful publish
                • Dead-lettering messages that fail deserialization
                • Batch sending to output queue for throughput optimisation
                """;
@@ -171,7 +171,7 @@ public sealed class OrderProcessor
                 CustomerId = order.CustomerId,
                 TotalAmount = order.TotalAmount,
                 Status = "Rejected",
-                ProcessingNotes = "Invalid order amount — must be greater than zero.",
+                ProcessingNotes = "Invalid order amount - must be greater than zero.",
             };
 
             return input.WithBody(rejected);

@@ -104,9 +104,9 @@ transform.WithDropNewestParallelism(builder,
 
 When using parallel execution, your transform node's `TransformAsync` method is called concurrently from multiple threads. You must ensure:
 
-1. **No shared mutable state** — or protect it with locks/concurrent collections
-2. **No direct writes to context dictionaries** — see the safety matrix below
-3. **All dependencies are thread-safe** — `HttpClient` (via `IHttpClientFactory`), connection pools, etc.
+1. **No shared mutable state** - or protect it with locks/concurrent collections
+2. **No direct writes to context dictionaries** - see the safety matrix below
+3. **All dependencies are thread-safe** - `HttpClient` (via `IHttpClientFactory`), connection pools, etc.
 
 ### Context Dictionary Thread Safety
 
@@ -120,10 +120,10 @@ When using parallel execution, your transform node's `TransformAsync` method is 
 
 NPipeline's context dictionaries are plain `Dictionary<string, object>`, not `ConcurrentDictionary`. This is intentional:
 
-1. **Performance** — Thread-safe collections add overhead (locks, memory barriers) on every access
-2. **Common case** — Most pipelines run single-threaded; paying thread-safety overhead for all pipelines is wasteful
-3. **Pay for what you use** — When you need shared state in parallel scenarios, `IPipelineStateManager` provides purpose-built thread-safe semantics
-4. **Correctness** — `ConcurrentDictionary` prevents crashes but doesn't prevent *logical* race conditions; `IPipelineStateManager` provides checkpoint/restore semantics that are actually correct for pipeline retry scenarios
+1. **Performance** - Thread-safe collections add overhead (locks, memory barriers) on every access
+2. **Common case** - Most pipelines run single-threaded; paying thread-safety overhead for all pipelines is wasteful
+3. **Pay for what you use** - When you need shared state in parallel scenarios, `IPipelineStateManager` provides purpose-built thread-safe semantics
+4. **Correctness** - `ConcurrentDictionary` prevents crashes but doesn't prevent *logical* race conditions; `IPipelineStateManager` provides checkpoint/restore semantics that are actually correct for pipeline retry scenarios
 
 ### Safe and Unsafe Patterns
 
@@ -185,7 +185,7 @@ builder.WithRetryOptions(transform, new PipelineRetryOptions { MaxItemRetries = 
 
 ## Next Steps
 
-- [Parallelism Extension Reference](../extensions/parallelism.md) — strategies, options, metrics, and queue policies
-- [Streaming Large Datasets](streaming-large-datasets.md) — memory management with parallel processing
-- [Pipeline Validation](pipeline-validation.md) — analyzer rules for parallel configuration
-- [Error Handling](../error-handling/index.md) — resilience with parallel nodes
+- [Parallelism Extension Reference](../extensions/parallelism.md) - strategies, options, metrics, and queue policies
+- [Streaming Large Datasets](streaming-large-datasets.md) - memory management with parallel processing
+- [Pipeline Validation](pipeline-validation.md) - analyzer rules for parallel configuration
+- [Error Handling](../error-handling/index.md) - resilience with parallel nodes

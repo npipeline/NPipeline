@@ -8,7 +8,7 @@ order: 14
 
 > **Prerequisites:** [Defining Pipelines](defining-pipelines.md)
 
-NPipeline validates your pipeline graph when you call `Build()`. Validation catches structural errors — disconnected nodes, type mismatches, cycles — before execution begins.
+NPipeline validates your pipeline graph when you call `Build()`. Validation catches structural errors - disconnected nodes, type mismatches, cycles - before execution begins.
 
 ## Validation Modes
 
@@ -142,6 +142,6 @@ string description = builder.Describe();
 
 ## Next Steps
 
-- [Defining Pipelines](defining-pipelines.md) — the builder API
-- [Error Handling](../error-handling/index.md) — resilience configuration validation
-- [Parallel Execution](parallel-execution.md) — parallel configuration validation
+- [Defining Pipelines](defining-pipelines.md) - the builder API
+- [Error Handling](../error-handling/index.md) - resilience configuration validation
+- [Parallel Execution](parallel-execution.md) - parallel configuration validation

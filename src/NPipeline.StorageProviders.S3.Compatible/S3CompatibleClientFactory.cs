@@ -23,7 +23,7 @@ public class S3CompatibleClientFactory : S3ClientFactoryBase
 
     /// <summary>
     ///     Creates an Amazon S3 client configured for the S3-compatible endpoint.
-    ///     Credentials and endpoint come from options only — per-URI overrides are not supported.
+    ///     Credentials and endpoint come from options only - per-URI overrides are not supported.
     /// </summary>
     /// <param name="uri">The storage URI (used only for bucket name extraction).</param>
     /// <returns>An <see cref="IAmazonS3" /> client.</returns>

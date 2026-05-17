@@ -34,7 +34,7 @@ var s3 = StorageUri.Parse("s3://my-bucket/path/to/file.csv");
 
 ### Storage Resolver
 
-An `IStorageResolver` finds the right storage provider for a given URI. **You don't need one for local files** — the connector creates a default resolver with file system support automatically.
+An `IStorageResolver` finds the right storage provider for a given URI. **You don't need one for local files** - the connector creates a default resolver with file system support automatically.
 
 Provide an explicit resolver when working with cloud storage:
 
@@ -107,7 +107,7 @@ var source = new CsvSourceNode<User>(
 | `TryGet<T>(string name, out T value, T defaultValue)` | Try to read and convert; returns `false` if missing or unconvertible |
 | `HasColumn(string name)` | Check whether a column exists in the row |
 
-## Source Node — `CsvSourceNode<T>`
+## Source Node - `CsvSourceNode<T>`
 
 Reads a CSV file and emits each row as an item of type `T`.
 
@@ -169,7 +169,7 @@ public sealed class CsvReaderPipeline : IPipelineDefinition
 }
 ```
 
-## Sink Node — `CsvSinkNode<T>`
+## Sink Node - `CsvSinkNode<T>`
 
 Writes items from the pipeline to a CSV file. Uses attribute-based mapping by default (via `CsvWriterMapperBuilder`).
 
@@ -288,9 +288,9 @@ public sealed class CsvTransformPipeline : IPipelineDefinition
 
 ## Next Steps
 
-- [JSON Connector](json.md) — alternative format for structured data
-- [Parquet Connector](parquet.md) — columnar format for large datasets
-- [Storage Providers](../storage-providers/index.md) — read CSV from S3, Azure Blob, or GCS
+- [JSON Connector](json.md) - alternative format for structured data
+- [Parquet Connector](parquet.md) - columnar format for large datasets
+- [Storage Providers](../storage-providers/index.md) - read CSV from S3, Azure Blob, or GCS
 
 ## Storage Abstraction
 
@@ -334,7 +334,7 @@ public class User
 ## Best Practices
 
 1. **Use custom row mappers** for complex mappings or when header names don't match properties
-2. **Increase `BufferSize`** (e.g., 65536) for large files — reduces I/O calls
+2. **Increase `BufferSize`** (e.g., 65536) for large files - reduces I/O calls
 3. **Use `RowErrorHandler`** to skip bad rows instead of failing the pipeline
 4. **Use `StorageUri`** with `IStorageResolver` for cloud storage portability
 5. **Set culture via `HelperConfiguration`** when parsing locale-sensitive numbers/dates

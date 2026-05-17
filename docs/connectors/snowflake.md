@@ -16,7 +16,7 @@ dotnet add package NPipeline.Connectors.Snowflake
 
 **Dependencies:** [Snowflake.Data](https://www.nuget.org/packages/Snowflake.Data) 5.x
 
-## Source Node — `SnowflakeSourceNode<T>`
+## Source Node - `SnowflakeSourceNode<T>`
 
 ### Constructors
 
@@ -50,7 +50,7 @@ var source = new SnowflakeSourceNode<SalesRecord>(
     configuration: new SnowflakeConfiguration { FetchSize = 10000 });
 ```
 
-## Sink Node — `SnowflakeSinkNode<T>`
+## Sink Node - `SnowflakeSinkNode<T>`
 
 | Strategy | Description | Best For |
 |----------|-------------|----------|
@@ -133,7 +133,7 @@ var sink = new SnowflakeSinkNode<SalesRecord>(
 |----------|------|---------|-------------|
 | `UseUpsert` | `bool` | `false` | Enable `MERGE` |
 | `UpsertKeyColumns` | `string[]?` | `null` | Key columns for MERGE matching |
-| `OnMergeAction` | `OnMergeAction` | — | `Update`, `Ignore`, or `Delete` |
+| `OnMergeAction` | `OnMergeAction` | - | `Update`, `Ignore`, or `Delete` |
 
 ### Error Handling
 
@@ -141,7 +141,7 @@ var sink = new SnowflakeSinkNode<SalesRecord>(
 |----------|------|---------|-------------|
 | `ContinueOnError` | `bool` | `false` | Continue on errors |
 | `MaxRetryAttempts` | `int` | `3` | Retry attempts |
-| `RetryDelay` | `TimeSpan` | — | Delay between retries |
+| `RetryDelay` | `TimeSpan` | - | Delay between retries |
 
 ## Dependency Injection
 
@@ -242,22 +242,22 @@ var config = new SnowflakeConfiguration
 
 ### Snowflake-Specific Considerations
 
-- **Connection latency**: Snowflake connections take 2–5s to establish — use connection pooling
-- **Identifiers**: Snowflake defaults to uppercase — use `[SnowflakeColumn]` or convention mapping
+- **Connection latency**: Snowflake connections take 2–5s to establish - use connection pooling
+- **Identifiers**: Snowflake defaults to uppercase - use `[SnowflakeColumn]` or convention mapping
 - **Query tagging**: Set `ApplicationName` for tracking queries in Snowflake history
 - **Warehouse sizing**: Match warehouse size to pipeline throughput needs
 - **Max batch size**: Snowflake limits multi-value INSERT to 16,384 rows
 
 ## Best Practices
 
-1. **Use StagedCopy** for bulk loads — `PUT` + `COPY INTO` is significantly faster
-2. **Use connection pooling** — connection establishment is slow
-3. **Set `MaxBatchSize = 16384`** — Snowflake's row limit per INSERT
+1. **Use StagedCopy** for bulk loads - `PUT` + `COPY INTO` is significantly faster
+2. **Use connection pooling** - connection establishment is slow
+3. **Set `MaxBatchSize = 16384`** - Snowflake's row limit per INSERT
 4. **Enable upsert** with `MERGE` for idempotent loads
 5. **Use key pair authentication** for service accounts (`Authenticator = "snowflake_jwt"`)
 6. **Size your warehouse** appropriately for the load
 
 ## Next Steps
 
-- [DuckDB Connector](duckdb.md) — local analytical queries
-- [Parquet Connector](parquet.md) — Snowflake-compatible columnar format
+- [DuckDB Connector](duckdb.md) - local analytical queries
+- [Parquet Connector](parquet.md) - Snowflake-compatible columnar format

@@ -195,7 +195,7 @@ public async Task MoveFileAsync(string filesystem, string sourcePath, string des
 |----------------------|------------------------------|---------------------------------------|
 | SDK package          | `Azure.Storage.Blobs`        | `Azure.Storage.Files.DataLake`        |
 | Hierarchy            | Flat (virtual `/` delimiter) | True POSIX-like directory tree        |
-| Atomic rename / move | Not supported natively       | `RenameAsync` — O(1) atomic           |
+| Atomic rename / move | Not supported natively       | `RenameAsync` - O(1) atomic           |
 | Write semantics      | Block upload                 | Append + flush (or block upload)      |
 | ACLs                 | RBAC/container-level only    | Per-file and per-directory POSIX ACLs |
 | URI scheme           | `azure://`                   | `adls://`                             |

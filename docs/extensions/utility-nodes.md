@@ -6,7 +6,7 @@ order: 10
 
 # Utility Nodes
 
-The `NPipeline.Extensions.Nodes` package provides pre-built transform nodes for common data operations. These nodes use compiled expressions internally — no runtime reflection in the processing hot path.
+The `NPipeline.Extensions.Nodes` package provides pre-built transform nodes for common data operations. These nodes use compiled expressions internally - no runtime reflection in the processing hot path.
 
 ```bash
 dotnet add package NPipeline.Extensions.Nodes
@@ -225,7 +225,7 @@ builder.AddStringValidation<Customer>()
 
 ### FilteringNode\<T>
 
-Filters items using one or more predicates. Items that fail the filter throw `FilteringException`, which integrates with the resilience system — you can skip, dead-letter, or retry filtered items via your resilience policy.
+Filters items using one or more predicates. Items that fail the filter throw `FilteringException`, which integrates with the resilience system - you can skip, dead-letter, or retry filtered items via your resilience policy.
 
 ```csharp
 // Constructor with predicate
@@ -237,7 +237,7 @@ var filter = new FilteringNode<Order>()
     .Where(o => o.Total > 0, o => $"Invalid total: {o.Total}");
 ```
 
-Multiple `Where` calls are combined with AND logic — all predicates must pass. Each predicate can include a reason string or factory for diagnostics.
+Multiple `Where` calls are combined with AND logic - all predicates must pass. Each predicate can include a reason string or factory for diagnostics.
 
 ### Complex Predicates
 
@@ -358,7 +358,7 @@ Enriches data by setting properties from lookups, computations, or default value
 
 #### Lookup Operations
 
-Set a property from a dictionary — only if the key exists:
+Set a property from a dictionary - only if the key exists:
 
 ```csharp
 builder.AddEnrichment<Order>()
@@ -411,7 +411,7 @@ builder.AddEnrichment<Order>()
     .Compute(x => x.Label, o => $"{o.CustomerName} - {o.StatusDescription}");
 ```
 
-Operations execute in order — later operations see results of earlier ones.
+Operations execute in order - later operations see results of earlier ones.
 
 ## Performance Characteristics
 
@@ -423,7 +423,7 @@ All utility nodes share these performance properties:
 | **Zero-allocation hot path** | No allocations per-item for property reads/writes |
 | **Dictionary lookups** | O(1) hash-based operations for enrichment |
 | **Dependency-free** | No external dependencies beyond the core `NPipeline` package |
-| **Thread-safe** | Nodes are immutable after configuration — safe for parallel execution |
+| **Thread-safe** | Nodes are immutable after configuration - safe for parallel execution |
 
 ## See Also
 
@@ -443,6 +443,6 @@ var policy = ResiliencePolicyBuilder
 
 ## Next Steps
 
-- [Custom Nodes](../guides/custom-nodes.md) — write your own source, transform, and sink nodes
-- [Resilience Policies](../error-handling/resilience-policies.md) — handle validation/filtering failures
-- [Extensions Index](index.md) — see all available packages
+- [Custom Nodes](../guides/custom-nodes.md) - write your own source, transform, and sink nodes
+- [Resilience Policies](../error-handling/resilience-policies.md) - handle validation/filtering failures
+- [Extensions Index](index.md) - see all available packages

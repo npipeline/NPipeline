@@ -94,7 +94,7 @@ public async Task Pipeline_ProcessesOrders()
 | `InMemorySourceNode<T>` | Emits items from a list or from context |
 | `InMemorySinkNode<T>` | Collects items into a thread-safe `ConcurrentBag<T>` |
 | `MockNode<TIn, TOut>` | Configurable transform via delegate |
-| `ExceptionThrowingNode<TIn>` | Always throws — for error handling tests |
+| `ExceptionThrowingNode<TIn>` | Always throws - for error handling tests |
 | `PassThroughTransformNode<TIn, TOut>` | Identity transform with optional type conversion |
 
 ## Assertion Extensions
@@ -119,10 +119,10 @@ sink.ShouldNotContain<Result>(r => r.Status == "Failed");
 |---------|---------|
 | `CapturingErrorHandler` | Wraps a resilience policy, captures exceptions for assertions |
 | `CapturingLogger` | Captures all log entries for verification |
-| `TestPipelineRunner` | `RunAndGetResultAsync<TDef, TResult>()` — runs and extracts sink items |
+| `TestPipelineRunner` | `RunAndGetResultAsync<TDef, TResult>()` - runs and extracts sink items |
 
 ## Next Steps
 
-- [Testing Extension Reference](../extensions/testing.md) — test harness, in-memory nodes, and assertions API
-- [Test Utilities](test-utilities.md) — detailed reference for all test helpers
-- [Error Handling](../error-handling/index.md) — test error handling behavior
+- [Testing Extension Reference](../extensions/testing.md) - test harness, in-memory nodes, and assertions API
+- [Test Utilities](test-utilities.md) - detailed reference for all test helpers
+- [Error Handling](../error-handling/index.md) - test error handling behavior

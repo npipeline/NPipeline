@@ -47,7 +47,7 @@ public class MongoDependencyInjectionIntegrationTests(MongoTestContainerFixture 
 
         using var sp = services.BuildServiceProvider();
 
-        // TryAddSingleton means only one registration — should resolve without error
+        // TryAddSingleton means only one registration - should resolve without error
         sp.GetService<MongoConnectorOptions>().Should().NotBeNull();
     }
 

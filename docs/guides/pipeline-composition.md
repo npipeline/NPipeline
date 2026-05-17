@@ -81,7 +81,7 @@ public class MainPipeline : IPipelineDefinition
 
 Use `CompositeContextConfiguration.Default` to isolate sub-pipelines. Use `InheritAll` when the sub-pipeline needs access to parent state.
 
-> ⚠️ **Warning:** Inheriting `Items` or `Parameters` means the sub-pipeline can read and modify parent state. This creates coupling — use it deliberately.
+> ⚠️ **Warning:** Inheriting `Items` or `Parameters` means the sub-pipeline can read and modify parent state. This creates coupling - use it deliberately.
 
 ## When to Use Composition
 
@@ -95,9 +95,9 @@ Use `CompositeContextConfiguration.Default` to isolate sub-pipelines. Use `Inher
 
 Errors in sub-pipelines follow three strategies:
 
-1. **Catch inside the sub-pipeline** — configure resilience in the sub-pipeline definition so errors don't reach the parent
-2. **Propagate to parent** — let the sub-pipeline throw; the parent's error handler decides what to do with the composite node's failure
-3. **Hybrid** — handle transient errors in the sub-pipeline (retries), propagate fatal errors to the parent
+1. **Catch inside the sub-pipeline** - configure resilience in the sub-pipeline definition so errors don't reach the parent
+2. **Propagate to parent** - let the sub-pipeline throw; the parent's error handler decides what to do with the composite node's failure
+3. **Hybrid** - handle transient errors in the sub-pipeline (retries), propagate fatal errors to the parent
 
 When `InheritDeadLetterDecorator` is `true` (the default), dead-lettered items from the sub-pipeline appear in the parent's dead letter queue.
 
@@ -126,8 +126,8 @@ This is negligible for I/O-bound pipelines (10K items/sec) but can become signif
 
 **Optimization tips:**
 
-- Minimize context inheritance — inheriting all parameters adds lookup cost proportional to parameter count
-- Keep nesting shallow — each level adds ~2-3μs per item
+- Minimize context inheritance - inheriting all parameters adds lookup cost proportional to parameter count
+- Keep nesting shallow - each level adds ~2-3μs per item
 - Use `CompositeContextConfiguration.Default` unless you need parent state
 
 > 💡 **Tip:** Sub-pipeline definitions are resolved via `Activator.CreateInstance` by default. If your sub-pipeline has constructor dependencies, pass a `serviceProvider` to `AddComposite`.
@@ -156,7 +156,7 @@ public async Task FullPipeline_ComposesCorrectly()
 
 ## Next Steps
 
-- [Composition Extension Reference](../extensions/composition.md) — context configuration, builder extensions, and parent-child correlation
-- [Pipeline Context](pipeline-context.md) — how context flows between nodes and sub-pipelines
-- [Dependency Injection](dependency-injection.md) — resolving sub-pipeline definitions from DI
-- [Custom Nodes](custom-nodes.md) — simpler alternatives when full composition is overkill
+- [Composition Extension Reference](../extensions/composition.md) - context configuration, builder extensions, and parent-child correlation
+- [Pipeline Context](pipeline-context.md) - how context flows between nodes and sub-pipelines
+- [Dependency Injection](dependency-injection.md) - resolving sub-pipeline definitions from DI
+- [Custom Nodes](custom-nodes.md) - simpler alternatives when full composition is overkill

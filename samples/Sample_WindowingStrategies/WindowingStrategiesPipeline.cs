@@ -288,7 +288,7 @@ public class WindowingStrategiesPipeline : IPipelineDefinition
             _enablePatternAnalysis,
             _enablePerformanceMetrics));
 
-        // Wiring — fan-out from session windows into three strategies
+        // Wiring - fan-out from session windows into three strategies
         _ = builder.Connect(userEventSource, sessionWindowAssigner);
 
         // Session-based direct analytics

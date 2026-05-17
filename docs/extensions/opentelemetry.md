@@ -50,8 +50,8 @@ Each pipeline run creates a root activity. Node executions create child activiti
 
 Sealed wrapper around `System.Diagnostics.Activity` that implements `IPipelineActivity`:
 
-- `SetTag(key, value)` — add structured metadata
-- `RecordException(exception)` — record errors on the span
+- `SetTag(key, value)` - add structured metadata
+- `RecordException(exception)` - record errors on the span
 
 ### TracerProviderBuilder Extensions
 
@@ -218,7 +218,7 @@ Parent-child relationships are preserved across service boundaries via W3C trace
 | Exporter connection errors | Check endpoint URL and network connectivity |
 | Too many traces in production | Add `SetSampler` with `TraceIdRatioBasedSampler` |
 | Large trace payloads | Use batch export with appropriate queue/batch sizes |
-| Activities not correlated | Verify `Activity.Current` is not null — avoid `Task.Run` without flow |
+| Activities not correlated | Verify `Activity.Current` is not null - avoid `Task.Run` without flow |
 
 ### Debug Logging
 
@@ -237,7 +237,7 @@ Environment.SetEnvironmentVariable("OTEL_DIAGNOSTICS_ENABLED", "true");
 
 ## See Also
 
-- [Observability](observability.md) — metrics collection
-- [OpenTelemetry Guide](../observability/opentelemetry.md) — step-by-step walkthrough
+- [Observability](observability.md) - metrics collection
+- [OpenTelemetry Guide](../observability/opentelemetry.md) - step-by-step walkthrough
 - [Extensions Overview](index.md)
 - [Extensions Overview](index.md)

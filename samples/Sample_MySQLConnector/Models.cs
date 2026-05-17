@@ -117,7 +117,7 @@ public sealed class OrderEvent
 
 /// <summary>
 ///     Represents an enriched product for analytics write-through.
-///     Demonstrates convention-based mapping — no attributes needed.
+///     Demonstrates convention-based mapping - no attributes needed.
 /// </summary>
 public sealed class ProductSummary
 {

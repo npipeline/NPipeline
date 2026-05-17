@@ -24,7 +24,7 @@ dotnet add package NPipeline.Connectors.Azure.CosmosDb
 | **MongoDB** | `CosmosMongoSourceNode<T>`, `CosmosMongoSinkNode<T>` | Cosmos DB with MongoDB wire protocol |
 | **Cassandra** | `CosmosCassandraSourceNode<T>`, `CosmosCassandraSinkNode<T>` | Cosmos DB with Cassandra wire protocol |
 
-## Source Node — `CosmosSourceNode<T>` (SQL API)
+## Source Node - `CosmosSourceNode<T>` (SQL API)
 
 ### Constructors
 
@@ -60,7 +60,7 @@ var source = new CosmosSourceNode<Order>(
     "SELECT * FROM c WHERE c.status = 'pending'");
 ```
 
-## Sink Node — `CosmosSinkNode<T>` (SQL API)
+## Sink Node - `CosmosSinkNode<T>` (SQL API)
 
 | Strategy | Description | Best For |
 |----------|-------------|----------|
@@ -172,8 +172,8 @@ services.AddCosmosDbConnector(options =>
 
 ## Next Steps
 
-- [MongoDB Connector](mongodb.md) — standalone MongoDB (non-Cosmos)
-- [Storage Providers](../storage-providers/index.md) — Azure Blob and ADLS Gen2 storage
+- [MongoDB Connector](mongodb.md) - standalone MongoDB (non-Cosmos)
+- [Storage Providers](../storage-providers/index.md) - Azure Blob and ADLS Gen2 storage
 
 ## API Types
 
@@ -195,7 +195,7 @@ var config = new CosmosConfiguration
 };
 ```
 
-Cross-partition queries fan out to all partitions — use partition key filters when possible.
+Cross-partition queries fan out to all partitions - use partition key filters when possible.
 
 ## Consistency Levels
 
@@ -246,11 +246,11 @@ The change feed provides an ordered stream of changes within each partition.
 
 ## Best Practices
 
-1. **Use Azure AD auth** in production — avoid connection strings with keys
+1. **Use Azure AD auth** in production - avoid connection strings with keys
 2. **Choose partition keys** that distribute load evenly and match query patterns
-3. **Avoid cross-partition queries** in hot paths — filter by partition key
+3. **Avoid cross-partition queries** in hot paths - filter by partition key
 4. **Use bulk execution** for high-throughput writes
 5. **Use `Session` consistency** unless you need stronger guarantees
 6. **Set `MaxConcurrentOperations`** to avoid throttling (429 responses)
-7. **Use direct mode** (default) — gateway mode adds a network hop
+7. **Use direct mode** (default) - gateway mode adds a network hop
 8. **Configure `PreferredRegions`** for geo-replicated accounts

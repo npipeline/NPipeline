@@ -6,7 +6,7 @@ order: 1
 
 # NPipeline
 
-NPipeline is a .NET library for building high-performance streaming data pipelines. You define a graph of processing nodes — sources that produce data, transforms that modify it, and sinks that consume it — and NPipeline handles execution, error recovery, and data flow between them.
+NPipeline is a .NET library for building high-performance streaming data pipelines. You define a graph of processing nodes - sources that produce data, transforms that modify it, and sinks that consume it - and NPipeline handles execution, error recovery, and data flow between them.
 
 ```csharp
 // Define the pipeline structure
@@ -54,9 +54,9 @@ NPipeline's architecture is driven by a small set of non-negotiable principles:
 | Principle | What It Means |
 |-----------|--------------|
 | **Streaming-first** | Data flows item-by-item via `IAsyncEnumerable<T>`. Nothing is buffered unless you explicitly opt in. |
-| **Fail-fast defaults** | No items are silently skipped or retried. The default resilience policy returns `Fail` — you opt into recovery. |
+| **Fail-fast defaults** | No items are silently skipped or retried. The default resilience policy returns `Fail` - you opt into recovery. |
 | **Zero-allocation hot paths** | The per-item processing loop avoids heap allocations. No LINQ, no closures, `ValueTask<T>` where possible. |
-| **Type safety at the graph level** | Typed handles prevent connecting incompatible nodes — caught by the compiler, not at runtime. |
+| **Type safety at the graph level** | Typed handles prevent connecting incompatible nodes - caught by the compiler, not at runtime. |
 | **Immutable configuration** | All config records are `sealed record` with `init`-only properties. No mutation, no race conditions. |
 | **Extension points over modification** | New behavior is added through interfaces (`IExecutionStrategy`, `IResiliencePolicy`, `IDeadLetterSink`), not by modifying core classes. |
 
@@ -66,10 +66,10 @@ NPipeline's architecture is driven by a small set of non-negotiable principles:
 
 New to NPipeline? Follow these pages in order:
 
-1. [Installation](getting-started/installation.md) — add the NuGet packages to your project
-2. [Your First Pipeline](getting-started/your-first-pipeline.md) — build and run a working pipeline in 10 minutes
-3. [Key Concepts](getting-started/key-concepts.md) — understand nodes, streams, and graphs
-4. [What Next?](getting-started/what-next.md) — find the right guide for what you want to build
+1. [Installation](getting-started/installation.md) - add the NuGet packages to your project
+2. [Your First Pipeline](getting-started/your-first-pipeline.md) - build and run a working pipeline in 10 minutes
+3. [Key Concepts](getting-started/key-concepts.md) - understand nodes, streams, and graphs
+4. [What Next?](getting-started/what-next.md) - find the right guide for what you want to build
 
 ## Next Steps
 

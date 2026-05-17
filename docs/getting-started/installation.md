@@ -68,5 +68,5 @@ Install these as you need them. You don't need any of these to get started.
 
 ## Next Steps
 
-- [Your First Pipeline](your-first-pipeline.md) — build and run a working pipeline
-- [Key Concepts](key-concepts.md) — understand the mental model behind NPipeline
+- [Your First Pipeline](your-first-pipeline.md) - build and run a working pipeline
+- [Key Concepts](key-concepts.md) - understand the mental model behind NPipeline

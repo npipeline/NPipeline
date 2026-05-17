@@ -56,7 +56,7 @@ public class S3CompatibleClientFactoryTests
     [Fact]
     public async Task GetClientAsync_CalledTwice_ReturnsSameInstance()
     {
-        // The base class caches clients by key — same options → same instance.
+        // The base class caches clients by key - same options → same instance.
         var factory = new S3CompatibleClientFactory(CreateOptions());
         var uri = StorageUri.Parse("s3://my-bucket/some-key");
 

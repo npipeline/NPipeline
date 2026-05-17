@@ -13,7 +13,7 @@ The sample implements a complete read/write pipeline that:
 3. **Reads** documents back using `CosmosSourceNode<ProductSummary>` with a SQL projection query.
 4. **Upserts** updated products (10 % price increase) using `CosmosWriteStrategy.Upsert`.
 5. **Bulk-ingests** 200 products using `CosmosWriteStrategy.Bulk` for high-throughput scenarios.
-6. **Demonstrates error tolerance** — attempts `Insert` with duplicate IDs and shows the pipeline
+6. **Demonstrates error tolerance** - attempts `Insert` with duplicate IDs and shows the pipeline
    continues cleanly with `ContinueOnError = true`.
 
 ## Key Concepts Demonstrated
@@ -63,7 +63,7 @@ Conflict, throttling) and keep the pipeline running instead of propagating an ex
 ### Connecting to the Emulator
 
 The emulator uses a **self-signed TLS certificate**. Set `UseGatewayMode = true` and supply an
-`HttpClientFactory` that bypasses certificate validation — the `CosmosConfiguration` supports this
+`HttpClientFactory` that bypasses certificate validation - the `CosmosConfiguration` supports this
 natively:
 
 ```csharp
@@ -134,7 +134,7 @@ docker-compose down
 ```
 === NPipeline Sample: Cosmos DB Connector ===
 
-No connection string provided — using Azure Cosmos DB Emulator defaults:
+No connection string provided - using Azure Cosmos DB Emulator defaults:
   Endpoint : https://localhost:8081/
 
 ...
@@ -149,13 +149,13 @@ Step 3: Source Read  (CosmosSourceNode<ProductSummary>)
   ✓ Read 10 product(s)
 
 Step 4: Upsert Update  (CosmosWriteStrategy.Upsert)
-  ✓ Upsert completed — 10 document(s) created-or-replaced
+  ✓ Upsert completed - 10 document(s) created-or-replaced
 
 Step 5: Bulk Write  (CosmosWriteStrategy.Bulk)
   ✓ Bulk write completed in 1842 ms  (200 items)
 
 Step 6: Error Tolerance  (ContinueOnError = true)
-  ✓ Pipeline continued despite individual item conflicts — no exception was thrown
+  ✓ Pipeline continued despite individual item conflicts - no exception was thrown
 ```
 
 ## Emulator Connection Details
@@ -170,7 +170,7 @@ Step 6: Error Tolerance  (ContinueOnError = true)
 
 | File                              | Purpose                                                              |
 |-----------------------------------|----------------------------------------------------------------------|
-| `Program.cs`                      | Entry point — wires up the host and runs the pipeline                |
+| `Program.cs`                      | Entry point - wires up the host and runs the pipeline                |
 | `CosmosDbConnectorPipeline.cs`    | Step-by-step pipeline demonstrations                                 |
 | `Models.cs`                       | `Product` and `ProductSummary` model records with mapping attributes |
 | `docker-compose.yml`              | Cosmos DB Linux Emulator service definition                          |

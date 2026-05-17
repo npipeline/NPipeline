@@ -20,7 +20,7 @@ builder.WithRetryOptions(options => options
     .WithExponentialBackoffAndFullJitter());
 ```
 
-That single line gives you exponential backoff (1s base, 2x multiplier, 1min cap) with full jitter — a sensible default for most production workloads.
+That single line gives you exponential backoff (1s base, 2x multiplier, 1min cap) with full jitter - a sensible default for most production workloads.
 
 ## Backoff Algorithms
 
@@ -46,9 +46,9 @@ BackoffStrategies.ExponentialBackoff(
 
 **Parameters:**
 
-- `baseDelay` — delay for the first retry (must be positive)
-- `multiplier` — growth factor per attempt (default: 2.0, must be ≥ 1.0)
-- `maxDelay` — ceiling to prevent excessive waits (default: 1 minute)
+- `baseDelay` - delay for the first retry (must be positive)
+- `multiplier` - growth factor per attempt (default: 2.0, must be ≥ 1.0)
+- `maxDelay` - ceiling to prevent excessive waits (default: 1 minute)
 
 ### Linear Backoff
 
@@ -70,13 +70,13 @@ BackoffStrategies.LinearBackoff(
 
 **Parameters:**
 
-- `baseDelay` — delay for the first retry (must be positive)
-- `increment` — added per attempt (default: 1 second)
-- `maxDelay` — ceiling (default: 1 minute)
+- `baseDelay` - delay for the first retry (must be positive)
+- `increment` - added per attempt (default: 1 second)
+- `maxDelay` - ceiling (default: 1 minute)
 
 ### Fixed Delay
 
-Same delay every time. Simple and deterministic — useful for testing or rate-limited APIs with known cooldowns.
+Same delay every time. Simple and deterministic - useful for testing or rate-limited APIs with known cooldowns.
 
 ```
 Attempt 0: 5s
@@ -229,7 +229,7 @@ public sealed class LoggingResiliencePolicy : ResiliencePolicyBase
         CancellationToken cancellationToken)
     {
         _logger.LogWarning(
-            "Node {NodeId} retry attempt {Attempt}: {ErrorType} — {Message}",
+            "Node {NodeId} retry attempt {Attempt}: {ErrorType} - {Message}",
             nodeId, retryAttempt, exception.GetType().Name, exception.Message);
 
         return Task.FromResult(retryAttempt < 3
@@ -243,10 +243,10 @@ public sealed class LoggingResiliencePolicy : ResiliencePolicyBase
 
 Set alerts on these conditions:
 
-- **Retry rate > 10%** — systematic failures, not transient
-- **Average delay > 5 seconds** — delays are dominating pipeline latency
-- **Exhaustion rate > 5%** — too many items hitting the retry ceiling
-- **Retry rate trending up > 20%** over the last hour — degrading dependency
+- **Retry rate > 10%** - systematic failures, not transient
+- **Average delay > 5 seconds** - delays are dominating pipeline latency
+- **Exhaustion rate > 5%** - too many items hitting the retry ceiling
+- **Retry rate trending up > 20%** over the last hour - degrading dependency
 
 ### Using Observability Extension
 
@@ -353,6 +353,6 @@ public void FullJitter_DelaysAreWithinExpectedRange()
 
 ## Next Steps
 
-- [Circuit Breakers](circuit-breakers.md) — stop retrying when a node is consistently failing
-- [Materialization](materialization.md) — buffer items to support node restart
-- [Dead-Letter Queues](dead-letter-queues.md) — capture items that exhaust all retries
+- [Circuit Breakers](circuit-breakers.md) - stop retrying when a node is consistently failing
+- [Materialization](materialization.md) - buffer items to support node restart
+- [Dead-Letter Queues](dead-letter-queues.md) - capture items that exhaust all retries

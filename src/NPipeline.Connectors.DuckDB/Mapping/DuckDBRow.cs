@@ -5,7 +5,7 @@ namespace NPipeline.Connectors.DuckDB.Mapping;
 
 /// <summary>
 ///     Lightweight row wrapper over a <see cref="DbDataReader" /> providing typed column access.
-///     A single instance is reused across rows — column ordinal lookup is cached on first use.
+///     A single instance is reused across rows - column ordinal lookup is cached on first use.
 /// </summary>
 public sealed class DuckDBRow
 {

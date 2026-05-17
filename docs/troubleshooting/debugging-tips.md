@@ -164,6 +164,6 @@ foreach (var entry in deadLetterSink.Items)
 
 ## Next Steps
 
-- [Common Issues](common-issues.md) — symptom-based troubleshooting
-- [Metrics and Monitoring](../observability/metrics-and-monitoring.md) — observe node performance
-- [Pipeline Validation](../guides/pipeline-validation.md) — validation rules
+- [Common Issues](common-issues.md) - symptom-based troubleshooting
+- [Metrics and Monitoring](../observability/metrics-and-monitoring.md) - observe node performance
+- [Pipeline Validation](../guides/pipeline-validation.md) - validation rules

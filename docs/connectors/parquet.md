@@ -18,7 +18,7 @@ dotnet add package NPipeline.Connectors.Parquet
 
 ## Storage Abstraction
 
-The Parquet connector uses NPipeline's storage abstraction layer. See the [CSV Connector — Storage Abstraction](csv.md#storage-abstraction) section for full details on `StorageUri`, `IStorageResolver`, and when you need an explicit resolver.
+The Parquet connector uses NPipeline's storage abstraction layer. See the [CSV Connector - Storage Abstraction](csv.md#storage-abstraction) section for full details on `StorageUri`, `IStorageResolver`, and when you need an explicit resolver.
 
 ```csharp
 // Local file (no resolver needed)
@@ -89,7 +89,7 @@ var source = new ParquetSourceNode<Order>(
     });
 ```
 
-## Source Node — `ParquetSourceNode<T>`
+## Source Node - `ParquetSourceNode<T>`
 
 Reads Parquet files and emits each row as an item of type `T`. Streams row groups one at a time to limit memory usage.
 
@@ -139,7 +139,7 @@ var source = new ParquetSourceNode<OrderSummary>(
     configuration: config);
 ```
 
-## Sink Node — `ParquetSinkNode<T>`
+## Sink Node - `ParquetSinkNode<T>`
 
 Writes items to a Parquet file with configurable row groups, compression, and atomic writes.
 
@@ -190,7 +190,7 @@ var sink = new ParquetSinkNode<Order>(
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `ProjectedColumns` | `IReadOnlyList<string>?` | `null` | Column whitelist — only read these columns |
+| `ProjectedColumns` | `IReadOnlyList<string>?` | `null` | Column whitelist - only read these columns |
 | `SchemaCompatibility` | `SchemaCompatibilityMode` | `Strict` | Schema validation mode (see below) |
 | `RecursiveDiscovery` | `bool` | `false` | Scan subdirectories for Parquet files |
 | `FileReadParallelism` | `int` | `1` | Number of files to read in parallel |
@@ -214,7 +214,7 @@ var sink = new ParquetSinkNode<Order>(
 
 ## Performance Tips
 
-- **Column projection** (`ProjectedColumns`): reduces I/O significantly for wide tables — only the requested columns are read from disk.
+- **Column projection** (`ProjectedColumns`): reduces I/O significantly for wide tables - only the requested columns are read from disk.
 - **Parallel reads** (`FileReadParallelism`): set > 1 when reading multiple files or when storage supports concurrent access.
 - **Row group sizing**: larger groups improve compression ratio but increase memory. 50K–100K rows is a good starting point.
 - **Compression**: Snappy (default) balances speed and ratio. Use Gzip for better compression at the cost of CPU.
@@ -248,9 +248,9 @@ public sealed class CsvToParquetPipeline : IPipelineDefinition
 
 ## Next Steps
 
-- [Data Lake Connector](datalake.md) — Hive-partitioned Parquet tables with time travel
-- [CSV Connector](csv.md) — simpler text-based format
-- [Storage Providers](../storage-providers/index.md) — read Parquet from cloud storage
+- [Data Lake Connector](datalake.md) - Hive-partitioned Parquet tables with time travel
+- [CSV Connector](csv.md) - simpler text-based format
+- [Storage Providers](../storage-providers/index.md) - read Parquet from cloud storage
 
 ## Storage Abstraction
 
@@ -272,7 +272,7 @@ var source = new ParquetSourceNode<Order>(
 |-------|-------|-------|----------|
 | `Snappy` (default) | Good | Fast | Most workloads |
 | `Gzip` | Better | Slower | Storage-optimized, archival |
-| `None` | — | Fastest | Already-compressed data, debugging |
+| `None` | - | Fastest | Already-compressed data, debugging |
 
 ## Supported .NET Types
 
@@ -294,13 +294,13 @@ var source = new ParquetSourceNode<Order>(
 var config = new ParquetConfiguration { UseAtomicWrite = true };
 ```
 
-With atomic writes enabled, data is written to a temporary file and renamed on success. This prevents partial files on failure — critical for data lake scenarios.
+With atomic writes enabled, data is written to a temporary file and renamed on success. This prevents partial files on failure - critical for data lake scenarios.
 
 ## Best Practices
 
-1. **Use column projection** — only read what you need for wide tables
-2. **Use `Snappy` compression** (default) — best speed/ratio tradeoff
-3. **Enable atomic writes** for production — prevents partial files
-4. **Set `RowGroupSize = 50,000–100,000`** — balances compression and memory
+1. **Use column projection** - only read what you need for wide tables
+2. **Use `Snappy` compression** (default) - best speed/ratio tradeoff
+3. **Enable atomic writes** for production - prevents partial files
+4. **Set `RowGroupSize = 50,000–100,000`** - balances compression and memory
 5. **Use `RecursiveDiscovery`** when reading partitioned directories
 6. **Use `FileReadParallelism > 1`** for multi-file reads on fast storage

@@ -81,7 +81,7 @@ public sealed class Program
             return args[0];
         }
 
-        Console.WriteLine("No connection string provided — using local MongoDB defaults:");
+        Console.WriteLine("No connection string provided - using local MongoDB defaults:");
         Console.WriteLine("  Connection: mongodb://localhost:27017/?replicaSet=rs0");
         Console.WriteLine();
         Console.WriteLine("To use a remote MongoDB instance, run:");

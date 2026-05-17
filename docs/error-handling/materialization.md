@@ -6,7 +6,7 @@ order: 7
 
 # Materialization
 
-NPipeline streams data item-by-item through `IAsyncEnumerable<T>`. Once an item has been consumed from a forward-only stream, it's gone — there's no way to "rewind." This creates a problem for node restart: if a node fails mid-stream, how do you replay the items it already processed?
+NPipeline streams data item-by-item through `IAsyncEnumerable<T>`. Once an item has been consumed from a forward-only stream, it's gone - there's no way to "rewind." This creates a problem for node restart: if a node fails mid-stream, how do you replay the items it already processed?
 
 **Materialization** solves this by buffering consumed items in memory so the stream can be replayed from the beginning after a failure.
 
@@ -191,6 +191,6 @@ Configure: builder.WithRetryOptions(o => o.WithMaxNodeRestartAttempts(3))
 
 ## Next Steps
 
-- [Resilience Policies](resilience-policies.md) — configure policies that return `RestartNode`
-- [Circuit Breakers](circuit-breakers.md) — stop restart attempts when failures are persistent
-- [Retry Strategies](retry-strategies.md) — control timing between restarts
+- [Resilience Policies](resilience-policies.md) - configure policies that return `RestartNode`
+- [Circuit Breakers](circuit-breakers.md) - stop restart attempts when failures are persistent
+- [Retry Strategies](retry-strategies.md) - control timing between restarts

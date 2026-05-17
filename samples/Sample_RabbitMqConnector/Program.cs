@@ -42,7 +42,7 @@ public sealed class Program
                         o.ClientProvidedName = "npipeline-sample";
                     });
 
-                    // Source — consume from "orders" queue
+                    // Source - consume from "orders" queue
                     services.AddRabbitMqSource<OrderEvent>(new RabbitMqSourceOptions
                     {
                         QueueName = "orders",
@@ -61,7 +61,7 @@ public sealed class Program
                         },
                     });
 
-                    // Sink — publish enriched orders to "enriched-orders-exchange"
+                    // Sink - publish enriched orders to "enriched-orders-exchange"
                     services.AddRabbitMqSink<EnrichedOrder>(new RabbitMqSinkOptions
                     {
                         ExchangeName = "enriched-orders-exchange",

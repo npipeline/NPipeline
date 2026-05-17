@@ -192,9 +192,9 @@ services.AddServiceBusTopicSink<AuditEvent>("audit-events");
 
 ## Next Steps
 
-- [Kafka Connector](kafka.md) — self-managed distributed streaming
-- [RabbitMQ Connector](rabbitmq.md) — self-managed message broker
-- [AWS SQS Connector](aws-sqs.md) — AWS managed queuing
+- [Kafka Connector](kafka.md) - self-managed distributed streaming
+- [RabbitMQ Connector](rabbitmq.md) - self-managed message broker
+- [AWS SQS Connector](aws-sqs.md) - AWS managed queuing
 
 ## Source Node Variants
 
@@ -208,8 +208,8 @@ services.AddServiceBusTopicSink<AuditEvent>("audit-events");
 
 | Method | Description |
 |--------|-------------|
-| `CompleteAsync()` | Mark message as processed — removes from queue |
-| `AbandonAsync()` | Release lock — message becomes available again |
+| `CompleteAsync()` | Mark message as processed - removes from queue |
+| `AbandonAsync()` | Release lock - message becomes available again |
 | `DeadLetterAsync(reason)` | Move to dead-letter sub-queue with reason |
 | `DeferAsync()` | Defer for later processing by sequence number |
 
@@ -276,10 +276,10 @@ var config = new ServiceBusConfiguration
 
 ## Best Practices
 
-1. **Use Azure AD auth** in production — avoid connection strings
+1. **Use Azure AD auth** in production - avoid connection strings
 2. **Set `PrefetchCount`** based on processing speed (0 for slow consumers)
 3. **Use sessions** when ordering matters within a logical group
 4. **Configure `MaxAutoLockRenewalDuration`** to exceed worst-case processing time
-5. **Dead-letter with reason** — include diagnostic information
+5. **Dead-letter with reason** - include diagnostic information
 6. **Use topics + subscriptions** for pub/sub fan-out
-7. **Monitor dead-letter queue depth** — alerts on rising DLQ count
+7. **Monitor dead-letter queue depth** - alerts on rising DLQ count

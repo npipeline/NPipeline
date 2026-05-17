@@ -2,7 +2,7 @@ namespace NPipeline.Attributes.Nodes;
 
 /// <summary>
 ///     Specifies the property to be used as a key for a given type in a KeyedJoin merge operation.
-///     Apply this attribute multiple times to a node class that uses the KeyedJoin strategy—once for each input type.
+///     Apply this attribute multiple times to a node class that uses the KeyedJoin strategy-once for each input type.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = true)]
 public sealed class KeySelectorAttribute : Attribute

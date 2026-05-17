@@ -12,11 +12,11 @@ Quick reference for terminology used throughout NPipeline documentation. Terms a
 
 ### At-Least-Once Delivery
 
-A guarantee that each item is processed one or more times. NPipeline targets at-least-once delivery — combine with [idempotent](#idempotent) operations to ensure correctness when retries produce duplicates.
+A guarantee that each item is processed one or more times. NPipeline targets at-least-once delivery - combine with [idempotent](#idempotent) operations to ensure correctness when retries produce duplicates.
 
 ### Backpressure
 
-Flow control that prevents upstream nodes from producing data faster than downstream nodes can consume it. NPipeline manages backpressure automatically through async enumeration — a source node only produces the next item when the downstream transform requests it. The [parallelism extension](../extensions/index.md) provides configurable queue policies for parallel execution.
+Flow control that prevents upstream nodes from producing data faster than downstream nodes can consume it. NPipeline manages backpressure automatically through async enumeration - a source node only produces the next item when the downstream transform requests it. The [parallelism extension](../extensions/index.md) provides configurable queue policies for parallel execution.
 
 ### Circuit Breaker
 
@@ -28,7 +28,7 @@ A NuGet package providing pre-built source and sink nodes for a specific data sy
 
 ### DAG (Directed Acyclic Graph)
 
-A graph where edges have direction and no cycles exist. NPipeline pipelines are DAGs — data flows in one direction through the graph, and you cannot create circular dependencies. The runtime validates this at build time.
+A graph where edges have direction and no cycles exist. NPipeline pipelines are DAGs - data flows in one direction through the graph, and you cannot create circular dependencies. The runtime validates this at build time.
 
 ### Dead Letter
 
@@ -44,7 +44,7 @@ An `IExecutionStrategy` implementation that controls how a transform node proces
 
 ### Idempotent
 
-A property of operations that produce the same result whether applied once or multiple times. Critical for correctness with [at-least-once delivery](#at-least-once-delivery) — if an item is retried, an idempotent sink (e.g., upsert instead of insert) prevents duplicate records.
+A property of operations that produce the same result whether applied once or multiple times. Critical for correctness with [at-least-once delivery](#at-least-once-delivery) - if an item is retried, an idempotent sink (e.g., upsert instead of insert) prevents duplicate records.
 
 ### Item
 
@@ -94,7 +94,7 @@ An `IStorageProvider` implementation that abstracts file system operations (read
 
 ### Stream
 
-A typed, asynchronous, lazy sequence of [items](#item) flowing between nodes. Represented by `IDataStream<T>`, which implements `IAsyncEnumerable<T>`. Streams are consumed item-by-item — data is not buffered in memory unless explicitly [materialized](#materialization).
+A typed, asynchronous, lazy sequence of [items](#item) flowing between nodes. Represented by `IDataStream<T>`, which implements `IAsyncEnumerable<T>`. Streams are consumed item-by-item - data is not buffered in memory unless explicitly [materialized](#materialization).
 
 At runtime, when item-level lineage is enabled, the stream item type `T` is `LineagePacket<TPayload>` rather than the raw payload type `TPayload`. The effective runtime item type is captured in each node's `RuntimeNodeStreamContract` by `RuntimePipelineBinder` before execution starts.
 
@@ -108,4 +108,4 @@ A windowing strategy where windows do not overlap. Each window covers a fixed du
 
 ### Watermark
 
-A marker tracking event-time progress in windowed aggregations. The watermark represents the system's belief about the latest event time — when it advances past a window's end time, that window closes. Controlled by `WatermarkInterval` and `MaxOutOfOrderness` in `AggregateNodeConfiguration`.
+A marker tracking event-time progress in windowed aggregations. The watermark represents the system's belief about the latest event time - when it advances past a window's end time, that window closes. Controlled by `WatermarkInterval` and `MaxOutOfOrderness` in `AggregateNodeConfiguration`.

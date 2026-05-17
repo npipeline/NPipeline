@@ -46,7 +46,7 @@ public sealed class AzuriteAdlsFixture : IAsyncLifetime
         var connectionString = _azuriteContainer.GetConnectionString();
 
         // Use DefaultConnectionString so the Azure SDK routes DFS API calls through Azurite's blob
-        // endpoint.  Don't set ServiceUrl — a bare ServiceUrl causes 400s for DFS path-create ops.
+        // endpoint.  Don't set ServiceUrl - a bare ServiceUrl causes 400s for DFS path-create ops.
         Options = new AdlsGen2StorageProviderOptions
         {
             DefaultConnectionString = connectionString,

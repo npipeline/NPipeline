@@ -118,6 +118,6 @@ int activeWindows = aggregateNode.GetActiveWindowCount();
 
 ## Next Steps
 
-- [Batching and Windowing](batching-and-windowing.md) — window types and watermark mechanics
-- [Streaming Large Datasets](streaming-large-datasets.md) — memory management for windowed aggregation
-- [Parallel Execution](parallel-execution.md) — thread-safe accumulation
+- [Batching and Windowing](batching-and-windowing.md) - window types and watermark mechanics
+- [Streaming Large Datasets](streaming-large-datasets.md) - memory management for windowed aggregation
+- [Parallel Execution](parallel-execution.md) - thread-safe accumulation

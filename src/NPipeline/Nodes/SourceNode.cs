@@ -10,7 +10,7 @@ namespace NPipeline.Nodes;
 /// <remarks>
 ///     <para>
 ///         Inherit from this class to create custom source nodes that produce data into the pipeline.
-///         Source nodes are the entry points of a pipeline—they read from external sources and emit
+///         Source nodes are the entry points of a pipeline-they read from external sources and emit
 ///         the data as an <see cref="IDataStream{T}" /> for downstream processing.
 ///     </para>
 ///     <para>

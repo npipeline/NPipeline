@@ -31,7 +31,7 @@ public class NestedObservabilityAndLineageTests
         // Act
         await runner.RunAsync<ObservableParentPipeline>(context);
 
-        // Assert — parent pipeline nodes produce events
+        // Assert - parent pipeline nodes produce events
         observer.StartedNodeIds.Should().Contain("source");
         observer.CompletedNodeIds.Should().Contain("source");
         observer.StartedNodeIds.Should().Contain("composite");
@@ -43,7 +43,7 @@ public class NestedObservabilityAndLineageTests
     [Fact]
     public async Task ChildNodeMetrics_ShouldBePersisted_WhenObservabilityCollectorIsUsed()
     {
-        // Arrange — NodeMetrics directly supports PipelineName
+        // Arrange - NodeMetrics directly supports PipelineName
         var parentMetric = new NodeMetrics(
             "parent-source",
             DateTimeOffset.UtcNow,
@@ -100,7 +100,7 @@ public class NestedObservabilityAndLineageTests
         var childTransformPath = new[] { "source", $"{childPipelineId:N}::transform" };
         var childOutputPath = new[] { "source", $"{childPipelineId:N}::transform", $"{childPipelineId:N}::output" };
 
-        // Act — record lineage events with pipeline name context
+        // Act - record lineage events with pipeline name context
         collector.Record(new LineageRecord(
             packet.CorrelationId,
             "source",
@@ -179,7 +179,7 @@ public class NestedObservabilityAndLineageTests
         // Act
         await runner.RunAsync<ObservableParentPipeline>(context);
 
-        // Assert — all parent node events should have both start and complete
+        // Assert - all parent node events should have both start and complete
         foreach (var nodeId in observer.StartedNodeIds)
         {
             observer.CompletedNodeIds.Should().Contain(nodeId,
@@ -215,7 +215,7 @@ public class NestedObservabilityAndLineageTests
         // Arrange & Act
         var config = CompositeContextConfiguration.Default;
 
-        // Assert — observability inheritance now defaults to true
+        // Assert - observability inheritance now defaults to true
         config.InheritRunIdentity.Should().BeTrue();
         config.InheritLineageSink.Should().BeTrue();
         config.InheritExecutionObserver.Should().BeTrue();
@@ -236,7 +236,7 @@ public class NestedObservabilityAndLineageTests
         // Act
         await runner.RunAsync<ObservableInheritingParentPipeline>(context);
 
-        // Assert — parent nodes should be observed
+        // Assert - parent nodes should be observed
         observer.StartedNodeIds.Should().Contain("source");
         observer.StartedNodeIds.Should().Contain("composite");
         observer.StartedNodeIds.Should().Contain("sink");
@@ -292,11 +292,11 @@ public class NestedObservabilityAndLineageTests
         var initialTransform = new DoubleTransform();
         builder.AddPreconfiguredNodeInstance("transform", initialTransform);
 
-        // Act — replace with a new instance
+        // Act - replace with a new instance
         var replacementTransform = new DoubleTransform();
         builder.SetPreconfiguredNodeInstance("transform", replacementTransform, replaceExisting: true);
 
-        // Assert — build should succeed with the replacement
+        // Assert - build should succeed with the replacement
         var buildResult = builder.TryBuild(out var pipeline, out var errors);
         buildResult.Should().BeTrue();
         pipeline.Should().NotBeNull();
@@ -368,9 +368,9 @@ public class NestedObservabilityAndLineageTests
         record.NodeId.Should().Be("test-node");
     }
 
-    // ——————————————————————————————————————
+    // --------------------------------------
     // Test infrastructure
-    // ——————————————————————————————————————
+    // --------------------------------------
 
     private sealed class RecordingExecutionObserver : IExecutionObserver
     {

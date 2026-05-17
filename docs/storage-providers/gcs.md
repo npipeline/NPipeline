@@ -43,16 +43,16 @@ gs://bucket-name/object/path?projectId=my-project&contentType=text/csv
 |-----------|-------------|
 | `bucket-name` | GCS bucket (URI host) |
 | `object/path` | Object key (URI path) |
-| `projectId` | Optional — override `DefaultProjectId` |
-| `contentType` | Optional — set content type on write |
-| `serviceUrl` | Optional — custom GCS endpoint |
-| `accessToken` | Optional — per-request access token |
-| `credentialsPath` | Optional — path to service account JSON |
+| `projectId` | Optional - override `DefaultProjectId` |
+| `contentType` | Optional - set content type on write |
+| `serviceUrl` | Optional - custom GCS endpoint |
+| `accessToken` | Optional - per-request access token |
+| `credentialsPath` | Optional - path to service account JSON |
 
 ## Authentication
 
-1. **Explicit credentials** — `DefaultCredentials` (`GoogleCredential` instance)
-2. **Application Default Credentials** (default) — `GOOGLE_APPLICATION_CREDENTIALS` env var → GCE metadata → gcloud CLI
+1. **Explicit credentials** - `DefaultCredentials` (`GoogleCredential` instance)
+2. **Application Default Credentials** (default) - `GOOGLE_APPLICATION_CREDENTIALS` env var → GCE metadata → gcloud CLI
 
 ```csharp
 // Application Default Credentials (recommended)
@@ -114,10 +114,10 @@ Registers: `IStorageProvider`, `IStorageProviderMetadataProvider`
 
 ## Features
 
-- **Resumable uploads** — large files upload in chunks (256 KiB aligned)
-- **Exponential backoff** — configurable retry with rate-limit and server error handling
-- **Client caching** — `StorageClient` instances cached per project; LRU eviction
-- **Metadata** — `Size`, `LastModified`, `ContentType`, `ETag`
+- **Resumable uploads** - large files upload in chunks (256 KiB aligned)
+- **Exponential backoff** - configurable retry with rate-limit and server error handling
+- **Client caching** - `StorageClient` instances cached per project; LRU eviction
+- **Metadata** - `Size`, `LastModified`, `ContentType`, `ETag`
 
 ## Configuration Examples
 
@@ -180,7 +180,7 @@ var prefix = StorageUri.Parse("gs://my-bucket/data/");
 
 await foreach (var item in provider.ListAsync(prefix, recursive: true))
 {
-    Console.WriteLine($"{item.Uri} — {item.Size} bytes");
+    Console.WriteLine($"{item.Uri} - {item.Size} bytes");
 }
 ```
 
@@ -213,12 +213,12 @@ if (metadata is not null)
 
 ## Limitations
 
-- **Flat storage** — GCS uses prefix-based hierarchy (no real directories)
-- **Chunk size** — upload chunk size must be a multiple of 256 KiB
-- **Authentication** — ADC requires a GCP environment or service account JSON file
+- **Flat storage** - GCS uses prefix-based hierarchy (no real directories)
+- **Chunk size** - upload chunk size must be a multiple of 256 KiB
+- **Authentication** - ADC requires a GCP environment or service account JSON file
 
 ## Next Steps
 
-- [AWS S3 Provider](aws-s3.md) — Amazon alternative
-- [Azure Blob Provider](azure-blob.md) — Azure alternative
-- [Storage Providers Overview](index.md) — choosing between providers
+- [AWS S3 Provider](aws-s3.md) - Amazon alternative
+- [Azure Blob Provider](azure-blob.md) - Azure alternative
+- [Storage Providers Overview](index.md) - choosing between providers

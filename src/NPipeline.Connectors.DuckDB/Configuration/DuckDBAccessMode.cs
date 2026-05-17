@@ -8,9 +8,9 @@ public enum DuckDBAccessMode
     /// <summary>DuckDB determines the mode based on usage.</summary>
     Automatic,
 
-    /// <summary>Read-only access — allows concurrent readers.</summary>
+    /// <summary>Read-only access - allows concurrent readers.</summary>
     ReadOnly,
 
-    /// <summary>Read-write access — exclusive lock.</summary>
+    /// <summary>Read-write access - exclusive lock.</summary>
     ReadWrite,
 }

@@ -16,7 +16,7 @@ dotnet add package NPipeline.Connectors.RabbitMQ
 
 **Dependencies:** [RabbitMQ.Client](https://www.nuget.org/packages/RabbitMQ.Client) 7.x
 
-## Source Node — `RabbitMqSourceNode<T>`
+## Source Node - `RabbitMqSourceNode<T>`
 
 ### Constructor
 
@@ -46,7 +46,7 @@ var sourceOptions = new RabbitMqSourceOptions("order-queue")
 };
 ```
 
-## Sink Node — `RabbitMqSinkNode<T>`
+## Sink Node - `RabbitMqSinkNode<T>`
 
 ### Constructor
 
@@ -77,7 +77,7 @@ var sinkOptions = new RabbitMqSinkOptions("order-exchange")
 
 ## Configuration
 
-### Connection — `RabbitMqConnectionOptions`
+### Connection - `RabbitMqConnectionOptions`
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -91,7 +91,7 @@ var sinkOptions = new RabbitMqSinkOptions("order-exchange")
 | `RequestedHeartbeat` | `TimeSpan` | `60s` | Heartbeat interval |
 | `MaxChannelPoolSize` | `int` | `4` | Max pooled channels |
 
-### TLS — `RabbitMqTlsOptions`
+### TLS - `RabbitMqTlsOptions`
 
 ```csharp
 var connection = new RabbitMqConnectionOptions
@@ -108,7 +108,7 @@ var connection = new RabbitMqConnectionOptions
 };
 ```
 
-### Source — `RabbitMqSourceOptions`
+### Source - `RabbitMqSourceOptions`
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -121,7 +121,7 @@ var connection = new RabbitMqConnectionOptions
 | `ConsumerDispatchConcurrency` | `int` | `1` | Concurrent dispatch |
 | `InternalBufferCapacity` | `int` | `1000` | Internal buffer size |
 
-### Sink — `RabbitMqSinkOptions`
+### Sink - `RabbitMqSinkOptions`
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -132,14 +132,14 @@ var connection = new RabbitMqConnectionOptions
 | `Persistent` | `bool` | `true` | Mark messages as persistent |
 | `Mandatory` | `bool` | `false` | Require at least one queue binding |
 
-### Batch Publishing — `BatchPublishOptions`
+### Batch Publishing - `BatchPublishOptions`
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `BatchSize` | `int` | `100` | Messages per batch |
 | `LingerTime` | `TimeSpan` | `50ms` | Time to wait before sending partial batch |
 
-### Topology — `RabbitMqTopologyOptions`
+### Topology - `RabbitMqTopologyOptions`
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -177,9 +177,9 @@ services.AddRabbitMqSink<ProcessedOrder>(new RabbitMqSinkOptions("processed-exch
 
 ## Next Steps
 
-- [Kafka Connector](kafka.md) — distributed streaming platform
-- [Azure Service Bus Connector](azure-service-bus.md) — managed cloud messaging
-- [AWS SQS Connector](aws-sqs.md) — managed cloud queuing
+- [Kafka Connector](kafka.md) - distributed streaming platform
+- [Azure Service Bus Connector](azure-service-bus.md) - managed cloud messaging
+- [AWS SQS Connector](aws-sqs.md) - managed cloud queuing
 
 ## Topology Auto-Declaration
 
@@ -201,8 +201,8 @@ var topology = new RabbitMqTopologyOptions
 | Type | Description |
 |------|-------------|
 | `Classic` | Traditional RabbitMQ queues |
-| `Quorum` (default) | Replicated, fault-tolerant — recommended for production |
-| `Stream` | Append-only log — for replay scenarios |
+| `Quorum` (default) | Replicated, fault-tolerant - recommended for production |
+| `Stream` | Append-only log - for replay scenarios |
 
 ## Dynamic Routing Keys
 
@@ -263,10 +263,10 @@ services.AddSingleton<IRabbitMqMetrics, MyRabbitMqMetrics>();
 
 ## Best Practices
 
-1. **Use quorum queues** — fault-tolerant and recommended for production
-2. **Enable publisher confirms** — ensures messages reach the broker
+1. **Use quorum queues** - fault-tolerant and recommended for production
+2. **Enable publisher confirms** - ensures messages reach the broker
 3. **Configure DLX** for poison message handling
 4. **Set `PrefetchCount`** proportional to consumer throughput
 5. **Use TLS** in production (`Tls.Enabled = true`)
-6. **Tune `InternalBufferCapacity`** — too small causes backpressure, too large wastes memory
+6. **Tune `InternalBufferCapacity`** - too small causes backpressure, too large wastes memory
 7. **Use batch publishing** for high-throughput sinks (`BatchSize`, `LingerTime`)

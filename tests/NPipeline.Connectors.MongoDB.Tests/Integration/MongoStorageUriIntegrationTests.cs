@@ -98,7 +98,7 @@ public class MongoStorageUriIntegrationTests(MongoTestContainerFixture fixture)
         var uri = StorageUri.Parse("mongodb://localhost:27017/mydb");
         var act = () => resolver.ResolveProvider(uri);
 
-        // Should not throw — provider is registered
+        // Should not throw - provider is registered
         act.Should().NotThrow();
     }
 

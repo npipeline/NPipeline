@@ -11,12 +11,12 @@ public class CompositeContextConfigurationTests
         // Arrange & Act
         var config = CompositeContextConfiguration.Default;
 
-        // Assert — data inheritance defaults to false
+        // Assert - data inheritance defaults to false
         config.InheritParentParameters.Should().BeFalse();
         config.InheritParentItems.Should().BeFalse();
         config.InheritParentProperties.Should().BeFalse();
 
-        // Assert — observability inheritance defaults to true
+        // Assert - observability inheritance defaults to true
         config.InheritRunIdentity.Should().BeTrue();
         config.InheritLineageSink.Should().BeTrue();
         config.InheritExecutionObserver.Should().BeTrue();

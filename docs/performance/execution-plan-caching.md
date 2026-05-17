@@ -8,7 +8,7 @@ order: 4
 
 > **Prerequisites:** [Defining Pipelines](../guides/defining-pipelines.md)
 
-When a pipeline runs, NPipeline builds a `NodeExecutionPlan` for each node — pre-binding delegates for source, transform, join, sink, and aggregate execution. This eliminates reflection during the hot execution path, but the plan-building step itself involves type inspection. Execution plan caching stores these plans so subsequent runs of the same pipeline skip the setup work entirely.
+When a pipeline runs, NPipeline builds a `NodeExecutionPlan` for each node - pre-binding delegates for source, transform, join, sink, and aggregate execution. This eliminates reflection during the hot execution path, but the plan-building step itself involves type inspection. Execution plan caching stores these plans so subsequent runs of the same pipeline skip the setup work entirely.
 
 ## How It Works
 
@@ -74,5 +74,5 @@ Caching is automatically bypassed when the pipeline graph contains pre-configure
 
 ## Next Steps
 
-- [Synchronous Fast Paths](synchronous-fast-paths.md) — eliminate per-item Task allocations
-- [Performance Best Practices](best-practices.md) — broader optimization guidance
+- [Synchronous Fast Paths](synchronous-fast-paths.md) - eliminate per-item Task allocations
+- [Performance Best Practices](best-practices.md) - broader optimization guidance

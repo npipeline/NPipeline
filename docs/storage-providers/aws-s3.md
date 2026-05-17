@@ -42,14 +42,14 @@ s3://bucket-name/key/path?region=ap-southeast-2
 |-----------|-------------|
 | `bucket-name` | S3 bucket (URI host) |
 | `key/path` | Object key (URI path) |
-| `region` | Optional — override `DefaultRegion` for this request |
+| `region` | Optional - override `DefaultRegion` for this request |
 
 ## Authentication
 
 Credentials are resolved in this order:
 
-1. **Explicit credentials** — set `DefaultCredentials` to any `AWSCredentials` instance
-2. **Default credential chain** (default) — environment variables → shared credentials file → EC2 instance profile → ECS task role
+1. **Explicit credentials** - set `DefaultCredentials` to any `AWSCredentials` instance
+2. **Default credential chain** (default) - environment variables → shared credentials file → EC2 instance profile → ECS task role
 
 ```csharp
 // Explicit credentials (development only)
@@ -101,10 +101,10 @@ Registers: `IStorageProvider`, `IStorageProviderMetadataProvider`
 
 ## Features
 
-- **Multipart uploads** — files above `MultipartUploadThresholdBytes` are uploaded using the S3 multipart API
-- **Client caching** — S3 clients are cached and reused per region/endpoint
-- **Virtual-hosted addressing** — default; set `ForcePathStyle = true` for LocalStack or older S3-compatible services
-- **Metadata** — implements `IStorageProviderMetadataProvider` for `Size`, `LastModified`, `ContentType`, `ETag`
+- **Multipart uploads** - files above `MultipartUploadThresholdBytes` are uploaded using the S3 multipart API
+- **Client caching** - S3 clients are cached and reused per region/endpoint
+- **Virtual-hosted addressing** - default; set `ForcePathStyle = true` for LocalStack or older S3-compatible services
+- **Metadata** - implements `IStorageProviderMetadataProvider` for `Size`, `LastModified`, `ContentType`, `ETag`
 
 ## URI Parameters
 
@@ -125,7 +125,7 @@ var uri = StorageUri.Parse("s3://my-bucket/data/input.csv?region=us-west-2");
 var uri = StorageUri.Parse("s3://local-bucket/data/file.csv?serviceUrl=http://localhost:4566&pathStyle=true");
 ```
 
-> **Security:** Avoid credentials in URIs for production — URIs may be logged. Use the credential chain or DI.
+> **Security:** Avoid credentials in URIs for production - URIs may be logged. Use the credential chain or DI.
 
 ## Configuration Examples
 
@@ -185,7 +185,7 @@ var prefix = StorageUri.Parse("s3://my-bucket/data/");
 
 await foreach (var item in provider.ListAsync(prefix, recursive: true))
 {
-    Console.WriteLine($"{item.Uri} — {item.Size} bytes");
+    Console.WriteLine($"{item.Uri} - {item.Size} bytes");
 }
 ```
 
@@ -236,12 +236,12 @@ if (metadata is not null)
 
 ## Limitations
 
-- **Flat storage** — S3 has no directories; prefixes simulate hierarchy
-- **Multipart uploads** — files above threshold use multipart API; ensure sufficient memory and bandwidth
-- **Eventually consistent** — S3 standard now provides strong read-after-write consistency for PUT, but LIST operations may lag
+- **Flat storage** - S3 has no directories; prefixes simulate hierarchy
+- **Multipart uploads** - files above threshold use multipart API; ensure sufficient memory and bandwidth
+- **Eventually consistent** - S3 standard now provides strong read-after-write consistency for PUT, but LIST operations may lag
 
 ## Next Steps
 
-- [S3-Compatible Provider](s3-compatible.md) — for MinIO, DigitalOcean Spaces, Cloudflare R2
-- [Azure Blob Provider](azure-blob.md) — Azure alternative
-- [Storage Providers Overview](index.md) — choosing between providers
+- [S3-Compatible Provider](s3-compatible.md) - for MinIO, DigitalOcean Spaces, Cloudflare R2
+- [Azure Blob Provider](azure-blob.md) - Azure alternative
+- [Storage Providers Overview](index.md) - choosing between providers

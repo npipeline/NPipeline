@@ -77,7 +77,7 @@ public class Product
 |----------|-----------------------|---------------------------------------------------|
 | PerRow   | `MySqlPerRowWriter`   | One `INSERT` per row; simplest, lowest throughput |
 | Batch    | `MySqlBatchWriter`    | Multi-row `INSERT VALUES (…),(…)`                 |
-| BulkLoad | `MySqlBulkLoadWriter` | `LOAD DATA LOCAL INFILE` — highest throughput     |
+| BulkLoad | `MySqlBulkLoadWriter` | `LOAD DATA LOCAL INFILE` - highest throughput     |
 
 Configure via `MySqlConfiguration.WriteStrategy`:
 

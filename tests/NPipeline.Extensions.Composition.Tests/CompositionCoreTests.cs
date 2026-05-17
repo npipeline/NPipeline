@@ -93,7 +93,7 @@ namespace NPipeline.Extensions.Composition.Tests
         [Fact]
         public async Task CompositeInput_CompositeOutput_ShouldWorkInSubPipeline()
         {
-            // Arrange — sub-pipeline using AddCompositeInput/Output
+            // Arrange - sub-pipeline using AddCompositeInput/Output
             var runner = PipelineRunner.Create();
             var context = new PipelineContext();
 

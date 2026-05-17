@@ -10,7 +10,7 @@ namespace NPipeline.Nodes;
 /// <remarks>
 ///     <para>
 ///         Inherit from this class to create custom sink nodes that consume data from the pipeline
-///         and write it to external systems. Sink nodes are terminal nodes—they produce no output.
+///         and write it to external systems. Sink nodes are terminal nodes-they produce no output.
 ///     </para>
 ///     <para>
 ///         You only need to implement <see cref="ConsumeAsync" />, which receives an <see cref="IDataStream{TIn}" />

@@ -8,7 +8,7 @@ order: 5
 
 > **Prerequisites:** [Connectors Overview](../connectors/index.md)
 
-A [storage provider](../reference/glossary.md#storage-provider) implements `IStorageProvider` — a unified interface for reading and writing files regardless of where they're stored. File-based [connectors](../connectors/index.md) (CSV, JSON, Parquet, Excel) use storage providers so the same pipeline code works with local files, cloud storage, and SFTP.
+A [storage provider](../reference/glossary.md#storage-provider) implements `IStorageProvider` - a unified interface for reading and writing files regardless of where they're stored. File-based [connectors](../connectors/index.md) (CSV, JSON, Parquet, Excel) use storage providers so the same pipeline code works with local files, cloud storage, and SFTP.
 
 ## The IStorageProvider Interface
 
@@ -97,7 +97,7 @@ See [Implementing a Custom Provider](custom-provider.md) if you need to support 
 
 ## StorageUri
 
-`StorageUri` is the address type used by all storage providers. It supports local files, cloud storage, and SFTP — with optional query parameters for per-request configuration:
+`StorageUri` is the address type used by all storage providers. It supports local files, cloud storage, and SFTP - with optional query parameters for per-request configuration:
 
 ```csharp
 // Local file
@@ -149,7 +149,7 @@ bool exists = await provider.ExistsAsync(uri);
 // List (recursive or non-recursive)
 await foreach (var item in provider.ListAsync(prefix, recursive: true))
 {
-    Console.WriteLine($"{item.Uri} — {item.Size} bytes — {item.LastModified}");
+    Console.WriteLine($"{item.Uri} - {item.Size} bytes - {item.LastModified}");
 }
 
 // Metadata (via IStorageProviderMetadataProvider)
@@ -159,5 +159,5 @@ var metadata = await provider.GetMetadataAsync(uri);
 ## Next Steps
 
 - Pick a provider from the table above to see configuration details
-- [Custom Provider](custom-provider.md) — implement your own storage provider
-- [Connectors](../connectors/index.md) — use storage providers with file-based connectors
+- [Custom Provider](custom-provider.md) - implement your own storage provider
+- [Connectors](../connectors/index.md) - use storage providers with file-based connectors

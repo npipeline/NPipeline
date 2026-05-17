@@ -16,7 +16,7 @@ dotnet add package NPipeline.Connectors.MySQL
 
 **Dependencies:** [MySqlConnector](https://www.nuget.org/packages/MySqlConnector) 2.x
 
-## Source Node — `MySqlSourceNode<T>`
+## Source Node - `MySqlSourceNode<T>`
 
 ### Constructors
 
@@ -41,7 +41,7 @@ public MySqlSourceNode(
     string? connectionName = null)
 ```
 
-## Sink Node — `MySqlSinkNode<T>`
+## Sink Node - `MySqlSinkNode<T>`
 
 | Strategy | Description | Best For |
 |----------|-------------|----------|
@@ -115,7 +115,7 @@ public MySqlSinkNode(
 |----------|------|---------|-------------|
 | `ContinueOnError` | `bool` | `false` | Continue on row-level errors |
 | `MaxRetryAttempts` | `int` | `3` | Retry attempts |
-| `RetryDelay` | `TimeSpan` | — | Delay between retries |
+| `RetryDelay` | `TimeSpan` | - | Delay between retries |
 
 ## Dependency Injection
 
@@ -233,6 +233,6 @@ Requires `AllowLoadLocalInfile = true` both in the connector config and on the M
 
 ## Next Steps
 
-- [PostgreSQL Connector](postgres.md) — similar patterns for PostgreSQL
-- [SQL Server Connector](sqlserver.md) — similar patterns for SQL Server
-- [Dependency Injection](../guides/dependency-injection.md) — full DI integration guide
+- [PostgreSQL Connector](postgres.md) - similar patterns for PostgreSQL
+- [SQL Server Connector](sqlserver.md) - similar patterns for SQL Server
+- [Dependency Injection](../guides/dependency-injection.md) - full DI integration guide

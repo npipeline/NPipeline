@@ -1,6 +1,6 @@
 ---
 title: "Extensions"
-description: "All NPipeline packages at a glance — extensions, connectors, storage providers, and tools."
+description: "All NPipeline packages at a glance - extensions, connectors, storage providers, and tools."
 order: 6
 ---
 
@@ -117,14 +117,14 @@ Or add multiple packages to your `.csproj`:
 
 ## Next Steps
 
-- [Dependency Injection](dependency-injection.md) — DI integration reference
-- [Utility Nodes](utility-nodes.md) — pre-built nodes for common data operations
-- [Composition](composition.md) — hierarchical pipeline reference
-- [Parallelism](parallelism.md) — parallel execution strategies
-- [Observability](observability.md) — metrics and monitoring
-- [OpenTelemetry](opentelemetry.md) — distributed tracing
-- [Lineage](lineage.md) — data provenance tracking
-- [Testing](testing.md) — test harness and assertions
-- [Connectors](../connectors/index.md) — choosing the right connector for your data source
-- [Storage Providers](../storage-providers/index.md) — choosing a storage backend
-- [Getting Started](../getting-started/installation.md) — install your first packages
+- [Dependency Injection](dependency-injection.md) - DI integration reference
+- [Utility Nodes](utility-nodes.md) - pre-built nodes for common data operations
+- [Composition](composition.md) - hierarchical pipeline reference
+- [Parallelism](parallelism.md) - parallel execution strategies
+- [Observability](observability.md) - metrics and monitoring
+- [OpenTelemetry](opentelemetry.md) - distributed tracing
+- [Lineage](lineage.md) - data provenance tracking
+- [Testing](testing.md) - test harness and assertions
+- [Connectors](../connectors/index.md) - choosing the right connector for your data source
+- [Storage Providers](../storage-providers/index.md) - choosing a storage backend
+- [Getting Started](../getting-started/installation.md) - install your first packages

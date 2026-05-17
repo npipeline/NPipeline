@@ -10,7 +10,7 @@ This section is for contributors to the NPipeline source code itself. If you're 
 
 ## Prerequisites
 
-- **.NET SDK 10.0.100** or later (with `rollForward: latestFeature` — see `global.json`)
+- **.NET SDK 10.0.100** or later (with `rollForward: latestFeature` - see `global.json`)
 - **Git**
 - **JetBrains Rider**, **Visual Studio 2022**, or **VS Code** with the C# extension
 
@@ -76,10 +76,10 @@ NPipeline/
 
 ## Test Framework
 
-- **xUnit 2.9.3** — test framework (`[Fact]`, `[Theory]`)
-- **FluentAssertions / AwesomeAssertions** — readable assertions
-- **FakeItEasy** — mocking
-- **Coverlet** — code coverage
+- **xUnit 2.9.3** - test framework (`[Fact]`, `[Theory]`)
+- **FluentAssertions / AwesomeAssertions** - readable assertions
+- **FakeItEasy** - mocking
+- **Coverlet** - code coverage
 
 Test naming convention: `MethodName_Should_ExpectedBehavior_When_Condition`
 
@@ -97,8 +97,8 @@ All packages target **.NET 8, 9, and 10**. Tests run against all target framewor
 
 ## In This Section
 
-- [Coding Conventions](coding-conventions.md) — code style, naming, and test expectations
+- [Coding Conventions](coding-conventions.md) - code style, naming, and test expectations
 
 ## See Also
 
-- [Advanced Topics](../advanced-topics/index.md) — architecture deep-dives, execution model, and extensibility guides
+- [Advanced Topics](../advanced-topics/index.md) - architecture deep-dives, execution model, and extensibility guides

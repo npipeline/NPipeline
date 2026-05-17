@@ -5,7 +5,7 @@ using NPipeline.Connectors.MongoDB.Mapping;
 namespace NPipeline.Connectors.MongoDB.Tests.Mapping;
 
 /// <summary>
-///     Unit tests for <see cref="MongoWriteDocumentMapper" /> — T → BsonDocument round-trip.
+///     Unit tests for <see cref="MongoWriteDocumentMapper" /> - T → BsonDocument round-trip.
 /// </summary>
 public sealed class MongoWriteDocumentMapperTests
 {

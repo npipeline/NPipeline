@@ -244,17 +244,17 @@ result.ShouldBeSuccessful()
 
 | Practice | Rationale |
 |----------|-----------|
-| **One behavior per test** | Isolate failures — test one node or one path per `[Fact]` |
+| **One behavior per test** | Isolate failures - test one node or one path per `[Fact]` |
 | **Test success and failure paths** | Always test the error path, not just the happy path |
 | **Use `[Theory]` for variants** | Data-driven tests are more maintainable than duplicated `[Fact]`s |
 | **Mock external services** | Use Moq/NSubstitute for I/O dependencies (HTTP, DB, email) |
-| **Keep tests fast** | Avoid real I/O — use `InMemorySourceNode` and `InMemorySinkNode` |
+| **Keep tests fast** | Avoid real I/O - use `InMemorySourceNode` and `InMemorySinkNode` |
 | **Test pipeline structure** | Use `PassThroughTransformNode` to verify wiring without logic |
 | **Capture errors explicitly** | Always call `.CaptureErrors()` when testing error paths |
 | **Assert on sink contents** | Use `ShouldContain` / `ShouldHaveReceived` for output verification |
 
 ## See Also
 
-- [Testing Pipelines Guide](../testing/testing-pipelines.md) — step-by-step walkthrough
-- [Test Utilities Guide](../testing/test-utilities.md) — advanced testing patterns
+- [Testing Pipelines Guide](../testing/testing-pipelines.md) - step-by-step walkthrough
+- [Test Utilities Guide](../testing/test-utilities.md) - advanced testing patterns
 - [Extensions Overview](index.md)

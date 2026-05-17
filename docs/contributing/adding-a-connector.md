@@ -73,8 +73,8 @@ Create a `.csproj` with multi-targeting and standard NuGet metadata:
 
 Key references:
 
-- **`NPipeline.Connectors`** — base abstractions shared by all connectors
-- **`NPipeline.StorageProviders`** — storage provider interfaces for file-based connectors (optional for database/queue connectors)
+- **`NPipeline.Connectors`** - base abstractions shared by all connectors
+- **`NPipeline.StorageProviders`** - storage provider interfaces for file-based connectors (optional for database/queue connectors)
 
 ## Step 2: Define Configuration
 
@@ -114,7 +114,7 @@ public sealed class {Name}SourceNode(
     private async IAsyncEnumerable<{Name}Row> ReadAsync(
         [EnumeratorCancellation] CancellationToken ct)
     {
-        // Stream items lazily — never materialize the full dataset
+        // Stream items lazily - never materialize the full dataset
         // Forward ct to all async operations
     }
 }
@@ -138,7 +138,7 @@ public sealed class {Name}SinkNode(
     {
         await foreach (var item in input.WithCancellation(cancellationToken))
         {
-            // Write items — forward cancellationToken to all I/O
+            // Write items - forward cancellationToken to all I/O
         }
     }
 }
@@ -200,6 +200,6 @@ Use `TestData/` for sample files and `FakeItEasy` for mocking external dependenc
 
 ## Next Steps
 
-- [Adding a Node Type](adding-a-node-type.md) — node implementation fundamentals
-- [Coding Conventions](coding-conventions.md) — style and analyzer rules to follow
-- [Contributor Guide](index.md) — build commands and PR process
+- [Adding a Node Type](adding-a-node-type.md) - node implementation fundamentals
+- [Coding Conventions](coding-conventions.md) - style and analyzer rules to follow
+- [Contributor Guide](index.md) - build commands and PR process

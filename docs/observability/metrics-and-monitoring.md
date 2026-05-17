@@ -94,7 +94,7 @@ Implement `IMetricsSink` for per-node metrics and `IPipelineMetricsSink` for pip
 
 ## Next Steps
 
-- [Observability Extension Reference](../extensions/observability.md) — collector, surface, and sink details
-- [OpenTelemetry Integration](opentelemetry.md) — distributed tracing
-- [Data Lineage](data-lineage.md) — track data provenance
-- [Pipeline Context](../guides/pipeline-context.md) — access loggers in nodes
+- [Observability Extension Reference](../extensions/observability.md) - collector, surface, and sink details
+- [OpenTelemetry Integration](opentelemetry.md) - distributed tracing
+- [Data Lineage](data-lineage.md) - track data provenance
+- [Pipeline Context](../guides/pipeline-context.md) - access loggers in nodes

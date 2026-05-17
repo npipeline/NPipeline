@@ -107,9 +107,9 @@ Use `NoRouteMatchBehavior.Throw` in critical paths to surface missing route cove
 
 ## How Route Predicates Work with Lineage
 
-Route predicates configured via `ConnectWhen` and `AddRoute` always operate on the **payload type** `T`. You never write predicates against `LineagePacket<T>` — the framework handles the difference transparently.
+Route predicates configured via `ConnectWhen` and `AddRoute` always operate on the **payload type** `T`. You never write predicates against `LineagePacket<T>` - the framework handles the difference transparently.
 
-When item-level lineage is enabled, stream items are wrapped in `LineagePacket<T>` at runtime. Before execution starts, `RuntimePipelineBinder` normalizes `RouteOptions<T>` to `RouteOptions<LineagePacket<T>>` once at bind time — rewrapping each predicate to delegate to `packet.Data`. This happens once per run, not once per item.
+When item-level lineage is enabled, stream items are wrapped in `LineagePacket<T>` at runtime. Before execution starts, `RuntimePipelineBinder` normalizes `RouteOptions<T>` to `RouteOptions<LineagePacket<T>>` once at bind time - rewrapping each predicate to delegate to `packet.Data`. This happens once per run, not once per item.
 
 If you build a `RouteOptions<T>` outside the pipeline builder and register it manually via execution annotations, it is automatically normalized during binding as long as the lineage flag is set correctly. A type mismatch that cannot be resolved at bind time is a hard error with diagnostics.
 
@@ -123,7 +123,7 @@ See [Sample_RouteNode](../samples/index.md) for a runnable example showing:
 
 ## Next Steps
 
-- [Branching and Merging](branching-and-merging.md) — unconditional fan-out and fan-in patterns
-- [Joins and Lookups](joins-and-lookups.md) — combine multiple sources after routing
-- [Pipeline Validation](pipeline-validation.md) — validate graph structure before execution
-- [Execution Model](../advanced-topics/execution-model.md) — how route option normalization fits into the runtime lifecycle
+- [Branching and Merging](branching-and-merging.md) - unconditional fan-out and fan-in patterns
+- [Joins and Lookups](joins-and-lookups.md) - combine multiple sources after routing
+- [Pipeline Validation](pipeline-validation.md) - validate graph structure before execution
+- [Execution Model](../advanced-topics/execution-model.md) - how route option normalization fits into the runtime lifecycle

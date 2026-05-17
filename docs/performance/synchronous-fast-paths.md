@@ -8,7 +8,7 @@ order: 3
 
 > **Prerequisites:** [Custom Nodes](../guides/custom-nodes.md)
 
-Many transforms complete synchronously — mapping one type to another, filtering, simple calculations. By default, these still allocate a `Task<T>` on the heap. NPipeline provides a `ValueTask<T>` fast path that eliminates this allocation.
+Many transforms complete synchronously - mapping one type to another, filtering, simple calculations. By default, these still allocate a `Task<T>` on the heap. NPipeline provides a `ValueTask<T>` fast path that eliminates this allocation.
 
 ## The Problem
 
@@ -102,5 +102,5 @@ The execution engine creates a `CachedNodeExecutionContext` struct once per node
 
 ## Next Steps
 
-- [Execution Plan Caching](execution-plan-caching.md) — avoid reflection on repeated runs
-- [Performance Best Practices](best-practices.md) — broader optimization guidance
+- [Execution Plan Caching](execution-plan-caching.md) - avoid reflection on repeated runs
+- [Performance Best Practices](best-practices.md) - broader optimization guidance

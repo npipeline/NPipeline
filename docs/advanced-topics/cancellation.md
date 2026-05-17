@@ -168,7 +168,7 @@ public async Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(
 
 ## Cancellation and Resilience
 
-The `ResilientExecutionStrategy` checks the cancellation token between retry attempts. If cancellation is requested during a retry delay (`GetRetryDelayAsync`), the strategy throws `OperationCanceledException` immediately — it does not wait for the delay to complete.
+The `ResilientExecutionStrategy` checks the cancellation token between retry attempts. If cancellation is requested during a retry delay (`GetRetryDelayAsync`), the strategy throws `OperationCanceledException` immediately - it does not wait for the delay to complete.
 
 The `CompositeRetryDelayStrategy` also checks:
 
@@ -179,6 +179,6 @@ if (cancellationToken.IsCancellationRequested)
 
 ## Next Steps
 
-- [Adding a Node Type](../contributing/adding-a-node-type.md) — implement nodes that properly handle cancellation
-- [Execution Model](execution-model.md) — how the orchestrator coordinates cancellation
-- [Coding Conventions](../contributing/coding-conventions.md) — analyzer rules that enforce cancellation patterns
+- [Adding a Node Type](../contributing/adding-a-node-type.md) - implement nodes that properly handle cancellation
+- [Execution Model](execution-model.md) - how the orchestrator coordinates cancellation
+- [Coding Conventions](../contributing/coding-conventions.md) - analyzer rules that enforce cancellation patterns

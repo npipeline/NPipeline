@@ -6,7 +6,7 @@ order: 5
 
 # Lineage
 
-The `NPipeline.Extensions.Lineage` package provides data lineage tracking — recording the path each item takes through a pipeline, including transformations, filtering, dead-lettering, and errors. This is critical for compliance (GDPR, HIPAA), debugging, and data quality auditing.
+The `NPipeline.Extensions.Lineage` package provides data lineage tracking - recording the path each item takes through a pipeline, including transformations, filtering, dead-lettering, and errors. This is critical for compliance (GDPR, HIPAA), debugging, and data quality auditing.
 
 ## Installation
 
@@ -44,7 +44,7 @@ Source → wraps items in LineagePacket<T> (assigns CorrelationId)
 | `IPipelineLineageSink` | Pipeline-level export (called once at end of run) |
 | `LineagePacket<T>` | Wraps items with `Data`, `CorrelationId`, `TraversalPath`, `LineageRecords`, `Collect` |
 
-> **Runtime stream contract:** When item-level lineage is enabled, streams throughout execution carry `LineagePacket<T>` items, not `T` items directly. The `RuntimePipelineBinder` normalizes execution options (such as route predicates) to operate on `LineagePacket<T>` before execution starts. Sinks receive an `IDataStream<LineagePacket<T>>` input; the lineage adapter unwraps each packet to expose the inner `T` to your `ISinkNode<T>.ConsumeAsync` implementation. This unwrapping is strictly typed — the input stream must be `IDataStream<LineagePacket<T>>` or the build fails.
+> **Runtime stream contract:** When item-level lineage is enabled, streams throughout execution carry `LineagePacket<T>` items, not `T` items directly. The `RuntimePipelineBinder` normalizes execution options (such as route predicates) to operate on `LineagePacket<T>` before execution starts. Sinks receive an `IDataStream<LineagePacket<T>>` input; the lineage adapter unwraps each packet to expose the inner `T` to your `ISinkNode<T>.ConsumeAsync` implementation. This unwrapping is strictly typed - the input stream must be `IDataStream<LineagePacket<T>>` or the build fails.
 
 ### LineageRecord Fields
 
@@ -56,7 +56,7 @@ Source → wraps items in LineagePacket<T> (assigns CorrelationId)
 | `OutcomeReason` | Terminal or intermediate outcome |
 | `IsTerminal` | Whether this is the final record for this correlation |
 | `TraversalPath` | Ordered list of node IDs visited |
-| `ContributorCorrelationIds` | For joins/aggregates — IDs of contributing items |
+| `ContributorCorrelationIds` | For joins/aggregates - IDs of contributing items |
 | `InputSnapshot` / `OutputSnapshot` | JSON snapshots (when hop snapshots enabled) |
 | `Data` | Item payload (subject to redaction) |
 
@@ -92,9 +92,9 @@ var options = LineageOptions.FastLineage.With(sampleEvery: 100, redactData: true
 
 ### Sampling
 
-**Deterministic sampling** — hash-based, consistent across runs. Items with `hash(correlationId) % SampleEvery == 0` are tracked.
+**Deterministic sampling** - hash-based, consistent across runs. Items with `hash(correlationId) % SampleEvery == 0` are tracked.
 
-**Random sampling** — probabilistic, different items tracked each run. Probability is `1/SampleEvery`.
+**Random sampling** - probabilistic, different items tracked each run. Probability is `1/SampleEvery`.
 
 | Scenario | Rate | `SampleEvery` |
 |----------|------|---------------|
@@ -109,7 +109,7 @@ When `redactData: true`, the `LineageRecord.Data` field is set to `null`. Traver
 
 ### Hop Snapshots
 
-When `captureHopSnapshots: true`, each node records JSON snapshots of the item before and after transformation. Handle circular references silently. **Performance impact is high** — enable at conservative sampling rates (≥ 100).
+When `captureHopSnapshots: true`, each node records JSON snapshots of the item before and after transformation. Handle circular references silently. **Performance impact is high** - enable at conservative sampling rates (≥ 100).
 
 ### Overflow Policies
 
@@ -117,9 +117,9 @@ Controls behavior when the materialization cap is exceeded:
 
 | Policy | Behavior | Use Case |
 |--------|----------|----------|
-| `Degrade` (default) | Switches to streaming positional mapping | Production — memory-safe |
-| `Strict` | Throws immediately | Development — fail-fast |
-| `WarnContinue` | Logs warning, continues | Testing — see all events |
+| `Degrade` (default) | Switches to streaming positional mapping | Production - memory-safe |
+| `Strict` | Throws immediately | Development - fail-fast |
+| `WarnContinue` | Logs warning, continues | Testing - see all events |
 
 ```csharp
 var options = new LineageOptions(
@@ -205,7 +205,7 @@ services.AddNPipelineLineage<CustomCollector, DatabaseLineageSink>();
 
 ## Configuration Examples
 
-**Production** — low overhead, privacy-safe:
+**Production** - low overhead, privacy-safe:
 
 ```csharp
 var options = new LineageOptions(
@@ -217,7 +217,7 @@ var options = new LineageOptions(
     emitBackpressureDropRecords: true);
 ```
 
-**Development** — full visibility:
+**Development** - full visibility:
 
 ```csharp
 var options = new LineageOptions(
@@ -246,11 +246,11 @@ var options = new LineageOptions(
 ### Best Practices
 
 1. **Start with `FastLineage`** in production, customize with `.With()`
-2. **Use deterministic sampling** for debugging — same items tracked across runs
+2. **Use deterministic sampling** for debugging - same items tracked across runs
 3. **Enable redaction** for PII/sensitive data
-4. **Use `Degrade` overflow policy** in production — memory-safe
-5. **Implement async sinks** — avoid blocking I/O in sink implementations
-6. **Keep `EmitBackpressureDropRecords = true`** — queryable drop visibility
+4. **Use `Degrade` overflow policy** in production - memory-safe
+5. **Implement async sinks** - avoid blocking I/O in sink implementations
+6. **Keep `EmitBackpressureDropRecords = true`** - queryable drop visibility
 
 ## Use Cases
 
@@ -266,5 +266,5 @@ var options = new LineageOptions(
 
 ## See Also
 
-- [Data Lineage Guide](../observability/data-lineage.md) — walkthrough with examples
+- [Data Lineage Guide](../observability/data-lineage.md) - walkthrough with examples
 - [Extensions Overview](index.md)

@@ -16,7 +16,7 @@ dotnet add package NPipeline.Connectors.Postgres
 
 **Dependencies:** [Npgsql](https://www.nuget.org/packages/Npgsql) 10.x
 
-## Source Node — `PostgresSourceNode<T>`
+## Source Node - `PostgresSourceNode<T>`
 
 Reads rows from a SQL query and emits each as an item of type `T`.
 
@@ -60,7 +60,7 @@ var source = new PostgresSourceNode<Order>(
         row.Get<decimal>("amount")));
 ```
 
-## Sink Node — `PostgresSinkNode<T>`
+## Sink Node - `PostgresSinkNode<T>`
 
 Writes items to a PostgreSQL table. Supports three write strategies:
 
@@ -246,7 +246,7 @@ var config = new PostgresConfiguration
 
 | Strategy | Persistence | Description |
 |----------|-------------|-------------|
-| `None` (default) | — | No checkpointing; restart from beginning |
+| `None` (default) | - | No checkpointing; restart from beginning |
 | `InMemory` | Process lifetime | Transient failure recovery within a single run |
 | `Offset` | External storage | Track position via monotonically increasing column |
 | `KeyBased` | External storage | Track processed items by composite keys |
@@ -341,15 +341,15 @@ config.UseBinaryCopy = true; // 20–30% faster than text format
 
 1. **Use DI** with `AddPostgresConnector` for production
 2. **Enable streaming** (`StreamResults = true`) for large result sets
-3. **Use COPY** for bulk loading — highest throughput
+3. **Use COPY** for bulk loading - highest throughput
 4. **Enable binary COPY** for additional 20–30% performance gain
 5. **Enable upsert** for idempotent writes
-6. **Validate identifiers** — never disable in production
+6. **Validate identifiers** - never disable in production
 7. **Use prepared statements** for repeated query patterns
 8. **Configure checkpointing** for long-running pipelines
 
 ## Next Steps
 
-- [SQL Server Connector](sqlserver.md) — similar patterns for SQL Server
-- [Error Handling](../error-handling/index.md) — retry strategies for database errors
-- [Dependency Injection](../guides/dependency-injection.md) — full DI integration guide
+- [SQL Server Connector](sqlserver.md) - similar patterns for SQL Server
+- [Error Handling](../error-handling/index.md) - retry strategies for database errors
+- [Dependency Injection](../guides/dependency-injection.md) - full DI integration guide

@@ -348,7 +348,7 @@ internal sealed class SftpClientPool : IDisposable, IAsyncDisposable
                         {
                             DisposeConnection(pc);
 
-                            // Note: No semaphore release here — the semaphore was already released
+                            // Note: No semaphore release here - the semaphore was already released
                             // when the connection was returned to the available pool via Return().
                         }
                         else

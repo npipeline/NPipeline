@@ -83,13 +83,13 @@ public class MongoWriteStrategyIntegrationTests(MongoTestContainerFixture fixtur
 
         await using var sink = new MongoSinkNode<Widget>(client, config);
 
-        // doc with id=1 already exists — will cause a duplicate key error for that doc
+        // doc with id=1 already exists - will cause a duplicate key error for that doc
         await using var pipe = new DataStream<Widget>(
             new[] { new Widget { Id = 1, Label = "dup" }, new Widget { Id = 2, Label = "new" } }
                 .ToAsyncEnumerable(), "test");
 
         // Unordered bulk insert silently skips duplicate-key errors in MongoDB;
-        // the connector may surface a write exception — either is acceptable.
+        // the connector may surface a write exception - either is acceptable.
         var act = async () => await sink.ConsumeAsync(pipe, new PipelineContext(), CancellationToken.None);
         await act.Should().NotThrowAsync<OperationCanceledException>();
 

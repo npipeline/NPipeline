@@ -22,7 +22,7 @@ public static class AsyncExtensions
     ///         in pipeline contexts that require <see cref="IAsyncEnumerable{T}" />.
     ///     </para>
     ///     <para>
-    ///         The conversion is non-blocking—items are yielded synchronously, but the
+    ///         The conversion is non-blocking-items are yielded synchronously, but the
     ///         method itself is declared as async to satisfy API contracts.
     ///     </para>
     /// </remarks>

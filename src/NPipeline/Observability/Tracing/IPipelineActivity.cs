@@ -9,7 +9,7 @@ namespace NPipeline.Observability.Tracing;
 ///         Each activity can record timing, tags, and exceptions for detailed observability.
 ///     </para>
 ///     <para>
-///         Activities support hierarchical nesting—activities can span child activities, creating
+///         Activities support hierarchical nesting-activities can span child activities, creating
 ///         a tree structure that represents the execution flow.
 ///     </para>
 ///     <para>

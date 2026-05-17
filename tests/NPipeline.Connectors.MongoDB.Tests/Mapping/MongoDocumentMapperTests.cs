@@ -6,7 +6,7 @@ using NPipeline.Connectors.MongoDB.Mapping;
 namespace NPipeline.Connectors.MongoDB.Tests.Mapping;
 
 /// <summary>
-///     Unit tests for <see cref="MongoDocumentMapper" /> — high-level mapping API.
+///     Unit tests for <see cref="MongoDocumentMapper" /> - high-level mapping API.
 /// </summary>
 public sealed class MongoDocumentMapperTests
 {

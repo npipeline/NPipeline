@@ -18,7 +18,7 @@ dotnet add package NPipeline.Connectors.Json
 
 ## Storage Abstraction
 
-The JSON connector uses NPipeline's storage abstraction layer. See the [CSV Connector — Storage Abstraction](csv.md#storage-abstraction) section for full details on `StorageUri`, `IStorageResolver`, and when you need an explicit resolver.
+The JSON connector uses NPipeline's storage abstraction layer. See the [CSV Connector - Storage Abstraction](csv.md#storage-abstraction) section for full details on `StorageUri`, `IStorageResolver`, and when you need an explicit resolver.
 
 **Short version:** omit the resolver for local files; provide one for cloud storage.
 
@@ -85,7 +85,7 @@ var source = new JsonSourceNode<Order>(
 | `HasProperty(string name)` | Check whether a property exists |
 | `GetElement(string name)` | Get the raw `JsonElement` for complex/nested access |
 
-## Source Node — `JsonSourceNode<T>`
+## Source Node - `JsonSourceNode<T>`
 
 Reads a JSON file and emits each object as an item of type `T`.
 
@@ -132,7 +132,7 @@ var source = new JsonSourceNode<User>(
     configuration: config);
 ```
 
-## Sink Node — `JsonSinkNode<T>`
+## Sink Node - `JsonSinkNode<T>`
 
 Writes items to a JSON file using attribute-based mapping.
 
@@ -227,9 +227,9 @@ public sealed class JsonTransformPipeline : IPipelineDefinition
 
 ## Next Steps
 
-- [CSV Connector](csv.md) — similar file-based connector for tabular data
-- [Parquet Connector](parquet.md) — columnar format for large datasets
-- [Storage Providers](../storage-providers/index.md) — read JSON from S3, Azure Blob, or GCS
+- [CSV Connector](csv.md) - similar file-based connector for tabular data
+- [Parquet Connector](parquet.md) - columnar format for large datasets
+- [Storage Providers](../storage-providers/index.md) - read JSON from S3, Azure Blob, or GCS
 
 ## Storage Abstraction
 
@@ -251,7 +251,7 @@ See [Storage Providers](../storage-providers/index.md) for configuring S3, Azure
 
 ### Array Format (default)
 
-Standard JSON array — entire file is `[{...}, {...}, ...]`:
+Standard JSON array - entire file is `[{...}, {...}, ...]`:
 
 ```json
 [
@@ -262,7 +262,7 @@ Standard JSON array — entire file is `[{...}, {...}, ...]`:
 
 ### Newline-Delimited JSON (NDJSON)
 
-One JSON object per line — ideal for streaming and append-only:
+One JSON object per line - ideal for streaming and append-only:
 
 ```json
 {"id": 1, "name": "Alice"}
@@ -290,7 +290,7 @@ var source = new JsonSourceNode<Order>(
 
 ## Best Practices
 
-1. **Use NDJSON** for large files and streaming — lower memory footprint
+1. **Use NDJSON** for large files and streaming - lower memory footprint
 2. **Use `ItemsJsonPath`** to extract nested arrays without pre-processing
 3. **Increase `BufferSize`** for large files (default 4096)
 4. **Use `RowErrorHandler`** to skip malformed records

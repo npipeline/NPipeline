@@ -34,7 +34,7 @@ public class HttpSinkConfigurationTests
         // Construct via reflection to bypass required keyword issue
         var config = new HttpSinkConfiguration { Uri = new Uri("https://placeholder.com") };
 
-        // Force both to null via a helper config class — we test via ctor validation instead
+        // Force both to null via a helper config class - we test via ctor validation instead
         // The constructor is validated internally, so create a valid one and then test the edge
         var badConfig = new HttpSinkConfiguration { Uri = null! };
         var act = () => InvokeValidate(badConfig);

@@ -46,7 +46,7 @@ public sealed class MockHttpMessageHandler : HttpMessageHandler
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        // Read the body eagerly — the sink node disposes the StreamContent after SendAsync returns.
+        // Read the body eagerly - the sink node disposes the StreamContent after SendAsync returns.
         var body = request.Content != null
             ? await request.Content.ReadAsStringAsync(cancellationToken)
             : null;

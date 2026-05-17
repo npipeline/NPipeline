@@ -104,17 +104,17 @@ await pipeline.RunAsync();
 
 ## Features
 
-- **Source Node** — Read documents from MongoDB collections with filtering, sorting, and projections
-- **Change Stream Source Node** — Monitor collection changes in real-time for CDC (Change Data Capture) scenarios
-- **Sink Node** — Write documents to MongoDB collections with multiple strategies
-- **Write Strategies** — InsertMany for bulk inserts, Upsert for idempotent updates, BulkWrite for mixed operations
-- **Duplicate Key Handling** — Configurable actions (Fail, Skip, Overwrite) when key conflicts occur
-- **Custom Mapping** — Custom mappers for complex transformations between BSON and .NET types
-- **Batch Operations** — Configurable batch sizes for optimal throughput
-- **Filter & Projection** — Native MongoDB filter and projection support
-- **Read Preferences** — Configurable read preferences for replica set routing
-- **Connection Pooling** — Built-in connection pooling through MongoDB.Driver
-- **Streaming** — Memory-efficient streaming for large result sets
+- **Source Node** - Read documents from MongoDB collections with filtering, sorting, and projections
+- **Change Stream Source Node** - Monitor collection changes in real-time for CDC (Change Data Capture) scenarios
+- **Sink Node** - Write documents to MongoDB collections with multiple strategies
+- **Write Strategies** - InsertMany for bulk inserts, Upsert for idempotent updates, BulkWrite for mixed operations
+- **Duplicate Key Handling** - Configurable actions (Fail, Skip, Overwrite) when key conflicts occur
+- **Custom Mapping** - Custom mappers for complex transformations between BSON and .NET types
+- **Batch Operations** - Configurable batch sizes for optimal throughput
+- **Filter & Projection** - Native MongoDB filter and projection support
+- **Read Preferences** - Configurable read preferences for replica set routing
+- **Connection Pooling** - Built-in connection pooling through MongoDB.Driver
+- **Streaming** - Memory-efficient streaming for large result sets
 
 ## Configuration Options
 
@@ -142,17 +142,17 @@ The `MongoConfiguration` class provides configuration options:
 
 The `MongoWriteStrategy` enum specifies the write operation mode:
 
-- **InsertMany** — Uses `inserts_many()` for new documents (fastest, fails on duplicates)
-- **Upsert** — Uses `replaceOne()` with upsert enabled (idempotent, updates existing documents)
-- **BulkWrite** — Uses `bulkWrite()` for mixed operations with fine-grained control
+- **InsertMany** - Uses `inserts_many()` for new documents (fastest, fails on duplicates)
+- **Upsert** - Uses `replaceOne()` with upsert enabled (idempotent, updates existing documents)
+- **BulkWrite** - Uses `bulkWrite()` for mixed operations with fine-grained control
 
 ### OnDuplicateAction
 
 The `OnDuplicateAction` enum specifies handling for duplicate key conflicts:
 
-- **Fail** — Throw an exception (default)
-- **Skip** — Skip the duplicate document
-- **Overwrite** — Replace the existing document
+- **Fail** - Throw an exception (default)
+- **Skip** - Skip the duplicate document
+- **Overwrite** - Replace the existing document
 
 ## Advanced Usage
 

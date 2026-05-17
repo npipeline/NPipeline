@@ -46,7 +46,7 @@ s3://bucket-name/key/path
 
 ## Configuration
 
-All three required properties use `required init` — they must be set at construction time.
+All three required properties use `required init` - they must be set at construction time.
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -106,7 +106,7 @@ services.AddS3CompatibleStorageProvider(new S3CompatibleStorageProviderOptions
 });
 ```
 
-> The `required` properties mean there is no parameterless overload — you must pass a pre-built options instance.
+> The `required` properties mean there is no parameterless overload - you must pass a pre-built options instance.
 
 Registers: `IStorageProvider`, `IStorageProviderMetadataProvider`
 
@@ -177,7 +177,7 @@ var prefix = StorageUri.Parse("s3://my-bucket/data/");
 
 await foreach (var item in provider.ListAsync(prefix, recursive: true))
 {
-    Console.WriteLine($"{item.Uri} — {item.Size} bytes");
+    Console.WriteLine($"{item.Uri} - {item.Size} bytes");
 }
 ```
 
@@ -200,13 +200,13 @@ if (metadata is not null)
 
 ## Limitations
 
-- **No per-URI overrides** — credentials and endpoint are set globally via options (unlike the AWS S3 provider)
-- **Flat storage** — S3-compatible services use prefix-based hierarchy
-- **Provider-specific differences** — multipart upload, metadata, and custom header support varies by service
+- **No per-URI overrides** - credentials and endpoint are set globally via options (unlike the AWS S3 provider)
+- **Flat storage** - S3-compatible services use prefix-based hierarchy
+- **Provider-specific differences** - multipart upload, metadata, and custom header support varies by service
 
 If you need multiple endpoints, register separate provider instances.
 
 ## Next Steps
 
-- [AWS S3 Provider](aws-s3.md) — native AWS S3 with IAM credential chain
-- [Storage Providers Overview](index.md) — choosing between providers
+- [AWS S3 Provider](aws-s3.md) - native AWS S3 with IAM credential chain
+- [Storage Providers Overview](index.md) - choosing between providers

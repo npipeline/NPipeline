@@ -64,7 +64,7 @@ internal sealed class MySqlPerRowWriter<T> : IDatabaseWriter<T>
             }
         }
 
-        // Final attempt — let exceptions propagate
+        // Final attempt - let exceptions propagate
         await ExecuteWriteAsync(item, cancellationToken).ConfigureAwait(false);
     }
 

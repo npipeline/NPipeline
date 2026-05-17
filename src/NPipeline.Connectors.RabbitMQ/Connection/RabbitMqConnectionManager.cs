@@ -92,7 +92,7 @@ public sealed class RabbitMqConnectionManager : IRabbitMqConnectionManager
             if (pooledChannel.IsOpen)
                 return pooledChannel;
 
-            // Channel is closed/faulted — discard it
+            // Channel is closed/faulted - discard it
             try
             {
                 await pooledChannel.CloseAsync(cancellationToken).ConfigureAwait(false);
@@ -105,7 +105,7 @@ public sealed class RabbitMqConnectionManager : IRabbitMqConnectionManager
             LogMessages.ChannelClosed(_logger);
         }
 
-        // Pool exhausted — create a new channel with publisher confirms enabled
+        // Pool exhausted - create a new channel with publisher confirms enabled
         var connection = await GetConnectionAsync(cancellationToken).ConfigureAwait(false);
 
         var channel = await connection.CreateChannelAsync(
@@ -137,7 +137,7 @@ public sealed class RabbitMqConnectionManager : IRabbitMqConnectionManager
 
         if (!_channelPool.Writer.TryWrite(channel))
         {
-            // Pool is full — dispose the excess channel
+            // Pool is full - dispose the excess channel
             try
             {
                 channel.Dispose();

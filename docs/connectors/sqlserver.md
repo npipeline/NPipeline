@@ -16,7 +16,7 @@ dotnet add package NPipeline.Connectors.SqlServer
 
 **Dependencies:** [Microsoft.Data.SqlClient](https://www.nuget.org/packages/Microsoft.Data.SqlClient) 7.x
 
-## Source Node — `SqlServerSourceNode<T>`
+## Source Node - `SqlServerSourceNode<T>`
 
 ### Constructors
 
@@ -54,7 +54,7 @@ var source = new SqlServerSourceNode<Order>(
     });
 ```
 
-## Sink Node — `SqlServerSinkNode<T>`
+## Sink Node - `SqlServerSinkNode<T>`
 
 | Strategy | Description | Best For |
 |----------|-------------|----------|
@@ -139,7 +139,7 @@ var sink = new SqlServerSinkNode<Order>("connection-string", "dbo.Orders", confi
 |----------|------|---------|-------------|
 | `ContinueOnError` | `bool` | `false` | Continue on row-level errors |
 | `MaxRetryAttempts` | `int` | `3` | Retry attempts for transient errors |
-| `RetryDelay` | `TimeSpan` | — | Delay between retries |
+| `RetryDelay` | `TimeSpan` | - | Delay between retries |
 
 ## Dependency Injection
 
@@ -237,7 +237,7 @@ Checkpointing enables pipelines to resume from where they left off after a failu
 
 | Strategy | Persistence | Description |
 |----------|-------------|-------------|
-| `None` (default) | — | No checkpointing; restart from beginning on failure |
+| `None` (default) | - | No checkpointing; restart from beginning on failure |
 | `InMemory` | Process lifetime | Recover from transient failures within a single run |
 | `Offset` | External storage | Track position via monotonically increasing column |
 | `KeyBased` | External storage | Track processed items by composite keys |
@@ -348,11 +348,11 @@ var config = new SqlServerConfiguration
 
 ## Best Practices
 
-1. **Use DI** with `AddSqlServerConnector` for production — centralizes connection management
+1. **Use DI** with `AddSqlServerConnector` for production - centralizes connection management
 2. **Enable streaming** (`StreamResults = true`) for large result sets
-3. **Use BulkCopy** for bulk loading — significantly faster than Batch
+3. **Use BulkCopy** for bulk loading - significantly faster than Batch
 4. **Enable upsert** for idempotent writes to avoid duplicate handling
-5. **Validate identifiers** — never disable `ValidateIdentifiers` in production
+5. **Validate identifiers** - never disable `ValidateIdentifiers` in production
 6. **Use prepared statements** for repeated query patterns
 7. **Configure checkpointing** for long-running pipelines
 8. **Tune batch size** based on latency/throughput requirements
@@ -360,6 +360,6 @@ var config = new SqlServerConfiguration
 
 ## Next Steps
 
-- [PostgreSQL Connector](postgres.md) — similar patterns for PostgreSQL
-- [MySQL Connector](mysql.md) — similar patterns for MySQL/MariaDB
-- [Dependency Injection](../guides/dependency-injection.md) — full DI integration guide
+- [PostgreSQL Connector](postgres.md) - similar patterns for PostgreSQL
+- [MySQL Connector](mysql.md) - similar patterns for MySQL/MariaDB
+- [Dependency Injection](../guides/dependency-injection.md) - full DI integration guide

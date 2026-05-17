@@ -97,7 +97,7 @@ public class MongoConnectionPool : IMongoConnectionPool
             _namedClients[kvp.Key] = client;
         }
 
-        // No pre-configured connections is valid — callers may supply connection strings
+        // No pre-configured connections is valid - callers may supply connection strings
         // on demand via GetClientForUri(), so do not enforce a minimum here.
     }
 

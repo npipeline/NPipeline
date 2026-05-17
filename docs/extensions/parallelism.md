@@ -37,7 +37,7 @@ builder.WithParallelOptions(transform, new ParallelOptions
 
 | Strategy | Behavior |
 |----------|----------|
-| `ParallelExecutionStrategy` (default) | Blocking backpressure — pauses producer when queue is full |
+| `ParallelExecutionStrategy` (default) | Blocking backpressure - pauses producer when queue is full |
 | `BlockingParallelStrategy` | Same as above (base class) |
 | `DropNewestParallelStrategy` | Discards incoming items when queue is full |
 | `DropOldestParallelStrategy` | Discards oldest queued items to make room |
@@ -113,7 +113,7 @@ builder
 
 | Policy | When Full | Use Case |
 |--------|-----------|----------|
-| `Block` | Producer waits | Most pipelines — ensures no data loss |
+| `Block` | Producer waits | Most pipelines - ensures no data loss |
 | `DropNewest` | Incoming items discarded | Real-time streams where freshness matters less than throughput |
 | `DropOldest` | Oldest queued items discarded | Real-time streams where freshness matters most |
 
@@ -145,7 +145,7 @@ builder.WithParallelOptions(transform, new ParallelOptions
 ### The Unsafe Pattern
 
 ```csharp
-// ❌ WRONG — data race across worker threads
+// ❌ WRONG - data race across worker threads
 public override async Task<int> TransformAsync(int input, PipelineContext context, CancellationToken ct)
 {
     var count = context.Items.GetValueOrDefault("processed", 0);
@@ -154,12 +154,12 @@ public override async Task<int> TransformAsync(int input, PipelineContext contex
 }
 ```
 
-Thread A reads `count = 5`, Thread B reads `count = 5` (before A writes), both write `6` — one update is lost.
+Thread A reads `count = 5`, Thread B reads `count = 5` (before A writes), both write `6` - one update is lost.
 
 ### The Safe Pattern
 
 ```csharp
-// ✅ CORRECT — use atomic operations or locks
+// ✅ CORRECT - use atomic operations or locks
 public class SafeTransform : TransformNode<int, int>
 {
     private long _processedCount = 0;
@@ -199,7 +199,7 @@ stateManager?.MarkNodeCompleted(context.CurrentNodeId, context);
 
 - Process independent data items in parallel (inherently safe)
 - Use `Interlocked` for atomic counter operations
-- Use `lock` for simple critical sections — keep them short
+- Use `lock` for simple critical sections - keep them short
 - Use `IPipelineStateManager` for persistent shared state
 
 **DON'T:**
@@ -276,7 +276,7 @@ new ParallelOptions { MetricsInterval = TimeSpan.FromSeconds(10) }
 
 - Start with `ProcessorCount` for CPU-bound work
 - Use `ProcessorCount × 2–4` for I/O-bound work
-- Profile to find the optimal balance — too high causes context switching overhead
+- Profile to find the optimal balance - too high causes context switching overhead
 - Start small (DOP = 2) and increase incrementally while monitoring
 
 ### Bounding Queues
@@ -290,7 +290,7 @@ new ParallelOptions { MetricsInterval = TimeSpan.FromSeconds(10) }
 - Use connection pooling for databases
 - Implement rate limiting for external APIs
 - Consider batching requests to reduce contention
-- Avoid blocking I/O in worker threads — use `async`/`await`
+- Avoid blocking I/O in worker threads - use `async`/`await`
 
 ### Debugging
 
@@ -327,15 +327,15 @@ public class FileProcessingPipeline : IPipelineDefinition
     {
         var source = builder.AddSource(new CsvSourceNode<RawRecord>(uri), "source");
 
-        // File I/O stage — I/O-bound
+        // File I/O stage - I/O-bound
         var read = builder.AddTransform<FileReaderNode, RawRecord, FileContent>("read");
         read.RunParallel(builder, ParallelWorkloadType.IoBound);
 
-        // Parse stage — CPU-bound
+        // Parse stage - CPU-bound
         var parse = builder.AddTransform<ParserNode, FileContent, ParsedData>("parse");
         parse.RunParallel(builder, ParallelWorkloadType.CpuBound);
 
-        // Upload stage — network-bound
+        // Upload stage - network-bound
         var upload = builder.AddTransform<UploaderNode, ParsedData, UploadResult>("upload");
         upload.RunParallel(builder, ParallelWorkloadType.NetworkBound);
 
@@ -351,5 +351,5 @@ public class FileProcessingPipeline : IPipelineDefinition
 
 ## See Also
 
-- [Parallel Execution Guide](../guides/parallel-execution.md) — step-by-step walkthrough
+- [Parallel Execution Guide](../guides/parallel-execution.md) - step-by-step walkthrough
 - [Extensions Overview](index.md)

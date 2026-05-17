@@ -13,12 +13,12 @@ namespace Sample_CosmosDbConnector;
 /// <remarks>
 ///     The pipeline walks through five representative scenarios in sequence:
 ///     <list type="number">
-///         <item>Bootstrap — create the database and container via the Cosmos SDK.</item>
-///         <item>Batch write — seed the catalog using <see cref="CosmosWriteStrategy.Batch" />.</item>
-///         <item>Source read — query the container with a SQL projection.</item>
-///         <item>Upsert update — apply a price increase and write back idempotently.</item>
-///         <item>Bulk write — high-throughput ingestion of a large product set.</item>
-///         <item>Error tolerance — Insert with duplicate IDs while continuing on conflict errors.</item>
+///         <item>Bootstrap - create the database and container via the Cosmos SDK.</item>
+///         <item>Batch write - seed the catalog using <see cref="CosmosWriteStrategy.Batch" />.</item>
+///         <item>Source read - query the container with a SQL projection.</item>
+///         <item>Upsert update - apply a price increase and write back idempotently.</item>
+///         <item>Bulk write - high-throughput ingestion of a large product set.</item>
+///         <item>Error tolerance - Insert with duplicate IDs while continuing on conflict errors.</item>
 ///     </list>
 /// </remarks>
 public sealed class CosmosDbConnectorPipeline
@@ -61,11 +61,11 @@ public sealed class CosmosDbConnectorPipeline
 
                  Step 4 – Upsert Update  (CosmosWriteStrategy.Upsert)
                           Applies a 10 % price increase to every product and writes the updated
-                          documents back using Upsert — creating or replacing as needed.
+                          documents back using Upsert - creating or replacing as needed.
 
                  Step 5 – Bulk Write  (CosmosWriteStrategy.Bulk)
                           Ingests 200 products into the BulkProducts container using the bulk-executor
-                          path — the highest-throughput option for large-scale data loads.
+                          path - the highest-throughput option for large-scale data loads.
 
                  Step 6 – Error Tolerance  (ContinueOnError = true)
                           Attempts to Insert products that already exist (HTTP 409 Conflict) and then
@@ -102,7 +102,7 @@ public sealed class CosmosDbConnectorPipeline
 
     private async Task BootstrapAsync(CancellationToken cancellationToken)
     {
-        Console.WriteLine("Step 1: Bootstrap — creating database and containers");
+        Console.WriteLine("Step 1: Bootstrap - creating database and containers");
         Console.WriteLine("------------------------------------------------------");
 
         // The emulator uses a self-signed TLS certificate.  HttpClientHandler with
@@ -270,7 +270,7 @@ public sealed class CosmosDbConnectorPipeline
         var dataStream = new InMemoryDataStream<Product>(updated);
         await sinkNode.ConsumeAsync(dataStream, null!, cancellationToken);
 
-        Console.WriteLine($"  ✓ Upsert completed — {updated.Count} document(s) created-or-replaced");
+        Console.WriteLine($"  ✓ Upsert completed - {updated.Count} document(s) created-or-replaced");
         Console.WriteLine();
     }
 
@@ -324,7 +324,7 @@ public sealed class CosmosDbConnectorPipeline
         Console.WriteLine("Step 6: Error Tolerance  (ContinueOnError = true)");
         Console.WriteLine("----------------------------------------------------");
 
-        // Attempt to Insert the same seed products that already exist — this will produce
+        // Attempt to Insert the same seed products that already exist - this will produce
         // HTTP 409 Conflict for every item.  With ContinueOnError the pipeline keeps going.
         var products = CreateSeedProducts();
 
@@ -361,7 +361,7 @@ public sealed class CosmosDbConnectorPipeline
 
         if (caughtException is null)
         {
-            Console.WriteLine("  ✓ Pipeline continued despite individual item conflicts — no exception was thrown");
+            Console.WriteLine("  ✓ Pipeline continued despite individual item conflicts - no exception was thrown");
             Console.WriteLine("  - ContinueOnError absorbed all 409 Conflict errors silently");
         }
         else

@@ -6,7 +6,7 @@ order: 2
 
 # Adding a Node Type
 
-This guide walks through adding a new node to the NPipeline framework — from interface choice to tests.
+This guide walks through adding a new node to the NPipeline framework - from interface choice to tests.
 
 ## 1. Choose the Right Interface
 
@@ -173,6 +173,6 @@ Use `AwesomeAssertions` (`.Should()`) for assertions and `FakeItEasy` (`A.Fake<T
 
 ## Next Steps
 
-- [Adding a Connector](adding-a-connector.md) — package a node pair as a connector
-- [Cancellation](../advanced-topics/cancellation.md) — cancellation token rules
-- [Coding Conventions](coding-conventions.md) — style and analyzer compliance
+- [Adding a Connector](adding-a-connector.md) - package a node pair as a connector
+- [Cancellation](../advanced-topics/cancellation.md) - cancellation token rules
+- [Coding Conventions](coding-conventions.md) - style and analyzer compliance

@@ -35,7 +35,7 @@ public sealed class Program
     private const string SigningRegion = "us-east-1";
 
     // ========================================================================
-    // CONFIGURATION — Replace these values with your own endpoint and credentials
+    // CONFIGURATION - Replace these values with your own endpoint and credentials
     // ========================================================================
 
     /// <summary>
@@ -204,7 +204,7 @@ public sealed class Program
 
             Console.WriteLine(exists
                 ? "✓ Successfully wrote file!"
-                : "✗ File write verification failed — file not found.");
+                : "✗ File write verification failed - file not found.");
         }
         catch (UnauthorizedAccessException ex)
         {

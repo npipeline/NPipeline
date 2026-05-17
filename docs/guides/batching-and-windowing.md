@@ -30,7 +30,7 @@ The batcher emits a batch when either condition is met:
 - The batch reaches `batchSize` items, **or**
 - The `timespan` expires since the first item in the current batch
 
-> ⚠️ **Warning:** A large `batchSize` with a short `timespan` (or vice versa) triggers analyzer NP9004. Match the values to your workload — high throughput streams need larger batches, low throughput streams need longer time windows.
+> ⚠️ **Warning:** A large `batchSize` with a short `timespan` (or vice versa) triggers analyzer NP9004. Match the values to your workload - high throughput streams need larger batches, low throughput streams need longer time windows.
 
 ### Splitting Batches
 
@@ -88,7 +88,7 @@ WindowAssigner.Sliding(
 
 ### How Windows Close
 
-Windows are closed by [watermarks](../reference/glossary.md#watermark) — timestamps that signal "no more items earlier than this will arrive." When a watermark passes a window's end time, the window closes and emits its results.
+Windows are closed by [watermarks](../reference/glossary.md#watermark) - timestamps that signal "no more items earlier than this will arrive." When a watermark passes a window's end time, the window closes and emits its results.
 
 Configure watermark behavior:
 
@@ -100,8 +100,8 @@ new AggregateNodeConfiguration<SensorReading>(
     WatermarkInterval: TimeSpan.FromSeconds(15));  // default: 30 sec
 ```
 
-- **`MaxOutOfOrderness`** — how late an item can arrive and still be assigned to its window
-- **`WatermarkInterval`** — how often watermarks are generated
+- **`MaxOutOfOrderness`** - how late an item can arrive and still be assigned to its window
+- **`WatermarkInterval`** - how often watermarks are generated
 
 > 📝 **Note:** Windowing is used primarily with [Aggregation](aggregation.md). See that guide for complete examples of window-based aggregation.
 
@@ -116,6 +116,6 @@ new AggregateNodeConfiguration<SensorReading>(
 
 ## Next Steps
 
-- [Aggregation](aggregation.md) — compute results over windowed groups
-- [Joins and Lookups](joins-and-lookups.md) — time-windowed joins
-- [Streaming Large Datasets](streaming-large-datasets.md) — memory management for high-throughput streams
+- [Aggregation](aggregation.md) - compute results over windowed groups
+- [Joins and Lookups](joins-and-lookups.md) - time-windowed joins
+- [Streaming Large Datasets](streaming-large-datasets.md) - memory management for high-throughput streams

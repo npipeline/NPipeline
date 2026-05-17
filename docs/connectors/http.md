@@ -16,7 +16,7 @@ dotnet add package NPipeline.Connectors.Http
 
 **Dependencies:** [Microsoft.Extensions.Http](https://www.nuget.org/packages/Microsoft.Extensions.Http) 10.x
 
-## Source Node — `HttpSourceNode<T>`
+## Source Node - `HttpSourceNode<T>`
 
 Fetches data from an HTTP endpoint and emits each item. Supports paginated APIs.
 
@@ -59,7 +59,7 @@ var config = new HttpSourceConfiguration
 var source = new HttpSourceNode<Order>(config, httpClientFactory);
 ```
 
-## Sink Node — `HttpSinkNode<T>`
+## Sink Node - `HttpSinkNode<T>`
 
 Posts items to an HTTP endpoint. Supports batch sending, per-item routing, and idempotency keys.
 
@@ -131,7 +131,7 @@ var config = new HttpSourceConfiguration
 
 Implement `IRateLimiter` for custom rate limiting (sliding window, per-endpoint, etc.).
 
-## Configuration — Source
+## Configuration - Source
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -149,7 +149,7 @@ Implement `IRateLimiter` for custom rate limiting (sliding window, per-endpoint,
 | `MaxResponseBytes` | `long?` | `null` | Max response size |
 | `RequestCustomizer` | `Func<HttpRequestMessage, CancellationToken, ValueTask>?` | `null` | Per-request hook |
 
-## Configuration — Sink
+## Configuration - Sink
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -215,7 +215,7 @@ var sink = new HttpSinkNode<Order>(new HttpSinkConfiguration
 
 ## Best Practices
 
-1. **Use pagination** for large result sets — never fetch unbounded data
+1. **Use pagination** for large result sets - never fetch unbounded data
 2. **Set `MaxPages`** as a safety guard against infinite pagination loops
 3. **Use rate limiting** to avoid overwhelming downstream APIs
 4. **Use idempotency keys** for POST/PUT operations
@@ -225,5 +225,5 @@ var sink = new HttpSinkNode<Order>(new HttpSinkConfiguration
 
 ## Next Steps
 
-- [Error Handling](../error-handling/index.md) — retry strategies for HTTP failures
-- [Dependency Injection](../guides/dependency-injection.md) — HttpClient integration
+- [Error Handling](../error-handling/index.md) - retry strategies for HTTP failures
+- [Dependency Injection](../guides/dependency-injection.md) - HttpClient integration

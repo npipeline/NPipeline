@@ -155,7 +155,7 @@ public sealed class ServiceBusQueueSinkNode<T> : SinkNode<T>
 
                 if (!batch.TryAddMessage(msg))
                 {
-                    // Current batch is full — send it, start a new one
+                    // Current batch is full - send it, start a new one
                     await SendBatchWithOptionalTransactionAsync(batch, ct).ConfigureAwait(false);
                     ServiceBusLogMessages.MessagesSent(_logger, batch.Count, _sender.EntityPath);
 
@@ -171,7 +171,7 @@ public sealed class ServiceBusQueueSinkNode<T> : SinkNode<T>
 
                     if (!batch.TryAddMessage(msg))
                     {
-                        // Message is too large even for an empty batch — send individually
+                        // Message is too large even for an empty batch - send individually
                         ServiceBusLogMessages.MessageTooLargeForBatch(_logger, _sender.EntityPath);
                         await SendMessageWithOptionalTransactionAsync(msg, ct).ConfigureAwait(false);
                         await TryAcknowledgeAsync(originalItem, ct).ConfigureAwait(false);

@@ -40,7 +40,7 @@ intelligent backoff and jitter patterns to prevent thundering herd problems.
 NPipeline excels in scenarios where you need to process data efficiently and reliably:
 
 - **ETL Pipelines** - Extract data from databases, APIs, or files; transform it; load it into data warehouses
-- **AI Data Enrichment & Intelligent Routing** — Augment records with LLM-generated classifications, summaries, or entity extractions, then route to the right downstream system based on content, confidence scores, or business rules
+- **AI Data Enrichment & Intelligent Routing** - Augment records with LLM-generated classifications, summaries, or entity extractions, then route to the right downstream system based on content, confidence scores, or business rules
 - **Data Migration** - Move and transform data between systems with validation and error handling
 - **Real-time Processing** - Process streaming data from message queues, IoT devices, or APIs
 - **File Processing** - Parse, validate, and transform large CSV, JSON, or XML files

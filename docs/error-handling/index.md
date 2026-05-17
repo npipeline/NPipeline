@@ -20,7 +20,7 @@ An individual item throws an exception during processing inside a transform node
 
 ### Node-Level Failures
 
-An entire node fails — typically because its stream is exhausted or an unrecoverable error occurs (e.g., a database connection drops mid-stream).
+An entire node fails - typically because its stream is exhausted or an unrecoverable error occurs (e.g., a database connection drops mid-stream).
 
 **Example:** A source node's HTTP connection times out after the stream has started.
 
@@ -28,7 +28,7 @@ An entire node fails — typically because its stream is exhausted or an unrecov
 
 ### Pipeline-Level Failures
 
-The pipeline itself cannot continue — either because a critical node failed with no recovery path, or because a circuit breaker tripped.
+The pipeline itself cannot continue - either because a critical node failed with no recovery path, or because a circuit breaker tripped.
 
 **Example:** A circuit breaker opens after 5 consecutive node restart failures.
 
@@ -57,7 +57,7 @@ By default, NPipeline uses `DefaultResiliencePolicy` which returns `Fail` for al
 - No items are retried or skipped automatically.
 - No dead-letter routing occurs.
 
-This fail-fast default is intentional — silent data loss is worse than a loud failure. You opt into recovery behaviors explicitly.
+This fail-fast default is intentional - silent data loss is worse than a loud failure. You opt into recovery behaviors explicitly.
 
 ## Configuring Error Handling
 
@@ -136,8 +136,8 @@ This wraps the node's execution strategy with `ResilientExecutionStrategy`, whic
 
 ## In This Section
 
-- [Resilience Policies](resilience-policies.md) — implement custom decision logic with the fluent builder
-- [Retry Strategies](retry-strategies.md) — configure exponential, linear, or fixed backoff with jitter
-- [Circuit Breakers](circuit-breakers.md) — prevent cascading failures with automatic trip/recovery
-- [Dead-Letter Queues](dead-letter-queues.md) — capture and inspect failed items
-- [Materialization](materialization.md) — buffer streaming inputs to enable node restart
+- [Resilience Policies](resilience-policies.md) - implement custom decision logic with the fluent builder
+- [Retry Strategies](retry-strategies.md) - configure exponential, linear, or fixed backoff with jitter
+- [Circuit Breakers](circuit-breakers.md) - prevent cascading failures with automatic trip/recovery
+- [Dead-Letter Queues](dead-letter-queues.md) - capture and inspect failed items
+- [Materialization](materialization.md) - buffer streaming inputs to enable node restart

@@ -8,7 +8,7 @@ order: 13
 
 > **Prerequisites:** [Key Concepts](../getting-started/key-concepts.md), [Custom Nodes](custom-nodes.md)
 
-NPipeline is designed for streaming. Data flows lazily through the pipeline — only one [item](../reference/glossary.md#item) at a time needs to be in memory per node. This page explains how to keep it that way when processing large datasets.
+NPipeline is designed for streaming. Data flows lazily through the pipeline - only one [item](../reference/glossary.md#item) at a time needs to be in memory per node. This page explains how to keep it that way when processing large datasets.
 
 ## The Streaming Default
 
@@ -100,12 +100,12 @@ builder.WithRetryOptions(handle, new PipelineRetryOptions
 
 ## Best Practices
 
-1. **Return `DataStream<T>` from sources** — wrap `IAsyncEnumerable<T>` in `DataStream`, not `InMemoryDataStream`
-2. **Use `yield return`** — stream items lazily from I/O sources
-3. **Set `MaxMaterializedItems`** when using resilience — bound the replay buffer
-4. **Use batching for bulk I/O** — batch items before database inserts instead of holding all items
-5. **Avoid LINQ in hot paths** — `.ToList()`, `.OrderBy()`, `.GroupBy()` materialize sequences. The `LinqInHotPathsAnalyzer` (NP9103) warns about this
-6. **Forward cancellation tokens** — always pass `CancellationToken` and use `.WithCancellation(ct)` on async enumerables
+1. **Return `DataStream<T>` from sources** - wrap `IAsyncEnumerable<T>` in `DataStream`, not `InMemoryDataStream`
+2. **Use `yield return`** - stream items lazily from I/O sources
+3. **Set `MaxMaterializedItems`** when using resilience - bound the replay buffer
+4. **Use batching for bulk I/O** - batch items before database inserts instead of holding all items
+5. **Avoid LINQ in hot paths** - `.ToList()`, `.OrderBy()`, `.GroupBy()` materialize sequences. The `LinqInHotPathsAnalyzer` (NP9103) warns about this
+6. **Forward cancellation tokens** - always pass `CancellationToken` and use `.WithCancellation(ct)` on async enumerables
 
 ## Monitoring Memory
 
@@ -120,6 +120,6 @@ services.AddNPipelineObservability(new ObservabilityExtensionOptions
 
 ## Next Steps
 
-- [Batching and Windowing](batching-and-windowing.md) — batch items for efficient bulk operations
-- [Parallel Execution](parallel-execution.md) — bounded queues and backpressure
-- [Error Handling: Materialization](../error-handling/materialization.md) — buffering for node restart
+- [Batching and Windowing](batching-and-windowing.md) - batch items for efficient bulk operations
+- [Parallel Execution](parallel-execution.md) - bounded queues and backpressure
+- [Error Handling: Materialization](../error-handling/materialization.md) - buffering for node restart
