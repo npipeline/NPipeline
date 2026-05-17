@@ -178,7 +178,7 @@ Internally `AddAIRoute` registers two nodes and wires them together:
 1. An `AIEnrichNode<TIn, TField>` that calls the LLM and splices the result onto the item via `ResultMapper`.
 2. A `RouteNode<TIn>` that evaluates `When` predicates against the enriched item and dispatches to the first matching branch.
 
-The `ResultMapper` runs **before** any predicate is tested, so your predicates always see the AI-classified item. Connect your upstream node to `AIRouteBuilder.EnrichHandle`.
+The `ResultMapper` runs **before** any predicate is tested, so your predicates always see the AI-classified item. Connect your upstream node directly to the `AIRouteBuilder` — it implements `IInputNodeHandle<T>` and forwards data to the internal enrich node.
 
 ### `AddAIRoute<TIn, TField>`
 
@@ -203,8 +203,8 @@ route
     .When(c => c.Sentiment == "Negative", negativeSink)
     .Otherwise(reviewHandle);
 
-// Connect your upstream node to EnrichHandle — this is the entry point of the composite
-builder.Connect(source, route.EnrichHandle);
+// Connect your upstream node directly to the builder — it's an IInputNodeHandle<T>
+builder.Connect(source, route);
 ```
 
 ### `AddAIBatchedStreamRoute<TIn, TField>`
@@ -224,7 +224,7 @@ route
     .When(c => c.Sentiment == "Negative", negativeHandle)
     .Otherwise(reviewHandle);
 
-builder.Connect(source, route.EnrichHandle);
+builder.Connect(source, route);
 ```
 
 ### `AIRouteBuilder<T>` API
@@ -249,9 +249,7 @@ Routes items that did not match any `When` predicate. If omitted, unmatched item
 route.Otherwise(reviewHandle);
 ```
 
-#### `.EnrichHandle`
-
-The handle of the internal enrich node. **This is the upstream connection point** — pass it to `builder.Connect(upstream, route.EnrichHandle)`.
+`AIRouteBuilder<T>` implements `IInputNodeHandle<T>`, so you can pass it directly to `builder.Connect(source, route)`. Data flows to the internal enrich node first, then through the route node to your branches.
 
 #### `.RouteHandle`
 

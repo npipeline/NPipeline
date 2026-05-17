@@ -35,8 +35,7 @@ public class AIRouteIntegrationTests
                         .WithResultMapper((c, r) => c with { Author = r.Label }))
                     .When(c => c.Author == "positive", posHandle)
                     .When(c => c.Author == "negative", negHandle)
-                    .Otherwise(fallHandle)
-                    .EnrichHandle);
+                    .Otherwise(fallHandle));
         }
     }
 
@@ -83,8 +82,7 @@ public class AIRouteIntegrationTests
                         .WithItemTemplate(c => c.Text)
                         .WithResultMapper((c, r) => c with { Author = r.Label }))
                     .When(c => c.Author == "positive", posHandle)
-                    .Otherwise(fallHandle)
-                    .EnrichHandle);
+                    .Otherwise(fallHandle));
         }
     }
 
@@ -127,8 +125,7 @@ public class AIRouteIntegrationTests
                         .WithItemTemplate(c => c.Text)
                         .WithResultMapper((c, r) => c with { Author = r.Label }))
                     .When(_ => true, allHandle)
-                    .When(c => c.Author == "urgent", urgHandle)
-                    .EnrichHandle);
+                    .When(c => c.Author == "urgent", urgHandle));
         }
     }
 

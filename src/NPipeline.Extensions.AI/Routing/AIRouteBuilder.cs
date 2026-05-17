@@ -7,9 +7,10 @@ namespace NPipeline.Extensions.AI.Routing;
 ///     Fluent builder for configuring route branches on an AI-driven route node.
 /// </summary>
 /// <typeparam name="T">The item type flowing through the route.</typeparam>
-public sealed class AIRouteBuilder<T>
+public sealed class AIRouteBuilder<T> : IInputNodeHandle<T>
 {
     private readonly PipelineBuilder _builder;
+    private readonly TransformNodeHandle<T, T> _enrichHandle;
 
     /// <summary>
     ///     Initializes a new instance.
@@ -20,14 +21,11 @@ public sealed class AIRouteBuilder<T>
     public AIRouteBuilder(PipelineBuilder builder, TransformNodeHandle<T, T> enrichHandle, TransformNodeHandle<T, T> routeHandle)
     {
         _builder = builder ?? throw new ArgumentNullException(nameof(builder));
-        EnrichHandle = enrichHandle ?? throw new ArgumentNullException(nameof(enrichHandle));
+        _enrichHandle = enrichHandle ?? throw new ArgumentNullException(nameof(enrichHandle));
         RouteHandle = routeHandle ?? throw new ArgumentNullException(nameof(routeHandle));
     }
 
-    /// <summary>
-    ///     The handle of the enrichment node. Connect your source or upstream node here.
-    /// </summary>
-    public TransformNodeHandle<T, T> EnrichHandle { get; }
+    string INodeHandle.Id => _enrichHandle.Id;
 
     /// <summary>
     ///     The handle of the underlying route node. Use this as the source for manual connections.

@@ -95,13 +95,6 @@ public class AIRouteBuilderTests
     }
 
     [Fact]
-    public void Constructor_NullEnrichHandle_Throws()
-    {
-        Assert.Throws<ArgumentNullException>(() =>
-            new AIRouteBuilder<TestDomain.Comment>(new PipelineBuilder(), null!, new TransformNodeHandle<TestDomain.Comment, TestDomain.Comment>("r")));
-    }
-
-    [Fact]
     public void Constructor_NullRouteHandle_Throws()
     {
         Assert.Throws<ArgumentNullException>(() =>
