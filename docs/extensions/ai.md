@@ -577,6 +577,6 @@ For batch nodes, the LLM must return a JSON array (`[...]`) with one element per
 
 - [Error Handling](../error-handling/resilience-policies.md) — configure retry, skip, and dead-letter policies
 - [Batching and Windowing](../guides/batching-and-windowing.md) — use `AddBatcher` with `AddAIBatchedTransform` for explicit batch control
-- [Routing](../guides/routing.md) — understand first-match, multi-match, and otherwise route node semantics
+- [Routing](../guides/routing-with-route-node.md) — understand first-match, multi-match, and otherwise route node semantics
 - [Parallelism](parallelism.md) — run multiple AI nodes in parallel for higher throughput
 - [Observability](observability.md) — add pipeline-level metrics alongside LLM-level tracing
