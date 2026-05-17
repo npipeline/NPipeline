@@ -233,12 +233,23 @@ builder.Connect(source, route);
 
 #### `.When(predicate, target)`
 
-Routes items where `predicate` returns `true` to `target`. Evaluated in declaration order — the item goes to the **first** matching branch only.
+Routes items where `predicate` returns `true` to `target`. By default, only the **first** matching branch receives the item. Use `.WithMatchMode(RouteMatchMode.AllMatches)` to deliver to every matching branch.
 
 ```csharp
 route
     .When(c => c.Sentiment == "Positive", positiveHandle)
     .When(c => c.Sentiment == "Negative", negativeHandle);
+```
+
+#### `.WithMatchMode(mode)`
+
+Sets the match mode for the route node. Defaults to `RouteMatchMode.FirstMatch`. Use `RouteMatchMode.AllMatches` to deliver an item to every matching `When` branch.
+
+```csharp
+route
+    .WithMatchMode(RouteMatchMode.AllMatches)
+    .When(c => c.Sentiment == "Positive", handle1)
+    .When(c => c.Sentiment != null, handle2);
 ```
 
 #### `.Otherwise(target)`
@@ -259,8 +270,9 @@ The handle of the internal route node. Use this when you need to attach the rout
 
 | Behaviour | Detail |
 |-----------|--------|
-| **First-match** | Only the first `When` predicate that returns `true` receives the item |
-| **Otherwise** | Catches all items that matched no `When`; optional |
+| **First-match** | Only the first `When` predicate that returns `true` receives the item (default) |
+| **All-matches** | Every `When` predicate that returns `true` receives the item — set via `.WithMatchMode(RouteMatchMode.AllMatches)` |
+| **Otherwise** | Catches all items that matched no `When`; never affected by match mode |
 | **No match, no `Otherwise`** | Item is dropped — standard route node behaviour |
 | **Predicate input** | Predicates always receive the enriched item, after `ResultMapper` has run |
 

@@ -1,3 +1,4 @@
+using NPipeline.DataFlow.Routing;
 using NPipeline.Graph;
 using NPipeline.Pipeline;
 
@@ -31,6 +32,16 @@ public sealed class AIRouteBuilder<T> : IInputNodeHandle<T>
     ///     The handle of the underlying route node. Use this as the source for manual connections.
     /// </summary>
     public TransformNodeHandle<T, T> RouteHandle { get; }
+
+    /// <summary>
+    ///     Sets the match mode for the underlying route node. Defaults to <see cref="RouteMatchMode.FirstMatch" />.
+    /// </summary>
+    /// <param name="mode">The match mode to use.</param>
+    public AIRouteBuilder<T> WithMatchMode(RouteMatchMode mode)
+    {
+        _builder.ConfigureRoute(RouteHandle, opts => opts.WithMatchMode(mode));
+        return this;
+    }
 
     /// <summary>
     ///     Routes items matching the predicate to the target node.

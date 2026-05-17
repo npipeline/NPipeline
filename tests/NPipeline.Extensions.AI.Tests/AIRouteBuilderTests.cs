@@ -1,4 +1,5 @@
 using Microsoft.Extensions.AI;
+using NPipeline.DataFlow.Routing;
 using NPipeline.Extensions.AI.Routing;
 using NPipeline.Extensions.Testing;
 using NPipeline.Graph;
@@ -83,6 +84,35 @@ public class AIRouteBuilderTests
             .WithBatchSize(5));
 
         routeBuilder.When(c => c.Text == "test", sink);
+
+        Assert.NotNull(routeBuilder.RouteHandle);
+    }
+
+    [Fact]
+    public void WithMatchMode_ReturnsSameBuilder()
+    {
+        var routeBuilder = _builder.AddAIRoute<TestDomain.Comment, TestDomain.SentimentResult>(_client, opts => opts
+            .WithSystemPrompt("Classify.")
+            .WithItemTemplate(c => c.Text)
+            .WithResultMapper((c, r) => c));
+
+        var result = routeBuilder.WithMatchMode(RouteMatchMode.AllMatches);
+
+        Assert.Same(routeBuilder, result);
+    }
+
+    [Fact]
+    public void WithMatchMode_AfterWhen_DoesNotThrow()
+    {
+        var sink = _builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("sink1");
+
+        var routeBuilder = _builder.AddAIRoute<TestDomain.Comment, TestDomain.SentimentResult>(_client, opts => opts
+            .WithSystemPrompt("Classify.")
+            .WithItemTemplate(c => c.Text)
+            .WithResultMapper((c, r) => c));
+
+        routeBuilder.When(c => c.Text == "hello", sink);
+        routeBuilder.WithMatchMode(RouteMatchMode.AllMatches);
 
         Assert.NotNull(routeBuilder.RouteHandle);
     }

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.AI;
+using NPipeline.DataFlow.Routing;
 using NPipeline.Execution;
 using NPipeline.Extensions.AI.Routing;
 using NPipeline.Extensions.Testing;
@@ -145,6 +146,50 @@ public class AIRouteIntegrationTests
 
         Assert.Single(allSink.Items);
         Assert.Empty(urgentSink.Items);
+    }
+
+    private sealed class AIAllMatchesRoutePipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var client = (IChatClient)context.Items[ClientKey];
+            var source = builder.AddInMemorySource("src", [new TestDomain.Comment("hello", "alice")]);
+
+            var sinkA = (InMemorySinkNode<TestDomain.Comment>)context.Items["sinkA"];
+            var sinkB = (InMemorySinkNode<TestDomain.Comment>)context.Items["sinkB"];
+
+            var handleA = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("sinkA");
+            var handleB = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("sinkB");
+            builder.AddPreconfiguredNodeInstance(handleA.Id, sinkA);
+            builder.AddPreconfiguredNodeInstance(handleB.Id, sinkB);
+
+            builder.Connect(source,
+                builder.AddAIRoute<TestDomain.Comment, TestDomain.SentimentResult>(client, opts => opts
+                        .WithSystemPrompt("Classify.")
+                        .WithItemTemplate(c => c.Text)
+                        .WithResultMapper((c, r) => c))
+                    .WithMatchMode(RouteMatchMode.AllMatches)
+                    .When(_ => true, handleA)
+                    .When(_ => true, handleB));
+        }
+    }
+
+    [Fact]
+    public async Task AllMatches_Mode_DeliversToAllMatchingBranches()
+    {
+        var client = FakeChatClient.ThatReturns("""{"label":"irrelevant","score":0.5}""");
+        var sinkA = new InMemorySinkNode<TestDomain.Comment>();
+        var sinkB = new InMemorySinkNode<TestDomain.Comment>();
+
+        var context = PipelineContext.Default;
+        context.Items[ClientKey] = client;
+        context.Items["sinkA"] = sinkA;
+        context.Items["sinkB"] = sinkB;
+
+        await PipelineRunner.Create().RunAsync<AIAllMatchesRoutePipeline>(context);
+
+        Assert.Single(sinkA.Items);
+        Assert.Single(sinkB.Items);
     }
 
     [Fact]
