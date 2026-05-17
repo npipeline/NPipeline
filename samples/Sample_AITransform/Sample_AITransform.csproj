@@ -15,6 +15,11 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\NPipeline.Extensions.AI\NPipeline.Extensions.AI.csproj"/>
         <ProjectReference Include="..\..\src\NPipeline\NPipeline.csproj"/>
+        <ProjectReference Include="..\..\src\NPipeline.Extensions.DependencyInjection\NPipeline.Extensions.DependencyInjection.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.8" />
     </ItemGroup>
 
 </Project>
