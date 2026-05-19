@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.AI;
 using NPipeline.Extensions.AI.Exceptions;
 
@@ -9,6 +10,7 @@ internal static class AIInvoker
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
+        NumberHandling = JsonNumberHandling.AllowReadingFromString,
     };
 
     internal static async Task<TOut> InvokeTransformAsync<TIn, TOut>(

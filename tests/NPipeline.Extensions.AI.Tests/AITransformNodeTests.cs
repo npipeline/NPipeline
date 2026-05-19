@@ -31,6 +31,19 @@ public class AITransformNodeTests
     }
 
     [Fact]
+    public async Task TransformAsync_QuotedNumericValue_DeserializesFloat()
+    {
+        var client = FakeChatClient.ThatReturns("""{"category":"Greeting","confidence":"0.95"}""");
+        var node = CreateNode(client);
+
+        var result = await node.TransformAsync(
+            new TestDomain.Comment("hello world", "alice"), Context(), CancellationToken.None);
+
+        Assert.Equal("Greeting", result.Category);
+        Assert.Equal(0.95f, result.Confidence);
+    }
+
+    [Fact]
     public async Task TransformAsync_SendsSystemAndUserMessages()
     {
         string? capturedSystem = null;
