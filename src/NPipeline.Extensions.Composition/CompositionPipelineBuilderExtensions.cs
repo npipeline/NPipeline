@@ -9,9 +9,6 @@ namespace NPipeline.Extensions.Composition;
 /// </summary>
 public static class CompositionPipelineBuilderExtensions
 {
-    // Fallback runner instance used when no service provider or runner is available
-    private static readonly Lazy<IPipelineRunner> FallbackRunner = new(() => PipelineRunner.Create());
-
     /// <summary>
     ///     Adds a composite node that executes the specified sub-pipeline.
     /// </summary>
@@ -127,7 +124,7 @@ public static class CompositionPipelineBuilderExtensions
 
     /// <summary>
     ///     Resolves an <see cref="IPipelineRunner" /> from the service provider if available,
-    ///     falling back to the static runner as a secondary path.
+    ///     falling back to a lineage-aware runner aligned with <see cref="PipelineBuilder.Lineage" />.
     /// </summary>
     private static IPipelineRunner ResolveRunner(IServiceProvider? serviceProvider)
     {
@@ -139,6 +136,13 @@ public static class CompositionPipelineBuilderExtensions
                 return runner;
         }
 
-        return FallbackRunner.Value;
+        return CreateFallbackRunner();
+    }
+
+    private static IPipelineRunner CreateFallbackRunner()
+    {
+        return new PipelineRunnerBuilder()
+            .WithLineage(PipelineBuilder.Lineage)
+            .Build();
     }
 }
