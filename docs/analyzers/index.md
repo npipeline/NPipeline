@@ -12,13 +12,24 @@ This is a key differentiator: most data pipeline libraries only fail at runtime.
 
 ## Installation
 
-The analyzers are included automatically when you reference `NPipeline`. Connector-specific analyzers ship with their respective packages.
+The analyzers are distributed as separate NuGet packages and must be added explicitly:
+
+```bash
+dotnet add package NPipeline.Analyzers
+```
+
+Connector-specific analyzers are also separate packages:
+
+```bash
+dotnet add package NPipeline.Connectors.Postgres.Analyzers
+dotnet add package NPipeline.Connectors.SqlServer.Analyzers
+```
 
 ## NP90xx - Configuration and Setup
 
 | Rule | Severity | Title | Fix |
 |------|----------|-------|-----|
-| NP9001 | Warning | Resilient execution requires complete configuration | Ensure `MaxItemRetries`, `MaxNodeRestartAttempts`, and `MaxMaterializedItems` are all configured when using `RestartNode`. |
+| NP9001 | Warning | RestartNode decision requires complete resilience configuration | Review resilience configuration when `ResilienceDecision.RestartNode` can be returned. Verify that `MaxItemRetries`, `MaxNodeRestartAttempts`, and `MaxMaterializedItems` are all properly configured. |
 | NP9002 | **Error** | Unbounded materialization configuration | Set `MaxMaterializedItems` on `PipelineRetryOptions` to prevent out-of-memory crashes. |
 | NP9003 | Warning | Inappropriate parallelism configuration | Reduce `DegreeOfParallelism` or disable `PreserveOrdering` when parallelism is high. |
 | NP9004 | Warning | Batching configuration mismatch | Verify `BatchSize` and `BatchTimeout` are consistent with the node's expected throughput. |
@@ -30,20 +41,20 @@ The analyzers are included automatically when you reference `NPipeline`. Connect
 |------|----------|-------|-----|
 | NP9101 | Warning | Blocking calls in async methods | Replace `.Result`, `.Wait()`, `GetAwaiter().GetResult()`, `Thread.Sleep()` with async equivalents. |
 | NP9102 | Warning | Synchronous over async anti-patterns | Avoid wrapping synchronous code in `Task.Run()` inside nodes. Use `ValueTask` fast paths instead. |
-| NP9103 | Warning | LINQ in hot paths | Replace LINQ (`Where`, `Select`, `ToList`) in `TransformAsync` with `foreach` loops to avoid allocations. |
-| NP9104 | Warning | Inefficient string operations | Replace string concatenation with `+` in loops with `StringBuilder`. |
+| NP9103 | Warning | LINQ operation detected in hot path | Replace LINQ (`Where`, `Select`, `ToList`) in `TransformAsync` with `foreach` loops to avoid allocations. |
+| NP9104 | Warning | Inefficient string operation detected | Replace string concatenation with `+` in loops with `StringBuilder`. |
 | NP9105 | Warning | Anonymous object allocation in hot path | Replace anonymous objects in `TransformAsync` with records or structs. |
-| NP9106 | Info | Missing ValueTask fast path | Override `ExecuteValueTaskAsync` when `TransformAsync` uses `Task.FromResult`. See [Synchronous Fast Paths](../performance/synchronous-fast-paths.md). |
-| NP9107 | Warning | Non-streaming source node | Use `DataStream.FromAsyncEnumerable` instead of materializing all items in `OpenStream`. |
-| NP9108 | Info | Missing parameterless constructor | Add a parameterless constructor for faster node activation. |
+| NP9106 | Info | Consider overriding ExecuteValueTaskAsync for synchronous operations | Override `ExecuteValueTaskAsync` when `TransformAsync` uses `Task.FromResult`. See [Synchronous Fast Paths](../performance/synchronous-fast-paths.md). |
+| NP9107 | Warning | Use streaming patterns in SourceNode implementations | Return `new DataStream<T>(asyncEnumerable)` instead of materializing everything with `.ToList()`. |
+| NP9108 | Info | Add parameterless constructor for better performance | Add a parameterless constructor for faster node activation. |
 
 ## NP92xx - Reliability and Error Handling
 
 | Rule | Severity | Title | Fix |
 |------|----------|-------|-----|
-| NP9201 | Warning | Swallowing OperationCanceledException | Don't catch and suppress `OperationCanceledException`; let it propagate for proper cancellation handling. |
+| NP9201 | Warning | Do not swallow OperationCanceledException | Don't catch and suppress `OperationCanceledException`; let it propagate for proper cancellation handling. |
 | NP9202 | Warning | Inefficient exception handling | Avoid `catch (Exception)` with rethrow in tight loops. Use specific exception types. |
-| NP9203 | Warning | Ignoring CancellationToken | Pass `CancellationToken` to async methods that accept it. |
+| NP9203 | Warning | Method should respect cancellation token | Pass `CancellationToken` to async methods that accept it. |
 
 ## NP93xx - Data Integrity and Correctness
 
@@ -57,16 +68,16 @@ The analyzers are included automatically when you reference `NPipeline`. Connect
 | Rule | Severity | Title | Fix |
 |------|----------|-------|-----|
 | NP9401 | Info | Consider IStreamTransformNode | For transforms that operate on entire streams rather than individual items, implement `IStreamTransformNode<TIn, TOut>`. |
-| NP9402 | Warning | Wrong execution strategy for IStreamTransformNode | `IStreamTransformNode` requires `IStreamExecutionStrategy`. Don't combine with per-item strategies. |
-| NP9403 | Warning | Missing public parameterless constructor | Node types resolved by the framework need a public parameterless constructor or DI registration. |
+| NP9402 | Warning | IStreamTransformNode should use IStreamExecutionStrategy | `IStreamTransformNode` requires `IStreamExecutionStrategy`. Don't combine with per-item strategies. |
+| NP9403 | Warning | Node missing public parameterless constructor | Node types resolved by the framework need a public parameterless constructor or DI registration. |
 | NP9404 | Warning | Dependency injection anti-pattern | Avoid service locator patterns; use constructor injection instead. |
 
 ## NP95xx - Connector-Specific
 
 | Rule | Severity | Package | Title | Fix |
 |------|----------|---------|-------|-----|
-| NP9501 | Warning | Postgres | Missing ORDER BY with checkpointing | PostgreSQL sources using checkpointing must include an `ORDER BY` clause for deterministic replay. |
-| NP9502 | Warning | SQL Server | Missing ORDER BY with checkpointing | SQL Server sources using checkpointing must include an `ORDER BY` clause for deterministic replay. |
+| NP9501 | Warning | Postgres | PostgreSQL source with checkpointing requires ORDER BY clause | PostgreSQL sources using checkpointing must include an `ORDER BY` clause for deterministic replay. |
+| NP9502 | Warning | SQL Server | SQL Server source with checkpointing requires ORDER BY clause | SQL Server sources using checkpointing must include an `ORDER BY` clause for deterministic replay. |
 
 ## Automatic Code Fixes
 
@@ -78,10 +89,10 @@ Most analyzer rules include automatic code fix providers. Apply fixes individual
 
 ```csharp
 // Before
-new PipelineRetryOptions { MaxItemRetries = 3, MaxNodeRestartAttempts = 3 }
+new PipelineRetryOptions(MaxItemRetries: 3, MaxNodeRestartAttempts: 3)
 
 // After (code fix applied)
-new PipelineRetryOptions { MaxItemRetries = 3, MaxNodeRestartAttempts = 3, MaxMaterializedItems = 10000 }
+new PipelineRetryOptions(MaxItemRetries: 3, MaxNodeRestartAttempts: 3, MaxMaterializedItems: 10000)
 ```
 
 **NP9101 - Replace blocking call with await:**
@@ -98,28 +109,33 @@ var data = await httpClient.GetAsync(url);
 
 ```csharp
 // Before
-public override DataStream<Record> OpenStream(PipelineContext ctx, CancellationToken ct)
-    => DataStream.FromEnumerable(db.GetAll().ToList());
+public override IDataStream<Record> OpenStream(PipelineContext ctx, CancellationToken ct)
+{
+    var records = db.GetAll().ToList(); // NP9107 fires here — materializing into List
+    return new InMemoryDataStream<Record>(records, "records");
+}
 
-// After
-public override DataStream<Record> OpenStream(PipelineContext ctx, CancellationToken ct)
-    => DataStream.FromAsyncEnumerable(db.GetAllAsync(ct));
+// After (manually refactored — wrap the async enumerable directly)
+public override IDataStream<Record> OpenStream(PipelineContext ctx, CancellationToken ct)
+    => new DataStream<Record>(db.GetAllAsync(ct), "records");
 ```
 
 **NP9301 - Consume sink input:**
 
 ```csharp
 // Before
-public override async Task ConsumeAsync(DataStream<Order> input, PipelineContext ctx, CancellationToken ct)
+public override async Task ConsumeAsync(IDataStream<Order> input, PipelineContext ctx, CancellationToken ct)
 {
-    await db.SaveAsync(ct); // input never consumed - silent data loss!
+    await db.SaveAsync(ct); // input never consumed — bug!
 }
 
-// After
-public override async Task ConsumeAsync(DataStream<Order> input, PipelineContext ctx, CancellationToken ct)
+// After (manually implemented — always enumerate the input stream)
+public override async Task ConsumeAsync(IDataStream<Order> input, PipelineContext ctx, CancellationToken ct)
 {
-    await foreach (var item in input.WithCancellation(ct))
-        await db.InsertAsync(item, ct);
+    await foreach (var order in input.WithCancellation(ct))
+    {
+        await db.InsertAsync(order, ct);
+    }
 }
 ```
 
@@ -127,16 +143,28 @@ public override async Task ConsumeAsync(DataStream<Order> input, PipelineContext
 
 ```csharp
 // Before
-public override Task<Out> TransformAsync(In item, PipelineContext ctx, CancellationToken ct)
+public class MyNode : TransformNode<In, Out>
 {
-    var service = ctx.Properties["ServiceProvider"] as IServiceProvider;
-    var dep = service.GetRequiredService<IMyService>();
-    ...
+    public override Task<Out> TransformAsync(In item, PipelineContext ctx, CancellationToken ct)
+    {
+        var service = ctx.Properties["ServiceProvider"] as IServiceProvider;
+        var dep = service.GetRequiredService<IMyService>();
+        ...
+    }
 }
 
-// After
-private readonly IMyService _dep;
-public MyNode(IMyService dep) => _dep = dep;
+// After (manually refactored — use constructor injection)
+public class MyNode : TransformNode<In, Out>
+{
+    private readonly IMyService _dep;
+
+    public MyNode(IMyService dep) => _dep = dep;
+
+    public override Task<Out> TransformAsync(In item, PipelineContext ctx, CancellationToken ct)
+    {
+        ...
+    }
+}
 ```
 
 ## Suppressing Rules
