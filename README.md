@@ -1,6 +1,12 @@
-# NPipeline
+# <img src="https://raw.githubusercontent.com/NPipeline/NPipeline/main/icon.png" width="22" height="22" /> NPipeline
 
 **High-performance, streaming data pipelines for .NET**
+
+[![Build](https://github.com/NPipeline/NPipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/NPipeline/NPipeline/actions/workflows/ci.yml)
+[![NuGet Version](https://img.shields.io/nuget/v/NPipeline.svg)](https://www.nuget.org/packages/NPipeline)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/NPipeline.svg)](https://www.nuget.org/packages/NPipeline)
+[![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-blue.svg)](https://dotnet.microsoft.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 NPipeline is a modern .NET library that makes building complex data processing workflows simple and efficient. Whether you're building AI-driven data pipelines, ETL workflows, processing
 real-time data streams, or crafting sophisticated data transformation workflows, NPipeline provides the tools you need with minimal ceremony.
@@ -13,55 +19,67 @@ Stream data efficiently using `IAsyncEnumerable<T>` without loading entire datas
 real-time data streams. NPipeline is designed with performance in mind:
 
 - Streaming architecture minimizes memory allocations and GC pressure
-- Zero-reflection execution model with pre-compiled delegates
-- Efficient async/await patterns with minimal overhead
-- Optimized for high-throughput scenarios
+
+- Zero-reflection execution model with pre-compiled delegates and cached execution plans
+
+- Optimized for high-throughput using `ValueTask<T>` to eliminate heap allocations for synchronous operations
 
 ### Graph-Based Architecture
 
-Create sophisticated workflows with multiple data sources, parallel processing, joins, and branching operations. Build complex DAGs (Directed Acyclic
-Graphs) with ease.
+Create sophisticated workflows with multiple data sources, parallel processing, joins, and branching operations. Build complex DAGs (Directed Acyclic Graphs) with ease.
 
 ### Type-Safe by Design
 
 Strongly-typed nodes with compile-time validation prevent common runtime errors. Your IDE will catch type mismatches before you run your code.
 
-### Flexible Execution
+### Build-Time Guardrails
 
-Choose the right execution strategy for each node: sequential, parallel, or batched processing. Mix strategies within the same pipeline.
+Roslyn analyzers flag misconfigured retries, blocking calls, silent data loss, and performance anti-patterns before your pipeline ever runs.
 
 ### Production-Ready Resilience
 
 Built-in error handling with retry strategies, circuit breakers, and dead letter queues. Create robust pipelines that handle failures gracefully with
 intelligent backoff and jitter patterns to prevent thundering herd problems.
 
-## Common Use Cases
+### Designed for Testing
+
+Test each node independently. Pass in test data, assert on outputs. Use the testing extensions to run entire pipelines in memory. First-class support for FluentAssertions and AwesomeAssertions.
+
+## Use Cases
 
 NPipeline excels in scenarios where you need to process data efficiently and reliably:
 
 - **ETL Pipelines** - Extract data from databases, APIs, or files; transform it; load it into data warehouses
-- **AI Data Enrichment & Intelligent Routing** - Augment records with LLM-generated classifications, summaries, or entity extractions, then route to the right downstream system based on content, confidence scores, or business rules
+
 - **Data Migration** - Move and transform data between systems with validation and error handling
+
 - **Real-time Processing** - Process streaming data from message queues, IoT devices, or APIs
+
 - **File Processing** - Parse, validate, and transform large CSV, JSON, or XML files
+
 - **API Integration** - Fetch data from multiple APIs, combine results, and sync to your systems
+
 - **Data Validation** - Clean and validate data with complex business rules and error reporting
+
 - **Report Generation** - Aggregate data from multiple sources and generate reports or exports
+
 - **Batch Processing** - Process large datasets efficiently with parallel execution and state management
+
+- **AI Data Enrichment & Intelligent Routing** - Augment records with LLM-generated classifications, summaries, or entity extractions, then route to the right downstream system based on content, confidence scores, or business rules
 
 ## Key Concepts
 
 **Nodes** are the building blocks of your pipeline:
 
-- **Sources** generate or fetch data (`SourceNode<T>`)
+- **Sources** generate or fetch data (`SourceNode<TOut>`)
 - **Transforms** process data item by item (`TransformNode<TIn, TOut>`)
-- **Sinks** consume data and perform final operations (`SinkNode<T>`)
+- **Sinks** consume data and perform final operations (`SinkNode<TIn>`)
 
 **Data Streams** transport data between nodes as strongly-typed async streams (`IDataStream<T>`).
 
 **Pipeline Context** provides logging, cancellation, error handling, and shared state without carrying data payloads.
 
-**Execution Strategies** control how nodes process data: sequential, parallel, or batched processing.
+**Execution Strategies** control how nodes process data: sequential, parallel, or batched processing. Mix strategies within the same pipeline.
 
 ## Prerequisites
 
@@ -183,21 +201,21 @@ NPipeline is modular - install only what you need.
 | **NPipeline.Connectors.Kafka**     | Kafka source and sink nodes with batching and transactional support       |
 | **NPipeline.Connectors.RabbitMQ**  | RabbitMQ source and sink nodes with publisher confirms and dead-lettering |
 
-### Complete Package List
+### ... And More
 
-For the complete list of all available packages including assertion library integrations (FluentAssertions, AwesomeAssertions) and OpenTelemetry support, see
+For the complete list of all available packages see
 the [Extensions Documentation](https://docs.npipeline.net/extensions) and [Connectors Documentation](https://docs.npipeline.net/connectors).
 
 ## What's Next?
 
 1. **[Installation](https://docs.npipeline.net/getting-started/installation)** - Set up NPipeline in your project
-2. **[Quick Start](https://docs.npipeline.net/getting-started/quick-start)** - Build a complete pipeline step-by-step
-3. **[Core Concepts](https://docs.npipeline.net/core-concepts)** - Learn the fundamentals of NPipeline
+2. **[Your First Pipeline](https://docs.npipeline.net/getting-started/your-first-pipeline)** - Build a complete pipeline step-by-step
+3. **[Key Concepts](https://docs.npipeline.net/getting-started/key-concepts)** - Learn the fundamentals
 
 ## Contributing
 
-Contributions are welcome! Please feel free to open an issue or submit a pull request.
+Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License - see [LICENSE](https://github.com/npipeline/NPipeline/blob/main/LICENSE) file for details.
