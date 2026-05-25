@@ -28,7 +28,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\NPipeline\NPipeline.csproj"/>
-        <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.6.0"/>
+        <PackageReference Include="Microsoft.Extensions.AI.Abstractions"/>
     </ItemGroup>
 
     <ItemGroup>

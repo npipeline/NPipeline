@@ -27,11 +27,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Confluent.Kafka" Version="2.14.0"/>
-        <PackageReference Include="Confluent.SchemaRegistry" Version="2.14.0"/>
-        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.14.0" />
-        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Protobuf" Version="2.14.0" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
+        <PackageReference Include="Confluent.Kafka"/>
+        <PackageReference Include="Confluent.SchemaRegistry"/>
+        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro"/>
+        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Protobuf"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
     </ItemGroup>
 
     <ItemGroup>

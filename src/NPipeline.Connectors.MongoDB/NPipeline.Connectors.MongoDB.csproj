@@ -32,11 +32,11 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="MongoDB.Driver" Version="3.8.1" />
+        <PackageReference Include="MongoDB.Driver"/>
         <!-- Override transitive SharpCompress to address security vulnerability in v0.30.1 -->
-        <PackageReference Include="SharpCompress" Version="0.48.1" />
+        <PackageReference Include="SharpCompress"/>
         <!-- Override transitive Snappier from MongoDB.Driver to address security vulnerability -->
-        <PackageReference Include="Snappier" Version="1.3.1"/>
+        <PackageReference Include="Snappier"/>
     </ItemGroup>
 
     <ItemGroup>
