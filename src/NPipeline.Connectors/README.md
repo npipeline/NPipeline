@@ -138,7 +138,7 @@ if (metadata != null)
 
 ### Database Connector Abstractions
 
-NPipeline.Connectors also provides database-agnostic abstractions for implementing database connectors (PostgreSQL, SQL Server, MySQL, Oracle, etc.). These
+NPipeline.Connectors also provides database-agnostic abstractions for implementing database connectors (PostgreSQL, SQL Server, MySQL, etc.). These
 abstractions enable:
 
 - **Unified Database API**: Common interfaces for database operations across different database systems
@@ -444,9 +444,9 @@ NPipeline.Connectors supports an extensible set of storage schemes through its p
 ### Built-in Schemes
 
 - **file** - Local file system access (Windows, Linux, macOS)
-    - Supports absolute paths: `file:///C:/data/input.csv`
-    - Supports relative paths: `file://./data/input.csv`
-    - Supports UNC paths: `file://server/share/data/input.csv`
+  - Supports absolute paths: `file:///C:/data/input.csv`
+  - Supports relative paths: `file://./data/input.csv`
+  - Supports UNC paths: `file://server/share/data/input.csv`
 
 ### Extensible Scheme Support
 
@@ -674,4 +674,4 @@ services.AddStorageProvidersFromConfiguration(config =>
 
 ## License
 
-MIT License - see LICENSE file for details.
+This package is licensed under the [MIT License](LICENSE.txt). You are free to use, modify, and distribute it in personal, open-source, and commercial projects without restriction.

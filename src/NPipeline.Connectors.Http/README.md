@@ -127,3 +127,9 @@ webhook.
 GITHUB_TOKEN=ghp_... SLACK_WEBHOOK=https://hooks.slack.com/... \
 dotnet run --project samples/Sample_HttpConnector
 ```
+
+## License
+
+This package is licensed under the [Business Source License 1.1](LICENSE.txt).
+
+**Free for non-production use.** Production use is free for organizations with 4 or fewer developers and annual revenue of $5M AUD or less. Larger organizations require a [commercial license](https://npipeline.com). This license automatically converts to MIT two years after each release.

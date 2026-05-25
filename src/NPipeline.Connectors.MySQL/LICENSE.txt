@@ -1,0 +1,69 @@
+Business Source License 1.1
+
+Parameters
+
+Licensor: NPipeline
+Governing Law: New South Wales, Australia
+Development Only User Grant: You may use the Licensed Work only for Development Purposes
+                             and Non-Production testing environments.
+Additional Use Grant: Production use of the Licensed Work is explicitly permitted if:
+                      (a) Your organization employs a total of four (4) or fewer
+                          software developers, engineers, or programmers across all
+                          departments; AND
+                      (b) Your organization's gross annual revenue does not exceed
+                          Five Million Australian Dollars ($5,000,000 AUD).
+                      Any commercial deployment, execution against production data, or 
+                      integration into a live data-processing pipeline outside of these 
+                      strict parameters requires a valid, active commercial license 
+                      agreement executed directly with the Licensor.
+Change Date: May 25, 2028
+Change License: MIT License (as specified below)
+
+-----------------------------------------------------------------------------------------
+
+Terms of the Business Source License
+
+1. Grant of License. The Licensor hereby grants you a non-exclusive, non-transferable,
+   worldwide license to copy, modify, create derivative works of, and run the Licensed
+   Work solely for Development Purposes, and additionally for Production purposes strictly
+   conforming to the limitations detailed in the Additional Use Grant parameter above.
+
+2. Conditions. You must ensure that any copy or derivative work of the Licensed Work you
+   distribute or make available contains the complete text of this License, including all
+   Parameters defined above.
+
+3. Conversion to Change License. Effective upon the specified Change Date, the terms and
+   restrictions of this Business Source License shall cease, and the Licensed Work (including
+   all prior modifications and versions covered under this release) shall automatically transition
+   to and be governed entirely by the Change License specified above.
+
+4. Intellectual Property Disclaimer. THE LICENSED WORK IS PROVIDED "AS IS", WITHOUT WARRANTY 
+   OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+   HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE LICENSED WORK.
+
+5. Governing Law. This License and any disputes arising under it will be governed by and 
+   construed in accordance with the jurisdiction specified in the Governing Law parameter 
+   above, without giving effect to its conflict of laws principles.
+
+-----------------------------------------------------------------------------------------
+
+Change License Text (MIT License)
+
+Copyright (c) 2026 NPipeline
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software 
+and associated documentation files (the "Software"), to deal in the Software without restriction, 
+including without limitation the rights to use, copy, modify, merge, publish, distribute, 
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is 
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or 
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT 
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

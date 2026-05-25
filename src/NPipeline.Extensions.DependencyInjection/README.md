@@ -352,4 +352,4 @@ services.AddNPipeline(builder =>
 
 ## License
 
-MIT License - see LICENSE file for details.
+This package is licensed under the [MIT License](LICENSE.txt). You are free to use, modify, and distribute it in personal, open-source, and commercial projects without restriction.

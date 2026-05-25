@@ -271,3 +271,9 @@ var uri = StorageUri.Parse("gs://bucket/file?projectId=your-project-id");
 - **Working Example** - [Sample_GcsStorageProvider](../../../samples/Sample_GcsStorageProvider)
 - **NPipeline Architecture** - [Documentation](../../../docs/architecture/)
 - **Google Cloud Storage Docs** - <https://cloud.google.com/storage/docs>
+
+## License
+
+This package is licensed under the [Business Source License 1.1](LICENSE.txt).
+
+**Free for non-production use.** Production use is free for organizations with 4 or fewer developers and annual revenue of $5M AUD or less. Larger organizations require a [commercial license](https://npipeline.com). This license automatically converts to MIT two years after each release.

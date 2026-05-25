@@ -30,7 +30,8 @@
         <!-- Package Metadata -->
         <Authors>NPipeline Team</Authors>
         <Copyright>Copyright (c) NPipeline Team</Copyright>
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <!-- License is declared per-project: MIT packages use <PackageLicenseExpression>MIT</PackageLicenseExpression>;
+             BSL packages use <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>. -->
         <PackageProjectUrl>https://github.com/NPipeline/NPipeline</PackageProjectUrl>
         <RepositoryUrl>https://github.com/NPipeline/NPipeline.git</RepositoryUrl>
         <RepositoryType>git</RepositoryType>

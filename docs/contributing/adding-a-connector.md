@@ -48,7 +48,7 @@ Create a `.csproj` with multi-targeting and standard NuGet metadata:
         <Description>{Name} source and sink nodes for NPipeline...</Description>
         <PackageTags>npipeline;{name};connectors;data-format</PackageTags>
         <Authors>NPipeline contributors</Authors>
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <PackageIcon>icon.png</PackageIcon>
@@ -67,6 +67,7 @@ Create a `.csproj` with multi-targeting and standard NuGet metadata:
     <ItemGroup>
         <None Include="..\..\icon.png" Pack="true" PackagePath="\"/>
         <None Include="README.md" Pack="true" PackagePath="\"/>
+        <None Include="LICENSE.txt" Pack="true" PackagePath="\"/>
     </ItemGroup>
 </Project>
 ```

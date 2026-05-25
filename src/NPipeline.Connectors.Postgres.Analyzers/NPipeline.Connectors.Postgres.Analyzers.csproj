@@ -16,7 +16,7 @@
         <PackageTags>analyzers;roslyn;npipeline;diagnostics;postgresql;connector</PackageTags>
         <Authors>NPipeline Team</Authors>
         <Copyright>Copyright © NPipeline Team</Copyright>
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageProjectUrl>https://github.com/npipeline/NPipeline</PackageProjectUrl>
         <RepositoryUrl>https://github.com/npipeline/NPipeline</RepositoryUrl>
@@ -44,6 +44,7 @@
     <!-- Include README in package -->
     <ItemGroup>
         <None Include="README.md" Pack="true" PackagePath="\"/>
+        <None Include="LICENSE.txt" Pack="true" PackagePath="\"/>
     </ItemGroup>
 
 </Project>

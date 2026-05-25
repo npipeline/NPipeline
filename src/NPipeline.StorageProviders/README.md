@@ -186,4 +186,4 @@ This design enables:
 
 ## License
 
-Part of the NPipeline project. See main project LICENSE file for details.
+This package is licensed under the [MIT License](LICENSE.txt). You are free to use, modify, and distribute it in personal, open-source, and commercial projects without restriction.

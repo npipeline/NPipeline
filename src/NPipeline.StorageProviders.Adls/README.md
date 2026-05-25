@@ -226,4 +226,6 @@ docker run -p 10000:10000 -p 10001:10001 -p 10002:10002 \
 
 ## License
 
-This project is licensed under the terms specified in the repository's LICENSE file.
+This package is licensed under the [Business Source License 1.1](LICENSE.txt).
+
+**Free for non-production use.** Production use is free for organizations with 4 or fewer developers and annual revenue of $5M AUD or less. Larger organizations require a [commercial license](https://npipeline.com). This license automatically converts to MIT two years after each release.

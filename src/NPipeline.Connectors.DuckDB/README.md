@@ -42,3 +42,9 @@ var sink = DuckDBSinkNode<Report>.ToFile("output/report.parquet");
 
 See the [full documentation](https://github.com/NPipeline/NPipeline/blob/main/docs/connectors/duckdb.md) for detailed usage, configuration options, and
 examples.
+
+## License
+
+This package is licensed under the [Business Source License 1.1](LICENSE.txt).
+
+**Free for non-production use.** Production use is free for organizations with 4 or fewer developers and annual revenue of $5M AUD or less. Larger organizations require a [commercial license](https://npipeline.com). This license automatically converts to MIT two years after each release.

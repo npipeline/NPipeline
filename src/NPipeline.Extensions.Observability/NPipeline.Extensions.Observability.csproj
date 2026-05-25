@@ -14,7 +14,7 @@
         <Authors>NPipeline contributors</Authors>
         <RepositoryUrl>https://github.com/NPipeline/NPipeline.git</RepositoryUrl>
         <PackageProjectUrl>https://github.com/NPipeline/NPipeline</PackageProjectUrl>
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
@@ -38,6 +38,7 @@
     <ItemGroup>
         <None Include="..\..\icon.png" Pack="true" PackagePath="\"/>
         <None Include="README.md" Pack="true" PackagePath="\"/>
+        <None Include="LICENSE.txt" Pack="true" PackagePath="\"/>
     </ItemGroup>
 
 </Project>

@@ -18,7 +18,12 @@ NPipeline targets **.NET 8.0** and later. Use the latest LTS release for product
 
 ### Is NPipeline free?
 
-Yes, NPipeline is distributed under the [MIT License](https://github.com/Stewie435/NPipeline/blob/main/LICENSE).
+The core engine and base abstractions are **fully free and open-source** under the [MIT License](https://github.com/NPipeline/NPipeline/blob/main/LICENSE). Concrete connectors, storage providers, and extensions use the [Business Source License 1.1 (BSL 1.1)](https://spdx.org/licenses/BUSL-1.1.html):
+
+- **Non-production use** (dev, CI/CD, testing): always free.
+- **Production use**: free for organizations with **4 or fewer developers** and **≤ $5M AUD annual revenue**.
+- **Commercial license** required for larger organizations — see [npipeline.com](https://npipeline.com).
+- Every BSL-licensed package **automatically converts to MIT two years after its release**.
 
 ### How does NPipeline compare to other tools?
 
@@ -28,7 +33,7 @@ Yes, NPipeline is distributed under the [MIT License](https://github.com/Stewie4
 | Infrastructure | In-process | Distributed | Managed cloud |
 | Type safety | Strong | Dynamic | Limited |
 | Unit testing | Simple | Requires framework | Complex |
-| Cost | Free (MIT) | Free (self-hosted) | Per-operation |
+| Cost | Free core (MIT); BSL connectors/extensions | Free (self-hosted) | Per-operation |
 
 Choose NPipeline when you build .NET applications, need lightweight in-process pipelines, and want strong type safety with code-based configuration.
 
