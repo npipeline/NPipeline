@@ -1,3 +1,4 @@
+using Microsoft.Extensions.AI;
 using NPipeline.Extensions.AI.Configuration;
 using NPipeline.Extensions.AI.Exceptions;
 using NPipeline.Extensions.AI.Nodes;
@@ -7,6 +8,69 @@ namespace NPipeline.Extensions.AI.Tests;
 
 public class AIBatchedEnrichNodeTests
 {
+    [Fact]
+    public async Task TransformAsync_SingleObjectResponse_ForSingleItemBatch_IsWrappedAndDeserialized()
+    {
+        var client = FakeChatClient.ThatReturns(
+            """{"label":"Positive","score":0.9}""");
+
+        var node = new AIBatchedEnrichNode<TestDomain.Comment, TestDomain.SentimentResult>(client)
+        {
+            Options = new AIBatchedEnrichOptions<TestDomain.Comment, TestDomain.SentimentResult>(
+                "Analyze.",
+                _ => "analyze",
+                (comment, result) => comment with { Author = result.Label }),
+        };
+
+        var batch = new List<TestDomain.Comment>
+        {
+            new("love it", "alice"),
+        };
+
+        var results = await node.TransformAsync(batch, Context(), CancellationToken.None);
+
+        Assert.Single(results);
+        Assert.Equal("Positive", results.Single().Author);
+    }
+
+    [Fact]
+    public async Task TransformAsync_WithNativeStructuredOutput_UsesSchemaResponseFormat()
+    {
+        ChatResponseFormat? capturedFormat = null;
+
+        var client = new FakeChatClient((_, options, _) =>
+        {
+            capturedFormat = options?.ResponseFormat;
+
+            return Task.FromResult(new ChatResponse(
+                new ChatMessage(ChatRole.Assistant,
+                    """[{"label":"Positive","score":0.9}]""")));
+        });
+
+        var node = new AIBatchedEnrichNode<TestDomain.Comment, TestDomain.SentimentResult>(client)
+        {
+            Options = new AIBatchedEnrichOptions<TestDomain.Comment, TestDomain.SentimentResult>(
+                "Analyze.",
+                _ => "analyze",
+                (comment, result) => comment with { Author = result.Label },
+                UseNativeStructuredOutput: true),
+        };
+
+        var batch = new List<TestDomain.Comment>
+        {
+            new("love it", "alice"),
+        };
+
+        _ = await node.TransformAsync(batch, Context(), CancellationToken.None);
+
+        Assert.NotNull(capturedFormat);
+        var schemaFormat = Assert.IsType<ChatResponseFormatJson>(capturedFormat, exactMatch: false);
+        Assert.Equal("BatchResponse", schemaFormat.SchemaName);
+        Assert.Equal("A JSON array of objects, one per input item.", schemaFormat.SchemaDescription);
+        Assert.True(schemaFormat.Schema.HasValue);
+        Assert.Equal("array", schemaFormat.Schema.Value.GetProperty("type").GetString());
+    }
+
     [Fact]
     public async Task TransformAsync_EnrichesBatchOfItems()
     {

@@ -9,6 +9,40 @@ namespace NPipeline.Extensions.AI.Tests;
 public class AIInvokerErrorPathTests
 {
     [Fact]
+    public async Task InvokeTransform_MarkdownFencedJson_DeserializesSuccessfully()
+    {
+        var client = FakeChatClient.ThatReturns(
+            "```json\n{\"category\":\"Greeting\",\"confidence\":0.95}\n```");
+
+        var node = CreateTransformNode(client);
+
+        var result = await node.TransformAsync(
+            new TestDomain.Comment("hello", "alice"),
+            new PipelineContext(),
+            CancellationToken.None);
+
+        Assert.Equal("Greeting", result.Category);
+        Assert.Equal(0.95f, result.Confidence);
+    }
+
+    [Fact]
+    public async Task InvokeTransform_MarkdownFencedJson_NoNewlineAfterTag_DeserializesSuccessfully()
+    {
+        var client = FakeChatClient.ThatReturns(
+            "```json{\"category\":\"Greeting\",\"confidence\":0.95}```");
+
+        var node = CreateTransformNode(client);
+
+        var result = await node.TransformAsync(
+            new TestDomain.Comment("hello", "alice"),
+            new PipelineContext(),
+            CancellationToken.None);
+
+        Assert.Equal("Greeting", result.Category);
+        Assert.Equal(0.95f, result.Confidence);
+    }
+
+    [Fact]
     public async Task InvokeTransform_JsonNullArray_ThrowsDeserializationError()
     {
         var client = FakeChatClient.ThatReturns("[null]");

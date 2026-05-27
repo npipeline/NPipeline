@@ -7,6 +7,14 @@ namespace NPipeline.Extensions.AI;
 
 internal static class AIInvoker
 {
+    private static readonly JsonElement BatchResponseSchema = JsonDocument.Parse(
+        """{"type":"array","items":{"type":"object"}}""").RootElement.Clone();
+
+    private static readonly ChatResponseFormat BatchResponseFormat = ChatResponseFormat.ForJsonSchema(
+        BatchResponseSchema,
+        schemaName: "BatchResponse",
+        schemaDescription: "A JSON array of objects, one per input item.");
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -53,7 +61,7 @@ internal static class AIInvoker
 
         var userMessage = BuildUserMessage(batch, batchTemplate, "BatchTemplate");
         var messages = BuildMessages(systemPrompt, userMessage);
-        var options = BuildChatOptions(batch, userMessage, temperature, maxOutputTokens, useNativeStructuredOutput, configureOptions);
+        var options = BuildBatchChatOptions(batch, userMessage, temperature, maxOutputTokens, useNativeStructuredOutput, configureOptions);
 
         var results = await InvokeAndDeserializeAsync<IReadOnlyCollection<TOut>>(chatClient, batch, userMessage, messages, options, cancellationToken)
             .ConfigureAwait(false);
@@ -112,7 +120,7 @@ internal static class AIInvoker
 
         var userMessage = BuildUserMessage(batch, batchTemplate, "BatchTemplate");
         var messages = BuildMessages(systemPrompt, userMessage);
-        var options = BuildChatOptions(batch, userMessage, temperature, maxOutputTokens, useNativeStructuredOutput, configureOptions);
+        var options = BuildBatchChatOptions(batch, userMessage, temperature, maxOutputTokens, useNativeStructuredOutput, configureOptions);
 
         var results = await InvokeAndDeserializeAsync<IReadOnlyCollection<TField>>(chatClient, batch, userMessage, messages, options, cancellationToken)
             .ConfigureAwait(false);
@@ -156,7 +164,8 @@ internal static class AIInvoker
             throw WrapException(item, userMessage, ex, null);
         }
 
-        var rawText = response.Text;
+        var rawResponse = response.Text;
+        var rawText = SanitizeLlmResponse(rawResponse);
         var modelId = response.ModelId;
 
         if (string.IsNullOrWhiteSpace(rawText))
@@ -166,6 +175,7 @@ internal static class AIInvoker
             {
                 OriginalItem = item,
                 PromptSent = userMessage,
+                RawResponse = rawResponse,
                 ModelUsed = modelId,
             };
         }
@@ -181,7 +191,7 @@ internal static class AIInvoker
                 {
                     OriginalItem = item,
                     PromptSent = userMessage,
-                    RawResponse = rawText,
+                    RawResponse = rawResponse,
                     ModelUsed = modelId,
                 };
             }
@@ -190,11 +200,30 @@ internal static class AIInvoker
         }
         catch (Exception ex) when (ex is JsonException or NotSupportedException)
         {
+            // Some models return a single object {…} when the caller expects an array […].
+            // If T is IReadOnlyCollection<TField>, wrap in [...] and retry.
+            if (IsReadOnlyCollectionType(typeof(T))
+                && rawText.StartsWith("{", StringComparison.Ordinal))
+            {
+                try
+                {
+                    var wrapped = $"[{rawText}]";
+                    var retryResult = JsonSerializer.Deserialize<T>(wrapped, JsonOptions);
+
+                    if (retryResult is not null)
+                        return retryResult;
+                }
+                catch (Exception retryEx) when (retryEx is JsonException or NotSupportedException)
+                {
+                    // Wrapping did not help; fall through to the original error.
+                }
+            }
+
             throw new AITransformException("Failed to deserialize LLM response.", ex)
             {
                 OriginalItem = item,
                 PromptSent = userMessage,
-                RawResponse = rawText,
+                RawResponse = rawResponse,
                 ModelUsed = modelId,
             };
         }
@@ -224,6 +253,46 @@ internal static class AIInvoker
         bool useNativeStructuredOutput,
         Action<ChatOptions>? configureOptions)
     {
+        return BuildChatOptionsCore(
+            item,
+            userMessage,
+            temperature,
+            maxOutputTokens,
+            useNativeStructuredOutput,
+            ChatResponseFormat.Json,
+            configureOptions);
+    }
+
+    /// <summary>
+    ///     Builds <see cref="ChatOptions" /> for batched invocations where the expected response is a JSON array.
+    /// </summary>
+    private static ChatOptions BuildBatchChatOptions(
+        object? item,
+        string userMessage,
+        float? temperature,
+        int? maxOutputTokens,
+        bool useNativeStructuredOutput,
+        Action<ChatOptions>? configureOptions)
+    {
+        return BuildChatOptionsCore(
+            item,
+            userMessage,
+            temperature,
+            maxOutputTokens,
+            useNativeStructuredOutput,
+            BatchResponseFormat,
+            configureOptions);
+    }
+
+    private static ChatOptions BuildChatOptionsCore(
+        object? item,
+        string userMessage,
+        float? temperature,
+        int? maxOutputTokens,
+        bool useNativeStructuredOutput,
+        ChatResponseFormat nativeStructuredFormat,
+        Action<ChatOptions>? configureOptions)
+    {
         var options = new ChatOptions();
 
         if (temperature.HasValue)
@@ -233,7 +302,7 @@ internal static class AIInvoker
             options.MaxOutputTokens = maxOutputTokens.Value;
 
         if (useNativeStructuredOutput)
-            options.ResponseFormat = ChatResponseFormat.Json;
+            options.ResponseFormat = nativeStructuredFormat;
 
         if (configureOptions is not null)
         {
@@ -295,5 +364,56 @@ internal static class AIInvoker
             PromptSent = userMessage,
             ModelUsed = modelId,
         };
+    }
+
+    private static bool IsReadOnlyCollectionType(Type type)
+    {
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IReadOnlyCollection<>))
+            return true;
+
+        foreach (var iface in type.GetInterfaces())
+        {
+            if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IReadOnlyCollection<>))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    ///     Sanitizes raw LLM response text by stripping markdown code fences before JSON deserialization.
+    /// </summary>
+    private static string SanitizeLlmResponse(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return string.Empty;
+
+        var trimmed = text.Trim();
+
+        if (trimmed.Length < 6
+            || !trimmed.StartsWith("```", StringComparison.Ordinal)
+            || !trimmed.EndsWith("```", StringComparison.Ordinal))
+            return trimmed;
+
+        var inner = trimmed[3..^3].Trim();
+
+        if (inner.Length == 0)
+            return string.Empty;
+
+        // Handles both styles:
+        // ```json\n{...}\n```
+        // ```json{...}```
+        if (inner.StartsWith("json", StringComparison.OrdinalIgnoreCase))
+        {
+            if (inner.Length == 4)
+                return string.Empty;
+
+            var next = inner[4];
+
+            if (char.IsWhiteSpace(next) || next == '{' || next == '[')
+                inner = inner[4..].TrimStart();
+        }
+
+        return inner.Trim();
     }
 }
