@@ -3,8 +3,8 @@ using Microsoft.Extensions.AI;
 using NPipeline.DataFlow;
 using NPipeline.Execution;
 using NPipeline.Extensions.AI.Configuration;
-using NPipeline.Extensions.AI.Execution;
 using NPipeline.Extensions.AI.Exceptions;
+using NPipeline.Extensions.AI.Execution;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 

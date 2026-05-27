@@ -14,7 +14,7 @@ public class AIBatchedStreamTransformNodeTests
     {
         var node = new AIBatchedStreamTransformNode<TestDomain.Comment, TestDomain.ClassificationResult>(FakeChatClient.ThatReturns("[]"));
 
-        _ = Assert.IsType<IStreamExecutionStrategy>(node.ExecutionStrategy, exactMatch: false);
+        _ = Assert.IsType<IStreamExecutionStrategy>(node.ExecutionStrategy, false);
     }
 
     [Fact]

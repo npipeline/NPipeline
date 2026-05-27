@@ -160,16 +160,16 @@ public class PipelineBuilderExtensionsTests
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             builder.AddAIBatchedEnrichWithUnbatch<TestDomain.Comment, TestDomain.SentimentResult>(
                 client,
-                batchSize: 2,
-                batchTimeout: TimeSpan.Zero,
-                configure: Configure));
+                2,
+                TimeSpan.Zero,
+                Configure));
 
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             builder.AddAIBatchedEnrichWithUnbatch<TestDomain.Comment, TestDomain.SentimentResult>(
                 client,
-                batchSize: 2,
-                batchTimeout: TimeSpan.FromMilliseconds(-1),
-                configure: Configure));
+                2,
+                TimeSpan.FromMilliseconds(-1),
+                Configure));
     }
 
     [Fact]
@@ -189,6 +189,7 @@ public class PipelineBuilderExtensionsTests
             var sink = (InMemorySinkNode<TestDomain.Comment>)context.Items[SinkContextKey];
 
             var source = builder.AddInMemorySource("src", [new TestDomain.Comment("hello", "alice")]);
+
             var enrich = builder.AddAIBatchedStreamEnrich<TestDomain.Comment, TestDomain.SentimentResult>(client, options => options
                 .WithSystemPrompt("Analyze.")
                 .WithBatchTemplate(batch => "analyze")
@@ -216,14 +217,14 @@ public class PipelineBuilderExtensionsTests
             ]);
 
             var (inputHandle, outputHandle) = builder.AddAIBatchedEnrichWithUnbatch<TestDomain.Comment, TestDomain.SentimentResult>(
-                chatClient: client,
-                batchSize: 2,
-                batchTimeout: TimeSpan.FromSeconds(1),
-                configure: options => options
+                client,
+                2,
+                TimeSpan.FromSeconds(1),
+                options => options
                     .WithSystemPrompt("Analyze.")
                     .WithBatchTemplate(batch => "analyze")
                     .WithResultMapper((item, result) => item with { Author = result.Label }),
-                name: "batched-enrich");
+                "batched-enrich");
 
             var sinkHandle = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("sink");
             builder.AddPreconfiguredNodeInstance(sinkHandle.Id, sink);

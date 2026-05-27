@@ -11,35 +11,6 @@ public class AIRouteIntegrationTests
 {
     private const string ClientKey = "chatClient";
 
-    private sealed class AIPositiveRoutePipeline : IPipelineDefinition
-    {
-        public void Define(PipelineBuilder builder, PipelineContext context)
-        {
-            var client = (IChatClient)context.Items[ClientKey];
-            var source = builder.AddInMemorySource("src", [new TestDomain.Comment("love it", "alice")]);
-
-            var positiveSink = (InMemorySinkNode<TestDomain.Comment>)context.Items["positive"];
-            var negativeSink = (InMemorySinkNode<TestDomain.Comment>)context.Items["negative"];
-            var fallbackSink = (InMemorySinkNode<TestDomain.Comment>)context.Items["fallback"];
-
-            var posHandle = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("positive");
-            var negHandle = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("negative");
-            var fallHandle = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("fallback");
-            builder.AddPreconfiguredNodeInstance(posHandle.Id, positiveSink);
-            builder.AddPreconfiguredNodeInstance(negHandle.Id, negativeSink);
-            builder.AddPreconfiguredNodeInstance(fallHandle.Id, fallbackSink);
-
-            builder.Connect(source,
-                builder.AddAIRoute<TestDomain.Comment, TestDomain.SentimentResult>(client, opts => opts
-                        .WithSystemPrompt("Classify sentiment.")
-                        .WithItemTemplate(c => $"Analyze: {c.Text}")
-                        .WithResultMapper((c, r) => c with { Author = r.Label }))
-                    .When(c => c.Author == "positive", posHandle)
-                    .When(c => c.Author == "negative", negHandle)
-                    .Otherwise(fallHandle));
-        }
-    }
-
     [Fact]
     public async Task RoutesItemToCorrectSink_BasedOnLLMClassification()
     {
@@ -62,31 +33,6 @@ public class AIRouteIntegrationTests
         Assert.Equal("positive", positiveSink.Items[0].Author);
     }
 
-    private sealed class AINeutralRoutePipeline : IPipelineDefinition
-    {
-        public void Define(PipelineBuilder builder, PipelineContext context)
-        {
-            var client = (IChatClient)context.Items[ClientKey];
-            var source = builder.AddInMemorySource("src", [new TestDomain.Comment("hello", "alice")]);
-
-            var positiveSink = (InMemorySinkNode<TestDomain.Comment>)context.Items["positive"];
-            var fallbackSink = (InMemorySinkNode<TestDomain.Comment>)context.Items["fallback"];
-
-            var posHandle = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("positive");
-            var fallHandle = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("fallback");
-            builder.AddPreconfiguredNodeInstance(posHandle.Id, positiveSink);
-            builder.AddPreconfiguredNodeInstance(fallHandle.Id, fallbackSink);
-
-            builder.Connect(source,
-                builder.AddAIRoute<TestDomain.Comment, TestDomain.SentimentResult>(client, opts => opts
-                        .WithSystemPrompt("Classify.")
-                        .WithItemTemplate(c => c.Text)
-                        .WithResultMapper((c, r) => c with { Author = r.Label }))
-                    .When(c => c.Author == "positive", posHandle)
-                    .Otherwise(fallHandle));
-        }
-    }
-
     [Fact]
     public async Task UnmatchedItem_GoesToOtherwise()
     {
@@ -105,31 +51,6 @@ public class AIRouteIntegrationTests
         Assert.Single(fallbackSink.Items);
     }
 
-    private sealed class AIFirstMatchRoutePipeline : IPipelineDefinition
-    {
-        public void Define(PipelineBuilder builder, PipelineContext context)
-        {
-            var client = (IChatClient)context.Items[ClientKey];
-            var source = builder.AddInMemorySource("src", [new TestDomain.Comment("urgent task", "alice")]);
-
-            var allSink = (InMemorySinkNode<TestDomain.Comment>)context.Items["all"];
-            var urgentSink = (InMemorySinkNode<TestDomain.Comment>)context.Items["urgent"];
-
-            var allHandle = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("all");
-            var urgHandle = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("urgent");
-            builder.AddPreconfiguredNodeInstance(allHandle.Id, allSink);
-            builder.AddPreconfiguredNodeInstance(urgHandle.Id, urgentSink);
-
-            builder.Connect(source,
-                builder.AddAIRoute<TestDomain.Comment, TestDomain.SentimentResult>(client, opts => opts
-                        .WithSystemPrompt("Classify.")
-                        .WithItemTemplate(c => c.Text)
-                        .WithResultMapper((c, r) => c with { Author = r.Label }))
-                    .When(_ => true, allHandle)
-                    .When(c => c.Author == "urgent", urgHandle));
-        }
-    }
-
     [Fact]
     public async Task FirstMatchMode_OnlyRoutesToFirstMatchingBranch()
     {
@@ -146,32 +67,6 @@ public class AIRouteIntegrationTests
 
         Assert.Single(allSink.Items);
         Assert.Empty(urgentSink.Items);
-    }
-
-    private sealed class AIAllMatchesRoutePipeline : IPipelineDefinition
-    {
-        public void Define(PipelineBuilder builder, PipelineContext context)
-        {
-            var client = (IChatClient)context.Items[ClientKey];
-            var source = builder.AddInMemorySource("src", [new TestDomain.Comment("hello", "alice")]);
-
-            var sinkA = (InMemorySinkNode<TestDomain.Comment>)context.Items["sinkA"];
-            var sinkB = (InMemorySinkNode<TestDomain.Comment>)context.Items["sinkB"];
-
-            var handleA = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("sinkA");
-            var handleB = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("sinkB");
-            builder.AddPreconfiguredNodeInstance(handleA.Id, sinkA);
-            builder.AddPreconfiguredNodeInstance(handleB.Id, sinkB);
-
-            builder.Connect(source,
-                builder.AddAIRoute<TestDomain.Comment, TestDomain.SentimentResult>(client, opts => opts
-                        .WithSystemPrompt("Classify.")
-                        .WithItemTemplate(c => c.Text)
-                        .WithResultMapper((c, r) => c))
-                    .WithMatchMode(RouteMatchMode.AllMatches)
-                    .When(_ => true, handleA)
-                    .When(_ => true, handleB));
-        }
     }
 
     [Fact]
@@ -200,8 +95,10 @@ public class AIRouteIntegrationTests
 
         Assert.Throws<ArgumentNullException>(() =>
             ((PipelineBuilder)null!).AddAIRoute<TestDomain.Comment, TestDomain.SentimentResult>(client, _ => { }));
+
         Assert.Throws<ArgumentNullException>(() =>
             builder.AddAIRoute<TestDomain.Comment, TestDomain.SentimentResult>(null!, _ => { }));
+
         Assert.Throws<ArgumentNullException>(() =>
             builder.AddAIRoute<TestDomain.Comment, TestDomain.SentimentResult>(client, null!));
     }
@@ -233,5 +130,110 @@ public class AIRouteIntegrationTests
             .WithResultMapper((c, r) => c));
 
         Assert.Throws<ArgumentNullException>(() => route.Otherwise(null!));
+    }
+
+    private sealed class AIPositiveRoutePipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var client = (IChatClient)context.Items[ClientKey];
+            var source = builder.AddInMemorySource("src", [new TestDomain.Comment("love it", "alice")]);
+
+            var positiveSink = (InMemorySinkNode<TestDomain.Comment>)context.Items["positive"];
+            var negativeSink = (InMemorySinkNode<TestDomain.Comment>)context.Items["negative"];
+            var fallbackSink = (InMemorySinkNode<TestDomain.Comment>)context.Items["fallback"];
+
+            var posHandle = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("positive");
+            var negHandle = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("negative");
+            var fallHandle = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("fallback");
+            builder.AddPreconfiguredNodeInstance(posHandle.Id, positiveSink);
+            builder.AddPreconfiguredNodeInstance(negHandle.Id, negativeSink);
+            builder.AddPreconfiguredNodeInstance(fallHandle.Id, fallbackSink);
+
+            builder.Connect(source,
+                builder.AddAIRoute<TestDomain.Comment, TestDomain.SentimentResult>(client, opts => opts
+                        .WithSystemPrompt("Classify sentiment.")
+                        .WithItemTemplate(c => $"Analyze: {c.Text}")
+                        .WithResultMapper((c, r) => c with { Author = r.Label }))
+                    .When(c => c.Author == "positive", posHandle)
+                    .When(c => c.Author == "negative", negHandle)
+                    .Otherwise(fallHandle));
+        }
+    }
+
+    private sealed class AINeutralRoutePipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var client = (IChatClient)context.Items[ClientKey];
+            var source = builder.AddInMemorySource("src", [new TestDomain.Comment("hello", "alice")]);
+
+            var positiveSink = (InMemorySinkNode<TestDomain.Comment>)context.Items["positive"];
+            var fallbackSink = (InMemorySinkNode<TestDomain.Comment>)context.Items["fallback"];
+
+            var posHandle = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("positive");
+            var fallHandle = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("fallback");
+            builder.AddPreconfiguredNodeInstance(posHandle.Id, positiveSink);
+            builder.AddPreconfiguredNodeInstance(fallHandle.Id, fallbackSink);
+
+            builder.Connect(source,
+                builder.AddAIRoute<TestDomain.Comment, TestDomain.SentimentResult>(client, opts => opts
+                        .WithSystemPrompt("Classify.")
+                        .WithItemTemplate(c => c.Text)
+                        .WithResultMapper((c, r) => c with { Author = r.Label }))
+                    .When(c => c.Author == "positive", posHandle)
+                    .Otherwise(fallHandle));
+        }
+    }
+
+    private sealed class AIFirstMatchRoutePipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var client = (IChatClient)context.Items[ClientKey];
+            var source = builder.AddInMemorySource("src", [new TestDomain.Comment("urgent task", "alice")]);
+
+            var allSink = (InMemorySinkNode<TestDomain.Comment>)context.Items["all"];
+            var urgentSink = (InMemorySinkNode<TestDomain.Comment>)context.Items["urgent"];
+
+            var allHandle = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("all");
+            var urgHandle = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("urgent");
+            builder.AddPreconfiguredNodeInstance(allHandle.Id, allSink);
+            builder.AddPreconfiguredNodeInstance(urgHandle.Id, urgentSink);
+
+            builder.Connect(source,
+                builder.AddAIRoute<TestDomain.Comment, TestDomain.SentimentResult>(client, opts => opts
+                        .WithSystemPrompt("Classify.")
+                        .WithItemTemplate(c => c.Text)
+                        .WithResultMapper((c, r) => c with { Author = r.Label }))
+                    .When(_ => true, allHandle)
+                    .When(c => c.Author == "urgent", urgHandle));
+        }
+    }
+
+    private sealed class AIAllMatchesRoutePipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var client = (IChatClient)context.Items[ClientKey];
+            var source = builder.AddInMemorySource("src", [new TestDomain.Comment("hello", "alice")]);
+
+            var sinkA = (InMemorySinkNode<TestDomain.Comment>)context.Items["sinkA"];
+            var sinkB = (InMemorySinkNode<TestDomain.Comment>)context.Items["sinkB"];
+
+            var handleA = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("sinkA");
+            var handleB = builder.AddSink<InMemorySinkNode<TestDomain.Comment>, TestDomain.Comment>("sinkB");
+            builder.AddPreconfiguredNodeInstance(handleA.Id, sinkA);
+            builder.AddPreconfiguredNodeInstance(handleB.Id, sinkB);
+
+            builder.Connect(source,
+                builder.AddAIRoute<TestDomain.Comment, TestDomain.SentimentResult>(client, opts => opts
+                        .WithSystemPrompt("Classify.")
+                        .WithItemTemplate(c => c.Text)
+                        .WithResultMapper((c, r) => c))
+                    .WithMatchMode(RouteMatchMode.AllMatches)
+                    .When(_ => true, handleA)
+                    .When(_ => true, handleB));
+        }
     }
 }

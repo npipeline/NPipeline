@@ -86,7 +86,7 @@ public class AIBatchedEnrichNodeTests
             node.TransformAsync(batch, Context(), CancellationToken.None));
 
         Assert.Contains("ResultMapper delegate failed", ex.Message);
-        Assert.IsType<InvalidOperationException>(ex.InnerException, exactMatch: false);
+        Assert.IsType<InvalidOperationException>(ex.InnerException, false);
     }
 
     private static PipelineContext Context()

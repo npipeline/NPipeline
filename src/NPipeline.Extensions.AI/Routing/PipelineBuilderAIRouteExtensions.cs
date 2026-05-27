@@ -2,8 +2,6 @@ using Microsoft.Extensions.AI;
 using NPipeline.Extensions.AI.Configuration;
 using NPipeline.Extensions.AI.Execution;
 using NPipeline.Extensions.AI.Nodes;
-using NPipeline.Graph;
-using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
 namespace NPipeline.Extensions.AI.Routing;
@@ -15,10 +13,10 @@ public static class PipelineBuilderAIRouteExtensions
     /// <typeparam name="TIn">The input item type (passed through with enrichment).</typeparam>
     /// <typeparam name="TField">The AI-generated field type deserialized from the LLM response.</typeparam>
     /// <param name="builder">The pipeline builder.</param>
-    /// <param name="chatClient">The <see cref="IChatClient"/> to use for LLM calls.</param>
+    /// <param name="chatClient">The <see cref="IChatClient" /> to use for LLM calls.</param>
     /// <param name="configure">Configuration delegate for the enrich options including system prompt, item template, and result mapper.</param>
     /// <param name="name">Optional base name for the generated nodes.</param>
-    /// <returns>An <see cref="AIRouteBuilder{T}"/> for defining route branches.</returns>
+    /// <returns>An <see cref="AIRouteBuilder{T}" /> for defining route branches.</returns>
     public static AIRouteBuilder<TIn> AddAIRoute<TIn, TField>(
         this PipelineBuilder builder,
         IChatClient chatClient,
@@ -49,10 +47,10 @@ public static class PipelineBuilderAIRouteExtensions
     /// <typeparam name="TIn">The input item type.</typeparam>
     /// <typeparam name="TField">The AI-generated field type deserialized from the LLM response.</typeparam>
     /// <param name="builder">The pipeline builder.</param>
-    /// <param name="chatClient">The <see cref="IChatClient"/> to use for LLM calls.</param>
+    /// <param name="chatClient">The <see cref="IChatClient" /> to use for LLM calls.</param>
     /// <param name="configure">Configuration delegate for the stream batched enrich options.</param>
     /// <param name="name">Optional base name for the generated nodes.</param>
-    /// <returns>An <see cref="AIRouteBuilder{T}"/> for defining route branches.</returns>
+    /// <returns>An <see cref="AIRouteBuilder{T}" /> for defining route branches.</returns>
     public static AIRouteBuilder<TIn> AddAIBatchedStreamRoute<TIn, TField>(
         this PipelineBuilder builder,
         IChatClient chatClient,
@@ -70,11 +68,13 @@ public static class PipelineBuilderAIRouteExtensions
         var baseName = name ?? typeof(AIBatchedStreamEnrichNode<TIn, TField>).Name;
 
         var enrichHandle = builder.AddStreamTransform<AIBatchedStreamEnrichNode<TIn, TField>, TIn, TIn>($"{baseName}_enrich");
+
         var enrichNode = new AIBatchedStreamEnrichNode<TIn, TField>(chatClient)
         {
             Options = options,
             ExecutionStrategy = AIStreamPassthroughExecutionStrategy.Instance,
         };
+
         builder.AddPreconfiguredNodeInstance(enrichHandle.Id, enrichNode);
 
         var routeHandle = builder.AddRoute<TIn>($"{baseName}_route");

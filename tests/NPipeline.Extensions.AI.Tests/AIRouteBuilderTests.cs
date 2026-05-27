@@ -121,7 +121,8 @@ public class AIRouteBuilderTests
     public void Constructor_NullBuilder_Throws()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            new AIRouteBuilder<TestDomain.Comment>(null!, new TransformNodeHandle<TestDomain.Comment, TestDomain.Comment>("e"), new TransformNodeHandle<TestDomain.Comment, TestDomain.Comment>("r")));
+            new AIRouteBuilder<TestDomain.Comment>(null!, new TransformNodeHandle<TestDomain.Comment, TestDomain.Comment>("e"),
+                new TransformNodeHandle<TestDomain.Comment, TestDomain.Comment>("r")));
     }
 
     [Fact]

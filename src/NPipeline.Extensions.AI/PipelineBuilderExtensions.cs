@@ -102,6 +102,7 @@ public static class PipelineBuilderExtensions
             Options = options,
             ExecutionStrategy = AIStreamPassthroughExecutionStrategy.Instance,
         };
+
         builder.AddPreconfiguredNodeInstance(handle.Id, node);
 
         return handle;
@@ -196,13 +197,14 @@ public static class PipelineBuilderExtensions
         ArgumentNullException.ThrowIfNull(chatClient);
         ArgumentNullException.ThrowIfNull(configure);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(batchSize);
+
         if (batchTimeout <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(batchTimeout), "Batch timeout must be greater than zero.");
 
         var baseName = name ?? typeof(AIBatchedEnrichNode<T, TField>).Name;
 
         var batchHandle = builder.AddBatcher<T>($"{baseName}_batch", batchSize, batchTimeout);
-        var enrichHandle = builder.AddAIBatchedEnrich<T, TField>(chatClient, configure, $"{baseName}_enrich");
+        var enrichHandle = builder.AddAIBatchedEnrich(chatClient, configure, $"{baseName}_enrich");
         var unbatchHandle = builder.AddReadOnlyCollectionUnbatcher<T>($"{baseName}_unbatch");
 
         builder.Connect(batchHandle, enrichHandle);
@@ -241,6 +243,7 @@ public static class PipelineBuilderExtensions
             Options = options,
             ExecutionStrategy = AIStreamPassthroughExecutionStrategy.Instance,
         };
+
         builder.AddPreconfiguredNodeInstance(handle.Id, node);
 
         return handle;

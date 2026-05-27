@@ -26,12 +26,12 @@ public sealed class AIRouteBuilder<T> : IInputNodeHandle<T>
         RouteHandle = routeHandle ?? throw new ArgumentNullException(nameof(routeHandle));
     }
 
-    string INodeHandle.Id => _enrichHandle.Id;
-
     /// <summary>
     ///     The handle of the underlying route node. Use this as the source for manual connections.
     /// </summary>
     public TransformNodeHandle<T, T> RouteHandle { get; }
+
+    string INodeHandle.Id => _enrichHandle.Id;
 
     /// <summary>
     ///     Sets the match mode for the underlying route node. Defaults to <see cref="RouteMatchMode.FirstMatch" />.

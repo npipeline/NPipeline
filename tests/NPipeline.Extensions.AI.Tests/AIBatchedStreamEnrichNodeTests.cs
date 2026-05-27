@@ -14,7 +14,7 @@ public class AIBatchedStreamEnrichNodeTests
     {
         var node = new AIBatchedStreamEnrichNode<TestDomain.Comment, TestDomain.SentimentResult>(FakeChatClient.ThatReturns("[]"));
 
-        _ = Assert.IsType<IStreamExecutionStrategy>(node.ExecutionStrategy, exactMatch: false);
+        _ = Assert.IsType<IStreamExecutionStrategy>(node.ExecutionStrategy, false);
     }
 
     [Fact]

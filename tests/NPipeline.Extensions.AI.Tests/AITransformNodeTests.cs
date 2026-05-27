@@ -144,7 +144,7 @@ public class AITransformNodeTests
             node.TransformAsync(new TestDomain.Comment("hello", "alice"), Context(), CancellationToken.None));
 
         Assert.Contains("ItemTemplate delegate failed", ex.Message);
-        Assert.IsType<InvalidOperationException>(ex.InnerException, exactMatch: false);
+        Assert.IsType<InvalidOperationException>(ex.InnerException, false);
     }
 
     [Fact]
@@ -165,7 +165,7 @@ public class AITransformNodeTests
 
         Assert.Contains("ConfigureOptions delegate failed", ex.Message);
         Assert.Equal("Classify: hello", ex.PromptSent);
-        Assert.IsType<InvalidOperationException>(ex.InnerException, exactMatch: false);
+        Assert.IsType<InvalidOperationException>(ex.InnerException, false);
     }
 
     [Fact]
