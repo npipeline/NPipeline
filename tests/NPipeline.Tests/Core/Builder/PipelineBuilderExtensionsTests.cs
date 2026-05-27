@@ -556,6 +556,21 @@ public sealed class PipelineBuilderExtensionsTests
         _ = handle.Id.Should().NotBeNull();
     }
 
+    [Fact]
+    public void AddUnbatcher_WithReadOnlyCollectionInput_CreatesNode()
+    {
+        // Arrange
+        PipelineBuilder builder = new();
+        const string name = "ReadOnlyCollectionUnbatcher";
+
+        // Act
+        var handle = builder.AddReadOnlyCollectionUnbatcher<int>(name);
+
+        // Assert
+        _ = handle.Should().NotBeNull();
+        _ = handle.Id.Should().NotBeNull();
+    }
+
     #endregion
 
     #region Multiple Extensions on Same Builder

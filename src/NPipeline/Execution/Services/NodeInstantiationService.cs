@@ -230,23 +230,16 @@ public sealed class NodeInstantiationService : INodeInstantiationService
     {
         var inType = def.InputType ?? throw new InvalidOperationException($"Missing InputType for stream transform node '{def.Id}'.");
         var outType = def.OutputType ?? throw new InvalidOperationException($"Missing OutputType for stream transform node '{def.Id}'.");
+        var strategy = def.ExecutionStrategy ?? streamTransformNode.ExecutionStrategy;
 
-        // Check if the execution strategy implements IStreamExecutionStrategy
-        var streamStrategy = def.ExecutionStrategy as IStreamExecutionStrategy ?? streamTransformNode.ExecutionStrategy as IStreamExecutionStrategy;
-
-        if (streamStrategy is null)
+        if (strategy is not IStreamExecutionStrategy streamStrategy)
         {
-            // Use the original IExecutionStrategy for ITransformNode compatibility
-            var strategy = def.ExecutionStrategy ?? streamTransformNode.ExecutionStrategy;
+            var strategyType = strategy?.GetType().FullName ?? "<null>";
 
-            return BuildStrategyDelegate(
-                inType,
-                outType,
-                strategy,
-                typeof(IExecutionStrategy),
-                nameof(IExecutionStrategy.ExecuteAsync),
-                streamTransformNode,
-                typeof(ITransformNode<,>));
+            throw new InvalidOperationException(
+                $"Stream transform node '{def.Id}' is configured with execution strategy '{strategyType}', " +
+                $"which does not implement {nameof(IStreamExecutionStrategy)}. " +
+                $"Configure a stream-capable strategy for node type '{streamTransformNode.GetType().FullName}'.");
         }
 
         // Use the stream execution strategy when supported.

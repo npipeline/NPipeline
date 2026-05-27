@@ -39,4 +39,18 @@ public static class BatchingPipelineBuilderExtensions
         builder.AddPreconfiguredNodeInstance(handle.Id, node);
         return handle;
     }
+
+    /// <summary>
+    ///     Adds an unbatching node that flattens read-only collection batches (IReadOnlyCollection&lt;T&gt;) back into individual items (T).
+    /// </summary>
+    public static TransformNodeHandle<IReadOnlyCollection<T>, T> AddReadOnlyCollectionUnbatcher<T>(
+        this PipelineBuilder builder,
+        string name)
+    {
+        var handle = builder.AddStreamTransformWithKind<ReadOnlyCollectionUnbatchingNode<T>, IReadOnlyCollection<T>, T>(NodeKind.Batch, name);
+        var node = new ReadOnlyCollectionUnbatchingNode<T>();
+        builder.RegisterBuilderDisposable(node);
+        builder.AddPreconfiguredNodeInstance(handle.Id, node);
+        return handle;
+    }
 }

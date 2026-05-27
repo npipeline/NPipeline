@@ -162,6 +162,21 @@ public sealed class PipelineBuilderCharacterizationTests
     }
 
     [Fact]
+    public void AddUnbatcher_WithReadOnlyCollectionInput_ConnectsFromBatcher()
+    {
+        var b = new PipelineBuilder().WithoutExtendedValidation();
+        var s = b.AddSource<InMemorySourceNode<int>, int>("s");
+        var batcher = b.AddBatcher<int>("myBatcher", 5, TimeSpan.FromSeconds(1));
+        var unbatcher = b.AddReadOnlyCollectionUnbatcher<int>("myReadOnlyCollectionUnbatcher");
+        var k = b.AddSink<InMemorySinkNode<int>, int>("k");
+        b.Connect(s, batcher).Connect(batcher, unbatcher).Connect(unbatcher, k);
+
+        var p = b.Build();
+        p.Graph.Nodes.Should().Contain(n => n.Id == unbatcher.Id && n.Kind == NodeKind.Batch);
+        p.Graph.Nodes.Should().Contain(n => n.Id == unbatcher.Id && n.NodeType == typeof(ReadOnlyCollectionUnbatchingNode<int>));
+    }
+
+    [Fact]
     public void AddInMemoryLookup_RegistersNodeWithLookupKind()
     {
         var b = new PipelineBuilder().WithoutExtendedValidation();

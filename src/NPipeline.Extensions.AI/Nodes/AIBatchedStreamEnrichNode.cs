@@ -2,8 +2,8 @@ using System.Runtime.CompilerServices;
 using Microsoft.Extensions.AI;
 using NPipeline.DataFlow;
 using NPipeline.Execution;
-using NPipeline.Execution.Strategies;
 using NPipeline.Extensions.AI.Configuration;
+using NPipeline.Extensions.AI.Execution;
 using NPipeline.Extensions.AI.Exceptions;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
@@ -31,10 +31,10 @@ public sealed class AIBatchedStreamEnrichNode<TIn, TField> : IStreamTransformNod
     public AIBatchedStreamEnrichOptions<TIn, TField> Options { get; set; } = new();
 
     /// <summary>
-    ///     Gets or sets the execution strategy. Required by <see cref="IStreamTransformNode{TIn, TOut}" /> but not consumed by this node; batch processing is
-    ///     always sequential.
+    ///     Gets or sets the execution strategy.
+    ///     Defaults to a stream-aware passthrough strategy so this node preserves its native stream batching behavior.
     /// </summary>
-    public IExecutionStrategy ExecutionStrategy { get; set; } = new SequentialExecutionStrategy();
+    public IExecutionStrategy ExecutionStrategy { get; set; } = AIStreamPassthroughExecutionStrategy.Instance;
 
     /// <inheritdoc />
     public async IAsyncEnumerable<TIn> TransformAsync(

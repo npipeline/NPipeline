@@ -1,5 +1,6 @@
 using Microsoft.Extensions.AI;
 using NPipeline.Extensions.AI.Configuration;
+using NPipeline.Extensions.AI.Execution;
 using NPipeline.Extensions.AI.Nodes;
 using NPipeline.Graph;
 using NPipeline.Nodes;
@@ -69,7 +70,11 @@ public static class PipelineBuilderAIRouteExtensions
         var baseName = name ?? typeof(AIBatchedStreamEnrichNode<TIn, TField>).Name;
 
         var enrichHandle = builder.AddStreamTransform<AIBatchedStreamEnrichNode<TIn, TField>, TIn, TIn>($"{baseName}_enrich");
-        var enrichNode = new AIBatchedStreamEnrichNode<TIn, TField>(chatClient) { Options = options };
+        var enrichNode = new AIBatchedStreamEnrichNode<TIn, TField>(chatClient)
+        {
+            Options = options,
+            ExecutionStrategy = AIStreamPassthroughExecutionStrategy.Instance,
+        };
         builder.AddPreconfiguredNodeInstance(enrichHandle.Id, enrichNode);
 
         var routeHandle = builder.AddRoute<TIn>($"{baseName}_route");

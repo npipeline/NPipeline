@@ -1,4 +1,5 @@
 using Microsoft.Extensions.AI;
+using NPipeline.Execution;
 using NPipeline.Extensions.AI.Configuration;
 using NPipeline.Extensions.AI.Exceptions;
 using NPipeline.Extensions.AI.Nodes;
@@ -8,6 +9,14 @@ namespace NPipeline.Extensions.AI.Tests;
 
 public class AIBatchedStreamEnrichNodeTests
 {
+    [Fact]
+    public void ExecutionStrategy_Default_IsStreamCapable()
+    {
+        var node = new AIBatchedStreamEnrichNode<TestDomain.Comment, TestDomain.SentimentResult>(FakeChatClient.ThatReturns("[]"));
+
+        _ = Assert.IsType<IStreamExecutionStrategy>(node.ExecutionStrategy, exactMatch: false);
+    }
+
     [Fact]
     public async Task TransformAsync_EnrichesAndFansOut()
     {

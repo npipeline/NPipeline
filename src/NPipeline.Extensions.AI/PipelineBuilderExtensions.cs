@@ -1,5 +1,6 @@
 using Microsoft.Extensions.AI;
 using NPipeline.Extensions.AI.Configuration;
+using NPipeline.Extensions.AI.Execution;
 using NPipeline.Extensions.AI.Nodes;
 using NPipeline.Graph;
 using NPipeline.Pipeline;
@@ -96,7 +97,11 @@ public static class PipelineBuilderExtensions
         var nodeName = name ?? typeof(AIBatchedStreamTransformNode<TIn, TOut>).Name;
         var handle = builder.AddStreamTransform<AIBatchedStreamTransformNode<TIn, TOut>, TIn, TOut>(nodeName);
 
-        var node = new AIBatchedStreamTransformNode<TIn, TOut>(chatClient) { Options = options };
+        var node = new AIBatchedStreamTransformNode<TIn, TOut>(chatClient)
+        {
+            Options = options,
+            ExecutionStrategy = AIStreamPassthroughExecutionStrategy.Instance,
+        };
         builder.AddPreconfiguredNodeInstance(handle.Id, node);
 
         return handle;
@@ -164,6 +169,48 @@ public static class PipelineBuilderExtensions
         return handle;
     }
 
+    /// <summary>
+    ///     Adds a convenience chain for batch -&gt; AI batched enrich -&gt; unbatch and returns handles for wiring before and after the chain.
+    /// </summary>
+    /// <typeparam name="T">The input and output item type.</typeparam>
+    /// <typeparam name="TField">The AI-generated field type.</typeparam>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="chatClient">The <see cref="IChatClient" /> to use for LLM calls.</param>
+    /// <param name="batchSize">The batch size used by the batcher.</param>
+    /// <param name="batchTimeout">The batch timeout used by the batcher.</param>
+    /// <param name="configure">Configuration delegate for the batched enrich options.</param>
+    /// <param name="name">Optional base name for generated nodes.</param>
+    /// <returns>
+    ///     A tuple containing input and output handles that can be connected like a single <c>T -&gt; T</c> stage.
+    ///     The input handle targets the first (batch) node and the output handle sources the final (unbatch) node.
+    /// </returns>
+    public static (TransformNodeHandle<T, T> inputHandle, TransformNodeHandle<T, T> outputHandle) AddAIBatchedEnrichWithUnbatch<T, TField>(
+        this PipelineBuilder builder,
+        IChatClient chatClient,
+        int batchSize,
+        TimeSpan batchTimeout,
+        Action<AIBatchedEnrichOptionsBuilder<T, TField>> configure,
+        string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(chatClient);
+        ArgumentNullException.ThrowIfNull(configure);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(batchSize);
+        if (batchTimeout <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(batchTimeout), "Batch timeout must be greater than zero.");
+
+        var baseName = name ?? typeof(AIBatchedEnrichNode<T, TField>).Name;
+
+        var batchHandle = builder.AddBatcher<T>($"{baseName}_batch", batchSize, batchTimeout);
+        var enrichHandle = builder.AddAIBatchedEnrich<T, TField>(chatClient, configure, $"{baseName}_enrich");
+        var unbatchHandle = builder.AddReadOnlyCollectionUnbatcher<T>($"{baseName}_unbatch");
+
+        builder.Connect(batchHandle, enrichHandle);
+        builder.Connect(enrichHandle, unbatchHandle);
+
+        return (new TransformNodeHandle<T, T>(batchHandle.Id), new TransformNodeHandle<T, T>(unbatchHandle.Id));
+    }
+
     /// <summary>Adds a stream-level AI enrichment node that internally buffers, sends batches to an LLM, splices fields, and fans out enriched items.</summary>
     /// <typeparam name="TIn">The input item type.</typeparam>
     /// <typeparam name="TField">The AI-generated field type.</typeparam>
@@ -189,7 +236,11 @@ public static class PipelineBuilderExtensions
         var nodeName = name ?? typeof(AIBatchedStreamEnrichNode<TIn, TField>).Name;
         var handle = builder.AddStreamTransform<AIBatchedStreamEnrichNode<TIn, TField>, TIn, TIn>(nodeName);
 
-        var node = new AIBatchedStreamEnrichNode<TIn, TField>(chatClient) { Options = options };
+        var node = new AIBatchedStreamEnrichNode<TIn, TField>(chatClient)
+        {
+            Options = options,
+            ExecutionStrategy = AIStreamPassthroughExecutionStrategy.Instance,
+        };
         builder.AddPreconfiguredNodeInstance(handle.Id, node);
 
         return handle;
