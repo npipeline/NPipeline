@@ -63,10 +63,57 @@ public class AIBatchedTransformNodeTests
 
         Assert.NotNull(capturedFormat);
         var schemaFormat = Assert.IsType<ChatResponseFormatJson>(capturedFormat, exactMatch: false);
-        Assert.Equal("BatchResponse", schemaFormat.SchemaName);
-        Assert.Equal("A JSON array of objects, one per input item.", schemaFormat.SchemaDescription);
+        Assert.False(string.IsNullOrWhiteSpace(schemaFormat.SchemaName));
         Assert.True(schemaFormat.Schema.HasValue);
-        Assert.Equal("array", schemaFormat.Schema.Value.GetProperty("type").GetString());
+        var schema = schemaFormat.Schema.Value;
+        Assert.Equal("array", schema.GetProperty("type").GetString());
+
+        var items = schema.GetProperty("items");
+        Assert.Equal("object", items.GetProperty("type").GetString());
+
+        var properties = items.GetProperty("properties");
+        Assert.Contains(properties.EnumerateObject(), p => string.Equals(p.Name, "category", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(properties.EnumerateObject(), p => string.Equals(p.Name, "confidence", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task TransformAsync_CountMismatch_RetriesAndSucceeds()
+    {
+        var callCount = 0;
+        var userMessages = new List<string>();
+
+        var client = new FakeChatClient((messages, _, _) =>
+        {
+            callCount++;
+            var messageList = messages.ToList();
+            userMessages.Add(messageList.First(m => m.Role == ChatRole.User).Text ?? string.Empty);
+
+            var responseText = callCount == 1
+                ? """[{"category":"Greeting","confidence":0.9}]"""
+                : """[{"category":"Greeting","confidence":0.9},{"category":"Question","confidence":0.8}]""";
+
+            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText)));
+        });
+
+        var node = new AIBatchedTransformNode<TestDomain.Comment, TestDomain.ClassificationResult>(client)
+        {
+            Options = new AIBatchedTransformOptions<TestDomain.Comment, TestDomain.ClassificationResult>(
+                "Classify.",
+                _ => "classify"),
+        };
+
+        var batch = new List<TestDomain.Comment>
+        {
+            new("hello", "alice"),
+            new("what time is it", "bob"),
+        };
+
+        var results = await node.TransformAsync(batch, Context(), CancellationToken.None);
+
+        Assert.Equal(2, results.Count);
+        Assert.Equal(2, callCount);
+        Assert.Equal(2, userMessages.Count);
+        Assert.Contains("EXACTLY 2", userMessages[1]);
     }
 
     [Fact]

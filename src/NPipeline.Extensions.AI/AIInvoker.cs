@@ -7,14 +7,6 @@ namespace NPipeline.Extensions.AI;
 
 internal static class AIInvoker
 {
-    private static readonly JsonElement BatchResponseSchema = JsonDocument.Parse(
-        """{"type":"array","items":{"type":"object"}}""").RootElement.Clone();
-
-    private static readonly ChatResponseFormat BatchResponseFormat = ChatResponseFormat.ForJsonSchema(
-        BatchResponseSchema,
-        schemaName: "BatchResponse",
-        schemaDescription: "A JSON array of objects, one per input item.");
-
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -61,23 +53,14 @@ internal static class AIInvoker
 
         var userMessage = BuildUserMessage(batch, batchTemplate, "BatchTemplate");
         var messages = BuildMessages(systemPrompt, userMessage);
-        var options = BuildBatchChatOptions(batch, userMessage, temperature, maxOutputTokens, useNativeStructuredOutput, configureOptions);
+        var options = BuildBatchChatOptions<TOut>(batch, userMessage, temperature, maxOutputTokens, useNativeStructuredOutput, configureOptions);
 
         var results = await InvokeAndDeserializeAsync<IReadOnlyCollection<TOut>>(chatClient, batch, userMessage, messages, options, cancellationToken)
             .ConfigureAwait(false);
 
-        if (batch.Count != results.Count)
-        {
-            throw new AITransformException(
-                $"Batch transform count mismatch: sent {batch.Count} items but received {results.Count} results. Expected one result per input item.",
-                new InvalidOperationException("Batch transform count mismatch."))
-            {
-                OriginalItem = batch,
-                PromptSent = userMessage,
-            };
-        }
-
-        return results;
+        return await RetryBatchOnCountMismatchAsync(
+            chatClient, batch, batch.Count, results, systemPrompt, userMessage, "transform", options, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     internal static async Task<TField> InvokeEnrichAsync<TIn, TField>(
@@ -120,23 +103,14 @@ internal static class AIInvoker
 
         var userMessage = BuildUserMessage(batch, batchTemplate, "BatchTemplate");
         var messages = BuildMessages(systemPrompt, userMessage);
-        var options = BuildBatchChatOptions(batch, userMessage, temperature, maxOutputTokens, useNativeStructuredOutput, configureOptions);
+        var options = BuildBatchChatOptions<TField>(batch, userMessage, temperature, maxOutputTokens, useNativeStructuredOutput, configureOptions);
 
         var results = await InvokeAndDeserializeAsync<IReadOnlyCollection<TField>>(chatClient, batch, userMessage, messages, options, cancellationToken)
             .ConfigureAwait(false);
 
-        if (batch.Count != results.Count)
-        {
-            throw new AITransformException(
-                $"Batch enrichment count mismatch: sent {batch.Count} items but received {results.Count} results. Expected one result per input item.",
-                new InvalidOperationException("Batch enrichment count mismatch."))
-            {
-                OriginalItem = batch,
-                PromptSent = userMessage,
-            };
-        }
-
-        return results;
+        return await RetryBatchOnCountMismatchAsync(
+            chatClient, batch, batch.Count, results, systemPrompt, userMessage, "enrichment", options, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static async Task<T> InvokeAndDeserializeAsync<T>(
@@ -229,6 +203,47 @@ internal static class AIInvoker
         }
     }
 
+    private static async Task<IReadOnlyCollection<T>> RetryBatchOnCountMismatchAsync<T>(
+        IChatClient chatClient,
+        object batch,
+        int expectedCount,
+        IReadOnlyCollection<T> results,
+        string systemPrompt,
+        string originalUserMessage,
+        string operationName,
+        ChatOptions options,
+        CancellationToken cancellationToken)
+    {
+        if (expectedCount == results.Count)
+            return results;
+
+        var retryUserMessage =
+            $"{originalUserMessage}\n\nIMPORTANT: You provided {results.Count} result(s) but there are {expectedCount} item(s) in the previous user message. Return a JSON array with EXACTLY {expectedCount} elements.";
+        var retryMessages = BuildMessages(systemPrompt, retryUserMessage);
+
+        results = await InvokeAndDeserializeAsync<IReadOnlyCollection<T>>(
+                chatClient,
+                batch,
+                retryUserMessage,
+                retryMessages,
+                options,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (expectedCount != results.Count)
+        {
+            throw new AITransformException(
+                $"Batch {operationName} count mismatch: sent {expectedCount} items but received {results.Count} results after retry. Expected one result per input item.",
+                new InvalidOperationException($"Batch {operationName} count mismatch."))
+            {
+                OriginalItem = batch,
+                PromptSent = originalUserMessage,
+            };
+        }
+
+        return results;
+    }
+
     private static bool IsInfrastructureException(Exception ex)
     {
         return ex is OperationCanceledException
@@ -266,7 +281,7 @@ internal static class AIInvoker
     /// <summary>
     ///     Builds <see cref="ChatOptions" /> for batched invocations where the expected response is a JSON array.
     /// </summary>
-    private static ChatOptions BuildBatchChatOptions(
+    private static ChatOptions BuildBatchChatOptions<TElement>(
         object? item,
         string userMessage,
         float? temperature,
@@ -280,7 +295,7 @@ internal static class AIInvoker
             temperature,
             maxOutputTokens,
             useNativeStructuredOutput,
-            BatchResponseFormat,
+            ChatResponseFormat.ForJsonSchema<TElement[]>(),
             configureOptions);
     }
 
