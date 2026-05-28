@@ -9,10 +9,10 @@ namespace NPipeline.Extensions.AI.Tests;
 public class AIBatchedTransformNodeTests
 {
     [Fact]
-    public async Task TransformAsync_SingleObjectResponse_ForSingleItemBatch_IsWrappedAndDeserialized()
+    public async Task TransformAsync_BareArrayResponse_ForSingleItemBatch_IsWrappedAndDeserialized()
     {
         var client = FakeChatClient.ThatReturns(
-            """{"category":"Greeting","confidence":0.9}""");
+            """[{"category":"Greeting","confidence":0.9}]""");
 
         var node = new AIBatchedTransformNode<TestDomain.Comment, TestDomain.ClassificationResult>(client)
         {
@@ -66,14 +66,20 @@ public class AIBatchedTransformNodeTests
         Assert.False(string.IsNullOrWhiteSpace(schemaFormat.SchemaName));
         Assert.True(schemaFormat.Schema.HasValue);
         var schema = schemaFormat.Schema.Value;
-        Assert.Equal("array", schema.GetProperty("type").GetString());
+        Assert.Equal("object", schema.GetProperty("type").GetString());
 
-        var items = schema.GetProperty("items");
-        Assert.Equal("object", items.GetProperty("type").GetString());
+        var properties = schema.GetProperty("properties");
+        var items = properties.TryGetProperty("Items", out var pascalItems)
+            ? pascalItems
+            : properties.GetProperty("items");
+        Assert.Equal("array", items.GetProperty("type").GetString());
 
-        var properties = items.GetProperty("properties");
-        Assert.Contains(properties.EnumerateObject(), p => string.Equals(p.Name, "category", StringComparison.OrdinalIgnoreCase));
-        Assert.Contains(properties.EnumerateObject(), p => string.Equals(p.Name, "confidence", StringComparison.OrdinalIgnoreCase));
+        var itemSchema = items.GetProperty("items");
+        Assert.Equal("object", itemSchema.GetProperty("type").GetString());
+
+        var itemProperties = itemSchema.GetProperty("properties");
+        Assert.Contains(itemProperties.EnumerateObject(), p => string.Equals(p.Name, "category", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(itemProperties.EnumerateObject(), p => string.Equals(p.Name, "confidence", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

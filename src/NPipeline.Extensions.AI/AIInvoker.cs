@@ -55,8 +55,9 @@ internal static class AIInvoker
         var messages = BuildMessages(systemPrompt, userMessage);
         var options = BuildBatchChatOptions<TOut>(batch, userMessage, temperature, maxOutputTokens, useNativeStructuredOutput, configureOptions);
 
-        var results = await InvokeAndDeserializeAsync<IReadOnlyCollection<TOut>>(chatClient, batch, userMessage, messages, options, cancellationToken)
+        var wrapper = await InvokeAndDeserializeAsync<BatchResponseWrapper<TOut>>(chatClient, batch, userMessage, messages, options, cancellationToken)
             .ConfigureAwait(false);
+        var results = (IReadOnlyCollection<TOut>)wrapper.Items;
 
         return await RetryBatchOnCountMismatchAsync(
             chatClient, batch, batch.Count, results, systemPrompt, userMessage, "transform", options, cancellationToken)
@@ -105,8 +106,9 @@ internal static class AIInvoker
         var messages = BuildMessages(systemPrompt, userMessage);
         var options = BuildBatchChatOptions<TField>(batch, userMessage, temperature, maxOutputTokens, useNativeStructuredOutput, configureOptions);
 
-        var results = await InvokeAndDeserializeAsync<IReadOnlyCollection<TField>>(chatClient, batch, userMessage, messages, options, cancellationToken)
+        var wrapper = await InvokeAndDeserializeAsync<BatchResponseWrapper<TField>>(chatClient, batch, userMessage, messages, options, cancellationToken)
             .ConfigureAwait(false);
+        var results = (IReadOnlyCollection<TField>)wrapper.Items;
 
         return await RetryBatchOnCountMismatchAsync(
             chatClient, batch, batch.Count, results, systemPrompt, userMessage, "enrichment", options, cancellationToken)
@@ -174,6 +176,25 @@ internal static class AIInvoker
         }
         catch (Exception ex) when (ex is JsonException or NotSupportedException)
         {
+            // Model returned a bare array [...] when a BatchResponseWrapper was expected.
+            if (typeof(T).IsGenericType
+                && typeof(T).GetGenericTypeDefinition() == typeof(BatchResponseWrapper<>)
+                && rawText.StartsWith("[", StringComparison.Ordinal))
+            {
+                try
+                {
+                    var wrappedWrapper = $"{{\"Items\":{rawText}}}";
+                    var retryResult = JsonSerializer.Deserialize<T>(wrappedWrapper, JsonOptions);
+
+                    if (retryResult is not null)
+                        return retryResult;
+                }
+                catch (Exception retryEx) when (retryEx is JsonException or NotSupportedException)
+                {
+                    // Wrapping did not help; fall through to the original error.
+                }
+            }
+
             // Some models return a single object {…} when the caller expects an array […].
             // If T is IReadOnlyCollection<TField>, wrap in [...] and retry.
             if (IsReadOnlyCollectionType(typeof(T))
@@ -218,10 +239,10 @@ internal static class AIInvoker
             return results;
 
         var retryUserMessage =
-            $"{originalUserMessage}\n\nIMPORTANT: You provided {results.Count} result(s) but there are {expectedCount} item(s) in the previous user message. Return a JSON array with EXACTLY {expectedCount} elements.";
+            $"{originalUserMessage}\n\nIMPORTANT: You provided {results.Count} result(s) but there are {expectedCount} item(s) in the previous user message. Return a JSON object with an 'Items' array containing EXACTLY {expectedCount} elements.";
         var retryMessages = BuildMessages(systemPrompt, retryUserMessage);
 
-        results = await InvokeAndDeserializeAsync<IReadOnlyCollection<T>>(
+        var retryWrapper = await InvokeAndDeserializeAsync<BatchResponseWrapper<T>>(
                 chatClient,
                 batch,
                 retryUserMessage,
@@ -229,6 +250,7 @@ internal static class AIInvoker
                 options,
                 cancellationToken)
             .ConfigureAwait(false);
+        results = (IReadOnlyCollection<T>)retryWrapper.Items;
 
         if (expectedCount != results.Count)
         {
@@ -279,7 +301,7 @@ internal static class AIInvoker
     }
 
     /// <summary>
-    ///     Builds <see cref="ChatOptions" /> for batched invocations where the expected response is a JSON array.
+    ///     Builds <see cref="ChatOptions" /> for batched invocations where the expected response is a JSON object with an Items array.
     /// </summary>
     private static ChatOptions BuildBatchChatOptions<TElement>(
         object? item,
@@ -295,9 +317,11 @@ internal static class AIInvoker
             temperature,
             maxOutputTokens,
             useNativeStructuredOutput,
-            ChatResponseFormat.ForJsonSchema<TElement[]>(),
+            ChatResponseFormat.ForJsonSchema<BatchResponseWrapper<TElement>>(),
             configureOptions);
     }
+
+    private sealed record BatchResponseWrapper<T>(List<T> Items);
 
     private static ChatOptions BuildChatOptionsCore(
         object? item,
