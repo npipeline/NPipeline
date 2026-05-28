@@ -1,4 +1,4 @@
-# <img src="https://raw.githubusercontent.com/NPipeline/NPipeline/main/icon.png" width="22" height="22" /> NPipeline
+# NPipeline
 
 **High-performance, streaming data pipelines for .NET**
 
