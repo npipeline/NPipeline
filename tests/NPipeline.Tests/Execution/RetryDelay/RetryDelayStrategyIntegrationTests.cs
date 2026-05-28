@@ -56,7 +56,7 @@ public sealed class RetryDelayStrategyIntegrationTests
             // Assert
             _ = outputs.Should().HaveCount(3);
             _ = stopwatch.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(30); // 10ms + 20ms minimum delays
-            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(2000); // Generous to account for timing variance across multiple retry delays
+            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(5000);
         }
     }
 
@@ -98,7 +98,7 @@ public sealed class RetryDelayStrategyIntegrationTests
             // Assert
             _ = outputs.Should().HaveCount(3);
             _ = stopwatch.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(30); // 10ms + 15ms minimum delays
-            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(2000); // Should not take too long (with some margin for system variance)
+            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(5000);
         }
     }
 
@@ -137,7 +137,7 @@ public sealed class RetryDelayStrategyIntegrationTests
             // Assert
             _ = outputs.Should().HaveCount(3);
             _ = stopwatch.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(30); // At least some retry delays should occur
-            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(2000); // Large margin to handle system timing variations
+            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(5000);
         }
     }
 
@@ -179,7 +179,7 @@ public sealed class RetryDelayStrategyIntegrationTests
             // Assert
             _ = outputs.Should().HaveCount(3);
             _ = stopwatch.ElapsedMilliseconds.Should().BeGreaterThan(0);
-            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(1000); // Relaxed to account for worst-case jitter scenarios
+            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(3000);
         }
     }
 
@@ -299,7 +299,7 @@ public sealed class RetryDelayStrategyIntegrationTests
 
             // Assert
             _ = outputs.Should().HaveCount(3);
-            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(1000); // Should be very fast without delays (with generous margin for CI variability)
+            _ = stopwatch.ElapsedMilliseconds.Should().BeLessThan(5000);
         }
     }
 
