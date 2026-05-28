@@ -181,22 +181,13 @@ public sealed class LineageContinuityIntegrationTests
     private static async Task RunPipelineAsync<TPipeline>(PipelineContext context)
         where TPipeline : IPipelineDefinition, new()
     {
-        var originalLineage = PipelineBuilder.Lineage;
-        PipelineBuilder.Lineage = new LineageService();
-        try
-        {
-            var services = new ServiceCollection();
-            services.AddNPipeline(typeof(LineageContinuityIntegrationTests).Assembly);
-            services.AddNPipelineLineage();
+        var services = new ServiceCollection();
+        services.AddNPipeline(typeof(LineageContinuityIntegrationTests).Assembly);
+        services.AddNPipelineLineage();
 
-            await using var provider = services.BuildServiceProvider();
-            var runner = provider.GetRequiredService<IPipelineRunner>();
-            await runner.RunAsync<TPipeline>(context);
-        }
-        finally
-        {
-            PipelineBuilder.Lineage = originalLineage;
-        }
+        await using var provider = services.BuildServiceProvider();
+        var runner = provider.GetRequiredService<IPipelineRunner>();
+        await runner.RunAsync<TPipeline>(context);
     }
 
     private sealed class CollectingLineageSink : ILineageSink
