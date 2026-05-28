@@ -59,14 +59,15 @@ Every AI node follows the same execution model:
 
 1. A template delegate formats the input into a user message string.
 2. The node sends a two-message exchange to the LLM: `[system prompt, user message]`.
-3. The raw response text is deserialized with `System.Text.Json` into the target type.
-4. On success the typed result flows downstream. On failure an `AITransformException` is thrown.
+3. Raw response text is sanitized (markdown code fences are stripped) before deserialization.
+4. The sanitized text is deserialized with `System.Text.Json` into the target type, with graceful fallback for common model quirks (bare arrays, single objects instead of arrays).
+5. On success the typed result flows downstream. On failure an `AITransformException` is thrown.
 
 Each call is **stateless** - no conversation history is maintained between items. Every item or batch starts a fresh `[system, user]` session.
 
 ## Node Reference
 
-There are six nodes, split across two families.
+There are six nodes and one convenience chain method, split across two families.
 
 ### Transform Family
 
@@ -88,13 +89,13 @@ Returns a `TransformNodeHandle<TIn, TOut>`.
 
 #### `AIBatchedTransformNode<TIn, TOut>`
 
-One LLM call for the whole batch. The model receives all items in a single user message and must return an array of results in the same order.
+One LLM call for the whole batch. The model receives all items in a single user message and must return a JSON object with an `Items` array containing one result per input item, in the same order.
 
-The node enforces a 1:1 count between input and output - if the model returns a different number of results, it throws `AITransformException` with a count mismatch message.
+The node enforces a 1:1 count between input and output. If the model returns a different number of results, the node automatically retries once with a corrective prompt. If the retry also produces a mismatch, `AITransformException` is thrown.
 
 ```csharp
 builder.AddAIBatchedTransform<Comment, ClassificationResult>(chatClient, options => options
-    .WithSystemPrompt("Classify each comment below. Return a JSON array, one object per comment, with 'category' and 'confidence'.")
+    .WithSystemPrompt("Classify each comment below. Return a JSON object with an 'Items' array, one object per comment, with 'category' and 'confidence'.")
     .WithBatchTemplate(batch =>
     {
         var lines = batch.Select((c, i) => $"{i + 1}. {c.Text}");
@@ -108,9 +109,11 @@ Returns a `TransformNodeHandle<IReadOnlyCollection<TIn>, IReadOnlyCollection<TOu
 
 Handles the full buffering and fan-out internally. Items arrive as a stream, are collected into batches of `BatchSize`, each batch is sent to the LLM, and the results are yielded back as individual items. A `BatchTimeout` flushes incomplete batches when items arrive slowly.
 
+Stream AI nodes use `AIStreamPassthroughExecutionStrategy` which preserves native stream semantics (including internal buffering/batching) and tracks observability at the stream level.
+
 ```csharp
 builder.AddAIBatchedStreamTransform<Comment, ClassificationResult>(chatClient, options => options
-    .WithSystemPrompt("Classify each comment. Return a JSON array, one object per comment, with 'category' and 'confidence'.")
+    .WithSystemPrompt("Classify each comment. Return a JSON object with an 'Items' array, one object per comment, with 'category' and 'confidence'.")
     .WithBatchTemplate(batch => string.Join("\n", batch.Select((c, i) => $"{i + 1}. {c.Text}")))
     .WithBatchSize(32)
     .WithBatchTimeout(TimeSpan.FromSeconds(2)));
@@ -141,24 +144,44 @@ Returns a `TransformNodeHandle<TIn, TIn>`.
 
 #### `AIBatchedEnrichNode<TIn, TField>`
 
-One LLM call for the whole batch. The model returns one `TField` per input item; the `ResultMapper` is called once per pair to produce the enriched item. Count parity is enforced - a mismatch throws `AITransformException`.
+One LLM call for the whole batch. The model returns one `TField` per input item inside a JSON object with an `Items` array; the `ResultMapper` is called once per pair to produce the enriched item. Count parity is enforced with automatic retry on mismatch - a persistent mismatch throws `AITransformException`.
 
 ```csharp
 builder.AddAIBatchedEnrich<Article, SummaryResult>(chatClient, options => options
-    .WithSystemPrompt("Summarise each article in one sentence. Return a JSON array, one object per article, with a 'summary' field.")
+    .WithSystemPrompt("Summarise each article in one sentence. Return a JSON object with an 'Items' array, one object per article, with a 'summary' field.")
     .WithBatchTemplate(batch => string.Join("\n\n", batch.Select((a, i) => $"Article {i + 1}: {a.Title}\n{a.Body}")))
     .WithResultMapper((article, result) => article with { Summary = result.Summary }));
 ```
 
 Returns a `TransformNodeHandle<IReadOnlyCollection<TIn>, IReadOnlyCollection<TIn>>`.
 
+#### `AddAIBatchedEnrichWithUnbatch`
+
+Convenience chain that wires three nodes together: `Batcher` → `AIBatchedEnrich` → `Unbatcher`. Returns input and output handles that you can connect like a single `T → T` stage, hiding the `IReadOnlyCollection` batching from the rest of the pipeline.
+
+```csharp
+var (input, output) = builder.AddAIBatchedEnrichWithUnbatch<Article, SummaryResult>(
+    chatClient,
+    batchSize: 16,
+    batchTimeout: TimeSpan.FromSeconds(5),
+    configure: options => options
+        .WithSystemPrompt("Summarise each article in one sentence. Return a JSON object with an 'Items' array, one object per article, with a 'summary' field.")
+        .WithItemTemplate(a => $"Title: {a.Title}\n\n{a.Body}")
+        .WithResultMapper((article, result) => article with { Summary = result.Summary }));
+
+builder.Connect(source, input);
+builder.Connect(output, sink);
+```
+
+Internal nodes are registered as `{name}_batch`, `{name}_enrich`, and `{name}_unbatch`.
+
 #### `AIBatchedStreamEnrichNode<TIn, TField>`
 
-Stream-level enrichment with internal batching. Combines the automatic buffering of `AIBatchedStreamTransformNode` with the in-place field merging of `AIBatchedEnrichNode`.
+Stream-level enrichment with internal batching. Combines the automatic buffering of `AIBatchedStreamTransformNode` with the in-place field merging of `AIBatchedEnrichNode`. Uses `AIStreamPassthroughExecutionStrategy` to preserve native stream semantics.
 
 ```csharp
 builder.AddAIBatchedStreamEnrich<Article, SummaryResult>(chatClient, options => options
-    .WithSystemPrompt("Summarise each article in one sentence. Return a JSON array with a 'summary' field per article.")
+    .WithSystemPrompt("Summarise each article in one sentence. Return a JSON object with an 'Items' array, one 'summary' object per article.")
     .WithBatchTemplate(batch => string.Join("\n\n", batch.Select((a, i) => $"Article {i + 1}: {a.Title}\n{a.Body}")))
     .WithResultMapper((article, result) => article with { Summary = result.Summary })
     .WithBatchSize(16)
@@ -213,7 +236,7 @@ Stream-level version. Items are buffered into batches, each batch is sent to the
 
 ```csharp
 var route = builder.AddAIBatchedStreamRoute<Comment, SentimentResult>(chatClient, opts => opts
-    .WithSystemPrompt("Classify the sentiment of each comment. Return a JSON array, one object per comment, with 'label' and 'score'.")
+    .WithSystemPrompt("Classify the sentiment of each comment. Return a JSON object with an 'Items' array, one object per comment, with 'label' and 'score'.")
     .WithBatchTemplate(batch => string.Join("\n", batch.Select((c, i) => $"{i + 1}. {c.Text}")))
     .WithResultMapper((c, r) => c with { Sentiment = r.Label })
     .WithBatchSize(32)
@@ -298,13 +321,14 @@ builder.AddAIRoute<Comment, SentimentResult>(chatClient, opts => opts
 | Stream of items, batch internally, change type | `AddAIBatchedStreamTransform` |
 | One item at a time, add a field | `AddAIEnrich` |
 | Pre-batched items arrive as a collection, add a field | `AddAIBatchedEnrich` |
+| Batch → enrich → unbatch as a single `T → T` stage | `AddAIBatchedEnrichWithUnbatch` |
 | Stream of items, batch internally, add a field | `AddAIBatchedStreamEnrich` |
 | LLM classifies each item, route to different branches | `AddAIRoute` |
 | LLM classifies a stream in batches, route to different branches | `AddAIBatchedStreamRoute` |
 
 ## Configuration Reference
 
-All six extension methods accept an options builder delegate. The options share a common set of properties.
+All extension methods accept an options builder delegate. The options share a common set of properties.
 
 ### Common Options (all nodes)
 
@@ -315,7 +339,7 @@ All six extension methods accept an options builder delegate. The options share 
 | `WithBatchTemplate(Func<IReadOnlyCollection<TIn>, string>)` | `Func<IReadOnlyCollection<TIn>, string>` | **Yes** *(batch)* | Formats a whole batch into the user message |
 | `WithTemperature(float)` | `float?` | No | LLM temperature (not set by default - provider default applies) |
 | `WithMaxOutputTokens(int)` | `int?` | No | Maximum tokens in the model's response; must be positive |
-| `WithNativeStructuredOutput(bool)` | `bool` | No | Sets `ChatOptions.ResponseFormat = ChatResponseFormat.Json`; defaults to `false` |
+| `WithNativeStructuredOutput(bool)` | `bool` | No | Requests structured JSON output; sets `ChatResponseFormat.Json` for per-item nodes or `ChatResponseFormat.ForJsonSchema` for batch nodes; defaults to `false` |
 | `WithConfigureOptions(Action<ChatOptions>)` | `Action<ChatOptions>?` | No | Advanced callback applied **after** all other options; use for anything not covered above |
 
 ### Enrich-Only Options
@@ -394,7 +418,7 @@ Use `WithConfigureOptions` to set anything not exposed directly - model identifi
 | `OriginalItem` | `object?` | The item or batch being processed when the failure occurred |
 | `PromptSent` | `string?` | The user message sent to the model |
 | `ModelUsed` | `string?` | `ChatResponse.ModelId`, if the provider returned one |
-| `RawResponse` | `string?` | The raw response text, when deserialization failed |
+| `RawResponse` | `string?` | The raw (unsanitized) response text from the model, when deserialization failed |
 
 ### Exception Wrapping Policy
 
@@ -405,7 +429,7 @@ The nodes apply different behaviour depending on the exception type:
 | Model returns null or whitespace | Wrapped in `AITransformException` |
 | Model returns JSON that deserializes to `null` | Wrapped in `AITransformException` |
 | Model returns malformed JSON | `JsonException` wrapped in `AITransformException` |
-| Batch and enrich count mismatch | Wrapped in `AITransformException` |
+| Batch and enrich count mismatch | Automatic retry with corrective prompt; `AITransformException` thrown if retry also mismatches |
 | `ItemTemplate` or `BatchTemplate` delegate throws | Wrapped in `AITransformException` with `OriginalItem` set |
 | `ResultMapper` delegate throws | Wrapped in `AITransformException` with `OriginalItem` set |
 | `ConfigureOptions` callback throws | Wrapped in `AITransformException` with `PromptSent` set |
@@ -532,7 +556,12 @@ This approach gives you token usage, latency histograms, and request traces for 
 
 ### UseNativeStructuredOutput
 
-Calling `.WithNativeStructuredOutput()` sets `ChatOptions.ResponseFormat = ChatResponseFormat.Json` on every request. This tells the model to return valid JSON. Whether the model constrains the schema to match your output type depends on the provider:
+Calling `.WithNativeStructuredOutput()` sets `ChatOptions.ResponseFormat` on every request to request valid JSON from the model. The format varies by node type:
+
+- **Per-item nodes** (`AITransformNode`, `AIEnrichNode`) set `ChatResponseFormat.Json`.
+- **Batch nodes** (`AIBatchedTransformNode`, `AIBatchedEnrichNode`, and stream variants) set `ChatResponseFormat.ForJsonSchema<BatchResponseWrapper<T>>()` which includes the `Items` array schema, helping models produce the correct wrapper structure.
+
+Whether the model constrains the schema to match your output type depends on the provider:
 
 - **OpenAI** uses it for JSON mode; combine with a schema in `ConfigureOptions` for constrained generation.
 - **Ollama** passes the flag to the model; support varies by model.
@@ -557,7 +586,13 @@ public class SentimentScore
 }
 ```
 
-For batch nodes, the LLM must return a JSON array (`[...]`) with one element per input item.
+The extension gracefully handles several common model quirks:
+
+- **Markdown code fences** - if the model wraps its JSON in ` ```json ... ``` `, the fences are stripped before deserialization.
+- **Bare array instead of wrapper** - if a batch node expects `{"Items": [...]}` but the model returns `[...]`, the array is automatically wrapped into the correct shape.
+- **Single object instead of array** - if an array is expected but the model returns a single `{...}` object, it is wrapped into `[...]` before deserialization.
+
+For batch nodes, the LLM must return a JSON object with an `Items` array (`{"Items": [...]}`) containing one element per input item.
 
 ## Best Practices
 
@@ -571,7 +606,7 @@ For batch nodes, the LLM must return a JSON array (`[...]`) with one element per
 
 - Start in the 16–32 range for `AIBatchedStreamTransformNode` and `AIBatchedStreamEnrichNode`.
 - Larger batches reduce API call overhead but increase context window usage and the probability of a count mismatch response.
-- If a model consistently returns mismatched counts, reduce the batch size.
+- If a model consistently returns mismatched counts even after automatic retry, reduce the batch size.
 
 ### Temperature
 
