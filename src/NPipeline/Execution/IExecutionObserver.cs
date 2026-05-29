@@ -19,6 +19,15 @@ public interface IExecutionObserver
     void OnNodeCompleted(NodeExecutionCompleted e);
 
     /// <summary>
+    ///     Called when a node's dataflow lifecycle completes (for example, when a lazily returned stream
+    ///     finishes enumeration and disposes its node scope).
+    /// </summary>
+    /// <param name="e">The event containing node dataflow completion information.</param>
+    void OnNodeDataflowCompleted(NodeDataflowCompleted e)
+    {
+    }
+
+    /// <summary>
     ///     Called when a retry operation occurs.
     /// </summary>
     /// <param name="e">The event containing retry information.</param>
@@ -66,6 +75,27 @@ public sealed record NodeExecutionCompleted(
     string NodeId,
     string NodeType,
     TimeSpan Duration,
+    bool Success,
+    Exception? Error,
+    Guid PipelineId,
+    string? PipelineName = null);
+
+/// <summary>
+///     Event data for node dataflow completion.
+/// </summary>
+/// <param name="NodeId">The unique identifier of the node.</param>
+/// <param name="NodeType">The type name of the node.</param>
+/// <param name="StartTime">The timestamp when node execution started.</param>
+/// <param name="EndTime">The timestamp when the node's dataflow completed.</param>
+/// <param name="Success">Whether the dataflow completed successfully.</param>
+/// <param name="Error">The exception if dataflow failed, otherwise null.</param>
+/// <param name="PipelineId">The unique pipeline identity for the current execution context.</param>
+/// <param name="PipelineName">The logical pipeline name for the current execution context.</param>
+public sealed record NodeDataflowCompleted(
+    string NodeId,
+    string NodeType,
+    DateTimeOffset StartTime,
+    DateTimeOffset EndTime,
     bool Success,
     Exception? Error,
     Guid PipelineId,

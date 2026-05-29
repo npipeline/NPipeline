@@ -266,6 +266,74 @@ public sealed class MetricsCollectingExecutionObserverTests
         Assert.Null(exception);
     }
 
+    [Fact]
+    public void OnNodeDataflowCompleted_AfterNodeCompleted_ShouldUseDataflowDuration()
+    {
+        // Arrange
+        var collector = new ObservabilityCollector(new TestObservabilityFactory());
+        var observer = new MetricsCollectingExecutionObserver(collector);
+        var nodeId = "testNode";
+        var startTime = DateTimeOffset.UtcNow;
+
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
+        collector.RecordItemMetrics(nodeId, 5, 5, s_pipelineId);
+
+        // Act
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(25), true, null, s_pipelineId));
+
+        var dataflowEnd = startTime.AddSeconds(2);
+        observer.OnNodeDataflowCompleted(new NodeDataflowCompleted(
+            nodeId,
+            "TransformNode",
+            startTime,
+            dataflowEnd,
+            true,
+            null,
+            s_pipelineId));
+
+        // Assert
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
+        Assert.NotNull(metrics);
+        _ = metrics.DurationMs;
+        Assert.InRange(metrics.DurationMs!.Value, 1990, 2010);
+        _ = metrics.AverageItemProcessingMs;
+        Assert.InRange(metrics.AverageItemProcessingMs!.Value, 398, 402);
+    }
+
+    [Fact]
+    public void OnNodeDataflowCompleted_BeforeNodeCompleted_ShouldPreserveDataflowDuration()
+    {
+        // Arrange
+        var collector = new ObservabilityCollector(new TestObservabilityFactory());
+        var observer = new MetricsCollectingExecutionObserver(collector);
+        var nodeId = "testNode";
+        var startTime = DateTimeOffset.UtcNow;
+
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
+        collector.RecordItemMetrics(nodeId, 4, 4, s_pipelineId);
+
+        // Act
+        var dataflowEnd = startTime.AddMilliseconds(900);
+        observer.OnNodeDataflowCompleted(new NodeDataflowCompleted(
+            nodeId,
+            "TransformNode",
+            startTime,
+            dataflowEnd,
+            true,
+            null,
+            s_pipelineId));
+
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null, s_pipelineId));
+
+        // Assert
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
+        Assert.NotNull(metrics);
+        _ = metrics.DurationMs;
+        Assert.InRange(metrics.DurationMs!.Value, 890, 910);
+        _ = metrics.AverageItemProcessingMs;
+        Assert.InRange(metrics.AverageItemProcessingMs!.Value, 220, 230);
+    }
+
     #endregion
 
     #region OnRetry Tests

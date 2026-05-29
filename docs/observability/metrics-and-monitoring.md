@@ -33,13 +33,22 @@ For each node, the `MetricsCollectingExecutionObserver` records:
 
 | Metric | Description |
 |--------|-------------|
-| Start/end timestamps | When the node began and finished |
+| Start/end timestamps | Node timing window (for lazy stream nodes with `WithObservability`, end is finalized at dataflow completion) |
 | Items processed/emitted | Count of input and output items |
 | Throughput (items/sec) | Processing rate |
 | Average item processing time | Mean time per item in milliseconds |
 | Retry count | Number of retries (if resilience is enabled) |
 | Processor time | CPU time consumed |
 | Peak memory (optional) | Memory at node boundaries |
+
+### Execution vs Dataflow Completion
+
+For stream-heavy pipelines, node setup can complete before real work finishes. Observability now distinguishes:
+
+- `OnNodeCompleted` - setup/execution delegate returned.
+- `OnNodeDataflowCompleted` - downstream enumeration finished and stream scope disposed.
+
+When dataflow completion is available, node duration and derived performance metrics are finalized from that later event so stream runtimes are attributed accurately.
 
 ### Pipeline Metrics
 

@@ -23,6 +23,8 @@ services.AddNPipelineObservability();
 
 This enables automatic metrics collection for every pipeline run - node execution times, throughput, retry counts, and pipeline lifecycle events.
 
+For nodes that return lazy streams, timing now differentiates between node setup completion and stream/dataflow completion. When per-node observability is enabled with `WithObservability(...)`, `DurationMs` is finalized when stream consumption completes, not when the node first returns its output stream.
+
 ### Using the Observable Context Factory
 
 ```csharp
@@ -39,8 +41,8 @@ await using var context = contextFactory.Create();
 |----------|------|-------------|
 | `NodeId` | `string` | Node identifier |
 | `PipelineId` | `Guid` | Pipeline run ID |
-| `StartTime` / `EndTime` | `DateTimeOffset?` | Execution timestamps |
-| `DurationMs` | `double?` | Total execution time (ms) |
+| `StartTime` / `EndTime` | `DateTimeOffset?` | Node timing window (for lazy stream nodes with `WithObservability`, end time is finalized at dataflow completion) |
+| `DurationMs` | `double?` | Node wall-clock duration in milliseconds |
 | `Success` | `bool` | Whether execution succeeded |
 | `ItemsProcessed` | `long` | Items consumed |
 | `ItemsEmitted` | `long` | Items produced |
@@ -53,6 +55,17 @@ await using var context = contextFactory.Create();
 | `ThreadId` | `int?` | Thread ID |
 
 All counters use `Interlocked` operations for thread safety.
+
+### Stream Timing Semantics
+
+For lazy stream nodes, NPipeline emits two lifecycle moments:
+
+1. **Execution completion** (`OnNodeCompleted`) - node setup/delegate returned.
+2. **Dataflow completion** (`OnNodeDataflowCompleted`) - stream enumeration/scope disposal finished.
+
+The built-in `MetricsCollectingExecutionObserver` uses dataflow completion as the authoritative end timestamp when available. This keeps `DurationMs`, `ThroughputItemsPerSec`, and `AverageItemProcessingMs` aligned for stream-heavy pipelines.
+
+If you implement a custom `IExecutionObserver`, handle `OnNodeDataflowCompleted(...)` when you need true stream runtime attribution.
 
 ## Pipeline Metrics
 

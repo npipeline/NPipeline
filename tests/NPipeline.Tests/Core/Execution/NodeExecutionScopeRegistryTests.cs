@@ -54,7 +54,17 @@ public sealed class NodeExecutionScopeRegistryTests
         var registry = new NodeExecutionScopeRegistry();
         var scope = new RecordingScope();
         var expected = new InvalidOperationException("boom");
-        registry.RegisterNodeObservabilityScope("node-fail", scope);
+        Exception? callbackException = null;
+        var callbackCount = 0;
+
+        registry.RegisterNodeObservabilityScope(
+            "node-fail",
+            scope,
+            ex =>
+            {
+                callbackException = ex;
+                callbackCount++;
+            });
 
         // Act
         registry.RecordNodeFailureAndDispose("node-fail", expected);
@@ -62,10 +72,13 @@ public sealed class NodeExecutionScopeRegistryTests
         // Assert
         _ = scope.RecordedFailure.Should().BeSameAs(expected);
         _ = scope.DisposeCount.Should().Be(1);
+        _ = callbackException.Should().BeSameAs(expected);
+        _ = callbackCount.Should().Be(1);
 
         // Subsequent failures should be ignored after scope removal.
         registry.RecordNodeFailureAndDispose("node-fail", new Exception("ignored"));
         _ = scope.DisposeCount.Should().Be(1);
+        _ = callbackCount.Should().Be(1);
     }
 
     [Fact]
@@ -92,6 +105,27 @@ public sealed class NodeExecutionScopeRegistryTests
 
         var diagnostics = registry.EnumerateRuntimeAnnotationsWithPrefix("diag.resilience.").ToList();
         _ = diagnostics.Count.Should().Be(2);
+    }
+
+    [Fact]
+    public void DisposeAllNodeScopes_DisposesEachScopeAndInvokesCallbacks()
+    {
+        // Arrange
+        var registry = new NodeExecutionScopeRegistry();
+        var scope1 = new RecordingScope();
+        var scope2 = new RecordingScope();
+        var callbackCount = 0;
+
+        registry.RegisterNodeObservabilityScope("node-1", scope1, _ => callbackCount++);
+        registry.RegisterNodeObservabilityScope("node-2", scope2, _ => callbackCount++);
+
+        // Act
+        registry.DisposeAllNodeScopes();
+
+        // Assert
+        _ = scope1.DisposeCount.Should().Be(1);
+        _ = scope2.DisposeCount.Should().Be(1);
+        _ = callbackCount.Should().Be(2);
     }
 
     private sealed class RecordingScope : IAutoObservabilityScope

@@ -11,6 +11,7 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
 {
     private readonly bool _collectMemoryMetrics = collectMemoryMetrics;
     private readonly IObservabilityCollector _collector = collector ?? throw new ArgumentNullException(nameof(collector));
+    private readonly ConcurrentDictionary<string, byte> _dataflowCompletedBeforeExecution = new();
     private readonly ConcurrentDictionary<string, long> _nodeInitialMemory = new();
     private readonly ConcurrentDictionary<string, double> _nodeInitialProcessorTimeMs = new();
     private readonly ConcurrentDictionary<string, DateTimeOffset> _nodeStartTimes = new();
@@ -84,6 +85,24 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
         if (_nodeInitialProcessorTimeMs.TryRemove(executionKey, out var initialProcessorTimeMs))
             processorTimeMs = Math.Max(0, finalProcessorTimeMs - initialProcessorTimeMs);
 
+        if (_dataflowCompletedBeforeExecution.TryRemove(executionKey, out _))
+        {
+            var dataflowEndTime = _collector.GetNodeMetrics(e.NodeId, e.PipelineId)?.EndTime ?? endTime;
+
+            _collector.RecordNodeEnd(
+                e.NodeId,
+                dataflowEndTime,
+                e.Success,
+                e.PipelineId,
+                e.Error,
+                memoryDeltaMb,
+                processorTimeMs,
+                e.PipelineName);
+
+            RecordDerivedPerformanceMetrics(e.NodeId, e.PipelineId, e.PipelineName);
+            return;
+        }
+
         _collector.RecordNodeEnd(
             e.NodeId,
             endTime,
@@ -94,19 +113,31 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
             processorTimeMs,
             e.PipelineName);
 
-        var nodeMetrics = _collector.GetNodeMetrics(e.NodeId, e.PipelineId);
+        RecordDerivedPerformanceMetrics(e.NodeId, e.PipelineId, e.PipelineName);
+    }
 
-        if (nodeMetrics != null && nodeMetrics.ItemsProcessed > 0 && nodeMetrics.DurationMs.HasValue)
-        {
-            var durationSec = nodeMetrics.DurationMs.Value / 1000.0;
+    /// <inheritdoc />
+    public void OnNodeDataflowCompleted(NodeDataflowCompleted e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
 
-            if (durationSec > 0)
-            {
-                var throughput = nodeMetrics.ItemsProcessed / durationSec;
-                var averageItemProcessingMs = nodeMetrics.DurationMs.Value / nodeMetrics.ItemsProcessed;
-                _collector.RecordPerformanceMetrics(e.NodeId, throughput, averageItemProcessingMs, e.PipelineId, e.PipelineName);
-            }
-        }
+        if (_disposed)
+            return;
+
+        var executionKey = BuildNodeExecutionKey(e.NodeId, e.PipelineId);
+
+        if (_nodeStartTimes.ContainsKey(executionKey))
+            _dataflowCompletedBeforeExecution[executionKey] = 0;
+
+        _collector.RecordNodeEnd(
+            e.NodeId,
+            e.EndTime,
+            e.Success,
+            e.PipelineId,
+            e.Error,
+            pipelineName: e.PipelineName);
+
+        RecordDerivedPerformanceMetrics(e.NodeId, e.PipelineId, e.PipelineName);
     }
 
     /// <inheritdoc />
@@ -140,6 +171,7 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
 
         if (disposing)
         {
+            _dataflowCompletedBeforeExecution.Clear();
             _nodeInitialMemory.Clear();
             _nodeInitialProcessorTimeMs.Clear();
             _nodeStartTimes.Clear();
@@ -151,5 +183,22 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
     private static string BuildNodeExecutionKey(string nodeId, Guid pipelineId)
     {
         return string.Concat(pipelineId.ToString("N"), "::", nodeId);
+    }
+
+    private void RecordDerivedPerformanceMetrics(string nodeId, Guid pipelineId, string? pipelineName)
+    {
+        var nodeMetrics = _collector.GetNodeMetrics(nodeId, pipelineId);
+
+        if (nodeMetrics is null || nodeMetrics.ItemsProcessed <= 0 || !nodeMetrics.DurationMs.HasValue)
+            return;
+
+        var durationSec = nodeMetrics.DurationMs.Value / 1000.0;
+
+        if (durationSec <= 0)
+            return;
+
+        var throughput = nodeMetrics.ItemsProcessed / durationSec;
+        var averageItemProcessingMs = nodeMetrics.DurationMs.Value / nodeMetrics.ItemsProcessed;
+        _collector.RecordPerformanceMetrics(nodeId, throughput, averageItemProcessingMs, pipelineId, pipelineName);
     }
 }

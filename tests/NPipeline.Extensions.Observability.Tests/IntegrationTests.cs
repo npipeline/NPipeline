@@ -1045,6 +1045,42 @@ public sealed class IntegrationTests
         Assert.Equal(10, unbatchingMetrics.ItemsEmitted);
     }
 
+    [Fact]
+    public async Task DelayedTransform_WithObservability_ShouldAttributeDurationToActualProcessingTime()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        _ = services.AddNPipeline();
+        _ = services.AddNPipelineObservability();
+        var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var runner = scope.ServiceProvider.GetRequiredService<IPipelineRunner>();
+        var contextFactory = scope.ServiceProvider.GetRequiredService<IObservablePipelineContextFactory>();
+
+        await using var context = contextFactory.Create();
+
+        // Act
+        var pipeline = new TestPipelineWithDelayedTransform();
+        await runner.RunAsync<TestPipelineWithDelayedTransform>(context);
+
+        // Assert
+        var collector = scope.ServiceProvider.GetRequiredService<IObservabilityCollector>();
+        var delayedTransformMetrics = GetNodeMetricsById(collector, "delayedtransform");
+
+        Assert.NotNull(delayedTransformMetrics);
+        Assert.True(delayedTransformMetrics.Success);
+        Assert.Equal(5, delayedTransformMetrics.ItemsProcessed);
+        Assert.Equal(5, delayedTransformMetrics.ItemsEmitted);
+
+        _ = Assert.NotNull(delayedTransformMetrics.DurationMs);
+        _ = Assert.NotNull(delayedTransformMetrics.AverageItemProcessingMs);
+
+        Assert.True(delayedTransformMetrics.DurationMs!.Value >= 150);
+
+        var derivedDurationMs = delayedTransformMetrics.AverageItemProcessingMs!.Value * delayedTransformMetrics.ItemsProcessed;
+        Assert.InRange(delayedTransformMetrics.DurationMs.Value, derivedDurationMs * 0.95, derivedDurationMs * 1.05);
+    }
+
     #endregion
 
     #region Failure and Cancellation Observability Tests
@@ -1235,6 +1271,24 @@ public sealed class IntegrationTests
         }
     }
 
+    private sealed class TestPipelineWithDelayedTransform : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<TestSourceNodeSmall, int>("source")
+                .WithObservability(builder);
+
+            var delayedTransform = builder.AddTransform<TestDelayedTransformNode, int, int>("delayedtransform")
+                .WithObservability(builder);
+
+            var sink = builder.AddSink<TestSinkNode<int>, int>("sink")
+                .WithObservability(builder);
+
+            _ = builder.Connect(source, delayedTransform);
+            _ = builder.Connect(delayedTransform, sink);
+        }
+    }
+
     private sealed class TestPipelineWithMidStreamFailure : IPipelineDefinition
     {
         public void Define(PipelineBuilder builder, PipelineContext context)
@@ -1314,6 +1368,15 @@ public sealed class IntegrationTests
                 return Task.FromResult(item * 2);
 
             throw new InvalidOperationException("Intentional failure on 4th item");
+        }
+    }
+
+    private sealed class TestDelayedTransformNode : TransformNode<int, int>
+    {
+        public override async Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        {
+            await Task.Delay(40, cancellationToken);
+            return item * 2;
         }
     }
 

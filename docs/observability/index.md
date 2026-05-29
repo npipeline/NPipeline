@@ -8,7 +8,7 @@ order: 7
 
 NPipeline provides three complementary observability dimensions, each available as a separate extension package:
 
-- **Metrics** - per-node timing, throughput, and optional memory metrics. Pluggable sinks let you route metrics to logging, Prometheus, or any custom backend.
+- **Metrics** - per-node timing, throughput, and optional memory metrics. For lazy stream nodes with per-node observability enabled, duration is finalized at dataflow completion. Pluggable sinks let you route metrics to logging, Prometheus, or any custom backend.
 - **Tracing** - OpenTelemetry integration that creates `Activity` spans for each pipeline run and node execution, compatible with Jaeger, Zipkin, and Azure Monitor.
 - **Lineage** - data provenance tracking with per-item correlation IDs, sampling, and overflow policies for production use.
 

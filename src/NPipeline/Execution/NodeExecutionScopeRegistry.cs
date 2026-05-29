@@ -9,7 +9,7 @@ namespace NPipeline.Execution;
 public sealed class NodeExecutionScopeRegistry
 {
     private readonly Dictionary<string, object> _nodeExecutionAnnotations = new();
-    private readonly Dictionary<string, IAutoObservabilityScope> _nodeObservabilityScopes = new();
+    private readonly Dictionary<string, NodeObservabilityRegistration> _nodeObservabilityScopes = new();
     private readonly Dictionary<string, object> _runtimeAnnotations = new();
 
     /// <summary>
@@ -17,9 +17,27 @@ public sealed class NodeExecutionScopeRegistry
     /// </summary>
     public void Clear()
     {
+        DisposeAllNodeScopes();
         _nodeExecutionAnnotations.Clear();
-        _nodeObservabilityScopes.Clear();
         _runtimeAnnotations.Clear();
+    }
+
+    /// <summary>
+    ///     Disposes all active node observability scopes.
+    /// </summary>
+    public void DisposeAllNodeScopes()
+    {
+        if (_nodeObservabilityScopes.Count == 0)
+            return;
+
+        var registrations = new List<NodeObservabilityRegistration>(_nodeObservabilityScopes.Values);
+        _nodeObservabilityScopes.Clear();
+
+        foreach (var registration in registrations)
+        {
+            registration.OnDisposed?.Invoke(registration.Scope.GetFailureException());
+            registration.Scope.Dispose();
+        }
     }
 
     /// <summary>
@@ -54,12 +72,12 @@ public sealed class NodeExecutionScopeRegistry
     /// <summary>
     ///     Registers a per-node observability scope.
     /// </summary>
-    public void RegisterNodeObservabilityScope(string nodeId, IAutoObservabilityScope scope)
+    public void RegisterNodeObservabilityScope(string nodeId, IAutoObservabilityScope scope, Action<Exception?>? onDisposed = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
         ArgumentNullException.ThrowIfNull(scope);
 
-        _nodeObservabilityScopes[nodeId] = scope;
+        _nodeObservabilityScopes[nodeId] = new NodeObservabilityRegistration(scope, onDisposed);
     }
 
     /// <summary>
@@ -69,8 +87,8 @@ public sealed class NodeExecutionScopeRegistry
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
 
-        return _nodeObservabilityScopes.TryGetValue(nodeId, out var scope)
-            ? new ScopedObservabilityHandle(this, nodeId, scope)
+        return _nodeObservabilityScopes.TryGetValue(nodeId, out var registration)
+            ? new ScopedObservabilityHandle(this, nodeId, registration.Scope)
             : NullObservabilityScope.Instance;
     }
 
@@ -82,11 +100,11 @@ public sealed class NodeExecutionScopeRegistry
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
         ArgumentNullException.ThrowIfNull(exception);
 
-        if (!_nodeObservabilityScopes.TryGetValue(nodeId, out var scope))
+        if (!_nodeObservabilityScopes.TryGetValue(nodeId, out var registration))
             return false;
 
-        scope.RecordFailure(exception);
-        DisposeNodeScope(nodeId, scope);
+        registration.Scope.RecordFailure(exception);
+        DisposeNodeScope(nodeId, registration.Scope);
         return true;
     }
 
@@ -134,10 +152,24 @@ public sealed class NodeExecutionScopeRegistry
 
     private void DisposeNodeScope(string nodeId, IAutoObservabilityScope expectedScope)
     {
-        if (_nodeObservabilityScopes.TryGetValue(nodeId, out var currentScope) && ReferenceEquals(currentScope, expectedScope))
+        if (_nodeObservabilityScopes.TryGetValue(nodeId, out var currentRegistration) &&
+            ReferenceEquals(currentRegistration.Scope, expectedScope))
+        {
             _ = _nodeObservabilityScopes.Remove(nodeId);
 
+            currentRegistration.OnDisposed?.Invoke(expectedScope.GetFailureException());
+        }
+
         expectedScope.Dispose();
+    }
+
+    private readonly struct NodeObservabilityRegistration(
+        IAutoObservabilityScope scope,
+        Action<Exception?>? onDisposed)
+    {
+        public IAutoObservabilityScope Scope { get; } = scope;
+
+        public Action<Exception?>? OnDisposed { get; } = onDisposed;
     }
 
     private sealed class ScopedObservabilityHandle : IAutoObservabilityScope

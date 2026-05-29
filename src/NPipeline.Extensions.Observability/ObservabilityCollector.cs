@@ -224,13 +224,27 @@ public sealed class ObservabilityCollector : IObservabilityCollector
         public void RecordEnd(DateTimeOffset timestamp, bool success, Exception? exception, double? peakMemoryMb, double? processorTimeMs)
         {
             _endTime = timestamp;
-            _success = success;
-            _exception = exception;
-            _peakMemoryUsageMb = peakMemoryMb;
-            _processorTimeMs = processorTimeMs;
+            _success = _success && success;
+
+            if (exception != null)
+            {
+                _exception = exception;
+            }
+
+            if (peakMemoryMb.HasValue)
+            {
+                _peakMemoryUsageMb = peakMemoryMb;
+            }
+
+            if (processorTimeMs.HasValue)
+            {
+                _processorTimeMs = processorTimeMs;
+            }
 
             if (_startTime.HasValue)
+            {
                 _durationMs = (timestamp - _startTime.Value).TotalMilliseconds;
+            }
         }
 
         public void RecordItemMetrics(long itemsProcessed, long itemsEmitted)

@@ -55,6 +55,9 @@ public sealed class ObservabilitySurface : IObservabilitySurface
             }
         }
 
+        // Flush any remaining node scopes so dataflow completion timing is finalized before metrics are emitted.
+        context.NodeExecutionScopeRegistry.DisposeAllNodeScopes();
+
         var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
         ObservabilitySurfaceLogMessages.PipelineFinished(logger, typeof(TDefinition).Name);
 
@@ -78,6 +81,8 @@ public sealed class ObservabilitySurface : IObservabilitySurface
     public async Task FailPipeline<TDefinition>(PipelineContext context, Exception ex, IPipelineActivity pipelineActivity)
         where TDefinition : IPipelineDefinition, new()
     {
+        context.NodeExecutionScopeRegistry.DisposeAllNodeScopes();
+
         var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
         ObservabilitySurfaceLogMessages.PipelineFailed(logger, ex, typeof(TDefinition).Name);
         pipelineActivity.RecordException(ex);
@@ -104,16 +109,17 @@ public sealed class ObservabilitySurface : IObservabilitySurface
     {
         var tracer = context.Tracer;
         var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
+        var nodeType = nodeInstance.GetType().Name;
         var activity = tracer.StartActivity($"Node.Execute: {nodeDef.Id}");
         activity.SetTag("node.id", nodeDef.Id);
-        activity.SetTag("node.type", nodeInstance.GetType().Name);
-        ObservabilitySurfaceLogMessages.NodeExecuting(logger, nodeDef.Id, nodeInstance.GetType().Name);
+        activity.SetTag("node.type", nodeType);
+        ObservabilitySurfaceLogMessages.NodeExecuting(logger, nodeDef.Id, nodeType);
 
         var observer = context.ExecutionObserver;
 
         var startTs = DateTimeOffset.UtcNow;
         var startTimestamp = Stopwatch.GetTimestamp();
-        observer.OnNodeStarted(new NodeExecutionStarted(nodeDef.Id, nodeInstance.GetType().Name, startTs, context.PipelineId, context.PipelineName));
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeDef.Id, nodeType, startTs, context.PipelineId, context.PipelineName));
 
         // Check for per-node observability configuration
         IAutoObservabilityScope? autoObservabilityScope = null;
@@ -137,10 +143,13 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         if (autoObservabilityScope != null)
         {
             ObservabilitySurfaceLogMessages.AutoObservabilityScopeStored(logger, nodeDef.Id);
-            context.NodeExecutionScopeRegistry.RegisterNodeObservabilityScope(nodeDef.Id, autoObservabilityScope);
+            context.NodeExecutionScopeRegistry.RegisterNodeObservabilityScope(
+                nodeDef.Id,
+                autoObservabilityScope,
+                failureException => PublishNodeDataflowCompleted(context, nodeDef.Id, nodeType, startTs, failureException));
         }
 
-        return new NodeObservationScope(nodeDef.Id, nodeInstance.GetType().Name, startTs, startTimestamp, activity, context.PipelineId,
+        return new NodeObservationScope(nodeDef.Id, nodeType, startTs, startTimestamp, activity, context.PipelineId,
             context.PipelineName,
             autoObservabilityScope);
     }
@@ -199,6 +208,25 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         return completed;
     }
 
+    private static void PublishNodeDataflowCompleted(
+        PipelineContext context,
+        string nodeId,
+        string nodeType,
+        DateTimeOffset startTime,
+        Exception? failureException)
+    {
+        context.ExecutionObserver.OnNodeDataflowCompleted(
+            new NodeDataflowCompleted(
+                nodeId,
+                nodeType,
+                startTime,
+                DateTimeOffset.UtcNow,
+                failureException is null,
+                failureException,
+                context.PipelineId,
+                context.PipelineName));
+    }
+
     /// <inheritdoc />
     public IPipelineActivity BeginPipeline(Type definitionType, PipelineContext context)
     {
@@ -223,6 +251,9 @@ public sealed class ObservabilitySurface : IObservabilitySurface
             }
         }
 
+        // Flush any remaining node scopes so dataflow completion timing is finalized before metrics are emitted.
+        context.NodeExecutionScopeRegistry.DisposeAllNodeScopes();
+
         var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
         ObservabilitySurfaceLogMessages.PipelineFinished(logger, definitionType.Name);
 
@@ -239,6 +270,8 @@ public sealed class ObservabilitySurface : IObservabilitySurface
     /// <inheritdoc />
     public async Task FailPipeline(Type definitionType, PipelineContext context, Exception ex, IPipelineActivity pipelineActivity)
     {
+        context.NodeExecutionScopeRegistry.DisposeAllNodeScopes();
+
         var logger = context.LoggerFactory.CreateLogger(nameof(ObservabilitySurface));
         ObservabilitySurfaceLogMessages.PipelineFailed(logger, ex, definitionType.Name);
         pipelineActivity.RecordException(ex);

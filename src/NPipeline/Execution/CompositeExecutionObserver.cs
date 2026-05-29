@@ -82,6 +82,24 @@ public sealed class CompositeExecutionObserver : IExecutionObserver
     /// <summary>
     ///     Forwards the event to all aggregated observers.
     /// </summary>
+    public void OnNodeDataflowCompleted(NodeDataflowCompleted e)
+    {
+        foreach (var observer in _observers)
+        {
+            try
+            {
+                observer.OnNodeDataflowCompleted(e);
+            }
+            catch (Exception ex)
+            {
+                LogObserverFailure(observer, nameof(OnNodeDataflowCompleted), ex);
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Forwards the event to all aggregated observers.
+    /// </summary>
     public void OnRetry(NodeRetryEvent e)
     {
         foreach (var observer in _observers)

@@ -43,6 +43,14 @@ public sealed class NullExecutionObserver : IExecutionObserver
     ///     No-op implementation.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void OnNodeDataflowCompleted(NodeDataflowCompleted e)
+    {
+    }
+
+    /// <summary>
+    ///     No-op implementation.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void OnRetry(NodeRetryEvent e)
     {
     }
