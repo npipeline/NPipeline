@@ -334,6 +334,68 @@ public sealed class MetricsCollectingExecutionObserverTests
         Assert.InRange(metrics.AverageItemProcessingMs!.Value, 220, 230);
     }
 
+    [Fact]
+    public void OnNodeCompleted_AfterEarlyDataflowAndLateItems_ShouldComputeDerivedPerformanceMetrics()
+    {
+        // Arrange
+        var collector = new ObservabilityCollector(new TestObservabilityFactory());
+        var observer = new MetricsCollectingExecutionObserver(collector);
+        var nodeId = "testNode";
+        var startTime = DateTimeOffset.UtcNow;
+
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
+
+        // Dataflow completes before execution completion and before item metrics are available.
+        var dataflowEnd = startTime.AddSeconds(2);
+        observer.OnNodeDataflowCompleted(new NodeDataflowCompleted(
+            nodeId,
+            "TransformNode",
+            startTime,
+            dataflowEnd,
+            true,
+            null,
+            s_pipelineId));
+
+        // Item metrics arrive later (for example from deferred scope disposal).
+        collector.RecordItemMetrics(nodeId, 4, 4, s_pipelineId);
+
+        // Act
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(100), true, null, s_pipelineId));
+
+        // Assert
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
+        Assert.NotNull(metrics);
+        _ = metrics.DurationMs;
+        Assert.InRange(metrics.DurationMs!.Value, 1990, 2010);
+        _ = metrics.ThroughputItemsPerSec;
+        Assert.InRange(metrics.ThroughputItemsPerSec!.Value, 1.9, 2.1);
+        _ = metrics.AverageItemProcessingMs;
+        Assert.InRange(metrics.AverageItemProcessingMs!.Value, 495, 505);
+    }
+
+    #endregion
+
+    #region Performance Metrics Guard Tests
+
+    [Fact]
+    public void OnNodeCompleted_ShouldPreserveExistingPerfMetrics_WhenAvgItemMsAlreadySet()
+    {
+        var collector = new ObservabilityCollector(new TestObservabilityFactory());
+        var observer = new MetricsCollectingExecutionObserver(collector);
+        var nodeId = "streamNode";
+        var startTime = DateTimeOffset.UtcNow;
+
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
+        collector.RecordItemMetrics(nodeId, 8, 8, s_pipelineId);
+        collector.RecordPerformanceMetrics(nodeId, 0.38, 2600.0, s_pipelineId);
+
+        observer.OnNodeCompleted(new NodeExecutionCompleted(nodeId, "TransformNode", TimeSpan.FromMilliseconds(5), true, null, s_pipelineId));
+
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
+        Assert.NotNull(metrics);
+        Assert.InRange(metrics.AverageItemProcessingMs!.Value, 2550, 2650);
+    }
+
     #endregion
 
     #region OnRetry Tests

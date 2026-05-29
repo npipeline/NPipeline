@@ -99,7 +99,9 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
                 processorTimeMs,
                 e.PipelineName);
 
+            // Preserve dataflow end-time, but still derive metrics if they were not finalized earlier.
             RecordDerivedPerformanceMetrics(e.NodeId, e.PipelineId, e.PipelineName);
+
             return;
         }
 
@@ -137,7 +139,7 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
             e.Error,
             pipelineName: e.PipelineName);
 
-        RecordDerivedPerformanceMetrics(e.NodeId, e.PipelineId, e.PipelineName);
+        RecordDerivedPerformanceMetrics(e.NodeId, e.PipelineId, e.PipelineName, forceUpdate: true);
     }
 
     /// <inheritdoc />
@@ -185,11 +187,14 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
         return string.Concat(pipelineId.ToString("N"), "::", nodeId);
     }
 
-    private void RecordDerivedPerformanceMetrics(string nodeId, Guid pipelineId, string? pipelineName)
+    private void RecordDerivedPerformanceMetrics(string nodeId, Guid pipelineId, string? pipelineName, bool forceUpdate = false)
     {
         var nodeMetrics = _collector.GetNodeMetrics(nodeId, pipelineId);
 
         if (nodeMetrics is null || nodeMetrics.ItemsProcessed <= 0 || !nodeMetrics.DurationMs.HasValue)
+            return;
+
+        if (!forceUpdate && nodeMetrics.AverageItemProcessingMs.HasValue)
             return;
 
         var durationSec = nodeMetrics.DurationMs.Value / 1000.0;

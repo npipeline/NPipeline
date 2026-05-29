@@ -206,44 +206,50 @@ public sealed class ObservabilityCollector : IObservabilityCollector
 
         public void RecordStart(DateTimeOffset timestamp, int? threadId, double? initialMemoryMb)
         {
-            _startTime = timestamp;
-            _threadId = threadId;
+            lock (_performanceMetricsLock)
+            {
+                _startTime = timestamp;
+                _threadId = threadId;
 
-            if (initialMemoryMb.HasValue)
-                _peakMemoryUsageMb = initialMemoryMb;
+                if (initialMemoryMb.HasValue)
+                    _peakMemoryUsageMb = initialMemoryMb;
+            }
         }
 
         public void Initialize(int? threadId, double? initialMemoryMb)
         {
-            _threadId = threadId;
+            lock (_performanceMetricsLock)
+            {
+                _threadId = threadId;
 
-            if (initialMemoryMb.HasValue)
-                _peakMemoryUsageMb = initialMemoryMb;
+                if (initialMemoryMb.HasValue)
+                    _peakMemoryUsageMb = initialMemoryMb;
+            }
         }
 
         public void RecordEnd(DateTimeOffset timestamp, bool success, Exception? exception, double? peakMemoryMb, double? processorTimeMs)
         {
-            _endTime = timestamp;
-            _success = _success && success;
-
-            if (exception != null)
+            lock (_performanceMetricsLock)
             {
-                _exception = exception;
-            }
+                _endTime = timestamp;
 
-            if (peakMemoryMb.HasValue)
-            {
-                _peakMemoryUsageMb = peakMemoryMb;
-            }
+                if (_startTime.HasValue)
+                {
+                    var wallDurationMs = (timestamp - _startTime.Value).TotalMilliseconds;
+                    if (!_durationMs.HasValue || wallDurationMs > _durationMs.Value)
+                        _durationMs = wallDurationMs;
+                }
 
-            if (processorTimeMs.HasValue)
-            {
-                _processorTimeMs = processorTimeMs;
-            }
+                _success = _success && success;
 
-            if (_startTime.HasValue)
-            {
-                _durationMs = (timestamp - _startTime.Value).TotalMilliseconds;
+                if (exception != null)
+                    _exception = exception;
+
+                if (peakMemoryMb.HasValue)
+                    _peakMemoryUsageMb = peakMemoryMb;
+
+                if (processorTimeMs.HasValue)
+                    _processorTimeMs = processorTimeMs;
             }
         }
 
@@ -270,28 +276,48 @@ public sealed class ObservabilityCollector : IObservabilityCollector
             {
                 _throughputItemsPerSec = throughputItemsPerSec;
                 _averageItemProcessingMs = averageItemProcessingMs;
+
+                var itemsProcessed = Interlocked.Read(ref _itemsProcessed);
+                if (itemsProcessed > 0 && averageItemProcessingMs > 0)
+                {
+                    var derivedDurationMs = itemsProcessed * averageItemProcessingMs;
+                    if (!_durationMs.HasValue || derivedDurationMs > _durationMs.Value)
+                    {
+                        _durationMs = derivedDurationMs;
+                        if (_startTime.HasValue)
+                        {
+                            _endTime = _startTime.Value.AddMilliseconds(derivedDurationMs);
+                        }
+                    }
+                }
             }
         }
 
         public INodeMetrics Build()
         {
-            return new NodeMetrics(
-                NodeId,
-                _startTime,
-                _endTime,
-                _durationMs,
-                _success,
-                _itemsProcessed,
-                _itemsEmitted,
-                _exception,
-                _retryCount,
-                _peakMemoryUsageMb,
-                _processorTimeMs,
-                _throughputItemsPerSec,
-                _averageItemProcessingMs,
-                _threadId,
-                PipelineId,
-                PipelineName);
+            lock (_performanceMetricsLock)
+            {
+                var itemsProcessed = Interlocked.Read(ref _itemsProcessed);
+                var itemsEmitted = Interlocked.Read(ref _itemsEmitted);
+
+                return new NodeMetrics(
+                    NodeId,
+                    _startTime,
+                    _endTime,
+                    _durationMs,
+                    _success,
+                    itemsProcessed,
+                    itemsEmitted,
+                    _exception,
+                    Volatile.Read(ref _retryCount),
+                    _peakMemoryUsageMb,
+                    _processorTimeMs,
+                    _throughputItemsPerSec,
+                    _averageItemProcessingMs,
+                    _threadId,
+                    PipelineId,
+                    PipelineName);
+            }
         }
     }
 }

@@ -979,6 +979,59 @@ public sealed class ObservabilityCollectorTests
 
     #endregion
 
+    #region Duration Reconciliation Tests
+
+    [Fact]
+    public void RecordPerformanceMetrics_ShouldReconcileDuration_WhenDerivedIsLarger()
+    {
+        var collector = new ObservabilityCollector(s_defaultFactory);
+        var nodeId = "streamNode";
+        var startTime = DateTimeOffset.UtcNow;
+
+        collector.RecordNodeStart(nodeId, startTime, s_pipelineId, 1, 100);
+        collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(5), true, s_pipelineId);
+        collector.RecordItemMetrics(nodeId, 8, 8, s_pipelineId);
+        collector.RecordPerformanceMetrics(nodeId, 0.38, 2600.0, s_pipelineId);
+
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
+        Assert.NotNull(metrics);
+        Assert.InRange(metrics.DurationMs!.Value, 20800, 20801);
+        Assert.InRange(metrics.EndTime!.Value, startTime.AddMilliseconds(20799), startTime.AddMilliseconds(20802));
+    }
+
+    [Fact]
+    public void RecordPerformanceMetrics_ShouldNotDowngradeDuration_WhenDerivedIsSmaller()
+    {
+        var collector = new ObservabilityCollector(s_defaultFactory);
+        var nodeId = "batchNode";
+        var startTime = DateTimeOffset.UtcNow;
+
+        collector.RecordNodeStart(nodeId, startTime, s_pipelineId, 1, 100);
+        collector.RecordNodeEnd(nodeId, startTime.AddSeconds(10), true, s_pipelineId);
+        collector.RecordItemMetrics(nodeId, 5, 5, s_pipelineId);
+        collector.RecordPerformanceMetrics(nodeId, 5.0, 200.0, s_pipelineId);
+
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
+        Assert.NotNull(metrics);
+        Assert.InRange(metrics.DurationMs!.Value, 9990, 10010);
+    }
+
+    [Fact]
+    public void RecordPerformanceMetrics_ShouldSetDuration_WhenPreviouslyNull()
+    {
+        var collector = new ObservabilityCollector(s_defaultFactory);
+        var nodeId = "delayedNode";
+
+        collector.RecordItemMetrics(nodeId, 4, 4, s_pipelineId);
+        collector.RecordPerformanceMetrics(nodeId, 1.0, 500.0, s_pipelineId);
+
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
+        Assert.NotNull(metrics);
+        Assert.InRange(metrics.DurationMs!.Value, 1999, 2001);
+    }
+
+    #endregion
+
     #region Test Helpers
 
     private sealed class TestObservabilityFactory : IObservabilityFactory
