@@ -149,31 +149,12 @@ jobs:
     name: Deploy Documentation
     needs: build-and-pack
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0 # Needed for source link
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Cache NuGet packages
-        uses: actions/cache@v5
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
-
-      - name: Restore dependencies
-        run: dotnet restore
-
-      - name: Build solution
-        run: dotnet build --no-restore --configuration Release
 
       - name: Checkout docs.npipeline.net repo
         uses: actions/checkout@v6
@@ -199,4 +180,3 @@ jobs:
             git commit -m "docs: update documentation from NPipeline release ${{ github.ref }}"
             git push origin main
           fi
-
