@@ -183,6 +183,8 @@ Set the property in your project file:
 
 This corresponds to the runtime `PipelineBuilder.WithOptimizationProfile()` setting. See [Optimization Profiles](../guides/optimization-profiles.md) for the full picture.
 
+When profile metadata is available in your compiled assemblies (for example from `NPipeline.Analyzers` package props), NPipeline warns at runtime build if the MSBuild profile and runtime profile diverge.
+
 ## Suppressing Rules
 
 Suppress individual diagnostics when needed:

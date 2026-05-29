@@ -100,7 +100,7 @@ public class MyPipeline : IPipelineDefinition
 Or use the `WithRetry()` shorthand for sensible defaults without specifying individual values:
 
 ```csharp
-builder.WithRetry();  // 3 retries, exponential backoff, 10K materialization cap
+builder.WithRetry();  // Applies retry defaults for the active optimization profile
 ```
 
 ## How Failures Flow

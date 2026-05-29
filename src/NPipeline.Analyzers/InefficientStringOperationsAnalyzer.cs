@@ -11,7 +11,7 @@ namespace NPipeline.Analyzers;
 ///     in performance-critical NPipeline code, particularly in high-throughput scenarios.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class InefficientStringOperationsAnalyzer : DiagnosticAnalyzer
+public sealed class InefficientStringOperationsAnalyzer : ProfileGatedDiagnosticAnalyzer
 {
     /// <summary>
     ///     Diagnostic ID for inefficient string operations.
@@ -33,20 +33,11 @@ public sealed class InefficientStringOperationsAnalyzer : DiagnosticAnalyzer
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     /// <inheritdoc />
-    public override void Initialize(AnalysisContext context)
+    protected override void RegisterProfileGatedActions(CompilationStartAnalysisContext context)
     {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-        context.EnableConcurrentExecution();
-
-        context.RegisterCompilationStartAction(compilationStartContext =>
-        {
-            if (!AnalyzerProfileHelper.IsHighThroughput(compilationStartContext.Options, compilationStartContext.Compilation))
-                return;
-
-            compilationStartContext.RegisterSyntaxNodeAction(AnalyzeBinaryExpression, SyntaxKind.AddExpression);
-            compilationStartContext.RegisterSyntaxNodeAction(AnalyzeInterpolatedStringExpression, SyntaxKind.InterpolatedStringExpression);
-            compilationStartContext.RegisterSyntaxNodeAction(AnalyzeInvocationExpression, SyntaxKind.InvocationExpression);
-        });
+        context.RegisterSyntaxNodeAction(AnalyzeBinaryExpression, SyntaxKind.AddExpression);
+        context.RegisterSyntaxNodeAction(AnalyzeInterpolatedStringExpression, SyntaxKind.InterpolatedStringExpression);
+        context.RegisterSyntaxNodeAction(AnalyzeInvocationExpression, SyntaxKind.InvocationExpression);
     }
 
     private static void AnalyzeBinaryExpression(SyntaxNodeAnalysisContext context)
@@ -61,7 +52,7 @@ public sealed class InefficientStringOperationsAnalyzer : DiagnosticAnalyzer
             return;
 
         // Check if this concatenation is in a hot path context
-        if (!IsInHotPathContext(binaryExpr, semanticModel, out _))
+        if (!HotPathAnalyzerHelper.IsInHotPathContext(binaryExpr, semanticModel, out _))
             return;
 
         // Check if this is in a loop (especially problematic)
@@ -91,7 +82,7 @@ public sealed class InefficientStringOperationsAnalyzer : DiagnosticAnalyzer
         var semanticModel = context.SemanticModel;
 
         // Check if this interpolated string is in a hot path context
-        if (!IsInHotPathContext(interpolatedString, semanticModel, out _))
+        if (!HotPathAnalyzerHelper.IsInHotPathContext(interpolatedString, semanticModel, out _))
             return;
 
         // Check for complex interpolated strings that might be inefficient
@@ -119,7 +110,7 @@ public sealed class InefficientStringOperationsAnalyzer : DiagnosticAnalyzer
             return;
 
         // Check if this string method is in a hot path context
-        if (!IsInHotPathContext(invocation, semanticModel, out _))
+        if (!HotPathAnalyzerHelper.IsInHotPathContext(invocation, semanticModel, out _))
             return;
 
         // Check if this is an inefficient string method
@@ -152,147 +143,6 @@ public sealed class InefficientStringOperationsAnalyzer : DiagnosticAnalyzer
 
         return leftType?.SpecialType == SpecialType.System_String ||
                rightType?.SpecialType == SpecialType.System_String;
-    }
-
-    /// <summary>
-    ///     Determines if a syntax node is in a hot path context.
-    /// </summary>
-    private static bool IsInHotPathContext(SyntaxNode node, SemanticModel semanticModel, out string enclosingMethodName)
-    {
-        enclosingMethodName = "Unknown";
-
-        // Find enclosing method
-        var enclosingMethod = node.FirstAncestorOrSelf<MethodDeclarationSyntax>();
-
-        if (enclosingMethod == null)
-            return false;
-
-        enclosingMethodName = enclosingMethod.Identifier.Text;
-
-        // Check if this is a hot path method by name
-        if (IsHotPathMethodByName(enclosingMethod))
-            return true;
-
-        // Check if this method is in a class that inherits from NPipeline node interfaces
-        var isInNPipelineNode = IsInNPipelineNode(enclosingMethod, semanticModel);
-
-        if (isInNPipelineNode)
-            return true;
-
-        // Check if this is an async method (potential hot path)
-        if (IsAsyncMethod(enclosingMethod, semanticModel))
-        {
-            // Always flag async methods in NPipeline node classes
-            if (isInNPipelineNode)
-                return true;
-
-            // Also flag async methods if NPipeline namespaces are imported
-            var compilationUnit = enclosingMethod.SyntaxTree.GetCompilationUnitRoot();
-
-            var hasNPipelineImport = compilationUnit.Usings
-                .Any(u => u.Name?.ToString().Contains("NPipeline") == true);
-
-            if (hasNPipelineImport)
-                return true;
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    ///     Determines if a method is async.
-    /// </summary>
-    private static bool IsAsyncMethod(MethodDeclarationSyntax method, SemanticModel semanticModel)
-    {
-        // Check for async keyword
-        if (method.Modifiers.Any(m => m.IsKind(SyntaxKind.AsyncKeyword)))
-            return true;
-
-        // Check if return type is Task, ValueTask, or Task<T>
-        var returnTypeSymbol = semanticModel.GetTypeInfo(method.ReturnType).Type;
-
-        return returnTypeSymbol != null && (
-            returnTypeSymbol.Name == "Task" ||
-            returnTypeSymbol.Name == "ValueTask" ||
-            (returnTypeSymbol is INamedTypeSymbol namedType &&
-             (namedType.Name == "Task" || namedType.Name == "ValueTask")));
-    }
-
-    /// <summary>
-    ///     Determines if a method is a hot path method by its name.
-    /// </summary>
-    private static bool IsHotPathMethodByName(MethodDeclarationSyntax method)
-    {
-        var methodName = method.Identifier.Text;
-
-        var hotPathMethodNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "ExecuteAsync", "TransformAsync", "ConsumeAsync", "OpenStream", "ProcessAsync", "RunAsync", "HandleAsync", "Execute", "Process", "Run", "Handle",
-        };
-
-        return hotPathMethodNames.Contains(methodName);
-    }
-
-    /// <summary>
-    ///     Determines if method is in a class that inherits from NPipeline node interfaces.
-    /// </summary>
-    private static bool IsInNPipelineNode(MethodDeclarationSyntax method, SemanticModel semanticModel)
-    {
-        // Get containing class
-        var classDeclaration = method.FirstAncestorOrSelf<ClassDeclarationSyntax>();
-
-        if (classDeclaration == null)
-            return false;
-
-        // Get class symbol
-        var classSymbol = semanticModel.GetDeclaredSymbol(classDeclaration);
-
-        if (classSymbol == null)
-            return false;
-
-        // Check if class inherits from any NPipeline node interface
-        var nodeInterfaces = new[]
-        {
-            "INode", "ISourceNode", "ITransformNode", "ISinkNode", "IAggregateNode",
-            "IJoinNode", "ICustomMergeNode", "ICustomMergeNodeUntyped",
-        };
-
-        foreach (var interfaceName in nodeInterfaces)
-        {
-            if (ImplementsInterface(classSymbol, interfaceName))
-                return true;
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    ///     Checks if a type implements a specific interface by name.
-    /// </summary>
-    private static bool ImplementsInterface(INamedTypeSymbol typeSymbol, string interfaceName)
-    {
-        // Check direct interfaces
-        foreach (var interfaceSymbol in typeSymbol.AllInterfaces)
-        {
-            if (interfaceSymbol.Name == interfaceName)
-                return true;
-        }
-
-        // Check base types
-        var baseType = typeSymbol.BaseType;
-
-        while (baseType != null)
-        {
-            foreach (var interfaceSymbol in baseType.AllInterfaces)
-            {
-                if (interfaceSymbol.Name == interfaceName)
-                    return true;
-            }
-
-            baseType = baseType.BaseType;
-        }
-
-        return false;
     }
 
     /// <summary>

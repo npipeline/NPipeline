@@ -49,6 +49,7 @@ public sealed partial class PipelineBuilder
 
     private BuilderConfig _config = BuilderConfig.Default;
     internal IReadOnlyList<IAsyncDisposable> BuilderDisposables => _builderDisposables;
+    internal PipelineOptimizationProfile CurrentOptimizationProfile => _config.OptimizationProfile;
 
     // Internal properties for testing access to state objects
     internal BuilderNodeState NodeState { get; } = new();

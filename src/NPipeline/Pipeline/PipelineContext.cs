@@ -22,12 +22,26 @@ namespace NPipeline.Pipeline;
 /// </summary>
 /// <remarks>
 ///     <para>
-///         <strong>Thread Safety:</strong>
+///         <strong>Optimization Profile Controls Thread Safety:</strong>
 ///     </para>
 ///     <para>
-///         <see cref="PipelineContext" /> is designed for single-threaded execution within a pipeline run.
-///         The <see cref="Parameters" />, <see cref="Items" />, and <see cref="Properties" /> dictionaries
-///         are NOT thread-safe and should not be accessed concurrently from multiple threads.
+///         <see cref="PipelineContext" /> chooses dictionary implementations by
+///         <see cref="PipelineContextConfiguration.OptimizationProfile" />:
+///         <list type="bullet">
+///             <item>
+///                 <description>
+///                     <see cref="PipelineOptimizationProfile.Default" /> uses
+///                     <see cref="ConcurrentDictionary{TKey,TValue}" /> for <see cref="Parameters" />,
+///                     <see cref="Items" />, and <see cref="Properties" />.
+///                 </description>
+///             </item>
+///             <item>
+///                 <description>
+///                     <see cref="PipelineOptimizationProfile.HighThroughput" /> uses pooled
+///                     <see cref="Dictionary{TKey,TValue}" /> instances for minimum overhead.
+///                 </description>
+///             </item>
+///         </list>
 ///     </para>
 ///     <para>
 ///         <strong>Single-Pipeline Execution (Default):</strong>
@@ -36,8 +50,9 @@ namespace NPipeline.Pipeline;
 ///     <para>
 ///         <strong>Parallel Node Execution:</strong>
 ///         When using parallel execution strategies (e.g. ParallelExecutionStrategy),
-///         each worker thread processes independent data items through the pipeline. The context itself is not shared across threads-
-///         only the node instances and their configuration are shared. State updates during parallel execution should use:
+///         each worker thread processes independent data items through the pipeline. Context dictionaries remain profile-dependent:
+///         concurrent-safe in <see cref="PipelineOptimizationProfile.Default" />, and not thread-safe in
+///         <see cref="PipelineOptimizationProfile.HighThroughput" />. State updates during parallel execution should use:
 ///         <list type="bullet">
 ///             <item>
 ///                 <description>
@@ -51,9 +66,9 @@ namespace NPipeline.Pipeline;
 ///     </para>
 ///     <para>
 ///         <strong>Why Not ConcurrentDictionary?</strong>
-///         Thread-safe dictionaries add overhead (locks, memory barriers, allocations) inappropriate for the common case
-///         (single-threaded execution). NPipeline follows the principle of paying only for what you use. For the rare cases
-///         requiring thread-safe shared state, use <see cref="IPipelineStateManager" /> instead.
+///         Thread-safe dictionaries add overhead (locks, memory barriers, allocations). NPipeline follows
+///         "pay for what you use" by using concurrent dictionaries in <see cref="PipelineOptimizationProfile.Default" />
+///         and pooled dictionaries in <see cref="PipelineOptimizationProfile.HighThroughput" />.
 ///     </para>
 ///     <para>
 ///         <strong>Composition Model:</strong>
@@ -121,53 +136,42 @@ public sealed class PipelineContext
     public PipelineContext(PipelineContextConfiguration? config = null)
     {
         config ??= PipelineContextConfiguration.Default;
+        var profileBehavior = OptimizationProfileBehaviorRegistry.For(config.OptimizationProfile);
 
         if (config.Parameters is not null)
         {
             Parameters = config.Parameters;
         }
-        else if (config.OptimizationProfile == PipelineOptimizationProfile.Default)
-        {
-            Parameters = new ConcurrentDictionary<string, object>();
-            _ownsParametersDictionary = true;
-        }
         else
         {
-            Parameters = PipelineObjectPool.RentStringObjectDictionary();
+            var (dictionary, isPooled) = CreateOwnedDictionary(profileBehavior);
+            Parameters = dictionary;
             _ownsParametersDictionary = true;
-            _parametersIsPooled = true;
+            _parametersIsPooled = isPooled;
         }
 
         if (config.Items is not null)
         {
             Items = config.Items;
         }
-        else if (config.OptimizationProfile == PipelineOptimizationProfile.Default)
-        {
-            Items = new ConcurrentDictionary<string, object>();
-            _ownsItemsDictionary = true;
-        }
         else
         {
-            Items = PipelineObjectPool.RentStringObjectDictionary();
+            var (dictionary, isPooled) = CreateOwnedDictionary(profileBehavior);
+            Items = dictionary;
             _ownsItemsDictionary = true;
-            _itemsIsPooled = true;
+            _itemsIsPooled = isPooled;
         }
 
         if (config.Properties is not null)
         {
             Properties = config.Properties;
         }
-        else if (config.OptimizationProfile == PipelineOptimizationProfile.Default)
-        {
-            Properties = new ConcurrentDictionary<string, object>();
-            _ownsPropertiesDictionary = true;
-        }
         else
         {
-            Properties = PipelineObjectPool.RentStringObjectDictionary();
+            var (dictionary, isPooled) = CreateOwnedDictionary(profileBehavior);
+            Properties = dictionary;
             _ownsPropertiesDictionary = true;
-            _propertiesIsPooled = true;
+            _propertiesIsPooled = isPooled;
         }
 
         var loggerFactory = config.LoggerFactory ?? NullLoggerFactory.Instance;
@@ -187,6 +191,15 @@ public sealed class PipelineContext
         Observability = new PipelineObservabilityContext(loggerFactory, tracer, observabilityFactory);
         NodeEnvironment = new PipelineNodeEnvironmentContext();
         Lineage = new PipelineLineageContext(lineageFactory);
+    }
+
+    private static (IDictionary<string, object> Dictionary, bool IsPooled) CreateOwnedDictionary(
+        IOptimizationProfileBehavior profileBehavior)
+    {
+        if (profileBehavior.UsesThreadSafeContextDictionaries)
+            return (new ConcurrentDictionary<string, object>(), false);
+
+        return (PipelineObjectPool.RentStringObjectDictionary(), true);
     }
 
     /// <summary>

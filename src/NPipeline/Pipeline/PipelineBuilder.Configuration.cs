@@ -148,18 +148,37 @@ public sealed partial class PipelineBuilder
     }
 
     /// <summary>
-    ///     Enables automatic item-level retries with sensible defaults without requiring detailed configuration.
-    ///     Applies 3 retries, exponential backoff with full jitter, and a 10,000-item materialization cap.
-    ///     In the <see cref="PipelineOptimizationProfile.Default" /> profile this is applied automatically
-    ///     unless overridden; in <see cref="PipelineOptimizationProfile.HighThroughput" /> mode call this
-    ///     explicitly if you want retries enabled.
+    ///     Applies retry defaults for the currently active optimization profile.
+    ///     In <see cref="PipelineOptimizationProfile.Default" /> this enables retries with sensible defaults
+    ///     (3 retries, exponential backoff with full jitter, 10,000-item materialization cap).
+    ///     In <see cref="PipelineOptimizationProfile.HighThroughput" /> this applies strict baseline defaults
+    ///     (no retries, no delay strategy, no materialization cap).
     /// </summary>
+    /// <remarks>
+    ///     Use <see cref="WithRetry(PipelineOptimizationProfile)" /> when you want retry defaults from a specific profile,
+    ///     regardless of the currently selected runtime profile.
+    /// </remarks>
     /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder WithRetry()
     {
+        return WithRetry(_config.OptimizationProfile);
+    }
+
+    /// <summary>
+    ///     Applies retry defaults from the specified optimization profile.
+    /// </summary>
+    /// <param name="profile">
+    ///     The profile whose retry defaults should be applied.
+    ///     This does not change the builder's runtime optimization profile.
+    /// </param>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
+    public PipelineBuilder WithRetry(PipelineOptimizationProfile profile)
+    {
+        var retryOptions = OptimizationProfileBehaviorRegistry.For(profile).RetryDefaults;
+
         _config = _config with
         {
-            RetryOptions = PipelineRetryOptions.ForProfile(PipelineOptimizationProfile.Default),
+            RetryOptions = retryOptions,
             RetryExplicitlyConfigured = true
         };
 

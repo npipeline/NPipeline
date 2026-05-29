@@ -132,8 +132,9 @@ public static class NodeConfigurationExtensions
     }
 
     /// <summary>
-    ///     Enables automatic retry for this source node with sensible defaults:
-    ///     3 retries, exponential backoff with full jitter, and a 10,000-item materialization cap.
+    ///     Applies retry defaults for this source node using the builder's active optimization profile.
+    ///     In <see cref="PipelineOptimizationProfile.Default" /> this enables retries with sensible defaults;
+    ///     in <see cref="PipelineOptimizationProfile.HighThroughput" /> this applies strict baseline defaults.
     /// </summary>
     /// <typeparam name="TOut">The output type of the source node.</typeparam>
     /// <param name="handle">The source node handle.</param>
@@ -145,14 +146,32 @@ public static class NodeConfigurationExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        var retryOptions = PipelineRetryOptions.ForProfile(PipelineOptimizationProfile.Default);
-        builder.WithRetryOptions(handle, retryOptions);
+        return handle.WithRetry(builder, builder.CurrentOptimizationProfile);
+    }
+
+    /// <summary>
+    ///     Applies retry defaults for this source node using the specified optimization profile.
+    /// </summary>
+    /// <typeparam name="TOut">The output type of the source node.</typeparam>
+    /// <param name="handle">The source node handle.</param>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="profile">The optimization profile whose retry defaults should be applied.</param>
+    /// <returns>The same source node handle for method chaining.</returns>
+    public static SourceNodeHandle<TOut> WithRetry<TOut>(
+        this SourceNodeHandle<TOut> handle,
+        PipelineBuilder builder,
+        PipelineOptimizationProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        ApplyProfileRetryDefaults(builder, handle, profile);
         return handle;
     }
 
     /// <summary>
-    ///     Enables automatic retry for this transform node with sensible defaults:
-    ///     3 retries, exponential backoff with full jitter, and a 10,000-item materialization cap.
+    ///     Applies retry defaults for this transform node using the builder's active optimization profile.
+    ///     In <see cref="PipelineOptimizationProfile.Default" /> this enables retries with sensible defaults;
+    ///     in <see cref="PipelineOptimizationProfile.HighThroughput" /> this applies strict baseline defaults.
     /// </summary>
     /// <typeparam name="TIn">The input type of the transform node.</typeparam>
     /// <typeparam name="TOut">The output type of the transform node.</typeparam>
@@ -165,14 +184,33 @@ public static class NodeConfigurationExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        var retryOptions = PipelineRetryOptions.ForProfile(PipelineOptimizationProfile.Default);
-        builder.WithRetryOptions(handle, retryOptions);
+        return handle.WithRetry(builder, builder.CurrentOptimizationProfile);
+    }
+
+    /// <summary>
+    ///     Applies retry defaults for this transform node using the specified optimization profile.
+    /// </summary>
+    /// <typeparam name="TIn">The input type of the transform node.</typeparam>
+    /// <typeparam name="TOut">The output type of the transform node.</typeparam>
+    /// <param name="handle">The transform node handle.</param>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="profile">The optimization profile whose retry defaults should be applied.</param>
+    /// <returns>The same transform node handle for method chaining.</returns>
+    public static TransformNodeHandle<TIn, TOut> WithRetry<TIn, TOut>(
+        this TransformNodeHandle<TIn, TOut> handle,
+        PipelineBuilder builder,
+        PipelineOptimizationProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        ApplyProfileRetryDefaults(builder, handle, profile);
         return handle;
     }
 
     /// <summary>
-    ///     Enables automatic retry for this sink node with sensible defaults:
-    ///     3 retries, exponential backoff with full jitter, and a 10,000-item materialization cap.
+    ///     Applies retry defaults for this sink node using the builder's active optimization profile.
+    ///     In <see cref="PipelineOptimizationProfile.Default" /> this enables retries with sensible defaults;
+    ///     in <see cref="PipelineOptimizationProfile.HighThroughput" /> this applies strict baseline defaults.
     /// </summary>
     /// <typeparam name="TIn">The input type of the sink node.</typeparam>
     /// <param name="handle">The sink node handle.</param>
@@ -184,14 +222,32 @@ public static class NodeConfigurationExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        var retryOptions = PipelineRetryOptions.ForProfile(PipelineOptimizationProfile.Default);
-        builder.WithRetryOptions(handle, retryOptions);
+        return handle.WithRetry(builder, builder.CurrentOptimizationProfile);
+    }
+
+    /// <summary>
+    ///     Applies retry defaults for this sink node using the specified optimization profile.
+    /// </summary>
+    /// <typeparam name="TIn">The input type of the sink node.</typeparam>
+    /// <param name="handle">The sink node handle.</param>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="profile">The optimization profile whose retry defaults should be applied.</param>
+    /// <returns>The same sink node handle for method chaining.</returns>
+    public static SinkNodeHandle<TIn> WithRetry<TIn>(
+        this SinkNodeHandle<TIn> handle,
+        PipelineBuilder builder,
+        PipelineOptimizationProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        ApplyProfileRetryDefaults(builder, handle, profile);
         return handle;
     }
 
     /// <summary>
-    ///     Enables automatic retry for this aggregate node with sensible defaults:
-    ///     3 retries, exponential backoff with full jitter, and a 10,000-item materialization cap.
+    ///     Applies retry defaults for this aggregate node using the builder's active optimization profile.
+    ///     In <see cref="PipelineOptimizationProfile.Default" /> this enables retries with sensible defaults;
+    ///     in <see cref="PipelineOptimizationProfile.HighThroughput" /> this applies strict baseline defaults.
     /// </summary>
     /// <typeparam name="TIn">The input type of the aggregate node.</typeparam>
     /// <typeparam name="TOut">The output type of the aggregate node.</typeparam>
@@ -204,9 +260,33 @@ public static class NodeConfigurationExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        var retryOptions = PipelineRetryOptions.ForProfile(PipelineOptimizationProfile.Default);
-        builder.WithRetryOptions(handle, retryOptions);
+        return handle.WithRetry(builder, builder.CurrentOptimizationProfile);
+    }
+
+    /// <summary>
+    ///     Applies retry defaults for this aggregate node using the specified optimization profile.
+    /// </summary>
+    /// <typeparam name="TIn">The input type of the aggregate node.</typeparam>
+    /// <typeparam name="TOut">The output type of the aggregate node.</typeparam>
+    /// <param name="handle">The aggregate node handle.</param>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="profile">The optimization profile whose retry defaults should be applied.</param>
+    /// <returns>The same aggregate node handle for method chaining.</returns>
+    public static AggregateNodeHandle<TIn, TOut> WithRetry<TIn, TOut>(
+        this AggregateNodeHandle<TIn, TOut> handle,
+        PipelineBuilder builder,
+        PipelineOptimizationProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        ApplyProfileRetryDefaults(builder, handle, profile);
         return handle;
+    }
+
+    private static void ApplyProfileRetryDefaults(PipelineBuilder builder, NodeHandle handle, PipelineOptimizationProfile profile)
+    {
+        var retryOptions = OptimizationProfileBehaviorRegistry.For(profile).RetryDefaults;
+        builder.WithRetryOptions(handle, retryOptions);
     }
 
     /// <summary>

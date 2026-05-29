@@ -49,6 +49,8 @@ The MSBuild property controls which analyzers fire during `dotnet build`:
 
 These two settings represent the same decision from different angles. Set them to the same value - the runtime profile governs execution behavior, while the MSBuild property governs analyzer behavior.
 
+When profile metadata is available (for example via the `NPipeline.Analyzers` package), NPipeline emits a runtime build warning if these values differ. This catches analyzer/runtime drift early.
+
 ## Default Profile
 
 The `Default` profile is designed for the 90% case: developers who want a working pipeline with sensible error recovery and don't need to micro-optimize memory allocations.
@@ -153,11 +155,11 @@ public void Define(PipelineBuilder builder, PipelineContext context)
 }
 ```
 
-Or use the `WithRetry()` shorthand to opt into sensible defaults explicitly:
+Or explicitly apply `Default` profile retry defaults while staying in `HighThroughput` runtime mode:
 
 ```csharp
 builder.WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);
-builder.WithRetry();  // Explicitly applies Default-profile retry settings
+builder.WithRetry(PipelineOptimizationProfile.Default);
 ```
 
 ### Zero-Overhead Context Dictionaries
@@ -191,14 +193,30 @@ This produces a stricter build experience that surfaces every potential allocati
 | Per-item allocations | Analyzer-enforced: flagged at build time |
 | Retry configuration | No hidden buffering or materialization unless explicitly configured |
 
-## The WithRetry() Shorthand
+## Retry Shorthand APIs
 
-Both profiles support `WithRetry()` - a zero-configuration method that applies the `Default` profile's retry settings:
+`WithRetry()` applies retry defaults for the currently selected runtime profile:
+
+- `Default` runtime profile: 3 retries, exponential backoff + full jitter, 10,000-item materialization cap.
+- `HighThroughput` runtime profile: strict baseline defaults (no retries unless explicitly configured).
+
+```csharp
+builder.WithRetry();
+```
+
+To apply retry defaults from a specific profile regardless of runtime profile, use `WithRetry(profile)`:
+
+```csharp
+builder.WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);
+builder.WithRetry(PipelineOptimizationProfile.Default); // explicit, profile-specific convenience
+```
+
+The pipeline-level `Default` profile shorthand is equivalent to:
 
 ### Pipeline-Level
 
 ```csharp
-builder.WithRetry();
+builder.WithRetry(PipelineOptimizationProfile.Default);
 // Equivalent to:
 // builder.WithRetryOptions(options => options with
 // {
@@ -216,7 +234,10 @@ Apply retries to specific nodes while leaving others with pipeline-level default
 
 ```csharp
 var transform = builder.AddTransform<CallApi, Request, Response>("api-call");
-transform.WithRetry(builder);  // 3 retries, backoff, 10K materialization cap
+transform.WithRetry(builder);  // Applies builder profile defaults
+
+// Explicitly apply Default-profile retry defaults to this node
+transform.WithRetry(builder, PipelineOptimizationProfile.Default);
 ```
 
 Available on all node handle types: `SourceNodeHandle<T>`, `TransformNodeHandle<TIn, TOut>`, `SinkNodeHandle<TIn>`, and `AggregateNodeHandle<TIn, TOut>`.

@@ -12,5 +12,14 @@
 
     <ItemGroup>
         <CompilerVisibleProperty Include="NPipelineOptimizationProfile" />
+
+        <!--
+            Emit profile metadata so runtime can detect analyzer/runtime profile drift and warn.
+            This is best-effort: if GenerateAssemblyInfo is disabled by the consumer, metadata may not be present.
+        -->
+        <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+            <_Parameter1>NPipelineOptimizationProfile</_Parameter1>
+            <_Parameter2>$(NPipelineOptimizationProfile)</_Parameter2>
+        </AssemblyAttribute>
     </ItemGroup>
 </Project>

@@ -1,6 +1,7 @@
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Reflection;
 using NPipeline.Configuration;
 using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
@@ -14,6 +15,8 @@ namespace NPipeline.Pipeline;
 /// </summary>
 public sealed partial class PipelineBuilder
 {
+    private const string OptimizationProfileMetadataKey = "NPipelineOptimizationProfile";
+
     /// <summary>
     ///     Builds the pipeline with the configured nodes, edges, and settings.
     /// </summary>
@@ -181,6 +184,8 @@ public sealed partial class PipelineBuilder
         ExecutionOptionsConfiguration ExecutionConfig)
         BuildConfigurations()
     {
+        WarnIfCompileTimeOptimizationProfileDiffers();
+
         var errorHandlingConfig = BuildErrorHandlingConfiguration();
         var lineageConfig = BuildLineageConfiguration();
         var executionConfig = BuildExecutionOptionsConfiguration();
@@ -194,9 +199,10 @@ public sealed partial class PipelineBuilder
     private ErrorHandlingConfiguration BuildErrorHandlingConfiguration()
     {
         var retryOptions = _config.RetryOptions;
+        var profileBehavior = OptimizationProfileBehaviorRegistry.For(_config.OptimizationProfile);
 
-        if (_config.OptimizationProfile == PipelineOptimizationProfile.Default && !_config.RetryExplicitlyConfigured)
-            retryOptions = PipelineRetryOptions.ForProfile(PipelineOptimizationProfile.Default);
+        if (!_config.RetryExplicitlyConfigured && profileBehavior.AutomaticRetryDefaults is not null)
+            retryOptions = profileBehavior.AutomaticRetryDefaults;
 
         var overrideDict = NodeState.RetryOverrides.Count > 0
             ? NodeState.RetryOverrides.ToImmutableDictionary()
@@ -243,6 +249,68 @@ public sealed partial class PipelineBuilder
                 : null,
             Visualizer = ConfigurationState.Visualizer,
         };
+    }
+
+    private void WarnIfCompileTimeOptimizationProfileDiffers()
+    {
+        if (!TryResolveCompileTimeOptimizationProfile(out var compileTimeProfile))
+            return;
+
+        if (compileTimeProfile == _config.OptimizationProfile)
+            return;
+
+        Trace.TraceWarning(
+            $"[NPipeline] Optimization profile mismatch detected: runtime profile '{_config.OptimizationProfile}' " +
+            $"and compile-time analyzer profile '{compileTimeProfile}'. " +
+            "Align PipelineBuilder.WithOptimizationProfile(...) and <NPipelineOptimizationProfile> to avoid analyzer/runtime drift.");
+    }
+
+    private bool TryResolveCompileTimeOptimizationProfile(out PipelineOptimizationProfile compileTimeProfile)
+    {
+        foreach (var assembly in GetOptimizationProfileMetadataCandidates())
+        {
+            if (TryReadOptimizationProfileMetadata(assembly, out compileTimeProfile))
+                return true;
+        }
+
+        compileTimeProfile = default;
+        return false;
+    }
+
+    private IEnumerable<Assembly> GetOptimizationProfileMetadataCandidates()
+    {
+        var seen = new HashSet<Assembly>();
+
+        var entryAssembly = Assembly.GetEntryAssembly();
+
+        if (entryAssembly is not null && seen.Add(entryAssembly))
+            yield return entryAssembly;
+
+        foreach (var nodeAssembly in NodeState.Nodes.Values.Select(static node => node.NodeType.Assembly))
+        {
+            if (seen.Add(nodeAssembly))
+                yield return nodeAssembly;
+        }
+    }
+
+    private static bool TryReadOptimizationProfileMetadata(Assembly assembly, out PipelineOptimizationProfile compileTimeProfile)
+    {
+        foreach (var metadata in assembly.GetCustomAttributes<AssemblyMetadataAttribute>())
+        {
+            if (!string.Equals(metadata.Key, OptimizationProfileMetadataKey, StringComparison.Ordinal))
+                continue;
+
+            var value = metadata.Value?.Trim();
+
+            if (string.IsNullOrWhiteSpace(value))
+                continue;
+
+            if (Enum.TryParse(value, true, out compileTimeProfile))
+                return true;
+        }
+
+        compileTimeProfile = default;
+        return false;
     }
 
     /// <summary>

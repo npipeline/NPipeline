@@ -1,9 +1,13 @@
+using System.Diagnostics;
+using System.Reflection;
 using AwesomeAssertions;
 using NPipeline.Configuration;
 using NPipeline.Configuration.RetryDelay;
 using NPipeline.DataFlow;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
+
+[assembly: AssemblyMetadata("NPipelineOptimizationProfile", "Default")]
 
 namespace NPipeline.Tests.Core.Builder;
 
@@ -64,7 +68,7 @@ public sealed class PipelineBuilderOptimizationProfileTests
     }
 
     [Fact]
-    public void WithRetry_ShouldOverrideHighThroughputStrictDefaults()
+    public void WithRetry_WithHighThroughputProfile_ShouldApplyHighThroughputDefaults()
     {
         var builder = new PipelineBuilder()
             .WithoutExtendedValidation()
@@ -78,9 +82,52 @@ public sealed class PipelineBuilderOptimizationProfileTests
         var retryOptions = pipeline.Graph.ErrorHandling.RetryOptions;
         retryOptions.Should().NotBeNull();
 
+        retryOptions.Should().Be(PipelineRetryOptions.Default);
+    }
+
+    [Fact]
+    public void WithRetry_WithExplicitDefaultProfile_ShouldEnableDefaultRetryDefaultsInHighThroughputMode()
+    {
+        var builder = new PipelineBuilder()
+            .WithoutExtendedValidation()
+            .WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);
+
+        builder.WithRetry(PipelineOptimizationProfile.Default);
+
+        builder.AddSource<TestSourceNode, int>("source");
+        var pipeline = builder.Build();
+
+        var retryOptions = pipeline.Graph.ErrorHandling.RetryOptions;
+        retryOptions.Should().NotBeNull();
+
         retryOptions!.MaxItemRetries.Should().Be(3);
         retryOptions.MaxMaterializedItems.Should().Be(10_000);
         retryOptions.DelayStrategyConfiguration.Should().Be(RetryDelayConfigurationExtensions.DefaultExponentialBackoffWithJitter);
+    }
+
+    [Fact]
+    public void Build_ShouldWarn_WhenRuntimeAndCompileTimeProfilesDiffer()
+    {
+        var builder = new PipelineBuilder()
+            .WithoutExtendedValidation()
+            .WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);
+
+        builder.AddSource<TestSourceNode, int>("source");
+
+        using var listener = new RecordingTraceListener();
+        Trace.Listeners.Add(listener);
+
+        try
+        {
+            _ = builder.Build();
+        }
+        finally
+        {
+            Trace.Listeners.Remove(listener);
+        }
+
+        listener.Messages.Should().Contain(message =>
+            message.Contains("Optimization profile mismatch detected", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -127,6 +174,23 @@ public sealed class PipelineBuilderOptimizationProfileTests
         public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
+        }
+    }
+
+    private sealed class RecordingTraceListener : TraceListener
+    {
+        public List<string> Messages { get; } = [];
+
+        public override void Write(string? message)
+        {
+            if (!string.IsNullOrEmpty(message))
+                Messages.Add(message);
+        }
+
+        public override void WriteLine(string? message)
+        {
+            if (!string.IsNullOrEmpty(message))
+                Messages.Add(message);
         }
     }
 }
