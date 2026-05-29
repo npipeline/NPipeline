@@ -6,19 +6,19 @@ Shared Azure authentication, connection management, and retry abstractions for N
 
 `NPipeline.Connectors.Azure` provides the common building blocks used across all NPipeline Azure service connectors:
 
-- **`AzureAuthenticationMode`** — Three authentication modes: `ConnectionString`, `EndpointWithKey`, and `AzureAdCredential`
-- **`AzureConnectionOptions`** — Thread-safe registry of named connection strings and named `AzureEndpointOptions` instances
-- **`AzureEndpointOptions`** — Pairs an Azure service `Uri` with an Azure.Identity `TokenCredential`
-- **`AzureRetryConfiguration`** — Configurable exponential-backoff retry policy with jitter
-- **`ITransientErrorDetector`** / **`AzureTransientErrorDetector`** — Classifies HTTP responses as transient (408, 410, 429, 449, 503) so retry logic knows when to retry
+- **`AzureAuthenticationMode`** - Three authentication modes: `ConnectionString`, `EndpointWithKey`, and `AzureAdCredential`
+- **`AzureConnectionOptions`** - Thread-safe registry of named connection strings and named `AzureEndpointOptions` instances
+- **`AzureEndpointOptions`** - Pairs an Azure service `Uri` with an Azure.Identity `TokenCredential`
+- **`AzureRetryConfiguration`** - Configurable exponential-backoff retry policy with jitter
+- **`ITransientErrorDetector`** / **`AzureTransientErrorDetector`** - Classifies HTTP responses as transient (408, 410, 429, 449, 503) so retry logic knows when to retry
 
 ## Authentication Modes
 
 | Mode | Description |
 |------|-------------|
-| `ConnectionString` | Single string containing endpoint and key — e.g., `AccountEndpoint=...;AccountKey=...` |
-| `EndpointWithKey` | Separate `Endpoint` and `Credential` properties — useful when they come from different config sources |
-| `AzureAdCredential` | Token-based via any Azure.Identity `TokenCredential` — recommended for production (managed identity, service principal) |
+| `ConnectionString` | Single string containing endpoint and key - e.g., `AccountEndpoint=...;AccountKey=...` |
+| `EndpointWithKey` | Separate `Endpoint` and `Credential` properties - useful when they come from different config sources |
+| `AzureAdCredential` | Token-based via any Azure.Identity `TokenCredential` - recommended for production (managed identity, service principal) |
 
 ## AzureConnectionOptions
 
@@ -95,8 +95,8 @@ public class CosmosTransientErrorDetector : AzureTransientErrorDetector
 
 ## Dependencies
 
-- `Azure.Core` — `TokenCredential` and Azure SDK pipeline primitives
-- `Azure.Identity` — `DefaultAzureCredential` and other credential types
+- `Azure.Core` - `TokenCredential` and Azure SDK pipeline primitives
+- `Azure.Identity` - `DefaultAzureCredential` and other credential types
 
 ## Requirements
 
@@ -104,8 +104,8 @@ public class CosmosTransientErrorDetector : AzureTransientErrorDetector
 
 ## Related Packages
 
-- **[NPipeline.Connectors.Azure.CosmosDb](https://www.nuget.org/packages/NPipeline.Connectors.Azure.CosmosDb)** — Cosmos DB source and sink nodes
-- **[NPipeline.Connectors.Azure.ServiceBus](https://www.nuget.org/packages/NPipeline.Connectors.Azure.ServiceBus)** — Azure Service Bus source and sink nodes
+- **[NPipeline.Connectors.Azure.CosmosDb](https://www.nuget.org/packages/NPipeline.Connectors.Azure.CosmosDb)** - Cosmos DB source and sink nodes
+- **[NPipeline.Connectors.Azure.ServiceBus](https://www.nuget.org/packages/NPipeline.Connectors.Azure.ServiceBus)** - Azure Service Bus source and sink nodes
 
 ## License
 

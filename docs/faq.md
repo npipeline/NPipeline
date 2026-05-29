@@ -22,7 +22,7 @@ The core engine and base abstractions are **fully free and open-source** under t
 
 - **Non-production use** (dev, CI/CD, testing): always free.
 - **Production use**: free for organizations with **4 or fewer developers** and **≤ $5M AUD annual revenue**.
-- **Commercial license** required for larger organizations — see [npipeline.com](https://npipeline.com).
+- **Commercial license** required for larger organizations - see [npipeline.com](https://npipeline.com).
 - Every BSL-licensed package **automatically converts to MIT two years after its release**.
 
 ### How does NPipeline compare to other tools?

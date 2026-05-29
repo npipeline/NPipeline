@@ -132,7 +132,7 @@ public sealed partial class PipelineBuilder
     ///     <para>
     ///         When set to <see cref="PipelineOptimizationProfile.Default" /> (the default), the builder applies
     ///         sensible retry defaults: 3 item retries, exponential backoff with full jitter, and a 10,000-item
-    ///         materialization cap — unless the user has explicitly configured retry options via
+    ///         materialization cap - unless the user has explicitly configured retry options via
     ///         <see cref="PipelineBuilder.WithRetryOptions(Func{PipelineRetryOptions, PipelineRetryOptions})" />.
     ///     </para>
     ///     <para>

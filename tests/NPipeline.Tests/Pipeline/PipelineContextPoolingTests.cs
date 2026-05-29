@@ -10,7 +10,7 @@ public sealed class PipelineContextPoolingTests
     [Fact]
     public async Task DisposeAsync_WithOwnedDictionaries_ClearsUserAddedEntries()
     {
-        // Arrange — use HighThroughput to get pooled (non-ConcurrentDictionary) storage
+        // Arrange - use HighThroughput to get pooled (non-ConcurrentDictionary) storage
         var context = new PipelineContext(new PipelineContextConfiguration
         {
             OptimizationProfile = PipelineOptimizationProfile.HighThroughput

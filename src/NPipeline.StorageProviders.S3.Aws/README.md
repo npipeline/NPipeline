@@ -4,13 +4,13 @@ AWS S3 storage provider for NPipeline. Implements `IStorageProvider` using the A
 
 ## Features
 
-- **Default credential chain** — environment variables → shared credentials file → EC2 instance profile → ECS task role
-- **Explicit credentials** — `BasicAWSCredentials` or `SessionAWSCredentials` via options or URI parameters
-- **Per-URI region overrides** — set region per-request using the `?region=` URI parameter
-- **Multipart uploads** — files above the configurable threshold use the S3 multipart API automatically
-- **Client caching** — `IAmazonS3` clients are cached by region/endpoint/credentials to minimise overhead
-- **Path-style addressing** — opt in with `ForcePathStyle = true` for LocalStack or older S3-compatible endpoints
-- **Async streaming** — all reads, writes, and listings stream data without materialising the full object in memory
+- **Default credential chain** - environment variables → shared credentials file → EC2 instance profile → ECS task role
+- **Explicit credentials** - `BasicAWSCredentials` or `SessionAWSCredentials` via options or URI parameters
+- **Per-URI region overrides** - set region per-request using the `?region=` URI parameter
+- **Multipart uploads** - files above the configurable threshold use the S3 multipart API automatically
+- **Client caching** - `IAmazonS3` clients are cached by region/endpoint/credentials to minimise overhead
+- **Path-style addressing** - opt in with `ForcePathStyle = true` for LocalStack or older S3-compatible endpoints
+- **Async streaming** - all reads, writes, and listings stream data without materialising the full object in memory
 
 ## Installation
 
@@ -52,7 +52,7 @@ s3://bucket-name/key/path?region=ap-southeast-2
 |-----------|-------------|
 | `bucket-name` | S3 bucket (URI host) |
 | `key/path` | Object key (URI path) |
-| `region` | Optional — overrides `DefaultRegion` for this request |
+| `region` | Optional - overrides `DefaultRegion` for this request |
 
 ### URI Parameters
 
@@ -66,7 +66,7 @@ s3://bucket-name/key/path?region=ap-southeast-2
 | `pathStyle` | Force path-style addressing | `pathStyle=true` |
 | `contentType` | MIME type applied on write | `contentType=application/json` |
 
-> **Security:** Avoid embedding credentials in URIs in production — URIs may appear in logs. Use the credential chain or `DefaultCredentials` in options instead.
+> **Security:** Avoid embedding credentials in URIs in production - URIs may appear in logs. Use the credential chain or `DefaultCredentials` in options instead.
 
 ## Configuration
 
@@ -83,18 +83,18 @@ s3://bucket-name/key/path?region=ap-southeast-2
 
 Credentials are resolved in priority order:
 
-1. **Per-URI** — `accessKey` + `secretKey` (+ optional `sessionToken`) in the URI query string
-2. **Options** — `DefaultCredentials` set on `AwsS3StorageProviderOptions`
-3. **Default credential chain** — when `UseDefaultCredentialChain = true` (default)
+1. **Per-URI** - `accessKey` + `secretKey` (+ optional `sessionToken`) in the URI query string
+2. **Options** - `DefaultCredentials` set on `AwsS3StorageProviderOptions`
+3. **Default credential chain** - when `UseDefaultCredentialChain = true` (default)
 
 ```csharp
-// Production — use the default credential chain (IAM role, instance profile, etc.)
+// Production - use the default credential chain (IAM role, instance profile, etc.)
 var options = new AwsS3StorageProviderOptions
 {
     DefaultRegion = RegionEndpoint.APSoutheast2
 };
 
-// Development — explicit credentials
+// Development - explicit credentials
 var options = new AwsS3StorageProviderOptions
 {
     DefaultRegion = RegionEndpoint.APSoutheast2,
@@ -210,9 +210,9 @@ services.AddAwsS3StorageProvider(options =>
 
 ## Related Packages
 
-- **[NPipeline.StorageProviders.S3.Compatible](https://www.nuget.org/packages/NPipeline.StorageProviders.S3.Compatible)** — MinIO, Cloudflare R2, DigitalOcean Spaces, and other S3-compatible services
-- **[NPipeline.StorageProviders.Azure](https://www.nuget.org/packages/NPipeline.StorageProviders.Azure)** — Azure Blob Storage provider
-- **[NPipeline.StorageProviders](https://www.nuget.org/packages/NPipeline.StorageProviders)** — Base abstractions (`IStorageProvider`, `StorageUri`)
+- **[NPipeline.StorageProviders.S3.Compatible](https://www.nuget.org/packages/NPipeline.StorageProviders.S3.Compatible)** - MinIO, Cloudflare R2, DigitalOcean Spaces, and other S3-compatible services
+- **[NPipeline.StorageProviders.Azure](https://www.nuget.org/packages/NPipeline.StorageProviders.Azure)** - Azure Blob Storage provider
+- **[NPipeline.StorageProviders](https://www.nuget.org/packages/NPipeline.StorageProviders)** - Base abstractions (`IStorageProvider`, `StorageUri`)
 
 ## License
 

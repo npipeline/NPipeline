@@ -55,13 +55,13 @@ The default error handling behavior depends on the [optimization profile](../gui
 
 **Default profile:** NPipeline auto-configures item-level retries (3 attempts, exponential backoff with full jitter, 10,000-item materialization cap). Failed items are retried automatically before the pipeline fails. No explicit configuration is required.
 
-**HighThroughput profile:** NPipeline uses `DefaultResiliencePolicy` which returns `Fail` for all failure types. Any unhandled exception fails the pipeline immediately — no items are retried or skipped automatically. You opt into recovery behaviors explicitly.
+**HighThroughput profile:** NPipeline uses `DefaultResiliencePolicy` which returns `Fail` for all failure types. Any unhandled exception fails the pipeline immediately - no items are retried or skipped automatically. You opt into recovery behaviors explicitly.
 
 In both profiles:
 
 - No dead-letter routing occurs unless you configure a dead-letter sink.
 - No resilience policy is active unless you add one via `AddResiliencePolicy()`.
-- The fail-fast behavior for *unhandled* failures (those exceeding retry limits or not covered by a policy) is intentional — silent data loss is worse than a loud failure.
+- The fail-fast behavior for *unhandled* failures (those exceeding retry limits or not covered by a policy) is intentional - silent data loss is worse than a loud failure.
 
 ## Configuring Error Handling
 

@@ -112,7 +112,7 @@ When using parallel execution, your transform node's `TransformAsync` method is 
 
 Thread safety of context dictionaries depends on the [optimization profile](optimization-profiles.md):
 
-**Default profile** — dictionaries are `ConcurrentDictionary` (thread-safe):
+**Default profile** - dictionaries are `ConcurrentDictionary` (thread-safe):
 
 | Dictionary | Read | Write | Notes |
 |-----------|------|-------|-------|
@@ -120,7 +120,7 @@ Thread safety of context dictionaries depends on the [optimization profile](opti
 | `context.Items` | Safe | Safe | Concurrent reads and writes supported |
 | `context.Properties` | Safe | Safe | Framework-managed; avoid writing from nodes |
 
-**HighThroughput profile** — dictionaries are plain `Dictionary` (not thread-safe):
+**HighThroughput profile** - dictionaries are plain `Dictionary` (not thread-safe):
 
 | Dictionary | Read | Write | Notes |
 |-----------|------|-------|-------|
@@ -130,9 +130,9 @@ Thread safety of context dictionaries depends on the [optimization profile](opti
 
 ### Dictionary Implementation by Profile
 
-In the `Default` profile, context dictionaries use `ConcurrentDictionary<string, object>` internally. This eliminates the most common source of bugs when developers first enable parallel execution — concurrent writes to `context.Items` no longer throw or corrupt data.
+In the `Default` profile, context dictionaries use `ConcurrentDictionary<string, object>` internally. This eliminates the most common source of bugs when developers first enable parallel execution - concurrent writes to `context.Items` no longer throw or corrupt data.
 
-In the `HighThroughput` profile, context dictionaries use pooled `Dictionary<string, object>` instances for zero locking overhead. This avoids memory barriers on every dictionary access, which matters at millions of operations per second. The trade-off is that concurrent writes are unsafe — use `IPipelineStateManager` for shared state in parallel scenarios.
+In the `HighThroughput` profile, context dictionaries use pooled `Dictionary<string, object>` instances for zero locking overhead. This avoids memory barriers on every dictionary access, which matters at millions of operations per second. The trade-off is that concurrent writes are unsafe - use `IPipelineStateManager` for shared state in parallel scenarios.
 
 ### Safe and Unsafe Patterns
 

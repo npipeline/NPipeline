@@ -52,7 +52,7 @@ public sealed class PipelineExecutionConfigurationContext
 
     /// <summary>
     ///     The optimization profile governing runtime behavior for this pipeline run.
-    ///     This is the runtime source of truth for the active profile — node authors and runtime
+    ///     This is the runtime source of truth for the active profile - node authors and runtime
     ///     code should read it from here rather than from <see cref="PipelineContextConfiguration" />.
     ///     The profile's effects (retry defaults, dictionary types) are already baked into their
     ///     respective configurations at build time.

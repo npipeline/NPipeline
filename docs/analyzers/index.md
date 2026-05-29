@@ -113,11 +113,11 @@ var data = await httpClient.GetAsync(url);
 // Before
 public override IDataStream<Record> OpenStream(PipelineContext ctx, CancellationToken ct)
 {
-    var records = db.GetAll().ToList(); // NP9107 fires here — materializing into List
+    var records = db.GetAll().ToList(); // NP9107 fires here - materializing into List
     return new InMemoryDataStream<Record>(records, "records");
 }
 
-// After (manually refactored — wrap the async enumerable directly)
+// After (manually refactored - wrap the async enumerable directly)
 public override IDataStream<Record> OpenStream(PipelineContext ctx, CancellationToken ct)
     => new DataStream<Record>(db.GetAllAsync(ct), "records");
 ```
@@ -128,10 +128,10 @@ public override IDataStream<Record> OpenStream(PipelineContext ctx, Cancellation
 // Before
 public override async Task ConsumeAsync(IDataStream<Order> input, PipelineContext ctx, CancellationToken ct)
 {
-    await db.SaveAsync(ct); // input never consumed — bug!
+    await db.SaveAsync(ct); // input never consumed - bug!
 }
 
-// After (manually implemented — always enumerate the input stream)
+// After (manually implemented - always enumerate the input stream)
 public override async Task ConsumeAsync(IDataStream<Order> input, PipelineContext ctx, CancellationToken ct)
 {
     await foreach (var order in input.WithCancellation(ct))
@@ -155,7 +155,7 @@ public class MyNode : TransformNode<In, Out>
     }
 }
 
-// After (manually refactored — use constructor injection)
+// After (manually refactored - use constructor injection)
 public class MyNode : TransformNode<In, Out>
 {
     private readonly IMyService _dep;
@@ -171,7 +171,7 @@ public class MyNode : TransformNode<In, Out>
 
 ## Profile-Gated Analyzers
 
-Five performance analyzers (NP9103–NP9107) are controlled by the `<NPipelineOptimizationProfile>` MSBuild property. When set to `Default` (the default), these rules are suppressed — their micro-optimizations are unnecessary at moderate throughput. When set to `HighThroughput`, all rules fire.
+Five performance analyzers (NP9103–NP9107) are controlled by the `<NPipelineOptimizationProfile>` MSBuild property. When set to `Default` (the default), these rules are suppressed - their micro-optimizations are unnecessary at moderate throughput. When set to `HighThroughput`, all rules fire.
 
 Set the property in your project file:
 

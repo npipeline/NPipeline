@@ -19,7 +19,7 @@ order: 15
 | **Context dictionaries** | `ConcurrentDictionary` (thread-safe) | `Dictionary` (zero locking overhead) |
 | **Performance analyzers** | NP9103–NP9107 suppressed | All analyzers active |
 | **Memory model** | Slightly higher per-context allocation (concurrent collections) | Pooled dictionaries, minimal GC pressure |
-| **Configuration style** | Batteries-included — works with minimal setup | Explicit-everything — you configure what you need |
+| **Configuration style** | Batteries-included - works with minimal setup | Explicit-everything - you configure what you need |
 
 ## Setting the Profile
 
@@ -47,7 +47,7 @@ The MSBuild property controls which analyzers fire during `dotnet build`:
 </PropertyGroup>
 ```
 
-These two settings represent the same decision from different angles. Set them to the same value — the runtime profile governs execution behavior, while the MSBuild property governs analyzer behavior.
+These two settings represent the same decision from different angles. Set them to the same value - the runtime profile governs execution behavior, while the MSBuild property governs analyzer behavior.
 
 ## Default Profile
 
@@ -65,7 +65,7 @@ When no explicit retry options are configured, the `Default` profile applies:
 | `MaxNodeRestartAttempts` | 3 | Nodes can restart up to 3 times |
 | `MaxSequentialNodeAttempts` | 5 | Sequential execution attempts capped at 5 |
 
-These defaults activate automatically — no configuration needed:
+These defaults activate automatically - no configuration needed:
 
 ```csharp
 public void Define(PipelineBuilder builder, PipelineContext context)
@@ -99,7 +99,7 @@ In the `Default` profile, `PipelineContext.Parameters`, `.Items`, and `.Properti
 - Safe to use with `NPipeline.Extensions.Parallelism` without additional synchronization for basic scenarios.
 
 ```csharp
-// Safe in Default profile — ConcurrentDictionary handles concurrent writes
+// Safe in Default profile - ConcurrentDictionary handles concurrent writes
 public override Task<Order> TransformAsync(
     Order item, PipelineContext context, CancellationToken ct)
 {
@@ -126,7 +126,7 @@ All other analyzers (configuration, reliability, data integrity, design) remain 
 
 ## HighThroughput Profile
 
-The `HighThroughput` profile is for pipelines where every allocation counts — processing millions of items per second, sub-millisecond per-item latency targets, or GC-sensitive environments.
+The `HighThroughput` profile is for pipelines where every allocation counts - processing millions of items per second, sub-millisecond per-item latency targets, or GC-sensitive environments.
 
 ### Explicit Configuration Required
 
@@ -162,7 +162,7 @@ builder.WithRetry();  // Explicitly applies Default-profile retry settings
 
 ### Zero-Overhead Context Dictionaries
 
-Context dictionaries use pooled `Dictionary<string, object>` instances — no locking, no memory barriers, no `ConcurrentDictionary` overhead:
+Context dictionaries use pooled `Dictionary<string, object>` instances - no locking, no memory barriers, no `ConcurrentDictionary` overhead:
 
 - Dictionaries are rented from an object pool and returned on disposal.
 - Zero per-access synchronization cost.
@@ -187,13 +187,13 @@ This produces a stricter build experience that surfaces every potential allocati
 | Aspect | Impact |
 |--------|--------|
 | Context dictionary access | ~0 overhead (no locks, no memory barriers) |
-| Dictionary lifecycle | Pooled — no GC pressure from context creation/disposal |
+| Dictionary lifecycle | Pooled - no GC pressure from context creation/disposal |
 | Per-item allocations | Analyzer-enforced: flagged at build time |
 | Retry configuration | No hidden buffering or materialization unless explicitly configured |
 
 ## The WithRetry() Shorthand
 
-Both profiles support `WithRetry()` — a zero-configuration method that applies the `Default` profile's retry settings:
+Both profiles support `WithRetry()` - a zero-configuration method that applies the `Default` profile's retry settings:
 
 ### Pipeline-Level
 

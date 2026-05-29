@@ -6,11 +6,11 @@ Shared S3 protocol abstractions and base implementation for NPipeline S3 storage
 
 `NPipeline.StorageProviders.S3` provides the provider-agnostic core that both S3 implementations build on:
 
-- **`S3CoreStorageProvider`** — Abstract base class implementing `IStorageProvider` and `IStorageProviderMetadataProvider` with full read, write, list, exists, and metadata support
-- **`S3ClientFactoryBase`** — Abstract factory that creates and caches `IAmazonS3` clients by configuration key
-- **`S3CoreOptions`** — Base configuration with `MultipartUploadThresholdBytes` (default 64 MB)
-- **`S3WriteStream`** — Streaming write implementation that switches to S3 multipart upload for large objects
-- **`S3StorageException`** — Base exception for S3-specific errors
+- **`S3CoreStorageProvider`** - Abstract base class implementing `IStorageProvider` and `IStorageProviderMetadataProvider` with full read, write, list, exists, and metadata support
+- **`S3ClientFactoryBase`** - Abstract factory that creates and caches `IAmazonS3` clients by configuration key
+- **`S3CoreOptions`** - Base configuration with `MultipartUploadThresholdBytes` (default 64 MB)
+- **`S3WriteStream`** - Streaming write implementation that switches to S3 multipart upload for large objects
+- **`S3StorageException`** - Base exception for S3-specific errors
 
 ## URI Scheme
 
@@ -27,13 +27,13 @@ s3://bucket-name/key/path
 
 ## Key Behaviours
 
-**Flat storage** — S3 has no real directory hierarchy. Prefixes simulate folders. `SupportsHierarchy = false`.
+**Flat storage** - S3 has no real directory hierarchy. Prefixes simulate folders. `SupportsHierarchy = false`.
 
-**Multipart uploads** — `S3WriteStream` automatically switches to the S3 multipart upload API when the written content exceeds `MultipartUploadThresholdBytes`. The threshold is configurable per provider instance.
+**Multipart uploads** - `S3WriteStream` automatically switches to the S3 multipart upload API when the written content exceeds `MultipartUploadThresholdBytes`. The threshold is configurable per provider instance.
 
-**Client caching** — `S3ClientFactoryBase` caches `IAmazonS3` instances by a configuration-derived key (region, endpoint, credentials) to avoid redundant client construction.
+**Client caching** - `S3ClientFactoryBase` caches `IAmazonS3` instances by a configuration-derived key (region, endpoint, credentials) to avoid redundant client construction.
 
-**Pagination** — `ListAsync` internally uses `ListObjectsV2` with continuation tokens, streaming items as pages arrive.
+**Pagination** - `ListAsync` internally uses `ListObjectsV2` with continuation tokens, streaming items as pages arrive.
 
 ## S3CoreOptions
 
@@ -77,10 +77,10 @@ public class MyClientFactory : S3ClientFactoryBase
 
 ## Dependencies
 
-- `AWSSDK.S3` — Amazon S3 client (`IAmazonS3`, `AmazonS3Exception`)
-- `AWSSDK.Core` — AWS SDK core types (`AWSCredentials`, credential chain)
-- `NPipeline.StorageProviders` — `IStorageProvider`, `StorageUri`, `StorageItem`, `StorageMetadata`
-- `NPipeline` — Core pipeline engine
+- `AWSSDK.S3` - Amazon S3 client (`IAmazonS3`, `AmazonS3Exception`)
+- `AWSSDK.Core` - AWS SDK core types (`AWSCredentials`, credential chain)
+- `NPipeline.StorageProviders` - `IStorageProvider`, `StorageUri`, `StorageItem`, `StorageMetadata`
+- `NPipeline` - Core pipeline engine
 
 ## Requirements
 
@@ -88,8 +88,8 @@ public class MyClientFactory : S3ClientFactoryBase
 
 ## Related Packages
 
-- **[NPipeline.StorageProviders.S3.Aws](https://www.nuget.org/packages/NPipeline.StorageProviders.S3.Aws)** — AWS S3 with IAM credential chain and per-URI region overrides
-- **[NPipeline.StorageProviders.S3.Compatible](https://www.nuget.org/packages/NPipeline.StorageProviders.S3.Compatible)** — MinIO, Cloudflare R2, DigitalOcean Spaces, and other S3-compatible services
+- **[NPipeline.StorageProviders.S3.Aws](https://www.nuget.org/packages/NPipeline.StorageProviders.S3.Aws)** - AWS S3 with IAM credential chain and per-URI region overrides
+- **[NPipeline.StorageProviders.S3.Compatible](https://www.nuget.org/packages/NPipeline.StorageProviders.S3.Compatible)** - MinIO, Cloudflare R2, DigitalOcean Spaces, and other S3-compatible services
 
 ## License
 
