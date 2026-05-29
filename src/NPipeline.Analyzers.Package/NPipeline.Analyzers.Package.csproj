@@ -43,6 +43,7 @@
     <!-- Include README in package -->
     <ItemGroup>
         <None Include="README.md" Pack="true" PackagePath="\"/>
+        <None Include="build\NPipeline.Analyzers.props" Pack="true" PackagePath="build\NPipeline.Analyzers.props" />
     </ItemGroup>
 
     <!-- Custom target to include analyzer assemblies in the package -->

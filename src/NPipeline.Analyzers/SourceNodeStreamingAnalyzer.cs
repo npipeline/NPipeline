@@ -44,8 +44,13 @@ public sealed class SourceNodeStreamingAnalyzer : DiagnosticAnalyzer
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
 
-        // Register to analyze method bodies for non-streaming patterns
-        context.RegisterSyntaxNodeAction(AnalyzeMethod, SyntaxKind.MethodDeclaration);
+        context.RegisterCompilationStartAction(compilationStartContext =>
+        {
+            if (!AnalyzerProfileHelper.IsHighThroughput(compilationStartContext.Options, compilationStartContext.Compilation))
+                return;
+
+            compilationStartContext.RegisterSyntaxNodeAction(AnalyzeMethod, SyntaxKind.MethodDeclaration);
+        });
     }
 
     private static void AnalyzeMethod(SyntaxNodeAnalysisContext context)

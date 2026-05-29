@@ -38,14 +38,15 @@ public sealed class InefficientStringOperationsAnalyzer : DiagnosticAnalyzer
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
 
-        // Register to analyze binary expressions for string concatenation
-        context.RegisterSyntaxNodeAction(AnalyzeBinaryExpression, SyntaxKind.AddExpression);
+        context.RegisterCompilationStartAction(compilationStartContext =>
+        {
+            if (!AnalyzerProfileHelper.IsHighThroughput(compilationStartContext.Options, compilationStartContext.Compilation))
+                return;
 
-        // Register to analyze interpolated string expressions
-        context.RegisterSyntaxNodeAction(AnalyzeInterpolatedStringExpression, SyntaxKind.InterpolatedStringExpression);
-
-        // Register to analyze invocation expressions for string methods
-        context.RegisterSyntaxNodeAction(AnalyzeInvocationExpression, SyntaxKind.InvocationExpression);
+            compilationStartContext.RegisterSyntaxNodeAction(AnalyzeBinaryExpression, SyntaxKind.AddExpression);
+            compilationStartContext.RegisterSyntaxNodeAction(AnalyzeInterpolatedStringExpression, SyntaxKind.InterpolatedStringExpression);
+            compilationStartContext.RegisterSyntaxNodeAction(AnalyzeInvocationExpression, SyntaxKind.InvocationExpression);
+        });
     }
 
     private static void AnalyzeBinaryExpression(SyntaxNodeAnalysisContext context)

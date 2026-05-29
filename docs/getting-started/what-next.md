@@ -39,6 +39,7 @@ NPipeline has built-in retry strategies, dead-letter queues, and circuit breaker
 The parallelism extension lets you process items concurrently with configurable thread safety.
 
 → [Parallel Execution](../guides/parallel-execution.md)
+→ [Optimization Profiles](../guides/optimization-profiles.md) - choose HighThroughput for maximum performance
 
 ### Split data into multiple paths (branching or conditional routing)
 

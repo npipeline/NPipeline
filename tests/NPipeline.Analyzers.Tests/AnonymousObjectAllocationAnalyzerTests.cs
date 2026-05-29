@@ -414,7 +414,49 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
         Assert.True(hasDiagnostic, "Analyzer should detect anonymous object in while loop");
     }
 
-    private static IEnumerable<Diagnostic> GetDiagnostics(string code)
+    [Fact]
+    public void ShouldNotFireDiagnosticWhenProfileIsDefault()
+    {
+        var code = """
+                   using NPipeline.Nodes;
+
+                   public class TestTransformNode : ITransformNode<string, string>
+                   {
+                       public async Task<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       {
+                           var result = new { Id = input, Processed = true };
+                           return result.Id;
+                       }
+                   }
+                   """;
+
+        var diagnostics = GetDiagnostics(code, TestAnalyzerOptions.Default);
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void ShouldNotFireDiagnosticWhenProfileIsUnset()
+    {
+        var code = """
+                   using NPipeline.Nodes;
+
+                   public class TestTransformNode : ITransformNode<string, string>
+                   {
+                       public async Task<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       {
+                           var result = new { Id = input, Processed = true };
+                           return result.Id;
+                       }
+                   }
+                   """;
+
+        var diagnostics = GetDiagnostics(code, TestAnalyzerOptions.Unset);
+
+        Assert.Empty(diagnostics);
+    }
+
+    private static IEnumerable<Diagnostic> GetDiagnostics(string code, AnalyzerOptions? options = null)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(code);
 
@@ -435,7 +477,7 @@ public sealed class AnonymousObjectAllocationAnalyzerTests
             .AddSyntaxTrees(syntaxTree);
 
         var analyzer = new AnonymousObjectAllocationAnalyzer();
-        var compilationWithAnalyzers = compilation.WithAnalyzers([analyzer]);
+        var compilationWithAnalyzers = compilation.WithAnalyzers([analyzer], options ?? TestAnalyzerOptions.HighThroughput);
         var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
 
         return diagnostics;

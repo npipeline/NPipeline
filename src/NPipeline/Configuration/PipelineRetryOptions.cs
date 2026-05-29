@@ -38,6 +38,27 @@ public sealed record PipelineRetryOptions(
     public static PipelineRetryOptions Default { get; } = new();
 
     /// <summary>
+    ///     Creates profile-aware retry options.
+    ///     In <see cref="PipelineOptimizationProfile.Default" /> mode, applies sensible defaults:
+    ///     3 item retries, 10,000-item materialization cap, and exponential backoff with full jitter.
+    ///     In <see cref="PipelineOptimizationProfile.HighThroughput" /> mode, returns the baseline strict defaults
+    ///     (no retries, no materialization cap, no delay strategy).
+    /// </summary>
+    /// <param name="profile">The optimization profile to build retry options for.</param>
+    /// <returns>A <see cref="PipelineRetryOptions" /> instance configured for the given profile.</returns>
+    public static PipelineRetryOptions ForProfile(PipelineOptimizationProfile profile)
+    {
+        return profile switch
+        {
+            PipelineOptimizationProfile.Default => Default
+                .With(delayStrategyConfiguration: RetryDelayConfigurationExtensions.DefaultExponentialBackoffWithJitter)
+                .With(maxItemRetries: 3, maxMaterializedItems: 10_000),
+            PipelineOptimizationProfile.HighThroughput => Default,
+            _ => Default
+        };
+    }
+
+    /// <summary>
     ///     Creates a new instance with updated options, preserving unspecified values.
     /// </summary>
     public PipelineRetryOptions With(

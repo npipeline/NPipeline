@@ -193,6 +193,11 @@ public sealed partial class PipelineBuilder
     /// </summary>
     private ErrorHandlingConfiguration BuildErrorHandlingConfiguration()
     {
+        var retryOptions = _config.RetryOptions;
+
+        if (_config.OptimizationProfile == PipelineOptimizationProfile.Default && !_config.RetryExplicitlyConfigured)
+            retryOptions = PipelineRetryOptions.ForProfile(PipelineOptimizationProfile.Default);
+
         var overrideDict = NodeState.RetryOverrides.Count > 0
             ? NodeState.RetryOverrides.ToImmutableDictionary()
             : null;
@@ -203,7 +208,7 @@ public sealed partial class PipelineBuilder
             ResiliencePolicyType = ConfigurationState.ResiliencePolicyType,
             DeadLetterSink = ConfigurationState.DeadLetterSink,
             DeadLetterSinkType = ConfigurationState.DeadLetterSinkType,
-            RetryOptions = _config.RetryOptions,
+            RetryOptions = retryOptions,
             NodeRetryOverrides = overrideDict,
             CircuitBreakerOptions = _config.CircuitBreakerOptions,
             CircuitBreakerMemoryOptions = _config.CircuitBreakerMemoryOptions,

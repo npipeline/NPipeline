@@ -40,8 +40,13 @@ public sealed class AnonymousObjectAllocationAnalyzer : DiagnosticAnalyzer
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
 
-        // Register to analyze anonymous object creation expressions
-        context.RegisterSyntaxNodeAction(AnalyzeAnonymousObjectCreation, SyntaxKind.AnonymousObjectCreationExpression);
+        context.RegisterCompilationStartAction(compilationStartContext =>
+        {
+            if (!AnalyzerProfileHelper.IsHighThroughput(compilationStartContext.Options, compilationStartContext.Compilation))
+                return;
+
+            compilationStartContext.RegisterSyntaxNodeAction(AnalyzeAnonymousObjectCreation, SyntaxKind.AnonymousObjectCreationExpression);
+        });
     }
 
     private static void AnalyzeAnonymousObjectCreation(SyntaxNodeAnalysisContext context)

@@ -37,16 +37,18 @@ dotnet add package NPipeline.Connectors.SqlServer.Analyzers
 
 ## NP91xx - Performance and Optimization
 
-| Rule | Severity | Title | Fix |
-|------|----------|-------|-----|
-| NP9101 | Warning | Blocking calls in async methods | Replace `.Result`, `.Wait()`, `GetAwaiter().GetResult()`, `Thread.Sleep()` with async equivalents. |
-| NP9102 | Warning | Synchronous over async anti-patterns | Avoid wrapping synchronous code in `Task.Run()` inside nodes. Use `ValueTask` fast paths instead. |
-| NP9103 | Warning | LINQ operation detected in hot path | Replace LINQ (`Where`, `Select`, `ToList`) in `TransformAsync` with `foreach` loops to avoid allocations. |
-| NP9104 | Warning | Inefficient string operation detected | Replace string concatenation with `+` in loops with `StringBuilder`. |
-| NP9105 | Warning | Anonymous object allocation in hot path | Replace anonymous objects in `TransformAsync` with records or structs. |
-| NP9106 | Info | Consider overriding ExecuteValueTaskAsync for synchronous operations | Override `ExecuteValueTaskAsync` when `TransformAsync` uses `Task.FromResult`. See [Synchronous Fast Paths](../performance/synchronous-fast-paths.md). |
-| NP9107 | Warning | Use streaming patterns in SourceNode implementations | Return `new DataStream<T>(asyncEnumerable)` instead of materializing everything with `.ToList()`. |
-| NP9108 | Info | Add parameterless constructor for better performance | Add a parameterless constructor for faster node activation. |
+Rules NP9103–NP9107 are **profile-gated**: they only fire when the [optimization profile](../guides/optimization-profiles.md) is set to `HighThroughput` (via `<NPipelineOptimizationProfile>HighThroughput</NPipelineOptimizationProfile>` in your project file). In the `Default` profile, these rules are suppressed because their micro-optimizations are unnecessary at moderate throughput. Rules NP9101 and NP9102 are always active regardless of profile.
+
+| Rule | Severity | Title | Profile-Gated | Fix |
+|------|----------|-------|:-------------:|-----|
+| NP9101 | Warning | Blocking calls in async methods | No | Replace `.Result`, `.Wait()`, `GetAwaiter().GetResult()`, `Thread.Sleep()` with async equivalents. |
+| NP9102 | Warning | Synchronous over async anti-patterns | No | Avoid wrapping synchronous code in `Task.Run()` inside nodes. Use `ValueTask` fast paths instead. |
+| NP9103 | Warning | LINQ operation detected in hot path | **Yes** | Replace LINQ (`Where`, `Select`, `ToList`) in `TransformAsync` with `foreach` loops to avoid allocations. |
+| NP9104 | Warning | Inefficient string operation detected | **Yes** | Replace string concatenation with `+` in loops with `StringBuilder`. |
+| NP9105 | Warning | Anonymous object allocation in hot path | **Yes** | Replace anonymous objects in `TransformAsync` with records or structs. |
+| NP9106 | Info | Consider overriding ExecuteValueTaskAsync for synchronous operations | **Yes** | Override `ExecuteValueTaskAsync` when `TransformAsync` uses `Task.FromResult`. See [Synchronous Fast Paths](../performance/synchronous-fast-paths.md). |
+| NP9107 | Warning | Use streaming patterns in SourceNode implementations | **Yes** | Return `new DataStream<T>(asyncEnumerable)` instead of materializing everything with `.ToList()`. |
+| NP9108 | Info | Add parameterless constructor for better performance | No | Add a parameterless constructor for faster node activation. |
 
 ## NP92xx - Reliability and Error Handling
 
@@ -61,7 +63,7 @@ dotnet add package NPipeline.Connectors.SqlServer.Analyzers
 | Rule | Severity | Title | Fix |
 |------|----------|-------|-----|
 | NP9301 | **Error** | SinkNode not consuming input | The `ConsumeAsync` method must use its `input` parameter. A sink that ignores its input is always a bug. |
-| NP9302 | Warning | Unsafe PipelineContext access | Avoid concurrent writes to `PipelineContext.Items` from parallel nodes. Use thread-safe patterns. |
+| NP9302 | Warning | Unsafe PipelineContext access | Avoid concurrent writes to `PipelineContext.Items` from parallel nodes when using `HighThroughput` profile. In `Default` profile, dictionaries are thread-safe. Use `IPipelineStateManager` for complex shared state. |
 
 ## NP94xx - Design and Architecture
 
@@ -166,6 +168,20 @@ public class MyNode : TransformNode<In, Out>
     }
 }
 ```
+
+## Profile-Gated Analyzers
+
+Five performance analyzers (NP9103–NP9107) are controlled by the `<NPipelineOptimizationProfile>` MSBuild property. When set to `Default` (the default), these rules are suppressed — their micro-optimizations are unnecessary at moderate throughput. When set to `HighThroughput`, all rules fire.
+
+Set the property in your project file:
+
+```xml
+<PropertyGroup>
+    <NPipelineOptimizationProfile>HighThroughput</NPipelineOptimizationProfile>
+</PropertyGroup>
+```
+
+This corresponds to the runtime `PipelineBuilder.WithOptimizationProfile()` setting. See [Optimization Profiles](../guides/optimization-profiles.md) for the full picture.
 
 ## Suppressing Rules
 

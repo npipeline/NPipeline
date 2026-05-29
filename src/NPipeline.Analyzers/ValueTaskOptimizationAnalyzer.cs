@@ -45,8 +45,13 @@ public sealed class ValueTaskOptimizationAnalyzer : DiagnosticAnalyzer
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
 
-        // Register to analyze class declarations that inherit from TransformNode
-        context.RegisterSymbolAction(AnalyzeTransformNode, SymbolKind.NamedType);
+        context.RegisterCompilationStartAction(compilationStartContext =>
+        {
+            if (!AnalyzerProfileHelper.IsHighThroughput(compilationStartContext.Options, compilationStartContext.Compilation))
+                return;
+
+            compilationStartContext.RegisterSymbolAction(AnalyzeTransformNode, SymbolKind.NamedType);
+        });
     }
 
     private static void AnalyzeTransformNode(SymbolAnalysisContext context)

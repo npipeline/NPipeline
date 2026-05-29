@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using NPipeline.Configuration;
@@ -65,8 +66,11 @@ public sealed class PipelineContext
 {
     private readonly bool _ownsItemsDictionary;
     private readonly bool _ownsParametersDictionary;
-
     private readonly bool _ownsPropertiesDictionary;
+
+    private readonly bool _parametersIsPooled;
+    private readonly bool _itemsIsPooled;
+    private readonly bool _propertiesIsPooled;
 
     // Composite disposal registry for lifecycle-managed IAsyncDisposable resources (lazy initialized)
     private List<IAsyncDisposable>? _disposables;
@@ -77,28 +81,26 @@ public sealed class PipelineContext
     ///     All unspecified components use sensible defaults.
     /// </summary>
     /// <remarks>
-    ///     This is the recommended way to create a context for most use cases.
-    ///     Components not provided will use defaults:
-    ///     <list type="bullet">
-    ///         <item>
-    ///             <description>ErrorHandlerFactory: <see cref="DefaultErrorHandlerFactory" /> (dead-letter sink activation only)</description>
-    ///         </item>
-    ///         <item>
-    ///             <description>LineageFactory: <see cref="DefaultLineageFactory" /></description>
-    ///         </item>
-    ///         <item>
-    ///             <description>ObservabilityFactory: <see cref="DefaultObservabilityFactory" /></description>
-    ///         </item>
-    ///         <item>
-    ///             <description>LoggerFactory: <see cref="NullLoggerFactory" /> (no-op)</description>
-    ///         </item>
-    ///         <item>
-    ///             <description>Tracer: <see cref="NullPipelineTracer" /> (no-op)</description>
-    ///         </item>
-    ///         <item>
-    ///             <description>RetryOptions: <see cref="PipelineRetryOptions.Default" /> (no retries)</description>
-    ///         </item>
-    ///     </list>
+    ///     <para>
+    ///         <strong>Optimization Profile:</strong>
+    ///     </para>
+    ///     <para>
+    ///         When the <see cref="PipelineContextConfiguration.OptimizationProfile" /> is
+    ///         <see cref="PipelineOptimizationProfile.Default" />, the <see cref="Parameters" />,
+    ///         <see cref="Items" />, and <see cref="Properties" /> dictionaries are backed by
+    ///         <see cref="ConcurrentDictionary{TKey,TValue}" /> to prevent race conditions when
+    ///         scaling to parallel execution. When <see cref="PipelineOptimizationProfile.HighThroughput" />,
+    ///         ordinary <see cref="Dictionary{TKey,TValue}" /> instances are used for zero locking overhead.
+    ///     </para>
+    ///     <para>
+    ///         <strong>Thread Safety:</strong>
+    ///     </para>
+    ///     <para>
+    ///         When using <see cref="PipelineOptimizationProfile.Default" />, the dictionaries support
+    ///         concurrent reads and writes. When using <see cref="PipelineOptimizationProfile.HighThroughput" />,
+    ///         they are NOT thread-safe. In both cases, <see cref="IPipelineStateManager" /> is recommended
+    ///         for complex shared state in parallel execution scenarios.
+    ///     </para>
     /// </remarks>
     /// <example>
     ///     <code>
@@ -121,27 +123,51 @@ public sealed class PipelineContext
         config ??= PipelineContextConfiguration.Default;
 
         if (config.Parameters is not null)
+        {
             Parameters = config.Parameters;
+        }
+        else if (config.OptimizationProfile == PipelineOptimizationProfile.Default)
+        {
+            Parameters = new ConcurrentDictionary<string, object>();
+            _ownsParametersDictionary = true;
+        }
         else
         {
             Parameters = PipelineObjectPool.RentStringObjectDictionary();
             _ownsParametersDictionary = true;
+            _parametersIsPooled = true;
         }
 
         if (config.Items is not null)
+        {
             Items = config.Items;
+        }
+        else if (config.OptimizationProfile == PipelineOptimizationProfile.Default)
+        {
+            Items = new ConcurrentDictionary<string, object>();
+            _ownsItemsDictionary = true;
+        }
         else
         {
             Items = PipelineObjectPool.RentStringObjectDictionary();
             _ownsItemsDictionary = true;
+            _itemsIsPooled = true;
         }
 
         if (config.Properties is not null)
+        {
             Properties = config.Properties;
+        }
+        else if (config.OptimizationProfile == PipelineOptimizationProfile.Default)
+        {
+            Properties = new ConcurrentDictionary<string, object>();
+            _ownsPropertiesDictionary = true;
+        }
         else
         {
             Properties = PipelineObjectPool.RentStringObjectDictionary();
             _ownsPropertiesDictionary = true;
+            _propertiesIsPooled = true;
         }
 
         var loggerFactory = config.LoggerFactory ?? NullLoggerFactory.Instance;
@@ -155,7 +181,7 @@ public sealed class PipelineContext
         ErrorHandlerFactory = config.ErrorHandlerFactory ?? new DefaultErrorHandlerFactory(loggerFactory);
 
         RunIdentity = new PipelineRunIdentityContext(DateTime.UtcNow);
-        ExecutionConfiguration = new PipelineExecutionConfigurationContext(retryOptions);
+        ExecutionConfiguration = new PipelineExecutionConfigurationContext(retryOptions, config.OptimizationProfile);
         if (config.ResiliencePolicy is not null)
             ExecutionConfiguration.ResiliencePolicy = config.ResiliencePolicy;
         Observability = new PipelineObservabilityContext(loggerFactory, tracer, observabilityFactory);
@@ -192,16 +218,19 @@ public sealed class PipelineContext
     ///     A dictionary to hold any runtime parameters for the pipeline.
     /// </summary>
     /// <remarks>
-    ///     <strong>Thread Safety:</strong> NOT thread-safe. Typically populated during pipeline initialization
-    ///     and read during execution. Should not be modified concurrently.
+    ///     <strong>Thread Safety:</strong> Thread-safe in <see cref="PipelineOptimizationProfile.Default" /> mode
+    ///     (backed by <see cref="ConcurrentDictionary{TKey,TValue}" />). Not thread-safe in
+    ///     <see cref="PipelineOptimizationProfile.HighThroughput" /> mode.
     /// </remarks>
-    public Dictionary<string, object> Parameters { get; }
+    public IDictionary<string, object> Parameters { get; }
 
     /// <summary>
     ///     A dictionary for sharing state between pipeline nodes.
     /// </summary>
     /// <remarks>
-    ///     <strong>Thread Safety:</strong> NOT thread-safe. Used for node-to-node communication and metrics storage.
+    ///     <strong>Thread Safety:</strong> Thread-safe in <see cref="PipelineOptimizationProfile.Default" /> mode
+    ///     (backed by <see cref="ConcurrentDictionary{TKey,TValue}" />). Not thread-safe in
+    ///     <see cref="PipelineOptimizationProfile.HighThroughput" /> mode.
     ///     <para>
     ///         In parallel execution scenarios, if multiple worker threads need to share state, consider:
     ///         <list type="bullet">
@@ -217,7 +246,7 @@ public sealed class PipelineContext
     ///         </list>
     ///     </para>
     /// </remarks>
-    public Dictionary<string, object> Items { get; }
+    public IDictionary<string, object> Items { get; }
 
     /// <summary>
     ///     Framework-managed services and execution state should be stored on strongly-typed members.
@@ -387,7 +416,8 @@ public sealed class PipelineContext
     ///     This provides a way to extend the PipelineContext without modifying its core structure.
     /// </summary>
     /// <remarks>
-    ///     <strong>Thread Safety:</strong> NOT thread-safe. Common uses include:
+    ///     Thread-safe in <see cref="PipelineOptimizationProfile.Default" /> mode
+    ///     (backed by <see cref="ConcurrentDictionary{TKey,TValue}" />). Common uses include:
     ///     <list type="bullet">
     ///         <item>
     ///             <description>Storing <see cref="IPipelineStateManager" /> for thread-safe state management</description>
@@ -397,7 +427,7 @@ public sealed class PipelineContext
     ///         </item>
     ///     </list>
     /// </remarks>
-    public Dictionary<string, object> Properties { get; }
+    public IDictionary<string, object> Properties { get; }
 
     /// <summary>
     ///     A cancellation token to monitor for pipeline cancellation requests.
@@ -572,19 +602,25 @@ public sealed class PipelineContext
         if (_ownsParametersDictionary)
         {
             Parameters.Clear();
-            PipelineObjectPool.Return(Parameters);
+
+            if (_parametersIsPooled && Parameters is Dictionary<string, object> pooledParams)
+                PipelineObjectPool.Return(pooledParams);
         }
 
         if (_ownsItemsDictionary)
         {
             Items.Clear();
-            PipelineObjectPool.Return(Items);
+
+            if (_itemsIsPooled && Items is Dictionary<string, object> pooledItems)
+                PipelineObjectPool.Return(pooledItems);
         }
 
         if (_ownsPropertiesDictionary)
         {
             Properties.Clear();
-            PipelineObjectPool.Return(Properties);
+
+            if (_propertiesIsPooled && Properties is Dictionary<string, object> pooledProps)
+                PipelineObjectPool.Return(pooledProps);
         }
     }
 

@@ -37,7 +37,7 @@ await runner.RunAsync<MyPipeline>(context, cancellationToken);
 
 ## Three Dictionaries
 
-PipelineContext exposes three `Dictionary<string, object>` collections with different purposes:
+PipelineContext exposes three `IDictionary<string, object>` collections with different purposes:
 
 | Dictionary | Purpose | Set By | Read By |
 |-----------|---------|--------|---------|
@@ -86,7 +86,7 @@ public override async Task ConsumeAsync(
 }
 ```
 
-> ⚠️ **Warning:** `Parameters`, `Items`, and `Properties` are **not thread-safe**. For parallel execution, use concurrent collections or avoid shared state. See [Parallel Execution](parallel-execution.md).
+> **Thread Safety:** In the `Default` [optimization profile](optimization-profiles.md), `Parameters`, `Items`, and `Properties` are backed by `ConcurrentDictionary` and support concurrent reads and writes. In `HighThroughput` mode, they are plain `Dictionary` instances with zero locking overhead but no thread safety. For complex shared state in parallel execution, use [`IPipelineStateManager`](parallel-execution.md#ipipelinestatemanager).
 
 ## Accessing Framework Services
 

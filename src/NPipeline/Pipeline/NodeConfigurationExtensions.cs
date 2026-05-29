@@ -132,6 +132,84 @@ public static class NodeConfigurationExtensions
     }
 
     /// <summary>
+    ///     Enables automatic retry for this source node with sensible defaults:
+    ///     3 retries, exponential backoff with full jitter, and a 10,000-item materialization cap.
+    /// </summary>
+    /// <typeparam name="TOut">The output type of the source node.</typeparam>
+    /// <param name="handle">The source node handle.</param>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <returns>The same source node handle for method chaining.</returns>
+    public static SourceNodeHandle<TOut> WithRetry<TOut>(
+        this SourceNodeHandle<TOut> handle,
+        PipelineBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        var retryOptions = PipelineRetryOptions.ForProfile(PipelineOptimizationProfile.Default);
+        builder.WithRetryOptions(handle, retryOptions);
+        return handle;
+    }
+
+    /// <summary>
+    ///     Enables automatic retry for this transform node with sensible defaults:
+    ///     3 retries, exponential backoff with full jitter, and a 10,000-item materialization cap.
+    /// </summary>
+    /// <typeparam name="TIn">The input type of the transform node.</typeparam>
+    /// <typeparam name="TOut">The output type of the transform node.</typeparam>
+    /// <param name="handle">The transform node handle.</param>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <returns>The same transform node handle for method chaining.</returns>
+    public static TransformNodeHandle<TIn, TOut> WithRetry<TIn, TOut>(
+        this TransformNodeHandle<TIn, TOut> handle,
+        PipelineBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        var retryOptions = PipelineRetryOptions.ForProfile(PipelineOptimizationProfile.Default);
+        builder.WithRetryOptions(handle, retryOptions);
+        return handle;
+    }
+
+    /// <summary>
+    ///     Enables automatic retry for this sink node with sensible defaults:
+    ///     3 retries, exponential backoff with full jitter, and a 10,000-item materialization cap.
+    /// </summary>
+    /// <typeparam name="TIn">The input type of the sink node.</typeparam>
+    /// <param name="handle">The sink node handle.</param>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <returns>The same sink node handle for method chaining.</returns>
+    public static SinkNodeHandle<TIn> WithRetry<TIn>(
+        this SinkNodeHandle<TIn> handle,
+        PipelineBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        var retryOptions = PipelineRetryOptions.ForProfile(PipelineOptimizationProfile.Default);
+        builder.WithRetryOptions(handle, retryOptions);
+        return handle;
+    }
+
+    /// <summary>
+    ///     Enables automatic retry for this aggregate node with sensible defaults:
+    ///     3 retries, exponential backoff with full jitter, and a 10,000-item materialization cap.
+    /// </summary>
+    /// <typeparam name="TIn">The input type of the aggregate node.</typeparam>
+    /// <typeparam name="TOut">The output type of the aggregate node.</typeparam>
+    /// <param name="handle">The aggregate node handle.</param>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <returns>The same aggregate node handle for method chaining.</returns>
+    public static AggregateNodeHandle<TIn, TOut> WithRetry<TIn, TOut>(
+        this AggregateNodeHandle<TIn, TOut> handle,
+        PipelineBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        var retryOptions = PipelineRetryOptions.ForProfile(PipelineOptimizationProfile.Default);
+        builder.WithRetryOptions(handle, retryOptions);
+        return handle;
+    }
+
+    /// <summary>
     ///     Configures the execution strategy for a transform node.
     /// </summary>
     /// <typeparam name="TIn">The input type of the transform node.</typeparam>

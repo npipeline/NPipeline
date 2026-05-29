@@ -122,13 +122,63 @@ public sealed partial class PipelineBuilder
     }
 
     /// <summary>
+    ///     Sets the optimization profile for the pipeline, controlling whether sensible defaults
+    ///     are applied (<see cref="PipelineOptimizationProfile.Default" />) or strict zero-allocation
+    ///     configuration is required (<see cref="PipelineOptimizationProfile.HighThroughput" />).
+    /// </summary>
+    /// <param name="profile">The optimization profile to use. Default is <see cref="PipelineOptimizationProfile.Default" />.</param>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
+    /// <remarks>
+    ///     <para>
+    ///         When set to <see cref="PipelineOptimizationProfile.Default" /> (the default), the builder applies
+    ///         sensible retry defaults: 3 item retries, exponential backoff with full jitter, and a 10,000-item
+    ///         materialization cap — unless the user has explicitly configured retry options via
+    ///         <see cref="PipelineBuilder.WithRetryOptions(Func{PipelineRetryOptions, PipelineRetryOptions})" />.
+    ///     </para>
+    ///     <para>
+    ///         When set to <see cref="PipelineOptimizationProfile.HighThroughput" />, the builder reverts to
+    ///         strict defaults (no retries, no materialization cap, no delay strategy) and all performance
+    ///         analyzers are active at build time.
+    ///     </para>
+    /// </remarks>
+    public PipelineBuilder WithOptimizationProfile(PipelineOptimizationProfile profile)
+    {
+        _config = _config with { OptimizationProfile = profile };
+        return this;
+    }
+
+    /// <summary>
+    ///     Enables automatic item-level retries with sensible defaults without requiring detailed configuration.
+    ///     Applies 3 retries, exponential backoff with full jitter, and a 10,000-item materialization cap.
+    ///     In the <see cref="PipelineOptimizationProfile.Default" /> profile this is applied automatically
+    ///     unless overridden; in <see cref="PipelineOptimizationProfile.HighThroughput" /> mode call this
+    ///     explicitly if you want retries enabled.
+    /// </summary>
+    /// <returns>The current PipelineBuilder instance for method chaining.</returns>
+    public PipelineBuilder WithRetry()
+    {
+        _config = _config with
+        {
+            RetryOptions = PipelineRetryOptions.ForProfile(PipelineOptimizationProfile.Default),
+            RetryExplicitlyConfigured = true
+        };
+
+        return this;
+    }
+
+    /// <summary>
     ///     Configures retry options for the pipeline using a configuration function.
     /// </summary>
     /// <param name="configure">A function that takes the current retry options and returns modified options.</param>
     /// <returns>The current PipelineBuilder instance for method chaining.</returns>
     public PipelineBuilder WithRetryOptions(Func<PipelineRetryOptions, PipelineRetryOptions> configure)
     {
-        _config = _config with { RetryOptions = configure(_config.RetryOptions) };
+        ArgumentNullException.ThrowIfNull(configure);
+
+        var configuredOptions = configure(_config.RetryOptions);
+        ArgumentNullException.ThrowIfNull(configuredOptions);
+
+        _config = _config with { RetryOptions = configuredOptions, RetryExplicitlyConfigured = true };
         return this;
     }
 

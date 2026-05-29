@@ -49,8 +49,13 @@ public sealed class LinqInHotPathsAnalyzer : DiagnosticAnalyzer
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
 
-        // Register to analyze invocation expressions for LINQ methods
-        context.RegisterSyntaxNodeAction(AnalyzeInvocationExpression, SyntaxKind.InvocationExpression);
+        context.RegisterCompilationStartAction(compilationStartContext =>
+        {
+            if (!AnalyzerProfileHelper.IsHighThroughput(compilationStartContext.Options, compilationStartContext.Compilation))
+                return;
+
+            compilationStartContext.RegisterSyntaxNodeAction(AnalyzeInvocationExpression, SyntaxKind.InvocationExpression);
+        });
     }
 
     private static void AnalyzeInvocationExpression(SyntaxNodeAnalysisContext context)

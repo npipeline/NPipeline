@@ -457,7 +457,51 @@ public sealed class ValueTaskOptimizationAnalyzerTests
             "Analyzer should not trigger when ExecuteValueTaskAsync is overridden even if TransformAsync uses Task.FromResult");
     }
 
-    private static IEnumerable<Diagnostic> GetDiagnostics(string code)
+    [Fact]
+    public void ShouldNotFireDiagnosticWhenProfileIsDefault()
+    {
+        var code = """
+                   using System.Threading.Tasks;
+                   using NPipeline.Pipeline;
+                   using NPipeline.Nodes;
+
+                   public class TestTransform : TransformNode<string, int>
+                   {
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       {
+                           return Task.FromResult(item.Length);
+                       }
+                   }
+                   """;
+
+        var diagnostics = GetDiagnostics(code, TestAnalyzerOptions.Default);
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void ShouldNotFireDiagnosticWhenProfileIsUnset()
+    {
+        var code = """
+                   using System.Threading.Tasks;
+                   using NPipeline.Pipeline;
+                   using NPipeline.Nodes;
+
+                   public class TestTransform : TransformNode<string, int>
+                   {
+                       public override Task<int> TransformAsync(string item, PipelineContext context, CancellationToken cancellationToken)
+                       {
+                           return Task.FromResult(item.Length);
+                       }
+                   }
+                   """;
+
+        var diagnostics = GetDiagnostics(code, TestAnalyzerOptions.Unset);
+
+        Assert.Empty(diagnostics);
+    }
+
+    private static IEnumerable<Diagnostic> GetDiagnostics(string code, AnalyzerOptions? options = null)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(code);
 
@@ -477,7 +521,7 @@ public sealed class ValueTaskOptimizationAnalyzerTests
             .AddSyntaxTrees(syntaxTree);
 
         var analyzer = new ValueTaskOptimizationAnalyzer();
-        var compilationWithAnalyzers = compilation.WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(analyzer));
+        var compilationWithAnalyzers = compilation.WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(analyzer), options ?? TestAnalyzerOptions.HighThroughput);
         var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
 
         return diagnostics;

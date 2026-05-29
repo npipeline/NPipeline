@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using NPipeline.Configuration;
 using NPipeline.Execution;
 using NPipeline.Execution.Strategies;
 using NPipeline.Extensions.Testing;
@@ -40,6 +41,7 @@ public sealed class ResilienceConfigurationRuleTests
     public void ResilientNode_WithoutRetryOptions_ShouldWarn()
     {
         var builder = new PipelineBuilder()
+            .WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput)
             ;
 
         var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", [1]);
