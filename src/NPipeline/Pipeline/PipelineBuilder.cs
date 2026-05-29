@@ -49,6 +49,7 @@ public sealed partial class PipelineBuilder
 
     private BuilderConfig _config = BuilderConfig.Default;
     internal IReadOnlyList<IAsyncDisposable> BuilderDisposables => _builderDisposables;
+    internal PipelineOptimizationProfile CurrentOptimizationProfile => _config.OptimizationProfile;
 
     // Internal properties for testing access to state objects
     internal BuilderNodeState NodeState { get; } = new();
@@ -95,7 +96,9 @@ public sealed partial class PipelineBuilder
         PipelineCircuitBreakerOptions? CircuitBreakerOptions,
         CircuitBreakerMemoryManagementOptions? CircuitBreakerMemoryOptions,
         LineageOptions? LineageOptions,
-        PipelineRetryOptions RetryOptions)
+        PipelineRetryOptions RetryOptions,
+        bool RetryExplicitlyConfigured,
+        PipelineOptimizationProfile OptimizationProfile)
     {
         /// <summary>
         ///     Creates a new BuilderConfig with default lineage values.
@@ -113,7 +116,9 @@ public sealed partial class PipelineBuilder
             null,
             null,
             null,
-            PipelineRetryOptions.Default);
+            PipelineRetryOptions.Default,
+            false,
+            PipelineOptimizationProfile.Default);
     }
 
     #region Node Registration

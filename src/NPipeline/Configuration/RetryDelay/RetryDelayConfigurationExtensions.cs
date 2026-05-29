@@ -26,6 +26,14 @@ namespace NPipeline.Configuration.RetryDelay;
 public static class RetryDelayConfigurationExtensions
 {
     /// <summary>
+    ///     Default exponential backoff with full jitter configuration (1s base, 2.0x multiplier, 1min max).
+    ///     Extracted as a named static for reuse by optimization profiles and shorthand APIs.
+    /// </summary>
+    public static RetryDelayStrategyConfiguration DefaultExponentialBackoffWithJitter { get; } = new(
+        BackoffStrategies.ExponentialBackoff(TimeSpan.FromSeconds(1), 2.0, TimeSpan.FromMinutes(1)),
+        JitterStrategies.FullJitter());
+
+    /// <summary>
     ///     Configures a custom delay strategy with specified backoff and jitter delegates.
     /// </summary>
     /// <param name="retryOptions">The retry options to configure.</param>

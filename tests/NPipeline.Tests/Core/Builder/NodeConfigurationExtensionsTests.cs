@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using NPipeline.Configuration;
 using NPipeline.DataFlow;
 using NPipeline.Execution.Annotations;
 using NPipeline.Execution.Strategies;
@@ -173,6 +174,41 @@ public sealed class NodeConfigurationExtensionsTests
 
         // Assert
         _ = result.Should().Be(handle);
+    }
+
+    [Fact]
+    public void WithRetry_UsesBuilderOptimizationProfileDefaults()
+    {
+        // Arrange
+        var builder = new PipelineBuilder()
+            .WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);
+        var handle = builder.AddTransform<TestTransformNode, int, string>();
+
+        // Act
+        handle.WithRetry(builder);
+
+        // Assert
+        _ = builder.NodeState.RetryOverrides.Should().ContainKey(handle.Id);
+        var retryOptions = builder.NodeState.RetryOverrides[handle.Id];
+        _ = retryOptions.Should().Be(PipelineRetryOptions.ForProfile(PipelineOptimizationProfile.HighThroughput));
+    }
+
+    [Fact]
+    public void WithRetry_WithExplicitProfile_UsesSpecifiedProfileDefaults()
+    {
+        // Arrange
+        var builder = new PipelineBuilder()
+            .WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput);
+        var handle = builder.AddTransform<TestTransformNode, int, string>();
+
+        // Act
+        handle.WithRetry(builder, PipelineOptimizationProfile.Default);
+
+        // Assert
+        _ = builder.NodeState.RetryOverrides.Should().ContainKey(handle.Id);
+        var retryOptions = builder.NodeState.RetryOverrides[handle.Id];
+        _ = retryOptions.MaxItemRetries.Should().Be(3);
+        _ = retryOptions.MaxMaterializedItems.Should().Be(10_000);
     }
 
     #endregion

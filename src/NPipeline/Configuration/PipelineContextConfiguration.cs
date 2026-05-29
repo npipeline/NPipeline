@@ -24,9 +24,9 @@ namespace NPipeline.Configuration;
 ///     </para>
 /// </remarks>
 public sealed record PipelineContextConfiguration(
-    Dictionary<string, object>? Parameters = null,
-    Dictionary<string, object>? Items = null,
-    Dictionary<string, object>? Properties = null,
+    IDictionary<string, object>? Parameters = null,
+    IDictionary<string, object>? Items = null,
+    IDictionary<string, object>? Properties = null,
     PipelineRetryOptions? RetryOptions = null,
     IErrorHandlerFactory? ErrorHandlerFactory = null,
     IResiliencePolicy? ResiliencePolicy = null,
@@ -35,6 +35,7 @@ public sealed record PipelineContextConfiguration(
     IPipelineTracer? Tracer = null,
     IObservabilityFactory? ObservabilityFactory = null,
     ILineageFactory? LineageFactory = null,
+    PipelineOptimizationProfile OptimizationProfile = PipelineOptimizationProfile.Default,
     CancellationToken CancellationToken = default)
 {
     /// <summary>
@@ -89,7 +90,7 @@ public sealed record PipelineContextConfiguration(
     /// </summary>
     /// <param name="parameters">The parameters dictionary to attach to the context.</param>
     /// <returns>A new configuration with the specified parameters.</returns>
-    public static PipelineContextConfiguration WithParameters(Dictionary<string, object> parameters)
+    public static PipelineContextConfiguration WithParameters(IDictionary<string, object> parameters)
     {
         return new PipelineContextConfiguration(parameters);
     }

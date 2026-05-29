@@ -8,7 +8,7 @@ order: 2
 
 > **Prerequisites:** [Defining Pipelines](../guides/defining-pipelines.md), [Custom Nodes](../guides/custom-nodes.md)
 
-NPipeline includes [analyzers](../analyzers/index.md) that detect many of these issues at build time.
+NPipeline includes [analyzers](../analyzers/index.md) that detect many of these issues at build time. In the `HighThroughput` [optimization profile](../guides/optimization-profiles.md), all performance analyzers are active and enforce these practices automatically. In the `Default` profile, the most aggressive rules (NP9103–NP9107) are suppressed - apply these guidelines when you're optimizing for throughput.
 
 ## Do's
 

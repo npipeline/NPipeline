@@ -1,16 +1,16 @@
 # NPipeline.StorageProviders.S3.Compatible
 
-S3-compatible storage provider for NPipeline. Implements `IStorageProvider` for non-AWS S3-compatible object stores — MinIO, Cloudflare R2, DigitalOcean Spaces, Backblaze B2, Wasabi, LocalStack, and any other service that speaks the S3 protocol.
+S3-compatible storage provider for NPipeline. Implements `IStorageProvider` for non-AWS S3-compatible object stores - MinIO, Cloudflare R2, DigitalOcean Spaces, Backblaze B2, Wasabi, LocalStack, and any other service that speaks the S3 protocol.
 
 ## Features
 
-- **Static credentials** — access key and secret key configured once in options
-- **Custom endpoint** — point to any S3-compatible service URL
-- **Path-style addressing** — enabled by default (`ForcePathStyle = true`), required by most S3-compatible services
-- **Configurable signing region** — override the AWS signing region (use `"auto"` for Cloudflare R2)
-- **Multipart uploads** — automatic multipart upload for objects above the configurable threshold
-- **Client caching** — a single `IAmazonS3` client is created and reused across all requests
-- **Async streaming** — all reads, writes, and listings stream data without materialising full objects in memory
+- **Static credentials** - access key and secret key configured once in options
+- **Custom endpoint** - point to any S3-compatible service URL
+- **Path-style addressing** - enabled by default (`ForcePathStyle = true`), required by most S3-compatible services
+- **Configurable signing region** - override the AWS signing region (use `"auto"` for Cloudflare R2)
+- **Multipart uploads** - automatic multipart upload for objects above the configurable threshold
+- **Client caching** - a single `IAmazonS3` client is created and reused across all requests
+- **Async streaming** - all reads, writes, and listings stream data without materialising full objects in memory
 
 ## Installation
 
@@ -52,7 +52,7 @@ s3://bucket-name/key/path
 | `bucket-name` | Bucket name (URI host) |
 | `key/path` | Object key (URI path) |
 
-> **Note:** The S3-Compatible provider does not support per-URI credential or endpoint overrides — all requests use the credentials and `ServiceUrl` from options.
+> **Note:** The S3-Compatible provider does not support per-URI credential or endpoint overrides - all requests use the credentials and `ServiceUrl` from options.
 
 ## Configuration
 
@@ -64,7 +64,7 @@ s3://bucket-name/key/path
 | `AccessKey` | `string` | **(required)** | Access key (equivalent to AWS access key ID) |
 | `SecretKey` | `string` | **(required)** | Secret key (equivalent to AWS secret access key) |
 | `SigningRegion` | `string` | `"us-east-1"` | Region string used only for request signing |
-| `ForcePathStyle` | `bool` | `true` | Use path-style URLs — required by most S3-compatible services |
+| `ForcePathStyle` | `bool` | `true` | Use path-style URLs - required by most S3-compatible services |
 | `MultipartUploadThresholdBytes` | `long` | `67108864` (64 MB) | Objects above this size use S3 multipart upload |
 
 ## Service-Specific Configuration
@@ -154,7 +154,7 @@ services.AddS3CompatibleStorageProvider(new S3CompatibleStorageProviderOptions
 });
 ```
 
-> The `required` init properties mean there is no parameterless overload — a pre-built options instance is always required.
+> The `required` init properties mean there is no parameterless overload - a pre-built options instance is always required.
 
 Registers `S3CompatibleStorageProvider` as a singleton, along with `S3CompatibleClientFactory` and `S3CompatibleStorageProviderOptions`.
 
@@ -207,9 +207,9 @@ if (metadata is not null)
 
 ## Limitations
 
-- **No per-URI credential overrides** — credentials and `ServiceUrl` are fixed at configuration time. To use multiple endpoints, register separate provider instances.
-- **Flat storage** — S3-compatible services use prefix-based hierarchy; `SupportsHierarchy = false`.
-- **Provider-specific differences** — multipart upload support, metadata handling, and custom headers vary by service.
+- **No per-URI credential overrides** - credentials and `ServiceUrl` are fixed at configuration time. To use multiple endpoints, register separate provider instances.
+- **Flat storage** - S3-compatible services use prefix-based hierarchy; `SupportsHierarchy = false`.
+- **Provider-specific differences** - multipart upload support, metadata handling, and custom headers vary by service.
 
 ## Requirements
 
@@ -219,9 +219,9 @@ if (metadata is not null)
 
 ## Related Packages
 
-- **[NPipeline.StorageProviders.S3.Aws](https://www.nuget.org/packages/NPipeline.StorageProviders.S3.Aws)** — AWS S3 with IAM credential chain and per-URI region overrides
-- **[NPipeline.StorageProviders.Azure](https://www.nuget.org/packages/NPipeline.StorageProviders.Azure)** — Azure Blob Storage provider
-- **[NPipeline.StorageProviders](https://www.nuget.org/packages/NPipeline.StorageProviders)** — Base abstractions (`IStorageProvider`, `StorageUri`)
+- **[NPipeline.StorageProviders.S3.Aws](https://www.nuget.org/packages/NPipeline.StorageProviders.S3.Aws)** - AWS S3 with IAM credential chain and per-URI region overrides
+- **[NPipeline.StorageProviders.Azure](https://www.nuget.org/packages/NPipeline.StorageProviders.Azure)** - Azure Blob Storage provider
+- **[NPipeline.StorageProviders](https://www.nuget.org/packages/NPipeline.StorageProviders)** - Base abstractions (`IStorageProvider`, `StorageUri`)
 
 ## License
 

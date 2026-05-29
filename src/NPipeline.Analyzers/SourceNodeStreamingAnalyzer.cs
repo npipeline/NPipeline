@@ -15,7 +15,7 @@ namespace NPipeline.Analyzers;
 ///     4. Not using async IAsyncEnumerable with yield return patterns
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class SourceNodeStreamingAnalyzer : DiagnosticAnalyzer
+public sealed class SourceNodeStreamingAnalyzer : ProfileGatedDiagnosticAnalyzer
 {
     /// <summary>
     ///     Diagnostic ID for analyzer.
@@ -39,12 +39,8 @@ public sealed class SourceNodeStreamingAnalyzer : DiagnosticAnalyzer
         [SourceNodeStreamingRule];
 
     /// <inheritdoc />
-    public override void Initialize(AnalysisContext context)
+    protected override void RegisterProfileGatedActions(CompilationStartAnalysisContext context)
     {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-        context.EnableConcurrentExecution();
-
-        // Register to analyze method bodies for non-streaming patterns
         context.RegisterSyntaxNodeAction(AnalyzeMethod, SyntaxKind.MethodDeclaration);
     }
 

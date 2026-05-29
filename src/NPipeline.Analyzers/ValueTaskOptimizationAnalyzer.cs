@@ -16,7 +16,7 @@ namespace NPipeline.Analyzers;
 ///     Such implementations can be optimized by overriding ExecuteValueTaskAsync to avoid unnecessary Task allocations.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class ValueTaskOptimizationAnalyzer : DiagnosticAnalyzer
+public sealed class ValueTaskOptimizationAnalyzer : ProfileGatedDiagnosticAnalyzer
 {
     /// <summary>
     ///     Diagnostic ID for missing ValueTask optimization.
@@ -40,12 +40,8 @@ public sealed class ValueTaskOptimizationAnalyzer : DiagnosticAnalyzer
         [MissingValueTaskOptimizationRule];
 
     /// <inheritdoc />
-    public override void Initialize(AnalysisContext context)
+    protected override void RegisterProfileGatedActions(CompilationStartAnalysisContext context)
     {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-        context.EnableConcurrentExecution();
-
-        // Register to analyze class declarations that inherit from TransformNode
         context.RegisterSymbolAction(AnalyzeTransformNode, SymbolKind.NamedType);
     }
 

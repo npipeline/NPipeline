@@ -405,7 +405,53 @@ public sealed class LinqInHotPathsAnalyzerTests
         Assert.False(hasDiagnostic, "Analyzer should not detect non-System.Linq methods");
     }
 
-    private static IEnumerable<Diagnostic> GetDiagnostics(string code)
+    [Fact]
+    public void ShouldNotFireDiagnosticWhenProfileIsDefault()
+    {
+        var code = """
+                   using System.Linq;
+                   using NPipeline.Nodes;
+
+                   public class TestTransformNode : ITransformNode<string, string>
+                   {
+                       public async Task<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       {
+                           var items = input.Split(' ');
+                           var result = items.Where(x => x.Length > 5).ToList();
+                           return string.Join(",", result);
+                       }
+                   }
+                   """;
+
+        var diagnostics = GetDiagnostics(code, TestAnalyzerOptions.Default);
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void ShouldNotFireDiagnosticWhenProfileIsUnset()
+    {
+        var code = """
+                   using System.Linq;
+                   using NPipeline.Nodes;
+
+                   public class TestTransformNode : ITransformNode<string, string>
+                   {
+                       public async Task<string> TransformAsync(string input, PipelineContext context, CancellationToken cancellationToken)
+                       {
+                           var items = input.Split(' ');
+                           var result = items.Where(x => x.Length > 5).ToList();
+                           return string.Join(",", result);
+                       }
+                   }
+                   """;
+
+        var diagnostics = GetDiagnostics(code, TestAnalyzerOptions.Unset);
+
+        Assert.Empty(diagnostics);
+    }
+
+    private static IEnumerable<Diagnostic> GetDiagnostics(string code, AnalyzerOptions? options = null)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(code);
 
@@ -425,7 +471,7 @@ public sealed class LinqInHotPathsAnalyzerTests
             .AddSyntaxTrees(syntaxTree);
 
         var analyzer = new LinqInHotPathsAnalyzer();
-        var compilationWithAnalyzers = compilation.WithAnalyzers([analyzer]);
+        var compilationWithAnalyzers = compilation.WithAnalyzers([analyzer], options ?? TestAnalyzerOptions.HighThroughput);
         var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
 
         return diagnostics;

@@ -11,7 +11,7 @@ namespace NPipeline.Analyzers;
 ///     and allocation overhead, particularly in high-throughput scenarios.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class AnonymousObjectAllocationAnalyzer : DiagnosticAnalyzer
+public sealed class AnonymousObjectAllocationAnalyzer : ProfileGatedDiagnosticAnalyzer
 {
     /// <summary>
     ///     Diagnostic ID for anonymous object allocation in hot paths.
@@ -35,12 +35,8 @@ public sealed class AnonymousObjectAllocationAnalyzer : DiagnosticAnalyzer
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     /// <inheritdoc />
-    public override void Initialize(AnalysisContext context)
+    protected override void RegisterProfileGatedActions(CompilationStartAnalysisContext context)
     {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-        context.EnableConcurrentExecution();
-
-        // Register to analyze anonymous object creation expressions
         context.RegisterSyntaxNodeAction(AnalyzeAnonymousObjectCreation, SyntaxKind.AnonymousObjectCreationExpression);
     }
 
@@ -83,17 +79,17 @@ public sealed class AnonymousObjectAllocationAnalyzer : DiagnosticAnalyzer
         enclosingMethodName = enclosingMethod.Identifier.Text;
 
         // Check if this is a hot path method by name
-        if (IsHotPathMethodByName(enclosingMethod))
+        if (HotPathAnalyzerHelper.IsHotPathMethodByName(enclosingMethod))
             return true;
 
         // Check if this method is in a class that inherits from NPipeline node interfaces
-        var isInNPipelineNode = IsInNPipelineNode(enclosingMethod, semanticModel);
+        var isInNPipelineNode = HotPathAnalyzerHelper.IsInNPipelineNode(enclosingMethod, semanticModel);
 
         if (isInNPipelineNode)
             return true;
 
         // Check if this is an async method (potential hot path)
-        if (IsAsyncMethod(enclosingMethod, semanticModel))
+        if (HotPathAnalyzerHelper.IsAsyncMethod(enclosingMethod, semanticModel))
         {
             // Always flag async methods in NPipeline node classes
             if (isInNPipelineNode)
@@ -113,110 +109,14 @@ public sealed class AnonymousObjectAllocationAnalyzer : DiagnosticAnalyzer
         if (IsInLoop(anonymousObject))
         {
             // For loops, we're more lenient - only flag if in NPipeline context or hot path method
-            return isInNPipelineNode || IsHotPathMethodByName(enclosingMethod);
+            return isInNPipelineNode || HotPathAnalyzerHelper.IsHotPathMethodByName(enclosingMethod);
         }
 
         // Check if the anonymous object is in a LINQ expression
         if (IsInLinqExpression(anonymousObject))
         {
             // For LINQ, we're more lenient - only flag if in NPipeline context or hot path method
-            return isInNPipelineNode || IsHotPathMethodByName(enclosingMethod);
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    ///     Determines if a method is async.
-    /// </summary>
-    private static bool IsAsyncMethod(MethodDeclarationSyntax method, SemanticModel semanticModel)
-    {
-        // Check for async keyword
-        if (method.Modifiers.Any(m => m.IsKind(SyntaxKind.AsyncKeyword)))
-            return true;
-
-        // Check if return type is Task, ValueTask, or Task<T>
-        var returnTypeSymbol = semanticModel.GetTypeInfo(method.ReturnType).Type;
-
-        return returnTypeSymbol != null && (
-            returnTypeSymbol.Name == "Task" ||
-            returnTypeSymbol.Name == "ValueTask" ||
-            (returnTypeSymbol is INamedTypeSymbol namedType &&
-             (namedType.Name == "Task" || namedType.Name == "ValueTask")));
-    }
-
-    /// <summary>
-    ///     Determines if a method is a hot path method by its name.
-    /// </summary>
-    private static bool IsHotPathMethodByName(MethodDeclarationSyntax method)
-    {
-        var methodName = method.Identifier.Text;
-
-        var hotPathMethodNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "ExecuteAsync", "TransformAsync", "ConsumeAsync", "OpenStream", "ProcessAsync", "RunAsync", "HandleAsync", "Execute", "Process", "Run", "Handle",
-        };
-
-        return hotPathMethodNames.Contains(methodName);
-    }
-
-    /// <summary>
-    ///     Determines if the method is in a class that inherits from NPipeline node interfaces.
-    /// </summary>
-    private static bool IsInNPipelineNode(MethodDeclarationSyntax method, SemanticModel semanticModel)
-    {
-        // Get the containing class
-        var classDeclaration = method.FirstAncestorOrSelf<ClassDeclarationSyntax>();
-
-        if (classDeclaration == null)
-            return false;
-
-        // Get the class symbol
-        var classSymbol = semanticModel.GetDeclaredSymbol(classDeclaration);
-
-        if (classSymbol == null)
-            return false;
-
-        // Check if the class inherits from any NPipeline node interface
-        var nodeInterfaces = new[]
-        {
-            "INode", "ISourceNode", "ITransformNode", "ISinkNode", "IAggregateNode",
-            "IJoinNode", "ICustomMergeNode", "ICustomMergeNodeUntyped",
-        };
-
-        foreach (var interfaceName in nodeInterfaces)
-        {
-            if (ImplementsInterface(classSymbol, interfaceName))
-                return true;
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    ///     Checks if a type implements a specific interface by name.
-    /// </summary>
-    private static bool ImplementsInterface(INamedTypeSymbol typeSymbol, string interfaceName)
-    {
-        // Check direct interfaces
-        foreach (var interfaceSymbol in typeSymbol.AllInterfaces)
-        {
-            if (interfaceSymbol.Name == interfaceName)
-                return true;
-        }
-
-        // Check base types
-        var baseType = typeSymbol.BaseType;
-
-        while (baseType != null)
-        {
-            foreach (var interfaceSymbol in baseType.AllInterfaces)
-            {
-                if (interfaceSymbol.Name == interfaceName)
-                    return true;
-            }
-
-            baseType = baseType.BaseType;
+            return isInNPipelineNode || HotPathAnalyzerHelper.IsHotPathMethodByName(enclosingMethod);
         }
 
         return false;

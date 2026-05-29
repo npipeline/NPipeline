@@ -10,6 +10,8 @@ NPipeline is designed for throughput. The execution engine uses `ValueTask` fast
 
 Most pipelines are fast without tuning. When you need to squeeze out more, these guides cover the optimization techniques available - many of which are enforced automatically by [build-time analyzers](../analyzers/index.md).
 
+For pipelines processing millions of items per second, switch to `PipelineOptimizationProfile.HighThroughput` to enable zero-allocation context dictionaries and activate all performance analyzers. See [Optimization Profiles](../guides/optimization-profiles.md) for details.
+
 ## In This Section
 
 - [Best Practices](best-practices.md) - do's and don'ts backed by analyzer rules

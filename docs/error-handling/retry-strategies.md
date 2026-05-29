@@ -180,13 +180,15 @@ The `attemptNumber` is 0-based: attempt 0 is the first retry after the initial f
 
 `PipelineRetryOptions` controls how many retries are allowed:
 
-| Property | Default | Description |
-|----------|---------|-------------|
-| `MaxItemRetries` | 0 | Maximum retries per item (0 = no retry) |
-| `MaxNodeRestartAttempts` | 3 | Maximum node restart attempts |
-| `MaxSequentialNodeAttempts` | 5 | Maximum sequential node execution attempts |
-| `MaxMaterializedItems` | null | Item buffer cap for node restart (see [Materialization](materialization.md)) |
-| `DelayStrategyConfiguration` | null | Backoff + jitter configuration (null = no delay) |
+| Property | Baseline Default | Default Profile | Description |
+|----------|-----------------|-----------------|-------------|
+| `MaxItemRetries` | 0 | 3 | Maximum retries per item |
+| `MaxNodeRestartAttempts` | 3 | 3 | Maximum node restart attempts |
+| `MaxSequentialNodeAttempts` | 5 | 5 | Maximum sequential node execution attempts |
+| `MaxMaterializedItems` | null | 10,000 | Item buffer cap for node restart (see [Materialization](materialization.md)) |
+| `DelayStrategyConfiguration` | null | Exponential + full jitter | Backoff + jitter configuration |
+
+In the `Default` [optimization profile](../guides/optimization-profiles.md), the "Default Profile" column values are applied automatically when no explicit retry configuration is provided. In `HighThroughput` mode, the "Baseline Default" values apply and you must configure everything explicitly.
 
 ```csharp
 builder.WithRetryOptions(options => options with

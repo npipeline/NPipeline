@@ -30,5 +30,6 @@ These guides cover every major feature of NPipeline with practical code examples
 
 ## Execution and Performance
 
+- [Optimization Profiles](optimization-profiles.md) - choose between batteries-included defaults and zero-allocation strict mode
 - [Parallel Execution](parallel-execution.md) - concurrent transforms with backpressure control
 - [Streaming Large Datasets](streaming-large-datasets.md) - memory-efficient lazy data streams

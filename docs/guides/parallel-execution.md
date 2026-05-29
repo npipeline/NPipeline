@@ -110,20 +110,29 @@ When using parallel execution, your transform node's `TransformAsync` method is 
 
 ### Context Dictionary Thread Safety
 
+Thread safety of context dictionaries depends on the [optimization profile](optimization-profiles.md):
+
+**Default profile** - dictionaries are `ConcurrentDictionary` (thread-safe):
+
+| Dictionary | Read | Write | Notes |
+|-----------|------|-------|-------|
+| `context.Parameters` | Safe | Safe | Concurrent reads and writes supported |
+| `context.Items` | Safe | Safe | Concurrent reads and writes supported |
+| `context.Properties` | Safe | Safe | Framework-managed; avoid writing from nodes |
+
+**HighThroughput profile** - dictionaries are plain `Dictionary` (not thread-safe):
+
 | Dictionary | Read | Write | Notes |
 |-----------|------|-------|-------|
 | `context.Parameters` | Safe | **Unsafe** | Populated before execution, treat as read-only |
-| `context.Items` | **Unsafe** | **Unsafe** | Not thread-safe; use `IPipelineStateManager` for shared state |
+| `context.Items` | **Unsafe** | **Unsafe** | Use `IPipelineStateManager` for shared state |
 | `context.Properties` | Safe | **Unsafe** | Framework-managed; do not write from nodes |
 
-### Why Not ConcurrentDictionary?
+### Dictionary Implementation by Profile
 
-NPipeline's context dictionaries are plain `Dictionary<string, object>`, not `ConcurrentDictionary`. This is intentional:
+In the `Default` profile, context dictionaries use `ConcurrentDictionary<string, object>` internally. This eliminates the most common source of bugs when developers first enable parallel execution - concurrent writes to `context.Items` no longer throw or corrupt data.
 
-1. **Performance** - Thread-safe collections add overhead (locks, memory barriers) on every access
-2. **Common case** - Most pipelines run single-threaded; paying thread-safety overhead for all pipelines is wasteful
-3. **Pay for what you use** - When you need shared state in parallel scenarios, `IPipelineStateManager` provides purpose-built thread-safe semantics
-4. **Correctness** - `ConcurrentDictionary` prevents crashes but doesn't prevent *logical* race conditions; `IPipelineStateManager` provides checkpoint/restore semantics that are actually correct for pipeline retry scenarios
+In the `HighThroughput` profile, context dictionaries use pooled `Dictionary<string, object>` instances for zero locking overhead. This avoids memory barriers on every dictionary access, which matters at millions of operations per second. The trade-off is that concurrent writes are unsafe - use `IPipelineStateManager` for shared state in parallel scenarios.
 
 ### Safe and Unsafe Patterns
 

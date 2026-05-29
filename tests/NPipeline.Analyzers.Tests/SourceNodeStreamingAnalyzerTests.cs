@@ -285,7 +285,57 @@ public sealed class SourceNodeStreamingAnalyzerTests
         Assert.False(hasDiagnostic, "Analyzer should not trigger for async file I/O operations");
     }
 
-    private static IEnumerable<Diagnostic> GetDiagnostics(string code)
+    [Fact]
+    public void ShouldNotFireDiagnosticWhenProfileIsDefault()
+    {
+        var code = """
+                   using System.Collections.Generic;
+                   using NPipeline.DataFlow;
+                   using NPipeline.Nodes;
+                   using NPipeline.Pipeline;
+
+                   public class TestSourceNode : SourceNode<string>
+                   {
+                       public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
+                       {
+                           var items = new List<string>();
+                           items.Add("test");
+                           return new InMemoryDataStream<string>(items);
+                       }
+                   }
+                   """;
+
+        var diagnostics = GetDiagnostics(code, TestAnalyzerOptions.Default);
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void ShouldNotFireDiagnosticWhenProfileIsUnset()
+    {
+        var code = """
+                   using System.Collections.Generic;
+                   using NPipeline.DataFlow;
+                   using NPipeline.Nodes;
+                   using NPipeline.Pipeline;
+
+                   public class TestSourceNode : SourceNode<string>
+                   {
+                       public override IDataStream<string> OpenStream(PipelineContext context, CancellationToken cancellationToken)
+                       {
+                           var items = new List<string>();
+                           items.Add("test");
+                           return new InMemoryDataStream<string>(items);
+                       }
+                   }
+                   """;
+
+        var diagnostics = GetDiagnostics(code, TestAnalyzerOptions.Unset);
+
+        Assert.Empty(diagnostics);
+    }
+
+    private static IEnumerable<Diagnostic> GetDiagnostics(string code, AnalyzerOptions? options = null)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(code);
 
@@ -305,7 +355,7 @@ public sealed class SourceNodeStreamingAnalyzerTests
             .AddSyntaxTrees(syntaxTree);
 
         var analyzer = new SourceNodeStreamingAnalyzer();
-        var compilation2 = compilation.WithAnalyzers(new[] { analyzer }.ToImmutableArray<DiagnosticAnalyzer>());
+        var compilation2 = compilation.WithAnalyzers(new[] { analyzer }.ToImmutableArray<DiagnosticAnalyzer>(), options ?? TestAnalyzerOptions.HighThroughput);
         var diagnostics = compilation2.GetAnalyzerDiagnosticsAsync().Result;
 
         return diagnostics;

@@ -1,0 +1,25 @@
+<Project>
+    <PropertyGroup>
+        <!--
+            NPipelineOptimizationProfile controls whether performance-sensitive Roslyn analyzers fire.
+            Default:  Analyzers NP9103, NP9104, NP9105, NP9106, NP9107 are suppressed.
+                     Best for prototyping and low-to-medium-throughput scenarios.
+            HighThroughput: All analyzers are active (current legacy behavior).
+            Users can also suppress individual rules via .editorconfig regardless of this setting.
+        -->
+        <NPipelineOptimizationProfile Condition="'$(NPipelineOptimizationProfile)' == ''">Default</NPipelineOptimizationProfile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <CompilerVisibleProperty Include="NPipelineOptimizationProfile" />
+
+        <!--
+            Emit profile metadata so runtime can detect analyzer/runtime profile drift and warn.
+            This is best-effort: if GenerateAssemblyInfo is disabled by the consumer, metadata may not be present.
+        -->
+        <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+            <_Parameter1>NPipelineOptimizationProfile</_Parameter1>
+            <_Parameter2>$(NPipelineOptimizationProfile)</_Parameter2>
+        </AssemblyAttribute>
+    </ItemGroup>
+</Project>

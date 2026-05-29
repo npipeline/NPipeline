@@ -10,11 +10,14 @@ namespace NPipeline.Pipeline;
 /// </summary>
 public sealed class PipelineExecutionConfigurationContext
 {
-    internal PipelineExecutionConfigurationContext(PipelineRetryOptions retryOptions)
+    internal PipelineExecutionConfigurationContext(
+        PipelineRetryOptions retryOptions,
+        PipelineOptimizationProfile optimizationProfile)
     {
         RetryOptions = retryOptions;
         GlobalRetryOptions = retryOptions;
         ResiliencePolicy = DefaultResiliencePolicy.Instance;
+        OptimizationProfile = optimizationProfile;
     }
 
     /// <summary>
@@ -46,6 +49,15 @@ public sealed class PipelineExecutionConfigurationContext
     ///     Circuit-breaker memory management options for the current run.
     /// </summary>
     public CircuitBreakerMemoryManagementOptions? CircuitBreakerMemoryOptions { get; internal set; }
+
+    /// <summary>
+    ///     The optimization profile governing runtime behavior for this pipeline run.
+    ///     This is the runtime source of truth for the active profile - node authors and runtime
+    ///     code should read it from here rather than from <see cref="PipelineContextConfiguration" />.
+    ///     The profile's effects (retry defaults, dictionary types) are already baked into their
+    ///     respective configurations at build time.
+    /// </summary>
+    public PipelineOptimizationProfile OptimizationProfile { get; }
 
     /// <summary>
     ///     Indicates the current run uses parallel execution behavior.

@@ -51,13 +51,17 @@ These decisions are defined in the `ResilienceDecision` enum (`NPipeline.Resilie
 
 ## Default Behavior
 
-By default, NPipeline uses `DefaultResiliencePolicy` which returns `Fail` for all failure types. This means:
+The default error handling behavior depends on the [optimization profile](../guides/optimization-profiles.md):
 
-- Any unhandled exception in a transform node fails the pipeline immediately.
-- No items are retried or skipped automatically.
-- No dead-letter routing occurs.
+**Default profile:** NPipeline auto-configures item-level retries (3 attempts, exponential backoff with full jitter, 10,000-item materialization cap). Failed items are retried automatically before the pipeline fails. No explicit configuration is required.
 
-This fail-fast default is intentional - silent data loss is worse than a loud failure. You opt into recovery behaviors explicitly.
+**HighThroughput profile:** NPipeline uses `DefaultResiliencePolicy` which returns `Fail` for all failure types. Any unhandled exception fails the pipeline immediately - no items are retried or skipped automatically. You opt into recovery behaviors explicitly.
+
+In both profiles:
+
+- No dead-letter routing occurs unless you configure a dead-letter sink.
+- No resilience policy is active unless you add one via `AddResiliencePolicy()`.
+- The fail-fast behavior for *unhandled* failures (those exceeding retry limits or not covered by a policy) is intentional - silent data loss is worse than a loud failure.
 
 ## Configuring Error Handling
 
@@ -68,10 +72,10 @@ public class MyPipeline : IPipelineDefinition
 {
     public void Define(PipelineBuilder builder, PipelineContext context)
     {
-        // 1. Configure retry options (how many retries, delays, materialization)
+        // 1. Configure retry options (override auto-configured defaults if needed)
         builder.WithRetryOptions(options => options with
         {
-            MaxItemRetries = 3,
+            MaxItemRetries = 5,
             MaxNodeRestartAttempts = 2,
             MaxMaterializedItems = 1000
         });
@@ -91,6 +95,12 @@ public class MyPipeline : IPipelineDefinition
         // ... add nodes and connections ...
     }
 }
+```
+
+Or use the `WithRetry()` shorthand for sensible defaults without specifying individual values:
+
+```csharp
+builder.WithRetry();  // Applies retry defaults for the active optimization profile
 ```
 
 ## How Failures Flow

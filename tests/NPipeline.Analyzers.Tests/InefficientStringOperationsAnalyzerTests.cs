@@ -419,7 +419,57 @@ public sealed class InefficientStringOperationsAnalyzerTests
         Assert.True(hasDiagnostic, "Analyzer should detect string concatenation in RunAsync method");
     }
 
-    private static IEnumerable<Diagnostic> GetDiagnostics(string code)
+    [Fact]
+    public void ShouldNotFireDiagnosticWhenProfileIsDefault()
+    {
+        var code = """
+                   using NPipeline.Nodes;
+
+                   public class TestTransformNode : ITransformNode<string, string>
+                   {
+                       public string BuildReport(string[] items)
+                       {
+                           var report = "";
+                           foreach (var item in items)
+                           {
+                               report += "Item: " + item + "\n";
+                           }
+                           return report;
+                       }
+                   }
+                   """;
+
+        var diagnostics = GetDiagnostics(code, TestAnalyzerOptions.Default);
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void ShouldNotFireDiagnosticWhenProfileIsUnset()
+    {
+        var code = """
+                   using NPipeline.Nodes;
+
+                   public class TestTransformNode : ITransformNode<string, string>
+                   {
+                       public string BuildReport(string[] items)
+                       {
+                           var report = "";
+                           foreach (var item in items)
+                           {
+                               report += "Item: " + item + "\n";
+                           }
+                           return report;
+                       }
+                   }
+                   """;
+
+        var diagnostics = GetDiagnostics(code, TestAnalyzerOptions.Unset);
+
+        Assert.Empty(diagnostics);
+    }
+
+    private static IEnumerable<Diagnostic> GetDiagnostics(string code, AnalyzerOptions? options = null)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(code);
 
@@ -440,7 +490,7 @@ public sealed class InefficientStringOperationsAnalyzerTests
             .AddSyntaxTrees(syntaxTree);
 
         var analyzer = new InefficientStringOperationsAnalyzer();
-        var compilationWithAnalyzers = compilation.WithAnalyzers([analyzer]);
+        var compilationWithAnalyzers = compilation.WithAnalyzers([analyzer], options ?? TestAnalyzerOptions.HighThroughput);
         var diagnostics = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().Result;
 
         return diagnostics;

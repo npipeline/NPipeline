@@ -11,7 +11,7 @@ namespace NPipeline.Analyzers;
 ///     and GC pressure, significantly impacting performance in high-throughput NPipeline scenarios.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class LinqInHotPathsAnalyzer : DiagnosticAnalyzer
+public sealed class LinqInHotPathsAnalyzer : ProfileGatedDiagnosticAnalyzer
 {
     /// <summary>
     ///     Diagnostic ID for LINQ operations in hot paths.
@@ -44,12 +44,8 @@ public sealed class LinqInHotPathsAnalyzer : DiagnosticAnalyzer
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     /// <inheritdoc />
-    public override void Initialize(AnalysisContext context)
+    protected override void RegisterProfileGatedActions(CompilationStartAnalysisContext context)
     {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-        context.EnableConcurrentExecution();
-
-        // Register to analyze invocation expressions for LINQ methods
         context.RegisterSyntaxNodeAction(AnalyzeInvocationExpression, SyntaxKind.InvocationExpression);
     }
 
@@ -73,7 +69,7 @@ public sealed class LinqInHotPathsAnalyzer : DiagnosticAnalyzer
         // Detected a LINQ call - diagnostic will be reported below.
 
         // Check if this LINQ call is in a hot path context
-        var isInHotPath = IsInHotPathContext(invocation, semanticModel, out var enclosingMethodName);
+        var isInHotPath = HotPathAnalyzerHelper.IsInHotPathContext(invocation, semanticModel, out var enclosingMethodName);
 
         if (!isInHotPath)
             return;
@@ -324,164 +320,4 @@ public sealed class LinqInHotPathsAnalyzer : DiagnosticAnalyzer
         return "Unknown";
     }
 
-    /// <summary>
-    ///     Determines if the LINQ call is in a hot path context.
-    /// </summary>
-    private static bool IsInHotPathContext(
-        InvocationExpressionSyntax invocation,
-        SemanticModel semanticModel,
-        out string enclosingMethodName)
-    {
-        enclosingMethodName = "Unknown";
-
-        // Find the enclosing method
-        var enclosingMethod = invocation.FirstAncestorOrSelf<MethodDeclarationSyntax>();
-
-        if (enclosingMethod == null)
-            return false;
-
-        enclosingMethodName = enclosingMethod.Identifier.Text;
-
-        // Check if this is a hot path method by name
-        var byName = IsHotPathMethodByName(enclosingMethod);
-
-        if (byName)
-            return true;
-
-        // Check if this method is in a class that inherits from NPipeline node interfaces
-        var isInNPipelineNode = IsInNPipelineNode(enclosingMethod, semanticModel);
-
-        if (isInNPipelineNode)
-            return true;
-
-        // Check if this is an async method (potential hot path)
-        // Flag async methods if they're in NPipeline node classes OR if NPipeline namespaces are imported
-        if (IsAsyncMethod(enclosingMethod, semanticModel))
-        {
-            // Always flag async methods in NPipeline node classes
-            if (isInNPipelineNode)
-                return true;
-
-            // Also flag async methods if NPipeline namespaces are imported (likely NPipeline-related code)
-            var compilationUnit = enclosingMethod.SyntaxTree.GetCompilationUnitRoot();
-
-            var hasNPipelineImport = compilationUnit.Usings
-                .Any(u => u.Name?.ToString().Contains("NPipeline") == true);
-
-            if (hasNPipelineImport)
-                return true;
-        }
-
-        // For non-NPipeline nodes, only consider explicitly named hot path methods
-        // This prevents false positives on sync methods in regular classes
-        return false;
-    }
-
-    /// <summary>
-    ///     Determines if a method is async.
-    /// </summary>
-    private static bool IsAsyncMethod(MethodDeclarationSyntax method, SemanticModel semanticModel)
-    {
-        // Check for async keyword
-        if (method.Modifiers.Any(m => m.IsKind(SyntaxKind.AsyncKeyword)))
-            return true;
-
-        // Check if return type is Task, ValueTask, or Task<T>
-        var returnTypeSymbol = semanticModel.GetTypeInfo(method.ReturnType).Type;
-
-        if (returnTypeSymbol == null)
-            return false;
-
-        // Handle named types like Task<T> and ValueTask<T>
-        if (returnTypeSymbol is INamedTypeSymbol namedReturn)
-        {
-            var baseName = namedReturn.OriginalDefinition?.Name ?? namedReturn.Name;
-
-            if (string.Equals(baseName, "Task", StringComparison.Ordinal) ||
-                string.Equals(baseName, "ValueTask", StringComparison.Ordinal))
-                return true;
-        }
-
-        // Fallback: check the simple name
-        return string.Equals(returnTypeSymbol.Name, "Task", StringComparison.Ordinal) ||
-               string.Equals(returnTypeSymbol.Name, "ValueTask", StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    ///     Determines if a method is a hot path method by its name.
-    /// </summary>
-    private static bool IsHotPathMethodByName(MethodDeclarationSyntax method)
-    {
-        var methodName = method.Identifier.Text;
-
-        var hotPathMethodNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "ExecuteAsync", "TransformAsync", "ConsumeAsync", "OpenStream", "ProcessAsync", "RunAsync", "HandleAsync", "Execute", "Process", "Run", "Handle",
-        };
-
-        return hotPathMethodNames.Contains(methodName);
-    }
-
-
-    /// <summary>
-    ///     Determines if the method is in a class that inherits from NPipeline node interfaces.
-    /// </summary>
-    private static bool IsInNPipelineNode(MethodDeclarationSyntax method, SemanticModel semanticModel)
-    {
-        // Get the containing class
-        var classDeclaration = method.FirstAncestorOrSelf<ClassDeclarationSyntax>();
-
-        if (classDeclaration == null)
-            return false;
-
-        // Get the class symbol
-        var classSymbol = semanticModel.GetDeclaredSymbol(classDeclaration);
-
-        if (classSymbol == null)
-            return false;
-
-        // Check if the class inherits from any NPipeline node interface
-        var nodeInterfaces = new[]
-        {
-            "INode", "ISourceNode", "ITransformNode", "ISinkNode", "IAggregateNode",
-            "IJoinNode", "ICustomMergeNode", "ICustomMergeNodeUntyped",
-        };
-
-        foreach (var interfaceName in nodeInterfaces)
-        {
-            if (ImplementsInterface(classSymbol, interfaceName))
-                return true;
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    ///     Checks if a type implements a specific interface by name.
-    /// </summary>
-    private static bool ImplementsInterface(INamedTypeSymbol typeSymbol, string interfaceName)
-    {
-        // Check direct interfaces
-        foreach (var interfaceSymbol in typeSymbol.AllInterfaces)
-        {
-            if (interfaceSymbol.Name == interfaceName)
-                return true;
-        }
-
-        // Check base types
-        var baseType = typeSymbol.BaseType;
-
-        while (baseType != null)
-        {
-            foreach (var interfaceSymbol in baseType.AllInterfaces)
-            {
-                if (interfaceSymbol.Name == interfaceName)
-                    return true;
-            }
-
-            baseType = baseType.BaseType;
-        }
-
-        return false;
-    }
 }
