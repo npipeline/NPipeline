@@ -65,6 +65,28 @@ public interface IObservabilityCollector
         string? pipelineName = null);
 
     /// <summary>
+    ///     Records timing bucket breakdown for a node execution.
+    /// </summary>
+    /// <param name="nodeId">The unique identifier of the node.</param>
+    /// <param name="timingBreakdown">The timing bucket snapshot.</param>
+    /// <param name="pipelineId">The unique pipeline identity this node belongs to.</param>
+    /// <param name="pipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
+    void RecordTimingBreakdown(string nodeId, NodeTimingBreakdown timingBreakdown, Guid pipelineId, string? pipelineName = null)
+    {
+    }
+
+    /// <summary>
+    ///     Determines whether an explicit timing breakdown has been recorded for a node.
+    /// </summary>
+    /// <param name="nodeId">The unique identifier of the node.</param>
+    /// <param name="pipelineId">The unique pipeline identity this node belongs to.</param>
+    /// <returns>True when explicit timing buckets were recorded for this node; otherwise false.</returns>
+    bool HasTimingBreakdown(string nodeId, Guid pipelineId)
+    {
+        return false;
+    }
+
+    /// <summary>
     ///     Gets the collected metrics for all nodes.
     /// </summary>
     /// <returns>A collection of node metrics.</returns>

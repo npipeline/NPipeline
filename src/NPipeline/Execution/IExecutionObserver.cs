@@ -91,6 +91,8 @@ public sealed record NodeExecutionCompleted(
 /// <param name="Error">The exception if dataflow failed, otherwise null.</param>
 /// <param name="PipelineId">The unique pipeline identity for the current execution context.</param>
 /// <param name="PipelineName">The logical pipeline name for the current execution context.</param>
+/// <param name="TimingBreakdown">Timing bucket breakdown for this node's dataflow lifecycle.</param>
+/// <param name="MetricsAlreadyCaptured">True when node timing/end metrics were already persisted before this event was published.</param>
 public sealed record NodeDataflowCompleted(
     string NodeId,
     string NodeType,
@@ -99,7 +101,9 @@ public sealed record NodeDataflowCompleted(
     bool Success,
     Exception? Error,
     Guid PipelineId,
-    string? PipelineName = null);
+    string? PipelineName = null,
+    NPipeline.Observability.NodeTimingBreakdown TimingBreakdown = default,
+    bool MetricsAlreadyCaptured = false);
 
 /// <summary>
 ///     Specifies the kind of retry operation.

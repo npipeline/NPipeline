@@ -8,7 +8,7 @@ order: 2
 
 > **Prerequisites:** [Defining Pipelines](../guides/defining-pipelines.md), [Dependency Injection](../guides/dependency-injection.md)
 
-The `NPipeline.Extensions.Observability` package collects timing, throughput, and optional memory metrics per node and per pipeline run.
+The `NPipeline.Extensions.Observability` package collects work timing, input-wait timing, throughput, and optional memory metrics per node and per pipeline run.
 
 ## Installation
 
@@ -34,9 +34,12 @@ For each node, the `MetricsCollectingExecutionObserver` records:
 | Metric | Description |
 |--------|-------------|
 | Start/end timestamps | Node timing window (for lazy stream nodes with `WithObservability`, end is finalized at dataflow completion) |
+| Work duration (`DurationMs`) | Node-owned processing time (primary node duration) |
+| Input wait duration | Time spent waiting for upstream items |
+| Wall duration | Total elapsed node dataflow time |
 | Items processed/emitted | Count of input and output items |
-| Throughput (items/sec) | Processing rate |
-| Average item processing time | Mean time per item in milliseconds |
+| Throughput (items/sec) | Processing rate derived from work duration |
+| Average item processing time | Mean time per item derived from work duration |
 | Retry count | Number of retries (if resilience is enabled) |
 | Processor time | CPU time consumed |
 | Peak memory (optional) | Memory at node boundaries |
@@ -48,7 +51,9 @@ For stream-heavy pipelines, node setup can complete before real work finishes. O
 - `OnNodeCompleted` - setup/execution delegate returned.
 - `OnNodeDataflowCompleted` - downstream enumeration finished and stream scope disposed.
 
-When dataflow completion is available, node duration and derived performance metrics are finalized from that later event so stream runtimes are attributed accurately.
+When dataflow completion is available, node timing buckets and derived performance metrics are finalized from that later event so stream runtimes are attributed accurately.
+
+Timing buckets are captured as best-effort snapshots to keep collection low overhead; under concurrent updates, small transient skew between buckets is possible.
 
 ### Pipeline Metrics
 

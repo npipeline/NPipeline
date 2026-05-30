@@ -373,6 +373,52 @@ public sealed class MetricsCollectingExecutionObserverTests
         Assert.InRange(metrics.AverageItemProcessingMs!.Value, 495, 505);
     }
 
+    [Fact]
+    public void OnNodeDataflowCompleted_WithPreFinalizedTiming_ShouldNotOverwriteExistingTiming()
+    {
+        // Arrange
+        var collector = new ObservabilityCollector(new TestObservabilityFactory());
+        var observer = new MetricsCollectingExecutionObserver(collector);
+        var nodeId = "testNode";
+        var startTime = DateTimeOffset.UtcNow;
+
+        observer.OnNodeStarted(new NodeExecutionStarted(nodeId, "TransformNode", startTime, s_pipelineId));
+
+        var preFinalized = new NodeTimingBreakdown(
+            TimeSpan.FromMilliseconds(120),
+            TimeSpan.FromMilliseconds(200),
+            TimeSpan.FromMilliseconds(0),
+            TimeSpan.FromMilliseconds(320));
+
+        collector.RecordTimingBreakdown(nodeId, preFinalized, s_pipelineId);
+        collector.RecordNodeEnd(nodeId, startTime.AddMilliseconds(320), true, s_pipelineId);
+
+        // Act
+        observer.OnNodeDataflowCompleted(new NodeDataflowCompleted(
+            nodeId,
+            "TransformNode",
+            startTime,
+            startTime.AddSeconds(2),
+            true,
+            null,
+            s_pipelineId,
+            TimingBreakdown: new NodeTimingBreakdown(
+                TimeSpan.FromMilliseconds(2000),
+                TimeSpan.Zero,
+                TimeSpan.Zero,
+                TimeSpan.FromMilliseconds(2000)),
+            MetricsAlreadyCaptured: true));
+
+        // Assert
+        var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
+        Assert.NotNull(metrics);
+        _ = Assert.NotNull(metrics.DurationMs);
+        _ = Assert.NotNull(metrics.WallDurationMs);
+
+        Assert.InRange(metrics.DurationMs.Value, 119, 121);
+        Assert.InRange(metrics.WallDurationMs!.Value, 319, 321);
+    }
+
     #endregion
 
     #region Performance Metrics Guard Tests

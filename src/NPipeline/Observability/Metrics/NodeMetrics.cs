@@ -6,7 +6,7 @@ namespace NPipeline.Observability.Metrics;
 /// <param name="NodeId">The unique identifier of the node.</param>
 /// <param name="StartTime">The timestamp when the node execution started.</param>
 /// <param name="EndTime">The timestamp when the node execution completed.</param>
-/// <param name="DurationMs">The duration of the node execution in milliseconds.</param>
+/// <param name="DurationMs">The node-owned work duration in milliseconds. Breaking change: this parameter previously represented wall-clock elapsed time; use WallDurationMs for wall-clock comparisons.</param>
 /// <param name="Success">Whether the node execution was successful.</param>
 /// <param name="ItemsProcessed">The number of items processed by this node.</param>
 /// <param name="ItemsEmitted">The number of items emitted by this node.</param>
@@ -19,6 +19,10 @@ namespace NPipeline.Observability.Metrics;
 /// <param name="ThreadId">The thread ID that primarily processed this node.</param>
 /// <param name="PipelineId">The unique pipeline identity this node belongs to.</param>
 /// <param name="PipelineName">The name of the pipeline this node belongs to. Null for top-level pipelines.</param>
+/// <param name="WorkDurationMs">The node-owned work duration in milliseconds.</param>
+/// <param name="InputWaitDurationMs">The upstream input wait duration in milliseconds.</param>
+/// <param name="OutputBlockDurationMs">The downstream output block duration in milliseconds.</param>
+/// <param name="WallDurationMs">The total elapsed wall-clock duration for this node in milliseconds.</param>
 public sealed record NodeMetrics(
     string NodeId,
     DateTimeOffset? StartTime,
@@ -35,4 +39,8 @@ public sealed record NodeMetrics(
     double? AverageItemProcessingMs,
     int? ThreadId,
     Guid PipelineId,
-    string? PipelineName = null) : INodeMetrics;
+    string? PipelineName = null,
+    double? WorkDurationMs = null,
+    double? InputWaitDurationMs = null,
+    double? OutputBlockDurationMs = null,
+    double? WallDurationMs = null) : INodeMetrics;

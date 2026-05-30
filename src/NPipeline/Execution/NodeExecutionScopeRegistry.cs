@@ -35,8 +35,8 @@ public sealed class NodeExecutionScopeRegistry
 
         foreach (var registration in registrations)
         {
-            registration.OnDisposed?.Invoke(registration.Scope.GetFailureException());
             registration.Scope.Dispose();
+            registration.OnDisposed?.Invoke(registration.Scope, registration.Scope.GetFailureException());
         }
     }
 
@@ -72,7 +72,8 @@ public sealed class NodeExecutionScopeRegistry
     /// <summary>
     ///     Registers a per-node observability scope.
     /// </summary>
-    public void RegisterNodeObservabilityScope(string nodeId, IAutoObservabilityScope scope, Action<Exception?>? onDisposed = null)
+    public void RegisterNodeObservabilityScope(string nodeId, IAutoObservabilityScope scope,
+        Action<IAutoObservabilityScope, Exception?>? onDisposed = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
         ArgumentNullException.ThrowIfNull(scope);
@@ -152,24 +153,26 @@ public sealed class NodeExecutionScopeRegistry
 
     private void DisposeNodeScope(string nodeId, IAutoObservabilityScope expectedScope)
     {
+        Action<IAutoObservabilityScope, Exception?>? onDisposed = null;
+
         if (_nodeObservabilityScopes.TryGetValue(nodeId, out var currentRegistration) &&
             ReferenceEquals(currentRegistration.Scope, expectedScope))
         {
             _ = _nodeObservabilityScopes.Remove(nodeId);
-
-            currentRegistration.OnDisposed?.Invoke(expectedScope.GetFailureException());
+            onDisposed = currentRegistration.OnDisposed;
         }
 
         expectedScope.Dispose();
+        onDisposed?.Invoke(expectedScope, expectedScope.GetFailureException());
     }
 
     private readonly struct NodeObservabilityRegistration(
         IAutoObservabilityScope scope,
-        Action<Exception?>? onDisposed)
+        Action<IAutoObservabilityScope, Exception?>? onDisposed)
     {
         public IAutoObservabilityScope Scope { get; } = scope;
 
-        public Action<Exception?>? OnDisposed { get; } = onDisposed;
+        public Action<IAutoObservabilityScope, Exception?>? OnDisposed { get; } = onDisposed;
     }
 
     private sealed class ScopedObservabilityHandle : IAutoObservabilityScope
@@ -177,7 +180,7 @@ public sealed class NodeExecutionScopeRegistry
         private readonly NodeExecutionScopeRegistry _registry;
         private readonly string _nodeId;
         private readonly IAutoObservabilityScope _inner;
-        private bool _disposed;
+        private int _disposed;
 
         public ScopedObservabilityHandle(NodeExecutionScopeRegistry registry, string nodeId, IAutoObservabilityScope inner)
         {
@@ -188,35 +191,81 @@ public sealed class NodeExecutionScopeRegistry
 
         public void RecordItemCount(long processed, long emitted)
         {
+            if (Volatile.Read(ref _disposed) == 1)
+                return;
+
             _inner.RecordItemCount(processed, emitted);
         }
 
         public void IncrementProcessed()
         {
+            if (Volatile.Read(ref _disposed) == 1)
+                return;
+
             _inner.IncrementProcessed();
         }
 
         public void IncrementEmitted()
         {
+            if (Volatile.Read(ref _disposed) == 1)
+                return;
+
             _inner.IncrementEmitted();
         }
 
         public void RecordFailure(Exception exception)
         {
+            if (Volatile.Read(ref _disposed) == 1)
+                return;
+
             _inner.RecordFailure(exception);
         }
 
         public Exception? GetFailureException()
         {
+            if (Volatile.Read(ref _disposed) == 1)
+                return null;
+
             return _inner.GetFailureException();
+        }
+
+        public void AddWork(TimeSpan duration)
+        {
+            if (Volatile.Read(ref _disposed) == 1)
+                return;
+
+            _inner.AddWork(duration);
+        }
+
+        public void AddInputWait(TimeSpan duration)
+        {
+            if (Volatile.Read(ref _disposed) == 1)
+                return;
+
+            _inner.AddInputWait(duration);
+        }
+
+        public void AddOutputBlock(TimeSpan duration)
+        {
+            if (Volatile.Read(ref _disposed) == 1)
+                return;
+
+            _inner.AddOutputBlock(duration);
+        }
+
+        public NodeTimingBreakdown GetTimingBreakdown()
+        {
+            if (Volatile.Read(ref _disposed) == 1)
+                return NodeTimingBreakdown.Empty;
+
+            return _inner.GetTimingBreakdown();
         }
 
         public void Dispose()
         {
-            if (_disposed)
+            if (Interlocked.Exchange(ref _disposed, 1) == 1)
                 return;
 
-            _disposed = true;
             _registry.DisposeNodeScope(_nodeId, _inner);
         }
     }
@@ -248,6 +297,23 @@ public sealed class NodeExecutionScopeRegistry
         public Exception? GetFailureException()
         {
             return null;
+        }
+
+        public void AddWork(TimeSpan duration)
+        {
+        }
+
+        public void AddInputWait(TimeSpan duration)
+        {
+        }
+
+        public void AddOutputBlock(TimeSpan duration)
+        {
+        }
+
+        public NodeTimingBreakdown GetTimingBreakdown()
+        {
+            return NodeTimingBreakdown.Empty;
         }
 
         public void Dispose()

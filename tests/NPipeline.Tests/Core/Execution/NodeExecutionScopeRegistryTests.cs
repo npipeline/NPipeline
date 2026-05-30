@@ -60,7 +60,7 @@ public sealed class NodeExecutionScopeRegistryTests
         registry.RegisterNodeObservabilityScope(
             "node-fail",
             scope,
-            ex =>
+            (_, ex) =>
             {
                 callbackException = ex;
                 callbackCount++;
@@ -116,8 +116,8 @@ public sealed class NodeExecutionScopeRegistryTests
         var scope2 = new RecordingScope();
         var callbackCount = 0;
 
-        registry.RegisterNodeObservabilityScope("node-1", scope1, _ => callbackCount++);
-        registry.RegisterNodeObservabilityScope("node-2", scope2, _ => callbackCount++);
+        registry.RegisterNodeObservabilityScope("node-1", scope1, (_, _) => callbackCount++);
+        registry.RegisterNodeObservabilityScope("node-2", scope2, (_, _) => callbackCount++);
 
         // Act
         registry.DisposeAllNodeScopes();
@@ -128,11 +128,61 @@ public sealed class NodeExecutionScopeRegistryTests
         _ = callbackCount.Should().Be(2);
     }
 
+    [Fact]
+    public void BeginNodeScope_AfterHandleDisposed_DoesNotAllowFurtherMutationsOnStaleHandle()
+    {
+        // Arrange
+        var registry = new NodeExecutionScopeRegistry();
+        var scope = new RecordingScope();
+        var handle = default(IAutoObservabilityScope);
+
+        registry.RegisterNodeObservabilityScope("node-stale", scope);
+
+        // Act
+        handle = registry.BeginNodeScope("node-stale");
+        handle.IncrementProcessed();
+        handle.Dispose();
+
+        // Stale handle calls should be ignored.
+        handle.IncrementProcessed();
+        handle.IncrementEmitted();
+        handle.AddInputWait(TimeSpan.FromSeconds(1));
+
+        // Assert
+        _ = scope.Processed.Should().Be(1);
+        _ = scope.Emitted.Should().Be(0);
+        _ = scope.InputWaitCalls.Should().Be(0);
+    }
+
+    [Fact]
+    public void DisposeNodeScope_CallbackRunsAfterScopeDispose()
+    {
+        // Arrange
+        var registry = new NodeExecutionScopeRegistry();
+        var scope = new RecordingScope();
+        var callbackSawDispose = false;
+
+        registry.RegisterNodeObservabilityScope(
+            "node-order",
+            scope,
+            (_, _) => { callbackSawDispose = scope.DisposeCount == 1; });
+
+        var handle = registry.BeginNodeScope("node-order");
+
+        // Act
+        handle.Dispose();
+
+        // Assert
+        _ = scope.DisposeCount.Should().Be(1);
+        _ = callbackSawDispose.Should().BeTrue();
+    }
+
     private sealed class RecordingScope : IAutoObservabilityScope
     {
         public int Processed { get; private set; }
         public int Emitted { get; private set; }
         public int DisposeCount { get; private set; }
+        public int InputWaitCalls { get; private set; }
         public Exception? RecordedFailure { get; private set; }
 
         public void RecordItemCount(long processed, long emitted)
@@ -159,6 +209,11 @@ public sealed class NodeExecutionScopeRegistryTests
         public Exception? GetFailureException()
         {
             return RecordedFailure;
+        }
+
+        public void AddInputWait(TimeSpan duration)
+        {
+            InputWaitCalls++;
         }
 
         public void Dispose()

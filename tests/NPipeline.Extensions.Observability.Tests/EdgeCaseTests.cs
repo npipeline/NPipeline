@@ -153,10 +153,10 @@ public sealed class EdgeCaseTests
         collector.RecordNodeStart(nodeId, startTime, s_pipelineId);
         collector.RecordNodeEnd(nodeId, endTime, true, s_pipelineId);
 
-        // Assert - Should handle negative duration
+        // Assert - Work duration is clamped to non-negative values.
         var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
-        Assert.True(metrics.DurationMs < 0);
+        Assert.Equal(0, metrics.DurationMs);
     }
 
     [Fact]

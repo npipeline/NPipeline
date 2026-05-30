@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
@@ -57,6 +58,36 @@ public sealed class CompatibilityTests
         Assert.True(parallelMetrics.Success);
         Assert.Equal(10, parallelMetrics.ItemsProcessed);
         Assert.Equal(10, parallelMetrics.ItemsEmitted);
+    }
+
+    [Fact]
+    public async Task Observability_WithBlockingParallelismAndDelayedSource_ShouldCaptureInputWait()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        _ = services.AddNPipeline();
+        _ = services.AddNPipelineObservability();
+        var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var runner = scope.ServiceProvider.GetRequiredService<IPipelineRunner>();
+        var contextFactory = scope.ServiceProvider.GetRequiredService<IObservablePipelineContextFactory>();
+
+        await using var context = contextFactory.Create();
+
+        // Act
+        await runner.RunAsync<TestPipelineWithBlockingParallelismAndDelayedSource>(context);
+
+        // Assert
+        var collector = scope.ServiceProvider.GetRequiredService<IObservabilityCollector>();
+        var parallelMetrics = GetNodeMetricsById(collector, "paralleltransform");
+
+        Assert.NotNull(parallelMetrics);
+        _ = Assert.NotNull(parallelMetrics.InputWaitDurationMs);
+        _ = Assert.NotNull(parallelMetrics.WallDurationMs);
+        _ = Assert.NotNull(parallelMetrics.DurationMs);
+
+        Assert.True(parallelMetrics.InputWaitDurationMs.Value >= 150);
+        Assert.True(parallelMetrics.WallDurationMs.Value >= parallelMetrics.InputWaitDurationMs.Value);
     }
 
     [Fact]
@@ -565,6 +596,25 @@ public sealed class CompatibilityTests
         }
     }
 
+    private sealed class TestPipelineWithBlockingParallelismAndDelayedSource : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<TestDelayedSourceNode, int>("source")
+                .WithObservability(builder);
+
+            var transform = builder.AddTransform<TestTransformNode, int, int>("parallelTransform")
+                .WithObservability(builder)
+                .WithBlockingParallelism(builder, 4);
+
+            var sink = builder.AddSink<TestSinkNode, int>("sink")
+                .WithObservability(builder);
+
+            _ = builder.Connect(source, transform);
+            _ = builder.Connect(transform, sink);
+        }
+    }
+
     private sealed class TestPipelineWithDropNewestParallelism : IPipelineDefinition
     {
         public void Define(PipelineBuilder builder, PipelineContext context)
@@ -716,6 +766,23 @@ public sealed class CompatibilityTests
         {
             var items = Enumerable.Range(1, 1000).ToList();
             return new InMemoryDataStream<int>(items, "source-output");
+        }
+    }
+
+    private sealed class TestDelayedSourceNode : SourceNode<int>
+    {
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
+        {
+            return new DataStream<int>(Generate(cancellationToken), "source-output");
+        }
+
+        private static async IAsyncEnumerable<int> Generate([EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            for (var i = 1; i <= 5; i++)
+            {
+                await Task.Delay(40, cancellationToken);
+                yield return i;
+            }
         }
     }
 

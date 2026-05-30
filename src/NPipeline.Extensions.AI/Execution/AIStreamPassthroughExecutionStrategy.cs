@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Diagnostics;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
@@ -36,13 +37,44 @@ internal sealed class AIStreamPassthroughExecutionStrategy : IExecutionStrategy,
         {
             using var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
             using var activity = context.Tracer.StartActivity("Node.StreamTransform");
+            var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
-            await foreach (var item in input.WithCancellation(ct).ConfigureAwait(false))
+            await using var inputEnumerator = timedInput.WithCancellation(ct).GetAsyncEnumerator();
+
+            while (true)
             {
+                TIn item;
+
+                try
+                {
+                    if (!await inputEnumerator.MoveNextAsync())
+                        break;
+
+                    item = inputEnumerator.Current;
+                }
+
+                catch (Exception ex)
+                {
+                    observabilityScope.RecordFailure(ex);
+                    throw;
+                }
+
                 using var _ = context.ScopedNode(nodeId);
                 observabilityScope.IncrementProcessed();
 
-                var output = await node.TransformAsync(item, context, ct).ConfigureAwait(false);
+                TOut output;
+                try
+                {
+                    var workStart = Stopwatch.GetTimestamp();
+                    output = await node.TransformAsync(item, context, ct).ConfigureAwait(false);
+                    observabilityScope.AddWork(Stopwatch.GetElapsedTime(workStart));
+                }
+                catch (Exception ex)
+                {
+                    observabilityScope.RecordFailure(ex);
+                    throw;
+                }
+
                 observabilityScope.IncrementEmitted();
                 yield return output;
             }
@@ -64,10 +96,11 @@ internal sealed class AIStreamPassthroughExecutionStrategy : IExecutionStrategy,
         {
             using var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
             using var activity = context.Tracer.StartActivity("Node.StreamTransform");
+            var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
             async IAsyncEnumerable<TIn> TrackInput([EnumeratorCancellation] CancellationToken innerCt)
             {
-                await foreach (var item in input.WithCancellation(innerCt).ConfigureAwait(false))
+                await foreach (var item in timedInput.WithCancellation(innerCt).ConfigureAwait(false))
                 {
                     using var _ = context.ScopedNode(nodeId);
                     observabilityScope.IncrementProcessed();
@@ -75,12 +108,37 @@ internal sealed class AIStreamPassthroughExecutionStrategy : IExecutionStrategy,
                 }
             }
 
-            await foreach (var output in node.TransformAsync(TrackInput(ct), context, ct).WithCancellation(ct).ConfigureAwait(false))
+            var outputs = node.TransformAsync(TrackInput(ct), context, ct).WithCancellation(ct);
+            await using var outputEnumerator = outputs.GetAsyncEnumerator();
+
+            while (true)
             {
+                TOut output;
+
+                try
+                {
+                    if (!await outputEnumerator.MoveNextAsync())
+                        break;
+
+                    output = outputEnumerator.Current;
+                }
+
+                catch (Exception ex)
+                {
+                    observabilityScope.RecordFailure(ex);
+                    throw;
+                }
+
                 using var _ = context.ScopedNode(nodeId);
                 observabilityScope.IncrementEmitted();
                 yield return output;
             }
+
+            // Stream nodes own work over the whole stream delegate, excluding input waits captured by timedInput.
+            var breakdown = observabilityScope.GetTimingBreakdown();
+            var work = breakdown.WallDuration - breakdown.InputWaitDuration;
+            if (work > TimeSpan.Zero)
+                observabilityScope.AddWork(work);
         }
 
         return Task.FromResult<IDataStream<TOut>>(new DataStream<TOut>(Iterate(cancellationToken), input.StreamName));

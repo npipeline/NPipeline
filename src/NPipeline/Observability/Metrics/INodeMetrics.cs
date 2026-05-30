@@ -21,9 +21,31 @@ public interface INodeMetrics
     DateTimeOffset? EndTime { get; }
 
     /// <summary>
-    ///     The duration of the node execution in milliseconds.
+    ///     The node-owned work duration in milliseconds.
+    ///     Breaking change: this property previously represented wall-clock elapsed time.
+    ///     Use <see cref="WallDurationMs" /> for wall-clock comparisons.
     /// </summary>
     double? DurationMs { get; }
+
+    /// <summary>
+    ///     The node-owned work duration in milliseconds.
+    /// </summary>
+    double? WorkDurationMs { get; }
+
+    /// <summary>
+    ///     Time spent waiting for upstream input in milliseconds.
+    /// </summary>
+    double? InputWaitDurationMs { get; }
+
+    /// <summary>
+    ///     Time spent blocked on downstream output in milliseconds.
+    /// </summary>
+    double? OutputBlockDurationMs { get; }
+
+    /// <summary>
+    ///     Total elapsed wall-clock duration for this node's dataflow in milliseconds.
+    /// </summary>
+    double? WallDurationMs { get; }
 
     /// <summary>
     ///     Whether the node execution was successful.

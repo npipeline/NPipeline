@@ -105,8 +105,9 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
 
         var nodeId = context.CurrentNodeId;
         var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
+        var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
-        var batchedStream = BatchWithObservabilityAsync(input, BatchSize, Timespan, observabilityScope, cancellationToken);
+        var batchedStream = BatchWithObservabilityAsync(timedInput, BatchSize, Timespan, observabilityScope, cancellationToken);
 
         // The type system is a bit tricky here. We know TOut is IReadOnlyCollection<TIn>,
         // but we need to cast it to satisfy the compiler.
@@ -135,8 +136,9 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
 
         var nodeId = context.CurrentNodeId;
         var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
+        var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
-        var batchedStream = BatchWithObservabilityAsync(input, BatchSize, Timespan, observabilityScope, cancellationToken);
+        var batchedStream = BatchWithObservabilityAsync(timedInput, BatchSize, Timespan, observabilityScope, cancellationToken);
 
         // The type system is a bit tricky here. We know TOut is IReadOnlyCollection<TIn>,
         // but we need to cast it to satisfy the compiler.
@@ -161,8 +163,25 @@ public sealed class BatchingExecutionStrategy : IExecutionStrategy, IStreamExecu
         var batch = new List<T>(batchSize);
         var lastYieldTime = DateTime.UtcNow;
 
-        await foreach (var item in input.WithCancellation(cancellationToken))
+        await using var inputEnumerator = input.WithCancellation(cancellationToken).GetAsyncEnumerator();
+
+        while (true)
         {
+            T item;
+
+            try
+            {
+                if (!await inputEnumerator.MoveNextAsync())
+                    break;
+
+                item = inputEnumerator.Current;
+            }
+            catch (Exception ex)
+            {
+                scope.RecordFailure(ex);
+                throw;
+            }
+
             // Track item processed
             scope.IncrementProcessed();
 

@@ -21,9 +21,9 @@ services.AddNPipeline(builder => { ... });
 services.AddNPipelineObservability();
 ```
 
-This enables automatic metrics collection for every pipeline run - node execution times, throughput, retry counts, and pipeline lifecycle events.
+This enables automatic metrics collection for every pipeline run - node work timing, wait timing, throughput, retry counts, and pipeline lifecycle events.
 
-For nodes that return lazy streams, timing now differentiates between node setup completion and stream/dataflow completion. When per-node observability is enabled with `WithObservability(...)`, `DurationMs` is finalized when stream consumption completes, not when the node first returns its output stream.
+For nodes that return lazy streams, timing differentiates node setup completion from stream/dataflow completion. With per-node observability enabled via `WithObservability(...)`, node timing is finalized when stream consumption completes, not when the node first returns its output stream.
 
 ### Using the Observable Context Factory
 
@@ -42,7 +42,11 @@ await using var context = contextFactory.Create();
 | `NodeId` | `string` | Node identifier |
 | `PipelineId` | `Guid` | Pipeline run ID |
 | `StartTime` / `EndTime` | `DateTimeOffset?` | Node timing window (for lazy stream nodes with `WithObservability`, end time is finalized at dataflow completion) |
-| `DurationMs` | `double?` | Node wall-clock duration in milliseconds |
+| `DurationMs` | `double?` | Node-owned work duration in milliseconds (primary duration metric) |
+| `WorkDurationMs` | `double?` | Explicit node-owned work duration in milliseconds |
+| `InputWaitDurationMs` | `double?` | Time waiting for upstream input in milliseconds |
+| `OutputBlockDurationMs` | `double?` | Time blocked by downstream/backpressure in milliseconds |
+| `WallDurationMs` | `double?` | Total elapsed node dataflow wall-clock duration in milliseconds |
 | `Success` | `bool` | Whether execution succeeded |
 | `ItemsProcessed` | `long` | Items consumed |
 | `ItemsEmitted` | `long` | Items produced |
@@ -63,7 +67,9 @@ For lazy stream nodes, NPipeline emits two lifecycle moments:
 1. **Execution completion** (`OnNodeCompleted`) - node setup/delegate returned.
 2. **Dataflow completion** (`OnNodeDataflowCompleted`) - stream enumeration/scope disposal finished.
 
-The built-in `MetricsCollectingExecutionObserver` uses dataflow completion as the authoritative end timestamp when available. This keeps `DurationMs`, `ThroughputItemsPerSec`, and `AverageItemProcessingMs` aligned for stream-heavy pipelines.
+The built-in `MetricsCollectingExecutionObserver` uses dataflow completion plus timing buckets as the authoritative source when available. `DurationMs`/`WorkDurationMs` represent node-owned work, while `InputWaitDurationMs` and `WallDurationMs` preserve elapsed-time diagnostics. `ThroughputItemsPerSec` and `AverageItemProcessingMs` are derived from work duration.
+
+Timing breakdown values are captured as best-effort snapshots to avoid lock contention; under concurrent updates, small transient skew between buckets is possible.
 
 If you implement a custom `IExecutionObserver`, handle `OnNodeDataflowCompleted(...)` when you need true stream runtime attribution.
 

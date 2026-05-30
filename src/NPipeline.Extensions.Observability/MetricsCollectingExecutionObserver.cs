@@ -131,15 +131,35 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
         if (_nodeStartTimes.ContainsKey(executionKey))
             _dataflowCompletedBeforeExecution[executionKey] = 0;
 
-        _collector.RecordNodeEnd(
-            e.NodeId,
-            e.EndTime,
-            e.Success,
-            e.PipelineId,
-            e.Error,
-            pipelineName: e.PipelineName);
+        var skipCollectorWrites = e.MetricsAlreadyCaptured && _collector.HasTimingBreakdown(e.NodeId, e.PipelineId);
 
-        RecordDerivedPerformanceMetrics(e.NodeId, e.PipelineId, e.PipelineName, forceUpdate: true);
+        if (!skipCollectorWrites)
+        {
+            var timingBreakdown = e.TimingBreakdown;
+            if (timingBreakdown.WorkDuration <= TimeSpan.Zero &&
+                timingBreakdown.InputWaitDuration <= TimeSpan.Zero &&
+                timingBreakdown.OutputBlockDuration <= TimeSpan.Zero &&
+                timingBreakdown.WallDuration <= TimeSpan.Zero)
+            {
+                var fallbackWall = e.EndTime >= e.StartTime
+                    ? e.EndTime - e.StartTime
+                    : TimeSpan.Zero;
+
+                timingBreakdown = new NodeTimingBreakdown(fallbackWall, TimeSpan.Zero, TimeSpan.Zero, fallbackWall);
+            }
+
+            _collector.RecordTimingBreakdown(e.NodeId, timingBreakdown, e.PipelineId, e.PipelineName);
+
+            _collector.RecordNodeEnd(
+                e.NodeId,
+                e.EndTime,
+                e.Success,
+                e.PipelineId,
+                e.Error,
+                pipelineName: e.PipelineName);
+        }
+
+        RecordDerivedPerformanceMetrics(e.NodeId, e.PipelineId, e.PipelineName, forceUpdate: !skipCollectorWrites);
     }
 
     /// <inheritdoc />
@@ -190,20 +210,21 @@ public sealed class MetricsCollectingExecutionObserver(IObservabilityCollector c
     private void RecordDerivedPerformanceMetrics(string nodeId, Guid pipelineId, string? pipelineName, bool forceUpdate = false)
     {
         var nodeMetrics = _collector.GetNodeMetrics(nodeId, pipelineId);
+        var workDurationMs = nodeMetrics?.WorkDurationMs ?? nodeMetrics?.DurationMs;
 
-        if (nodeMetrics is null || nodeMetrics.ItemsProcessed <= 0 || !nodeMetrics.DurationMs.HasValue)
+        if (nodeMetrics is null || nodeMetrics.ItemsProcessed <= 0 || !workDurationMs.HasValue)
             return;
 
         if (!forceUpdate && nodeMetrics.AverageItemProcessingMs.HasValue)
             return;
 
-        var durationSec = nodeMetrics.DurationMs.Value / 1000.0;
+        var durationSec = workDurationMs.Value / 1000.0;
 
         if (durationSec <= 0)
             return;
 
         var throughput = nodeMetrics.ItemsProcessed / durationSec;
-        var averageItemProcessingMs = nodeMetrics.DurationMs.Value / nodeMetrics.ItemsProcessed;
+        var averageItemProcessingMs = workDurationMs.Value / nodeMetrics.ItemsProcessed;
         _collector.RecordPerformanceMetrics(nodeId, throughput, averageItemProcessingMs, pipelineId, pipelineName);
     }
 }

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Runtime.CompilerServices;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.ErrorHandling;
@@ -1066,19 +1067,62 @@ public sealed class IntegrationTests
         // Assert
         var collector = scope.ServiceProvider.GetRequiredService<IObservabilityCollector>();
         var delayedTransformMetrics = GetNodeMetricsById(collector, "delayedtransform");
+        var sinkMetrics = GetNodeMetricsById(collector, "sink");
 
         Assert.NotNull(delayedTransformMetrics);
+        Assert.NotNull(sinkMetrics);
         Assert.True(delayedTransformMetrics.Success);
         Assert.Equal(5, delayedTransformMetrics.ItemsProcessed);
         Assert.Equal(5, delayedTransformMetrics.ItemsEmitted);
 
         _ = Assert.NotNull(delayedTransformMetrics.DurationMs);
+        _ = Assert.NotNull(delayedTransformMetrics.WorkDurationMs);
         _ = Assert.NotNull(delayedTransformMetrics.AverageItemProcessingMs);
 
         Assert.True(delayedTransformMetrics.DurationMs!.Value >= 150);
+        Assert.Equal(delayedTransformMetrics.DurationMs, delayedTransformMetrics.WorkDurationMs);
 
         var derivedDurationMs = delayedTransformMetrics.AverageItemProcessingMs!.Value * delayedTransformMetrics.ItemsProcessed;
         Assert.InRange(delayedTransformMetrics.DurationMs.Value, derivedDurationMs * 0.95, derivedDurationMs * 1.05);
+
+        // Sink should spend most of its elapsed time waiting for delayed upstream output.
+        _ = Assert.NotNull(sinkMetrics.InputWaitDurationMs);
+        _ = Assert.NotNull(sinkMetrics.WallDurationMs);
+        _ = Assert.NotNull(sinkMetrics.DurationMs);
+        Assert.True(sinkMetrics.InputWaitDurationMs.Value >= 150);
+        Assert.True(sinkMetrics.DurationMs.Value <= 80);
+        Assert.True(sinkMetrics.WallDurationMs.Value >= sinkMetrics.InputWaitDurationMs.Value);
+    }
+
+    [Fact]
+    public async Task DelayedSource_WithObservability_ShouldAttributeSinkTimeToInputWait()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        _ = services.AddNPipeline();
+        _ = services.AddNPipelineObservability();
+        var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var runner = scope.ServiceProvider.GetRequiredService<IPipelineRunner>();
+        var contextFactory = scope.ServiceProvider.GetRequiredService<IObservablePipelineContextFactory>();
+
+        await using var context = contextFactory.Create();
+
+        // Act
+        await runner.RunAsync<TestPipelineWithDelayedSource>(context);
+
+        // Assert
+        var collector = scope.ServiceProvider.GetRequiredService<IObservabilityCollector>();
+        var sinkMetrics = GetNodeMetricsById(collector, "sink");
+
+        Assert.NotNull(sinkMetrics);
+        _ = Assert.NotNull(sinkMetrics.DurationMs);
+        _ = Assert.NotNull(sinkMetrics.InputWaitDurationMs);
+        _ = Assert.NotNull(sinkMetrics.WallDurationMs);
+
+        Assert.True(sinkMetrics.InputWaitDurationMs.Value >= 150);
+        Assert.True(sinkMetrics.DurationMs.Value <= 80);
+        Assert.True(sinkMetrics.WallDurationMs.Value >= sinkMetrics.InputWaitDurationMs.Value);
     }
 
     #endregion
@@ -1289,6 +1333,20 @@ public sealed class IntegrationTests
         }
     }
 
+    private sealed class TestPipelineWithDelayedSource : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            var source = builder.AddSource<TestDelayedSourceNode, int>("source")
+                .WithObservability(builder);
+
+            var sink = builder.AddSink<TestSinkNode<int>, int>("sink")
+                .WithObservability(builder);
+
+            _ = builder.Connect(source, sink);
+        }
+    }
+
     private sealed class TestPipelineWithMidStreamFailure : IPipelineDefinition
     {
         public void Define(PipelineBuilder builder, PipelineContext context)
@@ -1377,6 +1435,24 @@ public sealed class IntegrationTests
         {
             await Task.Delay(40, cancellationToken);
             return item * 2;
+        }
+    }
+
+    private sealed class TestDelayedSourceNode : SourceNode<int>
+    {
+        public override IDataStream<int> OpenStream(PipelineContext context, CancellationToken cancellationToken)
+        {
+            return new DataStream<int>(ProduceWithDelay(cancellationToken), "delayed-source-output");
+        }
+
+        private static async IAsyncEnumerable<int> ProduceWithDelay([EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            for (var i = 1; i <= 5; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await Task.Delay(40, cancellationToken);
+                yield return i;
+            }
         }
     }
 

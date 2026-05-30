@@ -982,7 +982,7 @@ public sealed class ObservabilityCollectorTests
     #region Duration Reconciliation Tests
 
     [Fact]
-    public void RecordPerformanceMetrics_ShouldReconcileDuration_WhenDerivedIsLarger()
+    public void RecordPerformanceMetrics_ShouldNotOverrideWorkDuration_WhenDerivedIsLarger()
     {
         var collector = new ObservabilityCollector(s_defaultFactory);
         var nodeId = "streamNode";
@@ -995,8 +995,8 @@ public sealed class ObservabilityCollectorTests
 
         var metrics = collector.GetNodeMetrics(nodeId, s_pipelineId);
         Assert.NotNull(metrics);
-        Assert.InRange(metrics.DurationMs!.Value, 20800, 20801);
-        Assert.InRange(metrics.EndTime!.Value, startTime.AddMilliseconds(20799), startTime.AddMilliseconds(20802));
+        Assert.InRange(metrics.DurationMs!.Value, 0, 10);
+        Assert.InRange(metrics.EndTime!.Value, startTime.AddMilliseconds(4), startTime.AddMilliseconds(7));
     }
 
     [Fact]
