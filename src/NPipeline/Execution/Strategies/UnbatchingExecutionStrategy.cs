@@ -19,18 +19,19 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
         PipelineContext context,
         CancellationToken cancellationToken)
     {
+        var nodeId = context.CurrentNodeId;
+        var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
+        var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
+
         // This strategy is designed to work with UnbatchingNode<T>, where TIn is IEnumerable<TOut>.
         // Therefore, input IDataStream<TIn> can be treated as an IAsyncEnumerable<IEnumerable<TOut>>.
-        if (input is not IAsyncEnumerable<IEnumerable<TOut>> batchedSource)
+        if (timedInput is not IAsyncEnumerable<IEnumerable<TOut>> batchedSource)
 
         // This should not happen if the pipeline is configured correctly.
         {
             throw new InvalidOperationException(
                 $"The input for {nameof(UnbatchingExecutionStrategy)} must be an IAsyncEnumerable of IEnumerable<{typeof(TOut).Name}>.");
         }
-
-        var nodeId = context.CurrentNodeId;
-        var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
 
         var flattenedSource = FlattenWithObservabilityAsync(batchedSource, observabilityScope, cancellationToken);
 
@@ -49,18 +50,19 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
         PipelineContext context,
         CancellationToken cancellationToken)
     {
+        var nodeId = context.CurrentNodeId;
+        var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
+        var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
+
         // This strategy is designed to work with UnbatchingNode<T>, where TIn is IEnumerable<TOut>.
         // Therefore, input IDataStream<TIn> can be treated as an IAsyncEnumerable<IEnumerable<TOut>>.
-        if (input is not IAsyncEnumerable<IEnumerable<TOut>> batchedSource)
+        if (timedInput is not IAsyncEnumerable<IEnumerable<TOut>> batchedSource)
 
         // This should not happen if the pipeline is configured correctly.
         {
             throw new InvalidOperationException(
                 $"The input for {nameof(UnbatchingExecutionStrategy)} must be an IAsyncEnumerable of IEnumerable<{typeof(TOut).Name}>.");
         }
-
-        var nodeId = context.CurrentNodeId;
-        var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
 
         var flattenedSource = FlattenWithObservabilityAsync(batchedSource, observabilityScope, cancellationToken);
 
@@ -80,13 +82,47 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
     {
         using var scope = observabilityScope;
 
-        await foreach (var batch in batchedSource.WithCancellation(cancellationToken))
+        await using var batchEnumerator = batchedSource.WithCancellation(cancellationToken).GetAsyncEnumerator();
+
+        while (true)
         {
+            IEnumerable<T> batch;
+
+            try
+            {
+                if (!await batchEnumerator.MoveNextAsync())
+                    break;
+
+                batch = batchEnumerator.Current;
+            }
+            catch (Exception ex)
+            {
+                scope.RecordFailure(ex);
+                throw;
+            }
+
             // Track item processed (one batch)
             scope.IncrementProcessed();
 
-            foreach (var item in batch)
+            using var itemEnumerator = batch.GetEnumerator();
+
+            while (true)
             {
+                T item;
+
+                try
+                {
+                    if (!itemEnumerator.MoveNext())
+                        break;
+
+                    item = itemEnumerator.Current;
+                }
+                catch (Exception ex)
+                {
+                    scope.RecordFailure(ex);
+                    throw;
+                }
+
                 // Track item emitted (each item in the batch)
                 scope.IncrementEmitted();
                 yield return item;

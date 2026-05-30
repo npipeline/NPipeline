@@ -35,6 +35,7 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
 
         var nodeId = context.CurrentNodeId;
         var observabilityScope = BeginNodeObservabilityScope(context, nodeId);
+        var timedInput = NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
         var currentActivity = context.Tracer.CurrentActivity;
         var effectiveRetries = GetRetryOptions(nodeId, context);
         var cachedContext = CachedNodeExecutionContext.CreateWithRetryOptions(context, nodeId, effectiveRetries);
@@ -83,7 +84,7 @@ public sealed class DropNewestParallelStrategy : ParallelExecutionStrategyBase
 
             try
             {
-                await foreach (var item in input.WithCancellation(cancellationToken).ConfigureAwait(false))
+                await foreach (var item in timedInput.WithCancellation(cancellationToken).ConfigureAwait(false))
                 {
                     itemsSeen++;
 

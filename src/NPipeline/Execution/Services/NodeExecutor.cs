@@ -1,4 +1,5 @@
 using NPipeline.Attributes.Lineage;
+using System.Diagnostics;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.DataFlow.Routing;
@@ -283,7 +284,33 @@ public sealed class NodeExecutor(
                 graph.Lineage.LineageOptions, context.CancellationToken);
         }
 
-        await plan.ExecuteSink!(effectiveInput, context, context.CancellationToken).ConfigureAwait(false);
+        using var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(plan.NodeId);
+        effectiveInput = NodeTimingDataStreamWrapper.WrapInputWait(effectiveInput, observabilityScope);
+
+        var before = observabilityScope.GetTimingBreakdown();
+        var sinkStart = Stopwatch.GetTimestamp();
+        try
+        {
+            await plan.ExecuteSink!(effectiveInput, context, context.CancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            observabilityScope.RecordFailure(ex);
+            throw;
+        }
+        finally
+        {
+            var sinkElapsed = Stopwatch.GetElapsedTime(sinkStart);
+
+            var after = observabilityScope.GetTimingBreakdown();
+            var inputWaitDelta = after.InputWaitDuration - before.InputWaitDuration;
+            var outputBlockDelta = after.OutputBlockDuration - before.OutputBlockDuration;
+            var exclusiveWork = sinkElapsed - inputWaitDelta - outputBlockDelta;
+
+            if (exclusiveWork > TimeSpan.Zero)
+                observabilityScope.AddWork(exclusiveWork);
+        }
+
         nodeOutputs[plan.NodeId] = null; // sinks produce no downstream pipe
     }
 

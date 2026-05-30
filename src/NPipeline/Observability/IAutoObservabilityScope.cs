@@ -43,4 +43,40 @@ public interface IAutoObservabilityScope : IDisposable
     /// </summary>
     /// <returns>The recorded exception, or null if no failure was recorded.</returns>
     Exception? GetFailureException();
+
+    /// <summary>
+    ///     Adds node-owned work duration.
+    /// </summary>
+    /// <param name="duration">The work duration segment to add.</param>
+    void AddWork(TimeSpan duration)
+    {
+    }
+
+    /// <summary>
+    ///     Adds upstream input wait duration.
+    /// </summary>
+    /// <param name="duration">The input wait duration segment to add.</param>
+    void AddInputWait(TimeSpan duration)
+    {
+    }
+
+    /// <summary>
+    ///     Adds downstream output block duration.
+    /// </summary>
+    /// <param name="duration">The output block duration segment to add.</param>
+    void AddOutputBlock(TimeSpan duration)
+    {
+    }
+
+    /// <summary>
+    ///     Gets the current timing breakdown captured for this scope.
+    /// </summary>
+    /// <returns>
+    ///     The timing breakdown snapshot. Implementations may return a best-effort lock-free snapshot,
+    ///     so small transient skew between buckets is possible under concurrent updates.
+    /// </returns>
+    NodeTimingBreakdown GetTimingBreakdown()
+    {
+        return NodeTimingBreakdown.Empty;
+    }
 }

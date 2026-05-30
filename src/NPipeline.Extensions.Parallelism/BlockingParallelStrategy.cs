@@ -39,6 +39,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         // relying on context.CurrentNodeId inside the delegate would be racy if other nodes change it.
         var nodeId = context.CurrentNodeId;
         var observabilityScope = BeginNodeObservabilityScope(context, nodeId);
+        var timedInput = NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
         // Capture the current activity for tagging observability metrics
         var currentActivity = context.Tracer.CurrentActivity;
@@ -110,7 +111,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         {
             try
             {
-                await foreach (var item in input.WithCancellation(cancellationToken).ConfigureAwait(false))
+                await foreach (var item in timedInput.WithCancellation(cancellationToken).ConfigureAwait(false))
                 {
                     observabilityScope?.IncrementProcessed();
 

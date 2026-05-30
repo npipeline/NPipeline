@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Diagnostics;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution.Lineage;
@@ -58,9 +59,27 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
             var lineageTrackingEnabled = LineageNodeOutcomeRegistry.IsTracking(context.PipelineId, nodeId);
             long fallbackInputIndex = -1;
             using var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
+            var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
-            await foreach (var item in input.WithCancellation(ct).ConfigureAwait(false))
+            await using var inputEnumerator = timedInput.WithCancellation(ct).GetAsyncEnumerator();
+
+            while (true)
             {
+                TIn item;
+
+                try
+                {
+                    if (!await inputEnumerator.MoveNextAsync())
+                        break;
+
+                    item = inputEnumerator.Current;
+                }
+                catch (Exception ex)
+                {
+                    observabilityScope.RecordFailure(ex);
+                    throw;
+                }
+
                 // Track item processed
                 observabilityScope.IncrementProcessed();
 
@@ -79,26 +98,41 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                     ? tracer.StartActivity("Item.Transform")
                     : null;
 
-                using var _ = context.ScopedNode(cached.NodeId);
-                var executionResult = await _perItemRetryExecutor.ExecuteWithRetryAsync(
-                        item,
-                        node,
-                        valueTaskTransform,
-                        context,
-                        nodeId,
-                        cached.RetryOptions.MaxItemRetries,
-                        hasLineageIndex,
-                        lineageInputIndex,
-                        itemActivity,
-                        ct)
-                    .ConfigureAwait(false);
+                var produced = false;
+                TOut? output = default;
 
-                if (!executionResult.Produced)
+                try
+                {
+                    var workStart = Stopwatch.GetTimestamp();
+                    using var _ = context.ScopedNode(cached.NodeId);
+                    var executionResult = await _perItemRetryExecutor.ExecuteWithRetryAsync(
+                            item,
+                            node,
+                            valueTaskTransform,
+                            context,
+                            nodeId,
+                            cached.RetryOptions.MaxItemRetries,
+                            hasLineageIndex,
+                            lineageInputIndex,
+                            itemActivity,
+                            ct)
+                        .ConfigureAwait(false);
+                    observabilityScope.AddWork(Stopwatch.GetElapsedTime(workStart));
+                    produced = executionResult.Produced;
+                    output = executionResult.Output;
+                }
+                catch (Exception ex)
+                {
+                    observabilityScope.RecordFailure(ex);
+                    throw;
+                }
+
+                if (!produced)
                     continue;
 
                 // Track item emitted
                 observabilityScope.IncrementEmitted();
-                yield return executionResult.Output!;
+                yield return output!;
             }
 
             // Validate context immutability after processing all items (DEBUG-only, zero overhead in RELEASE)

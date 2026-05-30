@@ -146,7 +146,13 @@ public sealed class ObservabilitySurface : IObservabilitySurface
             context.NodeExecutionScopeRegistry.RegisterNodeObservabilityScope(
                 nodeDef.Id,
                 autoObservabilityScope,
-                failureException => PublishNodeDataflowCompleted(context, nodeDef.Id, nodeType, startTs, failureException));
+                (scope, failureException) => PublishNodeDataflowCompleted(
+                    context,
+                    nodeDef.Id,
+                    nodeType,
+                    startTs,
+                    scope.GetTimingBreakdown(),
+                    failureException));
         }
 
         return new NodeObservationScope(nodeDef.Id, nodeType, startTs, startTimestamp, activity, context.PipelineId,
@@ -213,8 +219,12 @@ public sealed class ObservabilitySurface : IObservabilitySurface
         string nodeId,
         string nodeType,
         DateTimeOffset startTime,
+        NodeTimingBreakdown timingBreakdown,
         Exception? failureException)
     {
+        var collector = context.ObservabilityFactory.ResolveObservabilityCollector();
+        var metricsAlreadyCaptured = collector?.HasTimingBreakdown(nodeId, context.PipelineId) == true;
+
         context.ExecutionObserver.OnNodeDataflowCompleted(
             new NodeDataflowCompleted(
                 nodeId,
@@ -224,7 +234,9 @@ public sealed class ObservabilitySurface : IObservabilitySurface
                 failureException is null,
                 failureException,
                 context.PipelineId,
-                context.PipelineName));
+                context.PipelineName,
+                timingBreakdown,
+                metricsAlreadyCaptured));
     }
 
     /// <inheritdoc />

@@ -360,6 +360,74 @@ public sealed class AutoObservabilityScopeTests
 
     #endregion
 
+    #region Timing Breakdown Tests
+
+    [Fact]
+    public void GetTimingBreakdown_WithoutExplicitWorkTracking_UsesFallbackWork()
+    {
+        // Arrange
+        var collector = new ObservabilityCollector(new TestObservabilityFactory());
+        var nodeId = "testNode";
+        var options = new ObservabilityOptions { RecordTiming = true };
+        using var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
+
+        scope.AddInputWait(TimeSpan.FromMilliseconds(10));
+        scope.AddOutputBlock(TimeSpan.FromMilliseconds(10));
+        Thread.Sleep(30);
+
+        // Act
+        var breakdown = scope.GetTimingBreakdown();
+
+        // Assert
+        var expectedFallback = breakdown.WallDuration - breakdown.InputWaitDuration - breakdown.OutputBlockDuration;
+        Assert.Equal(expectedFallback, breakdown.WorkDuration);
+    }
+
+    [Fact]
+    public void GetTimingBreakdown_WithExplicitWorkTracking_DoesNotUseFallback()
+    {
+        // Arrange
+        var collector = new ObservabilityCollector(new TestObservabilityFactory());
+        var nodeId = "testNode";
+        var options = new ObservabilityOptions { RecordTiming = true };
+        using var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
+
+        Thread.Sleep(20);
+
+        // Mark explicit work tracking as used without adding positive work duration ticks.
+        scope.AddWork(TimeSpan.Zero);
+
+        // Act
+        var breakdown = scope.GetTimingBreakdown();
+
+        // Assert
+        Assert.Equal(TimeSpan.Zero, breakdown.WorkDuration);
+        Assert.True(breakdown.WallDuration > TimeSpan.Zero);
+    }
+
+    [Fact]
+    public void GetTimingBreakdown_ShouldKeepWallDurationAtLeastBucketSum()
+    {
+        // Arrange
+        var collector = new ObservabilityCollector(new TestObservabilityFactory());
+        var nodeId = "testNode";
+        var options = new ObservabilityOptions { RecordTiming = true };
+        using var scope = new AutoObservabilityScope(collector, nodeId, options, s_pipelineId);
+
+        scope.AddInputWait(TimeSpan.FromMilliseconds(10));
+        scope.AddOutputBlock(TimeSpan.FromMilliseconds(20));
+        scope.AddWork(TimeSpan.FromMilliseconds(30));
+
+        // Act
+        var breakdown = scope.GetTimingBreakdown();
+
+        // Assert
+        var bucketSum = breakdown.InputWaitDuration + breakdown.OutputBlockDuration + breakdown.WorkDuration;
+        Assert.True(breakdown.WallDuration >= bucketSum);
+    }
+
+    #endregion
+
     #region Dispose Tests
 
     [Fact]

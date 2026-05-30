@@ -16,11 +16,15 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
     private readonly string? _pipelineName;
     private readonly Stopwatch _stopwatch;
     private readonly int? _threadId;
-    private bool _disposed;
+    private int _disposed;
     private Exception? _exception;
     private long _itemsEmitted;
     private long _itemsProcessed;
+    private long _inputWaitTicks;
+    private long _outputBlockTicks;
+    private int _explicitWorkTrackingUsed;
     private bool _success;
+    private long _workTicks;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="AutoObservabilityScope" /> class.
@@ -70,6 +74,9 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
     /// <inheritdoc />
     public void RecordItemCount(long processed, long emitted)
     {
+        if (Volatile.Read(ref _disposed) == 1)
+            return;
+
         _itemsProcessed = processed;
         _itemsEmitted = emitted;
     }
@@ -77,12 +84,18 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
     /// <inheritdoc />
     public void IncrementProcessed()
     {
+        if (Volatile.Read(ref _disposed) == 1)
+            return;
+
         _ = Interlocked.Increment(ref _itemsProcessed);
     }
 
     /// <inheritdoc />
     public void IncrementEmitted()
     {
+        if (Volatile.Read(ref _disposed) == 1)
+            return;
+
         _ = Interlocked.Increment(ref _itemsEmitted);
     }
 
@@ -90,6 +103,9 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
     public void RecordFailure(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
+
+        if (Volatile.Read(ref _disposed) == 1)
+            return;
 
         _success = false;
         _exception = exception;
@@ -102,13 +118,81 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
     }
 
     /// <inheritdoc />
-    public void Dispose()
+    public void AddWork(TimeSpan duration)
     {
-        if (_disposed)
+        if (Volatile.Read(ref _disposed) == 1)
             return;
 
-        _disposed = true;
+        _ = Interlocked.Exchange(ref _explicitWorkTrackingUsed, 1);
+        AddDurationTicks(ref _workTicks, duration);
+    }
+
+    /// <inheritdoc />
+    public void AddInputWait(TimeSpan duration)
+    {
+        if (Volatile.Read(ref _disposed) == 1)
+            return;
+
+        AddDurationTicks(ref _inputWaitTicks, duration);
+    }
+
+    /// <inheritdoc />
+    public void AddOutputBlock(TimeSpan duration)
+    {
+        if (Volatile.Read(ref _disposed) == 1)
+            return;
+
+        AddDurationTicks(ref _outputBlockTicks, duration);
+    }
+
+    /// <inheritdoc />
+    public NodeTimingBreakdown GetTimingBreakdown()
+    {
+        // This remains lock-free; sample wall-time before/after bucket reads to reduce skew.
+        var wallTicksBefore = _stopwatch.Elapsed.Ticks;
+        var inputWaitTicks = Interlocked.Read(ref _inputWaitTicks);
+        var outputBlockTicks = Interlocked.Read(ref _outputBlockTicks);
+        var workTicks = Interlocked.Read(ref _workTicks);
+        var wallTicksAfter = _stopwatch.Elapsed.Ticks;
+        var wallTicks = Math.Max(wallTicksBefore, wallTicksAfter);
+        var explicitWorkTrackingUsed = Volatile.Read(ref _explicitWorkTrackingUsed) == 1;
+
+        if (inputWaitTicks < 0)
+            inputWaitTicks = 0;
+
+        if (outputBlockTicks < 0)
+            outputBlockTicks = 0;
+
+        if (workTicks < 0)
+            workTicks = 0;
+
+        // Fallback applies only for nodes that never reported explicit work timing.
+        if (workTicks == 0 && !explicitWorkTrackingUsed)
+            workTicks = wallTicks - inputWaitTicks - outputBlockTicks;
+
+        if (workTicks < 0)
+            workTicks = 0;
+
+        // Keep wall duration coherent with observed buckets to avoid losing accounted time.
+        var bucketSumTicks = SaturatingAddTicks(inputWaitTicks, SaturatingAddTicks(outputBlockTicks, workTicks));
+        if (wallTicks < bucketSumTicks)
+            wallTicks = bucketSumTicks;
+
+        return new NodeTimingBreakdown(
+            TimeSpan.FromTicks(workTicks),
+            TimeSpan.FromTicks(inputWaitTicks),
+            TimeSpan.FromTicks(outputBlockTicks),
+            TimeSpan.FromTicks(wallTicks));
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) == 1)
+            return;
+
         _stopwatch.Stop();
+        var timingBreakdown = GetTimingBreakdown();
 
         if (_options.RecordTiming)
         {
@@ -130,18 +214,36 @@ public sealed class AutoObservabilityScope : IAutoObservabilityScope
                 _exception,
                 memoryDeltaMb,
                 pipelineName: _pipelineName);
+
+            _collector.RecordTimingBreakdown(_nodeId, timingBreakdown, _pipelineId, _pipelineName);
         }
 
         if (_options.RecordItemCounts)
             _collector.RecordItemMetrics(_nodeId, _itemsProcessed, _itemsEmitted, _pipelineId, _pipelineName);
 
-        var elapsedMs = _stopwatch.Elapsed.TotalMilliseconds;
+        var workDurationMs = timingBreakdown.WorkDuration.TotalMilliseconds;
 
-        if (_options.RecordPerformanceMetrics && _itemsProcessed > 0 && elapsedMs > 0)
+        if (_options.RecordPerformanceMetrics && _itemsProcessed > 0 && workDurationMs > 0)
         {
-            var throughput = _itemsProcessed / _stopwatch.Elapsed.TotalSeconds;
-            var avgTimeMs = elapsedMs / _itemsProcessed;
+            var throughput = _itemsProcessed / (workDurationMs / 1000.0);
+            var avgTimeMs = workDurationMs / _itemsProcessed;
             _collector.RecordPerformanceMetrics(_nodeId, throughput, avgTimeMs, _pipelineId, _pipelineName);
         }
+    }
+
+    private static void AddDurationTicks(ref long accumulator, TimeSpan duration)
+    {
+        if (duration <= TimeSpan.Zero)
+            return;
+
+        _ = Interlocked.Add(ref accumulator, duration.Ticks);
+    }
+
+    private static long SaturatingAddTicks(long left, long right)
+    {
+        if (left >= long.MaxValue - right)
+            return long.MaxValue;
+
+        return left + right;
     }
 }
