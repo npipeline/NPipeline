@@ -13,6 +13,9 @@ namespace NPipeline.Extensions.Parallelism;
 /// </summary>
 public sealed class ParallelExecutionStrategy : BlockingParallelStrategy
 {
+    private DropNewestParallelStrategy? _dropNewest;
+    private DropOldestParallelStrategy? _dropOldest;
+
     /// <summary>
     ///     Creates a new parallel execution strategy with queue policy selection.
     /// </summary>
@@ -45,14 +48,15 @@ public sealed class ParallelExecutionStrategy : BlockingParallelStrategy
         if (context.NodeExecutionScopeRegistry.TryGetNodeExecutionAnnotation(nodeId, out var opt) && opt is ParallelOptions po)
             queuePolicy = po.QueuePolicy;
 
-        // Delegate to the appropriate strategy
+        // Delegate to the appropriate strategy. Drop strategies are stateless and cached per instance
+        // to avoid per-call allocations on repeated pipeline runs.
         return queuePolicy switch
         {
             BoundedQueuePolicy.Block => await base.ExecuteAsync(input, node, context, cancellationToken),
             BoundedQueuePolicy.DropOldest =>
-                await new DropOldestParallelStrategy(ConfiguredMaxDop).ExecuteAsync(input, node, context, cancellationToken),
+                await (_dropOldest ??= new DropOldestParallelStrategy(ConfiguredMaxDop)).ExecuteAsync(input, node, context, cancellationToken),
             BoundedQueuePolicy.DropNewest =>
-                await new DropNewestParallelStrategy(ConfiguredMaxDop).ExecuteAsync(input, node, context, cancellationToken),
+                await (_dropNewest ??= new DropNewestParallelStrategy(ConfiguredMaxDop)).ExecuteAsync(input, node, context, cancellationToken),
             _ => await base.ExecuteAsync(input, node, context, cancellationToken),
         };
     }

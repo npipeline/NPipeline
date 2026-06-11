@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using NPipeline.Observability;
 
@@ -5,12 +6,14 @@ namespace NPipeline.Execution;
 
 /// <summary>
 ///     Owns node-scoped execution state for a single pipeline run.
+///     All members are safe for concurrent use; node output streams may be consumed
+///     and finalized on different threads when nodes execute in parallel.
 /// </summary>
 public sealed class NodeExecutionScopeRegistry
 {
-    private readonly Dictionary<string, object> _nodeExecutionAnnotations = new();
-    private readonly Dictionary<string, NodeObservabilityRegistration> _nodeObservabilityScopes = new();
-    private readonly Dictionary<string, object> _runtimeAnnotations = new();
+    private readonly ConcurrentDictionary<string, object> _nodeExecutionAnnotations = new();
+    private readonly ConcurrentDictionary<string, NodeObservabilityRegistration> _nodeObservabilityScopes = new();
+    private readonly ConcurrentDictionary<string, object> _runtimeAnnotations = new();
 
     /// <summary>
     ///     Clears all per-run state.
@@ -27,7 +30,7 @@ public sealed class NodeExecutionScopeRegistry
     /// </summary>
     public void DisposeAllNodeScopes()
     {
-        if (_nodeObservabilityScopes.Count == 0)
+        if (_nodeObservabilityScopes.IsEmpty)
             return;
 
         var registrations = new List<NodeObservabilityRegistration>(_nodeObservabilityScopes.Values);
@@ -66,7 +69,7 @@ public sealed class NodeExecutionScopeRegistry
     public bool RemoveNodeExecutionAnnotation(string nodeId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
-        return _nodeExecutionAnnotations.Remove(nodeId);
+        return _nodeExecutionAnnotations.TryRemove(nodeId, out _);
     }
 
     /// <summary>
@@ -156,9 +159,9 @@ public sealed class NodeExecutionScopeRegistry
         Action<IAutoObservabilityScope, Exception?>? onDisposed = null;
 
         if (_nodeObservabilityScopes.TryGetValue(nodeId, out var currentRegistration) &&
-            ReferenceEquals(currentRegistration.Scope, expectedScope))
+            ReferenceEquals(currentRegistration.Scope, expectedScope) &&
+            _nodeObservabilityScopes.TryRemove(new KeyValuePair<string, NodeObservabilityRegistration>(nodeId, currentRegistration)))
         {
-            _ = _nodeObservabilityScopes.Remove(nodeId);
             onDisposed = currentRegistration.OnDisposed;
         }
 

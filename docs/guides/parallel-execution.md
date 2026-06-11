@@ -54,6 +54,7 @@ transform.RunParallel(builder, opt => opt
 | `PreserveOrdering` | `true` | Output items in the same order as input |
 | `OutputBufferCapacity` | unset | Buffer size for output items |
 | `MetricsInterval` | unset | How often to report throughput metrics |
+| `EnableInputWaitTiming` | `false` | Per-item input-wait timing attribution (adds overhead) |
 
 ## Backpressure Policies
 
@@ -88,6 +89,11 @@ transform.WithBlockingParallelism(builder,
     maxDegreeOfParallelism: 4,
     maxQueueLength: 100,
     outputBufferCapacity: 200);
+
+// Blocking without ordering guarantees (highest throughput, no data loss)
+transform.WithUnorderedParallelism(builder,
+    maxDegreeOfParallelism: 4,
+    maxQueueLength: 100);
 
 // Drop-oldest
 transform.WithDropOldestParallelism(builder,

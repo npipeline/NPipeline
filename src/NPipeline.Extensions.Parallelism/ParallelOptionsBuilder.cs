@@ -11,6 +11,7 @@ public sealed class ParallelOptionsBuilder
     private TimeSpan? _metricsInterval;
     private int? _outputBufferCapacity;
     private bool _preserveOrdering = true;
+    private bool _enableInputWaitTiming;
     private BoundedQueuePolicy _queuePolicy = BoundedQueuePolicy.Block;
 
     /// <summary>
@@ -106,6 +107,18 @@ public sealed class ParallelOptionsBuilder
     }
 
     /// <summary>
+    ///     Enables input-wait timing attribution for the node's input stream.
+    ///     Off by default in parallel execution because the measurement is dominated by internal
+    ///     channel backpressure rather than upstream latency, and it adds per-item timestamp overhead.
+    /// </summary>
+    /// <returns>This builder for method chaining.</returns>
+    public ParallelOptionsBuilder EnableInputWaitTiming()
+    {
+        _enableInputWaitTiming = true;
+        return this;
+    }
+
+    /// <summary>
     ///     Sets the interval at which metrics are emitted for this parallel node.
     /// </summary>
     /// <param name="interval">The metrics emission interval.</param>
@@ -132,6 +145,7 @@ public sealed class ParallelOptionsBuilder
             _queuePolicy,
             _outputBufferCapacity,
             _preserveOrdering,
-            _metricsInterval);
+            _metricsInterval,
+            _enableInputWaitTiming);
     }
 }

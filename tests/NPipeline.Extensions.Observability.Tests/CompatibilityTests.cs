@@ -603,9 +603,10 @@ public sealed class CompatibilityTests
             var source = builder.AddSource<TestDelayedSourceNode, int>("source")
                 .WithObservability(builder);
 
+            // Input-wait timing is opt-in for parallel execution.
             var transform = builder.AddTransform<TestTransformNode, int, int>("parallelTransform")
                 .WithObservability(builder)
-                .WithBlockingParallelism(builder, 4);
+                .RunParallel(builder, opt => opt.MaxDegreeOfParallelism(4).EnableInputWaitTiming());
 
             var sink = builder.AddSink<TestSinkNode, int>("sink")
                 .WithObservability(builder);

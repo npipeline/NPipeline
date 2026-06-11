@@ -35,10 +35,12 @@ builder.WithParallelOptions(transform, new ParallelOptions
 
 ## Execution Strategies
 
+All strategies are built on lightweight `System.Threading.Channels` with a fixed pool of worker tasks.
+
 | Strategy | Behavior |
 |----------|----------|
-| `ParallelExecutionStrategy` (default) | Blocking backpressure - pauses producer when queue is full |
-| `BlockingParallelStrategy` | Same as above (base class) |
+| `ParallelExecutionStrategy` (default) | Facade that picks the concrete strategy from the configured queue policy |
+| `BlockingParallelStrategy` | Blocking backpressure - pauses producer when the in-flight window is full; restores input order by default |
 | `DropNewestParallelStrategy` | Discards incoming items when queue is full |
 | `DropOldestParallelStrategy` | Discards oldest queued items to make room |
 
@@ -49,11 +51,12 @@ builder.WithParallelOptions(transform, new ParallelOptions
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `MaxDegreeOfParallelism` | `int?` | `null` (processor count) | Maximum concurrent workers |
-| `MaxQueueLength` | `int?` | `null` (unbounded) | Input queue capacity |
+| `MaxQueueLength` | `int?` | `null` (unbounded) | Bound on total in-flight items (queued + processing + buffered) |
 | `QueuePolicy` | `BoundedQueuePolicy` | `Block` | What happens when queue is full |
 | `OutputBufferCapacity` | `int?` | `null` | Output buffer for end-to-end throttling |
-| `PreserveOrdering` | `bool` | `true` | Maintain input order in output |
+| `PreserveOrdering` | `bool` | `true` | Maintain input order in output via a reorder buffer |
 | `MetricsInterval` | `TimeSpan?` | `null` (1 second) | Metrics reporting interval |
+| `EnableInputWaitTiming` | `bool` | `false` | Opt-in per-item input-wait timing attribution |
 
 ### Workload Type Presets
 
@@ -99,6 +102,7 @@ builder
 | `DropNewestOnBackpressure()` | Discard incoming items |
 | `OutputBufferCapacity(int)` | Limit output buffer size |
 | `AllowUnorderedOutput()` | Disable order preservation |
+| `EnableInputWaitTiming()` | Opt in to per-item input-wait timing |
 | `MetricsInterval(TimeSpan)` | Set metrics reporting interval |
 
 ### Comparison: Configuration Methods
@@ -131,6 +135,10 @@ When item-level lineage is enabled and `LineageOptions.EmitBackpressureDropRecor
 Disable ordering when downstream processing doesn't depend on input order:
 
 ```csharp
+// Shorthand extension - blocking backpressure, no data loss, completion-order output
+transform.WithUnorderedParallelism(builder, maxDegreeOfParallelism: 16, maxQueueLength: 100);
+
+// Or via options
 builder.WithParallelOptions(transform, new ParallelOptions
 {
     MaxDegreeOfParallelism = 16,

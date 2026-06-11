@@ -6,6 +6,7 @@ using BenchmarkDotNet.Order;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
+using NPipeline.Extensions.Parallelism;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 using static NPipeline.Benchmarks.BenchmarkDataGenerators;
@@ -17,6 +18,10 @@ namespace NPipeline.Benchmarks.Benchmarks;
 [RankColumn]
 public class RealWorldWorkloadBenchmarks
 {
+    // Fixed degree of parallelism for the "parallel processing" variants. These benchmarks model a realistic
+    // pipeline at a representative concurrency level; DOP scaling is swept separately by ParallelismScalingBenchmarks.
+    private const int ParallelDegree = 4;
+
     private PipelineContext _ctx = null!;
     private PipelineRunner _runner = null!;
 
@@ -144,7 +149,8 @@ public class RealWorldWorkloadBenchmarks
             var src = b.AddSource<CsvDataSource, CsvRecord>("src");
             var parser = b.AddTransform<CsvParser, CsvRecord, CsvRecord>("parser");
             var validator = b.AddTransform<CsvValidator, CsvRecord, CsvRecord>("validator");
-            var enricher = b.AddTransform<CsvEnricher, CsvRecord, ProcessedCsvRecord>("enricher");
+            var enricher = b.AddTransform<CsvEnricher, CsvRecord, ProcessedCsvRecord>("enricher")
+                .WithBlockingParallelism(b, ParallelDegree);
             var sink = b.AddSink<CsvDataSink, ProcessedCsvRecord>("sink");
 
             b.Connect(src, parser).Connect(parser, validator).Connect(validator, enricher).Connect(enricher, sink);
@@ -158,7 +164,8 @@ public class RealWorldWorkloadBenchmarks
             var src = b.AddSource<JsonDataSource, JsonRecord>("src");
             var parser = b.AddTransform<JsonParser, JsonRecord, JsonRecord>("parser");
             var validator = b.AddTransform<JsonValidator, JsonRecord, JsonRecord>("validator");
-            var transformer = b.AddTransform<JsonTransformer, JsonRecord, ProcessedJsonRecord>("transformer");
+            var transformer = b.AddTransform<JsonTransformer, JsonRecord, ProcessedJsonRecord>("transformer")
+                .WithBlockingParallelism(b, ParallelDegree);
             var sink = b.AddSink<JsonDataSink, ProcessedJsonRecord>("sink");
 
             b.Connect(src, parser).Connect(parser, validator).Connect(validator, transformer).Connect(transformer, sink);

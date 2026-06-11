@@ -19,7 +19,6 @@ dotnet add package NPipeline.Extensions.Parallelism
 
 - **.NET 8.0**, **9.0**, or **10.0**
 - **NPipeline** core package
-- **System.Threading.Tasks.Dataflow** (automatically included for .NET 8.0)
 
 ## Execution Strategies
 
@@ -27,12 +26,12 @@ The package provides multiple execution strategies to handle different parallel 
 
 ### BlockingParallelStrategy
 
-The default strategy that preserves ordering and applies end-to-end backpressure using TPL Dataflow. This strategy is ideal for scenarios requiring flow control
-and ordered output.
+The default strategy built on lightweight channels with a fixed pool of worker tasks. It applies end-to-end backpressure and, by default, restores input
+ordering in its output via a reorder buffer. Ordering can be disabled per node for maximum throughput.
 
-- **Preserves input ordering** in output
+- **Preserves input ordering** in output by default (opt out with `WithUnorderedParallelism` or `AllowUnorderedOutput()`)
 - **Applies backpressure** to prevent memory buildup
-- **Configurable queue bounds** for input and output
+- **Configurable in-flight window** (`MaxQueueLength`) and output buffer bounds
 - **Best for**: Ordered processing, batch jobs, scenarios where data loss is unacceptable
 
 ### DropOldestParallelStrategy

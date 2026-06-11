@@ -1,6 +1,5 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
-using System.Threading.Tasks.Dataflow;
 using NPipeline.DataFlow;
 using NPipeline.DataFlow.DataStreams;
 using NPipeline.Execution;
@@ -11,9 +10,10 @@ using NPipeline.Pipeline;
 namespace NPipeline.Extensions.Parallelism;
 
 /// <summary>
-///     Parallel execution strategy using TPL Dataflow with blocking/backpressure semantics.
-///     This strategy preserves ordering and applies backpressure, making it suitable for
-///     scenarios requiring end-to-end flow control.
+///     Parallel execution strategy using lightweight channels with blocking/backpressure semantics.
+///     Items are fanned out to a fixed set of worker tasks and fanned back in through a single output channel.
+///     When <see cref="ParallelOptions.PreserveOrdering" /> is true (default), output is restored to input order
+///     by a reorder buffer; when false, results are emitted in completion order for maximum throughput.
 /// </summary>
 public class BlockingParallelStrategy : ParallelExecutionStrategyBase
 {
@@ -24,6 +24,12 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
     public BlockingParallelStrategy(int? maxDegreeOfParallelism = null) : base(maxDegreeOfParallelism)
     {
     }
+
+    /// <summary>
+    ///     Result envelope written by workers. Placeholder entries (<see cref="HasValue" /> = false) keep the
+    ///     sequence contiguous so the reorder buffer and the in-flight window can advance past skipped items.
+    /// </summary>
+    private readonly record struct SequencedResult<T>(long Sequence, bool HasValue, T Value);
 
     /// <inheritdoc />
     public override Task<IDataStream<TOut>> ExecuteAsync<TIn, TOut>(
@@ -36,10 +42,21 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         context.IsParallelExecution = true;
 
         // Capture a stable node id (PipelineRunner sets this prior to invoking the strategy). In parallel execution
-        // relying on context.CurrentNodeId inside the delegate would be racy if other nodes change it.
+        // relying on context.CurrentNodeId inside worker tasks would be racy if other nodes change it.
         var nodeId = context.CurrentNodeId;
         var observabilityScope = BeginNodeObservabilityScope(context, nodeId);
-        var timedInput = NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
+
+        // Resolve per-node parallel options if provided
+        ParallelOptions? parallelOptions = null;
+
+        if (context.NodeExecutionScopeRegistry.TryGetNodeExecutionAnnotation(nodeId, out var opt) && opt is ParallelOptions po)
+            parallelOptions = po;
+
+        // Input-wait timing is opt-in for parallel execution: the wait measured here is dominated by
+        // channel backpressure rather than upstream latency, and the per-item timestamps cost throughput.
+        var timedInput = parallelOptions?.EnableInputWaitTiming == true
+            ? NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope)
+            : input;
 
         // Capture the current activity for tagging observability metrics
         var currentActivity = context.Tracer.CurrentActivity;
@@ -49,18 +66,14 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         var logger = context.LoggerFactory.CreateLogger(nameof(BlockingParallelStrategy));
         ParallelExecutionStrategyLogMessages.FinalMaxRetries(logger, nodeId, effectiveRetries.MaxItemRetries);
 
-        // Resolve per-node parallel options if provided
-        ParallelOptions? parallelOptions = null;
-
-        if (context.NodeExecutionScopeRegistry.TryGetNodeExecutionAnnotation(nodeId, out var opt) && opt is ParallelOptions po)
-            parallelOptions = po;
-
         var effectiveDop = parallelOptions?.MaxDegreeOfParallelism ?? ConfiguredMaxDop ?? Environment.ProcessorCount;
-        var boundedCapacity = parallelOptions?.MaxQueueLength;
+        var windowSize = parallelOptions?.MaxQueueLength;
+        var outputCap = parallelOptions?.OutputBufferCapacity;
+        var preserveOrdering = parallelOptions?.PreserveOrdering ?? true;
         var observer = context.ExecutionObserver;
 
-        // Metrics only created for drop policies previously; extend to Block path for retry visibility.
-        ParallelExecutionMetrics? blockMetrics = null;
+        // Metrics for retry visibility.
+        ParallelExecutionMetrics blockMetrics;
 
         if (context.NodeExecutionScopeRegistry.TryGetRuntimeAnnotation(PipelineContextKeys.ParallelMetrics(nodeId), out var existingMetrics) &&
             existingMetrics is ParallelExecutionMetrics cached)
@@ -74,46 +87,57 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         // Create cached execution context once for all items (performance optimization)
         var cachedContext = CachedNodeExecutionContext.CreateWithRetryOptions(context, nodeId, effectiveRetries);
 
-        var transformBlock = new TransformBlock<IndexedWorkItem<TIn>, (bool hasValue, TOut value)>(async item =>
-            {
-                var result = await ExecuteWithRetryAsync(item.Item, node, context, cachedContext, blockMetrics, observer, item.LineageInputIndex);
+        // Input channel: single writer (feeder), many readers (workers).
+        // MaxQueueLength is enforced by the in-flight window semaphore below rather than by channel capacity.
+        // A window slot is taken when the feeder admits an item and released only when the consumer reads it
+        // (or when a worker skips it), so one bound covers every stage end to end: queued in the input channel,
+        // in-flight in a worker, buffered in the output channel, and parked in the reorder buffer.
+        var inputChannel = Channel.CreateUnbounded<IndexedWorkItem<TIn>>(new UnboundedChannelOptions
+        {
+            SingleWriter = true,
+            SingleReader = effectiveDop == 1,
+        });
 
-                return result is null
-                    ? (false, default!)
-                    : (true, result);
-            },
-            new ExecutionDataflowBlockOptions
+        // Bounds the number of items admitted but not yet handed to the consumer.
+        var window = windowSize is null
+            ? null
+            : new SemaphoreSlim(windowSize.Value, windowSize.Value);
+
+        // Output channel: many writers (workers), single reader (consumer).
+        var outputChannel = outputCap is null
+            ? Channel.CreateUnbounded<SequencedResult<TOut>>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = effectiveDop == 1 })
+            : Channel.CreateBounded<SequencedResult<TOut>>(new BoundedChannelOptions(outputCap.Value)
             {
-                MaxDegreeOfParallelism = effectiveDop,
-                CancellationToken = cancellationToken,
-                BoundedCapacity = boundedCapacity ?? DataflowBlockOptions.Unbounded,
-                EnsureOrdered = parallelOptions?.PreserveOrdering ?? true,
+                SingleReader = true,
+                SingleWriter = effectiveDop == 1,
+                FullMode = BoundedChannelFullMode.Wait,
             });
 
-        // Track high-water marks
+        // Cooperative fault propagation: the first failure cancels the feeder and sibling workers.
+        var faultCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        Exception? firstFault = null;
+
+        // Track high-water marks. These are approximate diagnostics sampled (without synchronization) from the
+        // producing/consuming threads and may understate the true peak backlog. Single-consumer unbounded
+        // channels do not support Count (CanCount is false), so sampling is gated on CanCount.
+        var canCountInput = inputChannel.Reader.CanCount;
+        var canCountOutput = outputChannel.Reader.CanCount;
         var inputHighWater = 0;
         var outputHighWater = 0;
-        var outputCap = parallelOptions?.OutputBufferCapacity; // capture once (may be null)
 
-        // Output channel (bounded when OutputBufferCapacity specified)
-        Channel<TOut> channel;
-
-        if (outputCap is null)
-            channel = Channel.CreateUnbounded<TOut>(new UnboundedChannelOptions { SingleReader = false, SingleWriter = true });
-        else
-        {
-            channel = Channel.CreateBounded<TOut>(new BoundedChannelOptions(outputCap.Value)
-            { SingleReader = false, SingleWriter = true, FullMode = BoundedChannelFullMode.Wait });
-        }
-
-        // Producer: feed block
-        _ = Task.Run(async () =>
+        // Feeder: enumerate upstream and admit items into the input channel.
+        var feeder = Task.Run(async () =>
         {
             try
             {
-                await foreach (var item in timedInput.WithCancellation(cancellationToken).ConfigureAwait(false))
+                long sequence = 0;
+
+                await foreach (var item in timedInput.WithCancellation(faultCts.Token).ConfigureAwait(false))
                 {
-                    observabilityScope?.IncrementProcessed();
+                    if (window is not null)
+                        await window.WaitAsync(faultCts.Token).ConfigureAwait(false);
+
+                    observabilityScope.IncrementProcessed();
 
                     var lineageInputIndex = LineageExecutionItemContext.TryGetCurrentInputIndex(out var currentInputIndex)
                         ? currentInputIndex
@@ -127,100 +151,217 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
                         ? currentMetadata.AncestryInputIndices
                         : null;
 
-                    // SendAsync applies backpressure based on transformBlock input capacity
-                    await transformBlock.SendAsync(new IndexedWorkItem<TIn>(item, lineageInputIndex, correlationId, ancestryInputIndices),
-                        cancellationToken);
-                    var count = transformBlock.InputCount;
+                    var work = new IndexedWorkItem<TIn>(item, lineageInputIndex, correlationId, ancestryInputIndices, sequence++);
 
-                    if (count > inputHighWater)
-                        inputHighWater = count;
+                    // The input channel is always unbounded and the feeder is its only writer, so TryWrite
+                    // never fails here; there is no bounded-capacity path that would require an async wait.
+                    _ = inputChannel.Writer.TryWrite(work);
+
+                    if (canCountInput)
+                    {
+                        var count = inputChannel.Reader.Count;
+
+                        if (count > inputHighWater)
+                            inputHighWater = count;
+                    }
                 }
-            }
-            finally
-            {
-                transformBlock.Complete();
-            }
-        }, cancellationToken);
 
-        // Drainer: move results to output channel honoring OutputBufferCapacity
+                _ = inputChannel.Writer.TryComplete();
+            }
+            catch (Exception ex)
+            {
+                // Record the source fault as the first fault before cancelling, so a sibling worker that
+                // observes the cancellation cannot overwrite it with an OperationCanceledException. Then stop
+                // the workers cooperatively and complete the input channel.
+                _ = Interlocked.CompareExchange(ref firstFault, ex, null);
+                faultCts.Cancel();
+                _ = inputChannel.Writer.TryComplete(ex);
+            }
+        }, CancellationToken.None);
+
+        // Workers: drain the input channel, transform items, write results to the output channel.
+        var workers = new Task[effectiveDop];
+
+        for (var i = 0; i < effectiveDop; i++)
+        {
+            workers[i] = Task.Run(async () =>
+            {
+                try
+                {
+                    await foreach (var work in inputChannel.Reader.ReadAllAsync(faultCts.Token).ConfigureAwait(false))
+                    {
+                        var result = await ExecuteWithRetryAsync(work.Item, node, context, cachedContext, blockMetrics, observer,
+                            work.LineageInputIndex, work.CorrelationId, work.AncestryInputIndices).ConfigureAwait(false);
+
+                        if (result is not null)
+                        {
+                            var envelope = new SequencedResult<TOut>(work.Sequence, true, result);
+
+                            if (!outputChannel.Writer.TryWrite(envelope))
+                                await outputChannel.Writer.WriteAsync(envelope, faultCts.Token).ConfigureAwait(false);
+                        }
+                        else if (preserveOrdering)
+                        {
+                            // Skipped item: emit a placeholder so the reorder buffer can advance past this sequence.
+                            var placeholder = new SequencedResult<TOut>(work.Sequence, false, default!);
+
+                            if (!outputChannel.Writer.TryWrite(placeholder))
+                                await outputChannel.Writer.WriteAsync(placeholder, faultCts.Token).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            // Unordered mode never sees this sequence again; release its window slot directly.
+                            _ = window?.Release();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _ = Interlocked.CompareExchange(ref firstFault, ex, null);
+                    faultCts.Cancel();
+                    throw;
+                }
+            }, CancellationToken.None);
+        }
+
+        // Completion: once the workers and the feeder have settled, complete the output channel. Faults from
+        // either side are recorded in firstFault, so the consumer always observes the first failure and the
+        // output channel is never completed successfully when a fault occurred.
         _ = Task.Run(async () =>
         {
             try
             {
-                while (await transformBlock.OutputAvailableAsync(cancellationToken))
-                {
-                    while (transformBlock.TryReceive(out var tuple))
-                    {
-                        if (tuple.hasValue)
-                        {
-                            observabilityScope?.IncrementEmitted();
-                            await channel.Writer.WriteAsync(tuple.value, cancellationToken);
-                        }
-                    }
-
-                    // We cannot directly read Channel count; approximate output backlog using block's OutputCount + InputCount
-                    var approxOut = transformBlock.OutputCount;
-
-                    if (approxOut > outputHighWater)
-                        outputHighWater = approxOut;
-                }
-
-                // Await completion explicitly to surface any fault (OutputAvailableAsync may return false without throwing when faulted & drained)
-                await transformBlock.Completion.ConfigureAwait(false);
+                await Task.WhenAll(workers).ConfigureAwait(false);
             }
-            catch (Exception ex)
+            catch
             {
-                channel.Writer.TryComplete(ex);
-                return;
+                // Worker faults are captured in firstFault by the worker catch block.
             }
 
-            channel.Writer.TryComplete();
-        }, cancellationToken);
+            // The feeder always completes normally (its own catch records the fault); awaiting it guarantees
+            // firstFault reflects a source fault before the output channel is finalized.
+            await feeder.ConfigureAwait(false);
 
-        return Task.FromResult<IDataStream<TOut>>(new DataStream<TOut>(ReadOut(cancellationToken)));
+            var fault = Volatile.Read(ref firstFault);
 
-        async IAsyncEnumerable<TOut> ReadOut([EnumeratorCancellation] CancellationToken ct)
+            _ = fault is not null
+                ? outputChannel.Writer.TryComplete(fault)
+                : outputChannel.Writer.TryComplete();
+
+            faultCts.Dispose();
+        }, CancellationToken.None);
+
+        var output = preserveOrdering
+            ? ReadOrdered(cancellationToken)
+            : ReadUnordered(cancellationToken);
+
+        return Task.FromResult<IDataStream<TOut>>(new DataStream<TOut>(output));
+
+        async IAsyncEnumerable<TOut> ReadOrdered([EnumeratorCancellation] CancellationToken ct)
         {
-            using var _ = observabilityScope;
+            using var scopeHandle = observabilityScope;
+
+            // Out-of-order completions parked until their sequence becomes current. Bounded by the in-flight
+            // window when MaxQueueLength is set; unbounded otherwise (same as unbounded queue semantics).
+            var pending = new Dictionary<long, SequencedResult<TOut>>();
+            long nextSequence = 0;
 
             try
             {
-                await foreach (var item in channel.Reader.ReadAllAsync(ct).ConfigureAwait(false))
+                await foreach (var result in outputChannel.Reader.ReadAllAsync(ct).ConfigureAwait(false))
                 {
-                    yield return item;
+                    SampleOutputHighWater();
+
+                    if (result.Sequence != nextSequence)
+                    {
+                        pending[result.Sequence] = result;
+                        continue;
+                    }
+
+                    var current = result;
+
+                    while (true)
+                    {
+                        nextSequence++;
+                        _ = window?.Release();
+
+                        if (current.HasValue)
+                        {
+                            observabilityScope.IncrementEmitted();
+                            yield return current.Value;
+                        }
+
+                        if (!pending.Remove(nextSequence, out current))
+                            break;
+                    }
                 }
             }
             finally
             {
-                // Tag high-water metrics on the current activity for observability
-                currentActivity?.SetTag("parallel.input.highwater", inputHighWater);
-                currentActivity?.SetTag("parallel.output.highwater", outputHighWater);
+                PublishCompletionMetrics();
+            }
+        }
 
-                if (outputCap is not null)
+        async IAsyncEnumerable<TOut> ReadUnordered([EnumeratorCancellation] CancellationToken ct)
+        {
+            using var scopeHandle = observabilityScope;
+
+            try
+            {
+                await foreach (var result in outputChannel.Reader.ReadAllAsync(ct).ConfigureAwait(false))
                 {
-                    currentActivity?.SetTag("parallel.output.capacity", outputCap.Value);
-                    context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsOutputCapacity(nodeId),
-                        outputCap.Value);
-                }
+                    SampleOutputHighWater();
 
-                // Store metrics in context.Items for downstream monitoring
-                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsInputHighWater(nodeId), inputHighWater);
-                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsOutputHighWater(nodeId), outputHighWater);
-
-                if (blockMetrics is not null)
-                {
-                    currentActivity?.SetTag("parallel.retry.events", blockMetrics.RetryEvents);
-                    currentActivity?.SetTag("parallel.retry.items", blockMetrics.ItemsWithRetry);
-                    currentActivity?.SetTag("parallel.retry.maxItemAttempts", blockMetrics.MaxItemRetryAttempts);
-
-                    context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsRetryEvents(nodeId),
-                        blockMetrics.RetryEvents);
-                    context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsRetryItems(nodeId),
-                        blockMetrics.ItemsWithRetry);
-                    context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsMaxItemRetryAttempts(nodeId),
-                        blockMetrics.MaxItemRetryAttempts);
+                    _ = window?.Release();
+                    observabilityScope.IncrementEmitted();
+                    yield return result.Value;
                 }
             }
+            finally
+            {
+                PublishCompletionMetrics();
+            }
+        }
+
+        void SampleOutputHighWater()
+        {
+            // Approximate, read-time sample of the output backlog (see the high-water comment above).
+            if (!canCountOutput)
+                return;
+
+            var backlog = outputChannel.Reader.Count;
+
+            if (backlog > outputHighWater)
+                outputHighWater = backlog;
+        }
+
+        void PublishCompletionMetrics()
+        {
+            // Tag high-water metrics on the current activity for observability
+            currentActivity?.SetTag("parallel.input.highwater", inputHighWater);
+            currentActivity?.SetTag("parallel.output.highwater", outputHighWater);
+
+            if (outputCap is not null)
+            {
+                currentActivity?.SetTag("parallel.output.capacity", outputCap.Value);
+                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsOutputCapacity(nodeId),
+                    outputCap.Value);
+            }
+
+            // Store metrics in runtime annotations for downstream monitoring
+            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsInputHighWater(nodeId), inputHighWater);
+            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsOutputHighWater(nodeId), outputHighWater);
+
+            currentActivity?.SetTag("parallel.retry.events", blockMetrics.RetryEvents);
+            currentActivity?.SetTag("parallel.retry.items", blockMetrics.ItemsWithRetry);
+            currentActivity?.SetTag("parallel.retry.maxItemAttempts", blockMetrics.MaxItemRetryAttempts);
+
+            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsRetryEvents(nodeId),
+                blockMetrics.RetryEvents);
+            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsRetryItems(nodeId),
+                blockMetrics.ItemsWithRetry);
+            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsMaxItemRetryAttempts(nodeId),
+                blockMetrics.MaxItemRetryAttempts);
         }
     }
 }
