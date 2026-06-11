@@ -39,11 +39,16 @@ public enum BoundedQueuePolicy
 ///     (default).
 /// </param>
 /// <param name="PreserveOrdering">
-///     When true (default), the Dataflow-based execution path preserves input ordering in its output. When false, ordering is not preserved,
-///     which can increase throughput. Note: drop-policy paths are inherently unordered.
+///     When true (default), the blocking execution path preserves input ordering in its output via a reorder buffer. When false, results are
+///     emitted in completion order, which increases throughput. Note: drop-policy paths are inherently unordered.
 /// </param>
 /// <param name="MetricsInterval">
 ///     The interval at which metrics are emitted for parallel execution. Defaults to 1 second.
+/// </param>
+/// <param name="EnableInputWaitTiming">
+///     When true, wraps the input stream to attribute upstream wait time to the node's input-wait timing bucket.
+///     Defaults to false for parallel execution because the measured wait is dominated by internal channel backpressure
+///     rather than upstream node latency, and the per-item timestamp overhead reduces throughput.
 /// </param>
 public sealed record ParallelOptions(
     int? MaxDegreeOfParallelism = null,
@@ -51,7 +56,8 @@ public sealed record ParallelOptions(
     BoundedQueuePolicy QueuePolicy = BoundedQueuePolicy.Block,
     int? OutputBufferCapacity = null,
     bool PreserveOrdering = true,
-    TimeSpan? MetricsInterval = null)
+    TimeSpan? MetricsInterval = null,
+    bool EnableInputWaitTiming = false)
 {
     /// <summary>
     ///     Gets the effective metrics interval, defaulting to 1 second if not specified.

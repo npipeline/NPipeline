@@ -601,8 +601,8 @@ public sealed class PipelineContext
     ///     Sets the CurrentNodeId for the duration of the returned disposable scope.
     /// </summary>
     /// <param name="nodeId">The ID of the node to set as current.</param>
-    /// <returns>An IDisposable that will restore the original node ID upon disposal.</returns>
-    public IDisposable ScopedNode(string nodeId)
+    /// <returns>A non-allocating disposable scope that restores the original node ID upon disposal.</returns>
+    public NodeScope ScopedNode(string nodeId)
     {
         return new NodeScope(this, nodeId);
     }
@@ -637,18 +637,25 @@ public sealed class PipelineContext
         }
     }
 
-    private sealed class NodeScope : IDisposable
+    /// <summary>
+    ///     Allocation-free disposable scope that sets <see cref="CurrentNodeId" /> for its lifetime
+    ///     and restores the previous node id on disposal.
+    /// </summary>
+    public readonly struct NodeScope : IDisposable
     {
         private readonly PipelineContext _context;
         private readonly string _previousNodeId;
 
-        public NodeScope(PipelineContext context, string newNodeId)
+        internal NodeScope(PipelineContext context, string newNodeId)
         {
             _context = context;
             _previousNodeId = context.CurrentNodeId;
             context.CurrentNodeId = newNodeId;
         }
 
+        /// <summary>
+        ///     Restores the previous node id.
+        /// </summary>
         public void Dispose()
         {
             _context.CurrentNodeId = _previousNodeId;

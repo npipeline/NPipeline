@@ -93,6 +93,12 @@ public class ParallelismScalingBenchmarks
         await _runner.RunAsync<BlockingParallelPipeline>(_ctx);
     }
 
+    [Benchmark(Description = "Blocking parallel strategy (unordered output)")]
+    public async Task ParallelStrategy_Unordered()
+    {
+        await _runner.RunAsync<UnorderedParallelPipeline>(_ctx);
+    }
+
     [Benchmark(Description = "Drop newest parallel strategy")]
     public async Task ParallelStrategy_DropNewest()
     {
@@ -201,6 +207,26 @@ public class ParallelismScalingBenchmarks
 
             var t = b.AddTransform<ProcessingTransform, int, ProcessedResult>("t")
                 .WithBlockingParallelism(b, parallelism);
+
+            var sink = b.AddSink<BlackHoleSink<ProcessedResult>, ProcessedResult>("sink");
+
+            _ = b.Connect(src, t);
+            _ = b.Connect(t, sink);
+        }
+    }
+
+    private sealed class UnorderedParallelPipeline : IPipelineDefinition
+    {
+        public void Define(PipelineBuilder b, PipelineContext c)
+        {
+            var parallelism = c.Parameters.TryGetValue("parallelism", out var p)
+                ? Convert.ToInt32(p)
+                : 1;
+
+            var src = b.AddSource<DataGeneratorSource, int>("src");
+
+            var t = b.AddTransform<ProcessingTransform, int, ProcessedResult>("t")
+                .WithUnorderedParallelism(b, parallelism);
 
             var sink = b.AddSink<BlackHoleSink<ProcessedResult>, ProcessedResult>("sink");
 

@@ -114,6 +114,48 @@ public static class ParallelNodeConfigurationExtensions
     }
 
     /// <summary>
+    ///     Configures unordered parallel execution for a transform node.
+    /// </summary>
+    /// <remarks>
+    ///     Like <see cref="WithBlockingParallelism{TIn,TOut}" /> this applies end-to-end backpressure and never drops items,
+    ///     but results are emitted in completion order rather than input order. Skipping the reorder buffer removes
+    ///     head-of-line blocking, which increases throughput for workloads with variable per-item latency.
+    /// </remarks>
+    /// <typeparam name="TIn">The input type of the transform node.</typeparam>
+    /// <typeparam name="TOut">The output type of the transform node.</typeparam>
+    /// <param name="handle">The transform node handle.</param>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="maxDegreeOfParallelism">Maximum degree of parallelism. If null, uses system processor count.</param>
+    /// <param name="maxQueueLength">Optional bounded in-flight item window for backpressure control.</param>
+    /// <param name="outputBufferCapacity">Optional maximum number of buffered results. Null means unbounded.</param>
+    /// <returns>The same transform node handle for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when builder is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when maxDegreeOfParallelism is &lt;= 0.</exception>
+    public static TransformNodeHandle<TIn, TOut> WithUnorderedParallelism<TIn, TOut>(
+        this TransformNodeHandle<TIn, TOut> handle,
+        PipelineBuilder builder,
+        int? maxDegreeOfParallelism = null,
+        int? maxQueueLength = null,
+        int? outputBufferCapacity = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        if (maxDegreeOfParallelism is not null and <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maxDegreeOfParallelism), "Max degree of parallelism must be positive.");
+
+        var options = new ParallelOptions(
+            maxDegreeOfParallelism,
+            maxQueueLength,
+            BoundedQueuePolicy.Block,
+            outputBufferCapacity,
+            PreserveOrdering: false);
+
+        builder.SetNodeExecutionOption(handle.Id, options);
+        builder.WithExecutionStrategy(handle, new BlockingParallelStrategy());
+        return handle;
+    }
+
+    /// <summary>
     ///     Configures drop-oldest parallel execution for a transform node.
     /// </summary>
     /// <remarks>
@@ -307,7 +349,10 @@ public static class ParallelNodeConfigurationExtensions
         var options = parallelBuilder.Build();
 
         builder.SetNodeExecutionOption(handle.Id, options);
-        builder.WithExecutionStrategy(handle, new BlockingParallelStrategy());
+
+        // Use the facade strategy so the configured queue policy (Block/DropOldest/DropNewest) selects
+        // the matching concrete strategy at execution time.
+        builder.WithExecutionStrategy(handle, new ParallelExecutionStrategy());
         return handle;
     }
 }

@@ -30,8 +30,9 @@ namespace NPipeline.Extensions.Parallelism
         /// <param name="LineageInputIndex">Optional lineage input index associated with the item.</param>
         /// <param name="CorrelationId">Optional correlation identifier associated with the item.</param>
         /// <param name="AncestryInputIndices">Optional contributor indices associated with the item.</param>
+        /// <param name="Sequence">Monotonically increasing input sequence number used to restore ordering.</param>
         protected readonly record struct IndexedWorkItem<T>(T Item, long? LineageInputIndex, Guid? CorrelationId = null,
-            int[]? AncestryInputIndices = null);
+            int[]? AncestryInputIndices = null, long Sequence = 0);
 
         /// <summary>
         ///     Gets the configured maximum degree of parallelism for the strategy.
