@@ -42,6 +42,7 @@ public sealed class PerItemRetryExecutorTests
                 maxItemRetries: 3,
                 hasLineageIndex: true,
                 lineageInputIndex: 0,
+                lineageOutcomeWriter: LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
                 itemActivity: activity,
                 CancellationToken.None);
 
@@ -87,6 +88,7 @@ public sealed class PerItemRetryExecutorTests
                 maxItemRetries: 2,
                 hasLineageIndex: true,
                 lineageInputIndex: 0,
+                lineageOutcomeWriter: LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
                 itemActivity: null,
                 CancellationToken.None);
 
@@ -130,6 +132,7 @@ public sealed class PerItemRetryExecutorTests
                 maxItemRetries: 3,
                 hasLineageIndex: true,
                 lineageInputIndex: 0,
+                lineageOutcomeWriter: LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
                 itemActivity: activity,
                 CancellationToken.None);
 
@@ -179,6 +182,7 @@ public sealed class PerItemRetryExecutorTests
                 maxItemRetries: 0,
                 hasLineageIndex: true,
                 lineageInputIndex: 0,
+                lineageOutcomeWriter: LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
                 itemActivity: null,
                 CancellationToken.None);
 
@@ -224,6 +228,7 @@ public sealed class PerItemRetryExecutorTests
                 maxItemRetries: 1,
                 hasLineageIndex: true,
                 lineageInputIndex: 0,
+                lineageOutcomeWriter: LineageNodeOutcomeRegistry.GetWriter(pipelineId, NodeId),
                 itemActivity: null,
                 CancellationToken.None);
 

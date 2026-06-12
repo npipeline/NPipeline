@@ -1,3 +1,4 @@
+using NPipeline.Execution.Lineage;
 using NPipeline.Nodes;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
@@ -45,6 +46,7 @@ internal interface IPerItemRetryExecutor
         int maxItemRetries,
         bool hasLineageIndex,
         long lineageInputIndex,
+        LineageNodeOutcomeWriter lineageOutcomeWriter,
         IPipelineActivity? itemActivity,
         CancellationToken cancellationToken);
 }

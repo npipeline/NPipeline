@@ -381,18 +381,26 @@ public class ParallelismScalingBenchmarks
 
     private sealed class ProcessingTransform : TransformNode<int, ProcessedResult>
     {
-        public override async Task<ProcessedResult> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
+        public override Task<ProcessedResult> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
-            // Simulate moderate processing work
-            await Task.Delay(1, cancellationToken);
+            // Simulate moderate CPU-bound processing work. A fixed spin (rather than Task.Delay) keeps the
+            // per-item cost deterministic and proportional to CPU time, so the benchmark measures parallel
+            // coordination and scaling rather than timer resolution (Task.Delay(1) quantizes to ~15ms and
+            // masks the strategy's actual fan-out/fan-in overhead).
+            var result = 0L;
 
-            return new ProcessedResult
+            for (var i = 0; i < 200; i++)
+            {
+                result += (long)Math.Sqrt((item + 1) * (i + 1));
+            }
+
+            return Task.FromResult(new ProcessedResult
             {
                 InputValue = item,
-                OutputValue = item * 2,
+                OutputValue = (int)result,
                 ProcessingTime = DateTime.UtcNow,
                 ThreadId = Thread.CurrentThread.ManagedThreadId,
-            };
+            });
         }
     }
 

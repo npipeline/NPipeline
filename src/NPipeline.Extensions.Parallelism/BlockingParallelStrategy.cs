@@ -87,16 +87,25 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         // Create cached execution context once for all items (performance optimization)
         var cachedContext = CachedNodeExecutionContext.CreateWithRetryOptions(context, nodeId, effectiveRetries);
 
-        // Input channel: single writer (feeder), many readers (workers).
+        // Input channels: one dedicated channel per worker (single writer = feeder, single reader = the owning
+        // worker). The feeder round-robins items across partitions. Giving each worker its own channel avoids the
+        // dequeue-lock and cache-line contention that a single shared multi-reader channel suffers when several
+        // workers race to read it; this is the primary fix for the parallel scaling regression. With effectiveDop
+        // of 1 this degenerates to a single single-reader channel, matching the previous fast path.
         // MaxQueueLength is enforced by the in-flight window semaphore below rather than by channel capacity.
         // A window slot is taken when the feeder admits an item and released only when the consumer reads it
-        // (or when a worker skips it), so one bound covers every stage end to end: queued in the input channel,
+        // (or when a worker skips it), so one bound covers every stage end to end: queued in an input channel,
         // in-flight in a worker, buffered in the output channel, and parked in the reorder buffer.
-        var inputChannel = Channel.CreateUnbounded<IndexedWorkItem<TIn>>(new UnboundedChannelOptions
+        var inputChannels = new Channel<IndexedWorkItem<TIn>>[effectiveDop];
+
+        for (var i = 0; i < effectiveDop; i++)
         {
-            SingleWriter = true,
-            SingleReader = effectiveDop == 1,
-        });
+            inputChannels[i] = Channel.CreateUnbounded<IndexedWorkItem<TIn>>(new UnboundedChannelOptions
+            {
+                SingleWriter = true,
+                SingleReader = true,
+            });
+        }
 
         // Bounds the number of items admitted but not yet handed to the consumer.
         var window = windowSize is null
@@ -118,9 +127,10 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         Exception? firstFault = null;
 
         // Track high-water marks. These are approximate diagnostics sampled (without synchronization) from the
-        // producing/consuming threads and may understate the true peak backlog. Single-consumer unbounded
-        // channels do not support Count (CanCount is false), so sampling is gated on CanCount.
-        var canCountInput = inputChannel.Reader.CanCount;
+        // producing/consuming threads and may understate the true peak backlog. Unbounded single-reader channels
+        // do not support Count (CanCount is false), so both samples are gated on CanCount. All partitions share
+        // the same options, so the first partition's CanCount is representative.
+        var canCountInput = inputChannels[0].Reader.CanCount;
         var canCountOutput = outputChannel.Reader.CanCount;
         var inputHighWater = 0;
         var outputHighWater = 0;
@@ -151,44 +161,56 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
                         ? currentMetadata.AncestryInputIndices
                         : null;
 
-                    var work = new IndexedWorkItem<TIn>(item, lineageInputIndex, correlationId, ancestryInputIndices, sequence++);
+                    var work = new IndexedWorkItem<TIn>(item, lineageInputIndex, correlationId, ancestryInputIndices, sequence);
 
-                    // The input channel is always unbounded and the feeder is its only writer, so TryWrite
-                    // never fails here; there is no bounded-capacity path that would require an async wait.
-                    _ = inputChannel.Writer.TryWrite(work);
+                    // Round-robin the item to a worker partition. The input channels are always unbounded and the
+                    // feeder is the only writer, so TryWrite never fails here; there is no bounded-capacity path
+                    // that would require an async wait.
+                    var partition = (int)(sequence % effectiveDop);
+                    sequence++;
+                    var partitionChannel = inputChannels[partition];
+                    _ = partitionChannel.Writer.TryWrite(work);
 
+                    // Cheap, feeder-thread-only sample of the partition backlog. Gated on CanCount because
+                    // unbounded single-reader channels do not support Count.
                     if (canCountInput)
                     {
-                        var count = inputChannel.Reader.Count;
+                        var count = partitionChannel.Reader.Count;
 
                         if (count > inputHighWater)
                             inputHighWater = count;
                     }
                 }
 
-                _ = inputChannel.Writer.TryComplete();
+                for (var i = 0; i < effectiveDop; i++)
+                    _ = inputChannels[i].Writer.TryComplete();
             }
             catch (Exception ex)
             {
                 // Record the source fault as the first fault before cancelling, so a sibling worker that
                 // observes the cancellation cannot overwrite it with an OperationCanceledException. Then stop
-                // the workers cooperatively and complete the input channel.
+                // the workers cooperatively and complete every input partition.
                 _ = Interlocked.CompareExchange(ref firstFault, ex, null);
                 faultCts.Cancel();
-                _ = inputChannel.Writer.TryComplete(ex);
+
+                for (var i = 0; i < effectiveDop; i++)
+                    _ = inputChannels[i].Writer.TryComplete(ex);
             }
         }, CancellationToken.None);
 
-        // Workers: drain the input channel, transform items, write results to the output channel.
+        // Workers: each drains its own input partition, transforms items, writes results to the output channel.
         var workers = new Task[effectiveDop];
 
         for (var i = 0; i < effectiveDop; i++)
         {
+            // Capture the partition reader for this worker; closing over the loop variable directly would be racy.
+            var reader = inputChannels[i].Reader;
+
             workers[i] = Task.Run(async () =>
             {
                 try
                 {
-                    await foreach (var work in inputChannel.Reader.ReadAllAsync(faultCts.Token).ConfigureAwait(false))
+                    await foreach (var work in reader.ReadAllAsync(faultCts.Token).ConfigureAwait(false))
                     {
                         var result = await ExecuteWithRetryAsync(work.Item, node, context, cachedContext, blockMetrics, observer,
                             work.LineageInputIndex, work.CorrelationId, work.AncestryInputIndices).ConfigureAwait(false);

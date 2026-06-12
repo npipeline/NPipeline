@@ -1,4 +1,5 @@
 using NPipeline.Configuration;
+using NPipeline.Execution.Lineage;
 using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
@@ -58,18 +59,21 @@ public readonly struct CachedNodeExecutionContext
     /// <param name="retryOptions">The effective retry options for this node.</param>
     /// <param name="tracingEnabled">Whether tracing is enabled.</param>
     /// <param name="loggingEnabled">Whether logging is enabled.</param>
+    /// <param name="lineageOutcomeWriter">The lineage outcome writer resolved once for this node execution.</param>
     /// <param name="cancellationToken">The cancellation token for this execution.</param>
     private CachedNodeExecutionContext(
         string nodeId,
         PipelineRetryOptions retryOptions,
         bool tracingEnabled,
         bool loggingEnabled,
+        LineageNodeOutcomeWriter lineageOutcomeWriter,
         CancellationToken cancellationToken)
     {
         NodeId = nodeId;
         RetryOptions = retryOptions;
         TracingEnabled = tracingEnabled;
         LoggingEnabled = loggingEnabled;
+        LineageOutcomeWriter = lineageOutcomeWriter;
         CancellationToken = cancellationToken;
     }
 
@@ -100,6 +104,13 @@ public readonly struct CachedNodeExecutionContext
     ///     Gets the cancellation token for this node execution.
     /// </summary>
     public CancellationToken CancellationToken { get; }
+
+    /// <summary>
+    ///     Gets the lineage outcome writer bound to this node's outcome store, resolved once at creation so
+    ///     per-item lineage recording avoids repeated registry lookups on the hot path. Inactive when the
+    ///     node is not tracking lineage.
+    /// </summary>
+    internal LineageNodeOutcomeWriter LineageOutcomeWriter { get; }
 
     /// <summary>
     ///     Creates a cached execution context from the current pipeline context.
@@ -172,6 +183,7 @@ public readonly struct CachedNodeExecutionContext
             effectiveRetries,
             tracingEnabled,
             loggingEnabled,
+            LineageNodeOutcomeRegistry.GetWriter(context.PipelineId, nodeId),
             context.CancellationToken);
     }
 
@@ -204,6 +216,7 @@ public readonly struct CachedNodeExecutionContext
             preResolvedRetryOptions,
             tracingEnabled,
             loggingEnabled,
+            LineageNodeOutcomeRegistry.GetWriter(context.PipelineId, nodeId),
             context.CancellationToken);
     }
 }

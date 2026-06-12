@@ -122,7 +122,7 @@ namespace NPipeline.Extensions.Parallelism
                 try
                 {
                     var output = await ExecuteNodeAsync(node, item, context, cached.CancellationToken).ConfigureAwait(false);
-                    RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, LineageOutcomeReason.Emitted, attempt);
+                    RecordLineageOutcome(lineageInputIndex, context, in cached, LineageOutcomeReason.Emitted, attempt);
                     return output;
                 }
                 catch (Exception ex)
@@ -143,12 +143,12 @@ namespace NPipeline.Extensions.Parallelism
                     switch (decision)
                     {
                         case ResilienceDecision.Skip:
-                            RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, LineageOutcomeReason.FilteredOut, attempt);
+                            RecordLineageOutcome(lineageInputIndex, context, in cached, LineageOutcomeReason.FilteredOut, attempt);
                             return default;
                         case ResilienceDecision.DeadLetter:
                             await TryDispatchDeadLetterAsync(item, ex, context, cached.NodeId, attempt, cached.CancellationToken)
                                 .ConfigureAwait(false);
-                            RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, LineageOutcomeReason.DeadLettered,
+                            RecordLineageOutcome(lineageInputIndex, context, in cached, LineageOutcomeReason.DeadLettered,
                                 attempt);
                             return default;
                         case ResilienceDecision.Retry:
@@ -156,7 +156,7 @@ namespace NPipeline.Extensions.Parallelism
                             {
                                 PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, ex, cached.RetryOptions.MaxItemRetries,
                                     correlationId, ancestryInputIndices);
-                                RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, LineageOutcomeReason.Error,
+                                RecordLineageOutcome(lineageInputIndex, context, in cached, LineageOutcomeReason.Error,
                                     cached.RetryOptions.MaxItemRetries);
                                 throw;
                             }
@@ -167,7 +167,7 @@ namespace NPipeline.Extensions.Parallelism
                             continue;
                         case ResilienceDecision.Fail:
                             PipelineSampleErrorReporter.TryRecordError(context, cached.NodeId, item, ex, attempt, correlationId, ancestryInputIndices);
-                            RecordLineageOutcome(lineageInputIndex, context, cached.NodeId, LineageOutcomeReason.Error, attempt);
+                            RecordLineageOutcome(lineageInputIndex, context, in cached, LineageOutcomeReason.Error, attempt);
                             throw;
                         default:
                             throw new InvalidOperationException($"Error handling failed for node {cached.NodeId} with decision {decision}.", ex);
@@ -201,7 +201,7 @@ namespace NPipeline.Extensions.Parallelism
             return context.ResiliencePolicy;
         }
 
-        private static void RecordLineageOutcome(long? lineageInputIndex, PipelineContext context, string nodeId,
+        private static void RecordLineageOutcome(long? lineageInputIndex, PipelineContext context, in CachedNodeExecutionContext cached,
             LineageOutcomeReason outcomeReason, int retryCount)
         {
             if (lineageInputIndex is null)
@@ -209,8 +209,19 @@ namespace NPipeline.Extensions.Parallelism
                 return;
             }
 
-            var normalizedRetryCount = Math.Max(0, retryCount);
-            LineageNodeOutcomeRegistry.Record(context.PipelineId, nodeId, lineageInputIndex.Value, outcomeReason, normalizedRetryCount);
+            var writer = cached.LineageOutcomeWriter;
+
+            if (writer.IsActive)
+            {
+                // Fast path: the node's outcome store was resolved once when the cached context was created,
+                // so this avoids the per-item (pipeline, node) lookup that is otherwise multiplied by the
+                // degree of parallelism on the worker threads.
+                writer.Record(lineageInputIndex.Value, outcomeReason, retryCount);
+                return;
+            }
+
+            // Fallback preserves behavior when the outcome store was not pre-resolved.
+            LineageNodeOutcomeRegistry.Record(context.PipelineId, cached.NodeId, lineageInputIndex.Value, outcomeReason, retryCount);
         }
 
         private static async Task TryDispatchDeadLetterAsync<TIn>(

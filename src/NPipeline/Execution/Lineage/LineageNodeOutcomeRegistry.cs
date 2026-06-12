@@ -17,6 +17,25 @@ internal static class LineageNodeOutcomeRegistry
     public static void Record(Guid pipelineId, string nodeId, long inputIndex, LineageOutcomeReason outcomeReason, int retryCount)
     {
         var nodeOutcomes = Outcomes.GetOrAdd((pipelineId, nodeId), static _ => new ConcurrentDictionary<long, LineageItemOutcome>());
+        RecordInto(nodeOutcomes, inputIndex, outcomeReason, retryCount);
+    }
+
+    /// <summary>
+    ///     Resolves a writer bound to a single node's outcome store so the per-item hot path can record
+    ///     outcomes without repeating the outer (pipeline, node) dictionary lookup. This lookup is otherwise
+    ///     multiplied by the degree of parallelism on parallel execution paths. Returns an inactive writer
+    ///     when the node is not currently tracking lineage.
+    /// </summary>
+    public static LineageNodeOutcomeWriter GetWriter(Guid pipelineId, string nodeId)
+    {
+        return Outcomes.TryGetValue((pipelineId, nodeId), out var nodeOutcomes)
+            ? new LineageNodeOutcomeWriter(nodeOutcomes)
+            : default;
+    }
+
+    internal static void RecordInto(ConcurrentDictionary<long, LineageItemOutcome> nodeOutcomes, long inputIndex,
+        LineageOutcomeReason outcomeReason, int retryCount)
+    {
         var normalizedRetryCount = Math.Max(0, retryCount);
 
         _ = nodeOutcomes.AddOrUpdate(
@@ -67,5 +86,39 @@ internal static class LineageNodeOutcomeRegistry
     public static void ClearNode(Guid pipelineId, string nodeId)
     {
         _ = Outcomes.TryRemove((pipelineId, nodeId), out _);
+    }
+}
+
+/// <summary>
+///     A lightweight handle bound to a single node's lineage outcome store, resolved once per node
+///     execution. Recording through this handle skips the per-item outer (pipeline, node) lookup that
+///     <see cref="LineageNodeOutcomeRegistry.Record" /> performs, which is significant on parallel hot
+///     paths where the call is multiplied by the degree of parallelism.
+/// </summary>
+internal readonly struct LineageNodeOutcomeWriter
+{
+    private readonly ConcurrentDictionary<long, LineageItemOutcome>? _nodeOutcomes;
+
+    internal LineageNodeOutcomeWriter(ConcurrentDictionary<long, LineageItemOutcome>? nodeOutcomes)
+    {
+        _nodeOutcomes = nodeOutcomes;
+    }
+
+    /// <summary>
+    ///     Gets a value indicating whether this writer is bound to an active outcome store.
+    /// </summary>
+    public bool IsActive => _nodeOutcomes is not null;
+
+    /// <summary>
+    ///     Records an outcome for the supplied input index. No-op when the writer is inactive.
+    /// </summary>
+    public void Record(long inputIndex, LineageOutcomeReason outcomeReason, int retryCount)
+    {
+        if (_nodeOutcomes is null)
+        {
+            return;
+        }
+
+        LineageNodeOutcomeRegistry.RecordInto(_nodeOutcomes, inputIndex, outcomeReason, retryCount);
     }
 }

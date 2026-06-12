@@ -23,6 +23,7 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
         int maxItemRetries,
         bool hasLineageIndex,
         long lineageInputIndex,
+        LineageNodeOutcomeWriter lineageOutcomeWriter,
         IPipelineActivity? itemActivity,
         CancellationToken cancellationToken)
     {
@@ -43,7 +44,7 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                            ?? new ValueTask<TOut>(node.TransformAsync(item, context, cancellationToken));
 
                 var output = await work.ConfigureAwait(false);
-                RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, LineageOutcomeReason.Emitted, attempt);
+                RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Emitted, attempt);
 
                 return ItemExecutionResult<TOut>.Emitted(output, attempt);
             }
@@ -60,12 +61,12 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                 switch (decision)
                 {
                     case ResilienceDecision.Skip:
-                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, LineageOutcomeReason.FilteredOut, attempt);
+                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.FilteredOut, attempt);
                         return ItemExecutionResult<TOut>.Skipped(attempt);
 
                     case ResilienceDecision.DeadLetter:
                         await TryDispatchDeadLetterAsync(item, ex, context, nodeId, attempt, cancellationToken).ConfigureAwait(false);
-                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, LineageOutcomeReason.DeadLettered, attempt);
+                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.DeadLettered, attempt);
                         return ItemExecutionResult<TOut>.DeadLettered(attempt);
 
                     case ResilienceDecision.Retry:
@@ -78,7 +79,7 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                                 ex);
 
                             PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, exhausted, maxItemRetries);
-                            RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, LineageOutcomeReason.Error, maxItemRetries);
+                            RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, maxItemRetries);
                             throw exhausted;
                         }
 
@@ -87,7 +88,7 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
 
                     case ResilienceDecision.Fail:
                         PipelineSampleErrorReporter.TryRecordError(context, nodeId, item, ex, attempt);
-                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, context, nodeId, LineageOutcomeReason.Error, attempt);
+                        RecordLineageOutcome(hasLineageIndex, lineageInputIndex, in lineageOutcomeWriter, context, nodeId, LineageOutcomeReason.Error, attempt);
                         throw;
 
                     default:
@@ -110,6 +111,7 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
     private static void RecordLineageOutcome(
         bool hasLineageIndex,
         long lineageInputIndex,
+        in LineageNodeOutcomeWriter lineageOutcomeWriter,
         PipelineContext context,
         string nodeId,
         LineageOutcomeReason outcomeReason,
@@ -118,8 +120,16 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
         if (!hasLineageIndex)
             return;
 
-        var normalizedRetryCount = Math.Max(0, retryCount);
-        LineageNodeOutcomeRegistry.Record(context.PipelineId, nodeId, lineageInputIndex, outcomeReason, normalizedRetryCount);
+        // Fast path: write through the node-scoped writer resolved once for this execution,
+        // skipping the per-item (pipeline, node) registry lookup. Retry-count normalization
+        // (Math.Max(0, ...)) is applied inside the registry for both paths.
+        if (lineageOutcomeWriter.IsActive)
+        {
+            lineageOutcomeWriter.Record(lineageInputIndex, outcomeReason, retryCount);
+            return;
+        }
+
+        LineageNodeOutcomeRegistry.Record(context.PipelineId, nodeId, lineageInputIndex, outcomeReason, retryCount);
     }
 
     private static async Task TryDispatchDeadLetterAsync<TIn>(

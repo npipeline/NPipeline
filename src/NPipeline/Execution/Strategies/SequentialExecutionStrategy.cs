@@ -114,6 +114,7 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
                             cached.RetryOptions.MaxItemRetries,
                             hasLineageIndex,
                             lineageInputIndex,
+                            cached.LineageOutcomeWriter,
                             itemActivity,
                             ct)
                         .ConfigureAwait(false);
