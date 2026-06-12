@@ -33,6 +33,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="Google.Apis.Auth" />
         <PackageReference Include="Snowflake.Data"/>
     </ItemGroup>
 
