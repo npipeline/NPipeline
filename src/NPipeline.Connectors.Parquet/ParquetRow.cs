@@ -219,11 +219,14 @@ public sealed class ParquetRow
 
         try
         {
-            if (targetType == typeof(string) && value is not null)
+            if (underlyingType == typeof(string) && value is not null)
                 return (T)(object)value.ToString()!;
 
             if (underlyingType == typeof(Guid) && value is string guidString)
                 return (T)(object)Guid.Parse(guidString);
+
+            if (underlyingType == typeof(Guid) && value is ReadOnlyMemory<char> guidMemory)
+                return (T)(object)Guid.Parse(guidMemory.Span);
 
             if (underlyingType == typeof(DateTime) && value is DateTimeOffset dto)
                 return (T)(object)dto.DateTime;

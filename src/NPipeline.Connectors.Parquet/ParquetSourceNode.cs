@@ -391,7 +391,8 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
         object valuesMemory;
         object? invocationResult;
 
-        if (clrType == typeof(string))
+        // Parquet.net 6.1.0+ normalizes string columns to ReadOnlyMemory<char>, so match both
+        if (clrType == typeof(string) || clrType == typeof(ReadOnlyMemory<char>))
         {
             typedValues = new string[rowCount];
             valuesMemory = new Memory<string>((string[])typedValues);
@@ -402,6 +403,18 @@ public sealed class ParquetSourceNode<T> : SourceNode<T>
                 ?? throw new InvalidOperationException("Could not find string ReadAsync overload on ParquetRowGroupReader");
 
             invocationResult = stringReadMethod.Invoke(rowGroupReader, [field, valuesMemory, null, cancellationToken]);
+        }
+        // Parquet.net 6.1.0+ normalizes byte[] columns to ReadOnlyMemory<byte>, so match both
+        if (clrType == typeof(byte[]) || clrType == typeof(ReadOnlyMemory<byte>))
+        {
+            typedValues = new byte[rowCount][];
+
+            var byteArrayReadMethod = typeof(ParquetRowGroupReader).GetMethod(
+                nameof(ParquetRowGroupReader.ReadAsync),
+                [typeof(DataField), typeof(Memory<byte[]>), typeof(Memory<int>?), typeof(CancellationToken)])
+                ?? throw new InvalidOperationException("Could not find byte[] ReadAsync overload on ParquetRowGroupReader");
+
+            invocationResult = byteArrayReadMethod.Invoke(rowGroupReader, [field, new Memory<byte[]>((byte[][])typedValues), null, cancellationToken]);
         }
         else
         {
