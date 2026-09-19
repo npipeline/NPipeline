@@ -6,6 +6,7 @@ using NPipeline.ErrorHandling;
 using NPipeline.Execution.Annotations;
 using NPipeline.Graph;
 using NPipeline.Lineage;
+using NPipeline.Observability.Logging;
 using NPipeline.Pipeline;
 using NPipeline.Resilience;
 
@@ -39,11 +40,26 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
         deadLetterSink = ApplyDeadLetterSinkDecorator(context, deadLetterSink);
         var resiliencePolicy = ResolveResiliencePolicy(overriddenGraph);
 
-        var lineageSink = overriddenGraph.Lineage.ItemLevelLineageEnabled
+        var itemLevelLineageEnabled = overriddenGraph.Lineage.ItemLevelLineageEnabled;
+
+        var lineageSink = itemLevelLineageEnabled
             ? ResolveLineageSink(overriddenGraph, context.LineageFactory, context)
             : null;
 
+        if (!itemLevelLineageEnabled)
+            WarnIfItemLevelLineageSinkIgnored(overriddenGraph, context);
+
         lineageSink = ApplyLineageSinkDecorator(context, lineageSink);
+
+        // Resolved only for item-level lineage: the collector is fed from the per-item record funnel.
+        // The tee is applied outside any caller-supplied decorator so the collector observes every record
+        // the run emits, regardless of how that decorator reshapes the sink.
+        var lineageCollector = itemLevelLineageEnabled
+            ? context.LineageFactory.ResolveLineageCollector()
+            : null;
+
+        if (lineageCollector is not null)
+            lineageSink = new CollectorTeeingLineageSink(lineageCollector, lineageSink);
 
         var pipelineLineageSink = ResolvePipelineLineageSink(overriddenGraph, context.LineageFactory, context);
 
@@ -52,7 +68,26 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
             deadLetterSink,
             lineageSink,
             pipelineLineageSink,
-            resiliencePolicy));
+            resiliencePolicy,
+            lineageCollector));
+    }
+
+    /// <summary>
+    ///     Warns when an item-level lineage sink is configured but item-level lineage is switched off, in which
+    ///     case the sink is never invoked. Pipeline-level sinks are unaffected: those report the graph structure
+    ///     and do not require item-level tracking.
+    /// </summary>
+    private static void WarnIfItemLevelLineageSinkIgnored(PipelineGraph graph, PipelineContext context)
+    {
+        var configuredSink = graph.Lineage.LineageSink?.GetType().Name
+                             ?? graph.Lineage.LineageSinkType?.Name
+                             ?? context.LineageSink?.GetType().Name;
+
+        if (configuredSink is null)
+            return;
+
+        var logger = context.LoggerFactory.CreateLogger(nameof(RuntimePipelineBinder));
+        RuntimePipelineBinderLogMessages.ItemLevelLineageSinkIgnored(logger, configuredSink);
     }
 
     private static IResiliencePolicy ResolveResiliencePolicy(PipelineGraph graph)
@@ -315,18 +350,14 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
             return context.PipelineLineageSink;
 
         // Provider-based default (no reflection):
-        // When item-level lineage is enabled and no explicit sink is configured,
-        // attempt to resolve a provider (supplied by optional packages like NPipeline.Lineage)
-        // and let it create the default sink.
-        if (graph.Lineage.ItemLevelLineageEnabled)
-        {
-            var provider = lineageFactory.ResolvePipelineLineageSinkProvider();
-            var provided = provider?.Create(context);
+        // When no explicit sink is configured, attempt to resolve a provider (supplied by optional packages
+        // like NPipeline.Lineage) and let it create the default sink. A provider is only present when the
+        // caller opted into lineage, so this does not turn reporting on for pipelines that never asked for it.
+        //
+        // Deliberately not gated on ItemLevelLineageEnabled: a PipelineLineageReport is derived purely from the
+        // graph (nodes, edges, declared types), so it costs nothing to produce and needs no per-item tracking.
+        var provider = lineageFactory.ResolvePipelineLineageSinkProvider();
 
-            if (provided is not null)
-                return provided;
-        }
-
-        return null;
+        return provider?.Create(context);
     }
 }

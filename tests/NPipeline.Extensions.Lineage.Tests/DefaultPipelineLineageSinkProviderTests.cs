@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using NPipeline.Configuration;
 using NPipeline.Lineage;
 using NPipeline.Pipeline;
@@ -210,6 +211,72 @@ public class DefaultPipelineLineageSinkProviderTests
         sink2.Should().NotBeNull();
         sink1.Should().NotBeSameAs(sink2);
         sink1!.GetHashCode().Should().NotBe(sink2!.GetHashCode());
+    }
+
+    [Fact]
+    public void Create_WithServiceProviderRegisteringSink_ShouldReturnRegisteredSink()
+    {
+        // Arrange
+        var registered = new StubPipelineLineageSink();
+        var services = new ServiceCollection();
+        services.AddScoped<IPipelineLineageSink>(_ => registered);
+
+        using var serviceProvider = services.BuildServiceProvider();
+        var provider = new DefaultPipelineLineageSinkProvider(serviceProvider);
+        var context = new PipelineContext();
+
+        // Act
+        var sink = provider.Create(context);
+
+        // Assert
+        sink.Should().BeSameAs(registered);
+    }
+
+    [Fact]
+    public void Create_WithServiceProviderWithoutSink_ShouldFallBackToLoggingSink()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        using var serviceProvider = services.BuildServiceProvider();
+        var provider = new DefaultPipelineLineageSinkProvider(serviceProvider);
+        var context = new PipelineContext();
+
+        // Act
+        var sink = provider.Create(context);
+
+        // Assert
+        sink.Should().BeOfType<LoggingPipelineLineageSink>();
+    }
+
+    [Fact]
+    public void Create_WithServiceProviderAndNullContext_ShouldReturnNull()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddScoped<IPipelineLineageSink>(_ => new StubPipelineLineageSink());
+
+        using var serviceProvider = services.BuildServiceProvider();
+        var provider = new DefaultPipelineLineageSinkProvider(serviceProvider);
+
+        // Act
+        var sink = provider.Create(null!);
+
+        // Assert
+        sink.Should().BeNull();
+    }
+
+    [Fact]
+    public void Constructor_WithNullServiceProvider_ShouldThrow()
+    {
+        // Act & Assert
+        var exception = Record.Exception(() => new DefaultPipelineLineageSinkProvider(null!));
+        exception.Should().BeOfType<ArgumentNullException>();
+    }
+
+    private sealed class StubPipelineLineageSink : IPipelineLineageSink
+    {
+        public Task RecordAsync(PipelineLineageReport report, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     [Fact]

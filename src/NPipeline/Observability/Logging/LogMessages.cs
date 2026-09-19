@@ -312,6 +312,18 @@ internal static partial class DefaultLineageFactoryLogMessages
 }
 
 /// <summary>
+///     Source-generated logging methods for runtime pipeline binding.
+/// </summary>
+[ExcludeFromCodeCoverage]
+internal static partial class RuntimePipelineBinderLogMessages
+{
+    [LoggerMessage(1, LogLevel.Warning,
+        "Item-level lineage sink {SinkType} is configured but item-level lineage is disabled, so it will never be invoked. "
+        + "Call builder.EnableItemLevelLineage() in the pipeline definition to enable per-item lineage records.")]
+    public static partial void ItemLevelLineageSinkIgnored(ILogger logger, string sinkType);
+}
+
+/// <summary>
 ///     Source-generated logging methods for pipeline context retry delay extensions.
 /// </summary>
 [ExcludeFromCodeCoverage]

@@ -83,7 +83,9 @@ public sealed class LineageService : ILineage
         ArgumentNullException.ThrowIfNull(graph);
         ArgumentNullException.ThrowIfNull(context);
 
-        if (!graph.Lineage.ItemLevelLineageEnabled || pipelineLineageSink is null)
+        // Not gated on ItemLevelLineageEnabled: a PipelineLineageReport describes the graph (nodes, edges and
+        // declared types), not individual items, so registering a pipeline lineage sink is enough on its own.
+        if (pipelineLineageSink is null)
             return;
 
         var runId = context.RunId == Guid.Empty

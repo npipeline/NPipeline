@@ -107,6 +107,9 @@ public sealed class RuntimePipelineBinderTests
         _ = A.CallTo(() => lineageFactory.CreateLineageSink(typeof(TestLineageSink)))
             .Returns(resolvedLineageSink);
 
+        // No collector registered, so the decorated sink is used directly.
+        _ = A.CallTo(() => lineageFactory.ResolveLineageCollector()).Returns(null);
+
         var context = new PipelineContext(new PipelineContextConfiguration(
             LineageFactory: lineageFactory));
 
@@ -118,8 +121,68 @@ public sealed class RuntimePipelineBinderTests
 
         // Assert
         _ = result.LineageSink.Should().BeSameAs(decoratedLineageSink);
+        _ = result.LineageCollector.Should().BeNull();
         _ = A.CallTo(() => lineageFactory.CreateLineageSink(typeof(TestLineageSink)))
             .MustHaveHappenedOnceExactly();
+    }
+
+    [Fact]
+    public async Task BindAsync_ItemLevelLineageEnabledWithCollector_TeesRecordsIntoCollector()
+    {
+        // Arrange
+        var graph = CreateGraph(
+            itemLevelLineageEnabled: true,
+            lineageSinkType: typeof(TestLineageSink));
+
+        var lineageFactory = A.Fake<ILineageFactory>();
+        var resolvedLineageSink = A.Fake<ILineageSink>();
+        var collector = A.Fake<ILineageCollector>();
+
+        _ = A.CallTo(() => lineageFactory.CreateLineageSink(typeof(TestLineageSink)))
+            .Returns(resolvedLineageSink);
+
+        _ = A.CallTo(() => lineageFactory.ResolveLineageCollector()).Returns(collector);
+
+        var context = new PipelineContext(new PipelineContextConfiguration(
+            LineageFactory: lineageFactory));
+
+        // Act
+        var result = await _binder.BindAsync(graph, context);
+
+        // Assert
+        _ = result.LineageCollector.Should().BeSameAs(collector);
+
+        var tee = result.LineageSink.Should().BeOfType<CollectorTeeingLineageSink>().Subject;
+        _ = tee.Inner.Should().BeSameAs(resolvedLineageSink);
+
+        // The tee forwards to both the collector and the configured sink.
+        var record = new LineageRecord(Guid.NewGuid(), "node", Guid.NewGuid(), LineageOutcomeReason.Emitted, false, ["node"]);
+        await tee.RecordAsync(record, CancellationToken.None);
+
+        A.CallTo(() => collector.Record(A<LineageRecord>._)).MustHaveHappenedOnceExactly();
+        _ = A.CallTo(() => resolvedLineageSink.RecordAsync(record, A<CancellationToken>._)).MustHaveHappenedOnceExactly();
+    }
+
+    [Fact]
+    public async Task BindAsync_ItemLevelLineageDisabled_DoesNotResolveCollector()
+    {
+        // Arrange
+        var graph = CreateGraph(itemLevelLineageEnabled: false);
+
+        var lineageFactory = A.Fake<ILineageFactory>();
+        var collector = A.Fake<ILineageCollector>();
+        _ = A.CallTo(() => lineageFactory.ResolveLineageCollector()).Returns(collector);
+
+        var context = new PipelineContext(new PipelineContextConfiguration(
+            LineageFactory: lineageFactory));
+
+        // Act
+        var result = await _binder.BindAsync(graph, context);
+
+        // Assert
+        _ = result.LineageCollector.Should().BeNull();
+        _ = result.LineageSink.Should().BeNull();
+        A.CallTo(() => lineageFactory.ResolveLineageCollector()).MustNotHaveHappened();
     }
 
     [Fact]

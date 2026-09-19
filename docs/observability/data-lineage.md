@@ -18,12 +18,31 @@ dotnet add package NPipeline.Extensions.Lineage
 
 ## Setup
 
+Lineage has two independent levels. Turn on only what you need.
+
+### Pipeline-level reports
+
+A `PipelineLineageReport` describes the graph — nodes, edges and declared types — so it needs no per-item
+tracking. Registering the extension is enough:
+
 ```csharp
 services.AddNPipeline(Assembly.GetExecutingAssembly());
 services.AddNPipelineLineage(); // logs lineage reports via ILogger
 ```
 
-Enable item-level lineage in the pipeline definition:
+To send reports somewhere else, register your own sink. Either of these works on its own:
+
+```csharp
+// Through DI, for every pipeline in the application:
+services.AddNPipelineLineage(sp => new MyPipelineLineageSink());
+
+// Or per pipeline, in the definition:
+builder.AddPipelineLineageSink<MyPipelineLineageSink>();
+```
+
+### Item-level lineage
+
+Per-item tracking wraps every item at every node, so it is opt-in per pipeline:
 
 ```csharp
 public void Define(PipelineBuilder builder, PipelineContext context)
@@ -33,11 +52,14 @@ public void Define(PipelineBuilder builder, PipelineContext context)
 }
 ```
 
+An `ILineageSink` (item-level) is only invoked when item-level lineage is enabled. Configuring one without
+calling `EnableItemLevelLineage()` logs a warning, because the sink would otherwise never fire.
+
 ## What Gets Tracked
 
 ### Pipeline-Level Lineage
 
-After each run, a `PipelineLineageReport` is generated containing:
+After each run, a `PipelineLineageReport` is generated — no `EnableItemLevelLineage()` required — containing:
 
 - Pipeline name, ID, and run ID
 - All nodes with type information (`NodeLineageInfo`: ID, type name, input/output types)
@@ -150,14 +172,19 @@ public class DatabaseLineageSink : IPipelineLineageSink
 
 ## Querying Lineage
 
-Access the `LineageCollector` to query lineage data during or after execution:
+`context.LineageCollector` is populated when item-level lineage is enabled and an `ILineageCollector` is
+registered (`AddNPipelineLineage()` registers one). It receives the same records as any configured
+`ILineageSink`, so you can query a run instead of streaming it:
 
 ```csharp
-var collector = context.LineageCollector;
+var collector = context.LineageCollector; // null unless item-level lineage is enabled
 var history = collector.GetCorrelationHistory(correlationId);
 var unresolved = collector.GetUnresolvedCorrelations();
 var allRecords = collector.GetAllRecords();
 ```
+
+The collector holds every record for the lifetime of the run, so memory grows with the number of tracked
+items. On high-volume pipelines, sample via `LineageOptions` or use a sink instead.
 
 ## Performance Tuning
 

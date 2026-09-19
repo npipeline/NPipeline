@@ -28,9 +28,11 @@ public interface IRuntimePipelineBinder
 /// <param name="LineageSink">Resolved item-level lineage sink (if any).</param>
 /// <param name="PipelineLineageSink">Resolved pipeline-level lineage sink (if any).</param>
 /// <param name="ResiliencePolicy">Resolved resilience policy for execution.</param>
+/// <param name="LineageCollector">Resolved item-level lineage collector (if any).</param>
 public readonly record struct RuntimePipelineBindingResult(
     PipelineGraph Graph,
     IDeadLetterSink? DeadLetterSink,
     ILineageSink? LineageSink,
     IPipelineLineageSink? PipelineLineageSink,
-    IResiliencePolicy ResiliencePolicy);
+    IResiliencePolicy ResiliencePolicy,
+    ILineageCollector? LineageCollector = null);
