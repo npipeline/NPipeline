@@ -5,15 +5,93 @@ on:
     branches:
       - "**"
 
+# A newer push to the same branch makes an in-flight run obsolete.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 env:
-  DOTNET_VERSION: "10.0.x"
-  TESTCONTAINERS_REUSE_ENABLED: "true"
+  DOTNET_VERSION: |
+    8.0.x
+    9.0.x
+    10.0.x
 
 jobs:
-  build-test:
-    name: Build and Test
+  changes:
+    name: Detect Changes
     runs-on: ubuntu-latest
+    outputs:
+      suites: ${{ steps.detect.outputs.suites }}
+      reason: ${{ steps.detect.outputs.reason }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
+      - name: Select integration suites to run
+        id: detect
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          run_all() {
+            echo "reason=$1" >> "$GITHUB_OUTPUT"
+            echo "suites=$(jq -c . .github/ci-suites.json)" >> "$GITHUB_OUTPUT"
+            echo "Running all integration suites: $1"
+            exit 0
+          }
+
+          # main is the integration point - never narrow the run there.
+          [ "${{ github.ref }}" = "refs/heads/main" ] && run_all "push to main"
+
+          BASE=""
+          if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] \
+             && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            BASE="$BEFORE"
+          else
+            BASE="$(git merge-base origin/main HEAD 2>/dev/null || true)"
+          fi
+          [ -z "$BASE" ] && run_all "no usable base commit"
+
+          CHANGED="$(git diff --name-only "$BASE" HEAD)"
+          [ -z "$CHANGED" ] && run_all "empty diff against $BASE"
+
+          echo "Changed files:"
+          echo "$CHANGED" | sed 's/^/  /'
+
+          # Paths that cannot affect any integration test.
+          IGNORED='^(docs/|plans/|samples/|benchmarks/|[^/]*\.md$|LICENSE|icon\.png|\.gitignore)'
+
+          MATCHED="[]"
+          UNOWNED=0
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            if echo "$file" | grep -Eq "$IGNORED"; then
+              continue
+            fi
+            OWNERS="$(jq -c --arg f "$file" \
+              '[.[] | select(.paths | any(. as $p | $f | startswith($p)))]' .github/ci-suites.json)"
+            if [ "$(echo "$OWNERS" | jq 'length')" -eq 0 ]; then
+              # Nothing owns this file - it may be core, so every suite is at risk.
+              echo "Unowned change: $file"
+              UNOWNED=1
+              break
+            fi
+            MATCHED="$(jq -c -n --argjson a "$MATCHED" --argjson b "$OWNERS" \
+              '($a + $b) | unique_by(.name)')"
+          done <<< "$CHANGED"
+
+          [ "$UNOWNED" -eq 1 ] && run_all "change outside any single suite"
+
+          echo "reason=suite-scoped change" >> "$GITHUB_OUTPUT"
+          echo "suites=$MATCHED" >> "$GITHUB_OUTPUT"
+          echo "Selected suites: $(echo "$MATCHED" | jq -r '[.[].name] | join(", ") | if . == "" then "(none)" else . end')"
+
+  unit-tests:
+    name: Build and Unit Tests
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -33,12 +111,100 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nuget-
 
+      - name: Verify suite manifest covers every container-based test project
+        run: |
+          set -euo pipefail
+          MISSING=0
+          for proj in $(grep -l -i "testcontainers" tests/*/*.csproj); do
+            if ! jq -e --arg p "$proj" 'any(.[]; .test == $p)' .github/ci-suites.json >/dev/null; then
+              echo "::error file=$proj::Uses Testcontainers but is not registered in .github/ci-suites.json"
+              MISSING=1
+            fi
+          done
+          exit $MISSING
+
       - name: Restore dependencies
         run: dotnet restore
 
       - name: Build solution
         run: dotnet build --no-restore --configuration Release
 
-      - name: Run tests
-        run: dotnet test --no-build --configuration Release --verbosity normal
+      - name: Run unit tests
+        run: |
+          set -euo pipefail
+          INTEGRATION=""
+          while IFS= read -r line; do
+            INTEGRATION="$INTEGRATION $line"
+          done < <(jq -r '.[].test' .github/ci-suites.json)
 
+          FAILED=""
+          for proj in tests/*/*.csproj; do
+            # Skip shared helper libraries that contain no tests.
+            grep -qi "Microsoft.NET.Test.Sdk\|IsTestProject" "$proj" || continue
+            # Skip suites that run in the integration matrix.
+            case " $INTEGRATION " in *" $proj "*) continue ;; esac
+            echo "::group::$proj"
+            dotnet test "$proj" --no-build --configuration Release --verbosity normal \
+              || FAILED="$FAILED $proj"
+            echo "::endgroup::"
+          done
+
+          if [ -n "$FAILED" ]; then
+            echo "::error::Failed test projects:$FAILED"
+            exit 1
+          fi
+          echo "All unit test projects passed."
+
+  integration-tests:
+    name: Integration (${{ matrix.suite.name }})
+    needs: changes
+    if: needs.changes.outputs.suites != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: ${{ fromJSON(needs.changes.outputs.suites) }}
+    env:
+      TESTCONTAINERS_REUSE_ENABLED: "true"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # Needed for source link
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      # Builds only this suite's project graph, not all 150 projects.
+      - name: Run integration tests
+        run: dotnet test ${{ matrix.suite.test }} --configuration Release --verbosity normal
+
+  ci:
+    name: CI
+    needs: [changes, unit-tests, integration-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results
+        run: |
+          echo "Suite selection: ${{ needs.changes.outputs.reason }}"
+          echo "changes:            ${{ needs.changes.result }}"
+          echo "unit-tests:         ${{ needs.unit-tests.result }}"
+          echo "integration-tests:  ${{ needs.integration-tests.result }}"
+          for r in "${{ needs.changes.result }}" "${{ needs.unit-tests.result }}" "${{ needs.integration-tests.result }}"; do
+            case "$r" in
+              success|skipped) ;;
+              *) echo "::error::A required job did not succeed."; exit 1 ;;
+            esac
+          done
+          echo "All required jobs passed."

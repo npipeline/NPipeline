@@ -1,0 +1,52 @@
+[
+  {
+    "name": "Connectors.Azure.CosmosDb",
+    "test": "tests/NPipeline.Connectors.Azure.CosmosDb.Tests/NPipeline.Connectors.Azure.CosmosDb.Tests.csproj",
+    "paths": ["src/NPipeline.Connectors.Azure.CosmosDb/", "tests/NPipeline.Connectors.Azure.CosmosDb.Tests/"]
+  },
+  {
+    "name": "Connectors.Azure.ServiceBus",
+    "test": "tests/NPipeline.Connectors.Azure.ServiceBus.Tests/NPipeline.Connectors.Azure.ServiceBus.Tests.csproj",
+    "paths": ["src/NPipeline.Connectors.Azure.ServiceBus/", "tests/NPipeline.Connectors.Azure.ServiceBus.Tests/"]
+  },
+  {
+    "name": "Connectors.Kafka",
+    "test": "tests/NPipeline.Connectors.Kafka.Tests/NPipeline.Connectors.Kafka.Tests.csproj",
+    "paths": ["src/NPipeline.Connectors.Kafka/", "tests/NPipeline.Connectors.Kafka.Tests/"]
+  },
+  {
+    "name": "Connectors.MongoDB",
+    "test": "tests/NPipeline.Connectors.MongoDB.Tests/NPipeline.Connectors.MongoDB.Tests.csproj",
+    "paths": ["src/NPipeline.Connectors.MongoDB/", "tests/NPipeline.Connectors.MongoDB.Tests/"]
+  },
+  {
+    "name": "Connectors.MySQL",
+    "test": "tests/NPipeline.Connectors.MySQL.Tests/NPipeline.Connectors.MySQL.Tests.csproj",
+    "paths": ["src/NPipeline.Connectors.MySQL/", "tests/NPipeline.Connectors.MySQL.Tests/"]
+  },
+  {
+    "name": "Connectors.Postgres",
+    "test": "tests/NPipeline.Connectors.Postgres.Tests/NPipeline.Connectors.Postgres.Tests.csproj",
+    "paths": ["src/NPipeline.Connectors.Postgres/", "tests/NPipeline.Connectors.Postgres.Tests/"]
+  },
+  {
+    "name": "Connectors.RabbitMQ",
+    "test": "tests/NPipeline.Connectors.RabbitMQ.Tests/NPipeline.Connectors.RabbitMQ.Tests.csproj",
+    "paths": ["src/NPipeline.Connectors.RabbitMQ/", "tests/NPipeline.Connectors.RabbitMQ.Tests/"]
+  },
+  {
+    "name": "Connectors.SqlServer",
+    "test": "tests/NPipeline.Connectors.SqlServer.Tests/NPipeline.Connectors.SqlServer.Tests.csproj",
+    "paths": ["src/NPipeline.Connectors.SqlServer/", "tests/NPipeline.Connectors.SqlServer.Tests/"]
+  },
+  {
+    "name": "StorageProviders.Adls",
+    "test": "tests/NPipeline.StorageProviders.Adls.Tests/NPipeline.StorageProviders.Adls.Tests.csproj",
+    "paths": ["src/NPipeline.StorageProviders.Adls/", "tests/NPipeline.StorageProviders.Adls.Tests/"]
+  },
+  {
+    "name": "StorageProviders.Azure",
+    "test": "tests/NPipeline.StorageProviders.Azure.Tests/NPipeline.StorageProviders.Azure.Tests.csproj",
+    "paths": ["src/NPipeline.StorageProviders.Azure/", "tests/NPipeline.StorageProviders.Azure.Tests/"]
+  }
+]
