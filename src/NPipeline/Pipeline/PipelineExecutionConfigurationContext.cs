@@ -64,10 +64,35 @@ public sealed class PipelineExecutionConfigurationContext
     /// </summary>
     public bool IsParallelExecution { get; internal set; }
 
+    private RetryExhaustedException? _lastRetryExhaustedException;
+
     /// <summary>
-    ///     The last retry-exhausted exception observed in the pipeline.
+    ///     The most recent retry-exhausted exception reported by a node, awaiting consumption by error handling.
     /// </summary>
-    public RetryExhaustedException? LastRetryExhaustedException { get; internal set; }
+    /// <remarks>
+    ///     This is a hand-off slot, not a run-scoped record. It is written when a node exhausts its retries and taken
+    ///     by the first error handler that reports a failure, so that the downstream failure caused by the truncated
+    ///     stream carries the real root cause. Leaving it set would attribute the earlier node's message and inner
+    ///     exception to every later failure in the run. Use <see cref="TakeLastRetryExhaustedException" /> to consume
+    ///     it; reading this property does not clear it.
+    /// </remarks>
+    public RetryExhaustedException? LastRetryExhaustedException
+    {
+        get => Volatile.Read(ref _lastRetryExhaustedException);
+        internal set => Volatile.Write(ref _lastRetryExhaustedException, value);
+    }
+
+    /// <summary>
+    ///     Atomically takes the pending retry-exhausted exception, clearing the slot.
+    /// </summary>
+    /// <returns>The pending exception, or <see langword="null" /> if none is pending.</returns>
+    /// <remarks>
+    ///     Atomic so that two nodes failing concurrently cannot both report the same root cause.
+    /// </remarks>
+    internal RetryExhaustedException? TakeLastRetryExhaustedException()
+    {
+        return Interlocked.Exchange(ref _lastRetryExhaustedException, null);
+    }
 
     internal ICircuitBreakerManager? CircuitBreakerManager { get; set; }
 }

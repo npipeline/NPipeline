@@ -3,6 +3,7 @@ using NPipeline.Execution.Annotations;
 using NPipeline.ErrorHandling;
 using NPipeline.Lineage;
 using NPipeline.Nodes;
+using NPipeline.Observability.Logging;
 using NPipeline.Observability.Tracing;
 using NPipeline.Pipeline;
 using NPipeline.Resilience;
@@ -84,6 +85,11 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                         }
 
                         itemActivity?.SetTag("retry.attempt", attempt.ToString());
+
+                        // Back off before retrying. Without this the configured delay strategy - exponential
+                        // backoff, jitter, the composite - is inert for item-level retries and the pipeline spins
+                        // against an already-struggling dependency as fast as the CPU allows.
+                        await ApplyRetryDelayAsync(policy, context, nodeId, attempt, cancellationToken).ConfigureAwait(false);
                         continue;
 
                     case ResilienceDecision.Fail:
@@ -96,6 +102,36 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
                 }
             }
         }
+    }
+
+    private static async Task ApplyRetryDelayAsync(
+        IResiliencePolicy policy,
+        PipelineContext context,
+        string nodeId,
+        int attempt,
+        CancellationToken cancellationToken)
+    {
+        var logger = context.LoggerFactory.CreateLogger(nameof(PerItemRetryExecutor));
+        TimeSpan delay;
+
+        try
+        {
+            delay = await policy.GetRetryDelayAsync(context, attempt, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            // A broken delay strategy must not break the retry itself. Cancellation of the pipeline's own token is
+            // excluded by the filter so it propagates rather than being swallowed here.
+            PerItemRetryExecutorLogMessages.RetryDelayFailed(logger, ex, nodeId);
+            return;
+        }
+
+        if (delay <= TimeSpan.Zero)
+            return;
+
+        PerItemRetryExecutorLogMessages.ApplyingRetryDelay(logger, delay.TotalMilliseconds, nodeId, attempt);
+
+        await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
     }
 
     private static IResiliencePolicy ResolveResiliencePolicy(PipelineContext context, string nodeId)

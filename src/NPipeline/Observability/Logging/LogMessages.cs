@@ -282,6 +282,19 @@ internal static partial class ErrorHandlingServiceLogMessages
 }
 
 /// <summary>
+///     Source-generated logging methods for item-level retry operations.
+/// </summary>
+[ExcludeFromCodeCoverage]
+internal static partial class PerItemRetryExecutorLogMessages
+{
+    [LoggerMessage(1, LogLevel.Debug, "Applying retry delay of {Delay}ms for item on node {NodeId} before attempt {Attempt}")]
+    public static partial void ApplyingRetryDelay(ILogger logger, double delay, string nodeId, int attempt);
+
+    [LoggerMessage(2, LogLevel.Warning, "Failed to apply item retry delay for node {NodeId}. Continuing with retry without delay.")]
+    public static partial void RetryDelayFailed(ILogger logger, Exception exception, string nodeId);
+}
+
+/// <summary>
 ///     Source-generated logging methods for persistence service operations.
 /// </summary>
 [ExcludeFromCodeCoverage]

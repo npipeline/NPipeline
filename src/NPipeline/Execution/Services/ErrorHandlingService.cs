@@ -116,11 +116,9 @@ public sealed class ErrorHandlingService : IErrorHandlingService
             // This handles cases where an upstream node failed with RetryExhaustedException but the current node
             // is seeing a different exception (like InvalidOperationException) when trying to process the data
 
-            if (context.LastRetryExhaustedException is RetryExhaustedException contextRetryEx)
-            {
-                // Use the RetryExhaustedException from context as the inner exception
+            // Taken, not read: leaving it set would attribute this node's root cause to every later failure too.
+            if (context.TakeLastRetryExhaustedException() is { } contextRetryEx)
                 throw new NodeExecutionException(nodeDef.Id, contextRetryEx.Message, contextRetryEx);
-            }
 
             // SECOND PRIORITY: Check if the exception or any of its inner exceptions is a RetryExhaustedException
             var currentException = ex;
@@ -204,12 +202,9 @@ public sealed class ErrorHandlingService : IErrorHandlingService
 
             lastException = ex;
 
-            // Check if there's a RetryExhaustedException in the context after each retry attempt
-            if (context.LastRetryExhaustedException is RetryExhaustedException contextRetryEx)
-            {
-                // Use the RetryExhaustedException from the context as the inner exception
+            // Check whether a node exhausted its retries and left the root cause for us to report.
+            if (context.TakeLastRetryExhaustedException() is { } contextRetryEx)
                 throw new NodeExecutionException(nodeDefinition.Id, contextRetryEx.Message, contextRetryEx);
-            }
         }
 
         // Retry attempts
@@ -277,12 +272,9 @@ public sealed class ErrorHandlingService : IErrorHandlingService
 
                 lastException = ex;
 
-                // Check if there's a RetryExhaustedException in the context after each retry attempt
-                if (context.LastRetryExhaustedException is RetryExhaustedException contextRetryEx)
-                {
-                    // Use the RetryExhaustedException from the context as the inner exception
+                // Check whether a node exhausted its retries and left the root cause for us to report.
+                if (context.TakeLastRetryExhaustedException() is { } contextRetryEx)
                     throw new NodeExecutionException(nodeDefinition.Id, contextRetryEx.Message, contextRetryEx);
-                }
             }
         }
 

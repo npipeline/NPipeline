@@ -319,12 +319,24 @@ public sealed class PipelineContext : IAsyncDisposable
     }
 
     /// <summary>
-    ///     The last retry-exhausted exception observed in the pipeline.
+    ///     The retry-exhausted exception awaiting consumption by error handling, if any.
     /// </summary>
+    /// <remarks>
+    ///     See <see cref="PipelineExecutionConfigurationContext.LastRetryExhaustedException" />: this is a hand-off
+    ///     slot consumed by the first error handler that reports a failure, not a run-scoped record of what happened.
+    /// </remarks>
     public RetryExhaustedException? LastRetryExhaustedException
     {
         get => ExecutionConfiguration.LastRetryExhaustedException;
         internal set => ExecutionConfiguration.LastRetryExhaustedException = value;
+    }
+
+    /// <summary>
+    ///     Atomically takes the pending retry-exhausted exception, clearing the slot.
+    /// </summary>
+    internal RetryExhaustedException? TakeLastRetryExhaustedException()
+    {
+        return ExecutionConfiguration.TakeLastRetryExhaustedException();
     }
 
     /// <summary>

@@ -344,16 +344,6 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                     // Pattern matching for failure limit check before attempting retry
                     if (failures >= effectiveRetries.MaxNodeRestartAttempts)
                     {
-                        // Tag exception so upstream error handling does not attempt to restart unrelated nodes (e.g., sink) masking restart limit.
-                        try
-                        {
-                            ex.Data["resilience.final"] = true;
-                        }
-                        catch
-                        {
-                            /* ignore */
-                        }
-
                         context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceFailures(nodeId), failures);
                         context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId),
                             consecutiveFailures);
