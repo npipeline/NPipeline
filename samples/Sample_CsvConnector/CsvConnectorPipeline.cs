@@ -79,7 +79,7 @@ public class CsvConnectorPipeline : IPipelineDefinition
         builder.Connect(transform, sink);
 
         // Log pipeline configuration
-        var logger = context.LoggerFactory.CreateLogger("CsvConnectorPipeline");
+        var logger = context.Observability.LoggerFactory.CreateLogger("CsvConnectorPipeline");
         logger.Log(LogLevel.Information, "CSV pipeline configured: {SourcePath} -> {TargetPath}", sourcePath, targetPath);
     }
 

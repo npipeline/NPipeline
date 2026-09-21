@@ -21,7 +21,7 @@ namespace NPipeline.Pipeline;
 ///     <code>
 /// // Using the default factory
 /// var factory = new PipelineFactory();
-/// var context = PipelineContext.Default;
+/// var context = PipelineContext.CreateDefault();
 /// var pipeline = factory.Create&lt;MyDataProcessingPipeline&gt;(context);
 /// await pipeline.ExecuteAsync();
 /// 

@@ -24,12 +24,12 @@ public sealed class BranchNodeIntegrationTests
     [Fact]
     public async Task Branch_ShouldRecordConfiguredCapacityEvenIfUnboundedInternally()
     {
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var collect1 = new InMemorySinkNode<int>();
         var collect2 = new InMemorySinkNode<int>();
 
-        ctx.PreconfiguredNodeInstances["s1"] = collect1;
-        ctx.PreconfiguredNodeInstances["s2"] = collect2;
+        ctx.NodeEnvironment.PreconfiguredNodeInstances["s1"] = collect1;
+        ctx.NodeEnvironment.PreconfiguredNodeInstances["s2"] = collect2;
 
         var runner = PipelineRunner.Create();
         await runner.RunAsync<CapacityBranchingPipeline>(ctx);
@@ -50,7 +50,7 @@ public sealed class BranchNodeIntegrationTests
     public async Task SlowSubscriber_ShouldNotCauseDataLoss()
     {
         // Arrange
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var runner = PipelineRunner.Create();
 
         // Act
@@ -67,7 +67,7 @@ public sealed class BranchNodeIntegrationTests
     public async Task RunAsync_WhenBranching_ShouldNotProcessItemsMultipleTimes()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Create and register the sinks in the context before running the pipeline
         var sink1 = new InMemorySinkNode<int>();
@@ -101,7 +101,7 @@ public sealed class BranchNodeIntegrationTests
     [Fact]
     public async Task Branch_ShouldDeliverIdenticalSequences()
     {
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var collect1 = new InMemorySinkNode<int>();
         var collect2 = new InMemorySinkNode<int>();
 
@@ -131,7 +131,7 @@ public sealed class BranchNodeIntegrationTests
     {
         // Arrange
         var sourceData = new[] { 1, 2, 3 };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         var sink1 = new InMemorySinkNode<int>();
         var sink2 = new InMemorySinkNode<int>();

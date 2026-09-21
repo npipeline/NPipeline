@@ -240,14 +240,14 @@ internal sealed class PipelineNodeExecutionStage(
     {
         if (graph.ExecutionOptions.NodeExecutionAnnotations != null &&
             graph.ExecutionOptions.NodeExecutionAnnotations.TryGetValue(nodeId, out var annotation))
-            context.NodeExecutionScopeRegistry.SetNodeExecutionAnnotation(nodeId, annotation);
+            context.NodeEnvironment.NodeExecutionScopeRegistry.SetNodeExecutionAnnotation(nodeId, annotation);
         else
-            _ = context.NodeExecutionScopeRegistry.RemoveNodeExecutionAnnotation(nodeId);
+            _ = context.NodeEnvironment.NodeExecutionScopeRegistry.RemoveNodeExecutionAnnotation(nodeId);
 
         if (graph.ExecutionOptions.NodeExecutionAnnotations != null &&
             graph.ExecutionOptions.NodeExecutionAnnotations.TryGetValue(ExecutionAnnotationKeys.NodeResiliencePolicyForNode(nodeId), out var policyAnnotation) &&
             policyAnnotation is IResiliencePolicy nodePolicy)
-            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(ExecutionAnnotationKeys.NodeResiliencePolicyForNode(nodeId), nodePolicy);
+            context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(ExecutionAnnotationKeys.NodeResiliencePolicyForNode(nodeId), nodePolicy);
     }
 
     private async Task ExecuteNodeWithRetriesAsync(
@@ -287,10 +287,10 @@ internal sealed class PipelineNodeExecutionStage(
 
     private static void HandleNodeExecutionException(NodeDefinition nodeDef, PipelineContext context, Exception ex)
     {
-        var logger = context.LoggerFactory.CreateLogger(nameof(PipelineRunner));
+        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(PipelineRunner));
         PipelineRunnerLogMessages.NodeFailed(logger, nodeDef.Id, ex.GetType().Name, ex.Message);
 
-        if (context.ResiliencePolicy is not DefaultResiliencePolicy &&
+        if (context.ExecutionConfiguration.ResiliencePolicy is not DefaultResiliencePolicy &&
             nodeDef.ExecutionStrategy?.GetType().Name == "ResilientExecutionStrategy")
         {
             var effectiveRetries = RetryOptionsResolver.Resolve(context, nodeDef.Id);
@@ -302,7 +302,7 @@ internal sealed class PipelineNodeExecutionStage(
                 PipelineRunnerLogMessages.ResilientStrategyWithoutMaterializedItems(logger, nodeDef.Id);
         }
 
-        if (context.IsParallelExecution)
+        if (context.ExecutionConfiguration.IsParallelExecution)
         {
             PipelineRunnerLogMessages.PreservingExceptionForParallelExecution(logger, ex.GetType().Name, nodeDef.Id);
             ExceptionDispatchInfo.Capture(ex).Throw();

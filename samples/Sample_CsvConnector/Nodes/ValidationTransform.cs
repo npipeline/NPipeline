@@ -72,7 +72,7 @@ public partial class ValidationTransform(bool filterInvalidRecords = true) : Tra
             _validationErrors.Add(errorMessage);
 
             // Log to context if available
-            var logger = context.LoggerFactory.CreateLogger("ValidationTransform");
+            var logger = context.Observability.LoggerFactory.CreateLogger("ValidationTransform");
 
             logger.Log(
                 LogLevel.Warning,

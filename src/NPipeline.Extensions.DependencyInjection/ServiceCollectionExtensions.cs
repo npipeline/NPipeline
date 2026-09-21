@@ -165,14 +165,14 @@ public static class ServiceCollectionExtensions
         var context = new PipelineContext(config);
 
         // Wire up the execution observer if one has been registered (e.g., MetricsCollectingExecutionObserver
-        // registered by AddNPipelineObservability). Without this, context.ExecutionObserver defaults to
+        // registered by AddNPipelineObservability). Without this, context.Observability.ExecutionObserver defaults to
         // NullExecutionObserver and no metrics are collected.
         var executionObserver = sp.GetService<IExecutionObserver>();
         if (executionObserver is not null)
-            context.ExecutionObserver = executionObserver;
+            context.Observability.ExecutionObserver = executionObserver;
 
         // Indicate DI owns node disposal to avoid double-dispose in runner.
-        context.DiOwnedNodes = true;
+        context.NodeEnvironment.DiOwnedNodes = true;
 
         await runner.RunAsync<TDefinition>(context).ConfigureAwait(false);
     }

@@ -18,7 +18,7 @@ public class ParallelOptionsTests
     public async Task WithParallelOptions_ShouldApplyMaxDegreeOfParallelism()
     {
         SharedTestState.Reset(25, 40);
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var runner = PipelineRunner.Create();
         await runner.RunAsync<TestDefinitionWithDop2>(ctx);
         SharedTestState.Peak.Should().BeLessThanOrEqualTo(2);
@@ -33,7 +33,7 @@ public class ParallelOptionsTests
     public async Task WithParallelOptions_ShouldBoundQueueLength_BlockPolicy()
     {
         SharedTestState.Reset(40, 10);
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var runner = PipelineRunner.Create();
         await runner.RunAsync<TestDefinitionBounded>(ctx);
 
@@ -90,7 +90,7 @@ public class ParallelOptionsTests
     {
         // Fast transform, slow sink simulation: sink delay already encoded in transform delay; we inflate item count.
         SharedTestState.Reset(100, 5);
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var runner = PipelineRunner.Create();
         await runner.RunAsync<TestDefinitionOutputCap>(ctx);
 
@@ -109,7 +109,7 @@ public class ParallelOptionsTests
     public async Task RetryMetrics_ShouldRecordAttempts()
     {
         SharedTestState.Reset(10, 1);
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var runner = PipelineRunner.Create();
 
         // The pipeline should succeed after retries, not throw an exception
@@ -143,7 +143,7 @@ public class ParallelOptionsTests
     public void UnsupportedQueuePolicy_ShouldThrow()
     {
         SharedTestState.Reset(1, 5);
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var runner = PipelineRunner.Create();
         var act = () => runner.RunAsync<TestDefinitionDropNewest>(ctx).GetAwaiter().GetResult();
         act.Should().NotThrow(); // now implemented
@@ -153,7 +153,7 @@ public class ParallelOptionsTests
     public async Task DropNewestPolicy_ShouldDropSomeLatestItems()
     {
         SharedTestState.Reset(60, 25); // fast producer, slower consumer
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var runner = PipelineRunner.Create();
         await runner.RunAsync<TestDefinitionDropNewest>(ctx);
 
@@ -171,7 +171,7 @@ public class ParallelOptionsTests
     public async Task DropOldestPolicy_ShouldDropSomeEarliestItems()
     {
         SharedTestState.Reset(60, 25);
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var runner = PipelineRunner.Create();
         await runner.RunAsync<TestDefinitionDropOldest>(ctx);
 

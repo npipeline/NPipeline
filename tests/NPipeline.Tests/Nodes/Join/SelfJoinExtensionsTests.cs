@@ -29,7 +29,7 @@ public sealed class SelfJoinExtensionsTests
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<NullFallbacksPipeline>(context);
@@ -69,7 +69,7 @@ public sealed class SelfJoinExtensionsTests
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<BasicInnerJoinPipeline>(context);
@@ -99,7 +99,7 @@ public sealed class SelfJoinExtensionsTests
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<SameKeySelectorPipeline>(context);
@@ -123,7 +123,7 @@ public sealed class SelfJoinExtensionsTests
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<LeftOuterJoinPipeline>(context);
@@ -158,7 +158,7 @@ public sealed class SelfJoinExtensionsTests
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<LeftOuterJoinExcludesRightPipeline>(context);
@@ -190,7 +190,7 @@ public sealed class SelfJoinExtensionsTests
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<RightOuterJoinPipeline>(context);
@@ -225,7 +225,7 @@ public sealed class SelfJoinExtensionsTests
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<RightOuterJoinExcludesLeftPipeline>(context);
@@ -257,7 +257,7 @@ public sealed class SelfJoinExtensionsTests
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<FullOuterJoinPipeline>(context);
@@ -297,7 +297,7 @@ public sealed class SelfJoinExtensionsTests
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<FullOuterJoinBothFallbacksPipeline>(context);
@@ -331,7 +331,7 @@ public sealed class SelfJoinExtensionsTests
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<DifferentKeySelectorsPipeline>(context);
@@ -351,7 +351,7 @@ public sealed class SelfJoinExtensionsTests
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<NullRightSelectorPipeline>(context);
@@ -375,7 +375,7 @@ public sealed class SelfJoinExtensionsTests
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<NoMatchesInnerJoinPipeline>(context);
@@ -395,7 +395,7 @@ public sealed class SelfJoinExtensionsTests
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<NoMatchesLeftOuterJoinPipeline>(context);
@@ -416,7 +416,7 @@ public sealed class SelfJoinExtensionsTests
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<NoMatchesRightOuterJoinPipeline>(context);
@@ -437,7 +437,7 @@ public sealed class SelfJoinExtensionsTests
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<NoMatchesFullOuterJoinPipeline>(context);
@@ -461,7 +461,7 @@ public sealed class SelfJoinExtensionsTests
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<MultipleMatchesPipeline>(context);
@@ -492,7 +492,7 @@ public sealed class SelfJoinExtensionsTests
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<MultipleMatchesOuterJoinPipeline>(context);
@@ -639,7 +639,7 @@ public sealed class SelfJoinExtensionsTests
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<CustomNodeNamePipeline>(context);

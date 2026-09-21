@@ -23,7 +23,7 @@ public sealed class WatermarkIntegrationTests
         var provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<WatermarkAggregationPipeline>(context);

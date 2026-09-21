@@ -120,14 +120,14 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         string nodeId, CancellationToken cancellationToken)
     {
         // Create a resilience activity to track and tag resilience-related telemetry
-        using var resilientActivity = context.Tracer.StartActivity("Node.Resilience");
+        using var resilientActivity = context.Observability.Tracer.StartActivity("Node.Resilience");
         resilientActivity.SetTag("resilience.enabled", true);
 
-        var logger = context.LoggerFactory.CreateLogger(nameof(ResilientExecutionStrategy));
+        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(ResilientExecutionStrategy));
 
         // Runtime validation: Check for missing prerequisites
         // This provides a safety net for issues that analyzers might miss
-        if (context.ResiliencePolicy is DefaultResiliencePolicy)
+        if (context.ExecutionConfiguration.ResiliencePolicy is DefaultResiliencePolicy)
         {
             throw new InvalidOperationException(
             $"Node '{nodeId}' is using ResilientExecutionStrategy but no custom IResiliencePolicy is configured. " +
@@ -237,9 +237,9 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
     private static async IAsyncEnumerable<TOut> CreateResilientStream<TIn, TOut>(Func<Task<IDataStream<TOut>>> streamFactory, PipelineContext context,
         string creationNodeId, PipelineRetryOptions capturedRetryOptions, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var logger = context.LoggerFactory.CreateLogger(nameof(ResilientExecutionStrategy));
+        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(ResilientExecutionStrategy));
 
-        // Use captured nodeId & retry options; don't rely on context.CurrentNodeId which may change during sink enumeration.
+        // Use captured nodeId & retry options; don't rely on context.NodeEnvironment.CurrentNodeId which may change during sink enumeration.
         var nodeId = creationNodeId;
         var effectiveRetries = capturedRetryOptions;
 
@@ -252,10 +252,10 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
         IResilienceCircuitBreaker? circuitBreaker = null;
 
         // Get or create a resilience activity for recording exceptions
-        var resilientActivity = context.Tracer.CurrentActivity;
+        var resilientActivity = context.Observability.Tracer.CurrentActivity;
 
         // Resolve circuit breaker instance for this node through the policy.
-        circuitBreaker = context.ResiliencePolicy.GetCircuitBreaker(context, nodeId);
+        circuitBreaker = context.ExecutionConfiguration.ResiliencePolicy.GetCircuitBreaker(context, nodeId);
 
         if (circuitBreaker is not null)
             ResilientExecutionStrategyLogMessages.CircuitBreakerResolved(logger, nodeId, circuitBreaker.GetSnapshot().State);
@@ -268,10 +268,10 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
 
             if (circuitBreaker is not null && !circuitBreaker.CanExecute())
             {
-                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceFailures(nodeId), failures);
-                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId),
+                context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceFailures(nodeId), failures);
+                context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId),
                     consecutiveFailures);
-                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId), true);
+                context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId), true);
                 throw CreateCircuitBreakerOpenException(nodeId, circuitBreaker, "Execution blocked before attempt due to open circuit breaker.");
             }
 
@@ -331,10 +331,10 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
 
                         if (!breakerResult.Allowed)
                         {
-                            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceFailures(nodeId), failures);
-                            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId),
+                            context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceFailures(nodeId), failures);
+                            context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId),
                                 consecutiveFailures);
-                            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId),
+                            context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId),
                                 true);
                             throw CreateCircuitBreakerOpenException(nodeId, circuitBreaker, breakerResult.Message);
                         }
@@ -343,10 +343,10 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                     // Pattern matching for failure limit check before attempting retry
                     if (failures >= effectiveRetries.MaxNodeRestartAttempts)
                     {
-                        context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceFailures(nodeId), failures);
-                        context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId),
+                        context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceFailures(nodeId), failures);
+                        context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceConsecutiveFailures(nodeId),
                             consecutiveFailures);
-                        context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId),
+                        context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.DiagnosticsResilienceThrowingOnFailure(nodeId),
                             true);
 
                         // Log before throwing to capture the state
@@ -358,7 +358,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                         throw retryEx;
                     }
 
-                    var decision = await context.ResiliencePolicy
+                    var decision = await context.ExecutionConfiguration.ResiliencePolicy
                         .DecidePipelineFailureAsync(nodeId, ex, context, cancellationToken)
                         .ConfigureAwait(false);
 
@@ -383,7 +383,7 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                         // Apply retry delay before restarting the node
                         try
                         {
-                            var delay = await context.ResiliencePolicy.GetRetryDelayAsync(context, failures, cancellationToken)
+                            var delay = await context.ExecutionConfiguration.ResiliencePolicy.GetRetryDelayAsync(context, failures, cancellationToken)
                                 .ConfigureAwait(false);
 
                             if (delay > TimeSpan.Zero)
@@ -400,9 +400,9 @@ public sealed class ResilientExecutionStrategy(IExecutionStrategy innerStrategy)
                             ResilientExecutionStrategyLogMessages.RetryDelayFailed(logger, delayEx, nodeId);
                         }
 
-                        context.ExecutionObserver.OnRetry(new NodeRetryEvent(nodeId, RetryKind.NodeRestart, failures, ex,
-                            context.PipelineId,
-                            context.PipelineName));
+                        context.Observability.ExecutionObserver.OnRetry(new NodeRetryEvent(nodeId, RetryKind.NodeRestart, failures, ex,
+                            context.RunIdentity.PipelineId,
+                            context.RunIdentity.PipelineName));
 
                         restartRequested = true;
                         break;

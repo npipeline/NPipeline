@@ -70,7 +70,7 @@ public sealed class PipelineRunnerTests
             _persistenceService,
             _observabilitySurface);
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<NodeExecutionException>(() =>
@@ -123,7 +123,7 @@ public sealed class PipelineRunnerTests
             _persistenceService,
             _observabilitySurface);
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
 
@@ -168,7 +168,7 @@ public sealed class PipelineRunnerTests
             _persistenceService,
             _observabilitySurface);
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<PipelineExecutionException>(() =>

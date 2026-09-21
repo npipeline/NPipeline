@@ -24,7 +24,7 @@ public sealed class MergeStrategyTests
         IServiceProvider provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<FanInTestPipeline<ConcatenateTestSink>>(context);
@@ -45,7 +45,7 @@ public sealed class MergeStrategyTests
         IServiceProvider provider = services.BuildServiceProvider();
 
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<FanInTestPipeline<InterleaveTestSink>>(context);

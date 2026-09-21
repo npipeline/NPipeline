@@ -138,7 +138,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         // Act - Read
         var source = new DataLakeTableSourceNode<SalesRecord>(_provider, _tableUri);
-        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
         // Assert
         result.Should().HaveCount(50);
@@ -182,7 +182,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         // Act - Read
         var source = new DataLakeTableSourceNode<SalesRecord>(_provider, _tableUri);
-        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
         // Assert
         result.Should().HaveCount(20);
@@ -222,7 +222,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         // Act - Read as of time after first write (before second write was committed)
         var source = new DataLakeTableSourceNode<SalesRecord>(_provider, _tableUri, timeAfterFirstWrite);
-        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
         // Assert - Should only have first 10 records
         result.Should().HaveCount(10);
@@ -255,7 +255,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         // Act - Read first snapshot
         var source = new DataLakeTableSourceNode<SalesRecord>(_provider, _tableUri, snapshotId1);
-        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
         // Assert
         result.Should().HaveCount(10);
@@ -290,7 +290,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         // Act - Read all
         var source = new DataLakeTableSourceNode<SalesRecord>(_provider, _tableUri);
-        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
         // Assert
         result.Should().HaveCount(50);
@@ -323,7 +323,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         // Act - Read all
         var source = new DataLakeTableSourceNode<SalesRecord>(_provider, _tableUri);
-        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
         // Assert
         result.Should().HaveCount(35);
@@ -350,7 +350,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         // Act - Read
         var source = new DataLakeTableSourceNode<SalesRecord>(_provider, _tableUri);
-        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
         // Assert
         result.Should().HaveCount(5000);
@@ -397,7 +397,7 @@ public sealed class DataLakeTableRoundTripTests : IAsyncDisposable
 
         // Act - Read
         var source = new DataLakeTableSourceNode<SalesRecord>(_provider, _tableUri);
-        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
         // Assert
         result.Should().HaveCount(900);

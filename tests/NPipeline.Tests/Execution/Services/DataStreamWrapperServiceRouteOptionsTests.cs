@@ -46,7 +46,7 @@ public sealed class DataStreamWrapperServiceRouteOptionsTests
             _ = service.WrapWithCountingAndBranching(
                 source,
                 counter,
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 graph,
                 routeNodeId);
         };
@@ -78,7 +78,7 @@ public sealed class DataStreamWrapperServiceRouteOptionsTests
         var oddEdge = new Edge(routeNodeId, "odd-sink", "odd");
 
         var graph = CreateRouteGraph(routeNodeId, routeOptions, true, evenEdge, oddEdge);
-        var bound = await RuntimePipelineBinder.Instance.BindAsync(graph, PipelineContext.Default);
+        var bound = await RuntimePipelineBinder.Instance.BindAsync(graph, PipelineContext.CreateDefault());
 
         var counter = new StatsCounter();
         var service = new DataStreamWrapperService();
@@ -86,7 +86,7 @@ public sealed class DataStreamWrapperServiceRouteOptionsTests
         await using var wrapped = service.WrapWithCountingAndBranching(
             source,
             counter,
-            PipelineContext.Default,
+            PipelineContext.CreateDefault(),
             bound.Graph,
             routeNodeId);
 

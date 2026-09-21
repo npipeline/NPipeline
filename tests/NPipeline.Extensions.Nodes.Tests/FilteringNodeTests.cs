@@ -13,7 +13,7 @@ public sealed class FilteringNodeTests
         node.Where(x => x.Age >= 18, x => $"Age {x.Age} is below minimum");
 
         var data = new TestData { Age = 25 };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -30,7 +30,7 @@ public sealed class FilteringNodeTests
         node.Where(x => x.Age >= 18, x => $"Age {x.Age} is below minimum");
 
         var data = new TestData { Age = 15 };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<FilteringException>(async () =>
@@ -50,7 +50,7 @@ public sealed class FilteringNodeTests
             .Where(x => x.IsActive);
 
         var data = new TestData { Age = 25, Name = "Alice", IsActive = true };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -69,7 +69,7 @@ public sealed class FilteringNodeTests
             .Where(x => !string.IsNullOrEmpty(x.Name), _ => "Name check failed");
 
         var data = new TestData { Age = 15, Name = "Alice" };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<FilteringException>(async () =>
@@ -84,7 +84,7 @@ public sealed class FilteringNodeTests
         // Arrange
         var node = new FilteringNode<TestData>();
         var data = new TestData { Name = "Test" };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -101,7 +101,7 @@ public sealed class FilteringNodeTests
         node.Where(x => x.Age >= 18);
 
         var data = new TestData { Age = 15 };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<FilteringException>(async () =>
@@ -118,7 +118,7 @@ public sealed class FilteringNodeTests
         node.Where(x => x.Age >= 18);
 
         var data = new TestData { Age = 25 };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
@@ -148,7 +148,7 @@ public sealed class FilteringNodeTests
         // Arrange & Act
         var node = new FilteringNode<TestData>(x => x.Age >= 18, x => "Too young");
         var data = new TestData { Age = 25 };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Assert - Should not throw
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -167,7 +167,7 @@ public sealed class FilteringNodeTests
         var youngData = new TestData { Age = 15 };
         var validData = new TestData { Age = 30 };
         var oldData = new TestData { Age = 70 };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         var validResult = await node.TransformAsync(validData, context, CancellationToken.None);

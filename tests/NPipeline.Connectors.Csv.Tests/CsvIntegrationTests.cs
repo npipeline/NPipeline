@@ -30,11 +30,11 @@ public sealed class CsvIntegrationTests
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new CsvSinkNode<int>(uri, resolver, cfg);
             IDataStream<int> input = new DataStream<int>(Enumerable.Range(1, 5).ToAsyncEnumerable());
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Read: CsvSourceNode<int>
             var src = new CsvSourceNode<int>(uri, MapIntRow, resolver, cfg);
-            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
 
             var result = new List<int>();
 

@@ -46,7 +46,7 @@ public sealed class ResilientMemoryUsageTests
         services.AddNPipeline(Assembly.GetExecutingAssembly());
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
 
         // Baseline memory
         var memoryBefore = ForceAndGetMemory();
@@ -79,7 +79,7 @@ public sealed class ResilientMemoryUsageTests
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
         // Test with small cap
-        var smallCapCtx = PipelineContext.Default;
+        var smallCapCtx = PipelineContext.CreateDefault();
 
         var memoryBeforeSmallCap = ForceAndGetMemory();
 
@@ -92,7 +92,7 @@ public sealed class ResilientMemoryUsageTests
         var smallCapMemoryUsage = memoryAfterSmallCap - memoryBeforeSmallCap;
 
         // Test with large cap
-        var largeCapCtx = PipelineContext.Default;
+        var largeCapCtx = PipelineContext.CreateDefault();
 
         var memoryBeforeLargeCap = ForceAndGetMemory();
 
@@ -120,7 +120,7 @@ public sealed class ResilientMemoryUsageTests
         services.AddNPipeline(Assembly.GetExecutingAssembly());
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
 
         var initialMemory = ForceAndGetMemory(false);
 
@@ -146,7 +146,7 @@ public sealed class ResilientMemoryUsageTests
         services.AddNPipeline(Assembly.GetExecutingAssembly());
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
 
         // Act & Assert
         var act = async () => await runner.RunAsync<ResourceDisposalTestPipeline>(ctx);

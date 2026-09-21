@@ -172,12 +172,12 @@ public class DatabaseLineageSink : IPipelineLineageSink
 
 ## Querying Lineage
 
-`context.LineageCollector` is populated when item-level lineage is enabled and an `ILineageCollector` is
+`context.Lineage.LineageCollector` is populated when item-level lineage is enabled and an `ILineageCollector` is
 registered (`AddNPipelineLineage()` registers one). It receives the same records as any configured
 `ILineageSink`, so you can query a run instead of streaming it:
 
 ```csharp
-var collector = context.LineageCollector; // null unless item-level lineage is enabled
+var collector = context.Lineage.LineageCollector; // null unless item-level lineage is enabled
 var history = collector.GetCorrelationHistory(correlationId);
 var unresolved = collector.GetUnresolvedCorrelations();
 var allRecords = collector.GetAllRecords();

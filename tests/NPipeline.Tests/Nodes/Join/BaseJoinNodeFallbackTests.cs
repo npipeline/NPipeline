@@ -11,7 +11,7 @@ public sealed class BaseJoinNodeFallbackTests
     public async Task BaseJoinNode_DefaultFallbackProjectsSourceMembers()
     {
         var node = new AutoProjectionJoinNode { JoinType = JoinType.FullOuter };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         var inputs = new object?[]
         {

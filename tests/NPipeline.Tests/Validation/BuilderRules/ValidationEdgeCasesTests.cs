@@ -73,7 +73,7 @@ public sealed class ValidationEdgeCasesTests
     {
         // Arrange
         var builder = new PipelineBuilder();
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", [1, 2, 3]);
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1, 2, 3]);
         var node1 = builder.AddPassThroughTransform<int, int>("n1");
         var node2 = builder.AddPassThroughTransform<int, int>("n2");
         var node3 = builder.AddPassThroughTransform<int, int>("n3");
@@ -128,7 +128,7 @@ public sealed class ValidationEdgeCasesTests
     {
         // Arrange
         var builder = new PipelineBuilder();
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", [1, 2, 3]);
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1, 2, 3]);
         var intToString = builder.AddPassThroughTransform<int, string>("intToString");
         var stringSink = builder.AddInMemorySink<string>("stringSink");
         var intSink = builder.AddInMemorySink<int>("intSink");
@@ -160,7 +160,7 @@ public sealed class ValidationEdgeCasesTests
     {
         // Arrange
         var builder = new PipelineBuilder();
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", ["a", "b", "c"]);
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", ["a", "b", "c"]);
         var stringToInt = builder.AddPassThroughTransform<string, int>("stringToInt");
         var doubleTransform = builder.AddPassThroughTransform<double, string>("doubleTransform");
         var sink = builder.AddInMemorySink<string>("sink");
@@ -197,7 +197,7 @@ public sealed class ValidationEdgeCasesTests
     {
         // Arrange
         var builder = new PipelineBuilder();
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", [1, 2, 3]);
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1, 2, 3]);
         var node1 = builder.AddPassThroughTransform<int, int>("n1");
         var node2 = builder.AddPassThroughTransform<int, int>("n2");
         var node3 = builder.AddPassThroughTransform<int, int>("n3"); // Will be unreachable
@@ -231,7 +231,7 @@ public sealed class ValidationEdgeCasesTests
     {
         // Arrange
         var builder = new PipelineBuilder();
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", [1, 2, 3]);
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1, 2, 3]);
         var node1 = builder.AddPassThroughTransform<int, int>("n1");
         var node2 = builder.AddPassThroughTransform<int, int>("n2");
         var node3 = builder.AddPassThroughTransform<int, int>("n3"); // Unreachable
@@ -264,7 +264,7 @@ public sealed class ValidationEdgeCasesTests
     {
         // Arrange
         var builder = new PipelineBuilder().WithValidationMode(GraphValidationMode.Warn);
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", [1, 2, 3]);
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1, 2, 3]);
         var node1 = builder.AddPassThroughTransform<int, int>("n1");
         var node2 = builder.AddPassThroughTransform<int, int>("n2");
         var sink = builder.AddInMemorySink<int>("sink");
@@ -285,7 +285,7 @@ public sealed class ValidationEdgeCasesTests
     {
         // Arrange
         var builder = new PipelineBuilder().WithValidationMode(GraphValidationMode.Off);
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", [1, 2, 3]);
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1, 2, 3]);
         var node1 = builder.AddPassThroughTransform<int, int>("n1");
         var node2 = builder.AddPassThroughTransform<int, int>("n2");
         var sink = builder.AddInMemorySink<int>("sink");

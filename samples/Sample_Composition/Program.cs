@@ -17,7 +17,7 @@ internal sealed class Program
         var runner = PipelineRunner.Create();
 
         // Create pipeline context
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         try
         {

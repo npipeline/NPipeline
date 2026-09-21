@@ -16,10 +16,10 @@ public interface IStreamExecutionStrategy
     /// <typeparam name="TOut">The output item type.</typeparam>
     /// <param name="input">The input data pipe.</param>
     /// <param name="node">The stream transform node to execute.</param>
-    /// <param name="context">The pipeline context. Use context.Tracer to access tracing functionality.</param>
+    /// <param name="context">The pipeline context. Use context.Observability.Tracer to access tracing functionality.</param>
     /// <param name="nodeId">
     ///     The id of the node being executed. Passed explicitly rather than read from
-    ///     <see cref="PipelineContext.CurrentNodeId" />, which is a single field on a context shared by every node in
+    ///     <see cref="PipelineNodeEnvironmentContext.CurrentNodeId" />, which is a single field on a context shared by every node in
     ///     the run and is therefore only meaningful while nodes run one at a time.
     /// </param>
     /// <param name="cancellationToken">The cancellation token.</param>

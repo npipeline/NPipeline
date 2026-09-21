@@ -52,7 +52,7 @@ public sealed class CompositeTransformNode<TIn, TOut, TDefinition>
     {
         // Create isolated sub-pipeline context
         var subContext = CreateSubPipelineContext(context);
-        subContext.PipelineName = PipelineAttributeHelper.GetPipelineName(typeof(TDefinition));
+        subContext.RunIdentity.PipelineName = PipelineAttributeHelper.GetPipelineName(typeof(TDefinition));
 
         // Store input item in sub-context
         subContext.Parameters[CompositeContextKeys.InputItem] = item is null ? DBNull.Value : item;
@@ -120,33 +120,33 @@ public sealed class CompositeTransformNode<TIn, TOut, TDefinition>
             subItems,
             subProperties,
             CancellationToken: parentContext.CancellationToken,
-            LoggerFactory: parentContext.LoggerFactory,
-            Tracer: parentContext.Tracer,
+            LoggerFactory: parentContext.Observability.LoggerFactory,
+            Tracer: parentContext.Observability.Tracer,
             ErrorHandlerFactory: parentContext.ErrorHandlerFactory,
-            LineageFactory: parentContext.LineageFactory,
-            ObservabilityFactory: parentContext.ObservabilityFactory,
-            RetryOptions: parentContext.RetryOptions);
+            LineageFactory: parentContext.Lineage.LineageFactory,
+            ObservabilityFactory: parentContext.Observability.ObservabilityFactory,
+            RetryOptions: parentContext.ExecutionConfiguration.RetryOptions);
 
         var subContext = new PipelineContext(config);
-        subContext.PipelineId = Guid.NewGuid();
+        subContext.RunIdentity.PipelineId = Guid.NewGuid();
 
         // Stamp parent linkage for observability
-        subContext.Properties[CompositeContextKeys.ParentNodeId] = parentContext.CurrentNodeId ?? string.Empty;
-        subContext.Properties[CompositeContextKeys.ParentPipelineId] = parentContext.PipelineId;
-        if (parentContext.PipelineName is not null)
-            subContext.Properties[CompositeContextKeys.ParentPipelineName] = parentContext.PipelineName;
+        subContext.Properties[CompositeContextKeys.ParentNodeId] = parentContext.NodeEnvironment.CurrentNodeId ?? string.Empty;
+        subContext.Properties[CompositeContextKeys.ParentPipelineId] = parentContext.RunIdentity.PipelineId;
+        if (parentContext.RunIdentity.PipelineName is not null)
+            subContext.Properties[CompositeContextKeys.ParentPipelineName] = parentContext.RunIdentity.PipelineName;
 
         if (_contextConfiguration.InheritRunIdentity)
-            subContext.RunId = parentContext.RunId;
+            subContext.RunIdentity.RunId = parentContext.RunIdentity.RunId;
 
         // Inherit observability and lineage concerns based on configuration
         if (_contextConfiguration.InheritExecutionObserver)
-            subContext.ExecutionObserver = parentContext.ExecutionObserver;
+            subContext.Observability.ExecutionObserver = parentContext.Observability.ExecutionObserver;
 
         if (_contextConfiguration.InheritLineageSink)
         {
-            subContext.LineageSink = parentContext.LineageSink;
-            subContext.PipelineLineageSink = parentContext.PipelineLineageSink;
+            subContext.Lineage.LineageSink = parentContext.Lineage.LineageSink;
+            subContext.Lineage.PipelineLineageSink = parentContext.Lineage.PipelineLineageSink;
         }
 
         if (_contextConfiguration.InheritDeadLetterDecorator)

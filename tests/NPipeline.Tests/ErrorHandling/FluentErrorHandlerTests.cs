@@ -331,7 +331,7 @@ public sealed class FluentErrorHandlerTests
         int retryAttempt = 0,
         string item = "test")
     {
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         return policy.DecideItemFailureAsync<string, string>(
             new TestTransformNode(),

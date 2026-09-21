@@ -63,7 +63,7 @@ public sealed class PipelineRunnerLineageOverrideTests
             .WithObservabilitySurface(observabilitySurface)
             .Build();
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         context.Properties[PipelineContextKeys.ItemLevelLineageEnabledOverride] = true;
 
         // Act
@@ -128,7 +128,7 @@ public sealed class PipelineRunnerLineageOverrideTests
             .WithObservabilitySurface(observabilitySurface)
             .Build();
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         context.Properties[PipelineContextKeys.ItemLevelLineageEnabledOverride] = false;
 
         // Act

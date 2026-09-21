@@ -52,7 +52,7 @@ public sealed class DataStreamWrapperService
         // Branching or conditional routing needed - use combined counting + multicast wrappers
         var options = GetBranchOptions(graph, nodeId);
         var metrics = new BranchMetrics();
-        context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(ExecutionAnnotationKeys.BranchMetricsForNode(nodeId), metrics);
+        context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(ExecutionAnnotationKeys.BranchMetricsForNode(nodeId), metrics);
 
         if (useConditionalRouting)
             return wrapper.WrapConditionalMulticast(pipe, counter, outgoingEdges, options, routeOptions!, metrics);

@@ -113,7 +113,7 @@ public sealed class BranchNode<T> : TransformNode<T, T>
 
         var branchTasks = handlers.Select(async (handler, index) =>
         {
-            var branchActivity = context.Tracer.StartActivity($"Branch_{context.CurrentNodeId}_{index}");
+            var branchActivity = context.Observability.Tracer.StartActivity($"Branch_{context.NodeEnvironment.CurrentNodeId}_{index}");
 
             try
             {
@@ -123,7 +123,7 @@ public sealed class BranchNode<T> : TransformNode<T, T>
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    var branchException = new BranchHandlerException(context.CurrentNodeId, index, item, ex);
+                    var branchException = new BranchHandlerException(context.NodeEnvironment.CurrentNodeId, index, item, ex);
 
                     lock (syncLock)
                     {
@@ -150,7 +150,7 @@ public sealed class BranchNode<T> : TransformNode<T, T>
         PipelineContext context,
         CancellationToken cancellationToken)
     {
-        var branchActivity = context.Tracer.StartActivity($"Branch_{context.CurrentNodeId}_{branchIndex}");
+        var branchActivity = context.Observability.Tracer.StartActivity($"Branch_{context.NodeEnvironment.CurrentNodeId}_{branchIndex}");
 
         try
         {
@@ -176,7 +176,7 @@ public sealed class BranchNode<T> : TransformNode<T, T>
         PipelineContext context,
         CancellationToken cancellationToken)
     {
-        var branchException = new BranchHandlerException(context.CurrentNodeId, branchIndex, item, ex);
+        var branchException = new BranchHandlerException(context.NodeEnvironment.CurrentNodeId, branchIndex, item, ex);
 
         switch (ErrorHandlingMode)
         {
@@ -204,9 +204,9 @@ public sealed class BranchNode<T> : TransformNode<T, T>
         PipelineContext context,
         CancellationToken cancellationToken)
     {
-        var decision = await context.ResiliencePolicy
+        var decision = await context.ExecutionConfiguration.ResiliencePolicy
             .DecidePipelineFailureAsync(
-                context.CurrentNodeId,
+                context.NodeEnvironment.CurrentNodeId,
                 branchException,
                 context,
                 cancellationToken)
@@ -235,7 +235,7 @@ public sealed class BranchNode<T> : TransformNode<T, T>
 
     private void LogBranchException(BranchHandlerException branchException, PipelineContext context, string? additionalMessage = null)
     {
-        var logger = context.LoggerFactory.CreateLogger(typeof(BranchNode<T>).FullName ?? typeof(BranchNode<T>).Name);
+        var logger = context.Observability.LoggerFactory.CreateLogger(typeof(BranchNode<T>).FullName ?? typeof(BranchNode<T>).Name);
 
         if (additionalMessage is not null)
         {
@@ -243,7 +243,7 @@ public sealed class BranchNode<T> : TransformNode<T, T>
                 logger,
                 branchException.InnerException!,
                 branchException.BranchIndex,
-                context.CurrentNodeId,
+                context.NodeEnvironment.CurrentNodeId,
                 additionalMessage);
         }
         else
@@ -252,7 +252,7 @@ public sealed class BranchNode<T> : TransformNode<T, T>
                 logger,
                 branchException.InnerException!,
                 branchException.BranchIndex,
-                context.CurrentNodeId);
+                context.NodeEnvironment.CurrentNodeId);
         }
     }
 

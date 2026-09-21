@@ -61,17 +61,17 @@ namespace NPipeline.Extensions.Parallelism
         /// <returns>The effective retry options to use for the node.</returns>
         protected static PipelineRetryOptions GetRetryOptions(string nodeId, PipelineContext context)
         {
-            var logger = context.LoggerFactory.CreateLogger(nameof(ParallelExecutionStrategyBase));
+            var logger = context.Observability.LoggerFactory.CreateLogger(nameof(ParallelExecutionStrategyBase));
 
             // Check for per-node retry options first
-            if (context.NodeRetryOverrides.TryGetValue(nodeId, out var nodeOptions))
+            if (context.ExecutionConfiguration.NodeRetryOverrides.TryGetValue(nodeId, out var nodeOptions))
             {
                 ParallelExecutionStrategyLogMessages.PerNodeRetryOptionsFound(logger, nodeId, nodeOptions.MaxItemRetries);
                 return nodeOptions;
             }
 
             // Check for global retry options stored by PipelineRunner
-            var globalRetryOptions = context.GlobalRetryOptions;
+            var globalRetryOptions = context.ExecutionConfiguration.GlobalRetryOptions;
             ParallelExecutionStrategyLogMessages.GlobalRetryOptionsUsed(logger, nodeId, globalRetryOptions.MaxItemRetries);
             return globalRetryOptions;
         }
@@ -107,11 +107,11 @@ namespace NPipeline.Extensions.Parallelism
             int[]? ancestryInputIndices = null)
         {
             var logger = cached.LoggingEnabled
-                ? context.LoggerFactory.CreateLogger(nameof(ParallelExecutionStrategyBase))
+                ? context.Observability.LoggerFactory.CreateLogger(nameof(ParallelExecutionStrategyBase))
                 : null;
 
             using var itemActivity = cached.TracingEnabled
-                ? context.Tracer.StartActivity("Item.Transform")
+                ? context.Observability.Tracer.StartActivity("Item.Transform")
                 : null;
 
             var attempt = 0;
@@ -189,17 +189,17 @@ namespace NPipeline.Extensions.Parallelism
             string nodeId, int attempt, Exception exception)
         {
             metrics?.RecordRetry(attempt);
-            observer?.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, attempt, exception, context.PipelineId, context.PipelineName));
+            observer?.OnRetry(new NodeRetryEvent(nodeId, RetryKind.ItemRetry, attempt, exception, context.RunIdentity.PipelineId, context.RunIdentity.PipelineName));
         }
 
         private static IResiliencePolicy ResolveResiliencePolicy(PipelineContext context, string nodeId)
         {
             var key = ExecutionAnnotationKeys.NodeResiliencePolicyForNode(nodeId);
 
-            if (context.NodeExecutionScopeRegistry.TryGetRuntimeAnnotation(key, out var annotation) && annotation is IResiliencePolicy nodePolicy)
+            if (context.NodeEnvironment.NodeExecutionScopeRegistry.TryGetRuntimeAnnotation(key, out var annotation) && annotation is IResiliencePolicy nodePolicy)
                 return nodePolicy;
 
-            return context.ResiliencePolicy;
+            return context.ExecutionConfiguration.ResiliencePolicy;
         }
 
         private static void RecordLineageOutcome(long? lineageInputIndex, PipelineContext context, in CachedNodeExecutionContext cached,
@@ -222,7 +222,7 @@ namespace NPipeline.Extensions.Parallelism
             }
 
             // Fallback preserves behavior when the outcome store was not pre-resolved.
-            LineageNodeOutcomeRegistry.Record(context.PipelineId, cached.NodeId, lineageInputIndex.Value, outcomeReason, retryCount);
+            LineageNodeOutcomeRegistry.Record(context.RunIdentity.PipelineId, cached.NodeId, lineageInputIndex.Value, outcomeReason, retryCount);
         }
 
         private static async Task TryDispatchDeadLetterAsync<TIn>(
@@ -331,12 +331,12 @@ namespace NPipeline.Extensions.Parallelism
                 currentActivity?.SetTag("parallel.processed", metrics.Processed);
 
                 // Store metrics in context runtime annotations for downstream monitoring.
-                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsDroppedNewest(nodeId),
+                context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsDroppedNewest(nodeId),
                     metrics.DroppedNewest);
-                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsDroppedOldest(nodeId),
+                context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsDroppedOldest(nodeId),
                     metrics.DroppedOldest);
-                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsEnqueued(nodeId), metrics.Enqueued);
-                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsProcessed(nodeId), metrics.Processed);
+                context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsEnqueued(nodeId), metrics.Enqueued);
+                context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsProcessed(nodeId), metrics.Processed);
             }
         }
 
@@ -348,7 +348,7 @@ namespace NPipeline.Extensions.Parallelism
         /// <returns>The configured scope handle, or a no-op scope when observability is not enabled.</returns>
         protected static IAutoObservabilityScope BeginNodeObservabilityScope(PipelineContext context, string nodeId)
         {
-            return context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
+            return context.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
         }
     }
 }

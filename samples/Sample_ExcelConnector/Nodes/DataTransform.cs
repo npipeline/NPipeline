@@ -55,7 +55,7 @@ public class DataTransform : TransformNode<Customer, Customer>
         };
 
         // Log the transformation
-        var logger = context.LoggerFactory.CreateLogger("DataTransform");
+        var logger = context.Observability.LoggerFactory.CreateLogger("DataTransform");
 
         logger.Log(
             LogLevel.Debug,

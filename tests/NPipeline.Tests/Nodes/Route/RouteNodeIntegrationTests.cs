@@ -13,7 +13,7 @@ public sealed class RouteNodeIntegrationTests
     [Fact]
     public async Task ConnectWhen_ShouldRouteByCondition_IndependentOfSubscriberOrder()
     {
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var oddSink = new InMemorySinkNode<int>();
         var evenSink = new InMemorySinkNode<int>();
         context.Items["odd"] = oddSink;
@@ -35,7 +35,7 @@ public sealed class RouteNodeIntegrationTests
     [Fact]
     public async Task ConnectOtherwise_ShouldReceiveUnmatchedItems()
     {
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var positiveSink = new InMemorySinkNode<int>();
         var fallbackSink = new InMemorySinkNode<int>();
         context.Items["positive"] = positiveSink;
@@ -51,7 +51,7 @@ public sealed class RouteNodeIntegrationTests
     [Fact]
     public async Task AllMatches_Mode_ShouldDeliverToEveryMatchingRoute()
     {
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var evenSink = new InMemorySinkNode<int>();
         var gteTwoSink = new InMemorySinkNode<int>();
         var fallbackSink = new InMemorySinkNode<int>();
@@ -71,7 +71,7 @@ public sealed class RouteNodeIntegrationTests
     [Fact]
     public async Task NoMatchBehaviorThrow_WithoutOtherwise_ShouldFailPipeline()
     {
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var positiveSink = new InMemorySinkNode<int>();
         context.Items["positive"] = positiveSink;
 

@@ -26,7 +26,7 @@ public class NestedObservabilityAndLineageTests
             .WithObservabilitySurface(new ObservabilitySurface())
             .Build();
         var context = new PipelineContext();
-        context.ExecutionObserver = observer;
+        context.Observability.ExecutionObserver = observer;
 
         // Act
         await runner.RunAsync<ObservableParentPipeline>(context);
@@ -174,7 +174,7 @@ public class NestedObservabilityAndLineageTests
             .WithObservabilitySurface(new ObservabilitySurface())
             .Build();
         var context = new PipelineContext();
-        context.ExecutionObserver = observer;
+        context.Observability.ExecutionObserver = observer;
 
         // Act
         await runner.RunAsync<ObservableParentPipeline>(context);
@@ -231,7 +231,7 @@ public class NestedObservabilityAndLineageTests
             .WithObservabilitySurface(new ObservabilitySurface())
             .Build();
         var context = new PipelineContext();
-        context.ExecutionObserver = observer;
+        context.Observability.ExecutionObserver = observer;
 
         // Act
         await runner.RunAsync<ObservableInheritingParentPipeline>(context);
@@ -411,7 +411,7 @@ public class NestedObservabilityAndLineageTests
 
         public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
-            CapturedRunId = context.RunId;
+            CapturedRunId = context.RunIdentity.RunId;
             return Task.FromResult(input);
         }
     }
@@ -422,7 +422,7 @@ public class NestedObservabilityAndLineageTests
 
         public override Task<int> TransformAsync(int input, PipelineContext context, CancellationToken cancellationToken)
         {
-            CapturedRunId = context.RunId;
+            CapturedRunId = context.RunIdentity.RunId;
             return Task.FromResult(input);
         }
     }

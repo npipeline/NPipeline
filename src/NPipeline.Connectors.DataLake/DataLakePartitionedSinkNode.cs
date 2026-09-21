@@ -247,7 +247,7 @@ public sealed class DataLakePartitionedSinkNode<T> : SinkNode<T>
         // Create a data pipe from the buffer
         var dataStream = new InMemoryDataStream<T>(buffer);
 
-        await sinkNode.ConsumeAsync(dataStream, PipelineContext.Default, cancellationToken)
+        await sinkNode.ConsumeAsync(dataStream, PipelineContext.CreateDefault(), cancellationToken)
             .ConfigureAwait(false);
 
         // Get file size

@@ -125,7 +125,7 @@ public sealed class PipelineRunner(
     /// <exception cref="RetryExhaustedException">Thrown when all retry attempts are exhausted.</exception>
     /// <example>
     ///     <code>
-    ///     var context = PipelineContext.Default;
+    ///     var context = PipelineContext.CreateDefault();
     ///     context.Items["customSetting"] = "value";
     ///     var runner = PipelineRunner.Create();
     ///     await runner.RunAsync&lt;MyDataProcessingPipeline&gt;(context, cancellationToken);
@@ -161,8 +161,8 @@ public sealed class PipelineRunner(
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(createPipeline);
 
-        if (string.IsNullOrWhiteSpace(context.PipelineName))
-            context.PipelineName = PipelineAttributeHelper.GetPipelineName(definitionType);
+        if (string.IsNullOrWhiteSpace(context.RunIdentity.PipelineName))
+            context.RunIdentity.PipelineName = PipelineAttributeHelper.GetPipelineName(definitionType);
         await _executionOrchestrator
             .RunAsync(definitionType, context, createPipeline, cancellationToken)
             .ConfigureAwait(false);

@@ -34,12 +34,12 @@ public sealed class ParquetIntegrationTests
 
             await sink.ConsumeAsync(
                 new DataStream<NullableRecord>(records.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Act - Read
             var source = new ParquetSourceNode<NullableRecord>(uri, resolver);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert
             result.Should().HaveCount(3);
@@ -81,12 +81,12 @@ public sealed class ParquetIntegrationTests
 
             await sink.ConsumeAsync(
                 new DataStream<CustomColumnRecord>(records.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Act - Read
             var source = new ParquetSourceNode<CustomColumnRecord>(uri, resolver);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert
             result.Should().HaveCount(1);
@@ -120,12 +120,12 @@ public sealed class ParquetIntegrationTests
 
             await sink.ConsumeAsync(
                 new DataStream<TestRecord>(records.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Act - Read
             var source = new ParquetSourceNode<TestRecord>(uri, resolver);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert
             result.Should().BeEquivalentTo(records);
@@ -168,12 +168,12 @@ public sealed class ParquetIntegrationTests
 
             await sink.ConsumeAsync(
                 new DataStream<AllTypesRecord>(records.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Act - Read
             var source = new ParquetSourceNode<AllTypesRecord>(uri, resolver);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert
             result.Should().HaveCount(1);
@@ -213,12 +213,12 @@ public sealed class ParquetIntegrationTests
 
             await sink.ConsumeAsync(
                 new DataStream<TestRecord>(records.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Act - Read
             var source = new ParquetSourceNode<TestRecord>(uri, resolver);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert
             result.Should().HaveCount(100);
@@ -248,12 +248,12 @@ public sealed class ParquetIntegrationTests
 
             await sink.ConsumeAsync(
                 new DataStream<TestRecord>(records.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Act - Read
             var source = new ParquetSourceNode<TestRecord>(uri, resolver);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert
             result.Should().HaveCount(50);
@@ -285,13 +285,13 @@ public sealed class ParquetIntegrationTests
 
             await sink.ConsumeAsync(
                 new DataStream<TestRecord>(records.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Read with projection - only Id column
             var config = new ParquetConfiguration { ProjectedColumns = ["Id"] };
             var source = new ParquetSourceNode<TestRecord>(uri, resolver, config);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert - should still get all records but only Id is populated
             result.Should().HaveCount(50);
@@ -320,13 +320,13 @@ public sealed class ParquetIntegrationTests
 
             await sink.ConsumeAsync(
                 new DataStream<TestRecord>(records.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Read with empty projection list
             var config = new ParquetConfiguration { ProjectedColumns = [] };
             var source = new ParquetSourceNode<TestRecord>(uri, resolver, config);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert
             result.Should().HaveCount(10);
@@ -360,7 +360,7 @@ public sealed class ParquetIntegrationTests
             // Act - Read from directory
             var uri = StorageUri.FromFilePath(tempDir + "/");
             var source = new ParquetSourceNode<TestRecord>(uri, resolver);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert
             result.Should().HaveCount(150);
@@ -391,7 +391,7 @@ public sealed class ParquetIntegrationTests
             // Act
             var uri = StorageUri.FromFilePath(tempDir + "/");
             var source = new ParquetSourceNode<TestRecord>(uri, resolver);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert
             result.Should().HaveCount(10);
@@ -425,12 +425,12 @@ public sealed class ParquetIntegrationTests
 
             await sink.ConsumeAsync(
                 new DataStream<TestRecord>(records.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Act - Read
             var source = new ParquetSourceNode<TestRecord>(uri, resolver);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert
             result.Should().HaveCount(10_000);
@@ -459,14 +459,14 @@ public sealed class ParquetIntegrationTests
 
             await sink.ConsumeAsync(
                 new DataStream<TestRecord>(GenerateRecords(0, 50_000).ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Act - Read (streaming)
             var source = new ParquetSourceNode<TestRecord>(uri, resolver);
             var count = 0;
 
-            await foreach (var _ in source.OpenStream(PipelineContext.Default, CancellationToken.None))
+            await foreach (var _ in source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None))
             {
                 count++;
             }
@@ -514,7 +514,7 @@ public sealed class ParquetIntegrationTests
 
         await sink.ConsumeAsync(
             new DataStream<TestRecord>(records.ToAsyncEnumerable()),
-            PipelineContext.Default,
+            PipelineContext.CreateDefault(),
             CancellationToken.None);
     }
 

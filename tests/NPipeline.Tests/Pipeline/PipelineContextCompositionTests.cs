@@ -20,11 +20,11 @@ public sealed class PipelineContextCompositionTests
         _ = context.NodeEnvironment.Should().NotBeNull();
         _ = context.Lineage.Should().NotBeNull();
 
-        _ = context.GlobalRetryOptions.Should().BeSameAs(context.ExecutionConfiguration.GlobalRetryOptions);
-        _ = context.RetryOptions.Should().BeSameAs(context.ExecutionConfiguration.RetryOptions);
-        _ = context.LoggerFactory.Should().BeSameAs(context.Observability.LoggerFactory);
-        _ = context.LineageFactory.Should().BeSameAs(context.Lineage.LineageFactory);
-        _ = context.NodeExecutionScopeRegistry.Should().BeSameAs(context.NodeEnvironment.NodeExecutionScopeRegistry);
+        _ = context.ExecutionConfiguration.GlobalRetryOptions.Should().BeSameAs(context.ExecutionConfiguration.GlobalRetryOptions);
+        _ = context.ExecutionConfiguration.RetryOptions.Should().BeSameAs(context.ExecutionConfiguration.RetryOptions);
+        _ = context.Observability.LoggerFactory.Should().BeSameAs(context.Observability.LoggerFactory);
+        _ = context.Lineage.LineageFactory.Should().BeSameAs(context.Lineage.LineageFactory);
+        _ = context.NodeEnvironment.NodeExecutionScopeRegistry.Should().BeSameAs(context.NodeEnvironment.NodeExecutionScopeRegistry);
     }
 
     [Fact]
@@ -37,16 +37,16 @@ public sealed class PipelineContextCompositionTests
         var effectiveRetryOptions = new PipelineRetryOptions(5);
 
         // Act
-        context.PipelineId = pipelineId;
-        context.RunId = runId;
-        context.PipelineName = "Orders";
-        context.DiOwnedNodes = true;
-        context.ExecutionObserver = null!;
-        context.GlobalRetryOptions = effectiveRetryOptions;
+        context.RunIdentity.PipelineId = pipelineId;
+        context.RunIdentity.RunId = runId;
+        context.RunIdentity.PipelineName = "Orders";
+        context.NodeEnvironment.DiOwnedNodes = true;
+        context.Observability.ExecutionObserver = null!;
+        context.ExecutionConfiguration.GlobalRetryOptions = effectiveRetryOptions;
 
         using (context.ScopedNode("node-a"))
         {
-            _ = context.CurrentNodeId.Should().Be("node-a");
+            _ = context.NodeEnvironment.CurrentNodeId.Should().Be("node-a");
             _ = context.NodeEnvironment.CurrentNodeId.Should().Be("node-a");
         }
 
@@ -55,11 +55,11 @@ public sealed class PipelineContextCompositionTests
         // Assert
         _ = context.RunIdentity.PipelineId.Should().Be(pipelineId);
         _ = context.RunIdentity.RunId.Should().Be(runId);
-        _ = context.PipelineName.Should().Be("Invoices");
+        _ = context.RunIdentity.PipelineName.Should().Be("Invoices");
         _ = context.NodeEnvironment.DiOwnedNodes.Should().BeTrue();
-        _ = context.ExecutionObserver.Should().BeSameAs(NullExecutionObserver.Instance);
-        _ = context.GlobalRetryOptions.Should().BeSameAs(context.ExecutionConfiguration.GlobalRetryOptions);
-        _ = context.GlobalRetryOptions.Should().Be(effectiveRetryOptions);
-        _ = context.CurrentNodeId.Should().BeEmpty();
+        _ = context.Observability.ExecutionObserver.Should().BeSameAs(NullExecutionObserver.Instance);
+        _ = context.ExecutionConfiguration.GlobalRetryOptions.Should().BeSameAs(context.ExecutionConfiguration.GlobalRetryOptions);
+        _ = context.ExecutionConfiguration.GlobalRetryOptions.Should().Be(effectiveRetryOptions);
+        _ = context.NodeEnvironment.CurrentNodeId.Should().BeEmpty();
     }
 }

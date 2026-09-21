@@ -13,7 +13,7 @@ public sealed class PropertyTransformationNodeTests
         node.Register(x => x.Name, name => name.ToUpperInvariant());
 
         var data = new TestData { Name = "alice" };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -32,7 +32,7 @@ public sealed class PropertyTransformationNodeTests
         node.Register(x => x.Age, age => age + 10);
 
         var data = new TestData { Name = "bob", Age = 30 };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -53,7 +53,7 @@ public sealed class PropertyTransformationNodeTests
             str => str.ToUpperInvariant());
 
         var data = new TestData { Name = "alice", Email = "alice@test.com" };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -69,7 +69,7 @@ public sealed class PropertyTransformationNodeTests
         // Arrange
         var node = new TestTransformationNode();
         var data = new TestData { Name = "unchanged", Age = 25 };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -88,7 +88,7 @@ public sealed class PropertyTransformationNodeTests
         node.Register(x => x.Name, name => name.ToUpperInvariant());
 
         var data = new TestData { Name = "test" };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
@@ -140,7 +140,7 @@ public sealed class PropertyTransformationNodeTests
         node.Register(x => x.Age, age => Math.Max(0, age));
 
         var data = new TestData { Name = "  ", Age = -5 };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);

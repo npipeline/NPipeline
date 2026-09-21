@@ -32,18 +32,18 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
         CancellationToken cancellationToken)
     {
         // Set the parallel execution flag to help ErrorHandlingService preserve original exception types
-        context.IsParallelExecution = true;
+        context.ExecutionConfiguration.IsParallelExecution = true;
 
         var observabilityScope = BeginNodeObservabilityScope(context, nodeId);
-        var currentActivity = context.Tracer.CurrentActivity;
+        var currentActivity = context.Observability.Tracer.CurrentActivity;
         var effectiveRetries = GetRetryOptions(nodeId, context);
         var cachedContext = CachedNodeExecutionContext.CreateWithRetryOptions(context, nodeId, effectiveRetries);
-        var logger = context.LoggerFactory.CreateLogger(nameof(DropOldestParallelStrategy));
+        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(DropOldestParallelStrategy));
         ParallelExecutionStrategyLogMessages.FinalMaxRetries(logger, nodeId, effectiveRetries.MaxItemRetries);
 
         ParallelOptions? parallelOptions = null;
 
-        if (context.NodeExecutionScopeRegistry.TryGetNodeExecutionAnnotation(nodeId, out var opt) && opt is ParallelOptions po)
+        if (context.NodeEnvironment.NodeExecutionScopeRegistry.TryGetNodeExecutionAnnotation(nodeId, out var opt) && opt is ParallelOptions po)
             parallelOptions = po;
 
         // Input-wait timing is opt-in for parallel execution (channel backpressure dominates the measurement).
@@ -54,7 +54,7 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
         var effectiveDop = parallelOptions?.MaxDegreeOfParallelism ?? ConfiguredMaxDop ?? Environment.ProcessorCount;
         var boundedCapacity = parallelOptions?.MaxQueueLength ?? 1;
         var metricsInterval = parallelOptions?.EffectiveMetricsInterval ?? TimeSpan.FromSeconds(1);
-        var observer = context.ExecutionObserver;
+        var observer = context.Observability.ExecutionObserver;
 
         // Custom bounded queue with drop-oldest policy
         var fullMode = BoundedChannelFullMode.Wait; // Wait then allow explicit read-and-drop
@@ -72,11 +72,11 @@ public sealed class DropOldestParallelStrategy : ParallelExecutionStrategyBase
         // Check if metrics already exist before creating new ones
         ParallelExecutionMetrics metrics;
 
-        if (!context.NodeExecutionScopeRegistry.TryGetRuntimeAnnotation(PipelineContextKeys.ParallelMetrics(nodeId), out var existingMetrics) ||
+        if (!context.NodeEnvironment.NodeExecutionScopeRegistry.TryGetRuntimeAnnotation(PipelineContextKeys.ParallelMetrics(nodeId), out var existingMetrics) ||
             existingMetrics is not ParallelExecutionMetrics cachedMetrics)
         {
             metrics = new ParallelExecutionMetrics();
-            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetrics(nodeId), metrics);
+            context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetrics(nodeId), metrics);
         }
         else
             metrics = cachedMetrics;

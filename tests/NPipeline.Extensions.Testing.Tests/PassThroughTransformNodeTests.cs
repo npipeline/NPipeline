@@ -10,7 +10,7 @@ public class PassThroughTransformNodeTests
     {
         // Arrange
         var node = new PassThroughTransformNode<string, object>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var item = "test";
 
         // Act
@@ -25,7 +25,7 @@ public class PassThroughTransformNodeTests
     {
         // Arrange
         var node = new PassThroughTransformNode<object, string>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var item = "test" as object;
 
         // Act
@@ -40,7 +40,7 @@ public class PassThroughTransformNodeTests
     {
         // Arrange
         var node = new PassThroughTransformNode<int, long>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var item = 42;
 
         // Act
@@ -55,7 +55,7 @@ public class PassThroughTransformNodeTests
     {
         // Arrange
         var node = new PassThroughTransformNode<string, object>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         string? item = null;
 
         // Act
@@ -70,7 +70,7 @@ public class PassThroughTransformNodeTests
     {
         // Arrange
         var node = new PassThroughTransformNode<int?, int>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         int? item = null;
 
         // Act
@@ -85,7 +85,7 @@ public class PassThroughTransformNodeTests
     {
         // Arrange
         var node = new PassThroughTransformNode<string, int>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var item = "not a number";
 
         // Act & Assert
@@ -97,7 +97,7 @@ public class PassThroughTransformNodeTests
     {
         // Arrange
         var node = new PassThroughTransformNode<List<string>, Dictionary<string, int>>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var item = new List<string> { "test" };
 
         // Act & Assert
@@ -109,7 +109,7 @@ public class PassThroughTransformNodeTests
     {
         // Arrange
         var node = new PassThroughTransformNode<string, string>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var item = "test";
 
         // Act
@@ -125,7 +125,7 @@ public class PassThroughTransformNodeTests
     {
         // Arrange
         var node = new PassThroughTransformNode<TestObject, TestObject>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var item = new TestObject { Name = "test", Value = 42 };
 
         // Act
@@ -143,7 +143,7 @@ public class PassThroughTransformNodeTests
     {
         // Arrange
         var node = new PassThroughTransformNode<TestObject, object>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var item = new TestObject { Name = "test", Value = 42 };
 
         // Act
@@ -164,7 +164,7 @@ public class PassThroughTransformNodeTests
     {
         // Arrange
         var node = new PassThroughTransformNode<string, object>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var item = "test";
         var cts = new CancellationTokenSource();
         cts.Cancel();
@@ -188,7 +188,7 @@ public class PassThroughTransformNodeTests
     {
         // Arrange
         var node = new PassThroughTransformNode<string, object>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         context.Items["test"] = "value";
         var item = "test";
 

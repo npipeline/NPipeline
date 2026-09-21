@@ -19,7 +19,7 @@ public sealed class ObservabilitySurfaceTests
     public void PipelineBegin_RecordsStart()
     {
         var surface = new ObservabilitySurface();
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var act = surface.BeginPipeline<TestDefinition>(ctx);
         Assert.NotNull(act);
     }
@@ -28,7 +28,7 @@ public sealed class ObservabilitySurfaceTests
     public async Task PipelineComplete_EmitsBranchMetrics()
     {
         var surface = new ObservabilitySurface();
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var metricsKey = ExecutionAnnotationKeys.BranchMetricsForNode("node1");
         ctx.Items[metricsKey] = new BranchMetrics();
         var act = surface.BeginPipeline<TestDefinition>(ctx);
@@ -46,7 +46,7 @@ public sealed class ObservabilitySurfaceTests
     public async Task PipelineFail_RecordsException()
     {
         var surface = new ObservabilitySurface();
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var act = surface.BeginPipeline<TestDefinition>(ctx);
         await surface.FailPipeline<TestDefinition>(ctx, new InvalidOperationException("boom"), act);
     }
@@ -56,8 +56,8 @@ public sealed class ObservabilitySurfaceTests
     {
         var surface = new ObservabilitySurface();
         var observer = new CollectObserver();
-        var ctx = PipelineContext.Default;
-        ctx.ExecutionObserver = observer;
+        var ctx = PipelineContext.CreateDefault();
+        ctx.Observability.ExecutionObserver = observer;
 
         var def = new NodeDefinition(
             new NodeIdentity("n1", "n1"),
@@ -86,8 +86,8 @@ public sealed class ObservabilitySurfaceTests
     {
         var surface = new ObservabilitySurface();
         var observer = new CollectObserver();
-        var ctx = PipelineContext.Default;
-        ctx.ExecutionObserver = observer;
+        var ctx = PipelineContext.CreateDefault();
+        ctx.Observability.ExecutionObserver = observer;
 
         var def = new NodeDefinition(
             new NodeIdentity("n1", "n1"),
@@ -120,7 +120,7 @@ public sealed class ObservabilitySurfaceTests
         var surface = new ObservabilitySurface();
         var observer = new CollectObserver();
         var ctx = new PipelineContext(PipelineContextConfiguration.WithFactories(observabilityFactory: factory));
-        ctx.ExecutionObserver = observer;
+        ctx.Observability.ExecutionObserver = observer;
 
         var def = new NodeDefinition(
             new NodeIdentity("n1", "n1"),
@@ -149,7 +149,7 @@ public sealed class ObservabilitySurfaceTests
         Assert.Empty(observer.DataflowCompleted);
         Assert.True(completed.Success);
 
-        using (var streamScope = ctx.NodeExecutionScopeRegistry.BeginNodeScope("n1"))
+        using (var streamScope = ctx.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope("n1"))
         {
             streamScope.IncrementProcessed();
         }

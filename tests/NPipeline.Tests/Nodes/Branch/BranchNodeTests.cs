@@ -32,7 +32,7 @@ public sealed class BranchNodeTests
             await Task.Yield();
         });
 
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
 
         // Act
         var result1 = await node.TransformAsync(1, ctx, CancellationToken.None);
@@ -155,7 +155,7 @@ public sealed class BranchNodeTests
     {
         // Arrange
         BranchNode<int> node = new();
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var item = 42;
 
         // Act
@@ -178,7 +178,7 @@ public sealed class BranchNodeTests
             await Task.Yield();
         });
 
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(42, ctx, CancellationToken.None);
@@ -213,7 +213,7 @@ public sealed class BranchNodeTests
             await Task.Yield();
         });
 
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync("test", ctx, CancellationToken.None);
@@ -239,7 +239,7 @@ public sealed class BranchNodeTests
             await Task.Yield();
         });
 
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync("HelloWorld", ctx, CancellationToken.None);
@@ -268,7 +268,7 @@ public sealed class BranchNodeTests
             await Task.Yield();
         });
 
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(10, ctx, CancellationToken.None);
@@ -304,7 +304,7 @@ public sealed class BranchNodeTests
             });
         }
 
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
 
         // Act - start execution; handlers will block after incrementing 'started'
         var execTask = node.TransformAsync(1, ctx, CancellationToken.None);
@@ -346,7 +346,7 @@ public sealed class BranchNodeTests
             });
         }
 
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(1, ctx, CancellationToken.None);
@@ -390,7 +390,7 @@ public sealed class BranchNodeTests
             await Task.Yield();
         });
 
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(42, ctx, CancellationToken.None);
@@ -416,7 +416,7 @@ public sealed class BranchNodeTests
             throw new InvalidOperationException("Handler failed");
         });
 
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<BranchHandlerException>(async () =>
@@ -496,7 +496,7 @@ public sealed class BranchNodeTests
             throw new ArgumentException("Handler2 failed");
         });
 
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<AggregateException>(async () =>
@@ -518,7 +518,7 @@ public sealed class BranchNodeTests
             throw new InvalidOperationException("Handler failed");
         });
 
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<BranchHandlerException>(async () =>
@@ -554,7 +554,7 @@ public sealed class BranchNodeTests
             await Task.Yield();
         });
 
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         Dictionary<string, int> input = new() { { "key", 1 } };
 
         // Act
@@ -573,7 +573,7 @@ public sealed class BranchNodeTests
     {
         // Arrange
         var branchNode = new BranchNode<TestObject>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var originalObject = new TestObject { Value = 42, Name = "test" };
         var receivedObjects = new ConcurrentBag<TestObject>();
 
@@ -607,7 +607,7 @@ public sealed class BranchNodeTests
     {
         // Arrange
         var branchNode = new BranchNode<int>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var item = 123;
         var receivedItems = new ConcurrentBag<int>();
 
@@ -641,7 +641,7 @@ public sealed class BranchNodeTests
     {
         // Arrange
         var branchNode = new BranchNode<int>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var item = 1;
         var tasks = new List<Task>();
         var addCount = 100;
@@ -663,7 +663,7 @@ public sealed class BranchNodeTests
     {
         // Arrange
         var branchNode = new BranchNode<int>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var executionCounts = new ConcurrentBag<int>();
         var item = 1;
 

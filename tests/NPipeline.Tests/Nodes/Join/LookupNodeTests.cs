@@ -24,7 +24,7 @@ public sealed class LookupNodeTests
 
         var source = new InMemorySourceNode<User>(users);
         var sink = new InMemorySinkNode<EnrichedUser>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var services = new ServiceCollection();
         services.AddNPipeline(typeof(LookupNodeTests).Assembly);
         services.AddSingleton(source);
@@ -55,7 +55,7 @@ public sealed class LookupNodeTests
 
         var source = new InMemorySourceNode<EnrichedUser>(users);
         var sink = new InMemorySinkNode<FullyEnrichedUser>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         var profileService = A.Fake<IUserProfileService>();
 

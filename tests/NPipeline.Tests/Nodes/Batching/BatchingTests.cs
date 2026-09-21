@@ -24,7 +24,7 @@ public sealed class BatchingTests(ITestOutputHelper output)
         // Arrange
         var source = Enumerable.Range(0, 25).ToAsyncEnumerable();
         var batchingNode = new BatchingNode<int>(10, TimeSpan.FromSeconds(5));
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var results = new List<IReadOnlyCollection<int>>();
@@ -59,7 +59,7 @@ public sealed class BatchingTests(ITestOutputHelper output)
         }.ToAsyncEnumerable();
 
         var unbatchingNode = new UnbatchingNode<int>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var results = new List<int>();
@@ -107,7 +107,7 @@ public sealed class BatchingTests(ITestOutputHelper output)
         // Arrange
         var source = Enumerable.Range(0, 100).ToAsyncEnumerable();
         var batchingNode = new BatchingNode<int>(10, TimeSpan.FromSeconds(10));
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var results = new List<IReadOnlyCollection<int>>();
@@ -130,7 +130,7 @@ public sealed class BatchingTests(ITestOutputHelper output)
         // Arrange
         var source = Enumerable.Range(0, 95).ToAsyncEnumerable();
         var batchingNode = new BatchingNode<int>(10, TimeSpan.FromSeconds(10));
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var results = new List<IReadOnlyCollection<int>>();
@@ -167,7 +167,7 @@ public sealed class BatchingTests(ITestOutputHelper output)
 
         var source = channel.Reader.ReadAllAsync();
         var batchingNode = new BatchingNode<int>(10, TimeSpan.FromMilliseconds(50));
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var stopwatch = Stopwatch.StartNew();
@@ -194,7 +194,7 @@ public sealed class BatchingTests(ITestOutputHelper output)
         // Arrange
         var source = Array.Empty<int>().ToAsyncEnumerable();
         var batchingNode = new BatchingNode<int>(10, TimeSpan.FromSeconds(10));
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var results = new List<IReadOnlyCollection<int>>();

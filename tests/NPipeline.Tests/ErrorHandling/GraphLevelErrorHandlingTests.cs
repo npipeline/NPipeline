@@ -25,7 +25,7 @@ public sealed class GraphLevelErrorHandlingTests
         services.AddSingleton(flakyNode);
 
         var serviceProvider = services.BuildServiceProvider();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var runner = serviceProvider.GetRequiredService<IPipelineRunner>();
 
         // Set source data on the context

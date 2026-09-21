@@ -45,7 +45,7 @@ public sealed class ParallelExecutionStrategy : BlockingParallelStrategy
         // Determine which queue policy to use
         var queuePolicy = BoundedQueuePolicy.Block;
 
-        if (context.NodeExecutionScopeRegistry.TryGetNodeExecutionAnnotation(nodeId, out var opt) && opt is ParallelOptions po)
+        if (context.NodeEnvironment.NodeExecutionScopeRegistry.TryGetNodeExecutionAnnotation(nodeId, out var opt) && opt is ParallelOptions po)
             queuePolicy = po.QueuePolicy;
 
         // Delegate to the appropriate strategy. Drop strategies are stateless and cached per instance

@@ -115,7 +115,7 @@ public static class PipelineContextRetryDelayExtensions
             return options;
 
         // Return original retry options
-        return context.RetryOptions;
+        return context.ExecutionConfiguration.RetryOptions;
     }
 
     /// <summary>
@@ -140,7 +140,7 @@ public static class PipelineContextRetryDelayExtensions
         PipelineContext context,
         RetryDelayStrategyConfiguration configuration)
     {
-        var logger = context.LoggerFactory.CreateLogger(nameof(PipelineContextRetryDelayExtensions));
+        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(PipelineContextRetryDelayExtensions));
 
         try
         {
@@ -236,7 +236,7 @@ public static class PipelineContextRetryDelayExtensions
         var strategyConfig = new RetryDelayStrategyConfiguration(backoffStrategy, jitterStrategy);
 
         // Store updated retry options in Properties since RetryOptions is read-only
-        var updatedRetryOptions = context.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
+        var updatedRetryOptions = context.ExecutionConfiguration.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
         context.Properties[UpdatedRetryOptionsKey] = updatedRetryOptions;
 
         // Clear cached strategy to force recreation
@@ -289,7 +289,7 @@ public static class PipelineContextRetryDelayExtensions
         var strategyConfig = new RetryDelayStrategyConfiguration(backoffStrategy, jitterStrategy);
 
         // Store updated retry options in Properties since RetryOptions is read-only
-        var updatedRetryOptions = context.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
+        var updatedRetryOptions = context.ExecutionConfiguration.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
         context.Properties[UpdatedRetryOptionsKey] = updatedRetryOptions;
 
         // Clear cached strategy to force recreation
@@ -332,7 +332,7 @@ public static class PipelineContextRetryDelayExtensions
         var strategyConfig = new RetryDelayStrategyConfiguration(backoffStrategy, jitterStrategy);
 
         // Store updated retry options in Properties since RetryOptions is read-only
-        var updatedRetryOptions = context.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
+        var updatedRetryOptions = context.ExecutionConfiguration.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
         context.Properties[UpdatedRetryOptionsKey] = updatedRetryOptions;
 
         // Clear cached strategy to force recreation
@@ -383,7 +383,7 @@ public static class PipelineContextRetryDelayExtensions
         var strategyConfig = new RetryDelayStrategyConfiguration(backoffStrategy, jitterStrategy);
 
         // Store updated retry options in Properties since RetryOptions is read-only
-        var updatedRetryOptions = context.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
+        var updatedRetryOptions = context.ExecutionConfiguration.RetryOptions with { DelayStrategyConfiguration = strategyConfig };
         context.Properties[UpdatedRetryOptionsKey] = updatedRetryOptions;
 
         // Clear cached strategy to force recreation

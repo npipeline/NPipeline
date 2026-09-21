@@ -19,7 +19,7 @@ public sealed class ResilienceConfigurationRuleTests
         var builder = new PipelineBuilder()
             ;
 
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", [1]);
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1]);
         var transform = builder.AddTransform<ResilientTransform, int, int>("transform");
         var sink = builder.AddInMemorySink<int>("sink");
 
@@ -44,7 +44,7 @@ public sealed class ResilienceConfigurationRuleTests
             .WithOptimizationProfile(PipelineOptimizationProfile.HighThroughput)
             ;
 
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", [1]);
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1]);
         var transform = builder.AddTransform<ResilientTransform, int, int>("transform");
         var sink = builder.AddInMemorySink<int>("sink");
 
@@ -70,7 +70,7 @@ public sealed class ResilienceConfigurationRuleTests
         var builder = new PipelineBuilder()
             ;
 
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", [1]);
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1]);
         var transform = builder.AddTransform<ResilientTransform, int, int>("transform");
         var sink = builder.AddInMemorySink<int>("sink");
 
@@ -96,7 +96,7 @@ public sealed class ResilienceConfigurationRuleTests
         var builder = new PipelineBuilder()
             ;
 
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", [1]);
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1]);
         var transform = builder.AddTransform<ResilientTransform, int, int>("transform");
         var sink = builder.AddInMemorySink<int>("sink");
 
@@ -122,7 +122,7 @@ public sealed class ResilienceConfigurationRuleTests
         var builder = new PipelineBuilder()
             ;
 
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", [1]);
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1]);
         var transform = builder.AddTransform<ResilientTransform, int, int>("transform");
         var sink = builder.AddInMemorySink<int>("sink");
 
@@ -148,7 +148,7 @@ public sealed class ResilienceConfigurationRuleTests
         var builder = new PipelineBuilder()
             ;
 
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", [1]);
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1]);
         var transform = builder.AddTransform<ResilientTransform, int, int>("transform");
         var sink = builder.AddInMemorySink<int>("sink");
 
@@ -174,7 +174,7 @@ public sealed class ResilienceConfigurationRuleTests
         var builder = new PipelineBuilder()
             ;
 
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", [1]);
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", [1]);
         var transform = builder.AddTransform<RegularTransform, int, int>("transform");
         var sink = builder.AddInMemorySink<int>("sink");
 
@@ -271,7 +271,7 @@ public sealed class ParallelConfigurationRuleTests
         var builder = new PipelineBuilder()
             ;
 
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", new[] { 1, 2, 3 });
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", new[] { 1, 2, 3 });
         var transform = builder.AddTransform<ParallelTransform, int, int>("transform");
         var sink = builder.AddInMemorySink<int>("sink");
 
@@ -298,7 +298,7 @@ public sealed class ParallelConfigurationRuleTests
         var builder = new PipelineBuilder()
             ;
 
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", new[] { 1, 2, 3 });
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", new[] { 1, 2, 3 });
         var transform = builder.AddTransform<ParallelTransform, int, int>("transform");
         var sink = builder.AddInMemorySink<int>("sink");
 
@@ -326,7 +326,7 @@ public sealed class ParallelConfigurationRuleTests
         var builder = new PipelineBuilder()
             ;
 
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", new[] { 1, 2, 3 });
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", new[] { 1, 2, 3 });
         var transform = builder.AddTransform<ParallelTransform, int, int>("transform");
         var sink = builder.AddInMemorySink<int>("sink");
 
@@ -355,7 +355,7 @@ public sealed class ParallelConfigurationRuleTests
         var builder = new PipelineBuilder()
             ;
 
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", new[] { 1, 2, 3 });
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", new[] { 1, 2, 3 });
         var transform = builder.AddTransform<ParallelTransform, int, int>("transform");
         var sink = builder.AddInMemorySink<int>("sink");
 
@@ -385,7 +385,7 @@ public sealed class ParallelConfigurationRuleTests
         var builder = new PipelineBuilder()
             ;
 
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", new[] { 1, 2, 3 });
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", new[] { 1, 2, 3 });
         var transform = builder.AddTransform<ParallelTransform, int, int>("transform");
         var sink = builder.AddInMemorySink<int>("sink");
 
@@ -415,7 +415,7 @@ public sealed class ParallelConfigurationRuleTests
         var builder = new PipelineBuilder()
             ;
 
-        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "source", new[] { 1, 2, 3 });
+        var source = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "source", new[] { 1, 2, 3 });
         var transform = builder.AddTransform<ParallelTransform, int, int>("transform");
         var sink = builder.AddInMemorySink<int>("sink");
 

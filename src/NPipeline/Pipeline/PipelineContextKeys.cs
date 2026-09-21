@@ -58,8 +58,8 @@ namespace NPipeline.Pipeline;
 ///     <example>
 ///         <code>
 ///         // Safe: Using strongly-typed PipelineContext properties
-///         var context = PipelineContext.Default;
-///         var retryOptions = context.GlobalRetryOptions;
+///         var context = PipelineContext.CreateDefault();
+///         var retryOptions = context.ExecutionConfiguration.GlobalRetryOptions;
 /// 
 ///         // Safe: User-defined key with clear naming
 ///         context.Items["MyApp.CustomSetting"] = "value";

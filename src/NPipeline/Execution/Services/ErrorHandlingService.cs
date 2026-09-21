@@ -80,7 +80,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
         Func<Task> executeBody,
         CancellationToken cancellationToken)
     {
-        var logger = context.LoggerFactory.CreateLogger(nameof(ErrorHandlingService));
+        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(ErrorHandlingService));
 
         try
         {
@@ -117,7 +117,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
             // is seeing a different exception (like InvalidOperationException) when trying to process the data
 
             // Taken, not read: leaving it set would attribute this node's root cause to every later failure too.
-            if (context.TakeLastRetryExhaustedException() is { } contextRetryEx)
+            if (context.ExecutionConfiguration.TakeLastRetryExhaustedException() is { } contextRetryEx)
                 throw new NodeExecutionException(nodeDef.Id, contextRetryEx.Message, contextRetryEx);
 
             // SECOND PRIORITY: Check if the exception or any of its inner exceptions is a RetryExhaustedException
@@ -174,7 +174,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
         Func<Task> executeAsync,
         CancellationToken cancellationToken)
     {
-        var logger = context.LoggerFactory.CreateLogger(nameof(ErrorHandlingService));
+        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(ErrorHandlingService));
 
         ArgumentNullException.ThrowIfNull(nodeDefinition);
         ArgumentNullException.ThrowIfNull(node);
@@ -203,7 +203,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
             lastException = ex;
 
             // Check whether a node exhausted its retries and left the root cause for us to report.
-            if (context.TakeLastRetryExhaustedException() is { } contextRetryEx)
+            if (context.ExecutionConfiguration.TakeLastRetryExhaustedException() is { } contextRetryEx)
                 throw new NodeExecutionException(nodeDefinition.Id, contextRetryEx.Message, contextRetryEx);
         }
 
@@ -245,7 +245,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
             // Apply retry delay before retry attempt
             try
             {
-                var delay = await context.ResiliencePolicy.GetRetryDelayAsync(context, retryCount, cancellationToken).ConfigureAwait(false);
+                var delay = await context.ExecutionConfiguration.ResiliencePolicy.GetRetryDelayAsync(context, retryCount, cancellationToken).ConfigureAwait(false);
 
                 if (delay > TimeSpan.Zero)
                 {
@@ -273,7 +273,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
                 lastException = ex;
 
                 // Check whether a node exhausted its retries and left the root cause for us to report.
-                if (context.TakeLastRetryExhaustedException() is { } contextRetryEx)
+                if (context.ExecutionConfiguration.TakeLastRetryExhaustedException() is { } contextRetryEx)
                     throw new NodeExecutionException(nodeDefinition.Id, contextRetryEx.Message, contextRetryEx);
             }
         }
@@ -317,7 +317,7 @@ public sealed class ErrorHandlingService : IErrorHandlingService
     /// <returns>True if execution is in parallel mode, otherwise false.</returns>
     private static bool IsParallelExecution(PipelineContext context)
     {
-        return context.IsParallelExecution;
+        return context.ExecutionConfiguration.IsParallelExecution;
     }
 
     /// <summary>
@@ -336,6 +336,6 @@ public sealed class ErrorHandlingService : IErrorHandlingService
         PipelineContext context,
         CancellationToken cancellationToken)
     {
-        return context.ResiliencePolicy.DecideNodeFailureAsync(nodeDefinition, node, exception, context, cancellationToken);
+        return context.ExecutionConfiguration.ResiliencePolicy.DecideNodeFailureAsync(nodeDefinition, node, exception, context, cancellationToken);
     }
 }

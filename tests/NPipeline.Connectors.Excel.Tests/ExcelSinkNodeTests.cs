@@ -27,7 +27,7 @@ public sealed class ExcelSinkNodeTests
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<int>(uri, resolver, config);
             IDataStream<int> input = new DataStream<int>(Enumerable.Range(1, 5).ToAsyncEnumerable());
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Verify file was created
             File.Exists(tempFile).Should().BeTrue();
@@ -63,11 +63,11 @@ public sealed class ExcelSinkNodeTests
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<TestRecord>(uri, resolver, config);
             IDataStream<TestRecord> input = new DataStream<TestRecord>(testData.ToAsyncEnumerable());
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Read back to verify headers
             var src = new ExcelSourceNode<TestRecord>(uri, MapTestRecordFromHeaders, resolver, config);
-            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
 
             var result = new List<TestRecord>();
 
@@ -116,7 +116,7 @@ public sealed class ExcelSinkNodeTests
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<TestRecord>(uri, resolver, config);
             IDataStream<TestRecord> input = new DataStream<TestRecord>(testData.ToAsyncEnumerable());
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Verify file was created
             File.Exists(tempFile).Should().BeTrue();
@@ -147,11 +147,11 @@ public sealed class ExcelSinkNodeTests
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<int>(uri, resolver, config);
             IDataStream<int> input = new DataStream<int>(Enumerable.Range(1, 3).ToAsyncEnumerable());
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Read back to verify sheet name
             var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
-            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
 
             var result = new List<int>();
 
@@ -189,11 +189,11 @@ public sealed class ExcelSinkNodeTests
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<int>(uri, resolver, config);
             IDataStream<int> input = new DataStream<int>(Enumerable.Range(1, 3).ToAsyncEnumerable());
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Read back to verify
             var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
-            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
 
             var result = new List<int>();
 
@@ -256,11 +256,11 @@ public sealed class ExcelSinkNodeTests
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<ComplexRecord>(uri, resolver, config);
             IDataStream<ComplexRecord> input = new DataStream<ComplexRecord>(testData.ToAsyncEnumerable());
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Read back to verify
             var src = new ExcelSourceNode<ComplexRecord>(uri, MapComplexRecordFromHeaders, resolver, config);
-            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
 
             var result = new List<ComplexRecord>();
 
@@ -321,11 +321,11 @@ public sealed class ExcelSinkNodeTests
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<NullableRecord>(uri, resolver, config);
             IDataStream<NullableRecord> input = new DataStream<NullableRecord>(testData.ToAsyncEnumerable());
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Read back to verify
             var src = new ExcelSourceNode<NullableRecord>(uri, MapNullableRecordFromHeaders, resolver, config);
-            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
 
             var result = new List<NullableRecord>();
 
@@ -383,7 +383,7 @@ public sealed class ExcelSinkNodeTests
             // Cancel after a short delay
             cts.CancelAfter(100);
 
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => { await sink.ConsumeAsync(input, PipelineContext.Default, cts.Token); });
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => { await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), cts.Token); });
         }
         finally
         {
@@ -411,11 +411,11 @@ public sealed class ExcelSinkNodeTests
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<string>(uri, resolver, config);
             IDataStream<string> input = new DataStream<string>(testData.ToAsyncEnumerable());
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Read back to verify
             var src = new ExcelSourceNode<string>(uri, MapStringRow, resolver, config);
-            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
 
             var result = new List<string>();
 
@@ -458,11 +458,11 @@ public sealed class ExcelSinkNodeTests
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<DateTimeRecord>(uri, resolver, config);
             IDataStream<DateTimeRecord> input = new DataStream<DateTimeRecord>(testData.ToAsyncEnumerable());
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Read back to verify
             var src = new ExcelSourceNode<DateTimeRecord>(uri, MapDateTimeRecordFromHeaders, resolver, config);
-            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
 
             var result = new List<DateTimeRecord>();
 
@@ -508,11 +508,11 @@ public sealed class ExcelSinkNodeTests
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<BoolRecord>(uri, resolver, config);
             IDataStream<BoolRecord> input = new DataStream<BoolRecord>(testData.ToAsyncEnumerable());
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Read back to verify
             var src = new ExcelSourceNode<BoolRecord>(uri, MapBoolRecordFromHeaders, resolver, config);
-            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
 
             var result = new List<BoolRecord>();
 
@@ -558,11 +558,11 @@ public sealed class ExcelSinkNodeTests
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<DecimalRecord>(uri, resolver, config);
             IDataStream<DecimalRecord> input = new DataStream<DecimalRecord>(testData.ToAsyncEnumerable());
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Read back to verify
             var src = new ExcelSourceNode<DecimalRecord>(uri, MapDecimalRecordFromHeaders, resolver, config);
-            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
 
             var result = new List<DecimalRecord>();
 
@@ -602,11 +602,11 @@ public sealed class ExcelSinkNodeTests
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<int>(uri, resolver, config);
             IDataStream<int> input = new DataStream<int>(testData.ToAsyncEnumerable());
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Read back to verify
             var src = new ExcelSourceNode<int>(uri, MapIntRow, resolver, config);
-            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
 
             var result = new List<int>();
 
@@ -649,11 +649,11 @@ public sealed class ExcelSinkNodeTests
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<DoubleRecord>(uri, resolver, config);
             IDataStream<DoubleRecord> input = new DataStream<DoubleRecord>(testData.ToAsyncEnumerable());
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Read back to verify
             var src = new ExcelSourceNode<DoubleRecord>(uri, MapDoubleRecordFromHeaders, resolver, config);
-            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
 
             var result = new List<DoubleRecord>();
 
@@ -693,7 +693,7 @@ public sealed class ExcelSinkNodeTests
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new ExcelSinkNode<TestRecord>(uri, resolver, config);
             IDataStream<TestRecord> input = new DataStream<TestRecord>(testData.ToAsyncEnumerable());
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Verify file was created
             File.Exists(tempFile).Should().BeTrue();

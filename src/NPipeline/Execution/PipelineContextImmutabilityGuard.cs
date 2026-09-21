@@ -84,8 +84,8 @@ internal readonly struct PipelineContextImmutabilityGuard
         return new PipelineContextImmutabilityGuard(
             cached.NodeId,
             RuntimeHelpers.GetHashCode(cached.RetryOptions),
-            RuntimeHelpers.GetHashCode(context.Tracer),
-            RuntimeHelpers.GetHashCode(context.LoggerFactory),
+            RuntimeHelpers.GetHashCode(context.Observability.Tracer),
+            RuntimeHelpers.GetHashCode(context.Observability.LoggerFactory),
             context.CancellationToken.GetHashCode());
 #else
             return default;
@@ -116,7 +116,7 @@ internal readonly struct PipelineContextImmutabilityGuard
         }
 
         // Check if tracer was replaced
-        if (RuntimeHelpers.GetHashCode(context.Tracer) != _tracerHash)
+        if (RuntimeHelpers.GetHashCode(context.Observability.Tracer) != _tracerHash)
         {
             throw new InvalidOperationException(
                 $"Context immutability violation detected for node '{_nodeId}': " +
@@ -125,7 +125,7 @@ internal readonly struct PipelineContextImmutabilityGuard
         }
 
         // Check if logger factory was replaced
-        if (RuntimeHelpers.GetHashCode(context.LoggerFactory) != _loggerFactoryHash)
+        if (RuntimeHelpers.GetHashCode(context.Observability.LoggerFactory) != _loggerFactoryHash)
         {
             throw new InvalidOperationException(
                 $"Context immutability violation detected for node '{_nodeId}': " +
@@ -146,9 +146,9 @@ internal readonly struct PipelineContextImmutabilityGuard
     private static int GetCurrentRetryOptionsHash(PipelineContext context, string nodeId)
     {
         // Replicate the same retry options resolution logic used in CachedNodeExecutionContext.Create
-        if (context.NodeRetryOverrides.TryGetValue(nodeId, out var nodeRetryOptions))
+        if (context.ExecutionConfiguration.NodeRetryOverrides.TryGetValue(nodeId, out var nodeRetryOptions))
             return RuntimeHelpers.GetHashCode(nodeRetryOptions);
 
-        return RuntimeHelpers.GetHashCode(context.GlobalRetryOptions);
+        return RuntimeHelpers.GetHashCode(context.ExecutionConfiguration.GlobalRetryOptions);
     }
 }

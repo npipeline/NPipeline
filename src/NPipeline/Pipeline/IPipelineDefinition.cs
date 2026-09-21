@@ -54,7 +54,7 @@ namespace NPipeline.Pipeline;
 /// 
 /// // Use the pipeline
 /// var runner = PipelineRunner.Create();
-/// var context = PipelineContext.Default;
+/// var context = PipelineContext.CreateDefault();
 /// await runner.RunAsync&lt;CsvProcessingPipeline&gt;(context);
 /// </code>
 /// </example>

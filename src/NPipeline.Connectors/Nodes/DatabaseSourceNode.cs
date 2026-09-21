@@ -191,7 +191,7 @@ public abstract class DatabaseSourceNode<TReader, T> : SourceNode<T>, IAsyncDisp
             return;
 
         var storage = ResolveCheckpointStorage();
-        var pipelineId = context.CurrentNodeId ?? PipelineId;
+        var pipelineId = context.NodeEnvironment.CurrentNodeId ?? PipelineId;
 
         _checkpointManager = new CheckpointManager(
             storage,

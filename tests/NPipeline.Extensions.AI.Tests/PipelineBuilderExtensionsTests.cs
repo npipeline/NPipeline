@@ -115,7 +115,7 @@ public class PipelineBuilderExtensionsTests
         var client = FakeChatClient.ThatReturns("""[{"label":"positive","score":0.9}]""");
         var sink = new InMemorySinkNode<TestDomain.Comment>();
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         context.Items[ClientContextKey] = client;
         context.Items[SinkContextKey] = sink;
 
@@ -131,7 +131,7 @@ public class PipelineBuilderExtensionsTests
         var client = FakeChatClient.ThatReturns("""[{"label":"positive","score":0.9},{"label":"negative","score":0.1}]""");
         var sink = new InMemorySinkNode<TestDomain.Comment>();
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         context.Items[ClientContextKey] = client;
         context.Items[SinkContextKey] = sink;
 

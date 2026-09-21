@@ -239,7 +239,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
         AsyncDisposableTransformNode.DisposeCount = 0;
         AsyncDisposableSinkNode.DisposeCount = 0;
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await _pipelineRunner.RunAsync<SimpleAsyncDisposablePipeline>(context);
@@ -259,7 +259,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
         SyncDisposableSourceNode.DisposeCount = 0;
         AsyncDisposableTransformNode.DisposeCount = 0;
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await _pipelineRunner.RunAsync<MixedDisposalPipeline>(context);
@@ -279,7 +279,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
     public async Task ResourceDisposal_BuilderDisposables_AreTransferredToContext()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var testDisposable = new TestAsyncDisposable();
         _trackedDisposables.Add(testDisposable);
 
@@ -301,7 +301,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
     public async Task ResourceDisposal_CreateAndRegister_TransfersOwnershipToContext()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var testDisposable = new TestAsyncDisposable();
         _trackedDisposables.Add(testDisposable);
 
@@ -323,7 +323,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
     public async Task ResourceDisposal_SyncDisposable_WrappedAndTransferredToContext()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var testDisposable = new TestSyncDisposable();
         _trackedSyncDisposables.Add(testDisposable);
 
@@ -349,7 +349,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
     public async Task ResourceDisposal_PipeDisposables_AreCleanedUpAfterExecution()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var pipe = A.Fake<IDataStream<string>>();
         var asyncDisposablePipe = A.Fake<IAsyncDisposable>();
         var wrapper = new TestPipeWrapper(asyncDisposablePipe);
@@ -368,7 +368,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
     public async Task ResourceDisposal_MultiplePipeDisposables_AreAllCleanedUp()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var asyncDisposable1 = A.Fake<IAsyncDisposable>();
         var asyncDisposable2 = A.Fake<IAsyncDisposable>();
         var asyncDisposable3 = A.Fake<IAsyncDisposable>();
@@ -402,7 +402,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
         ThrowingAsyncDisposableTransformNode.DisposeCount = 0;
         AsyncDisposableSinkNode.DisposeCount = 0;
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         await _pipelineRunner
@@ -424,7 +424,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
     public async Task ResourceDisposal_WhenContextDisposedLate_DisposablesStillDisposed()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var testDisposable = new TestAsyncDisposable();
         _trackedDisposables.Add(testDisposable);
 
@@ -451,7 +451,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
     public async Task ResourceDisposal_WhenDisposeThrows_OtherDisposablesStillDisposed()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var goodDisposable1 = new TestAsyncDisposable();
         var throwingDisposable = new ThrowingAsyncDisposable();
         var goodDisposable2 = new TestAsyncDisposable();
@@ -526,7 +526,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
     public async Task ResourceDisposal_ContextWithNoRegistrations_DisposesWithoutAllocatingList()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act - Dispose without registering anything
         await context.DisposeAsync();
@@ -539,7 +539,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
     public async Task ResourceDisposal_AfterFirstRegistration_SubsequentRegistrationsWork()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var disposable1 = new TestAsyncDisposable();
         var disposable2 = new TestAsyncDisposable();
         var disposable3 = new TestAsyncDisposable();
@@ -565,7 +565,7 @@ public sealed class ResourceDisposalTests : IAsyncLifetime
     public async Task ResourceDisposal_ContextDisposedTwice_SecondDisposeIsNoOp()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var disposable = new TestAsyncDisposable();
         _trackedDisposables.Add(disposable);
 

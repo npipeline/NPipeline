@@ -116,7 +116,7 @@ public static class BranchMetricsContextExtensions
     /// <returns>The branch metrics for the specified node, or null if not found.</returns>
     public static BranchMetrics? GetBranchMetrics(this PipelineContext context, string nodeId)
     {
-        if (context.NodeExecutionScopeRegistry.TryGetRuntimeAnnotation(ExecutionAnnotationKeys.BranchMetricsForNode(nodeId), out var m) &&
+        if (context.NodeEnvironment.NodeExecutionScopeRegistry.TryGetRuntimeAnnotation(ExecutionAnnotationKeys.BranchMetricsForNode(nodeId), out var m) &&
             m is BranchMetrics fm)
             return fm;
 

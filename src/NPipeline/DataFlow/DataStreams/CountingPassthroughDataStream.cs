@@ -78,7 +78,7 @@ internal sealed class CountingPassthroughDataStream<T> : IForwardOnlyDataStream<
                 {
                     // Store the RetryExhaustedException in the context for downstream nodes to access
                     if (_context is not null)
-                        _context.LastRetryExhaustedException = retryEx;
+                        _context.ExecutionConfiguration.LastRetryExhaustedException = retryEx;
 
                     ExceptionDispatchInfo.Capture(retryEx).Throw();
                     yield break; // Never reached but required for compiler

@@ -45,7 +45,7 @@ await runner.RunAsync<OrderPipeline>();
 `PipelineRunner.Create()` builds a runner with default services. You can also pass a `PipelineContext` and cancellation token:
 
 ```csharp
-var context = PipelineContext.Default;
+var context = PipelineContext.CreateDefault();
 await runner.RunAsync<OrderPipeline>(context, cancellationToken);
 ```
 

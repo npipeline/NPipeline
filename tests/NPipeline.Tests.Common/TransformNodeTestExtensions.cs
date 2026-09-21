@@ -29,7 +29,7 @@ public static class TransformNodeTestExtensions
         string? nodeId = null,
         CancellationToken cancellationToken = default)
     {
-        return node.ExecutionStrategy.ExecuteAsync(input, node, context, nodeId ?? context.CurrentNodeId, cancellationToken);
+        return node.ExecutionStrategy.ExecuteAsync(input, node, context, nodeId ?? context.NodeEnvironment.CurrentNodeId, cancellationToken);
     }
 
     /// <summary>

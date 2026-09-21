@@ -45,7 +45,7 @@ public sealed class ErrorHandlerResolutionTests
 
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Set up test data with one item that will fail
         context.SetSourceData(["ok", "fail", "ok2"]);
@@ -77,7 +77,7 @@ public sealed class ErrorHandlerResolutionTests
 
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Set up test data with one item that will fail
         context.SetSourceData(["fail-me"]);
@@ -111,7 +111,7 @@ public sealed class ErrorHandlerResolutionTests
 
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Set up test data with one item that will fail
         context.SetSourceData(["ok", "fail", "ok2"]);
@@ -139,7 +139,7 @@ public sealed class ErrorHandlerResolutionTests
 
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Set up test data with one item that will cause pipeline to fail
         context.SetSourceData(["fail-pipeline"]);
@@ -169,7 +169,7 @@ public sealed class ErrorHandlerResolutionTests
 
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Set up test data with one item that will fail
         context.SetSourceData(["no-handler"]);
@@ -192,7 +192,7 @@ public sealed class ErrorHandlerResolutionTests
 
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Set up test data with one item that will fail
         context.SetSourceData(["missing-global"]);
@@ -224,7 +224,7 @@ public sealed class ErrorHandlerResolutionTests
 
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Set up test data with multiple items, one will fail
         context.SetSourceData(["item1", "fail-item", "item2", "item3"]);
@@ -253,7 +253,7 @@ public sealed class ErrorHandlerResolutionTests
 
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Set up test data with an item that will cause pipeline failure
         context.SetSourceData(["fail-pipeline-item"]);

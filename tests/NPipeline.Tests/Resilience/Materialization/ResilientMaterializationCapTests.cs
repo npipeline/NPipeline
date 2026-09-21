@@ -23,7 +23,7 @@ public sealed class ResilientMaterializationCapTests
         services.AddNPipeline(Assembly.GetExecutingAssembly());
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
 
         // Act
         var act = async () => await runner.RunAsync<ResilientPipeline>(ctx);
@@ -39,7 +39,7 @@ public sealed class ResilientMaterializationCapTests
         services.AddNPipeline(Assembly.GetExecutingAssembly());
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var act = async () => await runner.RunAsync<WithinCapPipeline>(ctx);
         await act.Should().NotThrowAsync();
     }

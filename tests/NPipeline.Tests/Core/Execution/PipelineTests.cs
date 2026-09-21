@@ -98,7 +98,7 @@ public sealed class PipelineTests
         _ = builder.AddSource<DummySource, int>("source");
         var graph = builder.Build().Graph;
         NPipeline.Pipeline.Pipeline pipeline = new(graph) { BuilderDisposables = [] };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         _ = pipeline.Invoking(p => p.TransferBuilderDisposables(context))
@@ -117,7 +117,7 @@ public sealed class PipelineTests
         DummyAsyncDisposable disposable1 = new();
         DummyAsyncDisposable disposable2 = new();
         pipeline.BuilderDisposables = [disposable1, disposable2];
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         pipeline.TransferBuilderDisposables(context);
@@ -138,7 +138,7 @@ public sealed class PipelineTests
 
         DummyAsyncDisposable disposable = new();
         pipeline.BuilderDisposables = [disposable];
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert - calling multiple times should not throw
         _ = pipeline.Invoking(p =>

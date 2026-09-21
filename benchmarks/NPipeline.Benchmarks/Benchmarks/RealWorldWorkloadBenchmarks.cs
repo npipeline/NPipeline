@@ -29,7 +29,7 @@ public class RealWorldWorkloadBenchmarks
     public void Setup()
     {
         _runner = PipelineRunner.Create();
-        _ctx = PipelineContext.Default;
+        _ctx = PipelineContext.CreateDefault();
     }
 
     [Benchmark]

@@ -67,10 +67,10 @@ internal static class PipelineSampleErrorReporter
             exception.GetType().FullName,
             exception.StackTrace,
             Math.Max(0, retryCount),
-            context.PipelineName,
-            context.RunId == Guid.Empty
+            context.RunIdentity.PipelineName,
+            context.RunIdentity.RunId == Guid.Empty
                 ? null
-                : context.RunId,
+                : context.RunIdentity.RunId,
             DateTimeOffset.UtcNow);
     }
 

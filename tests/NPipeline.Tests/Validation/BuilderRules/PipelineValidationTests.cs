@@ -12,7 +12,7 @@ public sealed class PipelineValidationTests
     {
         var builder = new PipelineBuilder();
         var def = new TDef();
-        def.Define(builder, PipelineContext.Default);
+        def.Define(builder, PipelineContext.CreateDefault());
         return builder.Build();
     }
 
@@ -62,7 +62,7 @@ public sealed class PipelineValidationTests
     public void TryBuild_Should_SurfaceCycleIssueWithCategory()
     {
         var builder = new PipelineBuilder();
-        new CyclePipeline().Define(builder, PipelineContext.Default);
+        new CyclePipeline().Define(builder, PipelineContext.CreateDefault());
         var ok = builder.TryBuild(out var pipeline, out var result);
         ok.Should().BeFalse();
         result.Issues.Should().Contain(i => i.Category == "Cycles" && i.Message.Contains("Cycle detected"));
@@ -72,7 +72,7 @@ public sealed class PipelineValidationTests
     public void WarnMode_Should_BuildPipelineDespiteErrors()
     {
         var builder = new PipelineBuilder().WithValidationMode(GraphValidationMode.Warn);
-        new InvalidButWarnable().Define(builder, PipelineContext.Default);
+        new InvalidButWarnable().Define(builder, PipelineContext.CreateDefault());
         var ok = builder.TryBuild(out var pipeline, out var result);
         ok.Should().BeTrue();
         pipeline.Should().NotBeNull();
@@ -83,7 +83,7 @@ public sealed class PipelineValidationTests
     public void OffMode_Should_SkipValidation()
     {
         var builder = new PipelineBuilder().WithValidationMode(GraphValidationMode.Off);
-        new InvalidButWarnable().Define(builder, PipelineContext.Default);
+        new InvalidButWarnable().Define(builder, PipelineContext.CreateDefault());
 
         // Build should not throw even though the graph is invalid structurally.
         var act = () => builder.Build();

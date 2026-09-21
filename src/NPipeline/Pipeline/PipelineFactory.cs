@@ -33,9 +33,9 @@ public sealed class PipelineFactory : IPipelineFactory
         definition.Define(builder, context);
 
         // Allow tests / advanced users to supply preconfigured node instances via context.
-        if (context.PreconfiguredNodeInstances.Count > 0)
+        if (context.NodeEnvironment.PreconfiguredNodeInstances.Count > 0)
         {
-            foreach (var kvp in context.PreconfiguredNodeInstances)
+            foreach (var kvp in context.NodeEnvironment.PreconfiguredNodeInstances)
             {
                 // Best-effort: ignore duplicates (will throw) so wrap in try/catch.
                 try

@@ -55,10 +55,8 @@ public sealed class ObservablePipelineContextFactory : IObservablePipelineContex
             ObservabilityFactory = observabilityFactory ?? new DiObservabilityFactory(_serviceProvider),
         };
 
-        var context = new PipelineContext(configWithObservability)
-        {
-            ExecutionObserver = _executionObserver,
-        };
+        var context = new PipelineContext(configWithObservability);
+        context.Observability.ExecutionObserver = _executionObserver;
 
         return context;
     }

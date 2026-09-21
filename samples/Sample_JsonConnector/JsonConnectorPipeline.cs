@@ -79,7 +79,7 @@ public class JsonConnectorPipeline : IPipelineDefinition
         builder.Connect(transform, sink);
 
         // Log pipeline configuration
-        var logger = context.LoggerFactory.CreateLogger("JsonConnectorPipeline");
+        var logger = context.Observability.LoggerFactory.CreateLogger("JsonConnectorPipeline");
         logger.Log(LogLevel.Information, "JSON pipeline configured: {SourcePath} -> {TargetPath}", sourcePath, targetPath);
 
         logger.Log(LogLevel.Information, "JSON format: {Format}, Naming policy: {NamingPolicy}, Indented: {WriteIndented}",

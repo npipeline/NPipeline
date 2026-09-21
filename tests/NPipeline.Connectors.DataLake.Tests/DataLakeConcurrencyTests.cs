@@ -120,7 +120,7 @@ public sealed class DataLakeConcurrencyTests : IAsyncDisposable
 
         // Assert
         var source = new DataLakeTableSourceNode<SalesRecord>(_provider, _tableUri);
-        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
         result.Should().HaveCount(concurrentWriters * 10);
     }
@@ -201,7 +201,7 @@ public sealed class DataLakeConcurrencyTests : IAsyncDisposable
 
         // Assert - Read all data back
         var source = new DataLakeTableSourceNode<SalesRecord>(_provider, _tableUri);
-        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
         result.Should().HaveCount(150); // 3 regions * 50 records each
     }
@@ -241,7 +241,7 @@ public sealed class DataLakeConcurrencyTests : IAsyncDisposable
 
         // Assert
         var source = new DataLakeTableSourceNode<SalesRecord>(_provider, _tableUri);
-        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
         result.Should().HaveCount(80); // 2 dates * 2 regions * 20 records
     }

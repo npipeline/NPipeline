@@ -80,12 +80,12 @@ public sealed class DefaultResiliencePolicy : IResiliencePolicy
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(nodeId);
 
-        if (context.CircuitBreakerOptions is not { Enabled: true } circuitBreakerOptions)
+        if (context.ExecutionConfiguration.CircuitBreakerOptions is not { Enabled: true } circuitBreakerOptions)
             return null;
 
         EnsureCircuitBreakerManagerIsAvailable(context);
 
-        if (context.CircuitBreakerManager is not ICircuitBreakerManager manager)
+        if (context.ExecutionConfiguration.CircuitBreakerManager is not ICircuitBreakerManager manager)
             return null;
 
         var breaker = manager.GetCircuitBreaker(nodeId, circuitBreakerOptions);
@@ -94,15 +94,15 @@ public sealed class DefaultResiliencePolicy : IResiliencePolicy
 
     private static void EnsureCircuitBreakerManagerIsAvailable(PipelineContext context)
     {
-        if (context.CircuitBreakerOptions is not { Enabled: true })
+        if (context.ExecutionConfiguration.CircuitBreakerOptions is not { Enabled: true })
             return;
 
-        if (context.CircuitBreakerManager is ICircuitBreakerManager)
+        if (context.ExecutionConfiguration.CircuitBreakerManager is ICircuitBreakerManager)
             return;
 
-        var logger = context.LoggerFactory.CreateLogger(nameof(CircuitBreakerManager));
-        var manager = context.CreateAndRegister(new CircuitBreakerManager(logger, context.CircuitBreakerMemoryOptions));
-        context.CircuitBreakerManager = manager;
+        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(CircuitBreakerManager));
+        var manager = context.CreateAndRegister(new CircuitBreakerManager(logger, context.ExecutionConfiguration.CircuitBreakerMemoryOptions));
+        context.ExecutionConfiguration.CircuitBreakerManager = manager;
     }
 
     private sealed class ResilienceCircuitBreakerAdapter(ICircuitBreaker circuitBreaker) : IResilienceCircuitBreaker

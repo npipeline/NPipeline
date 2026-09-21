@@ -23,7 +23,7 @@ public sealed class ErrorHandlingTests(ITestOutputHelper output)
 
         var provider = services.BuildServiceProvider();
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Set source data on context
         var sourceData = new List<string> { "item1", "fail", "item2" };

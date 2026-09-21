@@ -30,7 +30,7 @@ public class ValueTaskFastPathBenchmarks
     public void Setup()
     {
         _runner = PipelineRunner.Create();
-        _ctx = PipelineContext.Default;
+        _ctx = PipelineContext.CreateDefault();
         _ctx.Parameters["count"] = ItemCount;
         _ctx.Parameters["cacheHitRate"] = CacheHitRate;
 

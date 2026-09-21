@@ -29,9 +29,9 @@ public static class FailureAttributionResolver
         return new NodeFailureAttribution(
             OriginNodeId: originNodeId,
             DecisionNodeId: decisionNodeId,
-            OriginPipelineId: context.PipelineId,
-            DecisionPipelineId: context.PipelineId,
-            RunId: context.RunId == Guid.Empty ? null : context.RunId,
+            OriginPipelineId: context.RunIdentity.PipelineId,
+            DecisionPipelineId: context.RunIdentity.PipelineId,
+            RunId: context.RunIdentity.RunId == Guid.Empty ? null : context.RunIdentity.RunId,
             CorrelationId: correlationId,
             RetryCount: retryCount);
     }

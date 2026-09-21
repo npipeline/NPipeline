@@ -63,7 +63,7 @@ internal sealed class PipelineExecutionSetupStage(
 
     private static void ApplyRetryOptions(PipelineGraph graph, PipelineContext context)
     {
-        var logger = context.LoggerFactory.CreateLogger(nameof(PipelineRunner));
+        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(PipelineRunner));
         var execution = context.ExecutionConfiguration;
 
         if (graph.ErrorHandling.RetryOptions is not null)
@@ -109,7 +109,7 @@ internal sealed class PipelineExecutionSetupStage(
             return;
         }
 
-        var managerLogger = context.LoggerFactory.CreateLogger(nameof(CircuitBreakerManager));
+        var managerLogger = context.Observability.LoggerFactory.CreateLogger(nameof(CircuitBreakerManager));
         var circuitBreakerManager = context.CreateAndRegister(new CircuitBreakerManager(managerLogger, memoryOptions));
         execution.CircuitBreakerManager = circuitBreakerManager;
         PipelineRunnerLogMessages.CircuitBreakerManagerCreated(managerLogger);
@@ -122,7 +122,7 @@ internal sealed class PipelineExecutionSetupStage(
         lineage.LineageSink = runtimeBinding.LineageSink;
         lineage.PipelineLineageSink = runtimeBinding.PipelineLineageSink;
         lineage.LineageCollector = runtimeBinding.LineageCollector;
-        context.ResiliencePolicy = runtimeBinding.ResiliencePolicy;
+        context.ExecutionConfiguration.ResiliencePolicy = runtimeBinding.ResiliencePolicy;
 
         if (runtimeBinding.DeadLetterSink is not null)
             context.DeadLetterSink = runtimeBinding.DeadLetterSink;
@@ -156,7 +156,7 @@ internal sealed class PipelineExecutionSetupStage(
             context.StateManager = sm as IPipelineStateManager;
 
         if (context.Properties.TryGetValue(ExecutionAnnotationKeys.ExecutionObserverProperty, out var eo) && eo is IExecutionObserver execObs)
-            context.ExecutionObserver = execObs;
+            context.Observability.ExecutionObserver = execObs;
     }
 
     private Dictionary<string, NodeExecutionPlan> BuildExecutionPlans(

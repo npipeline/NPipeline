@@ -49,7 +49,7 @@ public sealed class NullObservabilitySurface : IObservabilitySurface
         var startTs = DateTimeOffset.UtcNow;
         var startTimestamp = Stopwatch.GetTimestamp();
         return new NodeObservationScope(nodeDef.Id, nodeInstance.GetType().Name, startTs, startTimestamp,
-            NullPipelineActivity.Instance, context.PipelineId, context.PipelineName, null);
+            NullPipelineActivity.Instance, context.RunIdentity.PipelineId, context.RunIdentity.PipelineName, null);
     }
 
     /// <inheritdoc />

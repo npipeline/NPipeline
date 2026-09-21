@@ -19,7 +19,7 @@ public class AIRouteIntegrationTests
         var negativeSink = new InMemorySinkNode<TestDomain.Comment>();
         var fallbackSink = new InMemorySinkNode<TestDomain.Comment>();
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         context.Items[ClientKey] = client;
         context.Items["positive"] = positiveSink;
         context.Items["negative"] = negativeSink;
@@ -40,7 +40,7 @@ public class AIRouteIntegrationTests
         var positiveSink = new InMemorySinkNode<TestDomain.Comment>();
         var fallbackSink = new InMemorySinkNode<TestDomain.Comment>();
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         context.Items[ClientKey] = client;
         context.Items["positive"] = positiveSink;
         context.Items["fallback"] = fallbackSink;
@@ -58,7 +58,7 @@ public class AIRouteIntegrationTests
         var allSink = new InMemorySinkNode<TestDomain.Comment>();
         var urgentSink = new InMemorySinkNode<TestDomain.Comment>();
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         context.Items[ClientKey] = client;
         context.Items["all"] = allSink;
         context.Items["urgent"] = urgentSink;
@@ -76,7 +76,7 @@ public class AIRouteIntegrationTests
         var sinkA = new InMemorySinkNode<TestDomain.Comment>();
         var sinkB = new InMemorySinkNode<TestDomain.Comment>();
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         context.Items[ClientKey] = client;
         context.Items["sinkA"] = sinkA;
         context.Items["sinkB"] = sinkB;

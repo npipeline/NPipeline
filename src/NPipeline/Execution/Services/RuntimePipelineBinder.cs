@@ -43,7 +43,7 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
         var itemLevelLineageEnabled = overriddenGraph.Lineage.ItemLevelLineageEnabled;
 
         var lineageSink = itemLevelLineageEnabled
-            ? ResolveLineageSink(overriddenGraph, context.LineageFactory, context)
+            ? ResolveLineageSink(overriddenGraph, context.Lineage.LineageFactory, context)
             : null;
 
         if (!itemLevelLineageEnabled)
@@ -55,13 +55,13 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
         // The tee is applied outside any caller-supplied decorator so the collector observes every record
         // the run emits, regardless of how that decorator reshapes the sink.
         var lineageCollector = itemLevelLineageEnabled
-            ? context.LineageFactory.ResolveLineageCollector()
+            ? context.Lineage.LineageFactory.ResolveLineageCollector()
             : null;
 
         if (lineageCollector is not null)
             lineageSink = new CollectorTeeingLineageSink(lineageCollector, lineageSink);
 
-        var pipelineLineageSink = ResolvePipelineLineageSink(overriddenGraph, context.LineageFactory, context);
+        var pipelineLineageSink = ResolvePipelineLineageSink(overriddenGraph, context.Lineage.LineageFactory, context);
 
         return Task.FromResult(new RuntimePipelineBindingResult(
             overriddenGraph,
@@ -81,12 +81,12 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
     {
         var configuredSink = graph.Lineage.LineageSink?.GetType().Name
                              ?? graph.Lineage.LineageSinkType?.Name
-                             ?? context.LineageSink?.GetType().Name;
+                             ?? context.Lineage.LineageSink?.GetType().Name;
 
         if (configuredSink is null)
             return;
 
-        var logger = context.LoggerFactory.CreateLogger(nameof(RuntimePipelineBinder));
+        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(RuntimePipelineBinder));
         RuntimePipelineBinderLogMessages.ItemLevelLineageSinkIgnored(logger, configuredSink);
     }
 
@@ -332,8 +332,8 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
         if (graph.Lineage.LineageSinkType is not null)
             return lineageFactory.CreateLineageSink(graph.Lineage.LineageSinkType);
 
-        if (context.LineageSink is not null)
-            return context.LineageSink;
+        if (context.Lineage.LineageSink is not null)
+            return context.Lineage.LineageSink;
 
         return null;
     }
@@ -346,8 +346,8 @@ public sealed class RuntimePipelineBinder : IRuntimePipelineBinder
         if (graph.Lineage.PipelineLineageSinkType is not null)
             return lineageFactory.CreatePipelineLineageSink(graph.Lineage.PipelineLineageSinkType);
 
-        if (context.PipelineLineageSink is not null)
-            return context.PipelineLineageSink;
+        if (context.Lineage.PipelineLineageSink is not null)
+            return context.Lineage.PipelineLineageSink;
 
         // Provider-based default (no reflection):
         // When no explicit sink is configured, attempt to resolve a provider (supplied by optional packages

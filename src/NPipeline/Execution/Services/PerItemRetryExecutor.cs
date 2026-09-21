@@ -111,7 +111,7 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
         int attempt,
         CancellationToken cancellationToken)
     {
-        var logger = context.LoggerFactory.CreateLogger(nameof(PerItemRetryExecutor));
+        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(PerItemRetryExecutor));
         TimeSpan delay;
 
         try
@@ -138,10 +138,10 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
     {
         var key = ExecutionAnnotationKeys.NodeResiliencePolicyForNode(nodeId);
 
-        if (context.NodeExecutionScopeRegistry.TryGetRuntimeAnnotation(key, out var annotation) && annotation is IResiliencePolicy nodePolicy)
+        if (context.NodeEnvironment.NodeExecutionScopeRegistry.TryGetRuntimeAnnotation(key, out var annotation) && annotation is IResiliencePolicy nodePolicy)
             return nodePolicy;
 
-        return context.ResiliencePolicy;
+        return context.ExecutionConfiguration.ResiliencePolicy;
     }
 
     private static void RecordLineageOutcome(
@@ -165,7 +165,7 @@ internal sealed class PerItemRetryExecutor : IPerItemRetryExecutor
             return;
         }
 
-        LineageNodeOutcomeRegistry.Record(context.PipelineId, nodeId, lineageInputIndex, outcomeReason, retryCount);
+        LineageNodeOutcomeRegistry.Record(context.RunIdentity.PipelineId, nodeId, lineageInputIndex, outcomeReason, retryCount);
     }
 
     private static async Task TryDispatchDeadLetterAsync<TIn>(

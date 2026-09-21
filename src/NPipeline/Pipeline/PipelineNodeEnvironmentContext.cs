@@ -36,7 +36,7 @@ public sealed class PipelineNodeEnvironmentContext
     /// <summary>
     ///     Set while more than one node is executing at once, which is the case only when terminal nodes below a
     ///     fan-out are drained together. <see cref="PipelineContext.ScopedNode" /> is inert while this is set, so
-    ///     concurrent workers cannot interleave writes to <see cref="CurrentNodeId" />.
+    ///     concurrent workers cannot interleave writes to <see cref="PipelineNodeEnvironmentContext.CurrentNodeId" />.
     /// </summary>
     internal bool NodesRunConcurrently
     {

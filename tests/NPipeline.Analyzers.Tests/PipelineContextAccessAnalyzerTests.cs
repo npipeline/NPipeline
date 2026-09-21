@@ -460,8 +460,8 @@ public sealed class PipelineContextAccessAnalyzerTests
                            var items = context.Items;
                            var properties = context.Properties;
                            var token = context.CancellationToken;
-                           var factory = context.LoggerFactory;
-                           var tracer = context.Tracer;
+                           var factory = context.Observability.LoggerFactory;
+                           var tracer = context.Observability.Tracer;
                        }
                    }
                    """;

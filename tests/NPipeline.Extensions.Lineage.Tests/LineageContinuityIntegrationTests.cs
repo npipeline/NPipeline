@@ -175,7 +175,7 @@ public sealed class LineageContinuityIntegrationTests
 
     private static string Qualified(PipelineContext context, string nodeId)
     {
-        return $"{context.PipelineId:N}::{nodeId.Replace('_', '-')}";
+        return $"{context.RunIdentity.PipelineId:N}::{nodeId.Replace('_', '-')}";
     }
 
     private static async Task RunPipelineAsync<TPipeline>(PipelineContext context)

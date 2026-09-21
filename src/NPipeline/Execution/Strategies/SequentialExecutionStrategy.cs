@@ -54,11 +54,11 @@ public sealed class SequentialExecutionStrategy : IExecutionStrategy
 
         async IAsyncEnumerable<TOut> Iterate([EnumeratorCancellation] CancellationToken ct)
         {
-            var tracer = context.Tracer;
+            var tracer = context.Observability.Tracer;
             var nodeId = cached.NodeId;
-            var lineageTrackingEnabled = LineageNodeOutcomeRegistry.IsTracking(context.PipelineId, nodeId);
+            var lineageTrackingEnabled = LineageNodeOutcomeRegistry.IsTracking(context.RunIdentity.PipelineId, nodeId);
             long fallbackInputIndex = -1;
-            using var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
+            using var observabilityScope = context.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
             var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
             await using var inputEnumerator = timedInput.WithCancellation(ct).GetAsyncEnumerator();

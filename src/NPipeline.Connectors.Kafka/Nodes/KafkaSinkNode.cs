@@ -138,7 +138,7 @@ public sealed class KafkaSinkNode<T> : SinkNode<T>
     /// <inheritdoc />
     public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
-        _logger = context.LoggerFactory.CreateLogger(nameof(KafkaSinkNode<T>));
+        _logger = context.Observability.LoggerFactory.CreateLogger(nameof(KafkaSinkNode<T>));
 
         // Ensure partition count is cached before processing
         _ = GetPartitionCount();

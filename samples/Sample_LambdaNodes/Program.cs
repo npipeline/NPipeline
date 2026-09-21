@@ -19,7 +19,7 @@ public static class Program
         Console.WriteLine();
 
         var runner = PipelineRunner.Create();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Example 1: Simple synchronous pipeline
         Console.WriteLine("\n📌 Example 1: Simple Synchronous Pipeline");

@@ -21,7 +21,7 @@ internal sealed class PipelineExecutionFailureStage(IObservabilitySurface observ
 
         await observabilitySurface.FailPipeline(definitionType, context, ex, pipelineActivity).ConfigureAwait(false);
 
-        if (context.IsParallelExecution)
+        if (context.ExecutionConfiguration.IsParallelExecution)
             ExceptionDispatchInfo.Capture(ex).Throw();
 
         if (ex is OperationCanceledException)

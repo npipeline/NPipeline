@@ -33,7 +33,7 @@ namespace NPipeline.Pipeline;
 /// 
 /// // Run the pipeline
 /// var runner = PipelineRunner.Create();
-/// var context = PipelineContext.Default;
+/// var context = PipelineContext.CreateDefault();
 /// await runner.RunAsync&lt;DataProcessingPipeline&gt;(context);
 /// </code>
 /// </example>

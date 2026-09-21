@@ -43,7 +43,7 @@ public sealed class EnrichmentNodeTests
         node.Lookup(x => x.Description, lookup, x => x.Id);
 
         var data = new TestData { Id = 2 };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -67,7 +67,7 @@ public sealed class EnrichmentNodeTests
         node.Lookup(x => x.Description, lookup, x => x.Id);
 
         var data = new TestData { Id = 99, Description = "Unchanged" };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -91,7 +91,7 @@ public sealed class EnrichmentNodeTests
         node.Set(x => x.Description, lookup, x => x.Id);
 
         var data = new TestData { Id = 1, Description = "Original" };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -114,7 +114,7 @@ public sealed class EnrichmentNodeTests
         node.Set(x => x.Description, lookup, x => x.Id);
 
         var data = new TestData { Id = 99, Description = "Original" };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -136,7 +136,7 @@ public sealed class EnrichmentNodeTests
         node.Compute(x => x.Description, item => $"ID: {item.Id}");
 
         var data = new TestData { Id = 42 };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -156,7 +156,7 @@ public sealed class EnrichmentNodeTests
             item => $"{item.Name ?? "Unknown"} ({item.Id})");
 
         var data = new TestData { Id = 1, Name = "John" };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -177,7 +177,7 @@ public sealed class EnrichmentNodeTests
         node.DefaultIfNull(x => x.Name, "DefaultName");
 
         var data = new TestData { Name = null };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -194,7 +194,7 @@ public sealed class EnrichmentNodeTests
         node.DefaultIfNull(x => x.Name, "DefaultName");
 
         var data = new TestData { Name = "John" };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -211,7 +211,7 @@ public sealed class EnrichmentNodeTests
         node.DefaultIfEmpty(x => x.Name, "DefaultName");
 
         var data = new TestData { Name = "" };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -228,7 +228,7 @@ public sealed class EnrichmentNodeTests
         node.DefaultIfWhitespace(x => x.Name, "DefaultName");
 
         var data = new TestData { Name = "   " };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -245,7 +245,7 @@ public sealed class EnrichmentNodeTests
         node.DefaultWhen(x => x.Age, age => age < 18, 18);
 
         var data = new TestData { Age = 10 };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -262,7 +262,7 @@ public sealed class EnrichmentNodeTests
         node.DefaultIfZero(x => x.Age, 18);
 
         var data = new TestData { Age = 0 };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -280,7 +280,7 @@ public sealed class EnrichmentNodeTests
         node.DefaultIfEmptyCollection(x => x.Tags, defaultTags);
 
         var data = new TestData { Tags = Array.Empty<string>() };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -298,7 +298,7 @@ public sealed class EnrichmentNodeTests
         node.DefaultIfEmptyCollection(x => x.Tags, defaultTags);
 
         var data = new TestData { Tags = null! };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -324,7 +324,7 @@ public sealed class EnrichmentNodeTests
             .Compute(x => x.Label, item => $"{item.Name} - {item.Description}");
 
         var data = new TestData { Id = 1, Name = null, Age = 0 };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -345,7 +345,7 @@ public sealed class EnrichmentNodeTests
         node.Lookup(x => x.Description, lookup, x => x.Id);
 
         var data = new TestData { Id = 1 };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
@@ -360,7 +360,7 @@ public sealed class EnrichmentNodeTests
         // Arrange
         var node = new EnrichmentNode<TestData>();
         var data = new TestData { Id = 1, Name = "Test" };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);

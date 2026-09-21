@@ -30,7 +30,7 @@ public sealed class ParquetAtomicWriteTests
             // Act
             var act = () => sink.ConsumeAsync(
                 throwingData,
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Assert
@@ -70,12 +70,12 @@ public sealed class ParquetAtomicWriteTests
             // Act
             await sink.ConsumeAsync(
                 new DataStream<TestRecord>(records.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Assert - all data should be readable
             var source = new ParquetSourceNode<TestRecord>(uri, resolver);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
             result.Should().HaveCount(500);
         }
         finally
@@ -119,7 +119,7 @@ public sealed class ParquetAtomicWriteTests
             // Act
             await sink.ConsumeAsync(
                 new DataStream<TestRecord>(records.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Assert - final file should exist
@@ -127,7 +127,7 @@ public sealed class ParquetAtomicWriteTests
 
             // Should be able to read from final path
             var source = new ParquetSourceNode<TestRecord>(uri, resolver);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
             result.Should().HaveCount(1);
         }
         finally
@@ -156,7 +156,7 @@ public sealed class ParquetAtomicWriteTests
             // Act
             await sink.ConsumeAsync(
                 new DataStream<TestRecord>(records.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Assert - no temp files should remain
@@ -187,7 +187,7 @@ public sealed class ParquetAtomicWriteTests
             // Act
             await sink.ConsumeAsync(
                 new DataStream<TestRecord>(records.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Assert - file should exist
@@ -195,7 +195,7 @@ public sealed class ParquetAtomicWriteTests
 
             // Should be readable
             var source = new ParquetSourceNode<TestRecord>(uri, resolver);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
             result.Should().HaveCount(1);
         }
         finally
@@ -231,7 +231,7 @@ public sealed class ParquetAtomicWriteTests
             // Act
             var act = () => sink.ConsumeAsync(
                 data,
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 cts.Token);
 
             // Assert
@@ -269,7 +269,7 @@ public sealed class ParquetAtomicWriteTests
             // Act
             var act = () => sink.ConsumeAsync(
                 data,
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 cts.Token);
 
             // Assert

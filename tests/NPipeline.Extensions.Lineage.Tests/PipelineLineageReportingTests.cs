@@ -51,7 +51,7 @@ public sealed class PipelineLineageReportingTests
         await using var provider = await BuildProviderAndRunAsync<ReportOnlyPipeline>(seed, services => services.AddNPipelineLineage());
 
         provider.GetService<IPipelineLineageSinkProvider>().Should().NotBeNull();
-        seed.Context!.PipelineLineageSink.Should().NotBeNull();
+        seed.Context!.Lineage.PipelineLineageSink.Should().NotBeNull();
     }
 
     [Fact]
@@ -59,9 +59,9 @@ public sealed class PipelineLineageReportingTests
     {
         var context = await RunPipelineAsync<ItemLevelLineagePipeline>(new ContextSeed(), services => services.AddNPipelineLineage());
 
-        context.LineageCollector.Should().NotBeNull();
+        context.Lineage.LineageCollector.Should().NotBeNull();
 
-        var records = context.LineageCollector!.GetAllRecords();
+        var records = context.Lineage.LineageCollector!.GetAllRecords();
         records.Should().NotBeEmpty();
         records.Select(r => r.CorrelationId).Distinct().Should().HaveCount(3);
     }
@@ -75,9 +75,9 @@ public sealed class PipelineLineageReportingTests
         var context = await RunPipelineAsync<ItemLevelLineageWithSinkPipeline>(seed, services => services.AddNPipelineLineage());
 
         itemSink.Records.Should().NotBeEmpty();
-        context.LineageCollector.Should().NotBeNull();
+        context.Lineage.LineageCollector.Should().NotBeNull();
 
-        context.LineageCollector!.GetAllRecords()
+        context.Lineage.LineageCollector!.GetAllRecords()
             .Select(r => r.CorrelationId)
             .Distinct()
             .Should()
@@ -89,7 +89,7 @@ public sealed class PipelineLineageReportingTests
     {
         var context = await RunPipelineAsync<ReportOnlyPipeline>(new ContextSeed(), services => services.AddNPipelineLineage());
 
-        context.LineageCollector.Should().BeNull();
+        context.Lineage.LineageCollector.Should().BeNull();
     }
 
     [Fact]

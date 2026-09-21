@@ -14,7 +14,7 @@ order: 10
 
 ```csharp
 // Default context with no configuration
-var context = PipelineContext.Default;
+var context = PipelineContext.CreateDefault();
 
 // Context with parameters
 var context = new PipelineContext(
@@ -90,18 +90,40 @@ public override async Task ConsumeAsync(
 
 ## Accessing Framework Services
 
-PipelineContext also exposes framework services for observability, error handling, and lineage:
+Framework services are grouped into five sub-contexts, each covering one concern. Reach a service through the
+sub-context that owns it:
 
-| Property | Type | Description |
-|----------|------|-------------|
+| Sub-context | Holds | Examples |
+|-------------|-------|----------|
+| `RunIdentity` | Who this run is | `PipelineId`, `RunId`, `PipelineName`, `PipelineStartTimeUtc` |
+| `Observability` | Logging, tracing, metrics | `LoggerFactory`, `Tracer`, `ExecutionObserver`, `ObservabilityFactory` |
+| `ExecutionConfiguration` | Retry and resilience | `RetryOptions`, `GlobalRetryOptions`, `NodeRetryOverrides`, `ResiliencePolicy`, `CircuitBreakerOptions` |
+| `NodeEnvironment` | Per-node execution state | `CurrentNodeId`, `NodeExecutionScopeRegistry`, `DiOwnedNodes` |
+| `Lineage` | Lineage sinks and collectors | `LineageSink`, `PipelineLineageSink`, `LineageCollector`, `LineageFactory` |
+
+```csharp
+public override Task<Order> TransformAsync(
+    Order item, PipelineContext context, CancellationToken ct)
+{
+    var logger = context.Observability.LoggerFactory.CreateLogger("OrderTransform");
+    logger.LogDebug("Run {RunId} processing order {OrderId}", context.RunIdentity.RunId, item.Id);
+    return Task.FromResult(item);
+}
+```
+
+A few members sit directly on the context because they belong to no single concern:
+
+| Member | Type | Description |
+|--------|------|-------------|
 | `CancellationToken` | `CancellationToken` | Pipeline-wide cancellation |
-| `PipelineId` | `Guid` | Unique ID for this pipeline definition |
-| `RunId` | `Guid` | Unique ID for this execution run |
-| `PipelineName` | `string?` | Human-readable name |
-| `PipelineStartTimeUtc` | `DateTime` | When execution started |
-| `LoggerFactory` | `ILoggerFactory` | For creating loggers in nodes |
+| `Parameters`, `Items`, `Properties` | `IDictionary<string, object>` | The three dictionaries above |
 | `DeadLetterSink` | `IDeadLetterSink?` | For routing failed items |
-| `GlobalRetryOptions` | `PipelineRetryOptions` | Pipeline-wide retry configuration |
+| `ErrorHandlerFactory` | `IErrorHandlerFactory` | Creates error handlers |
+| `StateManager`, `StatefulRegistry` | `IPipelineStateManager?`, `IStatefulRegistry?` | Stateful execution services |
+
+> **Note:** Earlier versions also exposed every one of these as a flat property on `PipelineContext` itself, so
+> `context.LoggerFactory` and `context.Observability.LoggerFactory` both worked. The flat forwarders are gone: there is
+> now exactly one way to reach each value.
 
 ## Configuring the Context
 

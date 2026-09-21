@@ -35,8 +35,8 @@ internal sealed class AIStreamPassthroughExecutionStrategy : IExecutionStrategy,
 
         async IAsyncEnumerable<TOut> Iterate([EnumeratorCancellation] CancellationToken ct)
         {
-            using var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
-            using var activity = context.Tracer.StartActivity("Node.StreamTransform");
+            using var observabilityScope = context.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
+            using var activity = context.Observability.Tracer.StartActivity("Node.StreamTransform");
             var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
             await using var inputEnumerator = timedInput.WithCancellation(ct).GetAsyncEnumerator();
@@ -94,8 +94,8 @@ internal sealed class AIStreamPassthroughExecutionStrategy : IExecutionStrategy,
 
         async IAsyncEnumerable<TOut> Iterate([EnumeratorCancellation] CancellationToken ct)
         {
-            using var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
-            using var activity = context.Tracer.StartActivity("Node.StreamTransform");
+            using var observabilityScope = context.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
+            using var activity = context.Observability.Tracer.StartActivity("Node.StreamTransform");
             var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
             async IAsyncEnumerable<TIn> TrackInput([EnumeratorCancellation] CancellationToken innerCt)

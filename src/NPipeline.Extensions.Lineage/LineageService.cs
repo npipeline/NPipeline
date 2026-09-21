@@ -88,11 +88,11 @@ public sealed class LineageService : ILineage
         if (pipelineLineageSink is null)
             return;
 
-        var runId = context.RunId == Guid.Empty
+        var runId = context.RunIdentity.RunId == Guid.Empty
             ? Guid.NewGuid()
-            : context.RunId;
+            : context.RunIdentity.RunId;
 
-        var report = context.LineageFactory.CreateLineageReport(definitionType.Name, context.PipelineId, graph, runId);
+        var report = context.Lineage.LineageFactory.CreateLineageReport(definitionType.Name, context.RunIdentity.PipelineId, graph, runId);
 
         if (report is null)
             return;

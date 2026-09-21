@@ -64,7 +64,7 @@ public sealed class SqsSinkNode<T> : SinkNode<T>
     /// <inheritdoc />
     public override async Task ConsumeAsync(IDataStream<T> input, PipelineContext context, CancellationToken cancellationToken)
     {
-        var logger = context.LoggerFactory.CreateLogger(nameof(SqsSinkNode<T>));
+        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(SqsSinkNode<T>));
         _logger = logger;
         _batcher.SetLogger(logger);
 

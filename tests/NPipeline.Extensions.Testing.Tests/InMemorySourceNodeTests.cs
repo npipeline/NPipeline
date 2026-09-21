@@ -32,7 +32,7 @@ public class InMemorySourceNodeTests
     public void ConstructorWithContextAndNodeId_ShouldResolveItemsFromContext()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var items = new[] { 1, 2, 3 };
         context.SetSourceData(items, "testNode");
 
@@ -47,7 +47,7 @@ public class InMemorySourceNodeTests
     public void ConstructorWithContext_ShouldResolveItemsFromTypeContext()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var items = new[] { 1, 2, 3 };
         context.SetSourceData(items);
 
@@ -64,7 +64,7 @@ public class InMemorySourceNodeTests
         // Arrange
         var items = new[] { 1, 2, 3 };
         var node = new InMemorySourceNode<int>(items);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = node.OpenStream(context, CancellationToken.None);
@@ -85,12 +85,13 @@ public class InMemorySourceNodeTests
     public async Task OpenStream_WithNodeScopedContextData_ShouldReturnDataStreamWithItems()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var items = new[] { 1, 2, 3 };
         context.SetSourceData(items, "testNode");
 
-        // Set CurrentNodeId through reflection since it's internal setter
-        context.GetType().GetProperty(nameof(PipelineContext.CurrentNodeId))?.SetValue(context, "testNode");
+        // Set CurrentNodeId through reflection since it's an internal setter
+        context.NodeEnvironment.GetType().GetProperty(nameof(PipelineNodeEnvironmentContext.CurrentNodeId))
+            ?.SetValue(context.NodeEnvironment, "testNode");
         var node = new InMemorySourceNode<int>();
 
         // Act
@@ -112,12 +113,13 @@ public class InMemorySourceNodeTests
     public async Task OpenStream_WithTypeScopedContextData_ShouldReturnDataStreamWithItems()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var items = new[] { 1, 2, 3 };
         context.SetSourceData(items);
 
-        // Set CurrentNodeId through reflection since it's internal setter
-        context.GetType().GetProperty(nameof(PipelineContext.CurrentNodeId))?.SetValue(context, "testNode");
+        // Set CurrentNodeId through reflection since it's an internal setter
+        context.NodeEnvironment.GetType().GetProperty(nameof(PipelineNodeEnvironmentContext.CurrentNodeId))
+            ?.SetValue(context.NodeEnvironment, "testNode");
         var node = new InMemorySourceNode<int>();
 
         // Act
@@ -139,15 +141,16 @@ public class InMemorySourceNodeTests
     public async Task ExecuteAsync_WithParentContext_ShouldResolveFromParent()
     {
         // Arrange
-        var parentContext = PipelineContext.Default;
+        var parentContext = PipelineContext.CreateDefault();
         var items = new[] { 1, 2, 3 };
         parentContext.SetSourceData(items, "testNode");
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         context.Items[PipelineContextKeys.TestingParentContext] = parentContext;
 
-        // Set CurrentNodeId through reflection since it's internal setter
-        context.GetType().GetProperty(nameof(PipelineContext.CurrentNodeId))?.SetValue(context, "testNode");
+        // Set CurrentNodeId through reflection since it's an internal setter
+        context.NodeEnvironment.GetType().GetProperty(nameof(PipelineNodeEnvironmentContext.CurrentNodeId))
+            ?.SetValue(context.NodeEnvironment, "testNode");
         var node = new InMemorySourceNode<int>();
 
         // Act
@@ -169,10 +172,11 @@ public class InMemorySourceNodeTests
     public void ExecuteAsync_WithNoSourceData_ShouldThrowInvalidOperationException()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
-        // Set CurrentNodeId through reflection since it's internal setter
-        context.GetType().GetProperty(nameof(PipelineContext.CurrentNodeId))?.SetValue(context, "testNode");
+        // Set CurrentNodeId through reflection since it's an internal setter
+        context.NodeEnvironment.GetType().GetProperty(nameof(PipelineNodeEnvironmentContext.CurrentNodeId))
+            ?.SetValue(context.NodeEnvironment, "testNode");
         var node = new InMemorySourceNode<int>();
 
         // Act & Assert
@@ -186,7 +190,7 @@ public class InMemorySourceNodeTests
     public void ConstructorWithContextAndNullItems_ShouldCreateNodeWithEmptyList()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Don't set any source data
 

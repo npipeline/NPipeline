@@ -18,7 +18,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
@@ -33,7 +33,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
@@ -49,7 +49,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
@@ -64,7 +64,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
@@ -80,7 +80,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
@@ -95,7 +95,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
@@ -111,7 +111,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
@@ -126,7 +126,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
@@ -142,7 +142,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([2, 4, 6]);
 
             // Act
@@ -157,7 +157,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
@@ -221,7 +221,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
@@ -236,7 +236,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
@@ -252,7 +252,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
@@ -267,7 +267,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
@@ -283,7 +283,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
@@ -298,7 +298,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
@@ -314,7 +314,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
@@ -329,7 +329,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
@@ -345,7 +345,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([2, 4, 6]);
 
             // Act
@@ -360,7 +360,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<int>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
             var data = new InMemoryDataStream<int>([1, 2, 3]);
 
             // Act
@@ -420,7 +420,7 @@ public class AssertionExtensionsTests
         {
             // Arrange
             var sink = new InMemorySinkNode<TestObject>();
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
 
             var data = new InMemoryDataStream<TestObject>([
                 new TestObject { Name = "Test1", Value = 1 },

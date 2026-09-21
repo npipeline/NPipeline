@@ -9,7 +9,7 @@ public class TestingContextExtensionsTests
     public void SetSourceData_WithItemsAndNodeId_ShouldStoreDataUnderNodeScopedKey()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var items = new[] { 1, 2, 3 };
         var nodeId = "testNode";
 
@@ -26,7 +26,7 @@ public class TestingContextExtensionsTests
     public void SetSourceData_WithItemsAndNodeId_ShouldStoreDataUnderTypeScopedKey()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var items = new[] { 1, 2, 3 };
         var nodeId = "testNode";
 
@@ -43,7 +43,7 @@ public class TestingContextExtensionsTests
     public void SetSourceData_WithItemsOnly_ShouldStoreDataUnderTypeScopedKey()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var items = new[] { 1, 2, 3 };
 
         // Act
@@ -69,7 +69,7 @@ public class TestingContextExtensionsTests
     public void SetSourceData_WithNullItems_ShouldThrowArgumentNullException()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => context.SetSourceData<int>(null!));
@@ -79,7 +79,7 @@ public class TestingContextExtensionsTests
     public void GetSink_WithSinkRegisteredByKey_ShouldReturnSink()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var sink = new InMemorySinkNode<int>();
         context.Items[typeof(InMemorySinkNode<int>).FullName!] = sink;
 
@@ -94,7 +94,7 @@ public class TestingContextExtensionsTests
     public void GetSink_WithSinkRegisteredByType_ShouldReturnSink()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var sink = new InMemorySinkNode<int>();
         context.Items["SomeKey"] = sink;
 
@@ -109,7 +109,7 @@ public class TestingContextExtensionsTests
     public void GetSink_WithMultipleSinksRegistered_ShouldReturnFirstMatchingSink()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var sink1 = new InMemorySinkNode<int>();
         var sink2 = new InMemorySinkNode<int>();
         context.Items["Key1"] = sink1;
@@ -126,11 +126,11 @@ public class TestingContextExtensionsTests
     public void GetSink_WithParentContext_ShouldReturnSinkFromParent()
     {
         // Arrange
-        var parentContext = PipelineContext.Default;
+        var parentContext = PipelineContext.CreateDefault();
         var sink = new InMemorySinkNode<int>();
         parentContext.Items[typeof(InMemorySinkNode<int>).FullName!] = sink;
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         context.Items[PipelineContextKeys.TestingParentContext] = parentContext;
 
         // Act
@@ -145,11 +145,11 @@ public class TestingContextExtensionsTests
     {
         // Arrange
         var parentSink = new InMemorySinkNode<int>();
-        var parentContext = PipelineContext.Default;
+        var parentContext = PipelineContext.CreateDefault();
         parentContext.Items[typeof(InMemorySinkNode<int>).FullName!] = parentSink;
 
         var currentSink = new InMemorySinkNode<int>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         context.Items[PipelineContextKeys.TestingParentContext] = parentContext;
         context.Items[typeof(InMemorySinkNode<int>).FullName!] = currentSink;
 
@@ -164,11 +164,11 @@ public class TestingContextExtensionsTests
     public void GetSink_WithParentContextAndSinkByTypeInParent_ShouldReturnSinkFromParent()
     {
         // Arrange
-        var parentContext = PipelineContext.Default;
+        var parentContext = PipelineContext.CreateDefault();
         var sink = new InMemorySinkNode<int>();
         parentContext.Items["SomeKey"] = sink;
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         context.Items[PipelineContextKeys.TestingParentContext] = parentContext;
 
         // Act
@@ -189,7 +189,7 @@ public class TestingContextExtensionsTests
     public void GetSink_WithNoSinkRegistered_ShouldThrowInvalidOperationException()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         var exception = Assert.Throws<InvalidOperationException>(() => context.GetSink<InMemorySinkNode<int>>());
@@ -200,8 +200,8 @@ public class TestingContextExtensionsTests
     public void GetSink_WithParentContextButNoSinkAnywhere_ShouldThrowInvalidOperationException()
     {
         // Arrange
-        var parentContext = PipelineContext.Default;
-        var context = PipelineContext.Default;
+        var parentContext = PipelineContext.CreateDefault();
+        var context = PipelineContext.CreateDefault();
         context.Items[PipelineContextKeys.TestingParentContext] = parentContext;
 
         // Act & Assert
@@ -213,7 +213,7 @@ public class TestingContextExtensionsTests
     public void SetSourceData_WithEmptyNodeId_ShouldNotStoreNodeScopedKey()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var items = new[] { 1, 2, 3 };
 
         // Act
@@ -228,7 +228,7 @@ public class TestingContextExtensionsTests
     public void SetSourceData_WithWhitespaceNodeId_ShouldNotStoreNodeScopedKey()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var items = new[] { 1, 2, 3 };
 
         // Act
@@ -243,7 +243,7 @@ public class TestingContextExtensionsTests
     public void SetSourceData_WithNullNodeId_ShouldNotStoreNodeScopedKey()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var items = new[] { 1, 2, 3 };
 
         // Act
@@ -258,7 +258,7 @@ public class TestingContextExtensionsTests
     public void SetSourceData_WithDifferentTypes_ShouldStoreUnderDifferentTypeKeys()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var intItems = new[] { 1, 2, 3 };
         var stringItems = new[] { "a", "b", "c" };
 
@@ -277,7 +277,7 @@ public class TestingContextExtensionsTests
     public void GetSink_WithDifferentTypes_ShouldReturnCorrectType()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var intSink = new InMemorySinkNode<int>();
         var stringSink = new InMemorySinkNode<string>();
         context.Items["IntSink"] = intSink;
@@ -296,7 +296,7 @@ public class TestingContextExtensionsTests
     public void SetSourceData_WithEnumerableItems_ShouldConvertToList()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var items = new List<int> { 1, 2, 3 };
 
         // Act

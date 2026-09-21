@@ -87,7 +87,7 @@ public class PipelineBuilderTestingExtensionsTests
     {
         // Arrange
         var builder = new PipelineBuilder();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var items = new[] { 1, 2, 3 };
 
         // Act
@@ -112,7 +112,7 @@ public class PipelineBuilderTestingExtensionsTests
     {
         // Arrange
         var builder = new PipelineBuilder();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var name = "testSource";
         var items = new[] { 1, 2, 3 };
 
@@ -190,7 +190,7 @@ public class PipelineBuilderTestingExtensionsTests
     {
         // Arrange
         var builder = new PipelineBuilder();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var handle = builder.AddInMemorySink<int>(context);
@@ -237,7 +237,7 @@ public class PipelineBuilderTestingExtensionsTests
     {
         // Arrange
         var builder = new PipelineBuilder();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var name = "testSink";
 
         // Act
@@ -311,7 +311,7 @@ public class PipelineBuilderTestingExtensionsTests
     {
         // Arrange
         var builder = new PipelineBuilder();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var items = new[] { 1, 2, 3 };
 
         // Act

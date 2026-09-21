@@ -76,7 +76,7 @@ public sealed class PipelineRunnerErrorTests
             .WithObservabilitySurface(_observabilitySurface)
             .Build();
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<NodeExecutionException>(() =>
@@ -210,7 +210,7 @@ public sealed class PipelineRunnerErrorTests
             .WithObservabilitySurface(_observabilitySurface)
             .Build();
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<NodeExecutionException>(() =>
@@ -272,7 +272,7 @@ public sealed class PipelineRunnerErrorTests
             .WithObservabilitySurface(_observabilitySurface)
             .Build();
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<PipelineExecutionException>(() =>

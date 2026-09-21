@@ -62,7 +62,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
 
         // Readable via DataLakeTableSourceNode
         var source = new DataLakeTableSourceNode<OrderRecord>(_provider, _tableUri);
-        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
         result.Should().HaveCount(50);
     }
 
@@ -106,7 +106,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
 
         // Read back
         var source = new DataLakeTableSourceNode<OrderRecord>(_provider, _tableUri);
-        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
         result.Should().HaveCount(100);
         result.Should().AllSatisfy(r => r.EventDate.Should().Be(new DateOnly(2025, 3, 10)));
@@ -220,7 +220,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
 
         // Read back and verify partitioning
         var source = new DataLakeTableSourceNode<OrderRecord>(_provider, _tableUri);
-        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
         result.Count(r => r.Region == "EU").Should().Be(30);
         result.Count(r => r.Region == "US").Should().Be(20);
@@ -362,7 +362,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
 
         // Assert - all rows were written
         var source = new DataLakeTableSourceNode<OrderRecord>(_provider, _tableUri);
-        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
         result.Should().HaveCount(distinctRegions * rowsPerRegion,
             "all rows across all partitions must be persisted even under buffer pressure");
@@ -417,7 +417,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
 
         // Assert - all records recoverable
         var source = new DataLakeTableSourceNode<OrderRecord>(_provider, _tableUri);
-        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
         result.Should().HaveCount(90);
 
@@ -452,7 +452,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         // Act
         await sink.ConsumeAsync(
             new InMemoryDataStream<OrderRecord>(records),
-            PipelineContext.Default,
+            PipelineContext.CreateDefault(),
             CancellationToken.None);
 
         // Assert
@@ -473,7 +473,7 @@ public sealed class DataLakePartitionedWriteTests : IAsyncDisposable
         // Act
         await sink.ConsumeAsync(
             new InMemoryDataStream<OrderRecord>(records),
-            PipelineContext.Default,
+            PipelineContext.CreateDefault(),
             CancellationToken.None);
 
         // Assert

@@ -12,7 +12,7 @@ public sealed class PipelineFactoryTests
     {
         // Arrange
         var factory = new PipelineFactory();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var pipeline = factory.Create<TestPipelineDefinition>(context);

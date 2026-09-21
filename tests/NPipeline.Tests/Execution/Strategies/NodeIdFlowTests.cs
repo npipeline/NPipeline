@@ -41,16 +41,16 @@ public sealed class NodeIdFlowTests
 
         using (context.ScopedNode("sequential-node"))
         {
-            context.CurrentNodeId.Should().Be("sequential-node");
+            context.NodeEnvironment.CurrentNodeId.Should().Be("sequential-node");
 
             context.NodeEnvironment.NodesRunConcurrently = true;
 
             using (context.ScopedNode("concurrent-node"))
             {
-                context.CurrentNodeId.Should().Be("sequential-node", "a frozen field shows a stale id, never another node's");
+                context.NodeEnvironment.CurrentNodeId.Should().Be("sequential-node", "a frozen field shows a stale id, never another node's");
             }
 
-            context.CurrentNodeId.Should().Be("sequential-node", "an inert scope must not clobber the field on disposal either");
+            context.NodeEnvironment.CurrentNodeId.Should().Be("sequential-node", "an inert scope must not clobber the field on disposal either");
 
             context.NodeEnvironment.NodesRunConcurrently = false;
         }
@@ -78,12 +78,12 @@ public sealed class NodeIdFlowTests
                 for (var i = 0; i < 200; i++)
                 {
                     using var scope = context.ScopedNode($"worker-{worker}");
-                    context.CurrentNodeId.Should().Be("owner");
+                    context.NodeEnvironment.CurrentNodeId.Should().Be("owner");
                 }
             })));
 
             context.NodeEnvironment.NodesRunConcurrently = false;
-            context.CurrentNodeId.Should().Be("owner");
+            context.NodeEnvironment.CurrentNodeId.Should().Be("owner");
         }
     }
 
@@ -99,8 +99,8 @@ public sealed class NodeIdFlowTests
         await PipelineRunner.Create().RunAsync<FanOutPipeline>(context, CancellationToken.None);
 
         context.NodeEnvironment.NodesRunConcurrently.Should().BeFalse("the freeze must be lifted once the drain completes");
-        context.CurrentNodeId.Should().NotBe("first", "a terminal must not leave its own id behind");
-        context.CurrentNodeId.Should().NotBe("second");
+        context.NodeEnvironment.CurrentNodeId.Should().NotBe("first", "a terminal must not leave its own id behind");
+        context.NodeEnvironment.CurrentNodeId.Should().NotBe("second");
 
         await context.DisposeAsync();
     }
@@ -151,7 +151,7 @@ public sealed class NodeIdFlowTests
             await foreach (var _ in input.WithCancellation(cancellationToken))
             {
                 // The shared field must never name a sibling terminal while both are draining.
-                context.CurrentNodeId.Should().NotBe("first").And.NotBe("second");
+                context.NodeEnvironment.CurrentNodeId.Should().NotBe("first").And.NotBe("second");
             }
         }
     }

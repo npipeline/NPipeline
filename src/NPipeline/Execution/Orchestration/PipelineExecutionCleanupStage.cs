@@ -37,7 +37,7 @@ internal sealed class PipelineExecutionCleanupStage(IObservabilitySurface observ
         if (nodeInstances is null)
             return;
 
-        if (!context.DiOwnedNodes)
+        if (!context.NodeEnvironment.DiOwnedNodes)
         {
             foreach (var node in nodeInstances.Values)
             {

@@ -27,8 +27,8 @@ public sealed class ObservablePipelineContextFactoryTests
 
         // Assert
         Assert.NotNull(context);
-        Assert.NotNull(context.ExecutionObserver);
-        Assert.IsType<MetricsCollectingExecutionObserver>(context.ExecutionObserver);
+        Assert.NotNull(context.Observability.ExecutionObserver);
+        Assert.IsType<MetricsCollectingExecutionObserver>(context.Observability.ExecutionObserver);
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public sealed class ObservablePipelineContextFactoryTests
 
         // Assert
         Assert.Equal(cts.Token, context.CancellationToken);
-        Assert.IsType<MetricsCollectingExecutionObserver>(context.ExecutionObserver);
+        Assert.IsType<MetricsCollectingExecutionObserver>(context.Observability.ExecutionObserver);
     }
 
     [Fact]

@@ -30,8 +30,8 @@ public sealed class ExecutionObserverTests
         var provider = services.BuildServiceProvider();
         var pipelineRunner = provider.GetRequiredService<IPipelineRunner>();
 
-        var ctx = PipelineContext.Default;
-        ctx.ExecutionObserver = observer;
+        var ctx = PipelineContext.CreateDefault();
+        ctx.Observability.ExecutionObserver = observer;
 
         // The pipeline should succeed after retry, not throw an exception
         await pipelineRunner.RunAsync<PipelineDef>(ctx);
@@ -64,7 +64,7 @@ public sealed class ExecutionObserverTests
         PipelineContext context = new();
 
         // Act
-        var observer = context.ExecutionObserver;
+        var observer = context.Observability.ExecutionObserver;
 
         // Assert
         observer.Should().NotBeNull();
@@ -78,13 +78,13 @@ public sealed class ExecutionObserverTests
         // Arrange
         PipelineContext context = new();
         CollectObserver customObserver = new();
-        context.ExecutionObserver = customObserver;
+        context.Observability.ExecutionObserver = customObserver;
 
         // Act - assign null (this used to be a problem)
 #nullable disable
-        context.ExecutionObserver = null;
+        context.Observability.ExecutionObserver = null;
 #nullable restore
-        var resultObserver = context.ExecutionObserver!;
+        var resultObserver = context.Observability.ExecutionObserver!;
 
         // Assert - should fallback to NullExecutionObserver.Instance
         resultObserver.Should().NotBeNull();
@@ -100,8 +100,8 @@ public sealed class ExecutionObserverTests
         CollectObserver customObserver = new();
 
         // Act
-        context.ExecutionObserver = customObserver;
-        var resultObserver = context.ExecutionObserver;
+        context.Observability.ExecutionObserver = customObserver;
+        var resultObserver = context.Observability.ExecutionObserver;
 
         // Assert
         (resultObserver == customObserver).Should().BeTrue();

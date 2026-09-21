@@ -46,7 +46,7 @@ public sealed class PersistenceService : IPersistenceService
         {
             try
             {
-                var logger = context.LoggerFactory.CreateLogger(nameof(PersistenceService));
+                var logger = context.Observability.LoggerFactory.CreateLogger(nameof(PersistenceService));
                 PersistenceServiceLogMessages.StateSnapshotFailed(logger, ex, completedEvent.NodeId);
             }
             catch

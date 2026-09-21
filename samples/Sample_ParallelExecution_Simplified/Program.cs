@@ -15,7 +15,7 @@ var variant = args.Length > 0 && args[0].Equals("builder", StringComparison.Ordi
 Console.WriteLine($"Running variant: {variant}\n");
 
 // Create demo data
-var ctx = PipelineContext.Default;
+var ctx = PipelineContext.CreateDefault();
 var builder = new PipelineBuilder();
 
 Console.WriteLine("Demonstration of three ways to configure parallelism:\n");

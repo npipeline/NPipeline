@@ -94,7 +94,7 @@ await host.Services.RunPipelineAsync<MyPipeline>(
     new Dictionary<string, object> { ["date"] = DateTime.Today });
 ```
 
-`RunPipelineAsync` creates a DI scope, resolves the runner and all dependencies, sets `context.DiOwnedNodes = true` to prevent double-disposal, and executes the pipeline.
+`RunPipelineAsync` creates a DI scope, resolves the runner and all dependencies, sets `context.NodeEnvironment.DiOwnedNodes = true` to prevent double-disposal, and executes the pipeline.
 
 ### From an Injected Runner
 
@@ -105,7 +105,7 @@ public class OrderService(IPipelineRunner runner)
 {
     public async Task ProcessOrdersAsync(CancellationToken ct)
     {
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         await runner.RunAsync<OrderPipeline>(context, ct);
     }
 }

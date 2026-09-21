@@ -26,7 +26,7 @@ public sealed class CsvNodeBehaviorTests
             var resolver = StorageProviderFactory.CreateResolver();
             var sink = new CsvSinkNode<int>(uri, resolver, config);
             IDataStream<int> input = new DataStream<int>(new[] { 1, 2 }.ToAsyncEnumerable());
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             var firstLine = File.ReadLines(tempFile).FirstOrDefault();
 
@@ -58,7 +58,7 @@ public sealed class CsvNodeBehaviorTests
 
             var resolver = StorageProviderFactory.CreateResolver();
             var src = new CsvSourceNode<int>(uri, MapIntRow, resolver, config);
-            var outPipe = src.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = src.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
 
             var result = new List<int>();
 

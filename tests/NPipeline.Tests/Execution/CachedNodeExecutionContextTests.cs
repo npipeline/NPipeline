@@ -17,7 +17,7 @@ public sealed class CachedNodeExecutionContextTests
     public void Create_WithBasicContext_ShouldCaptureExpectedValues()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var nodeId = "testNode";
 
         // Act
@@ -25,7 +25,7 @@ public sealed class CachedNodeExecutionContextTests
 
         // Assert
         _ = cached.NodeId.Should().Be(nodeId);
-        _ = cached.RetryOptions.Should().Be(context.RetryOptions);
+        _ = cached.RetryOptions.Should().Be(context.ExecutionConfiguration.RetryOptions);
         _ = cached.TracingEnabled.Should().BeFalse(); // Default uses NullPipelineTracer
         _ = cached.LoggingEnabled.Should().BeFalse(); // Default uses NullLoggerFactory
         _ = cached.CancellationToken.Should().Be(context.CancellationToken);
@@ -35,7 +35,7 @@ public sealed class CachedNodeExecutionContextTests
     public void Create_WithNodeSpecificRetryOptions_ShouldUseNodeOptions()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var nodeId = "testNode";
 
         var nodeRetryOptions = new PipelineRetryOptions(
@@ -43,7 +43,7 @@ public sealed class CachedNodeExecutionContextTests
             MaxNodeRestartAttempts: 3,
             MaxSequentialNodeAttempts: 5);
 
-        context.NodeRetryOverrides[nodeId] = nodeRetryOptions;
+        context.ExecutionConfiguration.NodeRetryOverrides[nodeId] = nodeRetryOptions;
 
         // Act
         var cached = CachedNodeExecutionContext.Create(context, nodeId);
@@ -83,7 +83,7 @@ public sealed class CachedNodeExecutionContextTests
         var globalRetryOptions = new PipelineRetryOptions(10, MaxNodeRestartAttempts: 0, MaxSequentialNodeAttempts: 0);
         var context = new PipelineContext(PipelineContextConfiguration.WithRetry(globalRetryOptions));
 
-        context.NodeRetryOverrides[nodeId] = nodeRetryOptions;
+        context.ExecutionConfiguration.NodeRetryOverrides[nodeId] = nodeRetryOptions;
 
         // Act
         var cached = CachedNodeExecutionContext.Create(context, nodeId);
@@ -171,7 +171,7 @@ public sealed class CachedNodeExecutionContextTests
     public void Create_WithNullNodeId_ShouldThrowArgumentNullException()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         string nodeId = null!;
 
         // Act
@@ -186,7 +186,7 @@ public sealed class CachedNodeExecutionContextTests
     public void CreateWithRetryOptions_ShouldUseProvidedRetryOptions()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var nodeId = "testNode";
 
         var preResolvedRetryOptions = new PipelineRetryOptions(
@@ -206,7 +206,7 @@ public sealed class CachedNodeExecutionContextTests
     public void CreateWithRetryOptions_WithNullRetryOptions_ShouldThrowArgumentNullException()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var nodeId = "testNode";
         PipelineRetryOptions preResolvedRetryOptions = null!;
 

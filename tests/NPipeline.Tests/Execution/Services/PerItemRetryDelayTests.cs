@@ -166,14 +166,11 @@ public sealed class PerItemRetryDelayTests
 
     private static (PipelineContext Context, Guid PipelineId) CreateContext(IResiliencePolicy policy)
     {
-        var context = new PipelineContext
-        {
-            PipelineId = Guid.NewGuid(),
-            RunId = Guid.NewGuid(),
-        };
-
-        context.ResiliencePolicy = policy;
-        return (context, context.PipelineId);
+        var context = new PipelineContext();
+        context.RunIdentity.PipelineId = Guid.NewGuid();
+        context.RunIdentity.RunId = Guid.NewGuid();
+        context.ExecutionConfiguration.ResiliencePolicy = policy;
+        return (context, context.RunIdentity.PipelineId);
     }
 
     private sealed class FlakyTransform(int failuresBeforeSuccess) : TransformNode<int, int>

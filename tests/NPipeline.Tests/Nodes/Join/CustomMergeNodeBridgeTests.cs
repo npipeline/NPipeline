@@ -20,7 +20,7 @@ public sealed class CustomMergeNodeBridgeTests
         services.AddNPipeline(Assembly.GetExecutingAssembly());
         var provider = services.BuildServiceProvider();
         var runner = provider.GetRequiredService<IPipelineRunner>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         await runner.RunAsync<PipelineDef>(context);
 

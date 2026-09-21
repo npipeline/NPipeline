@@ -59,7 +59,7 @@ public sealed class PipelineExecutionSetupStageTests
             NullPipelineExecutionPlanCache.Instance,
             runtimeBinder);
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await stage.PrepareAsync(typeof(PipelineExecutionSetupStageTests), baseGraph, context, CancellationToken.None);
@@ -73,9 +73,9 @@ public sealed class PipelineExecutionSetupStageTests
         _ = result.PipelineLineageSink.Should().BeSameAs(pipelineLineageSink);
 
         _ = context.DeadLetterSink.Should().BeSameAs(deadLetterSink);
-        _ = context.LineageSink.Should().BeSameAs(lineageSink);
-        _ = context.PipelineLineageSink.Should().BeSameAs(pipelineLineageSink);
-        _ = context.ResiliencePolicy.Should().BeSameAs(resiliencePolicy);
+        _ = context.Lineage.LineageSink.Should().BeSameAs(lineageSink);
+        _ = context.Lineage.PipelineLineageSink.Should().BeSameAs(pipelineLineageSink);
+        _ = context.ExecutionConfiguration.ResiliencePolicy.Should().BeSameAs(resiliencePolicy);
 
         _ = A.CallTo(() => nodeInstantiationService.InstantiateNodes(boundGraph, nodeFactory))
             .MustHaveHappenedOnceExactly();
@@ -126,14 +126,14 @@ public sealed class PipelineExecutionSetupStageTests
             NullPipelineExecutionPlanCache.Instance,
             runtimeBinder);
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         context.Properties["NPipeline.Global.NPipeline.State.StatefulRegistry"] = statefulRegistry;
 
         // Act
         _ = await stage.PrepareAsync(typeof(PipelineExecutionSetupStageTests), graph, context, CancellationToken.None);
 
         // Assert
-        _ = context.ExecutionObserver.Should().BeSameAs(executionObserver);
+        _ = context.Observability.ExecutionObserver.Should().BeSameAs(executionObserver);
         _ = context.StateManager.Should().BeSameAs(stateManager);
         _ = context.StatefulRegistry.Should().BeSameAs(statefulRegistry);
         _ = context.Properties.Should().ContainKey(ExecutionAnnotationKeys.ExecutionObserverProperty);

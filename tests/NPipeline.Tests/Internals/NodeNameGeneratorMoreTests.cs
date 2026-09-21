@@ -12,7 +12,7 @@ public sealed class NodeNameGeneratorMoreTests
     public void GenerateIdFromName_AppendsSuffix_WhenCollision()
     {
         var builder = new PipelineBuilder();
-        var a = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "dup", [1]);
+        var a = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "dup", [1]);
 
         // Simulate existing dictionary with key "dup"
         var existing = new Dictionary<string, NodeDefinition>
@@ -36,7 +36,7 @@ public sealed class NodeNameGeneratorMoreTests
     public void GenerateUniqueNodeName_IsCaseInsensitive()
     {
         var builder = new PipelineBuilder();
-        var a = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "NodeX", [1]);
+        var a = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "NodeX", [1]);
 
         var list = new[]
         {
@@ -57,7 +57,7 @@ public sealed class NodeNameGeneratorMoreTests
     public void EnsureUniqueName_ThrowsOnDuplicate_CaseInsensitive()
     {
         var builder = new PipelineBuilder();
-        var a = builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "MyNode", [1]);
+        var a = builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "MyNode", [1]);
 
         var list = new[]
         {

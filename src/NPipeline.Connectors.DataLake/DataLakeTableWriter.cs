@@ -243,7 +243,7 @@ public sealed class DataLakeTableWriter<T> : IAsyncDisposable
         // Create a data pipe from the buffer
         var dataStream = new InMemoryDataStream<T>(buffer);
 
-        await sinkNode.ConsumeAsync(dataStream, PipelineContext.Default, cancellationToken)
+        await sinkNode.ConsumeAsync(dataStream, PipelineContext.CreateDefault(), cancellationToken)
             .ConfigureAwait(false);
 
         // Get file size (best effort)

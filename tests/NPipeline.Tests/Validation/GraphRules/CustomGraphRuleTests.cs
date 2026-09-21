@@ -16,7 +16,7 @@ public sealed class CustomGraphRuleTests
         var builder = new PipelineBuilder().WithoutExtendedValidation()
             .WithValidationRule(new AlwaysWarnRule());
 
-        builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "s", [1]);
+        builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "s", [1]);
         var ok = builder.TryBuild(out var pipeline, out var result);
         ok.Should().BeTrue();
         result.Issues.Should().Contain(i => i.Category == "Custom" && i.Severity == ValidationSeverity.Warning);

@@ -11,7 +11,7 @@ public class FluentAssertionsTests
     {
         // Arrange
         var sink = new InMemorySinkNode<int>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var data = new InMemoryDataStream<int>([1, 2, 3]);
 
         // Act
@@ -26,7 +26,7 @@ public class FluentAssertionsTests
     {
         // Arrange
         var sink = new InMemorySinkNode<int>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var data = new InMemoryDataStream<int>([1, 2, 3]);
 
         // Act

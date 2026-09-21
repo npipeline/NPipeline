@@ -77,7 +77,7 @@ public sealed class Program
             Console.WriteLine("Starting advanced windowing strategies pipeline execution...");
             Console.WriteLine();
 
-            var context = PipelineContext.Default;
+            var context = PipelineContext.CreateDefault();
 
             foreach (var parameter in pipelineParameters)
             {

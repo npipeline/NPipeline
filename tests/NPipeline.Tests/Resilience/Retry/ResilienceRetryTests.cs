@@ -22,7 +22,7 @@ public sealed class ResilienceRetryTests
         var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IPipelineRunner>();
 
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
 
         // Provide a single item source
         ctx.SetSourceData([42]);

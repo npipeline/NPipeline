@@ -16,7 +16,7 @@ public sealed class LambdaNodesTests
         // Arrange
         Func<int, int> transform = x => x * 2;
         var node = new LambdaTransformNode<int, int>(transform);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(5, context, CancellationToken.None);
@@ -36,7 +36,7 @@ public sealed class LambdaNodesTests
         };
 
         var node = new AsyncLambdaTransformNode<int, int>(asyncTransform);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(5, context, CancellationToken.None);
@@ -58,7 +58,7 @@ public sealed class LambdaNodesTests
         };
 
         var node = new AsyncLambdaTransformNode<int, int>(slowTransform);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         cts.CancelAfter(50);
@@ -113,7 +113,7 @@ public sealed class LambdaNodesTests
         // Arrange
         Func<string, string> upperTransform = s => s.ToUpperInvariant();
         var node = new LambdaTransformNode<string, string>(upperTransform);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync("hello", context, CancellationToken.None);
@@ -128,7 +128,7 @@ public sealed class LambdaNodesTests
         // Arrange
         Func<int, int> addOne = x => x + 1;
         var node = new LambdaTransformNode<int, int>(addOne);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var valueTask = node.ExecuteValueTaskAsync(5, context, CancellationToken.None);

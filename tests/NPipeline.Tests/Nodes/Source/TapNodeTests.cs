@@ -21,7 +21,7 @@ public sealed class TapNodeTests
         const int testItem = 42;
         DummySink<int> sink = new();
         TapNode<int> tapNode = new(sink);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await tapNode.TransformAsync(testItem, context, CancellationToken.None);
@@ -37,7 +37,7 @@ public sealed class TapNodeTests
         const string testItem = "test_data";
         DummySink<string> sink = new();
         TapNode<string> tapNode = new(sink);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         _ = await tapNode.TransformAsync(testItem, context, CancellationToken.None);
@@ -54,7 +54,7 @@ public sealed class TapNodeTests
         int[] testItems = [1, 2, 3, 4, 5];
         DummySink<int> sink = new();
         TapNode<int> tapNode = new(sink);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         List<int> results = [];
@@ -76,7 +76,7 @@ public sealed class TapNodeTests
         CustomData originalData = new(1, "original");
         DummySink<CustomData> sink = new();
         TapNode<CustomData> tapNode = new(sink);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await tapNode.TransformAsync(originalData, context, CancellationToken.None);
@@ -94,7 +94,7 @@ public sealed class TapNodeTests
         const int testItem = 100;
         FailingSink<int> failingSink = new();
         TapNode<int> tapNode = new(failingSink);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         // Even if sink fails, TapNode should propagate the exception
@@ -112,7 +112,7 @@ public sealed class TapNodeTests
         // Arrange
         DummySink<int> sink = new();
         TapNode<int> tapNode = new(sink);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await tapNode.TransformAsync(999, context, CancellationToken.None);
@@ -128,7 +128,7 @@ public sealed class TapNodeTests
         // Arrange
         DummySink<double> sink = new();
         TapNode<double> tapNode = new(sink);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await tapNode.TransformAsync(3.14, context, CancellationToken.None);
@@ -145,7 +145,7 @@ public sealed class TapNodeTests
         CustomData complexData = new(42, "complex");
         DummySink<CustomData> sink = new();
         TapNode<CustomData> tapNode = new(sink);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await tapNode.TransformAsync(complexData, context, CancellationToken.None);
@@ -161,7 +161,7 @@ public sealed class TapNodeTests
         // Arrange
         DummySink<int?> sink = new();
         TapNode<int?> tapNode = new(sink);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         int? nullableValue = 42;
 
         // Act
@@ -178,7 +178,7 @@ public sealed class TapNodeTests
         // Arrange
         DummySink<string?> sink = new();
         TapNode<string?> tapNode = new(sink);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await tapNode.TransformAsync(null, context, CancellationToken.None);
@@ -198,7 +198,7 @@ public sealed class TapNodeTests
         // Arrange
         DummySink<int> sink = new();
         TapNode<int> tapNode = new(sink);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         using CancellationTokenSource cts = new();
 
         // Act
@@ -215,7 +215,7 @@ public sealed class TapNodeTests
         // Arrange
         DummySink<int> sink = new();
         TapNode<int> tapNode = new(sink);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         using CancellationTokenSource cts = new();
         cts.Cancel();
 

@@ -17,7 +17,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     {
         // Arrange
         var sink = new BoundedInMemoryDeadLetterSink(5);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         for (var i = 0; i < 5; i++)
         {
@@ -41,7 +41,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     {
         // Act
         var sink = new BoundedInMemoryDeadLetterSink();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Assert
         sink.Items.Should().BeEmpty();
@@ -84,7 +84,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     {
         // Arrange
         var sink = new BoundedInMemoryDeadLetterSink();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var item = "test-item";
         var error = new InvalidOperationException("test error");
 
@@ -102,7 +102,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     {
         // Arrange
         var sink = new BoundedInMemoryDeadLetterSink(100);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         for (var i = 0; i < 5; i++)
@@ -119,7 +119,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     {
         // Arrange
         var sink = new BoundedInMemoryDeadLetterSink();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var item = 42;
         var error = new ArgumentException("test");
 
@@ -141,7 +141,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     {
         // Arrange
         var sink = new BoundedInMemoryDeadLetterSink(2);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await sink.HandleAsync(Envelope("item1"), context, CancellationToken.None);
@@ -170,7 +170,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     {
         // Arrange
         var sink = new BoundedInMemoryDeadLetterSink(3);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         for (var i = 0; i < 3; i++)
@@ -191,7 +191,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     {
         // Arrange
         var sink = new BoundedInMemoryDeadLetterSink(100);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         await sink.HandleAsync(Envelope("string-item"), context, CancellationToken.None);
@@ -206,7 +206,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     {
         // Arrange
         var sink = new BoundedInMemoryDeadLetterSink();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await sink.HandleAsync(Envelope(null!), context, CancellationToken.None);
@@ -221,7 +221,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     {
         // Arrange
         var sink = new BoundedInMemoryDeadLetterSink();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var act = async () => await sink.HandleAsync(Envelope("item", null!), context, CancellationToken.None);
@@ -240,7 +240,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     {
         // Arrange
         var sink = new BoundedInMemoryDeadLetterSink(100);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var tasks = new List<Task>();
 
         // Act
@@ -261,7 +261,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     {
         // Arrange
         var sink = new BoundedInMemoryDeadLetterSink(5);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var exceptions = new List<Exception>();
 
         // Act
@@ -301,7 +301,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     {
         // Arrange
         var sink = new BoundedInMemoryDeadLetterSink();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var cts = new CancellationTokenSource();
 
         // Act
@@ -316,7 +316,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     {
         // Arrange
         var sink = new BoundedInMemoryDeadLetterSink();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
@@ -336,7 +336,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     {
         // Arrange
         var sink = new BoundedInMemoryDeadLetterSink();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         await sink.HandleAsync(Envelope("item"), context, CancellationToken.None);
 
         // Act & Assert
@@ -348,7 +348,7 @@ public sealed class BoundedInMemoryDeadLetterSinkTests
     {
         // Arrange
         var sink = new BoundedInMemoryDeadLetterSink(10000);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         for (var i = 0; i < 100; i++)

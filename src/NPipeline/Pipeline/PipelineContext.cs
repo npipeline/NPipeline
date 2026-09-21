@@ -258,181 +258,6 @@ public sealed class PipelineContext : IAsyncDisposable
     public IDictionary<string, object> Items { get; }
 
     /// <summary>
-    ///     Framework-managed services and execution state should be stored on strongly-typed members.
-    ///     <see cref="Items" /> is reserved for user-defined values.
-    /// </summary>
-    public StatsCounter ProcessedItemsCounter
-    {
-        get => Observability.ProcessedItemsCounter;
-        internal set => Observability.ProcessedItemsCounter = value;
-    }
-
-    /// <summary>
-    ///     Effective global retry options for the current pipeline run.
-    /// </summary>
-    public PipelineRetryOptions GlobalRetryOptions
-    {
-        get => ExecutionConfiguration.GlobalRetryOptions;
-        internal set => ExecutionConfiguration.GlobalRetryOptions = value;
-    }
-
-    /// <summary>
-    ///     Per-node retry option overrides indexed by node id.
-    /// </summary>
-    public Dictionary<string, PipelineRetryOptions> NodeRetryOverrides => ExecutionConfiguration.NodeRetryOverrides;
-
-    /// <summary>
-    ///     Unified resilience policy used by runtime execution.
-    /// </summary>
-    public IResiliencePolicy ResiliencePolicy
-    {
-        get => ExecutionConfiguration.ResiliencePolicy;
-        internal set => ExecutionConfiguration.ResiliencePolicy = value;
-    }
-
-    /// <summary>
-    ///     Registry for node execution annotations, observability scopes, and runtime annotations.
-    /// </summary>
-    public NodeExecutionScopeRegistry NodeExecutionScopeRegistry => NodeEnvironment.NodeExecutionScopeRegistry;
-
-    /// <summary>
-    ///     Optional preconfigured node instances to seed graph construction.
-    /// </summary>
-    public Dictionary<string, INode> PreconfiguredNodeInstances => NodeEnvironment.PreconfiguredNodeInstances;
-
-    /// <summary>
-    ///     Indicates the current run uses parallel execution behavior.
-    /// </summary>
-    public bool IsParallelExecution
-    {
-        get => ExecutionConfiguration.IsParallelExecution;
-        internal set => ExecutionConfiguration.IsParallelExecution = value;
-    }
-
-    /// <summary>
-    ///     Indicates node lifetimes are owned externally (for example by DI container).
-    /// </summary>
-    public bool DiOwnedNodes
-    {
-        get => NodeEnvironment.DiOwnedNodes;
-        set => NodeEnvironment.DiOwnedNodes = value;
-    }
-
-    /// <summary>
-    ///     The retry-exhausted exception awaiting consumption by error handling, if any.
-    /// </summary>
-    /// <remarks>
-    ///     See <see cref="PipelineExecutionConfigurationContext.LastRetryExhaustedException" />: this is a hand-off
-    ///     slot consumed by the first error handler that reports a failure, not a run-scoped record of what happened.
-    /// </remarks>
-    public RetryExhaustedException? LastRetryExhaustedException
-    {
-        get => ExecutionConfiguration.LastRetryExhaustedException;
-        internal set => ExecutionConfiguration.LastRetryExhaustedException = value;
-    }
-
-    /// <summary>
-    ///     Atomically takes the pending retry-exhausted exception, clearing the slot.
-    /// </summary>
-    internal RetryExhaustedException? TakeLastRetryExhaustedException()
-    {
-        return ExecutionConfiguration.TakeLastRetryExhaustedException();
-    }
-
-    /// <summary>
-    ///     The pipeline-level UTC start timestamp.
-    /// </summary>
-    public DateTime PipelineStartTimeUtc
-    {
-        get => RunIdentity.PipelineStartTimeUtc;
-        internal set => RunIdentity.PipelineStartTimeUtc = value;
-    }
-
-    /// <summary>
-    ///     Unique pipeline identity for this execution context.
-    ///     This is stable for the lifetime of the context and is used for unambiguous lineage/metrics keying.
-    /// </summary>
-    public Guid PipelineId
-    {
-        get => RunIdentity.PipelineId;
-        internal set => RunIdentity.PipelineId = value;
-    }
-
-    /// <summary>
-    ///     Unique run identifier for this pipeline execution.
-    ///     This can be inherited by child pipelines when composite run identity inheritance is enabled.
-    /// </summary>
-    public Guid RunId
-    {
-        get => RunIdentity.RunId;
-        internal set => RunIdentity.RunId = value;
-    }
-
-    /// <summary>
-    ///     Logical pipeline name for this execution context.
-    ///     Used by observability and lineage to disambiguate nested node identities.
-    /// </summary>
-    public string? PipelineName
-    {
-        get => RunIdentity.PipelineName;
-        internal set => RunIdentity.PipelineName = value;
-    }
-
-    /// <summary>
-    ///     Circuit-breaker options for the current run.
-    /// </summary>
-    public PipelineCircuitBreakerOptions? CircuitBreakerOptions
-    {
-        get => ExecutionConfiguration.CircuitBreakerOptions;
-        internal set => ExecutionConfiguration.CircuitBreakerOptions = value;
-    }
-
-    /// <summary>
-    ///     Circuit-breaker memory management options for the current run.
-    /// </summary>
-    public CircuitBreakerMemoryManagementOptions? CircuitBreakerMemoryOptions
-    {
-        get => ExecutionConfiguration.CircuitBreakerMemoryOptions;
-        internal set => ExecutionConfiguration.CircuitBreakerMemoryOptions = value;
-    }
-
-    /// <summary>
-    ///     Circuit-breaker manager for the current run.
-    /// </summary>
-    internal ICircuitBreakerManager? CircuitBreakerManager
-    {
-        get => ExecutionConfiguration.CircuitBreakerManager;
-        set => ExecutionConfiguration.CircuitBreakerManager = value;
-    }
-
-    /// <summary>
-    ///     Item-level lineage sink resolved for the current run.
-    /// </summary>
-    public ILineageSink? LineageSink
-    {
-        get => Lineage.LineageSink;
-        internal set => Lineage.LineageSink = value;
-    }
-
-    /// <summary>
-    ///     Pipeline-level lineage sink resolved for the current run.
-    /// </summary>
-    public IPipelineLineageSink? PipelineLineageSink
-    {
-        get => Lineage.PipelineLineageSink;
-        internal set => Lineage.PipelineLineageSink = value;
-    }
-
-    /// <summary>
-    ///     Item-level lineage collector resolved for the current run.
-    /// </summary>
-    public ILineageCollector? LineageCollector
-    {
-        get => Lineage.LineageCollector;
-        internal set => Lineage.LineageCollector = value;
-    }
-
-    /// <summary>
     ///     A dictionary for storing properties that can be used by extensions and plugins.
     ///     This provides a way to extend the PipelineContext without modifying its core structure.
     /// </summary>
@@ -456,16 +281,6 @@ public sealed class PipelineContext : IAsyncDisposable
     public CancellationToken CancellationToken { get; }
 
     /// <summary>
-    ///     The logger factory for this pipeline run.
-    /// </summary>
-    public ILoggerFactory LoggerFactory => Observability.LoggerFactory;
-
-    /// <summary>
-    ///     The tracer for this pipeline run.
-    /// </summary>
-    public IPipelineTracer Tracer => Observability.Tracer;
-
-    /// <summary>
     ///     The sink for items that have failed processing and have been redirected.
     /// </summary>
     public IDeadLetterSink? DeadLetterSink { get; internal set; }
@@ -476,47 +291,16 @@ public sealed class PipelineContext : IAsyncDisposable
     public IErrorHandlerFactory ErrorHandlerFactory { get; }
 
     /// <summary>
-    ///     The factory for creating lineage-related components.
+    ///     Creates a new pipeline context with all default values.
     /// </summary>
-    public ILineageFactory LineageFactory => Lineage.LineageFactory;
-
-    /// <summary>
-    ///     The factory for resolving observability-related components.
-    /// </summary>
-    public IObservabilityFactory ObservabilityFactory => Observability.ObservabilityFactory;
-
-    /// <summary>
-    ///     The ID of the node currently being executed.
-    /// </summary>
-    public string CurrentNodeId
+    /// <remarks>
+    ///     A method, not a property: every call allocates a fresh context. As a property it read like a shared
+    ///     singleton, and callers that mutated what they got back were relying on each access being new.
+    /// </remarks>
+    public static PipelineContext CreateDefault()
     {
-        get => NodeEnvironment.CurrentNodeId;
-        private set => NodeEnvironment.CurrentNodeId = value;
+        return new PipelineContext(PipelineContextConfiguration.Default);
     }
-
-    /// <summary>
-    ///     Execution observer for instrumentation (node lifecycle, retries, queue/backpressure events).
-    ///     Defaults to <see cref="NullExecutionObserver.Instance" /> which provides zero-overhead observation.
-    ///     Set to a different observer implementation to enable actual instrumentation.
-    ///     If set to null, automatically falls back to <see cref="NullExecutionObserver.Instance" />.
-    /// </summary>
-    public IExecutionObserver ExecutionObserver
-    {
-        get => Observability.ExecutionObserver;
-        set => Observability.ExecutionObserver = value;
-    }
-
-    /// <summary>
-    ///     Execution / retry configuration for this pipeline run.
-    ///     Values here override builder defaults when provided.
-    /// </summary>
-    public PipelineRetryOptions RetryOptions => ExecutionConfiguration.RetryOptions;
-
-    /// <summary>
-    ///     Creates a default pipeline context with all default values.
-    /// </summary>
-    public static PipelineContext Default => new(PipelineContextConfiguration.Default);
-
 
     /// <summary>
     ///     Gets the state manager for this pipeline run, if available.
@@ -596,7 +380,7 @@ public sealed class PipelineContext : IAsyncDisposable
 
     private void LogLateRegistrationFailure(Exception ex)
     {
-        var logger = LoggerFactory.CreateLogger("PipelineContext");
+        var logger = Observability.LoggerFactory.CreateLogger("PipelineContext");
         PipelineContextLogMessages.LateRegistrationDisposalFailed(logger, ex.Message);
     }
 
@@ -683,7 +467,7 @@ public sealed class PipelineContext : IAsyncDisposable
     /// <param name="nodeId">The ID of the node to set as current.</param>
     /// <returns>A non-allocating disposable scope that restores the original node ID upon disposal.</returns>
     /// <remarks>
-    ///     Inert while nodes are running concurrently. <see cref="CurrentNodeId" /> is one field on a shared context,
+    ///     Inert while nodes are running concurrently. <see cref="PipelineNodeEnvironmentContext.CurrentNodeId" /> is one field on a shared context,
     ///     so concurrent scopes would interleave their writes and restores and leave it pointing at whichever node
     ///     finished last. Freezing it is the honest behaviour: a stale id beats an arbitrary one.
     /// </remarks>
@@ -696,8 +480,8 @@ public sealed class PipelineContext : IAsyncDisposable
 
     private void ClearOwnedDictionaries()
     {
-        NodeRetryOverrides.Clear();
-        NodeExecutionScopeRegistry.Clear();
+        ExecutionConfiguration.NodeRetryOverrides.Clear();
+        NodeEnvironment.NodeExecutionScopeRegistry.Clear();
 
         if (_ownsParametersDictionary)
             Parameters.Clear();
@@ -710,7 +494,7 @@ public sealed class PipelineContext : IAsyncDisposable
     }
 
     /// <summary>
-    ///     Allocation-free disposable scope that sets <see cref="CurrentNodeId" /> for its lifetime
+    ///     Allocation-free disposable scope that sets <see cref="PipelineNodeEnvironmentContext.CurrentNodeId" /> for its lifetime
     ///     and restores the previous node id on disposal.
     /// </summary>
     public readonly struct NodeScope : IDisposable
@@ -721,8 +505,8 @@ public sealed class PipelineContext : IAsyncDisposable
         internal NodeScope(PipelineContext context, string newNodeId)
         {
             _context = context;
-            _previousNodeId = context.CurrentNodeId;
-            context.CurrentNodeId = newNodeId;
+            _previousNodeId = context.NodeEnvironment.CurrentNodeId;
+            context.NodeEnvironment.CurrentNodeId = newNodeId;
         }
 
         /// <summary>
@@ -731,7 +515,7 @@ public sealed class PipelineContext : IAsyncDisposable
         public void Dispose()
         {
             if (_context is not null)
-                _context.CurrentNodeId = _previousNodeId;
+                _context.NodeEnvironment.CurrentNodeId = _previousNodeId;
         }
     }
 }

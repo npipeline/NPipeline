@@ -23,7 +23,7 @@ public class TestPipelineRunnerTests
             .Build();
 
         var testRunner = new TestPipelineRunner(pipelineRunner);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await testRunner.RunAndGetResultAsync<TestPipeline, int>(context);
@@ -36,7 +36,7 @@ public class TestPipelineRunnerTests
     public void Should_Run_Simple_Pipeline()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var pipelineFactory = new PipelineFactory();
 
         // Act

@@ -39,7 +39,7 @@ public sealed class CsvAttributeMappingTests
             var source = new CsvSourceNode<PocoWithMixedCase>(uri, resolver, config);
 
             // Act
-            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
             var results = new List<PocoWithMixedCase>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -98,7 +98,7 @@ public sealed class CsvAttributeMappingTests
             var source = new CsvSourceNode<SimplePoco>(uri, rowMapper, resolver, config);
 
             // Act
-            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
             var results = new List<SimplePoco>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -146,7 +146,7 @@ public sealed class CsvAttributeMappingTests
             var source = new CsvSourceNode<PocoWithCommonAttributes>(uri, resolver, config);
 
             // Act
-            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
             var results = new List<PocoWithCommonAttributes>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -201,7 +201,7 @@ public sealed class CsvAttributeMappingTests
             IDataStream<PocoWithCommonAttributes> input = new DataStream<PocoWithCommonAttributes>(data.ToAsyncEnumerable());
 
             // Act
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Assert
             var lines = await File.ReadAllLinesAsync(tempFile);
@@ -241,7 +241,7 @@ public sealed class CsvAttributeMappingTests
             var source = new CsvSourceNode<PocoWithCommonIgnore>(uri, resolver, config);
 
             // Act
-            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
             var results = new List<PocoWithCommonIgnore>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -294,7 +294,7 @@ public sealed class CsvAttributeMappingTests
             IDataStream<PocoWithCommonIgnore> input = new DataStream<PocoWithCommonIgnore>(data.ToAsyncEnumerable());
 
             // Act
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Assert
             var lines = await File.ReadAllLinesAsync(tempFile);
@@ -334,7 +334,7 @@ public sealed class CsvAttributeMappingTests
             var source = new CsvSourceNode<PocoWithMixedAttributes>(uri, resolver, config);
 
             // Act
-            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
             var results = new List<PocoWithMixedAttributes>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -389,7 +389,7 @@ public sealed class CsvAttributeMappingTests
             IDataStream<PocoWithMixedAttributes> input = new DataStream<PocoWithMixedAttributes>(data.ToAsyncEnumerable());
 
             // Act
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Assert
             var lines = await File.ReadAllLinesAsync(tempFile);
@@ -563,7 +563,7 @@ public sealed class CsvAttributeMappingTests
             var source = new CsvSourceNode<SimplePoco>(uri, resolver, config);
 
             // Act
-            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
             var results = new List<SimplePoco>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -618,7 +618,7 @@ public sealed class CsvAttributeMappingTests
             IDataStream<SimplePoco> input = new DataStream<SimplePoco>(data.ToAsyncEnumerable());
 
             // Act
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Assert
             var lines = await File.ReadAllLinesAsync(tempFile);
@@ -662,7 +662,7 @@ public sealed class CsvAttributeMappingTests
             var source = new CsvSourceNode<PocoWithAttributes>(uri, resolver, config);
 
             // Act
-            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
             var results = new List<PocoWithAttributes>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -717,7 +717,7 @@ public sealed class CsvAttributeMappingTests
             IDataStream<PocoWithAttributes> input = new DataStream<PocoWithAttributes>(data.ToAsyncEnumerable());
 
             // Act
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Assert
             var lines = await File.ReadAllLinesAsync(tempFile);
@@ -761,7 +761,7 @@ public sealed class CsvAttributeMappingTests
             var source = new CsvSourceNode<PocoWithIgnore>(uri, resolver, config);
 
             // Act
-            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
             var results = new List<PocoWithIgnore>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -814,7 +814,7 @@ public sealed class CsvAttributeMappingTests
             IDataStream<PocoWithIgnore> input = new DataStream<PocoWithIgnore>(data.ToAsyncEnumerable());
 
             // Act
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Assert
             var lines = await File.ReadAllLinesAsync(tempFile);
@@ -858,7 +858,7 @@ public sealed class CsvAttributeMappingTests
             var source = new CsvSourceNode<PocoWithNullableTypes>(uri, resolver, config);
 
             // Act
-            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
             var results = new List<PocoWithNullableTypes>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -913,7 +913,7 @@ public sealed class CsvAttributeMappingTests
             IDataStream<PocoWithNullableTypes> input = new DataStream<PocoWithNullableTypes>(data.ToAsyncEnumerable());
 
             // Act
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Assert
             var lines = await File.ReadAllLinesAsync(tempFile);
@@ -961,11 +961,11 @@ public sealed class CsvAttributeMappingTests
             // Write
             var sink = new CsvSinkNode<SimplePoco>(uri, resolver, config);
             IDataStream<SimplePoco> input = new DataStream<SimplePoco>(originalData.ToAsyncEnumerable());
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Read
             var source = new CsvSourceNode<SimplePoco>(uri, resolver, config);
-            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
             var results = new List<SimplePoco>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -1020,11 +1020,11 @@ public sealed class CsvAttributeMappingTests
             // Write
             var sink = new CsvSinkNode<PocoWithAttributes>(uri, resolver, config);
             IDataStream<PocoWithAttributes> input = new DataStream<PocoWithAttributes>(originalData.ToAsyncEnumerable());
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
             // Read
             var source = new CsvSourceNode<PocoWithAttributes>(uri, resolver, config);
-            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
             var results = new List<PocoWithAttributes>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -1081,7 +1081,7 @@ public sealed class CsvAttributeMappingTests
             var source = new CsvSourceNode<PocoWithVariousTypes>(uri, resolver, config);
 
             // Act
-            var outPipe = source.OpenStream(PipelineContext.Default, CancellationToken.None);
+            var outPipe = source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None);
             var results = new List<PocoWithVariousTypes>();
 
             await foreach (var item in outPipe.WithCancellation(CancellationToken.None))
@@ -1135,7 +1135,7 @@ public sealed class CsvAttributeMappingTests
         IDataStream<PocoWithVariousTypes> input = new DataStream<PocoWithVariousTypes>(new[] { poco }.ToAsyncEnumerable());
 
         // Act
-        await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+        await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
 
         var lines = await File.ReadAllLinesAsync(tempFile);
 

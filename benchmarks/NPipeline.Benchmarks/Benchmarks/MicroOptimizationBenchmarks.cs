@@ -28,7 +28,7 @@ public class MicroOptimizationBenchmarks
     {
         _runner = PipelineRunner.Create();
 
-        _ctx = PipelineContext.Default;
+        _ctx = PipelineContext.CreateDefault();
         _ctx.Parameters["count"] = ItemCount;
     }
 

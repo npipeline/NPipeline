@@ -36,7 +36,7 @@ public class BranchBenchmarks
     {
         _runner = PipelineRunner.Create();
 
-        _ctx = PipelineContext.Default;
+        _ctx = PipelineContext.CreateDefault();
         _ctx.Parameters["count"] = ItemCount;
         _ctx.Parameters["slowDelayMicros"] = SlowSinkDelayMicros;
         _ctx.Parameters["branchCap"] = PerSubscriberCapacity;

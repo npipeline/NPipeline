@@ -12,10 +12,10 @@ public sealed class BuilderNameUniquenessTests
         var builder = new PipelineBuilder();
         builder.WithEarlyNameValidation();
 
-        builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "dup", [1]);
+        builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "dup", [1]);
 
         // Adding another source with the same name should trigger early name validation
-        Action act = () => builder.AddInMemorySourceWithDataFromContext(PipelineContext.Default, "dup", [2]);
+        Action act = () => builder.AddInMemorySourceWithDataFromContext(PipelineContext.CreateDefault(), "dup", [2]);
 
         act.Should()
             .Throw<ArgumentException>()

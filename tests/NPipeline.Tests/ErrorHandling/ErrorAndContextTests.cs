@@ -29,7 +29,7 @@ public sealed class ErrorAndContextTests
         services.AddSingleton(sink);
 
         var serviceProvider = services.BuildServiceProvider();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var runner = serviceProvider.GetRequiredService<IPipelineRunner>();
 
         // Act

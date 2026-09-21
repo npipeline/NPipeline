@@ -68,7 +68,7 @@ public sealed class NodeExecutor(
         var output = await plan.ExecuteSource!(instance, context, context.CancellationToken).ConfigureAwait(false);
 
         if (graph.Lineage.ItemLevelLineageEnabled)
-            output = lineage.WrapSourceStream(output, plan.NodeId, context.PipelineId, context.PipelineName, graph.Lineage.LineageOptions);
+            output = lineage.WrapSourceStream(output, plan.NodeId, context.RunIdentity.PipelineId, context.RunIdentity.PipelineName, graph.Lineage.LineageOptions);
 
         var counter = GetOrCreateCounter(context);
         output = dataStreamWrapperService.WrapWithCountingAndBranching(output, counter, context, graph, plan.NodeId);
@@ -93,7 +93,7 @@ public sealed class NodeExecutor(
         {
             var adapter = nodeDef.LineageAdapter ?? throw new InvalidOperationException(ErrorMessages.LineageAdapterMissing(plan.NodeId));
 
-            var (unwrapped, rewrap) = adapter(input, plan.NodeId, context.PipelineId, context.PipelineName,
+            var (unwrapped, rewrap) = adapter(input, plan.NodeId, context.RunIdentity.PipelineId, context.RunIdentity.PipelineName,
                 nodeDef.DeclaredCardinality ?? TransformCardinality.OneToOne, graph.Lineage.LineageOptions, context.CancellationToken);
 
             var transformTask = plan.ExecuteTransform!(instance, unwrapped, context, context.CancellationToken);
@@ -155,8 +155,8 @@ public sealed class NodeExecutor(
                 rawOutput,
                 inputLineageContext,
                 plan.NodeId,
-                context.PipelineId,
-                context.PipelineName,
+                context.RunIdentity.PipelineId,
+                context.RunIdentity.PipelineName,
                 graph.Lineage.LineageOptions,
                 LineageOutcomeReason.Joined,
                 nodeDef.LineageMapperType,
@@ -221,8 +221,8 @@ public sealed class NodeExecutor(
                 output,
                 inputLineageContext,
                 plan.NodeId,
-                context.PipelineId,
-                context.PipelineName,
+                context.RunIdentity.PipelineId,
+                context.RunIdentity.PipelineName,
                 graph.Lineage.LineageOptions,
                 LineageOutcomeReason.Aggregated,
                 nodeDef.LineageMapperType,
@@ -275,11 +275,11 @@ public sealed class NodeExecutor(
             var lineageUnwrap = nodeDef.SinkLineageUnwrap ??
                                 throw new InvalidOperationException(ErrorMessages.SinkNodeLineageUnwrapMissing(plan.NodeId));
 
-            effectiveInput = lineageUnwrap(input, context.LineageSink, plan.NodeId, context.PipelineId, context.PipelineName,
+            effectiveInput = lineageUnwrap(input, context.Lineage.LineageSink, plan.NodeId, context.RunIdentity.PipelineId, context.RunIdentity.PipelineName,
                 graph.Lineage.LineageOptions, context.CancellationToken);
         }
 
-        using var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(plan.NodeId);
+        using var observabilityScope = context.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope(plan.NodeId);
         effectiveInput = NodeTimingDataStreamWrapper.WrapInputWait(effectiveInput, observabilityScope);
 
         var before = observabilityScope.GetTimingBreakdown();
@@ -383,7 +383,7 @@ public sealed class NodeExecutor(
 
     private static StatsCounter GetOrCreateCounter(PipelineContext context)
     {
-        context.ProcessedItemsCounter ??= new StatsCounter();
-        return context.ProcessedItemsCounter;
+        context.Observability.ProcessedItemsCounter ??= new StatsCounter();
+        return context.Observability.ProcessedItemsCounter;
     }
 }

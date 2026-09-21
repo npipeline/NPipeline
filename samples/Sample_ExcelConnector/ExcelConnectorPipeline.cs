@@ -73,7 +73,7 @@ public class ExcelConnectorPipeline : IPipelineDefinition
         builder.Connect(transform, sink);
 
         // Log pipeline configuration
-        var logger = context.LoggerFactory.CreateLogger("ExcelConnectorPipeline");
+        var logger = context.Observability.LoggerFactory.CreateLogger("ExcelConnectorPipeline");
         logger.Log(LogLevel.Information, "Excel pipeline configured: {SourcePath} -> {TargetPath}", sourcePath, targetPath);
     }
 

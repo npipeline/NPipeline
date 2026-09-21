@@ -13,7 +13,7 @@ public sealed class ValidationNodeTests
         node.Register(x => x.Name, name => !string.IsNullOrEmpty(name), "NotEmpty");
 
         var data = new TestData { Name = "Alice" };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -31,7 +31,7 @@ public sealed class ValidationNodeTests
         node.Register(x => x.Name, name => !string.IsNullOrEmpty(name), "NotEmpty");
 
         var data = new TestData { Name = "" };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ValidationException>(async () =>
@@ -55,7 +55,7 @@ public sealed class ValidationNodeTests
             value => $"Age must be at least 18, got {value}");
 
         var data = new TestData { Age = 15 };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ValidationException>(async () =>
@@ -74,7 +74,7 @@ public sealed class ValidationNodeTests
         node.Register(x => x.Age, age => age >= 0, "NonNegative");
 
         var data = new TestData { Name = "Alice", Age = 25 };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -92,7 +92,7 @@ public sealed class ValidationNodeTests
         node.Register(x => x.Age, age => age >= 0, "NonNegative");
 
         var data = new TestData { Name = "", Age = 25 };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ValidationException>(async () =>
@@ -113,7 +113,7 @@ public sealed class ValidationNodeTests
             "NotEmpty");
 
         var data = new TestData { Name = "Alice", Email = "alice@test.com" };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -134,7 +134,7 @@ public sealed class ValidationNodeTests
             "NotEmpty");
 
         var data = new TestData { Name = "Alice", Email = "" };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ValidationException>(async () =>
@@ -150,7 +150,7 @@ public sealed class ValidationNodeTests
         // Arrange
         var node = new TestValidationNode();
         var data = new TestData { Name = "Test" };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         var result = await node.TransformAsync(data, context, CancellationToken.None);
@@ -167,7 +167,7 @@ public sealed class ValidationNodeTests
         node.Register(x => x.Name, name => !string.IsNullOrEmpty(name), "NotEmpty");
 
         var data = new TestData { Name = "Test" };
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var cts = new CancellationTokenSource();
         cts.Cancel();
 

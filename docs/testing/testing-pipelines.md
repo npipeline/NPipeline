@@ -26,7 +26,7 @@ Test transform nodes directly:
 public async Task TransformAsync_ValidOrder_ReturnsEnrichedOrder()
 {
     var node = new EnrichOrder(new HttpClient());
-    var context = PipelineContext.Default;
+    var context = PipelineContext.CreateDefault();
 
     var result = await node.TransformAsync(
         new Order(1, "Widget"), context, CancellationToken.None);
@@ -76,7 +76,7 @@ public class TestPipeline : IPipelineDefinition
 [Fact]
 public async Task Pipeline_ProcessesOrders()
 {
-    var context = PipelineContext.Default;
+    var context = PipelineContext.CreateDefault();
     context.SetSourceData(new[] { new Order(1), new Order(2) });
 
     var runner = PipelineRunner.Create();

@@ -23,11 +23,11 @@ public sealed class RetryExhaustedAttributionTests
         await using var context = new PipelineContext(PipelineContextConfiguration.Default);
         var exhausted = new RetryExhaustedException("upstream", 3, new InvalidOperationException("root cause"));
 
-        context.LastRetryExhaustedException = exhausted;
+        context.ExecutionConfiguration.LastRetryExhaustedException = exhausted;
 
-        context.TakeLastRetryExhaustedException().Should().BeSameAs(exhausted);
-        context.TakeLastRetryExhaustedException().Should().BeNull("a second failure must not inherit the first one's root cause");
-        context.LastRetryExhaustedException.Should().BeNull();
+        context.ExecutionConfiguration.TakeLastRetryExhaustedException().Should().BeSameAs(exhausted);
+        context.ExecutionConfiguration.TakeLastRetryExhaustedException().Should().BeNull("a second failure must not inherit the first one's root cause");
+        context.ExecutionConfiguration.LastRetryExhaustedException.Should().BeNull();
     }
 
     [Fact]
@@ -35,7 +35,7 @@ public sealed class RetryExhaustedAttributionTests
     {
         await using var context = new PipelineContext(PipelineContextConfiguration.Default);
 
-        context.TakeLastRetryExhaustedException().Should().BeNull();
+        context.ExecutionConfiguration.TakeLastRetryExhaustedException().Should().BeNull();
     }
 
     [Fact]
@@ -46,12 +46,12 @@ public sealed class RetryExhaustedAttributionTests
         await using var context = new PipelineContext(PipelineContextConfiguration.Default);
         var exhausted = new RetryExhaustedException("upstream", 3, new InvalidOperationException("root cause"));
 
-        context.LastRetryExhaustedException = exhausted;
+        context.ExecutionConfiguration.LastRetryExhaustedException = exhausted;
 
-        _ = context.LastRetryExhaustedException;
-        _ = context.LastRetryExhaustedException;
+        _ = context.ExecutionConfiguration.LastRetryExhaustedException;
+        _ = context.ExecutionConfiguration.LastRetryExhaustedException;
 
-        context.TakeLastRetryExhaustedException().Should().BeSameAs(exhausted);
+        context.ExecutionConfiguration.TakeLastRetryExhaustedException().Should().BeSameAs(exhausted);
     }
 
     /// <summary>
@@ -66,7 +66,7 @@ public sealed class RetryExhaustedAttributionTests
         await using var context = new PipelineContext(PipelineContextConfiguration.Default);
         var exhausted = new RetryExhaustedException("upstream", 3, new InvalidOperationException("root cause"));
 
-        context.LastRetryExhaustedException = exhausted;
+        context.ExecutionConfiguration.LastRetryExhaustedException = exhausted;
 
         using Barrier gate = new(4);
 
@@ -77,7 +77,7 @@ public sealed class RetryExhaustedAttributionTests
 
             for (var i = 0; i < attempts; i++)
             {
-                if (context.TakeLastRetryExhaustedException() is not null)
+                if (context.ExecutionConfiguration.TakeLastRetryExhaustedException() is not null)
                     claimed++;
             }
 
@@ -95,10 +95,10 @@ public sealed class RetryExhaustedAttributionTests
     public async Task OnlyTheFirstFailingNode_ReportsThePendingRootCause()
     {
         await using var context = new PipelineContext(PipelineContextConfiguration.Default);
-        context.GlobalRetryOptions = context.GlobalRetryOptions.With(maxSequentialNodeAttempts: 1);
+        context.ExecutionConfiguration.GlobalRetryOptions = context.ExecutionConfiguration.GlobalRetryOptions.With(maxSequentialNodeAttempts: 1);
 
         var rootCause = new RetryExhaustedException("upstream", 3, new InvalidOperationException("the real problem"));
-        context.LastRetryExhaustedException = rootCause;
+        context.ExecutionConfiguration.LastRetryExhaustedException = rootCause;
 
         ErrorHandlingService service = new();
 

@@ -133,7 +133,7 @@ public readonly struct CachedNodeExecutionContext
     ///         {
     ///             if (cached.TracingEnabled)
     ///             {
-    ///                 using var activity = context.Tracer.StartActivity("Item.Transform");
+    ///                 using var activity = context.Observability.Tracer.StartActivity("Item.Transform");
     ///                 // ... process item with cached.RetryOptions
     ///             }
     ///         }
@@ -173,17 +173,17 @@ public readonly struct CachedNodeExecutionContext
         var effectiveRetries = RetryOptionsResolver.Resolve(context, nodeId);
 
         // Determine if tracing is enabled by checking if tracer is not the null implementation
-        var tracingEnabled = context.Tracer is not NullPipelineTracer;
+        var tracingEnabled = context.Observability.Tracer is not NullPipelineTracer;
 
         // Determine if logging is enabled by checking if logger factory is not the null implementation
-        var loggingEnabled = context.LoggerFactory is not NullLoggerFactory;
+        var loggingEnabled = context.Observability.LoggerFactory is not NullLoggerFactory;
 
         return new CachedNodeExecutionContext(
             nodeId,
             effectiveRetries,
             tracingEnabled,
             loggingEnabled,
-            LineageNodeOutcomeRegistry.GetWriter(context.PipelineId, nodeId),
+            LineageNodeOutcomeRegistry.GetWriter(context.RunIdentity.PipelineId, nodeId),
             context.CancellationToken);
     }
 
@@ -208,15 +208,15 @@ public readonly struct CachedNodeExecutionContext
         ArgumentNullException.ThrowIfNull(nodeId);
         ArgumentNullException.ThrowIfNull(preResolvedRetryOptions);
 
-        var tracingEnabled = context.Tracer is not NullPipelineTracer;
-        var loggingEnabled = context.LoggerFactory is not NullLoggerFactory;
+        var tracingEnabled = context.Observability.Tracer is not NullPipelineTracer;
+        var loggingEnabled = context.Observability.LoggerFactory is not NullLoggerFactory;
 
         return new CachedNodeExecutionContext(
             nodeId,
             preResolvedRetryOptions,
             tracingEnabled,
             loggingEnabled,
-            LineageNodeOutcomeRegistry.GetWriter(context.PipelineId, nodeId),
+            LineageNodeOutcomeRegistry.GetWriter(context.RunIdentity.PipelineId, nodeId),
             context.CancellationToken);
     }
 }

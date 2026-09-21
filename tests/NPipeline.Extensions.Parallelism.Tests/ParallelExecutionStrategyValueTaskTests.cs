@@ -44,7 +44,7 @@ public sealed class ParallelExecutionStrategyValueTaskTests
 
         using (context.ScopedNode("transform"))
         {
-            context.NodeExecutionScopeRegistry.SetNodeExecutionAnnotation("transform", new ParallelOptions
+            context.NodeEnvironment.NodeExecutionScopeRegistry.SetNodeExecutionAnnotation("transform", new ParallelOptions
             {
                 MaxDegreeOfParallelism = 1,
                 MaxQueueLength = 4,
@@ -76,7 +76,7 @@ public sealed class ParallelExecutionStrategyValueTaskTests
 
         using (context.ScopedNode("transform"))
         {
-            context.NodeExecutionScopeRegistry.SetNodeExecutionAnnotation("transform", new ParallelOptions
+            context.NodeEnvironment.NodeExecutionScopeRegistry.SetNodeExecutionAnnotation("transform", new ParallelOptions
             {
                 MaxDegreeOfParallelism = 1,
                 MaxQueueLength = 4,

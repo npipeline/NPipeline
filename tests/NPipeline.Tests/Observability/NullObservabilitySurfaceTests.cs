@@ -13,7 +13,7 @@ public sealed class NullObservabilitySurfaceTests
     public void NullObservabilitySurface_BeginPipeline_ReturnsActivity()
     {
         var surface = NullObservabilitySurface.Instance;
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var act = surface.BeginPipeline<TestDefinition>(ctx);
         Assert.NotNull(act);
     }
@@ -22,7 +22,7 @@ public sealed class NullObservabilitySurfaceTests
     public async Task NullObservabilitySurface_CompletePipeline_IsNoOp()
     {
         var surface = NullObservabilitySurface.Instance;
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var act = surface.BeginPipeline<TestDefinition>(ctx);
         var graph = PipelineGraphBuilder.Create()
             .WithNodes(ImmutableList<NodeDefinition>.Empty)
@@ -36,7 +36,7 @@ public sealed class NullObservabilitySurfaceTests
     public async Task NullObservabilitySurface_FailPipeline_IsNoOp()
     {
         var surface = NullObservabilitySurface.Instance;
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var act = surface.BeginPipeline<TestDefinition>(ctx);
         await surface.FailPipeline<TestDefinition>(ctx, new InvalidOperationException("boom"), act);
     }
@@ -45,7 +45,7 @@ public sealed class NullObservabilitySurfaceTests
     public void NullObservabilitySurface_BeginNode_ReturnsScopeWithNullAutoObservability()
     {
         var surface = NullObservabilitySurface.Instance;
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var def = new NodeDefinition(
             new NodeIdentity("n1", "n1"),
             new NodeTypeSystem(typeof(object), NodeKind.Source, null, typeof(object)),
@@ -63,7 +63,7 @@ public sealed class NullObservabilitySurfaceTests
     public void NullObservabilitySurface_CompleteNodeSuccess_ReturnsCompleted()
     {
         var surface = NullObservabilitySurface.Instance;
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var def = new NodeDefinition(
             new NodeIdentity("n1", "n1"),
             new NodeTypeSystem(typeof(object), NodeKind.Source, null, typeof(object)),
@@ -82,7 +82,7 @@ public sealed class NullObservabilitySurfaceTests
     public void NullObservabilitySurface_CompleteNodeFailure_ReturnsFailed()
     {
         var surface = NullObservabilitySurface.Instance;
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var def = new NodeDefinition(
             new NodeIdentity("n1", "n1"),
             new NodeTypeSystem(typeof(object), NodeKind.Source, null, typeof(object)),

@@ -23,7 +23,7 @@ public class TestingUtilitiesTests
             .Build();
 
         var testRunner = new TestPipelineRunner(pipelineRunner);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var sourceData = new[] { "a", "b", "c" };
         context.SetSourceData(sourceData);
 
@@ -47,7 +47,7 @@ public class TestingUtilitiesTests
             .Build();
 
         var testRunner = new TestPipelineRunner(pipelineRunner);
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var sourceData = new[] { 1, 2, 3 };
         context.SetSourceData(sourceData);
 

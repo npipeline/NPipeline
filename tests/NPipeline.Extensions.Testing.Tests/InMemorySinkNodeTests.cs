@@ -23,7 +23,7 @@ public class InMemorySinkNodeTests
     {
         // Arrange
         var sink = new InMemorySinkNode<int>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var items = new[] { 1, 2, 3 };
         var dataStream = new InMemoryDataStream<int>(items);
 
@@ -41,7 +41,7 @@ public class InMemorySinkNodeTests
     {
         // Arrange
         var sink = new InMemorySinkNode<int>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var cts = new CancellationTokenSource();
 
         // Create a data pipe that will trigger cancellation
@@ -62,7 +62,7 @@ public class InMemorySinkNodeTests
     {
         // Arrange
         var sink = new InMemorySinkNode<int>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Create a data pipe that throws an exception during enumeration
         var dataStream = new ThrowingDataStream<int>(new InvalidOperationException("Test exception"));
@@ -83,7 +83,7 @@ public class InMemorySinkNodeTests
     {
         // Arrange
         var sink = new InMemorySinkNode<int>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         sink.RegisterInContext(context);
@@ -101,9 +101,9 @@ public class InMemorySinkNodeTests
     {
         // Arrange
         var sink = new InMemorySinkNode<int>();
-        var parentContext = PipelineContext.Default;
+        var parentContext = PipelineContext.CreateDefault();
 
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         context.Items[PipelineContextKeys.TestingParentContext] = parentContext;
 
         // Act
@@ -127,7 +127,7 @@ public class InMemorySinkNodeTests
     {
         // Arrange
         var sink = new InMemorySinkNode<int>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var items = new[] { 1, 2, 3 };
         var dataStream = new InMemoryDataStream<int>(items);
 
@@ -147,8 +147,8 @@ public class InMemorySinkNodeTests
     {
         // Arrange
         var sink = new InMemorySinkNode<int>();
-        var parentContext = PipelineContext.Default;
-        var context = PipelineContext.Default;
+        var parentContext = PipelineContext.CreateDefault();
+        var context = PipelineContext.CreateDefault();
         context.Items[PipelineContextKeys.TestingParentContext] = parentContext;
         var items = new[] { 1, 2, 3 };
         var dataStream = new InMemoryDataStream<int>(items);
@@ -170,7 +170,7 @@ public class InMemorySinkNodeTests
     {
         // Arrange
         var sink = new InMemorySinkNode<int>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var dataStream = new InMemoryDataStream<int>([]);
 
         // Act
@@ -187,7 +187,7 @@ public class InMemorySinkNodeTests
     {
         // Arrange
         var sink = new InMemorySinkNode<int>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var items = new[] { 1, 2, 3 };
         var dataStream = new InMemoryDataStream<int>(items);
 
@@ -211,7 +211,7 @@ public class InMemorySinkNodeTests
     {
         // Arrange
         var sink = new InMemorySinkNode<int>();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(() => sink.ConsumeAsync(null!, context, CancellationToken.None));

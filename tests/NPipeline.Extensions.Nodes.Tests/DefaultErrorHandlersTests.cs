@@ -15,7 +15,7 @@ public sealed class DefaultErrorHandlersTests
         var handler = new DefaultValidationErrorHandler<string>();
         var node = A.Fake<ITransformNode<string, string>>();
         var exception = new ValidationException("Name", "NotEmpty", "", "Name cannot be empty");
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
 
@@ -28,7 +28,7 @@ public sealed class DefaultErrorHandlersTests
         var handler = new DefaultValidationErrorHandler<string>();
         var node = A.Fake<ITransformNode<string, string>>();
         var exception = new InvalidOperationException("Unexpected error");
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
 
@@ -41,7 +41,7 @@ public sealed class DefaultErrorHandlersTests
         var handler = new DefaultValidationErrorHandler<string>(ResilienceDecision.Retry);
         var node = A.Fake<ITransformNode<string, string>>();
         var exception = new ValidationException("Age", "Range", 150, "Age out of range");
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
 
@@ -54,7 +54,7 @@ public sealed class DefaultErrorHandlersTests
         var handler = new DefaultFilteringErrorHandler<string>();
         var node = A.Fake<ITransformNode<string, string>>();
         var exception = new FilteringException("Item does not meet criteria");
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
 
@@ -67,7 +67,7 @@ public sealed class DefaultErrorHandlersTests
         var handler = new DefaultFilteringErrorHandler<string>();
         var node = A.Fake<ITransformNode<string, string>>();
         var exception = new InvalidOperationException("Unexpected error");
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
 
@@ -80,7 +80,7 @@ public sealed class DefaultErrorHandlersTests
         var handler = new DefaultTypeConversionErrorHandler<string, int>();
         var node = A.Fake<ITransformNode<string, int>>();
         var exception = new TypeConversionException(typeof(string), typeof(int), "abc", "Cannot convert");
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
 
@@ -93,7 +93,7 @@ public sealed class DefaultErrorHandlersTests
         var handler = new DefaultTypeConversionErrorHandler<string, int>();
         var node = A.Fake<ITransformNode<string, int>>();
         var exception = new InvalidOperationException("Unexpected error");
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         var decision = await handler.DecideItemFailureAsync(node, "test", exception, context, "test-node", 0, CancellationToken.None);
 
@@ -106,7 +106,7 @@ public sealed class DefaultErrorHandlersTests
         var handler = new DefaultValidationErrorHandler<string>();
         var node = A.Fake<ITransformNode<string, string>>();
         var exception = new ValidationException("Field", "Rule", "value", "message");
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
@@ -121,7 +121,7 @@ public sealed class DefaultErrorHandlersTests
         var handler = new DefaultFilteringErrorHandler<string>();
         var node = A.Fake<ITransformNode<string, string>>();
         var exception = new FilteringException("Filtered");
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
@@ -136,7 +136,7 @@ public sealed class DefaultErrorHandlersTests
         var handler = new DefaultTypeConversionErrorHandler<string, int>();
         var node = A.Fake<ITransformNode<string, int>>();
         var exception = new TypeConversionException(typeof(string), typeof(int), "test", "error");
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var cts = new CancellationTokenSource();
         cts.Cancel();
 

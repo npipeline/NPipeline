@@ -20,7 +20,7 @@ public class ParallelExecutionStrategyTests
     [Fact]
     public async Task OrderedParallelism_PreservesInputOrder_WithVariableLatency()
     {
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var runner = PipelineRunner.Create();
 
         await runner.RunAsync<OrderedPipeline>(ctx);
@@ -31,7 +31,7 @@ public class ParallelExecutionStrategyTests
     [Fact]
     public async Task UnorderedParallelism_EmitsAllItems()
     {
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var runner = PipelineRunner.Create();
 
         await runner.RunAsync<UnorderedPipeline>(ctx);
@@ -44,7 +44,7 @@ public class ParallelExecutionStrategyTests
     [Fact]
     public async Task OrderedParallelism_WithBoundedWindow_ProcessesAllItemsInOrder()
     {
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var runner = PipelineRunner.Create();
 
         await runner.RunAsync<BoundedWindowPipeline>(ctx);
@@ -55,7 +55,7 @@ public class ParallelExecutionStrategyTests
     [Fact]
     public async Task OrderedParallelism_WithOutputBuffer_ProcessesAllItemsInOrder()
     {
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var runner = PipelineRunner.Create();
 
         await runner.RunAsync<OutputBufferPipeline>(ctx);
@@ -66,7 +66,7 @@ public class ParallelExecutionStrategyTests
     [Fact]
     public async Task Parallelism_PropagatesWorkerExceptions()
     {
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var runner = PipelineRunner.Create();
 
         var act = async () => await runner.RunAsync<FaultingPipeline>(ctx);
@@ -78,7 +78,7 @@ public class ParallelExecutionStrategyTests
     [Fact]
     public async Task UnorderedParallelism_PropagatesWorkerExceptions()
     {
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var runner = PipelineRunner.Create();
 
         var act = async () => await runner.RunAsync<UnorderedFaultingPipeline>(ctx);
@@ -90,7 +90,7 @@ public class ParallelExecutionStrategyTests
     [Fact]
     public async Task OrderedParallelism_PropagatesSourceExceptions()
     {
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var runner = PipelineRunner.Create();
 
         var act = async () => await runner.RunAsync<OrderedSourceFaultingPipeline>(ctx);
@@ -103,7 +103,7 @@ public class ParallelExecutionStrategyTests
     [Fact]
     public async Task UnorderedParallelism_PropagatesSourceExceptions()
     {
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var runner = PipelineRunner.Create();
 
         var act = async () => await runner.RunAsync<UnorderedSourceFaultingPipeline>(ctx);

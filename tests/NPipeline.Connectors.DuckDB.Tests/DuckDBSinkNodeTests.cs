@@ -34,7 +34,7 @@ public sealed class DuckDBSinkNodeTests : IDisposable
         var pipe = new DataStream<TestRecord>(records.ToAsyncEnumerable());
 
         // Act
-        await sink.ConsumeAsync(pipe, PipelineContext.Default, CancellationToken.None);
+        await sink.ConsumeAsync(pipe, PipelineContext.CreateDefault(), CancellationToken.None);
 
         // Assert
         await using var conn = new DuckDBConnection($"DataSource={_dbPath}");
@@ -59,7 +59,7 @@ public sealed class DuckDBSinkNodeTests : IDisposable
         var sink = new DuckDBSinkNode<TestRecord>(_dbPath, "sql_records", config);
         var pipe = new DataStream<TestRecord>(records.ToAsyncEnumerable());
 
-        await sink.ConsumeAsync(pipe, PipelineContext.Default, CancellationToken.None);
+        await sink.ConsumeAsync(pipe, PipelineContext.CreateDefault(), CancellationToken.None);
 
         await using var conn = new DuckDBConnection($"DataSource={_dbPath}");
         await conn.OpenAsync();
@@ -74,7 +74,7 @@ public sealed class DuckDBSinkNodeTests : IDisposable
         var sink = new DuckDBSinkNode<TestRecord>(_dbPath, "auto_created", config);
         var pipe = new DataStream<TestRecord>(records.ToAsyncEnumerable());
 
-        await sink.ConsumeAsync(pipe, PipelineContext.Default, CancellationToken.None);
+        await sink.ConsumeAsync(pipe, PipelineContext.CreateDefault(), CancellationToken.None);
 
         await using var conn = new DuckDBConnection($"DataSource={_dbPath}");
         await conn.OpenAsync();
@@ -95,7 +95,7 @@ public sealed class DuckDBSinkNodeTests : IDisposable
 
         await sink1.ConsumeAsync(
             new DataStream<TestRecord>(records1.ToAsyncEnumerable()),
-            PipelineContext.Default, CancellationToken.None);
+            PipelineContext.CreateDefault(), CancellationToken.None);
 
         // Second write with truncate
         var records2 = Enumerable.Range(1, 3).Select(i => new TestRecord
@@ -113,7 +113,7 @@ public sealed class DuckDBSinkNodeTests : IDisposable
 
         await sink2.ConsumeAsync(
             new DataStream<TestRecord>(records2.ToAsyncEnumerable()),
-            PipelineContext.Default, CancellationToken.None);
+            PipelineContext.CreateDefault(), CancellationToken.None);
 
         // Assert
         await using var conn = new DuckDBConnection($"DataSource={_dbPath}");
@@ -135,7 +135,7 @@ public sealed class DuckDBSinkNodeTests : IDisposable
 
         await sink.ConsumeAsync(
             new DataStream<TestRecord>(records.ToAsyncEnumerable()),
-            PipelineContext.Default, CancellationToken.None);
+            PipelineContext.CreateDefault(), CancellationToken.None);
 
         observer.RowsWritten.Should().Be(5);
         observer.WriteCompletedCount.Should().Be(5);
@@ -148,7 +148,7 @@ public sealed class DuckDBSinkNodeTests : IDisposable
         var sink = new DuckDBSinkNode<TestRecord>(_dbPath, "empty_write", config);
         var pipe = new DataStream<TestRecord>(Array.Empty<TestRecord>().ToAsyncEnumerable());
 
-        await sink.ConsumeAsync(pipe, PipelineContext.Default, CancellationToken.None);
+        await sink.ConsumeAsync(pipe, PipelineContext.CreateDefault(), CancellationToken.None);
 
         await using var conn = new DuckDBConnection($"DataSource={_dbPath}");
         await conn.OpenAsync();

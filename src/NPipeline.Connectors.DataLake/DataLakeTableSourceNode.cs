@@ -203,7 +203,7 @@ public sealed class DataLakeTableSourceNode<T> : SourceNode<T>
         // Use ParquetSourceNode to read the file
         var sourceNode = new ParquetSourceNode<T>(provider, fileUri, _configuration);
 
-        var dataStream = sourceNode.OpenStream(PipelineContext.Default, cancellationToken);
+        var dataStream = sourceNode.OpenStream(PipelineContext.CreateDefault(), cancellationToken);
 
         await foreach (var item in dataStream.WithCancellation(cancellationToken))
         {

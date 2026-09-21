@@ -19,9 +19,9 @@ internal static class RetryOptionsResolver
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(nodeId);
 
-        if (context.NodeRetryOverrides.TryGetValue(nodeId, out var nodeOptions))
+        if (context.ExecutionConfiguration.NodeRetryOverrides.TryGetValue(nodeId, out var nodeOptions))
             return nodeOptions;
 
-        return context.GlobalRetryOptions;
+        return context.ExecutionConfiguration.GlobalRetryOptions;
     }
 }

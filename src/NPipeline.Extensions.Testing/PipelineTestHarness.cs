@@ -112,7 +112,7 @@ public sealed class PipelineTestHarness<TPipeline> where TPipeline : IPipelineDe
     /// <returns>This harness for fluent chaining.</returns>
     public PipelineTestHarness<TPipeline> WithExecutionObserver(IExecutionObserver observer)
     {
-        Context.ExecutionObserver = observer;
+        Context.Observability.ExecutionObserver = observer;
         return this;
     }
 
@@ -148,11 +148,11 @@ public sealed class PipelineTestHarness<TPipeline> where TPipeline : IPipelineDe
 
             if (_captureErrors)
             {
-                resiliencePolicy = new CapturingResiliencePolicy(Context.ResiliencePolicy, _capturedErrors, _errorHandlingDecision);
+                resiliencePolicy = new CapturingResiliencePolicy(Context.ExecutionConfiguration.ResiliencePolicy, _capturedErrors, _errorHandlingDecision);
             }
             else
             {
-                resiliencePolicy = Context.ResiliencePolicy;
+                resiliencePolicy = Context.ExecutionConfiguration.ResiliencePolicy;
             }
 
             executionContext = new PipelineContext(
@@ -166,14 +166,14 @@ public sealed class PipelineTestHarness<TPipeline> where TPipeline : IPipelineDe
                     ResiliencePolicy: resiliencePolicy,
                     DeadLetterSink: Context.DeadLetterSink, // Preserve the dead-letter sink
                     ErrorHandlerFactory: Context.ErrorHandlerFactory,
-                    LineageFactory: Context.LineageFactory,
-                    ObservabilityFactory: Context.ObservabilityFactory,
-                    LoggerFactory: Context.LoggerFactory,
-                    Tracer: Context.Tracer,
-                    RetryOptions: Context.RetryOptions));
+                    LineageFactory: Context.Lineage.LineageFactory,
+                    ObservabilityFactory: Context.Observability.ObservabilityFactory,
+                    LoggerFactory: Context.Observability.LoggerFactory,
+                    Tracer: Context.Observability.Tracer,
+                    RetryOptions: Context.ExecutionConfiguration.RetryOptions));
 
             // Preserve the ExecutionObserver from the original context
-            executionContext.ExecutionObserver = Context.ExecutionObserver;
+            executionContext.Observability.ExecutionObserver = Context.Observability.ExecutionObserver;
         }
 
         var stopwatch = Stopwatch.StartNew();

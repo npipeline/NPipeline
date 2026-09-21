@@ -50,7 +50,7 @@ public sealed class ServiceBusConnectorIntegrationTests
                     },
                 }.ToAsyncEnumerable());
 
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
             await sink.DisposeAsync();
 
             await using var client = _fixture.CreateClient();
@@ -107,7 +107,7 @@ public sealed class ServiceBusConnectorIntegrationTests
                     },
                 }.ToAsyncEnumerable());
 
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
             await sink.DisposeAsync();
 
             await using var client = _fixture.CreateClient();
@@ -159,7 +159,7 @@ public sealed class ServiceBusConnectorIntegrationTests
                     },
                 }.ToAsyncEnumerable());
 
-            await sink.ConsumeAsync(input, PipelineContext.Default, CancellationToken.None);
+            await sink.ConsumeAsync(input, PipelineContext.CreateDefault(), CancellationToken.None);
             await sink.DisposeAsync();
 
             await using var client = _fixture.CreateClient();

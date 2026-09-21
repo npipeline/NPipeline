@@ -49,16 +49,16 @@ public class ResultAggregator : SinkNode<int>
         Console.WriteLine($"  Max: {_max}");
 
         // Record item metrics through the observability collector
-        var collector = context.ExecutionObserver as IObservabilityCollector;
+        var collector = context.Observability.ExecutionObserver as IObservabilityCollector;
 
         if (collector != null)
         {
             // For sink, items processed equals items received, nothing is emitted
-            collector.RecordItemMetrics(context.CurrentNodeId, _itemsReceived, 0, context.PipelineId, context.PipelineName);
+            collector.RecordItemMetrics(context.NodeEnvironment.CurrentNodeId, _itemsReceived, 0, context.RunIdentity.PipelineId, context.RunIdentity.PipelineName);
 
             // Record performance metrics
             // Aggregation is fast: assume ~0.05ms per item
-            collector.RecordPerformanceMetrics(context.CurrentNodeId, 20000.0, 0.05, context.PipelineId, context.PipelineName);
+            collector.RecordPerformanceMetrics(context.NodeEnvironment.CurrentNodeId, 20000.0, 0.05, context.RunIdentity.PipelineId, context.RunIdentity.PipelineName);
         }
     }
 }

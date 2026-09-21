@@ -54,7 +54,7 @@ public sealed class ContextPropagationTests
 
         var runner = serviceProvider.GetRequiredService<IPipelineRunner>();
         await runner.RunAsync<PipelineWithHandler>(context);
-        context.ResiliencePolicy.Should().BeOfType<CapturingPipelinePolicy>();
+        context.ExecutionConfiguration.ResiliencePolicy.Should().BeOfType<CapturingPipelinePolicy>();
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public sealed class ContextPropagationTests
     {
         public override Task<int> TransformAsync(int item, PipelineContext context, CancellationToken cancellationToken)
         {
-            observedIds.Add(context.CurrentNodeId);
+            observedIds.Add(context.NodeEnvironment.CurrentNodeId);
             return Task.FromResult(item);
         }
     }

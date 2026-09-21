@@ -12,7 +12,7 @@ public sealed class PipelineContextDisposalExtensionsTests
     public async Task RegisterIfAsyncDisposable_WrapsSyncDisposable_WithExceptionHandling()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var throwingDisposable = new ThrowingSyncDisposable();
 
         // Act
@@ -31,7 +31,7 @@ public sealed class PipelineContextDisposalExtensionsTests
     public void RegisterIfAsyncDisposable_WithAsyncDisposable_Registers()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var asyncDisposable = A.Fake<IAsyncDisposable>();
 
         // Act
@@ -45,7 +45,7 @@ public sealed class PipelineContextDisposalExtensionsTests
     public async Task RegisterIfAsyncDisposable_WithAsyncDisposable_DisposesSonDispose()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var asyncDisposable = A.Fake<IAsyncDisposable>();
 
         // Act
@@ -60,7 +60,7 @@ public sealed class PipelineContextDisposalExtensionsTests
     public void RegisterIfAsyncDisposable_WithSyncDisposable_WrapsAndRegisters()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var syncDisposable = A.Fake<IDisposable>();
 
         // Act
@@ -74,7 +74,7 @@ public sealed class PipelineContextDisposalExtensionsTests
     public async Task RegisterIfAsyncDisposable_WithSyncDisposable_DisposesSOnDispose()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var syncDisposable = A.Fake<IDisposable>();
 
         // Act
@@ -89,7 +89,7 @@ public sealed class PipelineContextDisposalExtensionsTests
     public void RegisterIfAsyncDisposable_WithNonDisposable_DoesNotThrow()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var notDisposable = "some string";
 
         // Act
@@ -103,7 +103,7 @@ public sealed class PipelineContextDisposalExtensionsTests
     public void RegisterIfAsyncDisposable_ReturnsOriginalInstance()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var instance = new TestAsyncDisposable();
 
         // Act
@@ -117,7 +117,7 @@ public sealed class PipelineContextDisposalExtensionsTests
     public void RegisterIfAsyncDisposable_WithMultipleInstances()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var disposable1 = A.Fake<IAsyncDisposable>();
         var disposable2 = A.Fake<IAsyncDisposable>();
 
@@ -136,7 +136,7 @@ public sealed class PipelineContextDisposalExtensionsTests
     public void CreateAndRegister_WithAsyncDisposable_Registers()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var asyncDisposable = new TestAsyncDisposable();
 
         // Act
@@ -150,7 +150,7 @@ public sealed class PipelineContextDisposalExtensionsTests
     public async Task CreateAndRegister_WithAsyncDisposable_DisposesOnContextDispose()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var disposable = new TestAsyncDisposable();
 
         // Act
@@ -165,7 +165,7 @@ public sealed class PipelineContextDisposalExtensionsTests
     public void CreateAndRegister_WithSyncDisposable_Registers()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var syncDisposable = new TestSyncDisposable();
 
         // Act
@@ -179,7 +179,7 @@ public sealed class PipelineContextDisposalExtensionsTests
     public async Task CreateAndRegister_WithSyncDisposable_DisposesOnContextDispose()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var disposable = new TestSyncDisposable();
 
         // Act
@@ -194,7 +194,7 @@ public sealed class PipelineContextDisposalExtensionsTests
     public void CreateAndRegister_ReturnsOriginalInstance()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var instance = new TestAsyncDisposable();
 
         // Act
@@ -212,7 +212,7 @@ public sealed class PipelineContextDisposalExtensionsTests
     public async Task RegisterIfAsyncDisposable_WithMultipleInstances_DisposesAll()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var asyncDisposable1 = new TestAsyncDisposable();
         var asyncDisposable2 = new TestAsyncDisposable();
         var syncDisposable = new TestSyncDisposable();
@@ -234,7 +234,7 @@ public sealed class PipelineContextDisposalExtensionsTests
     public async Task RegisterIfAsyncDisposable_WithNonDisposable_DoesNotCauseIssues()
     {
         // Arrange
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var notDisposable = "string";
         var disposable = new TestAsyncDisposable();
 

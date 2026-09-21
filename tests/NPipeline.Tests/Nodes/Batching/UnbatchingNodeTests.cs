@@ -40,7 +40,7 @@ public sealed class UnbatchingNodeTests
     {
         // Arrange
         UnbatchingNode<int> node = new();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var batches = new List<int[]> { new[] { 1, 2, 3 }, new[] { 4, 5, 6 } }.ToAsyncEnumerable();
 
         // Act - calling ExecuteAsync with stream of batches should work
@@ -61,7 +61,7 @@ public sealed class UnbatchingNodeTests
     {
         // Arrange
         UnbatchingNode<string> node = new();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var batches = new List<string[]> { new[] { "a", "b", "c" }, new[] { "d", "e" } }.ToAsyncEnumerable();
 
         // Act

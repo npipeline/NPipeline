@@ -18,7 +18,7 @@ public sealed class ManualFactoryTests(ITestOutputHelper output)
         var pipelineFactory = new PipelineFactory();
         var nodeFactory = new DefaultNodeFactory();
         var runner = new PipelineRunnerBuilder().WithPipelineFactory(pipelineFactory).WithNodeFactory(nodeFactory).Build();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
 
         // Act
         await runner.RunAsync<SimpleManualPipeline>(context);

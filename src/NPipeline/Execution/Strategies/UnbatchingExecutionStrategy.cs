@@ -20,7 +20,7 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
         string nodeId,
         CancellationToken cancellationToken)
     {
-        var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
+        var observabilityScope = context.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
         var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
         // This strategy is designed to work with UnbatchingNode<T>, where TIn is IEnumerable<TOut>.
@@ -51,7 +51,7 @@ public sealed class UnbatchingExecutionStrategy : IExecutionStrategy, IStreamExe
         string nodeId,
         CancellationToken cancellationToken)
     {
-        var observabilityScope = context.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
+        var observabilityScope = context.NodeEnvironment.NodeExecutionScopeRegistry.BeginNodeScope(nodeId);
         var timedInput = NPipeline.Execution.NodeTimingDataStreamWrapper.WrapInputWait(input, observabilityScope);
 
         // This strategy is designed to work with UnbatchingNode<T>, where TIn is IEnumerable<TOut>.

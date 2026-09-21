@@ -27,7 +27,7 @@ public sealed class PerItemRetryExecutorTests
         var deadLetterSink = new RecordingDeadLetterSink();
 
         var (context, pipelineId) = CreateTrackedContext();
-        context.ResiliencePolicy = resiliencePolicy;
+        context.ExecutionConfiguration.ResiliencePolicy = resiliencePolicy;
         context.DeadLetterSink = deadLetterSink;
         var activity = new RecordingPipelineActivity();
 
@@ -74,7 +74,7 @@ public sealed class PerItemRetryExecutorTests
         var deadLetterSink = new RecordingDeadLetterSink();
 
         var (context, pipelineId) = CreateTrackedContext();
-        context.ResiliencePolicy = resiliencePolicy;
+        context.ExecutionConfiguration.ResiliencePolicy = resiliencePolicy;
         context.DeadLetterSink = deadLetterSink;
 
         try
@@ -119,7 +119,7 @@ public sealed class PerItemRetryExecutorTests
         var activity = new RecordingPipelineActivity();
 
         var (context, pipelineId) = CreateTrackedContext();
-        context.ResiliencePolicy = resiliencePolicy;
+        context.ExecutionConfiguration.ResiliencePolicy = resiliencePolicy;
 
         try
         {
@@ -167,7 +167,7 @@ public sealed class PerItemRetryExecutorTests
         var recorder = new RecordingSampleRecorder();
 
         var (context, pipelineId) = CreateTrackedContext();
-        context.ResiliencePolicy = resiliencePolicy;
+        context.ExecutionConfiguration.ResiliencePolicy = resiliencePolicy;
         context.Properties[PipelineContextKeys.SampleRecorder] = recorder;
         LineageExecutionItemContext.SetCurrentInputContext(0, Guid.NewGuid(), [1, 2]);
 
@@ -213,7 +213,7 @@ public sealed class PerItemRetryExecutorTests
         var recorder = new RecordingSampleRecorder();
 
         var (context, pipelineId) = CreateTrackedContext();
-        context.ResiliencePolicy = resiliencePolicy;
+        context.ExecutionConfiguration.ResiliencePolicy = resiliencePolicy;
         context.Properties[PipelineContextKeys.SampleRecorder] = recorder;
         LineageExecutionItemContext.SetCurrentInputContext(0, Guid.NewGuid(), [4]);
 
@@ -256,8 +256,8 @@ public sealed class PerItemRetryExecutorTests
         var context = new PipelineContext();
         var pipelineId = Guid.NewGuid();
 
-        context.PipelineId = pipelineId;
-        context.RunId = Guid.NewGuid();
+        context.RunIdentity.PipelineId = pipelineId;
+        context.RunIdentity.RunId = Guid.NewGuid();
         LineageNodeOutcomeRegistry.BeginNode(pipelineId, NodeId);
 
         return (context, pipelineId);

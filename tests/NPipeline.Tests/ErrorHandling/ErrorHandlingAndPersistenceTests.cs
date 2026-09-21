@@ -20,9 +20,9 @@ public sealed class ErrorHandlingAndPersistenceTests
     {
         // Arrange
         var svc = new ErrorHandlingService();
-        var context = PipelineContext.Default;
+        var context = PipelineContext.CreateDefault();
         var policy = new RestartingPolicy(2);
-        context.ResiliencePolicy = policy;
+        context.ExecutionConfiguration.ResiliencePolicy = policy;
 
         var nodeDef = new NodeDefinition(
             new NodeIdentity("s1", "s1"),

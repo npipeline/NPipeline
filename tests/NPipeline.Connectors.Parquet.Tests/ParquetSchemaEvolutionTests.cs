@@ -33,13 +33,13 @@ public sealed class ParquetSchemaEvolutionTests
 
             await sink.ConsumeAsync(
                 new DataStream<FullRecord>(fullRecords.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Read with schema that doesn't have the extra column
             var config = new ParquetConfiguration { SchemaCompatibility = SchemaCompatibilityMode.Additive };
             var source = new ParquetSourceNode<PartialRecord>(uri, resolver, config);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert - extra column should be ignored
             result.Should().HaveCount(1);
@@ -102,13 +102,13 @@ public sealed class ParquetSchemaEvolutionTests
 
             await sink.ConsumeAsync(
                 new DataStream<SimpleRecord>(records.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Read with strict mode (default)
             var config = new ParquetConfiguration { SchemaCompatibility = SchemaCompatibilityMode.Strict };
             var source = new ParquetSourceNode<SimpleRecord>(uri, resolver, config);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert
             result.Should().HaveCount(1);
@@ -138,13 +138,13 @@ public sealed class ParquetSchemaEvolutionTests
 
             await sink.ConsumeAsync(
                 new DataStream<MinimalRecord>(minimalRecords.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Read with extended schema in additive mode
             var config = new ParquetConfiguration { SchemaCompatibility = SchemaCompatibilityMode.Additive };
             var source = new ParquetSourceNode<ExtendedRecord>(uri, resolver, config);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert - missing column should have default value
             result.Should().HaveCount(1);
@@ -174,13 +174,13 @@ public sealed class ParquetSchemaEvolutionTests
 
             await sink.ConsumeAsync(
                 new DataStream<ExtendedRecord>(extendedRecords.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Read with minimal schema in additive mode
             var config = new ParquetConfiguration { SchemaCompatibility = SchemaCompatibilityMode.Additive };
             var source = new ParquetSourceNode<MinimalRecord>(uri, resolver, config);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert - extra column should be ignored
             result.Should().HaveCount(1);
@@ -213,12 +213,12 @@ public sealed class ParquetSchemaEvolutionTests
 
             await sink.ConsumeAsync(
                 new DataStream<OriginalNameRecord>(originalRecords.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Read with renamed column
             var source = new ParquetSourceNode<RenamedColumnRecord>(uri, resolver);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert - should map "original_id" to "NewId"
             result.Should().HaveCount(1);
@@ -247,12 +247,12 @@ public sealed class ParquetSchemaEvolutionTests
 
             await sink.ConsumeAsync(
                 new DataStream<RenamedColumnRecord>(renamedRecords.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Read back with original name mapping
             var source = new ParquetSourceNode<OriginalNameRecord>(uri, resolver);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert - should read "original_id" from file
             result.Should().HaveCount(1);
@@ -285,13 +285,13 @@ public sealed class ParquetSchemaEvolutionTests
 
             await sink.ConsumeAsync(
                 new DataStream<RequiredOnlyRecord>(requiredOnly.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Read with schema that has optional column
             var config = new ParquetConfiguration { SchemaCompatibility = SchemaCompatibilityMode.Additive };
             var source = new ParquetSourceNode<WithOptionalRecord>(uri, resolver, config);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert
             result.Should().HaveCount(1);
@@ -321,13 +321,13 @@ public sealed class ParquetSchemaEvolutionTests
 
             await sink.ConsumeAsync(
                 new DataStream<IdOnlyRecord>(idOnly.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Read with schema that has value type column
             var config = new ParquetConfiguration { SchemaCompatibility = SchemaCompatibilityMode.Additive };
             var source = new ParquetSourceNode<WithCountRecord>(uri, resolver, config);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert - missing int column should default to 0
             result.Should().HaveCount(1);
@@ -361,13 +361,13 @@ public sealed class ParquetSchemaEvolutionTests
 
             await sink.ConsumeAsync(
                 new DataStream<IntValueRecord>(intRecords.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Read with long (compatible type)
             var config = new ParquetConfiguration { SchemaCompatibility = SchemaCompatibilityMode.NameOnly };
             var source = new ParquetSourceNode<LongValueRecord>(uri, resolver, config);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert - int should be readable as long
             result.Should().HaveCount(1);
@@ -396,13 +396,13 @@ public sealed class ParquetSchemaEvolutionTests
 
             await sink.ConsumeAsync(
                 new DataStream<FloatValueRecord>(floatRecords.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             // Read with double (compatible type)
             var config = new ParquetConfiguration { SchemaCompatibility = SchemaCompatibilityMode.NameOnly };
             var source = new ParquetSourceNode<DoubleValueRecord>(uri, resolver, config);
-            var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert - float should be readable as double
             result.Should().HaveCount(1);
@@ -435,7 +435,7 @@ public sealed class ParquetSchemaEvolutionTests
 
             await sink.ConsumeAsync(
                 new DataStream<SimpleRecord>(records.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             var validatorCalled = false;
@@ -451,7 +451,7 @@ public sealed class ParquetSchemaEvolutionTests
             };
 
             var source = new ParquetSourceNode<SimpleRecord>(uri, resolver, config);
-            _ = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            _ = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert
             validatorCalled.Should().BeTrue();
@@ -479,7 +479,7 @@ public sealed class ParquetSchemaEvolutionTests
 
             await sink.ConsumeAsync(
                 new DataStream<SimpleRecord>(records.ToAsyncEnumerable()),
-                PipelineContext.Default,
+                PipelineContext.CreateDefault(),
                 CancellationToken.None);
 
             var config = new ParquetConfiguration
@@ -488,7 +488,7 @@ public sealed class ParquetSchemaEvolutionTests
             };
 
             var source = new ParquetSourceNode<SimpleRecord>(uri, resolver, config);
-            var act = async () => await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+            var act = async () => await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
             // Assert
             await act.Should().ThrowAsync<ParquetSchemaException>()

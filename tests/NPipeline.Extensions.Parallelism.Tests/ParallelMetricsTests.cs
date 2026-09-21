@@ -23,7 +23,7 @@ public class ParallelMetricsTests
     [Fact]
     public async Task DropNewestPolicy_Should_Record_Metrics()
     {
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var runner = PipelineRunner.Create();
         await runner.RunAsync<DropNewestMetricsPipeline>(ctx);
 
@@ -49,7 +49,7 @@ public class ParallelMetricsTests
         SharedTestState.Reset(10, 0);
         AttemptCounts.Clear();
 
-        var ctx = PipelineContext.Default;
+        var ctx = PipelineContext.CreateDefault();
         var runner = PipelineRunner.Create();
 
         // Run the pipeline - it should complete successfully with retries

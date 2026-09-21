@@ -40,7 +40,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         CancellationToken cancellationToken)
     {
         // Set the parallel execution flag to help ErrorHandlingService preserve original exception types
-        context.IsParallelExecution = true;
+        context.ExecutionConfiguration.IsParallelExecution = true;
 
         // Capture a stable node id (PipelineRunner sets this prior to invoking the strategy). In parallel execution
         var observabilityScope = BeginNodeObservabilityScope(context, nodeId);
@@ -48,7 +48,7 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
         // Resolve per-node parallel options if provided
         ParallelOptions? parallelOptions = null;
 
-        if (context.NodeExecutionScopeRegistry.TryGetNodeExecutionAnnotation(nodeId, out var opt) && opt is ParallelOptions po)
+        if (context.NodeEnvironment.NodeExecutionScopeRegistry.TryGetNodeExecutionAnnotation(nodeId, out var opt) && opt is ParallelOptions po)
             parallelOptions = po;
 
         // Input-wait timing is opt-in for parallel execution: the wait measured here is dominated by
@@ -58,29 +58,29 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
             : input;
 
         // Capture the current activity for tagging observability metrics
-        var currentActivity = context.Tracer.CurrentActivity;
+        var currentActivity = context.Observability.Tracer.CurrentActivity;
 
         // Resolve effective retry options using our helper method
         var effectiveRetries = GetRetryOptions(nodeId, context);
-        var logger = context.LoggerFactory.CreateLogger(nameof(BlockingParallelStrategy));
+        var logger = context.Observability.LoggerFactory.CreateLogger(nameof(BlockingParallelStrategy));
         ParallelExecutionStrategyLogMessages.FinalMaxRetries(logger, nodeId, effectiveRetries.MaxItemRetries);
 
         var effectiveDop = parallelOptions?.MaxDegreeOfParallelism ?? ConfiguredMaxDop ?? Environment.ProcessorCount;
         var windowSize = parallelOptions?.MaxQueueLength;
         var outputCap = parallelOptions?.OutputBufferCapacity;
         var preserveOrdering = parallelOptions?.PreserveOrdering ?? true;
-        var observer = context.ExecutionObserver;
+        var observer = context.Observability.ExecutionObserver;
 
         // Metrics for retry visibility.
         ParallelExecutionMetrics blockMetrics;
 
-        if (context.NodeExecutionScopeRegistry.TryGetRuntimeAnnotation(PipelineContextKeys.ParallelMetrics(nodeId), out var existingMetrics) &&
+        if (context.NodeEnvironment.NodeExecutionScopeRegistry.TryGetRuntimeAnnotation(PipelineContextKeys.ParallelMetrics(nodeId), out var existingMetrics) &&
             existingMetrics is ParallelExecutionMetrics cached)
             blockMetrics = cached;
         else
         {
             blockMetrics = new ParallelExecutionMetrics();
-            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetrics(nodeId), blockMetrics);
+            context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetrics(nodeId), blockMetrics);
         }
 
         // Create cached execution context once for all items (performance optimization)
@@ -365,23 +365,23 @@ public class BlockingParallelStrategy : ParallelExecutionStrategyBase
             if (outputCap is not null)
             {
                 currentActivity?.SetTag("parallel.output.capacity", outputCap.Value);
-                context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsOutputCapacity(nodeId),
+                context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsOutputCapacity(nodeId),
                     outputCap.Value);
             }
 
             // Store metrics in runtime annotations for downstream monitoring
-            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsInputHighWater(nodeId), inputHighWater);
-            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsOutputHighWater(nodeId), outputHighWater);
+            context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsInputHighWater(nodeId), inputHighWater);
+            context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsOutputHighWater(nodeId), outputHighWater);
 
             currentActivity?.SetTag("parallel.retry.events", blockMetrics.RetryEvents);
             currentActivity?.SetTag("parallel.retry.items", blockMetrics.ItemsWithRetry);
             currentActivity?.SetTag("parallel.retry.maxItemAttempts", blockMetrics.MaxItemRetryAttempts);
 
-            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsRetryEvents(nodeId),
+            context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsRetryEvents(nodeId),
                 blockMetrics.RetryEvents);
-            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsRetryItems(nodeId),
+            context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsRetryItems(nodeId),
                 blockMetrics.ItemsWithRetry);
-            context.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsMaxItemRetryAttempts(nodeId),
+            context.NodeEnvironment.NodeExecutionScopeRegistry.SetRuntimeAnnotation(PipelineContextKeys.ParallelMetricsMaxItemRetryAttempts(nodeId),
                 blockMetrics.MaxItemRetryAttempts);
         }
     }

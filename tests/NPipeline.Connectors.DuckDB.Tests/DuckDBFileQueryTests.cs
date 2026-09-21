@@ -54,7 +54,7 @@ public sealed class DuckDBFileQueryTests : IDisposable
 
         await sink.ConsumeAsync(
             new DataStream<TestRecord>(records.ToAsyncEnumerable()),
-            PipelineContext.Default, CancellationToken.None);
+            PipelineContext.CreateDefault(), CancellationToken.None);
 
         File.Exists(csvPath).Should().BeTrue();
         var lines = await File.ReadAllLinesAsync(csvPath);
@@ -75,7 +75,7 @@ public sealed class DuckDBFileQueryTests : IDisposable
 
         await sink.ConsumeAsync(
             new DataStream<TestRecord>(records.ToAsyncEnumerable()),
-            PipelineContext.Default, CancellationToken.None);
+            PipelineContext.CreateDefault(), CancellationToken.None);
 
         File.Exists(parquetPath).Should().BeTrue();
         new FileInfo(parquetPath).Length.Should().BeGreaterThan(0);
@@ -91,7 +91,7 @@ public sealed class DuckDBFileQueryTests : IDisposable
             "Id,Name,Value\n1,Alice,10.5\n2,Bob,20.3\n3,Charlie,30.1\n");
 
         var source = DuckDBSourceNode<TestRecord>.FromFile(csvPath);
-        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
         result.Should().HaveCount(3);
         result[0].Name.Should().Be("Alice");
@@ -119,11 +119,11 @@ public sealed class DuckDBFileQueryTests : IDisposable
 
         await sink.ConsumeAsync(
             new DataStream<TestRecord>(original.ToAsyncEnumerable()),
-            PipelineContext.Default, CancellationToken.None);
+            PipelineContext.CreateDefault(), CancellationToken.None);
 
         // Read back
         var source = DuckDBSourceNode<TestRecord>.FromFile(csvPath);
-        var result = await source.OpenStream(PipelineContext.Default, CancellationToken.None).ToListAsync();
+        var result = await source.OpenStream(PipelineContext.CreateDefault(), CancellationToken.None).ToListAsync();
 
         result.Should().HaveCount(2);
         result[0].Id.Should().Be(1);
