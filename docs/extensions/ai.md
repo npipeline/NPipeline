@@ -109,7 +109,7 @@ Returns a `TransformNodeHandle<IReadOnlyCollection<TIn>, IReadOnlyCollection<TOu
 
 Handles the full buffering and fan-out internally. Items arrive as a stream, are collected into batches of `BatchSize`, each batch is sent to the LLM, and the results are yielded back as individual items. A `BatchTimeout` flushes incomplete batches when items arrive slowly.
 
-Stream AI nodes use `AIStreamPassthroughExecutionStrategy` which preserves native stream semantics (including internal buffering/batching) and tracks observability at the stream level.
+Stream AI nodes use `StreamPassthroughExecutionStrategy`, the core default for stream transform nodes, which preserves native stream semantics (including internal buffering/batching) and tracks observability at the stream level.
 
 ```csharp
 builder.AddAIBatchedStreamTransform<Comment, ClassificationResult>(chatClient, options => options
@@ -177,7 +177,7 @@ Internal nodes are registered as `{name}_batch`, `{name}_enrich`, and `{name}_un
 
 #### `AIBatchedStreamEnrichNode<TIn, TField>`
 
-Stream-level enrichment with internal batching. Combines the automatic buffering of `AIBatchedStreamTransformNode` with the in-place field merging of `AIBatchedEnrichNode`. Uses `AIStreamPassthroughExecutionStrategy` to preserve native stream semantics.
+Stream-level enrichment with internal batching. Combines the automatic buffering of `AIBatchedStreamTransformNode` with the in-place field merging of `AIBatchedEnrichNode`. Uses `StreamPassthroughExecutionStrategy` to preserve native stream semantics.
 
 ```csharp
 builder.AddAIBatchedStreamEnrich<Article, SummaryResult>(chatClient, options => options

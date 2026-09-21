@@ -46,6 +46,44 @@ var enriched = builder.AddTransform(
 
 The synchronous overload (`Func<TIn, TOut>`) uses an optimized `ValueTask` path internally, avoiding per-item `Task` allocations.
 
+## Filtering
+
+`AddFilter` passes through the items that satisfy a predicate and drops the rest:
+
+```csharp
+// Synchronous
+var active = builder.AddFilter((Order o) => o.Status == "Active", "active-only");
+
+// Asynchronous - for a decision that needs I/O
+var allowed = builder.AddFilter(
+    async (Order o, CancellationToken ct) => await _rules.IsAllowedAsync(o, ct),
+    "allowed");
+```
+
+A transform cannot drop an item — `TransformAsync` returns exactly one output per input — so a filter is a stream
+transform under the hood. Items are dropped as they are read; nothing is buffered.
+
+## One-to-Many
+
+`AddSelectMany` expands each input item into zero or more output items — the other shape a transform cannot express:
+
+```csharp
+// Synchronous
+var lines = builder.AddSelectMany((Order o) => o.Lines, "order-lines");
+
+// Asynchronous
+var pages = builder.AddSelectMany(
+    (Query q, CancellationToken ct) => _api.StreamPagesAsync(q, ct),
+    "pages");
+```
+
+Each item's results are yielded as they are produced, so a selector returning a lazy sequence stays lazy.
+
+> **Note:** With item-level lineage enabled, both nodes declare their cardinality (`OneToZeroOrOne` and `OneToMany`),
+> so the lineage mismatch detector stays quiet. Declaring a non-1:1 cardinality does mean lineage falls back to a
+> materializing mapping strategy for that node — set `LineageOptions.MaterializationCap` if that matters for your
+> stream sizes.
+
 ## Lambda Sinks
 
 Consume each item as it arrives:

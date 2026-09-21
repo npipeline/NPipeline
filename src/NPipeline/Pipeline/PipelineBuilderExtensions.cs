@@ -169,6 +169,126 @@ public static class PipelineBuilderExtensions
     }
 
     /// <summary>
+    ///     Adds a filter node that passes through the items satisfying <paramref name="predicate" /> and drops the rest.
+    /// </summary>
+    /// <typeparam name="T">The item type.</typeparam>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="predicate">Returns <see langword="true" /> to keep the item.</param>
+    /// <param name="name">An optional descriptive name for the node. If null, a default name is used.</param>
+    /// <returns>A handle to the newly added filter node.</returns>
+    /// <remarks>
+    ///     Dropping an item is not something a per-item transform can do — it must return one output per input — so a
+    ///     filter is a stream transform. Items are dropped as they are read; nothing is buffered.
+    /// </remarks>
+    /// <example>
+    ///     <code>
+    /// var active = builder.AddFilter((Order o) => o.Status == "Active", "activeOnly");
+    /// </code>
+    /// </example>
+    public static TransformNodeHandle<T, T> AddFilter<T>(
+        this PipelineBuilder builder,
+        Func<T, bool> predicate,
+        string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(predicate);
+
+        return AddFilterNode(builder, new FilterNode<T>(predicate), name);
+    }
+
+    /// <summary>
+    ///     Adds a filter node whose predicate is asynchronous, for a decision that needs I/O.
+    /// </summary>
+    /// <typeparam name="T">The item type.</typeparam>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="predicate">Returns <see langword="true" /> to keep the item. This overload is selected automatically for an async lambda.</param>
+    /// <param name="name">An optional descriptive name for the node. If null, a default name is used.</param>
+    /// <returns>A handle to the newly added filter node.</returns>
+    /// <example>
+    ///     <code>
+    /// var allowed = builder.AddFilter(async (Order o, CancellationToken ct) => await IsAllowedAsync(o, ct), "allowed");
+    /// </code>
+    /// </example>
+    public static TransformNodeHandle<T, T> AddFilter<T>(
+        this PipelineBuilder builder,
+        Func<T, CancellationToken, ValueTask<bool>> predicate,
+        string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(predicate);
+
+        return AddFilterNode(builder, new FilterNode<T>(predicate), name);
+    }
+
+    /// <summary>
+    ///     Adds a node that expands each input item into zero or more output items.
+    /// </summary>
+    /// <typeparam name="TIn">The input item type.</typeparam>
+    /// <typeparam name="TOut">The output item type.</typeparam>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="selector">Returns the items to emit for one input item.</param>
+    /// <param name="name">An optional descriptive name for the node. If null, a default name is used.</param>
+    /// <returns>A handle to the newly added node.</returns>
+    /// <remarks>
+    ///     The other shape a per-item transform cannot express. Each item's results are yielded as they are produced,
+    ///     so a selector returning a lazy sequence stays lazy.
+    /// </remarks>
+    /// <example>
+    ///     <code>
+    /// var lines = builder.AddSelectMany((Order o) => o.Lines, "orderLines");
+    /// </code>
+    /// </example>
+    public static TransformNodeHandle<TIn, TOut> AddSelectMany<TIn, TOut>(
+        this PipelineBuilder builder,
+        Func<TIn, IEnumerable<TOut>> selector,
+        string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(selector);
+
+        return AddSelectManyNode(builder, new SelectManyNode<TIn, TOut>(selector), name);
+    }
+
+    /// <summary>
+    ///     Adds a node that expands each input item into zero or more output items, produced asynchronously.
+    /// </summary>
+    /// <typeparam name="TIn">The input item type.</typeparam>
+    /// <typeparam name="TOut">The output item type.</typeparam>
+    /// <param name="builder">The pipeline builder.</param>
+    /// <param name="selector">Returns the items to emit for one input item. This overload is selected automatically for an async sequence.</param>
+    /// <param name="name">An optional descriptive name for the node. If null, a default name is used.</param>
+    /// <returns>A handle to the newly added node.</returns>
+    public static TransformNodeHandle<TIn, TOut> AddSelectMany<TIn, TOut>(
+        this PipelineBuilder builder,
+        Func<TIn, CancellationToken, IAsyncEnumerable<TOut>> selector,
+        string? name = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(selector);
+
+        return AddSelectManyNode(builder, new SelectManyNode<TIn, TOut>(selector), name);
+    }
+
+    private static TransformNodeHandle<T, T> AddFilterNode<T>(PipelineBuilder builder, FilterNode<T> node, string? name)
+    {
+        var handle = builder.AddStreamTransform<FilterNode<T>, T, T>(name ?? $"Filter_{typeof(T).Name}");
+        _ = builder.AddPreconfiguredNodeInstance(handle.Id, node);
+        return handle;
+    }
+
+    private static TransformNodeHandle<TIn, TOut> AddSelectManyNode<TIn, TOut>(
+        PipelineBuilder builder,
+        SelectManyNode<TIn, TOut> node,
+        string? name)
+    {
+        var handle = builder.AddStreamTransform<SelectManyNode<TIn, TOut>, TIn, TOut>(
+            name ?? $"SelectMany_{typeof(TIn).Name}_to_{typeof(TOut).Name}");
+
+        _ = builder.AddPreconfiguredNodeInstance(handle.Id, node);
+        return handle;
+    }
+
+    /// <summary>
     ///     Adds a preconfigured source node instance to the pipeline using the runtime type of the node.
     /// </summary>
     /// <typeparam name="TOut">The output item type.</typeparam>

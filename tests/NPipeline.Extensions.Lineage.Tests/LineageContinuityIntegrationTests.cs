@@ -162,6 +162,26 @@ public sealed class LineageContinuityIntegrationTests
         sink.Records.Should().NotBeEmpty();
     }
 
+    /// <summary>
+    ///     A filter drops items, so its declared cardinality must keep the lineage mismatch detector quiet while the
+    ///     surviving items keep their traversal path.
+    /// </summary>
+    [Fact]
+    public async Task Filter_WithItemLevelLineage_DropsItemsWithoutBreakingLineage()
+    {
+        var (context, sink) = CreateContext();
+        var consumedValues = new List<int>();
+        context.Items[FanInValuesContextKey] = consumedValues;
+
+        await RunPipelineAsync<FilterContinuityPipeline>(context);
+
+        consumedValues.Should().Equal([2, 4], "only the even items survive the filter");
+
+        var sourceSegment = Qualified(context, "source");
+        sink.Records.Should().NotBeEmpty();
+        sink.Records.Should().Contain(r => r.TraversalPath.Contains(sourceSegment));
+    }
+
     private static (PipelineContext Context, CollectingLineageSink Sink) CreateContext(LineageOptions? optionsOverride = null)
     {
         var sink = new CollectingLineageSink();
@@ -512,6 +532,20 @@ public sealed class LineageContinuityIntegrationTests
             builder.Connect(source, transform)
                 .Connect(transform, aggregate)
                 .Connect(aggregate, sink);
+        }
+    }
+
+    private sealed class FilterContinuityPipeline : BaseLineagePipeline
+    {
+        public override void Define(PipelineBuilder builder, PipelineContext context)
+        {
+            EnableLineage(builder, context);
+
+            var source = builder.AddSource<NumbersSourceNode, int>("source");
+            var filter = builder.AddFilter((int n) => n % 2 == 0, "filter");
+            var sink = builder.AddSink<CollectingFanInSinkNode, int>("sink");
+
+            builder.Connect(source, filter).Connect(filter, sink);
         }
     }
 

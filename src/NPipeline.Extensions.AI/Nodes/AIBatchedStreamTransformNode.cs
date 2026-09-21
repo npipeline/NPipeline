@@ -2,8 +2,8 @@ using System.Runtime.CompilerServices;
 using Microsoft.Extensions.AI;
 using NPipeline.DataFlow;
 using NPipeline.Execution;
+using NPipeline.Execution.Strategies;
 using NPipeline.Extensions.AI.Configuration;
-using NPipeline.Extensions.AI.Execution;
 using NPipeline.Nodes;
 using NPipeline.Pipeline;
 
@@ -30,7 +30,7 @@ public sealed class AIBatchedStreamTransformNode<TIn, TOut> : IStreamTransformNo
     ///     Gets or sets the execution strategy.
     ///     Defaults to a stream-aware passthrough strategy so this node preserves its native stream batching behavior.
     /// </summary>
-    public IExecutionStrategy DefaultExecutionStrategy => AIStreamPassthroughExecutionStrategy.Instance;
+    public IExecutionStrategy DefaultExecutionStrategy => StreamPassthroughExecutionStrategy.Instance;
 
     /// <inheritdoc />
     public async IAsyncEnumerable<TOut> TransformAsync(

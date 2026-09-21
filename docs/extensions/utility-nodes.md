@@ -225,6 +225,11 @@ builder.AddStringValidation<Customer>()
 
 ### FilteringNode\<T>
 
+> **Which one do you want?** To simply drop items, use the core `builder.AddFilter(...)` — see
+> [Lambda Nodes](../guides/lambda-nodes.md#filtering). It drops items as it reads them, with no exception involved.
+> `FilteringNode<T>` is for when a rejected item is an *event* you want to route: it raises `FilteringException` so
+> your resilience policy can dead-letter it, count it, or retry it.
+
 Filters items using one or more predicates. Items that fail the filter throw `FilteringException`, which integrates with the resilience system - you can skip, dead-letter, or retry filtered items via your resilience policy.
 
 ```csharp
